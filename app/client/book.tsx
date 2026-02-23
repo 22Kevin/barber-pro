@@ -5,6 +5,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
 import { sendConfirmationWhatsApp, type AppointmentInfo } from "@/lib/whatsapp";
+import { scheduleAppointmentReminder } from "@/lib/use-notifications";
 
 type Step = "service" | "barber" | "date" | "time" | "confirm";
 
@@ -48,7 +49,6 @@ export default function BookScreen() {
   const createAppointment = trpc.appointments.create.useMutation({
     onSuccess: async (apptId) => {
       if (client && selectedBarber && selectedService && selectedDate && selectedSlot) {
-        const shopSettings = await fetch("/api/trpc/settings.get").catch(() => null);
         const info: AppointmentInfo = {
           clientName: client.name,
           clientPhone: client.phone,
@@ -58,9 +58,21 @@ export default function BookScreen() {
           startTime: selectedSlot.startTime,
           endTime: selectedSlot.endTime,
         };
+        // Envia confirmação via WhatsApp
         sendConfirmationWhatsApp(info).catch(() => null);
+
+        // Agenda notificação push 1 hora antes do agendamento
+        const [hours, minutes] = selectedSlot.startTime.split(":").map(Number);
+        const appointmentDateTime = new Date(selectedDate);
+        appointmentDateTime.setHours(hours, minutes, 0, 0);
+        scheduleAppointmentReminder(
+          typeof apptId === "number" ? apptId : Number(apptId),
+          selectedService.name,
+          selectedBarber.name,
+          appointmentDateTime
+        ).catch(() => null);
       }
-      Alert.alert("✅ Agendamento confirmado!", "Você receberá uma confirmação pelo WhatsApp.", [
+      Alert.alert("✅ Agendamento confirmado!", "Você receberá uma confirmação pelo WhatsApp e um lembrete 1 hora antes.", [
         { text: "Ver meus agendamentos", onPress: () => router.replace("/client/(tabs)/history" as any) },
         { text: "Início", onPress: () => router.replace("/client/(tabs)/home" as any) },
       ]);

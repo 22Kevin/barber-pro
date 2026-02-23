@@ -171,3 +171,14 @@
 - [x] Campo googleId na tabela client_accounts
 - [x] Credenciais Google Maps API e OAuth configuradas como env vars
 - [x] Ícones photo.on.rectangle e mappin adicionados ao icon-symbol.tsx
+
+## Notificações Push — Lembretes de Agendamento
+- [x] Ler documentação expo-notifications
+- [x] Hook useNotifications com solicitação de permissão e canal Android
+- [x] Agendamento de notificação local 1h antes ao confirmar agendamento (área do cliente)
+- [x] Agendamento de notificação local 1h antes ao criar agendamento (painel admin)
+- [x] Cancelamento automático da notificação ao cancelar agendamento (cliente e admin)
+- [x] Listener de notificações no layout raiz do app (NotificationsSetup)
+- [x] Integração no fluxo book.tsx (cliente)
+- [x] Integração no fluxo agenda.tsx (admin)
+- [x] Botão de cancelar agendamento na tela de histórico do cliente

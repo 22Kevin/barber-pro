@@ -17,6 +17,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
+import { scheduleAppointmentReminder, cancelAppointmentReminder } from "@/lib/use-notifications";
 
 const DAYS_PT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -85,17 +86,35 @@ export default function AgendaScreen() {
   );
 
   const createMutation = trpc.appointments.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async (apptId) => {
       utils.appointments.byDate.invalidate();
       utils.dashboard.stats.invalidate();
+
+      // Agenda notificação push 1 hora antes (se o cliente tiver o app instalado)
+      if (selectedService && selectedTime) {
+        const [hours, minutes] = selectedTime.split(":").map(Number);
+        const appointmentDateTime = new Date(selectedDate);
+        appointmentDateTime.setHours(hours, minutes, 0, 0);
+        scheduleAppointmentReminder(
+          typeof apptId === "number" ? apptId : Number(apptId),
+          selectedService.name,
+          barber?.name ?? "Barbeiro",
+          appointmentDateTime
+        ).catch(() => null);
+      }
+
       closeNewModal();
-      Alert.alert("Sucesso", "Agendamento criado com sucesso!");
+      Alert.alert("Sucesso", "Agendamento criado! O cliente receberá um lembrete 1 hora antes.");
     },
     onError: (e) => Alert.alert("Erro", e.message),
   });
 
   const updateMutation = trpc.appointments.update.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data: unknown, variables: any) => {
+      // Se o agendamento foi cancelado, remove o lembrete push
+      if (variables.status === "cancelled" || variables.status === "no_show") {
+        cancelAppointmentReminder(variables.id).catch(() => null);
+      }
       utils.appointments.byDate.invalidate();
       utils.dashboard.stats.invalidate();
       setShowDetailModal(false);

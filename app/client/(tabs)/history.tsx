@@ -4,6 +4,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
 import { useRouter } from "expo-router";
+import { cancelAppointmentReminder } from "@/lib/use-notifications";
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   scheduled: { label: "Agendado", color: "#EAB308", bg: "#1F1500" },
@@ -75,6 +76,31 @@ export default function ClientHistory() {
   const { client, isAuthenticated } = useClientAuth();
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [reviewAppt, setReviewAppt] = useState<any>(null);
+
+  const cancelAppointment = trpc.appointments.update.useMutation({
+    onSuccess: (_data: unknown, variables: any) => {
+      // Cancela o lembrete push quando o agendamento é cancelado
+      cancelAppointmentReminder(variables.id).catch(() => null);
+      appointmentsQuery.refetch();
+      Alert.alert("Agendamento cancelado", "Seu agendamento foi cancelado com sucesso.");
+    },
+    onError: (err: any) => Alert.alert("Erro", err.message),
+  });
+
+  const handleCancelAppointment = (appt: any) => {
+    Alert.alert(
+      "Cancelar agendamento",
+      `Deseja cancelar o agendamento de ${(appt as any).serviceName ?? "serviço"} em ${appt.date} às ${appt.startTime}?`,
+      [
+        { text: "Não", style: "cancel" },
+        {
+          text: "Sim, cancelar",
+          style: "destructive",
+          onPress: () => cancelAppointment.mutate({ id: appt.id, status: "cancelled" }),
+        },
+      ]
+    );
+  };
 
   const appointmentsQuery = trpc.clients.appointments.useQuery(
     { clientId: client?.id ?? 0 },
@@ -176,6 +202,14 @@ export default function ClientHistory() {
                       style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: "#1F2937", paddingTop: 12 }}
                     >
                       <Text style={{ color: "#EAB308", fontWeight: "600", fontSize: 14 }}>⭐ Avaliar este serviço</Text>
+                    </TouchableOpacity>
+                  )}
+                  {(item.status === "scheduled" || item.status === "confirmed") && tab === "upcoming" && (
+                    <TouchableOpacity
+                      onPress={() => handleCancelAppointment(item)}
+                      style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: "#1F2937", paddingTop: 12 }}
+                    >
+                      <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 14 }}>❌ Cancelar agendamento</Text>
                     </TouchableOpacity>
                   )}
                 </View>
