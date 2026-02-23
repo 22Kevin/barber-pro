@@ -98,6 +98,29 @@ export const appRouter = router({
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateClient(id, data); }),
     appointments: publicProcedure.input(z.object({ clientId: z.number() })).query(({ input }) => db.getClientAppointments(input.clientId)),
     sales: publicProcedure.input(z.object({ clientId: z.number() })).query(({ input }) => db.getClientSales(input.clientId)),
+    birthdayToday: publicProcedure.query(async () => {
+      const allClients = await db.getAllClients();
+      const today = new Date();
+      const todayMonth = today.getMonth() + 1;
+      const todayDay = today.getDate();
+      return allClients.filter((c: any) => {
+        if (!c.birthDate) return false;
+        const parts = c.birthDate.split("-");
+        return parseInt(parts[1], 10) === todayMonth && parseInt(parts[2], 10) === todayDay;
+      });
+    }),
+    birthdayThisMonth: publicProcedure.query(async () => {
+      const allClients = await db.getAllClients();
+      const currentMonth = new Date().getMonth() + 1;
+      return allClients.filter((c: any) => {
+        if (!c.birthDate) return false;
+        return parseInt(c.birthDate.split("-")[1], 10) === currentMonth;
+      }).sort((a: any, b: any) => {
+        const dayA = parseInt(a.birthDate.split("-")[2], 10);
+        const dayB = parseInt(b.birthDate.split("-")[2], 10);
+        return dayA - dayB;
+      });
+    }),
   }),
 
   categories: router({
@@ -360,6 +383,19 @@ export const appRouter = router({
           await db.updateClient(client.id, { photoUrl: input.photoUrl });
         }
         return { id: client.id, name: client.name, email: client.email, phone: client.phone ?? "", totalPoints: client.totalPoints, birthDate: client.birthDate, photoUrl: input.photoUrl ?? client.photoUrl };
+      }),
+    getBirthdayCoupon: publicProcedure
+      .input(z.object({ birthDate: z.string() }))
+      .query(async ({ input }) => {
+        // Verifica se o mês de nascimento é o mês atual
+        if (!input.birthDate) return null;
+        const birthMonth = parseInt(input.birthDate.split("-")[1], 10);
+        const currentMonth = new Date().getMonth() + 1;
+        if (birthMonth !== currentMonth) return null;
+        // Busca cupom de aniversário ativo (código começa com ANIV)
+        const allCoupons = await db.getAllCoupons();
+        const birthdayCoupon = allCoupons.find((c: any) => c.isActive && c.code.startsWith("ANIV"));
+        return birthdayCoupon ?? null;
       }),
   }),
 

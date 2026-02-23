@@ -198,3 +198,12 @@
 - [x] Notificação push para o barbeiro ao receber novo agendamento do cliente
 - [x] Fluxo de recuperação de senha por e-mail (solicitar código, verificar, redefinir)
 - [x] Link "Esqueci minha senha" na tela de login do cliente
+
+## Funcionalidade de Aniversário do Cliente
+
+- [x] Campo birthdate na tabela clients (banco de dados + migração)
+- [x] Rota tRPC para salvar/atualizar data de nascimento do cliente
+- [x] Seletor de data de nascimento na tela de perfil do cliente
+- [x] Lógica de geração automática de cupom de aniversário (válido no mês do aniversário)
+- [x] Rota tRPC para verificar e gerar cupom de aniversário
+- [x] Painel de aniversariantes do dia e do mês na tela de Clientes (admin)

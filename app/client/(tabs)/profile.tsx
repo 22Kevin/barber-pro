@@ -2,10 +2,32 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { DatePickerModal } from "@/components/date-picker-modal";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
 
 type ProfileTab = "points" | "coupons" | "settings";
+
+function formatBirthDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function isBirthdayThisMonth(birthDate: string | null | undefined): boolean {
+  if (!birthDate) return false;
+  const month = parseInt(birthDate.split("-")[1], 10);
+  return month === new Date().getMonth() + 1;
+}
+
+function isBirthdayToday(birthDate: string | null | undefined): boolean {
+  if (!birthDate) return false;
+  const today = new Date();
+  const parts = birthDate.split("-");
+  return parseInt(parts[1], 10) === today.getMonth() + 1 &&
+    parseInt(parts[2], 10) === today.getDate();
+}
 
 function PointsTab({ clientId }: { clientId: number }) {
   const pointsHistory = trpc.pointsHistory.byClient.useQuery({ clientId });
@@ -87,12 +109,54 @@ function PointsTab({ clientId }: { clientId: number }) {
   );
 }
 
-function CouponsTab() {
+function CouponsTab({ clientBirthDate }: { clientBirthDate?: string | null }) {
   const couponsQuery = trpc.coupons.list.useQuery();
+  const birthdayCouponQuery = trpc.clientAuth.getBirthdayCoupon.useQuery(
+    { birthDate: clientBirthDate ?? "" },
+    { enabled: !!clientBirthDate }
+  );
   const activeCoupons = couponsQuery.data?.filter((c: any) => c.isActive) ?? [];
+  const birthdayCoupon = birthdayCouponQuery.data;
+  const isThisMonth = isBirthdayThisMonth(clientBirthDate);
+  const isToday = isBirthdayToday(clientBirthDate);
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+
+      {/* Banner de aniversário */}
+      {clientBirthDate && isThisMonth && (
+        <View style={{ backgroundColor: "#1A1000", borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1.5, borderColor: "#EAB308" }}>
+          <Text style={{ color: "#EAB308", fontWeight: "800", fontSize: 18, marginBottom: 4 }}>
+            {isToday ? "🎂 Feliz Aniversário!" : "🎉 Mês do seu aniversário!"}
+          </Text>
+          <Text style={{ color: "#D97706", fontSize: 13, lineHeight: 20 }}>
+            {isToday
+              ? "Hoje é seu dia especial! Você tem um cupom exclusivo esperando por você."
+              : "Você tem um cupom exclusivo de aniversário disponível este mês!"}
+          </Text>
+          {birthdayCoupon && (
+            <View style={{ marginTop: 12, backgroundColor: "#0A0A0A", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#EAB308", borderStyle: "dashed" }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={{ color: "#EAB308", fontWeight: "800", fontSize: 22, letterSpacing: 2 }}>{birthdayCoupon.code}</Text>
+                <View style={{ backgroundColor: "#1F1500", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
+                  <Text style={{ color: "#EAB308", fontWeight: "700" }}>
+                    {birthdayCoupon.discountType === "percent"
+                      ? `${birthdayCoupon.discountValue}% OFF`
+                      : `R$ ${parseFloat(birthdayCoupon.discountValue).toFixed(2)} OFF`}
+                  </Text>
+                </View>
+              </View>
+              {birthdayCoupon.description && (
+                <Text style={{ color: "#9CA3AF", fontSize: 13, marginTop: 8 }}>{birthdayCoupon.description}</Text>
+              )}
+              <Text style={{ color: "#6B7280", fontSize: 12, marginTop: 8 }}>
+                Válido até: {birthdayCoupon.validUntil ? new Date(birthdayCoupon.validUntil + "T12:00:00").toLocaleDateString("pt-BR") : "fim do mês"}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
       <Text style={{ color: "#9CA3AF", fontSize: 14, marginBottom: 16 }}>Cupons disponíveis na barbearia</Text>
       {activeCoupons.length === 0 ? (
         <View style={{ alignItems: "center", paddingVertical: 40 }}>
@@ -127,38 +191,98 @@ function CouponsTab() {
 function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) => void }) {
   const [name, setName] = useState(client.name);
   const [phone, setPhone] = useState(client.phone);
+  const [birthDate, setBirthDate] = useState<string | null>(client.birthDate ?? null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
   const updateMutation = trpc.clientAuth.updateProfile.useMutation({
-    onSuccess: () => { onUpdate({ name, phone }); Alert.alert("Sucesso", "Perfil atualizado!"); },
+    onSuccess: () => {
+      onUpdate({ name, phone, birthDate });
+      Alert.alert("Sucesso", "Perfil atualizado!");
+    },
     onError: (err: any) => Alert.alert("Erro", err.message),
   });
+
+  const handleSave = () => {
+    updateMutation.mutate({ clientId: client.id, name, phone, birthDate });
+  };
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
       <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16, marginBottom: 16 }}>Editar perfil</Text>
       <View style={{ gap: 14 }}>
-        {[
-          { label: "Nome", value: name, setter: setName, keyboard: "default" as const },
-          { label: "Telefone / WhatsApp", value: phone, setter: setPhone, keyboard: "phone-pad" as const },
-        ].map((f) => (
-          <View key={f.label}>
-            <Text style={{ color: "#9CA3AF", fontSize: 13, marginBottom: 6 }}>{f.label}</Text>
-            <TextInput
-              value={f.value}
-              onChangeText={f.setter}
-              keyboardType={f.keyboard}
-              autoCapitalize={f.keyboard === "default" ? "words" : "none"}
-              style={{ backgroundColor: "#111827", color: "#fff", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#374151", fontSize: 15 }}
-            />
-          </View>
-        ))}
+        {/* Nome */}
+        <View>
+          <Text style={{ color: "#9CA3AF", fontSize: 13, marginBottom: 6 }}>Nome</Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+            style={{ backgroundColor: "#111827", color: "#fff", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#374151", fontSize: 15 }}
+          />
+        </View>
+
+        {/* Telefone */}
+        <View>
+          <Text style={{ color: "#9CA3AF", fontSize: 13, marginBottom: 6 }}>Telefone / WhatsApp</Text>
+          <TextInput
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            style={{ backgroundColor: "#111827", color: "#fff", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#374151", fontSize: 15 }}
+          />
+        </View>
+
+        {/* Data de Nascimento */}
+        <View>
+          <Text style={{ color: "#9CA3AF", fontSize: 13, marginBottom: 6 }}>Data de Nascimento</Text>
+          <TouchableOpacity
+            onPress={() => setShowDatePicker(true)}
+            style={{
+              backgroundColor: "#111827",
+              borderRadius: 12,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: birthDate ? "#EAB308" : "#374151",
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: birthDate ? "#fff" : "#4B5563", fontSize: 15 }}>
+              {birthDate ? formatBirthDate(birthDate) : "Toque para selecionar"}
+            </Text>
+            <Text style={{ fontSize: 18 }}>🎂</Text>
+          </TouchableOpacity>
+          {birthDate && (
+            <TouchableOpacity
+              onPress={() => setBirthDate(null)}
+              style={{ marginTop: 6, alignSelf: "flex-end" }}
+            >
+              <Text style={{ color: "#6B7280", fontSize: 12 }}>Remover data</Text>
+            </TouchableOpacity>
+          )}
+          <Text style={{ color: "#6B7280", fontSize: 12, marginTop: 6 }}>
+            Sua barbearia poderá criar cupons especiais no seu aniversário 🎉
+          </Text>
+        </View>
       </View>
+
       <TouchableOpacity
         style={{ backgroundColor: "#EAB308", borderRadius: 14, paddingVertical: 14, alignItems: "center", marginTop: 24, opacity: updateMutation.isPending ? 0.7 : 1 }}
-        onPress={() => updateMutation.mutate({ clientId: client.id, name, phone })}
+        onPress={handleSave}
         disabled={updateMutation.isPending}
       >
-        <Text style={{ color: "#000", fontWeight: "700", fontSize: 15 }}>{updateMutation.isPending ? "Salvando..." : "Salvar alterações"}</Text>
+        <Text style={{ color: "#000", fontWeight: "700", fontSize: 15 }}>
+          {updateMutation.isPending ? "Salvando..." : "Salvar alterações"}
+        </Text>
       </TouchableOpacity>
+
+      <DatePickerModal
+        visible={showDatePicker}
+        value={birthDate}
+        onConfirm={(date) => { setBirthDate(date); setShowDatePicker(false); }}
+        onCancel={() => setShowDatePicker(false)}
+      />
     </ScrollView>
   );
 }
@@ -195,9 +319,19 @@ export default function ClientProfile() {
         {/* Header do perfil */}
         <View style={{ padding: 20, paddingBottom: 0 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <View>
-              <Text style={{ color: "#fff", fontWeight: "800", fontSize: 22 }}>{client.name}</Text>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={{ color: "#fff", fontWeight: "800", fontSize: 22 }}>{client.name}</Text>
+                {isBirthdayToday(client.birthDate) && (
+                  <Text style={{ fontSize: 20 }}>🎂</Text>
+                )}
+              </View>
               <Text style={{ color: "#9CA3AF", fontSize: 14 }}>{client.email}</Text>
+              {client.birthDate && (
+                <Text style={{ color: "#6B7280", fontSize: 12, marginTop: 2 }}>
+                  🎂 {formatBirthDate(client.birthDate)}
+                </Text>
+              )}
             </View>
             <TouchableOpacity
               onPress={() => Alert.alert("Sair", "Deseja sair da sua conta?", [
@@ -214,7 +348,7 @@ export default function ClientProfile() {
           <View style={{ flexDirection: "row", backgroundColor: "#111827", borderRadius: 12, padding: 4 }}>
             {[
               { key: "points", label: "⭐ Pontos" },
-              { key: "coupons", label: "🎟️ Cupons" },
+              { key: "coupons", label: isBirthdayThisMonth(client.birthDate) ? "🎂 Cupons" : "🎟️ Cupons" },
               { key: "settings", label: "⚙️ Perfil" },
             ].map((t) => (
               <TouchableOpacity
@@ -229,7 +363,7 @@ export default function ClientProfile() {
         </View>
 
         {tab === "points" && <PointsTab clientId={client.id} />}
-        {tab === "coupons" && <CouponsTab />}
+        {tab === "coupons" && <CouponsTab clientBirthDate={client.birthDate} />}
         {tab === "settings" && <SettingsTab client={client} onUpdate={(data) => updateClient(data)} />}
       </View>
     </ScreenContainer>
