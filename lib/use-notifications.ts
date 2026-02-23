@@ -153,6 +153,65 @@ export async function cancelAppointmentReminder(appointmentId: number): Promise<
 }
 
 /**
+ * Agenda uma notificação anual de aniversário para o cliente.
+ * Dispara todo ano no dia e mês de nascimento às 9h da manhã.
+ *
+ * @param clientId - ID do cliente (usado como identificador único)
+ * @param clientName - Nome do cliente para personalizar a mensagem
+ * @param birthDate - Data no formato AAAA-MM-DD
+ */
+export async function scheduleBirthdayNotification(
+  clientId: number,
+  clientName: string,
+  birthDate: string
+): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const hasPermission = await requestPermissionsAsync();
+    if (!hasPermission) return;
+    const parts = birthDate.split("-");
+    if (parts.length !== 3) return;
+    const month = parseInt(parts[1], 10) - 1; // JS month é 0-indexed
+    const day = parseInt(parts[2], 10);
+    // Cancela notificação anterior antes de reagendar
+    await cancelBirthdayNotification(clientId);
+    await Notifications.scheduleNotificationAsync({
+      identifier: `birthday-${clientId}`,
+      content: {
+        title: `🎂 Feliz Aniversário, ${clientName}!`,
+        body: "Sua barbearia tem um presente especial para você hoje. Confira seus cupons!",
+        data: { type: "birthday", clientId },
+        sound: "default",
+        ...(Platform.OS === "android" && { color: "#EAB308" }),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.YEARLY,
+        month,
+        day,
+        hour: 9,
+        minute: 0,
+      },
+    });
+  } catch (error) {
+    console.warn("[Barber Pro] Erro ao agendar notificação de aniversário:", error);
+  }
+}
+
+/**
+ * Cancela a notificação de aniversário de um cliente.
+ *
+ * @param clientId - ID do cliente
+ */
+export async function cancelBirthdayNotification(clientId: number): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(`birthday-${clientId}`);
+  } catch {
+    // Ignora erro se a notificação não existir
+  }
+}
+
+/**
  * Cancela TODOS os lembretes de agendamentos agendados.
  * Útil ao fazer logout do cliente.
  */

@@ -344,6 +344,21 @@ export default function ClientProfile() {
             </TouchableOpacity>
           </View>
 
+          {/* Banner: completar data de nascimento */}
+          {!client.birthDate && (
+            <TouchableOpacity
+              onPress={() => setTab("settings")}
+              style={{ backgroundColor: "#1A1000", borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#EAB30844" }}
+            >
+              <Text style={{ fontSize: 22 }}>🎂</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#EAB308", fontWeight: "700", fontSize: 13 }}>Adicione sua data de nascimento</Text>
+                <Text style={{ color: "#6B7280", fontSize: 12, marginTop: 2 }}>Receba um cupom exclusivo no seu aniversário!</Text>
+              </View>
+              <Text style={{ color: "#EAB308", fontSize: 18 }}>›</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Tabs */}
           <View style={{ flexDirection: "row", backgroundColor: "#111827", borderRadius: 12, padding: 4 }}>
             {[

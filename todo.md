@@ -207,3 +207,10 @@
 - [x] Lógica de geração automática de cupom de aniversário (válido no mês do aniversário)
 - [x] Rota tRPC para verificar e gerar cupom de aniversário
 - [x] Painel de aniversariantes do dia e do mês na tela de Clientes (admin)
+
+## Melhorias de Aniversário (Round 2)
+
+- [x] Campo de data de nascimento na tela de cadastro do cliente (register.tsx)
+- [x] Investigar obtenção de birthDate via Google People API no login Google (não viável sem verificação Google; banner de convite implementado)
+- [x] Notificação push automática de aniversário (YEARLY trigger local às 9h, agendado no login/updateClient)
+- [x] Notificação de aniversário agendada localmente via expo-notifications (sem necessidade de servidor)

@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { scheduleBirthdayNotification, cancelBirthdayNotification } from "@/lib/use-notifications";
 
 const CLIENT_STORAGE_KEY = "@barber_pro_client_session";
 
@@ -31,7 +32,14 @@ export function ClientAuthProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     AsyncStorage.getItem(CLIENT_STORAGE_KEY).then((data) => {
       if (data) {
-        try { setClient(JSON.parse(data)); } catch { /* ignore */ }
+        try {
+          const parsed = JSON.parse(data) as ClientUser;
+          setClient(parsed);
+          // Reagenda notificação de aniversário ao restaurar sessão
+          if (parsed.birthDate) {
+            scheduleBirthdayNotification(parsed.id, parsed.name, parsed.birthDate);
+          }
+        } catch { /* ignore */ }
       }
       setIsLoading(false);
     });
@@ -40,18 +48,34 @@ export function ClientAuthProvider({ children }: { children: React.ReactNode }) 
   const login = useCallback(async (user: ClientUser) => {
     setClient(user);
     await AsyncStorage.setItem(CLIENT_STORAGE_KEY, JSON.stringify(user));
+    // Agenda notificação de aniversário ao fazer login
+    if (user.birthDate) {
+      await scheduleBirthdayNotification(user.id, user.name, user.birthDate);
+    }
   }, []);
 
   const logout = useCallback(async () => {
+    // Cancela notificação de aniversário ao fazer logout
+    if (client?.id) {
+      await cancelBirthdayNotification(client.id);
+    }
     setClient(null);
     await AsyncStorage.removeItem(CLIENT_STORAGE_KEY);
-  }, []);
+  }, [client]);
 
   const updateClient = useCallback(async (data: Partial<ClientUser>) => {
     setClient((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, ...data };
       AsyncStorage.setItem(CLIENT_STORAGE_KEY, JSON.stringify(updated));
+      // Reagenda notificação de aniversário se a data foi atualizada
+      if (data.birthDate !== undefined) {
+        if (data.birthDate) {
+          scheduleBirthdayNotification(updated.id, updated.name, data.birthDate);
+        } else {
+          cancelBirthdayNotification(updated.id);
+        }
+      }
       return updated;
     });
   }, []);

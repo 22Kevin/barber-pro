@@ -14,9 +14,17 @@ import {
   View,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { DatePickerModal } from "@/components/date-picker-modal";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { useGoogleAuth } from "@/lib/use-google-auth";
 import { trpc } from "@/lib/trpc";
+
+function formatBirthDate(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
 
 export default function ClientRegister() {
   const router = useRouter();
@@ -24,13 +32,15 @@ export default function ClientRegister() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [birthDate, setBirthDate] = useState<string | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const registerMutation = trpc.clientAuth.register.useMutation({
     onSuccess: async (data) => {
-      await login({ id: data.id, name: data.name, email: data.email, phone: data.phone, totalPoints: 0 });
+      await login({ id: data.id, name: data.name, email: data.email, phone: data.phone, totalPoints: 0, birthDate: birthDate });
       router.replace("/client/(tabs)/home" as any);
     },
     onError: (err) => Alert.alert("Erro", err.message),
@@ -79,7 +89,13 @@ export default function ClientRegister() {
       Alert.alert("Atenção", "As senhas não coincidem");
       return;
     }
-    registerMutation.mutate({ name: name.trim(), email: email.trim(), phone: phone.trim(), password });
+    registerMutation.mutate({
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      password,
+      birthDate: birthDate ?? undefined,
+    });
   };
 
   const isLoading = registerMutation.isPending || googleLoading || googleLoginMutation.isPending;
@@ -142,6 +158,29 @@ export default function ClientRegister() {
                   />
                 </View>
               ))}
+
+              {/* Data de Nascimento */}
+              <View>
+                <Text style={styles.label}>Data de Nascimento <Text style={{ color: "#6B7280" }}>(opcional)</Text></Text>
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(true)}
+                  style={[styles.input, { flexDirection: "row", justifyContent: "space-between", alignItems: "center" }]}
+                >
+                  <Text style={{ color: birthDate ? "#fff" : "#4B5563", fontSize: 16 }}>
+                    {birthDate ? formatBirthDate(birthDate) : "Toque para selecionar 🎂"}
+                  </Text>
+                  {birthDate && (
+                    <TouchableOpacity
+                      onPress={(e) => { e.stopPropagation(); setBirthDate(null); }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={{ color: "#6B7280", fontSize: 18 }}>×</Text>
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+                <Text style={styles.hintText}>Usamos para enviar um cupom especial no seu aniversário 🎉</Text>
+              </View>
+
               <View>
                 <Text style={styles.label}>Senha *</Text>
                 <TextInput
@@ -187,6 +226,14 @@ export default function ClientRegister() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* DatePickerModal */}
+      <DatePickerModal
+        visible={showDatePicker}
+        value={birthDate}
+        onConfirm={(date) => { setBirthDate(date); setShowDatePicker(false); }}
+        onCancel={() => setShowDatePicker(false)}
+      />
     </ScreenContainer>
   );
 }
@@ -213,6 +260,7 @@ const styles = StyleSheet.create({
   dividerLine: { flex: 1, height: 1, backgroundColor: "#374151" },
   dividerText: { fontSize: 12, color: "#6B7280" },
   label: { fontSize: 13, color: "#9CA3AF", marginBottom: 8, fontWeight: "500" },
+  hintText: { fontSize: 11, color: "#4B5563", marginTop: 6, lineHeight: 16 },
   input: {
     backgroundColor: "#111827",
     color: "#fff",
