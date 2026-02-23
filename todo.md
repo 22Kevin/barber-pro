@@ -187,3 +187,7 @@
 
 - [x] Seletor de duração livre (tipo relógio com horas e minutos) no cadastro de serviços
 - [x] Seletor de horário de início e fim de trabalho configurável nas configurações do barbeiro
+
+## Correção v2.3.1
+
+- [x] Corrigir erro 400 redirect_uri_mismatch no Login com Google
