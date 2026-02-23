@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Linking, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Image, Linking, Modal, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
@@ -40,6 +40,8 @@ export default function BookScreen() {
   const [notes, setNotes] = useState("");
   const [pendingApptId, setPendingApptId] = useState<number | null>(null);
   const [isOpeningPayment, setIsOpeningPayment] = useState(false);
+  const [pixData, setPixData] = useState<{ qrCode: string; qrCodeBase64: string; paymentId: string; expiresAt: string | null } | null>(null);
+  const [showPixModal, setShowPixModal] = useState(false);
 
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true });
   const barbersQuery = trpc.barbers.list.useQuery();
@@ -49,6 +51,7 @@ export default function BookScreen() {
   );
 
   const createPreference = trpc.payments.createPreference.useMutation();
+  const createPixPayment = trpc.payments.createPixPayment.useMutation();
 
   const createAppointment = trpc.appointments.create.useMutation({
     onSuccess: async (apptId) => {
@@ -146,6 +149,41 @@ export default function BookScreen() {
     }
   };
 
+  const handlePayPix = async () => {
+    if (!pendingApptId || !client || !selectedService || !selectedBarber || !selectedDate || !selectedSlot) return;
+    setIsOpeningPayment(true);
+    try {
+      const result = await createPixPayment.mutateAsync({
+        appointmentId: pendingApptId,
+        serviceId: selectedService.id,
+        serviceName: selectedService.name,
+        servicePrice: parseFloat(selectedService.price),
+        clientName: client.name,
+        clientEmail: client.email ?? undefined,
+        clientCpf: (client as any).cpf ?? null,
+        barberId: selectedBarber.id,
+        clientId: client.id,
+        date: formatDate(selectedDate),
+        startTime: selectedSlot.startTime,
+      });
+      if (result.qrCode) {
+        setPixData({
+          qrCode: result.qrCode,
+          qrCodeBase64: result.qrCodeBase64 ?? "",
+          paymentId: result.paymentId,
+          expiresAt: result.expiresAt,
+        });
+        setShowPixModal(true);
+      } else {
+        Alert.alert("Erro", "Não foi possível gerar o QR Code Pix. Tente pagar online ou na barbearia.");
+      }
+    } catch (err: any) {
+      Alert.alert("Erro ao gerar Pix", err.message ?? "Tente novamente.");
+    } finally {
+      setIsOpeningPayment(false);
+    }
+  };
+
   const handlePayOnSite = () => {
     Alert.alert(
       "Agendamento confirmado!",
@@ -225,7 +263,27 @@ export default function BookScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Opção 2: Pagar no local */}
+          {/* Opção 2: Pix QR Code */}
+          <TouchableOpacity
+            onPress={handlePayPix}
+            disabled={isOpeningPayment || createPixPayment.isPending}
+            style={{
+              backgroundColor: "#32BCAD",
+              borderRadius: 16,
+              padding: 20,
+              marginBottom: 12,
+              alignItems: "center",
+              opacity: (isOpeningPayment || createPixPayment.isPending) ? 0.7 : 1,
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16, marginBottom: 4 }}>
+              {(isOpeningPayment || createPixPayment.isPending) ? "Gerando QR Code..." : "📱 Pagar via Pix (QR Code)"}
+            </Text>
+            <Text style={{ color: "rgba(255,255,255,0.85)", fontSize: 12 }}>
+              Escaneie o QR Code com qualquer banco
+            </Text>
+          </TouchableOpacity>
+          {/* Opção 3: Pagar no local */}
           <TouchableOpacity
             onPress={handlePayOnSite}
             style={{
@@ -245,6 +303,63 @@ export default function BookScreen() {
             </Text>
           </TouchableOpacity>
         </ScrollView>
+
+        {/* Modal QR Code Pix */}
+        <Modal visible={showPixModal} animationType="slide" transparent>
+          <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center", alignItems: "center", padding: 20 }}>
+            <View style={{ backgroundColor: "#111827", borderRadius: 20, padding: 24, width: "100%", alignItems: "center" }}>
+              <Text style={{ color: "#fff", fontWeight: "800", fontSize: 20, marginBottom: 4 }}>QR Code Pix</Text>
+              <Text style={{ color: "#9CA3AF", fontSize: 13, textAlign: "center", marginBottom: 20 }}>
+                Abra o app do seu banco, escolha Pix e escaneie o código abaixo
+              </Text>
+              {pixData?.qrCodeBase64 ? (
+                <Image
+                  source={{ uri: `data:image/png;base64,${pixData.qrCodeBase64}` }}
+                  style={{ width: 220, height: 220, borderRadius: 12, backgroundColor: "#fff" }}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View style={{ width: 220, height: 220, backgroundColor: "#1F2937", borderRadius: 12, justifyContent: "center", alignItems: "center" }}>
+                  <Text style={{ color: "#6B7280", fontSize: 12 }}>QR Code indisponível</Text>
+                </View>
+              )}
+              {pixData?.qrCode && (
+                <TouchableOpacity
+                  onPress={() => {
+                    if (Platform.OS === "web") {
+                      navigator.clipboard?.writeText(pixData.qrCode);
+                    }
+                    Alert.alert("Código copiado!", "Cole no app do seu banco para pagar.");
+                  }}
+                  style={{ marginTop: 16, backgroundColor: "#1F2937", borderRadius: 10, padding: 12, width: "100%", alignItems: "center" }}
+                >
+                  <Text style={{ color: "#32BCAD", fontWeight: "700", fontSize: 13 }}>📋 Copiar código Pix</Text>
+                </TouchableOpacity>
+              )}
+              {pixData?.expiresAt && (
+                <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 10 }}>
+                  Válido até: {new Date(pixData.expiresAt).toLocaleString("pt-BR")}
+                </Text>
+              )}
+              <TouchableOpacity
+                onPress={() => {
+                  setShowPixModal(false);
+                  Alert.alert(
+                    "Pagamento Pix",
+                    "Após o pagamento ser confirmado, seu agendamento será atualizado automaticamente.",
+                    [
+                      { text: "Ver agendamentos", onPress: () => router.replace("/client/(tabs)/history" as any) },
+                      { text: "Início", onPress: () => router.replace("/client/(tabs)/home" as any) },
+                    ]
+                  );
+                }}
+                style={{ marginTop: 16, backgroundColor: "#32BCAD", borderRadius: 12, padding: 14, width: "100%", alignItems: "center" }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>Já paguei ✓</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScreenContainer>
     );
   }

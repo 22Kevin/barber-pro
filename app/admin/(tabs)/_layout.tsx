@@ -86,6 +86,13 @@ export default function AdminTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="reports"
+        options={{
+          title: "Relatórios",
+          tabBarIcon: ({ color }) => <IconSymbol name="chart.line.uptrend.xyaxis" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: "Config",

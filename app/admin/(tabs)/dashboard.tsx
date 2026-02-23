@@ -45,6 +45,7 @@ export default function DashboardScreen() {
   const statsQuery = trpc.dashboard.stats.useQuery({ date: today });
   const appointmentsQuery = trpc.appointments.allByDate.useQuery({ date: today });
   const barbersQuery = trpc.barbers.list.useQuery();
+  const pendingPaymentsQuery = trpc.payments.pendingList.useQuery();
 
   const utils = trpc.useUtils();
 
@@ -53,6 +54,7 @@ export default function DashboardScreen() {
     await Promise.all([
       utils.dashboard.stats.invalidate(),
       utils.appointments.allByDate.invalidate(),
+      utils.payments.pendingList.invalidate(),
     ]);
     setRefreshing(false);
   }, [utils]);
@@ -105,6 +107,35 @@ export default function DashboardScreen() {
           <QuickAction icon="dollarsign.circle.fill" label="Nova Venda" onPress={() => router.push("/admin/(tabs)/financial" as any)} />
           <QuickAction icon="scissors" label="Serviços" onPress={() => router.push("/admin/(tabs)/services" as any)} />
         </View>
+
+        {/* Pagamentos Pendentes MP */}
+        {(pendingPaymentsQuery.data?.length ?? 0) > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>⏳ Aguardando Pagamento</Text>
+              <Pressable onPress={() => router.push("/admin/(tabs)/financial" as any)}>
+                <Text style={styles.seeAll}>Ver todos ({pendingPaymentsQuery.data!.length})</Text>
+              </Pressable>
+            </View>
+            {pendingPaymentsQuery.data!.slice(0, 3).map((sale: any) => (
+              <View key={sale.id} style={styles.appointmentCard}>
+                <View style={[styles.statusBar, { backgroundColor: "#FF9800" }]} />
+                <View style={styles.aptContent}>
+                  <View style={styles.aptRow}>
+                    <Text style={styles.aptTime}>R$ {parseFloat(sale.total).toFixed(2)}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: "#FF980022" }]}>
+                      <Text style={[styles.statusText, { color: "#FF9800" }]}>Pendente</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.aptBarber}>Mercado Pago</Text>
+                  {sale.mercadoPagoPaymentId && (
+                    <Text style={styles.aptNotes}>ID: {sale.mercadoPagoPaymentId}</Text>
+                  )}
+                </View>
+              </View>
+            ))}
+          </>
+        )}
 
         {/* Agenda do dia */}
         <View style={styles.sectionHeader}>

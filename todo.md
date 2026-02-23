@@ -222,3 +222,17 @@
 - [x] Integrar link de pagamento no fluxo de agendamento do cliente (book.tsx)
 - [x] Webhook de confirmação de pagamento (atualizar status do agendamento)
 - [x] Histórico de transações Mercado Pago no painel financeiro do admin
+
+## Melhorias Mercado Pago (Round 2)
+
+- [ ] Pix com QR Code nativo no app (rota servidor + tela cliente)
+- [ ] Card de pagamentos pendentes no dashboard admin
+- [ ] Tutorial de configuração do webhook IPN no Mercado Pago (PDF)
+
+## Fase B — Relatórios e Inteligência de Negócio
+
+- [ ] Tela de Relatórios no painel admin (nova aba)
+- [ ] Gráfico de faturamento por semana/mês (barras)
+- [ ] Ranking dos serviços mais vendidos
+- [ ] Clientes mais frequentes e com maior ticket médio
+- [ ] Taxa de ocupação dos barbeiros por período

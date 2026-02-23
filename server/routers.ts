@@ -6,7 +6,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import crypto from "crypto";
-import { MercadoPagoConfig, Preference } from "mercadopago";
+import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 
 function getMpClient() {
   const accessToken = process.env.MP_ACCESS_TOKEN;
@@ -481,6 +481,75 @@ export const appRouter = router({
           sandboxInitPoint: result.sandbox_init_point,
         };
       }),
+    createPixPayment: publicProcedure
+      .input(z.object({
+        serviceId: z.number(),
+        serviceName: z.string(),
+        servicePrice: z.number(),
+        clientName: z.string(),
+        clientEmail: z.string().optional(),
+        clientCpf: z.string().optional().nullable(),
+        appointmentId: z.number().optional().nullable(),
+        barberId: z.number(),
+        clientId: z.number(),
+        date: z.string(),
+        startTime: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const mpClient = getMpClient();
+        const payment = new Payment(mpClient);
+        const apiBaseUrl = process.env.API_PUBLIC_URL || "https://3000-ij7sp94mctpcjw0w9i9s9-ea9c4082.us2.manus.computer";
+        const result = await payment.create({
+          body: {
+            transaction_amount: input.servicePrice,
+            description: input.serviceName,
+            payment_method_id: "pix",
+            payer: {
+              email: input.clientEmail || "cliente@barberpro.com",
+              first_name: input.clientName.split(" ")[0],
+              last_name: input.clientName.split(" ").slice(1).join(" ") || input.clientName.split(" ")[0],
+              identification: input.clientCpf
+                ? { type: "CPF", number: input.clientCpf.replace(/\D/g, "") }
+                : { type: "CPF", number: "00000000000" },
+            },
+            external_reference: JSON.stringify({
+              appointmentId: input.appointmentId,
+              clientId: input.clientId,
+              barberId: input.barberId,
+              serviceId: input.serviceId,
+              servicePrice: input.servicePrice,
+              date: input.date,
+              startTime: input.startTime,
+            }),
+            notification_url: `${apiBaseUrl}/api/mp/webhook`,
+          },
+        });
+        const pixData = (result as any).point_of_interaction?.transaction_data;
+        return {
+          paymentId: String(result.id),
+          status: result.status,
+          qrCode: pixData?.qr_code ?? null,
+          qrCodeBase64: pixData?.qr_code_base64 ?? null,
+          expiresAt: (result as any).date_of_expiration ?? null,
+        };
+      }),
+
+    pendingList: publicProcedure
+      .query(async () => {
+        const today = new Date();
+        const startDate = new Date(today);
+        startDate.setDate(today.getDate() - 30);
+        const endDate = new Date(today);
+        endDate.setDate(today.getDate() + 30);
+        const allSales = await db.getSalesByDateRange(
+          startDate.toISOString().split("T")[0],
+          endDate.toISOString().split("T")[0]
+        );
+        return (allSales as any[]).filter((s) =>
+          s.paymentStatus === "pending" && s.paymentMethod === "mercado_pago"
+        );
+      }),
+
     getSaleByAppointment: publicProcedure
       .input(z.object({ appointmentId: z.number() }))
       .query(async ({ input }) => {
@@ -495,6 +564,117 @@ export const appRouter = router({
         );
         return (allSales as any[]).find((s) => s.appointmentId === input.appointmentId) ?? null;
       }),
+  }),
+
+  reports: router({
+    revenue: publicProcedure
+      .input(z.object({ period: z.enum(["week", "month", "year"]).default("month") }))
+      .query(async ({ input }) => {
+      const today = new Date();
+      const labels: string[] = [];
+      const data: number[] = [];
+      if (input.period === "week") {
+        // Últimos 7 dias
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(today);
+          d.setDate(today.getDate() - i);
+          const dateStr = d.toISOString().split("T")[0];
+          const sales = await db.getSalesByDateRange(dateStr, dateStr);
+          const total = (sales as any[]).filter(s => s.paymentStatus === "paid").reduce((sum: number, s: any) => sum + parseFloat(s.total || "0"), 0);
+          labels.push(["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][d.getDay()]);
+          data.push(total);
+        }
+      } else if (input.period === "month") {
+        // Últimas 4 semanas
+        for (let i = 3; i >= 0; i--) {
+          const end = new Date(today);
+          end.setDate(today.getDate() - i * 7);
+          const start = new Date(end);
+          start.setDate(end.getDate() - 6);
+          const sales = await db.getSalesByDateRange(start.toISOString().split("T")[0], end.toISOString().split("T")[0]);
+          const total = (sales as any[]).filter(s => s.paymentStatus === "paid").reduce((sum: number, s: any) => sum + parseFloat(s.total || "0"), 0);
+          labels.push(`Sem ${4 - i}`);
+          data.push(total);
+        }
+      } else {
+        // Últimos 12 meses
+        const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          const start = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`;
+          const lastDay = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+          const end = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${lastDay}`;
+          const sales = await db.getSalesByDateRange(start, end);
+          const total = (sales as any[]).filter(s => s.paymentStatus === "paid").reduce((sum: number, s: any) => sum + parseFloat(s.total || "0"), 0);
+          labels.push(MONTHS[d.getMonth()]);
+          data.push(total);
+        }
+      }
+      const totalRevenue = data.reduce((a, b) => a + b, 0);
+      return { labels, data, totalRevenue };
+    }),
+
+  topServices: publicProcedure
+    .input(z.object({ startDate: z.string(), endDate: z.string() }))
+    .query(async ({ input }) => {
+      const sales = await db.getSalesByDateRange(input.startDate, input.endDate);
+      const paidSales = (sales as any[]).filter(s => s.paymentStatus === "paid");
+      const serviceMap: Record<string, { name: string; count: number; revenue: number }> = {};
+      for (const sale of paidSales) {
+        const allSalesWithItems = await db.getSalesByDateRange(input.startDate, input.endDate);
+        break; // just to get the structure
+      }
+      // Use saleItems via direct query approach
+      const allSales = paidSales;
+      // Build from sale items if available in sale data
+      for (const sale of allSales) {
+        if (sale.items && Array.isArray(sale.items)) {
+          for (const item of sale.items) {
+            if (item.itemType === "service") {
+              if (!serviceMap[item.itemName]) serviceMap[item.itemName] = { name: item.itemName, count: 0, revenue: 0 };
+              serviceMap[item.itemName].count += item.quantity ?? 1;
+              serviceMap[item.itemName].revenue += parseFloat(item.total ?? "0");
+            }
+          }
+        }
+      }
+      return Object.values(serviceMap).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+    }),
+
+  topClients: publicProcedure
+    .input(z.object({ startDate: z.string(), endDate: z.string() }))
+    .query(async ({ input }) => {
+      const sales = await db.getSalesByDateRange(input.startDate, input.endDate);
+      const paidSales = (sales as any[]).filter(s => s.paymentStatus === "paid" && s.clientId);
+      const clientMap: Record<number, { clientId: number; count: number; revenue: number }> = {};
+      for (const sale of paidSales) {
+        const cid = sale.clientId;
+        if (!clientMap[cid]) clientMap[cid] = { clientId: cid, count: 0, revenue: 0 };
+        clientMap[cid].count += 1;
+        clientMap[cid].revenue += parseFloat(sale.total ?? "0");
+      }
+      const allClients = await db.getAllClients();
+      const clientsById: Record<number, any> = {};
+      for (const c of allClients as any[]) clientsById[c.id] = c;
+      return Object.values(clientMap)
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 10)
+        .map(c => ({ ...c, name: clientsById[c.clientId]?.name ?? "Cliente", phone: clientsById[c.clientId]?.phone ?? "" }));
+    }),
+
+  barberOccupancy: publicProcedure
+    .input(z.object({ startDate: z.string(), endDate: z.string() }))
+    .query(async ({ input }) => {
+      const allBarbers = await db.getAllBarbers();
+      const result: { barberId: number; name: string; appointments: number; revenue: number }[] = [];
+      for (const barber of allBarbers as any[]) {
+        const sales = await db.getSalesByDateRange(input.startDate, input.endDate, barber.id);
+        const paidSales = (sales as any[]).filter(s => s.paymentStatus === "paid");
+        const revenue = paidSales.reduce((sum: number, s: any) => sum + parseFloat(s.total ?? "0"), 0);
+        result.push({ barberId: barber.id, name: barber.name, appointments: paidSales.length, revenue });
+      }
+        return result.sort((a, b) => b.revenue - a.revenue);
+    }),
   }),
 });
 export type AppRouter = typeof appRouter;
