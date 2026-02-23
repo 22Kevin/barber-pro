@@ -1,0 +1,445 @@
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { ScreenContainer } from "@/components/screen-container";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useBarberAuth } from "@/lib/auth-context";
+import { trpc } from "@/lib/trpc";
+
+type Tab = "overview" | "sales" | "expenses";
+
+const PAYMENT_METHODS = [
+  { key: "cash",         label: "Dinheiro",       icon: "banknote.fill" as const },
+  { key: "credit_card",  label: "Crédito",         icon: "creditcard.fill" as const },
+  { key: "debit_card",   label: "Débito",          icon: "creditcard.fill" as const },
+  { key: "pix",          label: "PIX",             icon: "checkmark.circle.fill" as const },
+  { key: "mercado_pago", label: "Mercado Pago",    icon: "dollarsign.circle.fill" as const },
+];
+
+const EXPENSE_CATEGORIES = [
+  "Aluguel","Produtos","Equipamentos","Marketing","Salários","Energia","Internet","Outros"
+];
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+}
+
+function getMonthRange(offset = 0) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + offset;
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 0);
+  return {
+    start: start.toISOString().split("T")[0],
+    end: end.toISOString().split("T")[0],
+    label: start.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
+  };
+}
+
+export default function FinancialScreen() {
+  const { barber } = useBarberAuth();
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [monthOffset, setMonthOffset] = useState(0);
+  const [showSaleModal, setShowSaleModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+
+  // Sale form
+  const [saleDescription, setSaleDescription] = useState("");
+  const [saleAmount, setSaleAmount] = useState("");
+  const [salePayment, setSalePayment] = useState("cash");
+  const [saleType, setSaleType] = useState<"service" | "product">("service");
+
+  // Expense form
+  const [expenseDescription, setExpenseDescription] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseCategory, setExpenseCategory] = useState("Outros");
+
+  const range = getMonthRange(monthOffset);
+  const utils = trpc.useUtils();
+
+  const salesQuery = trpc.sales.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
+  const expensesQuery = trpc.expenses.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
+  const statsQuery = trpc.dashboard.stats.useQuery({ date: new Date().toISOString().split("T")[0] });
+
+  const createSaleMutation = trpc.sales.create.useMutation({
+    onSuccess: () => {
+      utils.sales.byDateRange.invalidate();
+      utils.dashboard.stats.invalidate();
+      closeSaleModal();
+    },
+    onError: (e: any) => Alert.alert("Erro", e.message),
+  });
+
+  const createExpenseMutation = trpc.expenses.create.useMutation({
+    onSuccess: () => {
+      utils.expenses.byDateRange.invalidate();
+      utils.dashboard.stats.invalidate();
+      setShowExpenseModal(false);
+      setExpenseDescription(""); setExpenseAmount(""); setExpenseCategory("Outros");
+    },
+    onError: (e: any) => Alert.alert("Erro", e.message),
+  });
+
+  function closeSaleModal() {
+    setShowSaleModal(false);
+    setSaleDescription(""); setSaleAmount(""); setSalePayment("cash"); setSaleType("service");
+  }
+
+  function handleCreateSale() {
+    const amount = parseFloat(saleAmount.replace(",", "."));
+    if (!saleDescription.trim()) { Alert.alert("Atenção", "Informe a descrição."); return; }
+    if (isNaN(amount) || amount <= 0) { Alert.alert("Atenção", "Informe um valor válido."); return; }
+    createSaleMutation.mutate({
+      barberId: barber?.id ?? 0,
+      subtotal: amount.toFixed(2),
+      discount: "0",
+      total: amount.toFixed(2),
+      paymentMethod: salePayment as any,
+      paymentStatus: "paid",
+      notes: `${saleType === "service" ? "Serviço" : "Produto"}: ${saleDescription.trim()}`,
+      items: [{
+        itemType: saleType,
+        itemId: 0,
+        itemName: saleDescription.trim(),
+        quantity: 1,
+        unitPrice: amount.toFixed(2),
+        total: amount.toFixed(2),
+      }],
+    });
+  }
+
+  function handleCreateExpense() {
+    const amount = parseFloat(expenseAmount.replace(",", "."));
+    if (!expenseDescription.trim()) { Alert.alert("Atenção", "Informe a descrição."); return; }
+    if (isNaN(amount) || amount <= 0) { Alert.alert("Atenção", "Informe um valor válido."); return; }
+    createExpenseMutation.mutate({
+      description: expenseDescription.trim(),
+      amount: amount.toFixed(2),
+      category: expenseCategory,
+      date: new Date().toISOString().split("T")[0],
+    });
+  }
+
+  const sales = salesQuery.data ?? [];
+  const expenses = expensesQuery.data ?? [];
+
+  const totalRevenue = sales.reduce((sum: number, s: any) => sum + parseFloat(s.total ?? "0"), 0);
+  const totalExpenses = expenses.reduce((sum: number, e: any) => sum + parseFloat(e.amount ?? "0"), 0);
+  const profit = totalRevenue - totalExpenses;
+  const profitColor = profit >= 0 ? "#4CAF50" : "#F44336";
+
+  const paymentBreakdown = PAYMENT_METHODS.map(pm => ({
+    ...pm,
+    total: sales.filter((s: any) => s.paymentMethod === pm.key).reduce((sum: number, s: any) => sum + parseFloat(s.total ?? "0"), 0),
+  })).filter(pm => pm.total > 0);
+
+  return (
+    <ScreenContainer containerClassName="bg-background">
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Financeiro</Text>
+        <View style={styles.headerActions}>
+          <Pressable style={({ pressed }) => [styles.expenseBtn, pressed && { opacity: 0.8 }]} onPress={() => setShowExpenseModal(true)}>
+            <IconSymbol name="minus.circle.fill" size={16} color="#F44336" />
+            <Text style={styles.expenseBtnText}>Despesa</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={() => setShowSaleModal(true)}>
+            <IconSymbol name="plus" size={18} color="#0A0A0A" />
+            <Text style={styles.addBtnText}>Venda</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Seletor de mês */}
+      <View style={styles.monthSelector}>
+        <Pressable onPress={() => setMonthOffset(o => o - 1)} style={styles.monthArrow}>
+          <IconSymbol name="chevron.left" size={20} color="#C9A84C" />
+        </Pressable>
+        <Text style={styles.monthLabel}>{range.label}</Text>
+        <Pressable onPress={() => setMonthOffset(o => Math.min(o + 1, 0))} style={styles.monthArrow}>
+          <IconSymbol name="chevron.right" size={20} color={monthOffset < 0 ? "#C9A84C" : "#2A2A2A"} />
+        </Pressable>
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabs}>
+        {(["overview", "sales", "expenses"] as Tab[]).map(tab => (
+          <Pressable key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)}>
+            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+              {tab === "overview" ? "Resumo" : tab === "sales" ? "Receitas" : "Despesas"}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+        {/* Overview */}
+        {activeTab === "overview" && (
+          <>
+            {salesQuery.isLoading || expensesQuery.isLoading ? (
+              <ActivityIndicator color="#C9A84C" style={{ marginTop: 40 }} />
+            ) : (
+              <>
+                {/* Lucro líquido */}
+                <View style={[styles.profitCard]}>
+                  <Text style={styles.profitLabel}>Lucro Líquido</Text>
+                  <Text style={[styles.profitValue, { color: profitColor }]}>{formatCurrency(profit)}</Text>
+                  <View style={styles.profitBar}>
+                    <View style={[styles.profitBarFill, {
+                      width: `${Math.min(100, totalRevenue > 0 ? Math.max(0, (profit / totalRevenue) * 100) : 0)}%`,
+                      backgroundColor: profitColor,
+                    }]} />
+                  </View>
+                </View>
+
+                <View style={styles.metricsGrid}>
+                  <MetricCard label="Receita Total" value={formatCurrency(totalRevenue)} color="#4CAF50" icon="chart.line.uptrend.xyaxis" />
+                  <MetricCard label="Despesas" value={formatCurrency(totalExpenses)} color="#F44336" icon="minus.circle.fill" />
+                  <MetricCard label="Vendas" value={String(sales.length)} color="#C9A84C" icon="cart.fill" />
+                  <MetricCard label="Ticket Médio" value={formatCurrency(sales.length > 0 ? totalRevenue / sales.length : 0)} color="#2196F3" icon="dollarsign.circle.fill" />
+                </View>
+
+                {paymentBreakdown.length > 0 && (
+                  <>
+                    <Text style={styles.sectionTitle}>Por Forma de Pagamento</Text>
+                    {paymentBreakdown.map(pm => (
+                      <View key={pm.key} style={styles.breakdownRow}>
+                        <Text style={styles.breakdownLabel}>{pm.label}</Text>
+                        <Text style={styles.breakdownValue}>{formatCurrency(pm.total)}</Text>
+                      </View>
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* Sales */}
+        {activeTab === "sales" && (
+          <>
+            <Text style={styles.sectionTitle}>Receitas — {sales.length} registro(s)</Text>
+            {salesQuery.isLoading ? (
+              <ActivityIndicator color="#C9A84C" style={{ marginTop: 20 }} />
+            ) : sales.length === 0 ? (
+              <EmptyState icon="dollarsign.circle.fill" text="Nenhuma receita registrada" />
+            ) : (
+              (sales as any[]).map((sale: any) => (
+                <View key={sale.id} style={styles.transactionCard}>
+                  <View style={[styles.transactionIcon, { backgroundColor: "#4CAF5022" }]}>
+                    <IconSymbol name="chart.line.uptrend.xyaxis" size={18} color="#4CAF50" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.transactionDesc}>{sale.notes ?? "Venda"}</Text>
+                    <Text style={styles.transactionMeta}>
+                      {PAYMENT_METHODS.find(p => p.key === sale.paymentMethod)?.label ?? sale.paymentMethod} · {sale.createdAt?.split("T")[0] ?? "—"}
+                    </Text>
+                  </View>
+                  <Text style={styles.transactionAmount}>+{formatCurrency(parseFloat(sale.total ?? "0"))}</Text>
+                </View>
+              ))
+            )}
+          </>
+        )}
+
+        {/* Expenses */}
+        {activeTab === "expenses" && (
+          <>
+            <Text style={styles.sectionTitle}>Despesas — {expenses.length} registro(s)</Text>
+            {expensesQuery.isLoading ? (
+              <ActivityIndicator color="#C9A84C" style={{ marginTop: 20 }} />
+            ) : expenses.length === 0 ? (
+              <EmptyState icon="minus.circle.fill" text="Nenhuma despesa registrada" />
+            ) : (
+              (expenses as any[]).map((exp: any) => (
+                <View key={exp.id} style={styles.transactionCard}>
+                  <View style={[styles.transactionIcon, { backgroundColor: "#F4433622" }]}>
+                    <IconSymbol name="minus.circle.fill" size={18} color="#F44336" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.transactionDesc}>{exp.description}</Text>
+                    <Text style={styles.transactionMeta}>{exp.category} · {exp.date}</Text>
+                  </View>
+                  <Text style={[styles.transactionAmount, { color: "#F44336" }]}>-{formatCurrency(parseFloat(exp.amount ?? "0"))}</Text>
+                </View>
+              ))
+            )}
+          </>
+        )}
+      </ScrollView>
+
+      {/* Modal Nova Venda */}
+      <Modal visible={showSaleModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Registrar Venda</Text>
+                <Pressable onPress={closeSaleModal}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Text style={styles.fieldLabel}>Tipo</Text>
+                <View style={styles.typeRow}>
+                  {(["service", "product"] as const).map(t => (
+                    <Pressable key={t} style={[styles.typeChip, saleType === t && styles.typeChipActive]} onPress={() => setSaleType(t)}>
+                      <Text style={[styles.typeChipText, saleType === t && styles.typeChipTextActive]}>
+                        {t === "service" ? "Serviço" : "Produto"}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                <Text style={styles.fieldLabel}>Descrição *</Text>
+                <TextInput style={styles.input} value={saleDescription} onChangeText={setSaleDescription} placeholder="Ex: Corte + Barba" placeholderTextColor="#555" />
+
+                <Text style={styles.fieldLabel}>Valor (R$) *</Text>
+                <TextInput style={styles.input} value={saleAmount} onChangeText={setSaleAmount} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
+
+                <Text style={styles.fieldLabel}>Forma de Pagamento</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    {PAYMENT_METHODS.map(pm => (
+                      <Pressable key={pm.key} style={[styles.paymentChip, salePayment === pm.key && styles.paymentChipActive]} onPress={() => setSalePayment(pm.key)}>
+                        <IconSymbol name={pm.icon} size={16} color={salePayment === pm.key ? "#C9A84C" : "#888880"} />
+                        <Text style={[styles.paymentChipText, salePayment === pm.key && styles.paymentChipTextActive]}>{pm.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+
+                <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleCreateSale} disabled={createSaleMutation.isPending}>
+                  {createSaleMutation.isPending ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>REGISTRAR VENDA</Text>}
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* Modal Nova Despesa */}
+      <Modal visible={showExpenseModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Registrar Despesa</Text>
+                <Pressable onPress={() => setShowExpenseModal(false)}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Text style={styles.fieldLabel}>Descrição *</Text>
+                <TextInput style={styles.input} value={expenseDescription} onChangeText={setExpenseDescription} placeholder="Ex: Compra de produtos" placeholderTextColor="#555" />
+
+                <Text style={styles.fieldLabel}>Valor (R$) *</Text>
+                <TextInput style={styles.input} value={expenseAmount} onChangeText={setExpenseAmount} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
+
+                <Text style={styles.fieldLabel}>Categoria</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    {EXPENSE_CATEGORIES.map(cat => (
+                      <Pressable key={cat} style={[styles.paymentChip, expenseCategory === cat && styles.paymentChipActive]} onPress={() => setExpenseCategory(cat)}>
+                        <Text style={[styles.paymentChipText, expenseCategory === cat && styles.paymentChipTextActive]}>{cat}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+
+                <Pressable style={({ pressed }) => [styles.saveBtn, { backgroundColor: "#F44336" }, pressed && { opacity: 0.8 }]} onPress={handleCreateExpense} disabled={createExpenseMutation.isPending}>
+                  {createExpenseMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={[styles.saveBtnText, { color: "#fff" }]}>REGISTRAR DESPESA</Text>}
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+    </ScreenContainer>
+  );
+}
+
+function MetricCard({ label, value, color, icon }: { label: string; value: string; color: string; icon: any }) {
+  return (
+    <View style={styles.metricCard}>
+      <View style={[styles.metricIcon, { backgroundColor: color + "22" }]}>
+        <IconSymbol name={icon} size={20} color={color} />
+      </View>
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function EmptyState({ icon, text }: { icon: any; text: string }) {
+  return (
+    <View style={styles.emptyCard}>
+      <IconSymbol name={icon} size={36} color="#2A2A2A" />
+      <Text style={styles.emptyText}>{text}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, paddingBottom: 12 },
+  title: { fontSize: 24, fontWeight: "800", color: "#F5F5F0" },
+  headerActions: { flexDirection: "row", gap: 8 },
+  addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, gap: 4 },
+  addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 13 },
+  expenseBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#F4433622", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, gap: 4, borderWidth: 1, borderColor: "#F4433644" },
+  expenseBtnText: { color: "#F44336", fontWeight: "700", fontSize: 13 },
+  monthSelector: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 12 },
+  monthArrow: { padding: 8 },
+  monthLabel: { fontSize: 15, fontWeight: "700", color: "#F5F5F0", textTransform: "capitalize" },
+  tabs: { flexDirection: "row", marginHorizontal: 16, backgroundColor: "#141414", borderRadius: 12, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: "#2A2A2A" },
+  tab: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: 8 },
+  tabActive: { backgroundColor: "#C9A84C" },
+  tabText: { fontSize: 13, color: "#888880", fontWeight: "600" },
+  tabTextActive: { color: "#0A0A0A" },
+  profitCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: "#141414", borderRadius: 14, padding: 20, borderWidth: 1, borderColor: "#2A2A2A" },
+  profitLabel: { fontSize: 13, color: "#888880", marginBottom: 4 },
+  profitValue: { fontSize: 34, fontWeight: "800", marginBottom: 12 },
+  profitBar: { height: 4, backgroundColor: "#2A2A2A", borderRadius: 2, overflow: "hidden" },
+  profitBarFill: { height: "100%", borderRadius: 2 },
+  metricsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 12, gap: 10, marginBottom: 8 },
+  metricCard: { flex: 1, minWidth: "45%", backgroundColor: "#141414", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#2A2A2A" },
+  metricIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center", marginBottom: 8 },
+  metricValue: { fontSize: 18, fontWeight: "800", color: "#F5F5F0", marginBottom: 2 },
+  metricLabel: { fontSize: 12, color: "#888880" },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#F5F5F0", paddingHorizontal: 20, marginTop: 16, marginBottom: 10 },
+  breakdownRow: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#2A2A2A" },
+  breakdownLabel: { fontSize: 14, color: "#888880" },
+  breakdownValue: { fontSize: 14, color: "#F5F5F0", fontWeight: "600" },
+  transactionCard: { flexDirection: "row", alignItems: "center", marginHorizontal: 16, marginBottom: 8, backgroundColor: "#141414", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#2A2A2A", gap: 12 },
+  transactionIcon: { width: 40, height: 40, borderRadius: 10, justifyContent: "center", alignItems: "center" },
+  transactionDesc: { fontSize: 14, fontWeight: "600", color: "#F5F5F0", marginBottom: 2 },
+  transactionMeta: { fontSize: 12, color: "#888880" },
+  transactionAmount: { fontSize: 15, fontWeight: "700", color: "#4CAF50" },
+  emptyCard: { alignItems: "center", paddingVertical: 40, gap: 10 },
+  emptyText: { color: "#888880", fontSize: 14 },
+  modalOverlay: { flex: 1, backgroundColor: "#000000AA", justifyContent: "flex-end" },
+  modalCard: { backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "85%", borderWidth: 1, borderColor: "#2A2A2A" },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: "700", color: "#F5F5F0" },
+  fieldLabel: { fontSize: 13, color: "#888880", marginBottom: 6, fontWeight: "500" },
+  input: { backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#F5F5F0", marginBottom: 14 },
+  typeRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  typeChip: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", alignItems: "center" },
+  typeChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
+  typeChipText: { fontSize: 14, color: "#888880", fontWeight: "600" },
+  typeChipTextActive: { color: "#C9A84C" },
+  paymentChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A" },
+  paymentChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
+  paymentChipText: { fontSize: 12, color: "#888880", fontWeight: "600" },
+  paymentChipTextActive: { color: "#C9A84C" },
+  saveBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginBottom: 8 },
+  saveBtnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "800", letterSpacing: 1 },
+});

@@ -1,0 +1,97 @@
+import { Redirect } from "expo-router";
+import { Tabs } from "expo-router";
+import { Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useBarberAuth } from "@/lib/auth-context";
+
+export default function AdminTabsLayout() {
+  const { isAuthenticated, isLoading } = useBarberAuth();
+  const insets = useSafeAreaInsets();
+
+  if (!isLoading && !isAuthenticated) {
+    return <Redirect href={"/admin/login" as any} />;
+  }
+
+  const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
+  const tabBarHeight = 56 + bottomPadding;
+
+  return (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: "#C9A84C",
+        tabBarInactiveTintColor: "#555",
+        tabBarStyle: {
+          paddingTop: 8,
+          paddingBottom: bottomPadding,
+          height: tabBarHeight,
+          backgroundColor: "#0A0A0A",
+          borderTopColor: "#2A2A2A",
+          borderTopWidth: 0.5,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: "600",
+        },
+      }}
+    >
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: "Dashboard",
+          tabBarIcon: ({ color }) => <IconSymbol name="chart.bar.fill" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="agenda"
+        options={{
+          title: "Agenda",
+          tabBarIcon: ({ color }) => <IconSymbol name="calendar" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="services"
+        options={{
+          title: "Serviços",
+          tabBarIcon: ({ color }) => <IconSymbol name="scissors" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="products"
+        options={{
+          title: "Produtos",
+          tabBarIcon: ({ color }) => <IconSymbol name="cube.box.fill" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="clients"
+        options={{
+          title: "Clientes",
+          tabBarIcon: ({ color }) => <IconSymbol name="person.2.fill" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="financial"
+        options={{
+          title: "Financeiro",
+          tabBarIcon: ({ color }) => <IconSymbol name="dollarsign.circle.fill" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="loyalty"
+        options={{
+          title: "Fidelidade",
+          tabBarIcon: ({ color }) => <IconSymbol name="star.fill" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Config",
+          tabBarIcon: ({ color }) => <IconSymbol name="gearshape.fill" size={24} color={color} />,
+        }}
+      />
+    </Tabs>
+  );
+}

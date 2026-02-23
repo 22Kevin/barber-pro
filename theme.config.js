@@ -1,14 +1,15 @@
 /** @type {const} */
 const themeColors = {
-  primary: { light: '#0a7ea4', dark: '#0a7ea4' },
-  background: { light: '#ffffff', dark: '#151718' },
-  surface: { light: '#f5f5f5', dark: '#1e2022' },
-  foreground: { light: '#11181C', dark: '#ECEDEE' },
-  muted: { light: '#687076', dark: '#9BA1A6' },
-  border: { light: '#E5E7EB', dark: '#334155' },
-  success: { light: '#22C55E', dark: '#4ADE80' },
-  warning: { light: '#F59E0B', dark: '#FBBF24' },
-  error: { light: '#EF4444', dark: '#F87171' },
+  primary:    { light: '#C9A84C', dark: '#C9A84C' },   // Dourado premium
+  background: { light: '#0A0A0A', dark: '#0A0A0A' },   // Preto profundo
+  surface:    { light: '#141414', dark: '#141414' },   // Superfície escura
+  foreground: { light: '#F5F5F0', dark: '#F5F5F0' },   // Branco quente
+  muted:      { light: '#888880', dark: '#888880' },   // Cinza médio
+  border:     { light: '#2A2A2A', dark: '#2A2A2A' },   // Borda sutil
+  success:    { light: '#4CAF50', dark: '#66BB6A' },
+  warning:    { light: '#FF9800', dark: '#FFA726' },
+  error:      { light: '#F44336', dark: '#EF5350' },
+  tint:       { light: '#C9A84C', dark: '#C9A84C' },   // Alias do primary
 };
 
 module.exports = { themeColors };
