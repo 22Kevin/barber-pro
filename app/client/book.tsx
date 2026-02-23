@@ -5,7 +5,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
 import { sendConfirmationWhatsApp, type AppointmentInfo } from "@/lib/whatsapp";
-import { scheduleAppointmentReminder } from "@/lib/use-notifications";
+import { scheduleAppointmentReminder, notifyBarberNewAppointment } from "@/lib/use-notifications";
 
 type Step = "service" | "barber" | "date" | "time" | "confirm";
 
@@ -61,7 +61,7 @@ export default function BookScreen() {
         // Envia confirmação via WhatsApp
         sendConfirmationWhatsApp(info).catch(() => null);
 
-        // Agenda notificação push 1 hora antes do agendamento
+        // Agenda notificação push 1 hora antes do agendamento (para o cliente)
         const [hours, minutes] = selectedSlot.startTime.split(":").map(Number);
         const appointmentDateTime = new Date(selectedDate);
         appointmentDateTime.setHours(hours, minutes, 0, 0);
@@ -70,6 +70,14 @@ export default function BookScreen() {
           selectedService.name,
           selectedBarber.name,
           appointmentDateTime
+        ).catch(() => null);
+
+        // Notifica o barbeiro imediatamente sobre o novo agendamento
+        notifyBarberNewAppointment(
+          client.name,
+          selectedService.name,
+          appointmentDateTime,
+          typeof apptId === "number" ? apptId : Number(apptId)
         ).catch(() => null);
       }
       Alert.alert("✅ Agendamento confirmado!", "Você receberá uma confirmação pelo WhatsApp e um lembrete 1 hora antes.", [

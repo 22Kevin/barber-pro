@@ -15,6 +15,7 @@ import {
   mediaFiles,
   products,
   reviews,
+  passwordResetTokens,
   saleItems,
   sales,
   services,
@@ -640,4 +641,39 @@ export async function getAvailableSlots(barberId: number, date: string, duration
     cursor += 15;
   }
   return slots;
+}
+
+// ─── Recuperação de Senha ─────────────────────────────────────────────────────
+export async function createPasswordResetToken(email: string): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const token = String(Math.floor(100000 + Math.random() * 900000));
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+  // Invalida tokens anteriores
+  await db.update(passwordResetTokens).set({ used: true }).where(eq(passwordResetTokens.email, email));
+  await db.insert(passwordResetTokens).values({ email, token, expiresAt });
+  return token;
+}
+
+export async function validatePasswordResetToken(email: string, token: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.select().from(passwordResetTokens)
+    .where(and(
+      eq(passwordResetTokens.email, email),
+      eq(passwordResetTokens.token, token),
+      eq(passwordResetTokens.used, false),
+      sql`${passwordResetTokens.expiresAt} > NOW()` as any
+    )).limit(1);
+  return result.length > 0;
+}
+
+export async function consumePasswordResetToken(email: string, token: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const valid = await validatePasswordResetToken(email, token);
+  if (!valid) return false;
+  await db.update(passwordResetTokens).set({ used: true })
+    .where(and(eq(passwordResetTokens.email, email), eq(passwordResetTokens.token, token)));
+  return true;
 }

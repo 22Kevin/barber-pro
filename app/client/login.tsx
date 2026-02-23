@@ -144,6 +144,13 @@ export default function ClientLogin() {
               </Text>
             </TouchableOpacity>
 
+            <TouchableOpacity
+              style={{ alignItems: "center", marginTop: -4, marginBottom: 4 }}
+              onPress={() => router.push("/client/forgot-password" as any)}
+            >
+              <Text style={[styles.registerLink, { fontSize: 13 }]}>Esqueci minha senha</Text>
+            </TouchableOpacity>
+
             <View style={styles.registerRow}>
               <Text style={styles.registerText}>Não tem conta? </Text>
               <TouchableOpacity onPress={() => router.replace("/client/register" as any)}>

@@ -175,6 +175,56 @@ export async function cancelAllAppointmentReminders(): Promise<void> {
 }
 
 /**
+ * Envia uma notificação imediata para o barbeiro informando sobre um novo agendamento.
+ * Disparada quando um cliente cria um agendamento pela Área do Cliente.
+ *
+ * @param clientName - Nome do cliente que agendou
+ * @param serviceName - Nome do serviço agendado
+ * @param appointmentDate - Data e hora do agendamento
+ * @param appointmentId - ID do agendamento
+ */
+export async function notifyBarberNewAppointment(
+  clientName: string,
+  serviceName: string,
+  appointmentDate: Date,
+  appointmentId: number
+): Promise<void> {
+  if (Platform.OS === "web") return;
+
+  try {
+    const hasPermission = await requestPermissionsAsync();
+    if (!hasPermission) return;
+
+    const timeStr = appointmentDate.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const dateStr = appointmentDate.toLocaleDateString("pt-BR", {
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+    });
+
+    await Notifications.scheduleNotificationAsync({
+      identifier: `new-appointment-${appointmentId}`,
+      content: {
+        title: "📅 Novo Agendamento — Barber Pro",
+        body: `${clientName} agendou ${serviceName} para ${timeStr} de ${dateStr}`,
+        data: {
+          appointmentId,
+          type: "new_appointment",
+        },
+        sound: "default",
+        ...(Platform.OS === "android" && { color: "#C9A84C" }),
+      },
+      trigger: null, // Disparo imediato
+    });
+  } catch (error) {
+    console.warn("[Barber Pro] Erro ao notificar barbeiro:", error);
+  }
+}
+
+/**
  * Formata a data do agendamento para exibição amigável na notificação.
  * Ex: "14:30 de hoje", "09:00 de amanhã", "15:00 de sex, 28/02"
  */

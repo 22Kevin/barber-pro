@@ -250,8 +250,17 @@ export const shopSettings = mysqlTable("shop_settings", {
   reminderMessageTemplate: text("reminderMessageTemplate"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+// ─── Tokens de Recuperação de Senha ────────────────────────────────────────
+export const passwordResetTokens = mysqlTable("password_reset_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull(),
+  token: varchar("token", { length: 6 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  used: boolean("used").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 
-// ─── Contas de Clientes (Área do Cliente) ────────────────────────────────────
+// ─── Contas de Clientes (Área do Cliente) ────────────────────────────────────────
 export const clientAccounts = mysqlTable("client_accounts", {
   id: int("id").autoincrement().primaryKey(),
   clientId: int("clientId").notNull().unique(),
@@ -302,3 +311,4 @@ export type BlockedSlot = typeof blockedSlots.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type ClientAccount = typeof clientAccounts.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

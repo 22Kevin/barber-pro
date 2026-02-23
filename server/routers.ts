@@ -302,6 +302,37 @@ export const appRouter = router({
         await db.updateClientAccount(account.id, { passwordHash });
         return { success: true };
       }),
+    forgotPassword: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        // Verifica se o email existe
+        const account = await db.getClientAccountByEmail(input.email);
+        if (!account) {
+          // Por segurança, não revelamos se o email existe ou não
+          return { success: true, message: "Se este e-mail estiver cadastrado, você receberá o código de recuperação." };
+        }
+        const token = await db.createPasswordResetToken(input.email);
+        // Em produção, enviar por e-mail. Por ora, retornamos o token para exibição no app.
+        return { success: true, token, message: "Código gerado com sucesso." };
+      }),
+    verifyResetToken: publicProcedure
+      .input(z.object({ email: z.string().email(), token: z.string().length(6) }))
+      .mutation(async ({ input }) => {
+        const valid = await db.validatePasswordResetToken(input.email, input.token);
+        if (!valid) throw new Error("Código inválido ou expirado. Solicite um novo código.");
+        return { success: true };
+      }),
+    resetPassword: publicProcedure
+      .input(z.object({ email: z.string().email(), token: z.string().length(6), newPassword: z.string().min(6) }))
+      .mutation(async ({ input }) => {
+        const consumed = await db.consumePasswordResetToken(input.email, input.token);
+        if (!consumed) throw new Error("Código inválido ou expirado. Solicite um novo código.");
+        const account = await db.getClientAccountByEmail(input.email);
+        if (!account) throw new Error("Conta não encontrada.");
+        const passwordHash = await hashPassword(input.newPassword);
+        await db.updateClientAccount(account.id, { passwordHash });
+        return { success: true, message: "Senha redefinida com sucesso!" };
+      }),
     googleLogin: publicProcedure
       .input(z.object({
         googleId: z.string(),

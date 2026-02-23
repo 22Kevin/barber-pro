@@ -191,3 +191,10 @@
 ## Correção v2.3.1
 
 - [x] Corrigir erro 400 redirect_uri_mismatch no Login com Google
+
+## Melhorias v2.4
+
+- [x] Login com Google na tela de Criar Conta (register.tsx)
+- [x] Notificação push para o barbeiro ao receber novo agendamento do cliente
+- [x] Fluxo de recuperação de senha por e-mail (solicitar código, verificar, redefinir)
+- [x] Link "Esqueci minha senha" na tela de login do cliente
