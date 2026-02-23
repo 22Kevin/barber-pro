@@ -43,21 +43,16 @@ export default function HomeScreen() {
 
           <Pressable
             style={({ pressed }) => [styles.optionCard, styles.clientCard, pressed && { opacity: 0.85 }]}
-            onPress={() => {
-              // TODO: Área do cliente (fase 2)
-              // router.push("/client" as any)
-            }}
+            onPress={() => router.push("/client" as any)}
           >
             <View style={[styles.optionIconBox, { backgroundColor: "#F5F5F022" }]}>
               <IconSymbol name="person.fill" size={28} color="#F5F5F0" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.optionTitle, { color: "#F5F5F0" }]}>Área do Cliente</Text>
-              <Text style={[styles.optionSubtitle, { color: "#888880" }]}>Agendamentos e histórico</Text>
+              <Text style={[styles.optionSubtitle, { color: "#888880" }]}>Agendamentos, serviços e loja</Text>
             </View>
-            <View style={styles.comingSoonBadge}>
-              <Text style={styles.comingSoonText}>Em breve</Text>
-            </View>
+            <IconSymbol name="chevron.right" size={20} color="#888880" />
           </Pressable>
         </View>
 

@@ -5,6 +5,7 @@ import {
   barbers,
   blockedSlots,
   categories,
+  clientAccounts,
   clientPoints,
   clients,
   coupons,
@@ -13,6 +14,7 @@ import {
   loyaltyRewards,
   mediaFiles,
   products,
+  reviews,
   saleItems,
   sales,
   services,
@@ -557,4 +559,85 @@ export async function getDashboardStats(date: string) {
   const uniqueClients = new Set(todayAppointments.map((a: any) => a.clientId)).size;
   const pending = todayAppointments.filter((a: any) => a.status === "scheduled").length;
   return { appointmentsToday: todayAppointments.length, revenueToday, clientsToday: uniqueClients, pendingAppointments: pending };
+}
+
+// ─── Contas de Clientes (Área do Cliente) ─────────────────────────────────────
+export async function getClientAccountByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(clientAccounts).where(eq(clientAccounts.email, email)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+export async function getClientAccountByClientId(clientId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(clientAccounts).where(eq(clientAccounts.clientId, clientId)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+export async function createClientAccount(data: { clientId: number; email: string; passwordHash: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(clientAccounts).values({ ...data, isActive: true });
+  return result[0].insertId;
+}
+export async function updateClientAccount(id: number, data: Partial<typeof clientAccounts.$inferInsert>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(clientAccounts).set(data).where(eq(clientAccounts.id, id));
+}
+
+// ─── Avaliações ───────────────────────────────────────────────────────────────
+export async function getReviewsByService(serviceId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reviews).where(eq(reviews.serviceId, serviceId)).orderBy(desc(reviews.createdAt));
+}
+export async function getReviewsByClient(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(reviews).where(eq(reviews.clientId, clientId)).orderBy(desc(reviews.createdAt));
+}
+export async function createReview(data: { clientId: number; serviceId: number; appointmentId?: number; rating: number; comment?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(reviews).values(data);
+  return result[0].insertId;
+}
+export async function getClientPointsHistory(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(clientPoints).where(eq(clientPoints.clientId, clientId)).orderBy(desc(clientPoints.createdAt));
+}
+export async function getAvailableSlots(barberId: number, date: string, durationMinutes: number): Promise<{ startTime: string; endTime: string }[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const dayOfWeek = new Date(date + "T12:00:00").getDay();
+  const wh = await db.select().from(workingHours)
+    .where(and(eq(workingHours.barberId, barberId), eq(workingHours.dayOfWeek, dayOfWeek))).limit(1);
+  if (!wh.length || !wh[0].isWorking) return [];
+  const hours = wh[0];
+  const existingAppts = await db.select().from(appointments)
+    .where(and(eq(appointments.barberId, barberId), eq(appointments.date, date), sql`${appointments.status} NOT IN ('cancelled', 'no_show')` as any));
+  const blocked = await db.select().from(blockedSlots)
+    .where(and(eq(blockedSlots.barberId, barberId), eq(blockedSlots.date, date)));
+  const toMinutes = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const fromMinutes = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const startMin = toMinutes(hours.startTime);
+  const endMin = toMinutes(hours.endTime);
+  const lunchStart = hours.lunchStart ? toMinutes(hours.lunchStart) : null;
+  const lunchEnd = hours.lunchEnd ? toMinutes(hours.lunchEnd) : null;
+  const busyIntervals = [
+    ...existingAppts.map((a: any) => ({ s: toMinutes(a.startTime), e: toMinutes(a.endTime) })),
+    ...blocked.map((b: any) => ({ s: toMinutes(b.startTime), e: toMinutes(b.endTime) })),
+    ...(lunchStart && lunchEnd ? [{ s: lunchStart, e: lunchEnd }] : []),
+  ];
+  const slots: { startTime: string; endTime: string }[] = [];
+  let cursor = startMin;
+  while (cursor + durationMinutes <= endMin) {
+    const slotEnd = cursor + durationMinutes;
+    const conflict = busyIntervals.some(({ s, e }) => cursor < e && slotEnd > s);
+    if (!conflict) slots.push({ startTime: fromMinutes(cursor), endTime: fromMinutes(slotEnd) });
+    cursor += 15;
+  }
+  return slots;
 }

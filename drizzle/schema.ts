@@ -251,6 +251,28 @@ export const shopSettings = mysqlTable("shop_settings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+// ─── Contas de Clientes (Área do Cliente) ────────────────────────────────────
+export const clientAccounts = mysqlTable("client_accounts", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull().unique(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+// ─── Avaliações de Serviços ───────────────────────────────────────────────────
+export const reviews = mysqlTable("reviews", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  serviceId: int("serviceId").notNull(),
+  appointmentId: int("appointmentId"),
+  rating: int("rating").notNull(), // 1-5
+  comment: text("comment"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 // ─── Tipos Exportados ─────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -277,3 +299,5 @@ export type MediaFile = typeof mediaFiles.$inferSelect;
 export type WorkingHours = typeof workingHours.$inferSelect;
 export type BlockedSlot = typeof blockedSlots.$inferSelect;
 export type Category = typeof categories.$inferSelect;
+export type ClientAccount = typeof clientAccounts.$inferSelect;
+export type Review = typeof reviews.$inferSelect;

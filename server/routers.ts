@@ -244,6 +244,80 @@ export const appRouter = router({
   dashboard: router({
     stats: publicProcedure.input(z.object({ date: z.string() })).query(({ input }) => db.getDashboardStats(input.date)),
   }),
+
+  // ─── Área do Cliente ────────────────────────────────────────────────────────
+  clientAuth: router({
+    register: publicProcedure
+      .input(z.object({
+        name: z.string().min(2),
+        email: z.string().email(),
+        phone: z.string().min(8),
+        password: z.string().min(6),
+        birthDate: z.string().optional().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        const existing = await db.getClientAccountByEmail(input.email);
+        if (existing) throw new Error("Email já cadastrado");
+        const passwordHash = await hashPassword(input.password);
+        const clientId = await db.createClient({ name: input.name, email: input.email, phone: input.phone, birthDate: input.birthDate, isActive: true });
+        await db.createClientAccount({ clientId, email: input.email, passwordHash });
+        const client = await db.getClientById(clientId);
+        return { id: clientId, name: input.name, email: input.email, phone: input.phone, totalPoints: 0, client };
+      }),
+    login: publicProcedure
+      .input(z.object({ email: z.string().email(), password: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        const account = await db.getClientAccountByEmail(input.email);
+        if (!account || !account.isActive) throw new Error("Credenciais inválidas");
+        const valid = await comparePassword(input.password, account.passwordHash);
+        if (!valid) throw new Error("Credenciais inválidas");
+        const client = await db.getClientById(account.clientId);
+        if (!client) throw new Error("Cliente não encontrado");
+        return { id: client.id, name: client.name, email: client.email, phone: client.phone, totalPoints: client.totalPoints, birthDate: client.birthDate, photoUrl: client.photoUrl };
+      }),
+    updateProfile: publicProcedure
+      .input(z.object({ clientId: z.number(), name: z.string().min(2).optional(), phone: z.string().optional(), birthDate: z.string().optional().nullable(), notes: z.string().optional().nullable() }))
+      .mutation(async ({ input }) => {
+        const { clientId, ...data } = input;
+        await db.updateClient(clientId, data);
+        return { success: true };
+      }),
+    changePassword: publicProcedure
+      .input(z.object({ clientId: z.number(), currentPassword: z.string(), newPassword: z.string().min(6) }))
+      .mutation(async ({ input }) => {
+        const account = await db.getClientAccountByClientId(input.clientId);
+        if (!account) throw new Error("Conta não encontrada");
+        const valid = await comparePassword(input.currentPassword, account.passwordHash);
+        if (!valid) throw new Error("Senha atual incorreta");
+        const passwordHash = await hashPassword(input.newPassword);
+        await db.updateClientAccount(account.id, { passwordHash });
+        return { success: true };
+      }),
+  }),
+
+  reviews: router({
+    byService: publicProcedure
+      .input(z.object({ serviceId: z.number() }))
+      .query(({ input }) => db.getReviewsByService(input.serviceId)),
+    byClient: publicProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(({ input }) => db.getReviewsByClient(input.clientId)),
+    create: publicProcedure
+      .input(z.object({ clientId: z.number(), serviceId: z.number(), appointmentId: z.number().optional(), rating: z.number().min(1).max(5), comment: z.string().optional() }))
+      .mutation(({ input }) => db.createReview(input)),
+  }),
+
+  slots: router({
+    available: publicProcedure
+      .input(z.object({ barberId: z.number(), date: z.string(), durationMinutes: z.number() }))
+      .query(({ input }) => db.getAvailableSlots(input.barberId, input.date, input.durationMinutes)),
+  }),
+
+  pointsHistory: router({
+    byClient: publicProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(({ input }) => db.getClientPointsHistory(input.clientId)),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

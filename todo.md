@@ -109,8 +109,53 @@
 - [x] Servidor reiniciado e funcionando
 
 ## Pendente (Fase 2 - Área do Cliente)
-- [ ] Tela de agendamento pelo cliente
-- [ ] Visualização de serviços e produtos
-- [ ] Histórico de cortes do cliente
-- [ ] Compra de produtos
-- [ ] Conta do cliente com pontos de fidelidade
+- [x] Tela de agendamento pelo cliente
+- [x] Visualização de serviços e produtos
+- [x] Histórico de cortes do cliente
+- [x] Compra de produtos
+- [x] Conta do cliente com pontos de fidelidade
+
+## Fase 2 — Área do Cliente
+
+### Autenticação do Cliente
+- [x] Rotas no servidor: clientAuth.register, clientAuth.login, clientAuth.updateProfile, clientAuth.changePassword
+- [x] Schema: tabela client_accounts (email, passwordHash, clientId)
+- [x] Tela de boas-vindas da área do cliente
+- [x] Tela de login do cliente
+- [x] Tela de cadastro do cliente
+- [x] Contexto de autenticação do cliente (ClientAuthContext)
+
+### Catálogo
+- [x] Tela Home do cliente com destaques e boas-vindas
+- [x] Tela de catálogo de serviços com galeria de fotos/vídeos
+- [x] Detalhe do serviço com galeria e botão "Agendar"
+- [x] Funcionalidade "Ver mais" para descrições longas de serviços
+- [x] Tela de loja de produtos em grade (2 colunas)
+- [x] Detalhe do produto com galeria de fotos/vídeos
+- [x] Imagens expansíveis ao clicar (zoom modal)
+
+### Agendamento Online
+- [x] Rota no servidor: slots.available (slots livres por barbeiro/data/duração)
+- [x] Fluxo de agendamento em 5 etapas: serviço → barbeiro → data → horário → confirmação
+- [x] Seleção de barbeiro
+- [x] Seleção de data com próximos 30 dias
+- [x] Seleção de horário com slots disponíveis
+- [x] Tela de confirmação com resumo do agendamento
+- [x] Envio de confirmação via WhatsApp após agendar
+
+### Histórico e Perfil
+- [x] Tela de perfil do cliente (dados pessoais, edição)
+- [x] Tela de histórico de agendamentos (próximos e passados)
+- [x] Carteira de pontos (saldo, histórico, recompensas disponíveis)
+- [x] Tela de cupons disponíveis do cliente
+
+### Avaliações
+- [x] Rotas no servidor: reviews.create, reviews.byService, reviews.byClient
+- [x] Schema: tabela reviews (clientId, serviceId, appointmentId, rating, comment)
+- [x] Modal de avaliação após atendimento concluído
+- [x] Exibição de avaliações e média no detalhe do serviço
+
+### Navegação da Área do Cliente
+- [x] Layout de tabs do cliente: Início, Serviços, Loja, Agenda, Perfil
+- [x] Integração da tela inicial com botão "Área do Cliente" (ativado)
+- [x] Proteção de rotas autenticadas do cliente

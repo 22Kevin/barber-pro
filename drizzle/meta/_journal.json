@@ -15,6 +15,13 @@
       "when": 1771809244330,
       "tag": "0001_magenta_rhodey",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1771845309513,
+      "tag": "0002_nervous_aqueduct",
+      "breakpoints": true
     }
   ]
 }
