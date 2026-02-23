@@ -214,3 +214,11 @@
 - [x] Investigar obtenção de birthDate via Google People API no login Google (não viável sem verificação Google; banner de convite implementado)
 - [x] Notificação push automática de aniversário (YEARLY trigger local às 9h, agendado no login/updateClient)
 - [x] Notificação de aniversário agendada localmente via expo-notifications (sem necessidade de servidor)
+
+## Fase A — Integração Mercado Pago
+
+- [x] Instalar SDK mercadopago (Node.js) no projeto
+- [x] Rota tRPC payments.createPreference (gerar link de pagamento)
+- [x] Integrar link de pagamento no fluxo de agendamento do cliente (book.tsx)
+- [x] Webhook de confirmação de pagamento (atualizar status do agendamento)
+- [x] Histórico de transações Mercado Pago no painel financeiro do admin

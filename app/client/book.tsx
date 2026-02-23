@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Linking, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
@@ -38,6 +38,8 @@ export default function BookScreen() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<{ startTime: string; endTime: string } | null>(null);
   const [notes, setNotes] = useState("");
+  const [pendingApptId, setPendingApptId] = useState<number | null>(null);
+  const [isOpeningPayment, setIsOpeningPayment] = useState(false);
 
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true });
   const barbersQuery = trpc.barbers.list.useQuery();
@@ -46,8 +48,13 @@ export default function BookScreen() {
     { enabled: !!selectedBarber && !!selectedDate && !!selectedService }
   );
 
+  const createPreference = trpc.payments.createPreference.useMutation();
+
   const createAppointment = trpc.appointments.create.useMutation({
     onSuccess: async (apptId) => {
+      const numApptId = typeof apptId === "number" ? apptId : Number(apptId);
+      setPendingApptId(numApptId);
+
       if (client && selectedBarber && selectedService && selectedDate && selectedSlot) {
         const info: AppointmentInfo = {
           clientName: client.name,
@@ -58,32 +65,14 @@ export default function BookScreen() {
           startTime: selectedSlot.startTime,
           endTime: selectedSlot.endTime,
         };
-        // Envia confirmação via WhatsApp
         sendConfirmationWhatsApp(info).catch(() => null);
 
-        // Agenda notificação push 1 hora antes do agendamento (para o cliente)
         const [hours, minutes] = selectedSlot.startTime.split(":").map(Number);
         const appointmentDateTime = new Date(selectedDate);
         appointmentDateTime.setHours(hours, minutes, 0, 0);
-        scheduleAppointmentReminder(
-          typeof apptId === "number" ? apptId : Number(apptId),
-          selectedService.name,
-          selectedBarber.name,
-          appointmentDateTime
-        ).catch(() => null);
-
-        // Notifica o barbeiro imediatamente sobre o novo agendamento
-        notifyBarberNewAppointment(
-          client.name,
-          selectedService.name,
-          appointmentDateTime,
-          typeof apptId === "number" ? apptId : Number(apptId)
-        ).catch(() => null);
+        scheduleAppointmentReminder(numApptId, selectedService.name, selectedBarber.name, appointmentDateTime).catch(() => null);
+        notifyBarberNewAppointment(client.name, selectedService.name, appointmentDateTime, numApptId).catch(() => null);
       }
-      Alert.alert("✅ Agendamento confirmado!", "Você receberá uma confirmação pelo WhatsApp e um lembrete 1 hora antes.", [
-        { text: "Ver meus agendamentos", onPress: () => router.replace("/client/(tabs)/history" as any) },
-        { text: "Início", onPress: () => router.replace("/client/(tabs)/home" as any) },
-      ]);
     },
     onError: (err) => Alert.alert("Erro", err.message),
   });
@@ -117,6 +106,57 @@ export default function BookScreen() {
     });
   };
 
+  const handlePayOnline = async () => {
+    if (!pendingApptId || !client || !selectedService || !selectedBarber || !selectedDate || !selectedSlot) return;
+    setIsOpeningPayment(true);
+    try {
+      const result = await createPreference.mutateAsync({
+        appointmentId: pendingApptId,
+        serviceId: selectedService.id,
+        serviceName: selectedService.name,
+        servicePrice: parseFloat(selectedService.price),
+        clientName: client.name,
+        clientEmail: client.email ?? undefined,
+        barberId: selectedBarber.id,
+        clientId: client.id,
+        date: formatDate(selectedDate),
+        startTime: selectedSlot.startTime,
+      });
+
+      const url = result.initPoint ?? result.sandboxInitPoint;
+      if (url) {
+        if (Platform.OS === "web") {
+          window.open(url, "_blank");
+        } else {
+          await Linking.openURL(url);
+        }
+        Alert.alert(
+          "Pagamento iniciado",
+          "Complete o pagamento no navegador. Seu agendamento será confirmado automaticamente após a aprovação.",
+          [
+            { text: "Ver meus agendamentos", onPress: () => router.replace("/client/(tabs)/history" as any) },
+            { text: "Início", onPress: () => router.replace("/client/(tabs)/home" as any) },
+          ]
+        );
+      }
+    } catch (err: any) {
+      Alert.alert("Erro ao gerar pagamento", err.message ?? "Tente novamente.");
+    } finally {
+      setIsOpeningPayment(false);
+    }
+  };
+
+  const handlePayOnSite = () => {
+    Alert.alert(
+      "Agendamento confirmado!",
+      "Você receberá uma confirmação pelo WhatsApp e um lembrete 1 hora antes. O pagamento será realizado na barbearia.",
+      [
+        { text: "Ver meus agendamentos", onPress: () => router.replace("/client/(tabs)/history" as any) },
+        { text: "Início", onPress: () => router.replace("/client/(tabs)/home" as any) },
+      ]
+    );
+  };
+
   const StepIndicator = () => {
     const steps: Step[] = ["service", "barber", "date", "time", "confirm"];
     const labels = ["Serviço", "Barbeiro", "Data", "Horário", "Confirmar"];
@@ -134,6 +174,80 @@ export default function BookScreen() {
       </View>
     );
   };
+
+  // Tela de seleção de forma de pagamento (após criar o agendamento)
+  if (pendingApptId !== null) {
+    return (
+      <ScreenContainer containerClassName="bg-black">
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40, paddingTop: 20 }}>
+          <View style={{ alignItems: "center", marginBottom: 24 }}>
+            <Text style={{ fontSize: 48, marginBottom: 8 }}>✅</Text>
+            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 22, textAlign: "center" }}>Agendamento criado!</Text>
+            <Text style={{ color: "#9CA3AF", fontSize: 14, textAlign: "center", marginTop: 6 }}>
+              Como você prefere pagar?
+            </Text>
+          </View>
+
+          {/* Resumo */}
+          <View style={{ backgroundColor: "#111827", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#1F2937", gap: 10, marginBottom: 24 }}>
+            {[
+              { label: "Serviço", value: selectedService?.name },
+              { label: "Barbeiro", value: selectedBarber?.name },
+              { label: "Data", value: selectedDate?.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) },
+              { label: "Horário", value: selectedSlot ? `${selectedSlot.startTime} — ${selectedSlot.endTime}` : "" },
+              { label: "Valor", value: `R$ ${parseFloat(selectedService?.price ?? "0").toFixed(2)}` },
+            ].map((item) => (
+              <View key={item.label} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ color: "#9CA3AF", fontSize: 14 }}>{item.label}</Text>
+                <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14, textAlign: "right", flex: 1, marginLeft: 16 }}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Opção 1: Pagar online */}
+          <TouchableOpacity
+            onPress={handlePayOnline}
+            disabled={isOpeningPayment || createPreference.isPending}
+            style={{
+              backgroundColor: "#009EE3",
+              borderRadius: 16,
+              padding: 20,
+              marginBottom: 12,
+              alignItems: "center",
+              opacity: (isOpeningPayment || createPreference.isPending) ? 0.7 : 1,
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16, marginBottom: 4 }}>
+              {(isOpeningPayment || createPreference.isPending) ? "Gerando link..." : "💳 Pagar agora (online)"}
+            </Text>
+            <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12 }}>
+              Pix, cartão de crédito ou débito via Mercado Pago
+            </Text>
+          </TouchableOpacity>
+
+          {/* Opção 2: Pagar no local */}
+          <TouchableOpacity
+            onPress={handlePayOnSite}
+            style={{
+              backgroundColor: "#111827",
+              borderRadius: 16,
+              padding: 20,
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: "#1F2937",
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16, marginBottom: 4 }}>
+              💵 Pagar na barbearia
+            </Text>
+            <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
+              Dinheiro, cartão ou Pix no local
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer containerClassName="bg-black">
@@ -261,7 +375,6 @@ export default function BookScreen() {
         {step === "confirm" && selectedService && selectedBarber && selectedDate && selectedSlot && (
           <View>
             <Text style={{ color: "#fff", fontWeight: "700", fontSize: 20, marginBottom: 20 }}>Confirmar agendamento</Text>
-
             <View style={{ backgroundColor: "#111827", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#1F2937", gap: 14 }}>
               {[
                 { label: "Serviço", value: selectedService.name },

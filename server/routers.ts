@@ -6,6 +6,13 @@ import { publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import crypto from "crypto";
+import { MercadoPagoConfig, Preference } from "mercadopago";
+
+function getMpClient() {
+  const accessToken = process.env.MP_ACCESS_TOKEN;
+  if (!accessToken) throw new Error("MP_ACCESS_TOKEN não configurado");
+  return new MercadoPagoConfig({ accessToken });
+}
 
 let bcrypt: any;
 try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
@@ -417,11 +424,77 @@ export const appRouter = router({
       .query(({ input }) => db.getAvailableSlots(input.barberId, input.date, input.durationMinutes)),
   }),
 
-  pointsHistory: router({
+   pointsHistory: router({
     byClient: publicProcedure
       .input(z.object({ clientId: z.number() }))
       .query(({ input }) => db.getClientPointsHistory(input.clientId)),
   }),
+  payments: router({
+    createPreference: publicProcedure
+      .input(z.object({
+        appointmentId: z.number(),
+        serviceId: z.number(),
+        serviceName: z.string(),
+        servicePrice: z.number(),
+        clientName: z.string(),
+        clientEmail: z.string().optional(),
+        barberId: z.number(),
+        clientId: z.number(),
+        date: z.string(),
+        startTime: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const mpClient = getMpClient();
+        const preference = new Preference(mpClient);
+        const apiBaseUrl = process.env.API_PUBLIC_URL || "https://3000-ij7sp94mctpcjw0w9i9s9-ea9c4082.us2.manus.computer";
+        const result = await preference.create({
+          body: {
+            items: [{
+              id: String(input.serviceId),
+              title: input.serviceName,
+              quantity: 1,
+              unit_price: input.servicePrice,
+              currency_id: "BRL",
+            }],
+            payer: input.clientEmail ? { name: input.clientName, email: input.clientEmail } : undefined,
+            external_reference: JSON.stringify({
+              appointmentId: input.appointmentId,
+              clientId: input.clientId,
+              barberId: input.barberId,
+              serviceId: input.serviceId,
+              servicePrice: input.servicePrice,
+              date: input.date,
+              startTime: input.startTime,
+            }),
+            notification_url: `${apiBaseUrl}/api/mp/webhook`,
+            back_urls: {
+              success: `${apiBaseUrl}/api/mp/success`,
+              failure: `${apiBaseUrl}/api/mp/failure`,
+              pending: `${apiBaseUrl}/api/mp/pending`,
+            },
+            auto_return: "approved",
+          },
+        });
+        return {
+          preferenceId: result.id,
+          initPoint: result.init_point,
+          sandboxInitPoint: result.sandbox_init_point,
+        };
+      }),
+    getSaleByAppointment: publicProcedure
+      .input(z.object({ appointmentId: z.number() }))
+      .query(async ({ input }) => {
+        const today = new Date();
+        const startDate = new Date(today);
+        startDate.setFullYear(today.getFullYear() - 5);
+        const endDate = new Date(today);
+        endDate.setFullYear(today.getFullYear() + 1);
+        const allSales = await db.getSalesByDateRange(
+          startDate.toISOString().split("T")[0],
+          endDate.toISOString().split("T")[0]
+        );
+        return (allSales as any[]).find((s) => s.appointmentId === input.appointmentId) ?? null;
+      }),
+  }),
 });
-
 export type AppRouter = typeof appRouter;

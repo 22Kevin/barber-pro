@@ -243,9 +243,21 @@ export default function FinancialScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.transactionDesc}>{sale.notes ?? "Venda"}</Text>
-                    <Text style={styles.transactionMeta}>
-                      {PAYMENT_METHODS.find(p => p.key === sale.paymentMethod)?.label ?? sale.paymentMethod} · {sale.createdAt?.split("T")[0] ?? "—"}
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <Text style={styles.transactionMeta}>
+                        {PAYMENT_METHODS.find(p => p.key === sale.paymentMethod)?.label ?? sale.paymentMethod} · {sale.createdAt?.split("T")[0] ?? "—"}
+                      </Text>
+                      {sale.paymentMethod === "mercado_pago" && (
+                        <View style={{ backgroundColor: sale.paymentStatus === "paid" ? "#009EE322" : "#F5A62322", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ color: sale.paymentStatus === "paid" ? "#009EE3" : "#F5A623", fontSize: 10, fontWeight: "700" }}>
+                            {sale.paymentStatus === "paid" ? "✓ Pago" : sale.paymentStatus === "pending" ? "⏳ Pendente" : sale.paymentStatus}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    {sale.mercadoPagoPaymentId && (
+                      <Text style={{ color: "#555", fontSize: 10, marginTop: 2 }}>MP ID: {sale.mercadoPagoPaymentId}</Text>
+                    )}
                   </View>
                   <Text style={styles.transactionAmount}>+{formatCurrency(parseFloat(sale.total ?? "0"))}</Text>
                 </View>
