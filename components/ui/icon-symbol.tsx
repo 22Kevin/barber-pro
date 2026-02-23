@@ -82,6 +82,8 @@ const MAPPING = {
   "person.badge.plus": "person-add",
   "minus.circle.fill": "remove-circle",
   "power": "power-settings-new",
+  "photo.on.rectangle": "photo-library",
+  "mappin": "location-on",
 } as unknown as IconMapping;
 
 export function IconSymbol({

@@ -147,6 +147,15 @@ export const appRouter = router({
         const id = await db.addMediaFile({ entityType: input.entityType, entityId: input.entityId, url, type: input.mediaType, order: input.order ?? 0 });
         return { id, url };
       }),
+    shopImage: publicProcedure
+      .input(z.object({ fileBase64: z.string(), mimeType: z.string(), imageType: z.enum(["logo", "gallery"]) }))
+      .mutation(async ({ input }) => {
+        const ext = input.mimeType.split("/")[1] || "jpg";
+        const key = `barber-pro/shop/${input.imageType}-${randomSuffix()}.${ext}`;
+        const buffer = Buffer.from(input.fileBase64, "base64");
+        const { url } = await storagePut(key, buffer, input.mimeType);
+        return { url };
+      }),
   }),
 
   appointments: router({
@@ -292,6 +301,34 @@ export const appRouter = router({
         const passwordHash = await hashPassword(input.newPassword);
         await db.updateClientAccount(account.id, { passwordHash });
         return { success: true };
+      }),
+    googleLogin: publicProcedure
+      .input(z.object({
+        googleId: z.string(),
+        email: z.string().email(),
+        name: z.string(),
+        photoUrl: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Check if account exists by email
+        let account = await db.getClientAccountByEmail(input.email);
+        if (!account) {
+          // Create client and account (no password for Google users)
+          const clientId = await db.createClient({ name: input.name, email: input.email, phone: "", isActive: true });
+          const passwordHash = await hashPassword(randomSuffix()); // random password, not used
+          await db.createClientAccount({ clientId, email: input.email, passwordHash, googleId: input.googleId });
+          account = await db.getClientAccountByEmail(input.email);
+        } else {
+          // Update googleId if not set
+          await db.updateClientAccount(account.id, { googleId: input.googleId });
+        }
+        const client = await db.getClientById(account!.clientId);
+        if (!client) throw new Error("Cliente não encontrado");
+        // Update photo if provided
+        if (input.photoUrl && !client.photoUrl) {
+          await db.updateClient(client.id, { photoUrl: input.photoUrl });
+        }
+        return { id: client.id, name: client.name, email: client.email, phone: client.phone ?? "", totalPoints: client.totalPoints, birthDate: client.birthDate, photoUrl: input.photoUrl ?? client.photoUrl };
       }),
   }),
 

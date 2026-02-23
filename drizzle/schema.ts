@@ -257,6 +257,7 @@ export const clientAccounts = mysqlTable("client_accounts", {
   clientId: int("clientId").notNull().unique(),
   email: varchar("email", { length: 320 }).notNull().unique(),
   passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  googleId: varchar("googleId", { length: 255 }),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

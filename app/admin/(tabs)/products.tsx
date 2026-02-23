@@ -17,6 +17,7 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
+import { MediaUploader } from "@/components/media-uploader";
 
 type Product = {
   id: number;
@@ -38,6 +39,7 @@ export default function ProductsScreen() {
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("0");
   const [isActive, setIsActive] = useState(true);
+  const [savedProductId, setSavedProductId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const productsQuery = trpc.products.list.useQuery({ activeOnly: false });
@@ -52,17 +54,19 @@ export default function ProductsScreen() {
 
   function openCreate() {
     setEditing(null);
+    setSavedProductId(null);
     setName(""); setDescription(""); setPrice(""); setStock("0"); setIsActive(true);
     setShowModal(true);
   }
 
   function openEdit(p: Product) {
     setEditing(p);
+    setSavedProductId(p.id);
     setName(p.name); setDescription(p.description ?? ""); setPrice(p.price); setStock(String(p.stock)); setIsActive(p.isActive);
     setShowModal(true);
   }
 
-  function closeModal() { setShowModal(false); setEditing(null); }
+  function closeModal() { setShowModal(false); setEditing(null); setSavedProductId(null); }
 
   function handleSave() {
     if (!name.trim()) { Alert.alert("Atenção", "Informe o nome do produto."); return; }
@@ -73,7 +77,9 @@ export default function ProductsScreen() {
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, {
+        onSuccess: (newId) => { setSavedProductId(newId as any); }
+      });
     }
   }
 
@@ -178,6 +184,22 @@ export default function ProductsScreen() {
                     </Field>
                   </View>
                 </View>
+                {/* Upload de Fotos e Vídeos */}
+                {savedProductId ? (
+                  <Field label="Fotos e Vídeos">
+                    <MediaUploader
+                      entityType="product"
+                      entityId={savedProductId}
+                      maxItems={8}
+                    />
+                  </Field>
+                ) : (
+                  <View style={styles.mediaHint}>
+                    <IconSymbol name="photo.on.rectangle" size={16} color="#888880" />
+                    <Text style={styles.mediaHintText}>Salve o produto primeiro para adicionar fotos e vídeos</Text>
+                  </View>
+                )}
+
                 <View style={styles.switchRow}>
                   <Text style={styles.switchLabel}>Produto ativo</Text>
                   <Switch value={isActive} onValueChange={setIsActive} trackColor={{ false: "#2A2A2A", true: "#C9A84C44" }} thumbColor={isActive ? "#C9A84C" : "#555"} />
@@ -248,4 +270,6 @@ const styles = StyleSheet.create({
   switchLabel: { fontSize: 15, color: "#F5F5F0" },
   saveBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginBottom: 8 },
   saveBtnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "800", letterSpacing: 1 },
+  mediaHint: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#1A1A1A", borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: "#2A2A2A", borderStyle: "dashed" },
+  mediaHintText: { flex: 1, fontSize: 12, color: "#888880", lineHeight: 17 },
 });

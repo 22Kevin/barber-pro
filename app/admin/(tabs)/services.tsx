@@ -17,6 +17,7 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
+import { MediaUploader } from "@/components/media-uploader";
 
 type Service = {
   id: number;
@@ -40,6 +41,7 @@ export default function ServicesScreen() {
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState(30);
   const [isActive, setIsActive] = useState(true);
+  const [savedServiceId, setSavedServiceId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: false });
@@ -58,17 +60,19 @@ export default function ServicesScreen() {
 
   function openCreate() {
     setEditing(null);
+    setSavedServiceId(null);
     setName(""); setDescription(""); setPrice(""); setDuration(30); setIsActive(true);
     setShowModal(true);
   }
 
   function openEdit(s: Service) {
     setEditing(s);
+    setSavedServiceId(s.id);
     setName(s.name); setDescription(s.description ?? ""); setPrice(s.price); setDuration(s.durationMinutes); setIsActive(s.isActive);
     setShowModal(true);
   }
 
-  function closeModal() { setShowModal(false); setEditing(null); }
+  function closeModal() { setShowModal(false); setEditing(null); setSavedServiceId(null); }
 
   function handleSave() {
     if (!name.trim()) { Alert.alert("Atenção", "Informe o nome do serviço."); return; }
@@ -78,7 +82,9 @@ export default function ServicesScreen() {
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, {
+        onSuccess: (newId) => { setSavedServiceId(newId as any); }
+      });
     }
   }
 
@@ -217,6 +223,22 @@ export default function ServicesScreen() {
                   </ScrollView>
                 </Field>
 
+                {/* Upload de Fotos e Vídeos */}
+                {savedServiceId ? (
+                  <Field label="Fotos e Vídeos">
+                    <MediaUploader
+                      entityType="service"
+                      entityId={savedServiceId}
+                      maxItems={8}
+                    />
+                  </Field>
+                ) : (
+                  <View style={styles.mediaHint}>
+                    <IconSymbol name="photo.on.rectangle" size={16} color="#888880" />
+                    <Text style={styles.mediaHintText}>Salve o serviço primeiro para adicionar fotos e vídeos</Text>
+                  </View>
+                )}
+
                 <View style={styles.switchRow}>
                   <Text style={styles.switchLabel}>Serviço ativo</Text>
                   <Switch
@@ -298,4 +320,6 @@ const styles = StyleSheet.create({
   switchLabel: { fontSize: 15, color: "#F5F5F0" },
   saveBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginBottom: 8 },
   saveBtnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "800", letterSpacing: 1 },
+  mediaHint: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#1A1A1A", borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: "#2A2A2A", borderStyle: "dashed" },
+  mediaHintText: { flex: 1, fontSize: 12, color: "#888880", lineHeight: 17 },
 });

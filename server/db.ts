@@ -574,7 +574,7 @@ export async function getClientAccountByClientId(clientId: number) {
   const result = await db.select().from(clientAccounts).where(eq(clientAccounts.clientId, clientId)).limit(1);
   return result.length > 0 ? result[0] : null;
 }
-export async function createClientAccount(data: { clientId: number; email: string; passwordHash: string }) {
+export async function createClientAccount(data: { clientId: number; email: string; passwordHash: string; googleId?: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(clientAccounts).values({ ...data, isActive: true });

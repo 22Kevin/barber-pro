@@ -2,6 +2,8 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,8 +19,11 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
+import { SingleImageUploader } from "@/components/media-uploader";
 
 type SettingsTab = "shop" | "barbers" | "hours";
+
+const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
 const DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const ROLES = [
@@ -41,7 +46,13 @@ export default function SettingsScreen() {
   const [shopWhatsapp, setShopWhatsapp] = useState("");
   const [mpAccessToken, setMpAccessToken] = useState("");
   const [mpPublicKey, setMpPublicKey] = useState("");
+  const [shopLogoUrl, setShopLogoUrl] = useState<string | null>(null);
+  const [shopGallery, setShopGallery] = useState<string[]>([]);
   const [shopLoaded, setShopLoaded] = useState(false);
+  // Google Places
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [addressSearchTimeout, setAddressSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   // Barber form
   const [bName, setBName] = useState("");
@@ -62,7 +73,35 @@ export default function SettingsScreen() {
     setShopWhatsapp(d.whatsapp ?? "");
     setMpAccessToken(d.mercadoPagoAccessToken ?? "");
     setMpPublicKey(d.mercadoPagoPublicKey ?? "");
+    if (d.logoUrl) setShopLogoUrl(d.logoUrl);
+    if (d.galleryUrls) {
+      try { setShopGallery(JSON.parse(d.galleryUrls)); } catch {}
+    }
     setShopLoaded(true);
+  }
+
+  async function searchAddress(text: string) {
+    setShopAddress(text);
+    if (addressSearchTimeout) clearTimeout(addressSearchTimeout);
+    if (text.length < 3) { setAddressSuggestions([]); setShowSuggestions(false); return; }
+    const t = setTimeout(async () => {
+      try {
+        const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(text)}&language=pt-BR&components=country:br&key=${GOOGLE_MAPS_KEY}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.predictions) {
+          setAddressSuggestions(data.predictions);
+          setShowSuggestions(true);
+        }
+      } catch {}
+    }, 400);
+    setAddressSearchTimeout(t);
+  }
+
+  function selectAddress(prediction: any) {
+    setShopAddress(prediction.description);
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
   }
 
   const barbersQuery = trpc.barbers.list.useQuery();
@@ -127,7 +166,9 @@ export default function SettingsScreen() {
       whatsapp: shopWhatsapp.trim() || null,
       mercadoPagoAccessToken: mpAccessToken.trim() || null,
       mercadoPagoPublicKey: mpPublicKey.trim() || null,
-    });
+      logoUrl: shopLogoUrl || null,
+      galleryUrls: shopGallery.length > 0 ? JSON.stringify(shopGallery) : null,
+    } as any);
   }
 
   function handleToggleDay(dayOfWeek: number, isWorking: boolean, existing: any) {
@@ -174,10 +215,52 @@ export default function SettingsScreen() {
         {/* Shop Settings */}
         {activeTab === "shop" && (
           <>
+            {/* Logo e Galeria */}
+            <Text style={styles.sectionTitle}>Identidade Visual</Text>
+            <View style={{ flexDirection: "row", gap: 16, marginBottom: 20, alignItems: "flex-start" }}>
+              <View style={{ alignItems: "center", gap: 6 }}>
+                <SingleImageUploader
+                  value={shopLogoUrl}
+                  onUpload={(url) => setShopLogoUrl(url)}
+                  imageType="logo"
+                  label="Logo"
+                  size={90}
+                />
+                <Text style={{ color: "#888880", fontSize: 11 }}>Logo</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.fieldLabel, { marginBottom: 8 }]}>Fotos do Ambiente</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    {shopGallery.map((url, i) => (
+                      <View key={i} style={{ position: "relative" }}>
+                        <Image source={{ uri: url }} style={{ width: 80, height: 80, borderRadius: 10, backgroundColor: "#1A1A1A" }} />
+                        <Pressable
+                          style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}
+                          onPress={() => setShopGallery(shopGallery.filter((_, j) => j !== i))}
+                        >
+                          <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800" }}>✕</Text>
+                        </Pressable>
+                      </View>
+                    ))}
+                    {shopGallery.length < 8 && (
+                      <SingleImageUploader
+                        value={null}
+                        onUpload={(url) => setShopGallery([...shopGallery, url])}
+                        imageType="gallery"
+                        label="+ Foto"
+                        size={80}
+                      />
+                    )}
+                  </View>
+                </ScrollView>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
             <Text style={styles.sectionTitle}>Informações da Barbearia</Text>
             {[
               { label: "Nome da Barbearia", value: shopName, setter: setShopName, placeholder: "Barber Pro" },
-              { label: "Endereço", value: shopAddress, setter: setShopAddress, placeholder: "Rua das Flores, 123" },
               { label: "Telefone", value: shopPhone, setter: setShopPhone, placeholder: "(11) 3333-4444" },
               { label: "WhatsApp (com DDD)", value: shopWhatsapp, setter: setShopWhatsapp, placeholder: "5511999999999" },
             ].map(f => (
@@ -186,6 +269,30 @@ export default function SettingsScreen() {
                 <TextInput style={styles.input} value={f.value} onChangeText={f.setter} placeholder={f.placeholder} placeholderTextColor="#555" />
               </View>
             ))}
+
+            {/* Endereço com Google Places */}
+            <View style={{ marginBottom: 14 }}>
+              <Text style={styles.fieldLabel}>Endereço</Text>
+              <TextInput
+                style={styles.input}
+                value={shopAddress}
+                onChangeText={searchAddress}
+                placeholder="Rua das Flores, 123 — São Paulo"
+                placeholderTextColor="#555"
+                returnKeyType="done"
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              />
+              {showSuggestions && addressSuggestions.length > 0 && (
+                <View style={styles.suggestionBox}>
+                  {addressSuggestions.map((p: any) => (
+                    <Pressable key={p.place_id} style={styles.suggestionItem} onPress={() => selectAddress(p)}>
+                      <IconSymbol name="mappin" size={14} color="#C9A84C" />
+                      <Text style={styles.suggestionText} numberOfLines={2}>{p.description}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
 
             <View style={styles.divider} />
             <Text style={styles.sectionTitle}>Integração Mercado Pago</Text>
@@ -387,4 +494,8 @@ const styles = StyleSheet.create({
   roleChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
   roleChipText: { fontSize: 13, color: "#888880", fontWeight: "600" },
   roleChipTextActive: { color: "#C9A84C" },
+  // Google Places suggestions
+  suggestionBox: { backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, marginTop: 4, overflow: "hidden", zIndex: 100 },
+  suggestionItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#2A2A2A" },
+  suggestionText: { flex: 1, fontSize: 13, color: "#F5F5F0", lineHeight: 18 },
 });

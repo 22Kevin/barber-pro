@@ -159,3 +159,15 @@
 - [x] Layout de tabs do cliente: Início, Serviços, Loja, Agenda, Perfil
 - [x] Integração da tela inicial com botão "Área do Cliente" (ativado)
 - [x] Proteção de rotas autenticadas do cliente
+
+## Melhorias v2.1 — Integrações Google e Upload de Mídia
+- [x] Google Places Autocomplete no endereço da barbearia
+- [x] Upload de logo da barbearia (SingleImageUploader)
+- [x] Galeria de fotos do ambiente da barbearia (até 8 fotos)
+- [x] Upload de fotos e vídeos nos serviços (MediaUploader)
+- [x] Upload de fotos e vídeos nos produtos (MediaUploader)
+- [x] Login com Google para a área do cliente (expo-auth-session)
+- [x] Rota googleLogin no servidor (clientAuth)
+- [x] Campo googleId na tabela client_accounts
+- [x] Credenciais Google Maps API e OAuth configuradas como env vars
+- [x] Ícones photo.on.rectangle e mappin adicionados ao icon-symbol.tsx
