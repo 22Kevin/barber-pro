@@ -20,6 +20,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
 import { SingleImageUploader } from "@/components/media-uploader";
+import { TimePickerModal } from "@/components/time-picker-modal";
 
 type SettingsTab = "shop" | "barbers" | "hours";
 
@@ -61,6 +62,10 @@ export default function SettingsScreen() {
   const [bPassword, setBPassword] = useState("");
   const [bRole, setBRole] = useState("barber");
   const [bSpecialties, setBSpecialties] = useState("");
+
+  // Time picker para horários de trabalho
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timePickerTarget, setTimePickerTarget] = useState<{ dayOfWeek: number; field: "start" | "end"; existing: any } | null>(null);
 
   const utils = trpc.useUtils();
 
@@ -182,6 +187,27 @@ export default function SettingsScreen() {
       lunchStart: existing?.lunchStart ?? null,
       lunchEnd: existing?.lunchEnd ?? null,
     });
+  }
+
+  function openTimePicker(dayOfWeek: number, field: "start" | "end", existing: any) {
+    setTimePickerTarget({ dayOfWeek, field, existing });
+    setShowTimePicker(true);
+  }
+
+  function handleTimeConfirm(time: string) {
+    if (!timePickerTarget || !selectedBarberId) return;
+    const { dayOfWeek, field, existing } = timePickerTarget;
+    upsertHoursMutation.mutate({
+      barberId: selectedBarberId,
+      dayOfWeek,
+      isWorking: existing?.isWorking ?? true,
+      startTime: field === "start" ? time : (existing?.startTime ?? "09:00"),
+      endTime: field === "end" ? time : (existing?.endTime ?? "18:00"),
+      lunchStart: existing?.lunchStart ?? null,
+      lunchEnd: existing?.lunchEnd ?? null,
+    });
+    setShowTimePicker(false);
+    setTimePickerTarget(null);
   }
 
   const barbers = (barbersQuery.data ?? []) as any[];
@@ -382,18 +408,36 @@ export default function SettingsScreen() {
                 const isWorking = existing?.isWorking ?? false;
                 return (
                   <View key={idx} style={styles.dayCard}>
-                    <View style={styles.dayLeft}>
-                      <Text style={styles.dayName}>{day}</Text>
-                      {isWorking && existing && (
-                        <Text style={styles.dayHours}>{existing.startTime} – {existing.endTime}</Text>
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.dayLeft}>
+                        <Text style={styles.dayName}>{day}</Text>
+                        <Switch
+                          value={isWorking}
+                          onValueChange={(v) => handleToggleDay(idx, v, existing)}
+                          trackColor={{ false: "#2A2A2A", true: "#C9A84C44" }}
+                          thumbColor={isWorking ? "#C9A84C" : "#555"}
+                        />
+                      </View>
+                      {isWorking && (
+                        <View style={styles.timeRow}>
+                          <Pressable
+                            style={styles.timeBtn}
+                            onPress={() => openTimePicker(idx, "start", existing)}
+                          >
+                            <Text style={styles.timeBtnLabel}>Entrada</Text>
+                            <Text style={styles.timeBtnValue}>{existing?.startTime ?? "09:00"}</Text>
+                          </Pressable>
+                          <Text style={styles.timeSep}>→</Text>
+                          <Pressable
+                            style={styles.timeBtn}
+                            onPress={() => openTimePicker(idx, "end", existing)}
+                          >
+                            <Text style={styles.timeBtnLabel}>Saída</Text>
+                            <Text style={styles.timeBtnValue}>{existing?.endTime ?? "18:00"}</Text>
+                          </Pressable>
+                        </View>
                       )}
                     </View>
-                    <Switch
-                      value={isWorking}
-                      onValueChange={(v) => handleToggleDay(idx, v, existing)}
-                      trackColor={{ false: "#2A2A2A", true: "#C9A84C44" }}
-                      thumbColor={isWorking ? "#C9A84C" : "#555"}
-                    />
                   </View>
                 );
               })
@@ -401,6 +445,19 @@ export default function SettingsScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Time Picker para Horários de Trabalho */}
+      <TimePickerModal
+        visible={showTimePicker}
+        title={timePickerTarget?.field === "start" ? "Horário de Entrada" : "Horário de Saída"}
+        value={
+          timePickerTarget?.field === "start"
+            ? (timePickerTarget?.existing?.startTime ?? "09:00")
+            : (timePickerTarget?.existing?.endTime ?? "18:00")
+        }
+        onConfirm={handleTimeConfirm}
+        onCancel={() => { setShowTimePicker(false); setTimePickerTarget(null); }}
+      />
 
       {/* Modal Barbeiro */}
       <Modal visible={showBarberModal} animationType="slide" transparent>
@@ -480,10 +537,15 @@ const styles = StyleSheet.create({
   barberChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
   barberChipText: { fontSize: 13, color: "#888880", fontWeight: "600" },
   barberChipTextActive: { color: "#C9A84C" },
-  dayCard: { backgroundColor: "#141414", borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: "#2A2A2A", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  dayLeft: { flex: 1 },
-  dayName: { fontSize: 15, fontWeight: "600", color: "#F5F5F0" },
+  dayCard: { backgroundColor: "#141414", borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: "#2A2A2A" },
+  dayLeft: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  dayName: { fontSize: 15, fontWeight: "600", color: "#F5F5F0", flex: 1 },
   dayHours: { fontSize: 12, color: "#888880", marginTop: 2 },
+  timeRow: { flexDirection: "row", alignItems: "center", marginTop: 10, gap: 8 },
+  timeBtn: { flex: 1, backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#C9A84C", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, alignItems: "center" },
+  timeBtnLabel: { fontSize: 10, color: "#888880", fontWeight: "600", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 },
+  timeBtnValue: { fontSize: 20, fontWeight: "700", color: "#C9A84C", letterSpacing: 1 },
+  timeSep: { fontSize: 18, color: "#555", fontWeight: "300" },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: "#000000AA", justifyContent: "flex-end" },
   modalCard: { backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "90%", borderWidth: 1, borderColor: "#2A2A2A" },

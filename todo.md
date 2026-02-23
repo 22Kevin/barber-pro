@@ -182,3 +182,8 @@
 - [x] Integração no fluxo book.tsx (cliente)
 - [x] Integração no fluxo agenda.tsx (admin)
 - [x] Botão de cancelar agendamento na tela de histórico do cliente
+
+## Melhorias v2.3
+
+- [x] Seletor de duração livre (tipo relógio com horas e minutos) no cadastro de serviços
+- [x] Seletor de horário de início e fim de trabalho configurável nas configurações do barbeiro

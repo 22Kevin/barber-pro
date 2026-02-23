@@ -18,6 +18,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { MediaUploader } from "@/components/media-uploader";
+import { DurationPicker } from "@/components/duration-picker";
 
 type Service = {
   id: number;
@@ -29,7 +30,7 @@ type Service = {
   categoryId: number | null;
 };
 
-const DURATION_OPTIONS = [15, 20, 30, 45, 60, 75, 90, 120];
+
 
 export default function ServicesScreen() {
   const [showModal, setShowModal] = useState(false);
@@ -42,6 +43,7 @@ export default function ServicesScreen() {
   const [duration, setDuration] = useState(30);
   const [isActive, setIsActive] = useState(true);
   const [savedServiceId, setSavedServiceId] = useState<number | null>(null);
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
 
   const utils = trpc.useUtils();
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: false });
@@ -206,21 +208,25 @@ export default function ServicesScreen() {
                 </Field>
 
                 <Field label="Duração">
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
-                    <View style={{ flexDirection: "row", gap: 8 }}>
-                      {DURATION_OPTIONS.map((opt) => (
-                        <Pressable
-                          key={opt}
-                          style={[styles.durationChip, duration === opt && styles.durationChipActive]}
-                          onPress={() => setDuration(opt)}
-                        >
-                          <Text style={[styles.durationChipText, duration === opt && styles.durationChipTextActive]}>
-                            {opt < 60 ? `${opt}min` : `${opt / 60}h`}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </ScrollView>
+                  <Pressable
+                    style={styles.durationButton}
+                    onPress={() => setShowDurationPicker(true)}
+                  >
+                    <Text style={styles.durationButtonText}>
+                      {duration >= 60
+                        ? duration % 60 === 0
+                          ? `${Math.floor(duration / 60)}h`
+                          : `${Math.floor(duration / 60)}h ${duration % 60}min`
+                        : `${duration}min`}
+                    </Text>
+                    <Text style={styles.durationButtonIcon}>✏️</Text>
+                  </Pressable>
+                  <DurationPicker
+                    visible={showDurationPicker}
+                    value={duration}
+                    onConfirm={(mins) => { setDuration(mins); setShowDurationPicker(false); }}
+                    onCancel={() => setShowDurationPicker(false)}
+                  />
                 </Field>
 
                 {/* Upload de Fotos e Vídeos */}
@@ -312,10 +318,9 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 13, color: "#888880", marginBottom: 6, fontWeight: "500" },
   input: { backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#F5F5F0" },
   textarea: { height: 80, textAlignVertical: "top" },
-  durationChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A" },
-  durationChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
-  durationChipText: { fontSize: 13, color: "#888880", fontWeight: "600" },
-  durationChipTextActive: { color: "#C9A84C" },
+  durationButton: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 16, paddingVertical: 14, marginTop: 4 },
+  durationButtonText: { fontSize: 18, fontWeight: "700", color: "#C9A84C", letterSpacing: 0.5 },
+  durationButtonIcon: { fontSize: 16 },
   switchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingVertical: 4 },
   switchLabel: { fontSize: 15, color: "#F5F5F0" },
   saveBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginBottom: 8 },
