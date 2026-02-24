@@ -82,6 +82,9 @@ export const products = mysqlTable("products", {
   description: text("description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   stock: int("stock").default(0).notNull(),
+  productType: mysqlEnum("productType", ["sale", "internal"]).default("sale").notNull(),
+  stockQuantity: int("stockQuantity").default(0).notNull(),
+  minStockAlert: int("minStockAlert").default(5).notNull(),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -347,6 +350,35 @@ export const commissionEntries = mysqlTable("commission_entries", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+// ─── Agendamentos Recorrentes ────────────────────────────────────────────────
+export const recurringAppointments = mysqlTable("recurring_appointments", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  barberId: int("barberId").notNull(),
+  serviceId: int("serviceId").notNull(),
+  startDate: varchar("startDate", { length: 10 }).notNull(),
+  startTime: time("startTime").notNull(),
+  endTime: time("endTime").notNull(),
+  intervalWeeks: int("intervalWeeks").notNull().default(4),
+  occurrences: int("occurrences").notNull().default(6),
+  isActive: boolean("isActive").default(true).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// ─── Movimentações de Estoque ────────────────────────────────────────────────
+export const stockMovements = mysqlTable("stock_movements", {
+  id: int("id").autoincrement().primaryKey(),
+  productId: int("productId").notNull(),
+  type: mysqlEnum("type", ["in", "out", "adjustment"]).notNull(),
+  quantity: int("quantity").notNull(), // positivo = entrada, negativo = saída
+  reason: varchar("reason", { length: 255 }),
+  barberId: int("barberId"),
+  saleId: int("saleId"),
+  date: varchar("date", { length: 10 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 // ─── Tipos Exportados ─────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -381,3 +413,5 @@ export type Promotion = typeof promotions.$inferSelect;
 export type WaitlistEntry = typeof waitlist.$inferSelect;
 export type CommissionConfig = typeof commissionConfigs.$inferSelect;
 export type CommissionEntry = typeof commissionEntries.$inferSelect;
+export type RecurringAppointment = typeof recurringAppointments.$inferSelect;
+export type StockMovement = typeof stockMovements.$inferSelect;

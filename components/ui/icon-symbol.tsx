@@ -95,6 +95,13 @@ const MAPPING = {
   "clock.badge.xmark": "event-busy",
   "checkmark.circle": "check-circle-outline",
   "chart.bar": "bar-chart",
+
+  // Estoque e recorrências
+  "arrow.down.circle.fill": "arrow-circle-down",
+  "arrow.up.circle.fill": "arrow-circle-up",
+  "pencil.circle.fill": "edit",
+  "clock.arrow.circlepath": "history",
+  "calendar.badge.clock": "event-available",
 } as unknown as IconMapping;
 
 export function IconSymbol({

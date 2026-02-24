@@ -80,6 +80,24 @@ const DRAWER_ITEMS: DrawerItem[] = [
     route: "/admin/(tabs)/commissions",
     description: "Controle de comissões por barbeiro",
   },
+  {
+    label: "Estoque",
+    icon: "cube.box.fill",
+    route: "/admin/(tabs)/stock",
+    description: "Controle de estoque e movimentações",
+  },
+  {
+    label: "Recorrências",
+    icon: "arrow.clockwise",
+    route: "/admin/(tabs)/recurring",
+    description: "Agendamentos recorrentes ativos",
+  },
+  {
+    label: "Conversão de Promoções",
+    icon: "chart.pie.fill",
+    route: "/admin/(tabs)/promotion-report",
+    description: "Taxa de retorno das campanhas",
+  },
 ];
 
 interface AdminDrawerProps {

@@ -57,6 +57,20 @@
       "when": 1771963655156,
       "tag": "0007_nostalgic_proudstar",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1771964640989,
+      "tag": "0008_chunky_vanisher",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1771964666663,
+      "tag": "0009_nasty_silvermane",
+      "breakpoints": true
     }
   ]
 }

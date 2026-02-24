@@ -1073,5 +1073,73 @@ export const appRouter = router({
         return db.getCommissionSummary(input.startDate, input.endDate);
       }),
   }),
+
+  recurring: router({
+    create: publicProcedure
+      .input(z.object({
+        clientId: z.number(),
+        barberId: z.number(),
+        serviceId: z.number(),
+        startDate: z.string(),
+        startTime: z.string(),
+        endTime: z.string(),
+        intervalWeeks: z.number().min(1).max(52),
+        occurrences: z.number().min(2).max(24),
+        notes: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return db.createRecurringAppointments(input);
+      }),
+    listByClient: publicProcedure
+      .input(z.object({ clientId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getRecurringAppointments(input.clientId);
+      }),
+    cancel: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return db.cancelRecurring(input.id);
+      }),
+    listAll: publicProcedure.query(async () => {
+      return db.getAllRecurringAppointments();
+    }),
+  }),
+
+  promotionConversion: router({
+    report: publicProcedure.query(async () => {
+      return db.getPromotionConversionReport();
+    }),
+  }),
+
+  stock: router({
+    list: publicProcedure.query(async () => {
+      return db.getStockProducts();
+    }),
+    addMovement: publicProcedure
+      .input(z.object({
+        productId: z.number(),
+        type: z.enum(["in", "out", "adjustment"]),
+        quantity: z.number().min(1),
+        reason: z.string().optional(),
+        barberId: z.number().optional(),
+        date: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        return db.addStockMovement(input);
+      }),
+    movements: publicProcedure
+      .input(z.object({ productId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getStockMovements(input.productId);
+      }),
+    consumptionAverage: publicProcedure
+      .input(z.object({ productId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getStockConsumptionAverage(input.productId);
+      }),
+    lowStock: publicProcedure.query(async () => {
+      return db.getLowStockProducts();
+    }),
+  }),
 });
 export type AppRouter = typeof appRouter;

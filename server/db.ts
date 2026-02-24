@@ -26,6 +26,8 @@ import {
   waitlist,
   commissionConfigs,
   commissionEntries,
+  recurringAppointments,
+  stockMovements,
   type InsertAppointment,
   type InsertBarber,
   type InsertClient,
@@ -1014,6 +1016,218 @@ export async function getCommissionSummary(startDate: string, endDate: string) {
       totalCommission,
       totalNet: totalGross - totalCommission,
       entriesCount: barberEntries.length,
+      entries: barberEntries.map((e) => ({
+        ...e,
+        grossValue: parseFloat(e.grossValue as any),
+        commissionRate: parseFloat(e.commissionRate as any),
+        commissionValue: parseFloat(e.commissionValue as any),
+      })),
     };
   });
+}
+
+// ─── Agendamentos Recorrentes ─────────────────────────────────────────────────
+export async function createRecurringAppointments(data: {
+  clientId: number;
+  barberId: number;
+  serviceId: number;
+  startDate: string;
+  startTime: string;
+  endTime: string;
+  intervalWeeks: number;
+  occurrences: number;
+  notes?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Salvar configuração recorrente
+  const recResult = await db.insert(recurringAppointments).values({
+    clientId: data.clientId,
+    barberId: data.barberId,
+    serviceId: data.serviceId,
+    startDate: data.startDate,
+    startTime: data.startTime,
+    endTime: data.endTime,
+    intervalWeeks: data.intervalWeeks,
+    occurrences: data.occurrences,
+    notes: data.notes,
+    isActive: true,
+  });
+  const recurringId = recResult[0].insertId;
+
+  // Gerar os N agendamentos futuros
+  const createdIds: number[] = [];
+  for (let i = 0; i < data.occurrences; i++) {
+    const date = new Date(data.startDate + "T12:00:00");
+    date.setDate(date.getDate() + i * data.intervalWeeks * 7);
+    const dateStr = date.toISOString().split("T")[0];
+
+    // Verificar disponibilidade
+    const available = await checkSlotAvailability(data.barberId, dateStr, data.startTime, data.endTime);
+    if (!available) continue;
+
+    const apptResult = await db.insert(appointments).values({
+      clientId: data.clientId,
+      barberId: data.barberId,
+      serviceId: data.serviceId,
+      date: dateStr,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      status: "scheduled",
+      notes: data.notes ? `[Recorrente] ${data.notes}` : "[Recorrente]",
+    });
+    createdIds.push(apptResult[0].insertId);
+  }
+
+  return { recurringId, createdCount: createdIds.length, appointmentIds: createdIds };
+}
+
+export async function getRecurringAppointments(clientId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const list = await db.select().from(recurringAppointments)
+    .where(and(eq(recurringAppointments.clientId, clientId), eq(recurringAppointments.isActive, true)))
+    .orderBy(desc(recurringAppointments.createdAt));
+  const barberList = await db.select().from(barbers);
+  const svcList = await db.select().from(services);
+  return list.map((r) => ({
+    ...r,
+    barberName: barberList.find((b) => b.id === r.barberId)?.name ?? "—",
+    serviceName: svcList.find((s) => s.id === r.serviceId)?.name ?? "—",
+  }));
+}
+
+export async function cancelRecurring(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(recurringAppointments).set({ isActive: false }).where(eq(recurringAppointments.id, id));
+}
+
+export async function getAllRecurringAppointments() {
+  const db = await getDb();
+  if (!db) return [];
+  const list = await db.select().from(recurringAppointments).where(eq(recurringAppointments.isActive, true));
+  const clientList = await db.select().from(clients);
+  const barberList = await db.select().from(barbers);
+  const svcList = await db.select().from(services);
+  return list.map((r) => ({
+    ...r,
+    clientName: clientList.find((c) => c.id === r.clientId)?.name ?? "—",
+    barberName: barberList.find((b) => b.id === r.barberId)?.name ?? "—",
+    serviceName: svcList.find((s) => s.id === r.serviceId)?.name ?? "—",
+  }));
+}
+
+// ─── Conversão de Promoções ───────────────────────────────────────────────────
+export async function getPromotionConversionReport() {
+  const db = await getDb();
+  if (!db) return [];
+  const promoList = await db.select().from(promotions).where(sql`${promotions.sentAt} IS NOT NULL`).orderBy(desc(promotions.sentAt));
+  const allClients = await db.select().from(clients);
+  const allAppointments = await db.select().from(appointments);
+
+  return promoList.map((p) => {
+    if (!p.sentAt) return { ...p, conversions: 0, conversionRate: 0 };
+    const sentDate = new Date(p.sentAt);
+    const windowEnd = new Date(sentDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const windowEndStr = windowEnd.toISOString().split("T")[0];
+    const sentDateStr = sentDate.toISOString().split("T")[0];
+
+    // Contar agendamentos criados nos 7 dias após o envio
+    const conversions = allAppointments.filter((a) => {
+      return a.date >= sentDateStr && a.date <= windowEndStr;
+    }).length;
+
+    const rate = p.recipientCount > 0 ? Math.round((conversions / p.recipientCount) * 100) : 0;
+    return { ...p, conversions, conversionRate: rate };
+  });
+}
+
+// ─── Controle de Estoque ──────────────────────────────────────────────────────
+export async function getStockProducts() {
+  const db = await getDb();
+  if (!db) return [];
+  const prods = await db.select().from(products).where(eq(products.isActive, true)).orderBy(products.name);
+  return prods.map((p) => ({
+    ...p,
+    price: parseFloat(p.price as any),
+    stockQuantity: p.stockQuantity ?? 0,
+    minStockAlert: p.minStockAlert ?? 5,
+    isLowStock: (p.stockQuantity ?? 0) <= (p.minStockAlert ?? 5),
+  }));
+}
+
+export async function addStockMovement(data: {
+  productId: number;
+  type: "in" | "out" | "adjustment";
+  quantity: number;
+  reason?: string;
+  barberId?: number;
+  saleId?: number;
+  date: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db.insert(stockMovements).values(data);
+
+  // Atualizar stockQuantity do produto
+  const prod = await db.select().from(products).where(eq(products.id, data.productId)).limit(1);
+  if (prod.length > 0) {
+    const current = prod[0].stockQuantity ?? 0;
+    const delta = data.type === "out" ? -Math.abs(data.quantity) : Math.abs(data.quantity);
+    const newQty = Math.max(0, current + delta);
+    await db.update(products).set({ stockQuantity: newQty }).where(eq(products.id, data.productId));
+  }
+}
+
+export async function getStockMovements(productId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const moves = await db.select().from(stockMovements)
+    .where(eq(stockMovements.productId, productId))
+    .orderBy(desc(stockMovements.createdAt))
+    .limit(50);
+  const barberList = await db.select().from(barbers);
+  return moves.map((m) => ({
+    ...m,
+    barberName: m.barberId ? barberList.find((b) => b.id === m.barberId)?.name ?? "—" : null,
+  }));
+}
+
+export async function getStockConsumptionAverage(productId: number) {
+  const db = await getDb();
+  if (!db) return { avgMonthly: 0, daysUntilEmpty: null as number | null };
+
+  // Buscar saídas dos últimos 3 meses
+  const threeMonthsAgo = new Date();
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  const fromDate = threeMonthsAgo.toISOString().split("T")[0];
+
+  const outMoves = await db.select().from(stockMovements)
+    .where(and(
+      eq(stockMovements.productId, productId),
+      eq(stockMovements.type, "out"),
+      gte(stockMovements.date, fromDate)
+    ));
+
+  const totalOut = outMoves.reduce((s, m) => s + Math.abs(m.quantity), 0);
+  const avgMonthly = Math.round(totalOut / 3);
+
+  const prod = await db.select().from(products).where(eq(products.id, productId)).limit(1);
+  const currentStock = prod[0]?.stockQuantity ?? 0;
+
+  const daysUntilEmpty = avgMonthly > 0
+    ? Math.round((currentStock / avgMonthly) * 30)
+    : null;
+
+  return { avgMonthly, daysUntilEmpty };
+}
+
+export async function getLowStockProducts() {
+  const db = await getDb();
+  if (!db) return [];
+  const prods = await db.select().from(products).where(eq(products.isActive, true));
+  return prods.filter((p) => (p.stockQuantity ?? 0) <= (p.minStockAlert ?? 5));
 }

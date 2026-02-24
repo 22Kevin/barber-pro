@@ -409,3 +409,50 @@
 - [x] Tela admin: "Comissões" — relatório por barbeiro e período com total bruto, comissão e líquido
 - [x] Tela admin: configuração de % de comissão por barbeiro (pode ser diferente por serviço)
 - [x] Tela barbeiro (app): visualização das próprias comissões do período
+
+## Novas Funcionalidades v3.5
+
+### Comissões para o Barbeiro
+- [ ] Aba "Minhas Comissões" no app do barbeiro (tab ou tela acessível pelo perfil)
+- [ ] Seletor de mês para visualizar comissões do período
+- [ ] Cards: total bruto, comissão a receber, atendimentos realizados
+- [ ] Lista de atendimentos com valor individual de comissão
+
+### Agendamento Recorrente
+- [ ] Tabela `recurring_appointments` no banco (clientId, barberId, serviceId, startDate, intervalWeeks, endDate, isActive)
+- [ ] Rota tRPC: criar agendamento recorrente (gera N agendamentos futuros)
+- [ ] Opção "Repetir agendamento" na tela de confirmação do cliente (book.tsx)
+- [ ] Seletor de frequência: toda semana, a cada 2 semanas, a cada 3 semanas, mensal
+- [ ] Tela admin: visualizar e cancelar séries de agendamentos recorrentes
+
+### Relatório de Conversão de Promoções
+- [ ] Rota tRPC: promotions.conversionReport (clientes que agendaram em até 7 dias após receber promoção)
+- [ ] Adicionar coluna "Conversões" e "Taxa de conversão" na tela de Promoções do admin
+- [ ] Exibir gráfico de barras simples com conversão por promoção
+
+### Controle de Estoque
+- [ ] Campo `productType` na tabela products: "sale" (venda ao cliente) ou "internal" (uso do barbeiro)
+- [ ] Campo `stockQuantity` (quantidade atual) e `minStockAlert` (alerta de estoque mínimo) na tabela products
+- [ ] Tabela `stock_movements` (productId, type: in/out/adjustment, quantity, reason, barberId, date)
+- [ ] Baixa automática de estoque ao registrar venda de produto (tipo "sale")
+- [ ] Baixa manual de estoque para produtos de uso interno (barbeiro registra o consumo)
+- [ ] Tela admin: "Estoque" — lista de produtos com quantidade atual, badge de alerta mínimo
+- [ ] Tela admin: registrar entrada de estoque (compra de produtos)
+- [ ] Tela admin: histórico de movimentações por produto
+- [ ] Tela admin: relatório de consumo médio mensal por produto (média dos últimos 3 meses)
+- [ ] Tela admin: previsão de ruptura (quantos dias até acabar com base no consumo médio)
+- [ ] Notificação push para admin quando produto atingir estoque mínimo
+
+## Funcionalidades v3.5 — Concluídas
+
+- [x] Tela "Minhas Comissões" para o barbeiro (app admin, visível apenas para role barber/super_admin)
+- [x] Agendamento Recorrente — banco (tabela recurring_appointments + migração)
+- [x] Agendamento Recorrente — backend (rotas tRPC: create, listByClient, cancel, listAll)
+- [x] Agendamento Recorrente — tela cliente (criar, listar, cancelar recorrências com preview de datas)
+- [x] Agendamento Recorrente — tela admin (painel de recorrências ativas com cancelamento)
+- [x] Relatório de Conversão de Promoções — backend (getPromotionConversionReport com janela de 7 dias)
+- [x] Relatório de Conversão de Promoções — tela admin (taxa de conversão por campanha, barra de progresso, cards de resumo)
+- [x] Controle de Estoque — banco (tabela stock_movements, campos productType/stockQuantity/minStockAlert em products + migração)
+- [x] Controle de Estoque — backend (getStockProducts, addStockMovement, getStockMovements, getStockConsumptionAverage, getLowStockProducts)
+- [x] Controle de Estoque — tela admin (filtros por tipo, entrada/saída/ajuste, histórico, previsão de ruptura, alerta de estoque baixo)
+- [x] Novas telas (Estoque, Recorrências, Conversão de Promoções) registradas no drawer de navegação admin
