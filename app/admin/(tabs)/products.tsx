@@ -18,6 +18,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { MediaUploader } from "@/components/media-uploader";
+import { AdminHeader } from "@/components/admin-header";
 
 type Product = {
   id: number;
@@ -95,13 +96,15 @@ export default function ProductsScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background">
-      <View style={styles.header}>
-        <Text style={styles.title}>Produtos</Text>
-        <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreate}>
-          <IconSymbol name="plus" size={20} color="#0A0A0A" />
-          <Text style={styles.addBtnText}>Novo</Text>
-        </Pressable>
-      </View>
+      <AdminHeader
+        title="Produtos"
+        rightElement={
+          <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreate}>
+            <IconSymbol name="plus" size={20} color="#0A0A0A" />
+            <Text style={styles.addBtnText}>Novo</Text>
+          </Pressable>
+        }
+      />
 
       <View style={styles.searchRow}>
         <IconSymbol name="magnifyingglass" size={18} color="#888880" />

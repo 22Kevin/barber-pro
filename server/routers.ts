@@ -8,6 +8,7 @@ import { storagePut } from "./storage";
 import crypto from "crypto";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import QRCode from "qrcode";
+import PDFDocument from "pdfkit";
 
 function getMpClient() {
   const accessToken = process.env.MP_ACCESS_TOKEN;
@@ -25,10 +26,11 @@ function generatePixPayload(params: {
   amount: number;
   txId: string;
   description: string;
+  pixKey?: string;
 }): string {
   const { merchantName, merchantCity, amount, txId, description } = params;
-  // Chave Pix aleatória para demo (em produção viria da conta MP)
-  const pixKey = "barber-pro@demo.pix";
+  // Usa a chave Pix configurada nas settings ou placeholder para demo
+  const pixKey = params.pixKey || "barber-pro@demo.pix";
   const gui = "BR.GOV.BCB.PIX";
   const pixKeyField = `0114${pixKey.length.toString().padStart(2,"0")}${pixKey}`;
   const additionalData = `0503${txId.substring(0,25).padEnd(25,"0")}`;
@@ -384,7 +386,7 @@ export const appRouter = router({
   settings: router({
     get: publicProcedure.query(() => db.getShopSettings()),
     update: publicProcedure
-      .input(z.object({ shopName: z.string().optional(), address: z.string().optional().nullable(), phone: z.string().optional().nullable(), whatsapp: z.string().optional().nullable(), mercadoPagoAccessToken: z.string().optional().nullable(), mercadoPagoPublicKey: z.string().optional().nullable(), whatsappMessageTemplate: z.string().optional().nullable(), reminderMessageTemplate: z.string().optional().nullable(), instagram: z.string().optional().nullable(), cnpj: z.string().optional().nullable(), googleMapsUrl: z.string().optional().nullable() }))
+      .input(z.object({ shopName: z.string().optional(), address: z.string().optional().nullable(), phone: z.string().optional().nullable(), whatsapp: z.string().optional().nullable(), mercadoPagoAccessToken: z.string().optional().nullable(), mercadoPagoPublicKey: z.string().optional().nullable(), whatsappMessageTemplate: z.string().optional().nullable(), reminderMessageTemplate: z.string().optional().nullable(), instagram: z.string().optional().nullable(), cnpj: z.string().optional().nullable(), googleMapsUrl: z.string().optional().nullable(), pixKey: z.string().optional().nullable() }))
       .mutation(({ input }) => db.upsertShopSettings(input)),
   }),
 
@@ -651,13 +653,14 @@ export const appRouter = router({
           const settings = await db.getShopSettings().catch(() => null);
           const shopName = (settings as any)?.shopName || "Barber Pro";
           const shopCity = "SAO PAULO";
-
+          const configuredPixKey = (settings as any)?.pixKey || undefined;
           const pixPayload = generatePixPayload({
             merchantName: shopName.toUpperCase().substring(0, 25),
             merchantCity: shopCity,
             amount: input.servicePrice,
             txId,
             description: input.serviceName,
+            pixKey: configuredPixKey,
           });
 
           // Gera QR Code como base64 PNG
@@ -824,6 +827,121 @@ export const appRouter = router({
         result.push({ barberId: barber.id, name: barber.name, appointments: paidSales.length, revenue });
       }
         return result.sort((a, b) => b.revenue - a.revenue);
+    }),
+  exportPdf: publicProcedure
+    .input(z.object({ startDate: z.string(), endDate: z.string(), period: z.string().optional() }))
+    .mutation(async ({ input }) => {
+      const settings = await db.getShopSettings().catch(() => null) as any;
+      const shopName = settings?.shopName || "Barber Pro";
+      const shopCnpj = settings?.cnpj || "";
+      const shopAddress = settings?.address || "";
+      // Receitas
+      const sales = await db.getSalesByDateRange(input.startDate, input.endDate);
+      const paidSales = (sales as any[]).filter(s => s.paymentStatus === "paid");
+      const totalRevenue = paidSales.reduce((sum: number, s: any) => sum + parseFloat(s.total ?? "0"), 0);
+      // Despesas
+      const expenses = await db.getExpensesByDateRange(input.startDate, input.endDate);
+      const totalExpenses = (expenses as any[]).reduce((sum: number, e: any) => sum + parseFloat(e.amount ?? "0"), 0);
+      const netProfit = totalRevenue - totalExpenses;
+      // Top serviços
+      const serviceMap: Record<string, { name: string; count: number; revenue: number }> = {};
+      for (const sale of paidSales) {
+        if (sale.items && Array.isArray(sale.items)) {
+          for (const item of sale.items) {
+            if (item.itemType === "service") {
+              if (!serviceMap[item.itemName]) serviceMap[item.itemName] = { name: item.itemName, count: 0, revenue: 0 };
+              serviceMap[item.itemName].count += item.quantity ?? 1;
+              serviceMap[item.itemName].revenue += parseFloat(item.total ?? "0");
+            }
+          }
+        }
+      }
+      const topServices = Object.values(serviceMap).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+      // Gera PDF
+      const doc = new PDFDocument({ margin: 50, size: "A4" });
+      const chunks: Buffer[] = [];
+      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+      const pdfPromise = new Promise<Buffer>((resolve) => doc.on("end", () => resolve(Buffer.concat(chunks))));
+      const fmt = (v: number) => `R$ ${v.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".")}` ;
+      const fmtDate = (d: string) => d.split("-").reverse().join("/");
+      const gold = "#C9A84C";
+      // Cabeçalho
+      doc.fontSize(20).fillColor(gold).text(shopName, { align: "center" });
+      if (shopCnpj) doc.fontSize(10).fillColor("#555").text(`CNPJ: ${shopCnpj}`, { align: "center" });
+      if (shopAddress) doc.fontSize(10).fillColor("#555").text(shopAddress, { align: "center" });
+      doc.moveDown(0.5);
+      doc.fontSize(14).fillColor("#222").text(`Relatório Financeiro — ${fmtDate(input.startDate)} a ${fmtDate(input.endDate)}`, { align: "center" });
+      doc.moveDown(0.5);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor(gold).lineWidth(1.5).stroke();
+      doc.moveDown(1);
+      // DRE simplificado
+      doc.fontSize(13).fillColor(gold).text("DRE Simplificado");
+      doc.moveDown(0.3);
+      const dreRows = [
+        { label: "(+) Receita Bruta", value: totalRevenue, bold: false },
+        { label: "(-) Despesas Operacionais", value: totalExpenses, bold: false },
+        { label: "(=) Resultado Líquido", value: netProfit, bold: true },
+      ];
+      for (const row of dreRows) {
+        const color = row.label.startsWith("(=") ? (netProfit >= 0 ? "#22C55E" : "#EF4444") : "#222";
+        doc.fontSize(row.bold ? 12 : 11).fillColor(color);
+        const y = doc.y;
+        doc.text(row.label, 50, y, { continued: true, width: 350 });
+        doc.text(fmt(row.value), { align: "right" });
+      }
+      doc.moveDown(1);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#ddd").lineWidth(0.5).stroke();
+      doc.moveDown(1);
+      // Resumo de pagamentos
+      const byMethod: Record<string, number> = {};
+      for (const s of paidSales) {
+        const m = s.paymentMethod || "outros";
+        byMethod[m] = (byMethod[m] || 0) + parseFloat(s.total ?? "0");
+      }
+      doc.fontSize(13).fillColor(gold).text("Receitas por Forma de Pagamento");
+      doc.moveDown(0.3);
+      const methodLabels: Record<string, string> = { cash: "Dinheiro", card: "Cartão", pix: "Pix", credit_card: "Cartão de Crédito", debit_card: "Cartão de Débito", outros: "Outros" };
+      for (const [method, value] of Object.entries(byMethod)) {
+        doc.fontSize(11).fillColor("#222");
+        const y = doc.y;
+        doc.text(methodLabels[method] || method, 50, y, { continued: true, width: 350 });
+        doc.text(fmt(value), { align: "right" });
+      }
+      doc.moveDown(1);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#ddd").lineWidth(0.5).stroke();
+      doc.moveDown(1);
+      // Top serviços
+      if (topServices.length > 0) {
+        doc.fontSize(13).fillColor(gold).text("Serviços Mais Vendidos");
+        doc.moveDown(0.3);
+        for (const svc of topServices) {
+          doc.fontSize(11).fillColor("#222");
+          const y = doc.y;
+          doc.text(`${svc.name} (${svc.count}x)`, 50, y, { continued: true, width: 350 });
+          doc.text(fmt(svc.revenue), { align: "right" });
+        }
+        doc.moveDown(1);
+      }
+      // Despesas detalhadas
+      if ((expenses as any[]).length > 0) {
+        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#ddd").lineWidth(0.5).stroke();
+        doc.moveDown(1);
+        doc.fontSize(13).fillColor(gold).text("Despesas Detalhadas");
+        doc.moveDown(0.3);
+        for (const exp of expenses as any[]) {
+          doc.fontSize(10).fillColor("#555");
+          const y = doc.y;
+          doc.text(`${fmtDate(exp.date)} — ${exp.category}: ${exp.description}`, 50, y, { continued: true, width: 350 });
+          doc.text(fmt(parseFloat(exp.amount ?? "0")), { align: "right" });
+        }
+        doc.moveDown(1);
+      }
+      // Rodapé
+      doc.moveDown(1);
+      doc.fontSize(9).fillColor("#aaa").text(`Gerado em ${new Date().toLocaleString("pt-BR")} · ${shopName}`, { align: "center" });
+      doc.end();
+      const pdfBuffer = await pdfPromise;
+      return { pdfBase64: pdfBuffer.toString("base64") };
     }),
   }),
 });

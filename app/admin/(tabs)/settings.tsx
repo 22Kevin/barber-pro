@@ -21,6 +21,7 @@ import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
 import { SingleImageUploader } from "@/components/media-uploader";
 import { TimePickerModal } from "@/components/time-picker-modal";
+import { AdminHeader } from "@/components/admin-header";
 
 type SettingsTab = "shop" | "barbers" | "hours";
 
@@ -53,6 +54,7 @@ export default function SettingsScreen() {
   const [shopInstagram, setShopInstagram] = useState("");
   const [shopCnpj, setShopCnpj] = useState("");
   const [shopGoogleMapsUrl, setShopGoogleMapsUrl] = useState("");
+  const [shopPixKey, setShopPixKey] = useState("");
   // Google Places
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -84,6 +86,7 @@ export default function SettingsScreen() {
     setShopInstagram(d.instagram ?? "");
     setShopCnpj(d.cnpj ?? "");
     setShopGoogleMapsUrl(d.googleMapsUrl ?? "");
+    setShopPixKey(d.pixKey ?? "");
     if (d.logoUrl) setShopLogoUrl(d.logoUrl);
     if (d.galleryUrls) {
       try { setShopGallery(JSON.parse(d.galleryUrls)); } catch {}
@@ -180,6 +183,7 @@ export default function SettingsScreen() {
       instagram: shopInstagram.trim() || null,
       cnpj: shopCnpj.trim() || null,
       googleMapsUrl: shopGoogleMapsUrl.trim() || null,
+      pixKey: shopPixKey.trim() || null,
       logoUrl: shopLogoUrl || null,
       galleryUrls: shopGallery.length > 0 ? JSON.stringify(shopGallery) : null,
     } as any);
@@ -225,15 +229,17 @@ export default function SettingsScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background">
-      <View style={styles.header}>
-        <Text style={styles.title}>Configurações</Text>
-        {activeTab === "barbers" && isSuperAdmin && (
-          <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreateBarber}>
-            <IconSymbol name="plus" size={18} color="#0A0A0A" />
-            <Text style={styles.addBtnText}>Barbeiro</Text>
-          </Pressable>
-        )}
-      </View>
+      <AdminHeader
+        title="Configurações"
+        rightElement={
+          activeTab === "barbers" && isSuperAdmin ? (
+            <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreateBarber}>
+              <IconSymbol name="plus" size={18} color="#0A0A0A" />
+              <Text style={styles.addBtnText}>Barbeiro</Text>
+            </Pressable>
+          ) : <View style={{ width: 40 }} />
+        }
+      />
 
       {/* Tabs */}
       <View style={styles.tabs}>
@@ -341,6 +347,25 @@ export default function SettingsScreen() {
             <View style={{ marginBottom: 14 }}>
               <Text style={styles.fieldLabel}>Link do Google Maps</Text>
               <TextInput style={styles.input} value={shopGoogleMapsUrl} onChangeText={setShopGoogleMapsUrl} placeholder="https://maps.google.com/..." placeholderTextColor="#555" autoCapitalize="none" autoCorrect={false} keyboardType="url" />
+            </View>
+
+            <View style={styles.divider} />
+            <Text style={styles.sectionTitle}>Pagamento Pix</Text>
+            <View style={styles.infoCard}>
+              <IconSymbol name="info.circle.fill" size={16} color="#32BCAD" />
+              <Text style={styles.infoText}>Informe a chave Pix da barbearia (CNPJ, CPF, e-mail ou telefone). Ela será usada para gerar o QR Code de pagamento.</Text>
+            </View>
+            <View style={{ marginBottom: 14 }}>
+              <Text style={styles.fieldLabel}>Chave Pix</Text>
+              <TextInput
+                style={styles.input}
+                value={shopPixKey}
+                onChangeText={setShopPixKey}
+                placeholder="00.000.000/0001-00 ou email@barbearia.com"
+                placeholderTextColor="#555"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
             </View>
 
             <View style={styles.divider} />

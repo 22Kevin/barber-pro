@@ -301,3 +301,14 @@
 - [x] Modal: se não pago → opções: Pix QR Code na tela, link WhatsApp para cobrar, registrar pagamento manual (dinheiro/cartão/Pix no local)
 - [x] Badge "Pagamento pendente" / "✓ Pago" nos cards de agendamento concluídos
 - [x] Ao tocar em card concluído, reabre o modal de pagamento
+
+## Melhorias v2.8
+
+- [x] Campo Chave Pix nas configurações do admin (CNPJ, CPF, e-mail ou telefone)
+- [x] Integrar chave Pix real no QR Code gerado pelo barbeiro no PaymentStatusModal
+- [x] Integrar chave Pix real no QR Code da tela de pagamento do cliente (pix-payment.tsx)
+- [x] Exportação de relatório financeiro em PDF (DRE simplificado por período)
+- [x] PDF com: nome da barbearia, CNPJ, período, receitas por categoria, despesas, lucro líquido
+- [x] Botão "Exportar PDF" na tela de Relatórios do admin
+- [x] Navegação híbrida no admin: 4 abas no rodapé (Dashboard, Agenda, Clientes, Financeiro)
+- [x] Drawer lateral (≡) no cabeçalho com: Serviços, Produtos, Fidelidade, Relatórios, Configurações

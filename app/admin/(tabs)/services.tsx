@@ -19,6 +19,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { MediaUploader } from "@/components/media-uploader";
 import { DurationPicker } from "@/components/duration-picker";
+import { AdminHeader } from "@/components/admin-header";
 
 type Service = {
   id: number;
@@ -110,14 +111,15 @@ export default function ServicesScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background">
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Serviços</Text>
-        <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreate}>
-          <IconSymbol name="plus" size={20} color="#0A0A0A" />
-          <Text style={styles.addBtnText}>Novo</Text>
-        </Pressable>
-      </View>
+      <AdminHeader
+        title="Serviços"
+        rightElement={
+          <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreate}>
+            <IconSymbol name="plus" size={20} color="#0A0A0A" />
+            <Text style={styles.addBtnText}>Novo</Text>
+          </Pressable>
+        }
+      />
 
       {/* Busca */}
       <View style={styles.searchRow}>

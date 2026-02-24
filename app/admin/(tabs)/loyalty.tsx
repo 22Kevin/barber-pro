@@ -16,6 +16,7 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
+import { AdminHeader } from "@/components/admin-header";
 
 type LoyaltyTab = "config" | "rewards" | "coupons";
 
@@ -147,21 +148,22 @@ export default function LoyaltyScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background">
-      <View style={styles.header}>
-        <Text style={styles.title}>Fidelidade</Text>
-        {activeTab === "rewards" && (
-          <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={() => setShowRewardModal(true)}>
-            <IconSymbol name="plus" size={18} color="#0A0A0A" />
-            <Text style={styles.addBtnText}>Nova</Text>
-          </Pressable>
-        )}
-        {activeTab === "coupons" && (
-          <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={() => setShowCouponModal(true)}>
-            <IconSymbol name="plus" size={18} color="#0A0A0A" />
-            <Text style={styles.addBtnText}>Novo</Text>
-          </Pressable>
-        )}
-      </View>
+      <AdminHeader
+        title="Fidelidade"
+        rightElement={
+          activeTab === "rewards" ? (
+            <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={() => setShowRewardModal(true)}>
+              <IconSymbol name="plus" size={18} color="#0A0A0A" />
+              <Text style={styles.addBtnText}>Nova</Text>
+            </Pressable>
+          ) : activeTab === "coupons" ? (
+            <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={() => setShowCouponModal(true)}>
+              <IconSymbol name="plus" size={18} color="#0A0A0A" />
+              <Text style={styles.addBtnText}>Novo</Text>
+            </Pressable>
+          ) : <View style={{ width: 40 }} />
+        }
+      />
 
       {/* Tabs */}
       <View style={styles.tabs}>

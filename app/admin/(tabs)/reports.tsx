@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +12,9 @@ import {
 import Svg, { Rect, Line, Text as SvgText, G } from "react-native-svg";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+import { AdminHeader } from "@/components/admin-header";
 
 type Period = "week" | "month" | "year";
 
@@ -78,12 +83,14 @@ function BarChart({ labels, data }: { labels: string[]; data: number[] }) {
 // ─── Tela principal ───────────────────────────────────────────────────────────
 export default function ReportsScreen() {
   const [period, setPeriod] = useState<Period>("month");
+  const [exporting, setExporting] = useState(false);
   const dateRange = useMemo(() => getDateRange(period), [period]);
 
   const revenueQuery = trpc.reports.revenue.useQuery({ period });
   const topServicesQuery = trpc.reports.topServices.useQuery(dateRange);
   const topClientsQuery = trpc.reports.topClients.useQuery(dateRange);
   const occupancyQuery = trpc.reports.barberOccupancy.useQuery(dateRange);
+  const exportPdfMutation = trpc.reports.exportPdf.useMutation();
 
   const revenue = revenueQuery.data;
   const topServices = topServicesQuery.data ?? [];
@@ -96,13 +103,66 @@ export default function ReportsScreen() {
     { key: "year", label: "12 meses" },
   ];
 
+  async function handleExportPdf() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const result = await exportPdfMutation.mutateAsync({ ...dateRange, period });
+      if (!result.pdfBase64) throw new Error("PDF vazio");
+      if (Platform.OS === "web") {
+        const blob = new Blob([Uint8Array.from(atob(result.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `relatorio-${dateRange.startDate}-${dateRange.endDate}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const fileUri = `${FileSystem.cacheDirectory}relatorio-${dateRange.startDate}.pdf`;
+        await FileSystem.writeAsStringAsync(fileUri, result.pdfBase64, { encoding: FileSystem.EncodingType.Base64 });
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(fileUri, { mimeType: "application/pdf", dialogTitle: "Exportar Relatório" });
+        } else {
+          Alert.alert("PDF salvo", `Arquivo salvo em: ${fileUri}`);
+        }
+      }
+    } catch (err: any) {
+      Alert.alert("Erro ao exportar", err.message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <ScreenContainer containerClassName="bg-background">
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Relatórios</Text>
-        </View>
+        <AdminHeader
+          title="Relatórios"
+          rightElement={
+            <Pressable
+              style={({ pressed }) => [{
+                backgroundColor: "#C9A84C",
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 20,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                opacity: pressed || exporting ? 0.7 : 1,
+              }]}
+              onPress={handleExportPdf}
+              disabled={exporting}
+            >
+              {exporting ? (
+                <ActivityIndicator size="small" color="#0A0A0A" />
+              ) : (
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#0A0A0A" }}>Exportar PDF</Text>
+              )}
+            </Pressable>
+          }
+        />
 
         {/* Seletor de período */}
         <View style={styles.periodRow}>
@@ -235,7 +295,7 @@ export default function ReportsScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { padding: 20, paddingTop: 16, paddingBottom: 8 },
+  header: { padding: 20, paddingTop: 16, paddingBottom: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   title: { fontSize: 24, fontWeight: "800", color: "#F5F5F0" },
   periodRow: {
     flexDirection: "row",

@@ -251,6 +251,7 @@ export const shopSettings = mysqlTable("shop_settings", {
   instagram: varchar("instagram", { length: 100 }),
   cnpj: varchar("cnpj", { length: 20 }),
   googleMapsUrl: text("googleMapsUrl"),
+  pixKey: varchar("pixKey", { length: 255 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 // ─── Tokens de Recuperação de Senha ────────────────────────────────────────

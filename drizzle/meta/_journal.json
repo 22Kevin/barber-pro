@@ -43,6 +43,13 @@
       "when": 1771935873539,
       "tag": "0005_modern_domino",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1771940653615,
+      "tag": "0006_strange_lady_vermin",
+      "breakpoints": true
     }
   ]
 }
