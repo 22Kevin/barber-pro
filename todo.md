@@ -322,3 +322,11 @@
 - [x] Botão "Compartilhar" na tela de confirmação de agendamento (book.tsx)
 - [x] Notificação push de avaliação 2h após o horário do atendimento (agendada ao confirmar agendamento)
 - [x] Cancelamento da notificação de avaliação ao cancelar agendamento via swipe
+
+## Melhorias v3.0
+
+- [x] Tema claro: fundo branco marfim + vinho/borgonha (#7B2D3E) como segunda cor dominante
+- [x] Atualizar theme.config.js com paleta light/dark separada e todas as telas do admin usando useColors()
+- [x] Campo "Descrição" na venda substituído por seletor de serviços/produtos cadastrados (com preço automático)
+- [x] Corrigir teclado cobrindo campos no login do painel administrativo (KeyboardAvoidingView + ScrollView)
+- [x] Corrigir teclado no setup.tsx (Primeiro acesso)

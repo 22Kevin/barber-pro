@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -15,6 +15,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
+import { useColors } from "@/hooks/use-colors";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -40,6 +41,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function DashboardScreen() {
   const { barber, logout } = useBarberAuth();
+  const colors = useColors();
   const today = getTodayString();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -49,6 +51,25 @@ export default function DashboardScreen() {
   const pendingPaymentsQuery = trpc.payments.pendingList.useQuery();
 
   const utils = trpc.useUtils();
+
+  const dyn = useMemo(() => StyleSheet.create({
+    greeting:        { fontSize: 22, fontWeight: "700", color: colors.foreground },
+    date:            { fontSize: 13, color: colors.muted, marginTop: 2 },
+    metricCard:      { flex: 1, minWidth: "45%", backgroundColor: colors.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.border, alignItems: "flex-start" },
+    metricValue:     { fontSize: 20, fontWeight: "800", color: colors.foreground, marginBottom: 2 },
+    metricLabel:     { fontSize: 12, color: colors.muted },
+    sectionTitle:    { fontSize: 17, fontWeight: "700", color: colors.foreground, paddingHorizontal: 20, marginTop: 16, marginBottom: 10 },
+    seeAll:          { fontSize: 13, color: colors.primary },
+    quickActionBtn:  { flex: 1, minWidth: "45%", backgroundColor: colors.surface, borderRadius: 12, padding: 14, alignItems: "center", borderWidth: 1, borderColor: colors.border },
+    quickActionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primary + "22", justifyContent: "center", alignItems: "center", marginBottom: 8 },
+    quickActionLabel:{ fontSize: 12, color: colors.foreground, fontWeight: "600", textAlign: "center" },
+    emptyCard:       { marginHorizontal: 20, backgroundColor: colors.surface, borderRadius: 12, padding: 20, alignItems: "center", borderWidth: 1, borderColor: colors.border },
+    emptyText:       { color: colors.muted, fontSize: 14 },
+    appointmentCard: { marginHorizontal: 20, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, flexDirection: "row", overflow: "hidden" },
+    aptTime:         { fontSize: 15, fontWeight: "700", color: colors.foreground },
+    aptBarber:       { fontSize: 13, color: colors.muted },
+    aptNotes:        { fontSize: 12, color: colors.muted, marginTop: 4, fontStyle: "italic" },
+  }), [colors]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -66,67 +87,98 @@ export default function DashboardScreen() {
 
   const getBarberName = (id: number) => barbers.find(b => b.id === id)?.name ?? "—";
 
-  const handleLogout = async () => {
-    await logout();
-    router.replace("/admin/login" as any);
-  };
-
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader title="Dashboard" />
       <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A84C" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
         {/* Saudação */}
         <View style={styles.greetingRow}>
-          <Text style={styles.greeting}>Olá, {barber?.name?.split(" ")[0]} 👋</Text>
-          <Text style={styles.date}>{formatDatePT(today)} — Hoje</Text>
+          <Text style={dyn.greeting}>Olá, {barber?.name?.split(" ")[0]} 👋</Text>
+          <Text style={dyn.date}>{formatDatePT(today)} — Hoje</Text>
         </View>
 
         {/* Métricas */}
         {statsQuery.isLoading ? (
-          <ActivityIndicator color="#C9A84C" style={{ marginVertical: 24 }} />
+          <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
         ) : (
           <View style={styles.metricsGrid}>
-            <MetricCard icon="calendar" label="Agendamentos" value={String(stats?.appointmentsToday ?? 0)} color="#C9A84C" />
-            <MetricCard icon="dollarsign.circle.fill" label="Receita Hoje" value={formatCurrency(stats?.revenueToday ?? 0)} color="#4CAF50" />
-            <MetricCard icon="person.2.fill" label="Clientes" value={String(stats?.clientsToday ?? 0)} color="#2196F3" />
-            <MetricCard icon="clock.fill" label="Pendentes" value={String(stats?.pendingAppointments ?? 0)} color="#FF9800" />
+            <View style={dyn.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: colors.primary + "22" }]}>
+                <IconSymbol name="calendar" size={22} color={colors.primary} />
+              </View>
+              <Text style={dyn.metricValue}>{String(stats?.appointmentsToday ?? 0)}</Text>
+              <Text style={dyn.metricLabel}>Agendamentos</Text>
+            </View>
+            <View style={dyn.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: "#4CAF5022" }]}>
+                <IconSymbol name="dollarsign.circle.fill" size={22} color="#4CAF50" />
+              </View>
+              <Text style={dyn.metricValue}>{formatCurrency(stats?.revenueToday ?? 0)}</Text>
+              <Text style={dyn.metricLabel}>Receita Hoje</Text>
+            </View>
+            <View style={dyn.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: "#2196F322" }]}>
+                <IconSymbol name="person.2.fill" size={22} color="#2196F3" />
+              </View>
+              <Text style={dyn.metricValue}>{String(stats?.clientsToday ?? 0)}</Text>
+              <Text style={dyn.metricLabel}>Clientes</Text>
+            </View>
+            <View style={dyn.metricCard}>
+              <View style={[styles.metricIcon, { backgroundColor: "#FF980022" }]}>
+                <IconSymbol name="clock.fill" size={22} color="#FF9800" />
+              </View>
+              <Text style={dyn.metricValue}>{String(stats?.pendingAppointments ?? 0)}</Text>
+              <Text style={dyn.metricLabel}>Pendentes</Text>
+            </View>
           </View>
         )}
 
         {/* Ações rápidas */}
-        <Text style={styles.sectionTitle}>Ações Rápidas</Text>
+        <Text style={dyn.sectionTitle}>Ações Rápidas</Text>
         <View style={styles.quickActions}>
-          <QuickAction icon="calendar.badge.plus" label="Novo Agendamento" onPress={() => router.push("/admin/(tabs)/agenda" as any)} />
-          <QuickAction icon="person.badge.plus" label="Novo Cliente" onPress={() => router.push("/admin/(tabs)/clients" as any)} />
-          <QuickAction icon="dollarsign.circle.fill" label="Nova Venda" onPress={() => router.push("/admin/(tabs)/financial" as any)} />
-          <QuickAction icon="scissors" label="Serviços" onPress={() => router.push("/admin/(tabs)/services" as any)} />
+          <Pressable style={({ pressed }) => [dyn.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push("/admin/(tabs)/agenda" as any)}>
+            <View style={dyn.quickActionIcon}><IconSymbol name="calendar.badge.plus" size={22} color={colors.primary} /></View>
+            <Text style={dyn.quickActionLabel}>Novo Agendamento</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [dyn.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push("/admin/(tabs)/clients" as any)}>
+            <View style={dyn.quickActionIcon}><IconSymbol name="person.badge.plus" size={22} color={colors.primary} /></View>
+            <Text style={dyn.quickActionLabel}>Novo Cliente</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [dyn.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push("/admin/(tabs)/financial" as any)}>
+            <View style={dyn.quickActionIcon}><IconSymbol name="dollarsign.circle.fill" size={22} color={colors.primary} /></View>
+            <Text style={dyn.quickActionLabel}>Nova Venda</Text>
+          </Pressable>
+          <Pressable style={({ pressed }) => [dyn.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push("/admin/(tabs)/services" as any)}>
+            <View style={dyn.quickActionIcon}><IconSymbol name="scissors" size={22} color={colors.primary} /></View>
+            <Text style={dyn.quickActionLabel}>Serviços</Text>
+          </Pressable>
         </View>
 
         {/* Pagamentos Pendentes MP */}
         {(pendingPaymentsQuery.data?.length ?? 0) > 0 && (
           <>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>⏳ Aguardando Pagamento</Text>
+              <Text style={dyn.sectionTitle}>⏳ Aguardando Pagamento</Text>
               <Pressable onPress={() => router.push("/admin/(tabs)/financial" as any)}>
-                <Text style={styles.seeAll}>Ver todos ({pendingPaymentsQuery.data!.length})</Text>
+                <Text style={dyn.seeAll}>Ver todos ({pendingPaymentsQuery.data!.length})</Text>
               </Pressable>
             </View>
             {pendingPaymentsQuery.data!.slice(0, 3).map((sale: any) => (
-              <View key={sale.id} style={styles.appointmentCard}>
+              <View key={sale.id} style={dyn.appointmentCard}>
                 <View style={[styles.statusBar, { backgroundColor: "#FF9800" }]} />
                 <View style={styles.aptContent}>
                   <View style={styles.aptRow}>
-                    <Text style={styles.aptTime}>R$ {parseFloat(sale.total).toFixed(2)}</Text>
+                    <Text style={dyn.aptTime}>R$ {parseFloat(sale.total).toFixed(2)}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: "#FF980022" }]}>
                       <Text style={[styles.statusText, { color: "#FF9800" }]}>Pendente</Text>
                     </View>
                   </View>
-                  <Text style={styles.aptBarber}>Mercado Pago</Text>
+                  <Text style={dyn.aptBarber}>Mercado Pago</Text>
                   {sale.mercadoPagoPaymentId && (
-                    <Text style={styles.aptNotes}>ID: {sale.mercadoPagoPaymentId}</Text>
+                    <Text style={dyn.aptNotes}>ID: {sale.mercadoPagoPaymentId}</Text>
                   )}
                 </View>
               </View>
@@ -136,33 +188,33 @@ export default function DashboardScreen() {
 
         {/* Agenda do dia */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Agenda de Hoje</Text>
+          <Text style={dyn.sectionTitle}>Agenda de Hoje</Text>
           <Pressable onPress={() => router.push("/admin/(tabs)/agenda" as any)}>
-            <Text style={styles.seeAll}>Ver tudo</Text>
+            <Text style={dyn.seeAll}>Ver tudo</Text>
           </Pressable>
         </View>
 
         {appointmentsQuery.isLoading ? (
-          <ActivityIndicator color="#C9A84C" style={{ marginVertical: 16 }} />
+          <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />
         ) : appointments.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>Nenhum agendamento para hoje</Text>
+          <View style={dyn.emptyCard}>
+            <Text style={dyn.emptyText}>Nenhum agendamento para hoje</Text>
           </View>
         ) : (
           appointments.slice(0, 5).map((apt) => {
-            const status = STATUS_LABELS[apt.status] ?? { label: apt.status, color: "#888880" };
+            const status = STATUS_LABELS[apt.status] ?? { label: apt.status, color: colors.muted };
             return (
-              <View key={apt.id} style={styles.appointmentCard}>
+              <View key={apt.id} style={dyn.appointmentCard}>
                 <View style={[styles.statusBar, { backgroundColor: status.color }]} />
                 <View style={styles.aptContent}>
                   <View style={styles.aptRow}>
-                    <Text style={styles.aptTime}>{apt.startTime} – {apt.endTime}</Text>
+                    <Text style={dyn.aptTime}>{apt.startTime} – {apt.endTime}</Text>
                     <View style={[styles.statusBadge, { backgroundColor: status.color + "22" }]}>
                       <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
                     </View>
                   </View>
-                  <Text style={styles.aptBarber}>{getBarberName(apt.barberId)}</Text>
-                  {apt.notes ? <Text style={styles.aptNotes}>{apt.notes}</Text> : null}
+                  <Text style={dyn.aptBarber}>{getBarberName(apt.barberId)}</Text>
+                  {apt.notes ? <Text style={dyn.aptNotes}>{apt.notes}</Text> : null}
                 </View>
               </View>
             );
@@ -175,137 +227,15 @@ export default function DashboardScreen() {
   );
 }
 
-function MetricCard({ icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
-  return (
-    <View style={styles.metricCard}>
-      <View style={[styles.metricIcon, { backgroundColor: color + "22" }]}>
-        <IconSymbol name={icon} size={22} color={color} />
-      </View>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function QuickAction({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      style={({ pressed }) => [styles.quickActionBtn, pressed && { opacity: 0.7 }]}
-      onPress={onPress}
-    >
-      <View style={styles.quickActionIcon}>
-        <IconSymbol name={icon} size={22} color="#C9A84C" />
-      </View>
-      <Text style={styles.quickActionLabel}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  greetingRow: {
-    padding: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  greeting: { fontSize: 22, fontWeight: "700", color: "#F5F5F0" },
-  date: { fontSize: 13, color: "#888880", marginTop: 2 },
-  metricsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 12,
-    gap: 10,
-    marginBottom: 8,
-  },
-  metricCard: {
-    flex: 1,
-    minWidth: "45%",
-    backgroundColor: "#141414",
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
-    alignItems: "flex-start",
-  },
-  metricIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  metricValue: { fontSize: 20, fontWeight: "800", color: "#F5F5F0", marginBottom: 2 },
-  metricLabel: { fontSize: 12, color: "#888880" },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#F5F5F0",
-    paddingHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 10,
-  },
-  seeAll: { fontSize: 13, color: "#C9A84C" },
-  quickActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 12,
-    gap: 10,
-    marginBottom: 4,
-  },
-  quickActionBtn: {
-    flex: 1,
-    minWidth: "45%",
-    backgroundColor: "#141414",
-    borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
-  },
-  quickActionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "#C9A84C22",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  quickActionLabel: { fontSize: 12, color: "#F5F5F0", fontWeight: "600", textAlign: "center" },
-  emptyCard: {
-    marginHorizontal: 20,
-    backgroundColor: "#141414",
-    borderRadius: 12,
-    padding: 20,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
-  },
-  emptyText: { color: "#888880", fontSize: 14 },
-  appointmentCard: {
-    marginHorizontal: 20,
-    marginBottom: 8,
-    backgroundColor: "#141414",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
-    flexDirection: "row",
-    overflow: "hidden",
-  },
-  statusBar: { width: 4 },
-  aptContent: { flex: 1, padding: 14 },
-  aptRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  aptTime: { fontSize: 15, fontWeight: "700", color: "#F5F5F0" },
-  statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  statusText: { fontSize: 11, fontWeight: "600" },
-  aptBarber: { fontSize: 13, color: "#888880" },
-  aptNotes: { fontSize: 12, color: "#555", marginTop: 4, fontStyle: "italic" },
+  greetingRow:  { padding: 20, paddingTop: 16, paddingBottom: 8 },
+  metricsGrid:  { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 12, gap: 10, marginBottom: 8 },
+  metricIcon:   { width: 40, height: 40, borderRadius: 10, justifyContent: "center", alignItems: "center", marginBottom: 10 },
+  sectionHeader:{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginTop: 16, marginBottom: 10 },
+  quickActions: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 12, gap: 10, marginBottom: 4 },
+  statusBar:    { width: 4 },
+  aptContent:   { flex: 1, padding: 14 },
+  aptRow:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  statusBadge:  { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  statusText:   { fontSize: 11, fontWeight: "600" },
 });

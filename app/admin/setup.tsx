@@ -50,7 +50,7 @@ export default function AdminSetupScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background" edges={["top", "left", "right", "bottom"]}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.logoArea}>
             <Image source={require("@/assets/images/icon.png")} style={styles.logo} resizeMode="contain" />

@@ -1,15 +1,33 @@
 /** @type {const} */
 const themeColors = {
-  primary:    { light: '#C9A84C', dark: '#C9A84C' },   // Dourado premium
-  background: { light: '#0A0A0A', dark: '#0A0A0A' },   // Preto profundo
-  surface:    { light: '#141414', dark: '#141414' },   // Superfície escura
-  foreground: { light: '#F5F5F0', dark: '#F5F5F0' },   // Branco quente
-  muted:      { light: '#888880', dark: '#888880' },   // Cinza médio
-  border:     { light: '#2A2A2A', dark: '#2A2A2A' },   // Borda sutil
-  success:    { light: '#4CAF50', dark: '#66BB6A' },
-  warning:    { light: '#FF9800', dark: '#FFA726' },
-  error:      { light: '#F44336', dark: '#EF5350' },
-  tint:       { light: '#C9A84C', dark: '#C9A84C' },   // Alias do primary
+  // Cor primária: dourado premium (igual em ambos os temas)
+  primary:    { light: '#C9A84C', dark: '#C9A84C' },
+
+  // Fundo: branco marfim (claro) / preto profundo (escuro)
+  background: { light: '#FAF8F5', dark: '#0A0A0A' },
+
+  // Superfície: branco puro com leve sombra (claro) / superfície escura (escuro)
+  surface:    { light: '#FFFFFF', dark: '#141414' },
+
+  // Texto principal: quase preto (claro) / branco quente (escuro)
+  foreground: { light: '#1A1008', dark: '#F5F5F0' },
+
+  // Texto secundário: cinza quente (claro) / cinza médio (escuro)
+  muted:      { light: '#6B5E4E', dark: '#888880' },
+
+  // Bordas: bege acinzentado (claro) / borda sutil escura (escuro)
+  border:     { light: '#E8E0D5', dark: '#2A2A2A' },
+
+  // Segunda cor dominante: vinho/borgonha — clássico de barbearia premium
+  // Usada como accent em botões secundários, badges e destaques no tema claro
+  accent:     { light: '#7B2D3E', dark: '#9B3D52' },
+
+  success:    { light: '#2E7D32', dark: '#4CAF50' },
+  warning:    { light: '#E65100', dark: '#FF9800' },
+  error:      { light: '#C62828', dark: '#F44336' },
+
+  // Alias do primary (usado pelo tab bar)
+  tint:       { light: '#C9A84C', dark: '#C9A84C' },
 };
 
 module.exports = { themeColors };

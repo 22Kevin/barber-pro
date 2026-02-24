@@ -61,6 +61,8 @@ export default function FinancialScreen() {
   const [saleAmount, setSaleAmount] = useState("");
   const [salePayment, setSalePayment] = useState("cash");
   const [saleType, setSaleType] = useState<"service" | "product">("service");
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  const [showItemPicker, setShowItemPicker] = useState(false);
 
   // Expense form
   const [expenseDescription, setExpenseDescription] = useState("");
@@ -70,6 +72,8 @@ export default function FinancialScreen() {
   const range = getMonthRange(monthOffset);
   const utils = trpc.useUtils();
 
+  const servicesQuery = trpc.services.list.useQuery({ activeOnly: true });
+  const productsQuery = trpc.products.list.useQuery({ activeOnly: true });
   const salesQuery = trpc.sales.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
   const expensesQuery = trpc.expenses.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
   const statsQuery = trpc.dashboard.stats.useQuery({ date: new Date().toISOString().split("T")[0] });
@@ -96,6 +100,14 @@ export default function FinancialScreen() {
   function closeSaleModal() {
     setShowSaleModal(false);
     setSaleDescription(""); setSaleAmount(""); setSalePayment("cash"); setSaleType("service");
+    setSelectedItemId(null); setShowItemPicker(false);
+  }
+
+  function handleSelectItem(item: { id: number; name: string; price: string }) {
+    setSelectedItemId(item.id);
+    setSaleDescription(item.name);
+    setSaleAmount(parseFloat(item.price).toFixed(2).replace(".", ","));
+    setShowItemPicker(false);
   }
 
   function handleCreateSale() {
@@ -307,7 +319,7 @@ export default function FinancialScreen() {
                 <Text style={styles.fieldLabel}>Tipo</Text>
                 <View style={styles.typeRow}>
                   {(["service", "product"] as const).map(t => (
-                    <Pressable key={t} style={[styles.typeChip, saleType === t && styles.typeChipActive]} onPress={() => setSaleType(t)}>
+                    <Pressable key={t} style={[styles.typeChip, saleType === t && styles.typeChipActive]} onPress={() => { setSaleType(t); setSelectedItemId(null); setSaleDescription(""); setSaleAmount(""); setShowItemPicker(false); }}>
                       <Text style={[styles.typeChipText, saleType === t && styles.typeChipTextActive]}>
                         {t === "service" ? "Serviço" : "Produto"}
                       </Text>
@@ -315,8 +327,42 @@ export default function FinancialScreen() {
                   ))}
                 </View>
 
-                <Text style={styles.fieldLabel}>Descrição *</Text>
-                <TextInput style={styles.input} value={saleDescription} onChangeText={setSaleDescription} placeholder="Ex: Corte + Barba" placeholderTextColor="#555" />
+                <Text style={styles.fieldLabel}>{saleType === "service" ? "Serviço" : "Produto"} *</Text>
+                {/* Seletor de itens cadastrados */}
+                <Pressable
+                  style={[styles.input, { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}
+                  onPress={() => setShowItemPicker(v => !v)}
+                >
+                  <Text style={{ color: saleDescription ? styles.input.color : "#555", fontSize: 15, flex: 1 }}>
+                    {saleDescription || (saleType === "service" ? "Selecione um serviço..." : "Selecione um produto...")}
+                  </Text>
+                  <IconSymbol name={showItemPicker ? "chevron.right" : "chevron.right"} size={16} color="#888880" />
+                </Pressable>
+                {showItemPicker && (
+                  <View style={styles.itemPickerList}>
+                    {(saleType === "service" ? (servicesQuery.data ?? []) : (productsQuery.data ?? [])).length === 0 ? (
+                      <Text style={{ color: "#888880", fontSize: 13, padding: 12, textAlign: "center" }}>
+                        {saleType === "service" ? "Nenhum serviço cadastrado" : "Nenhum produto cadastrado"}
+                      </Text>
+                    ) : (
+                      (saleType === "service" ? (servicesQuery.data ?? []) : (productsQuery.data ?? [])).map((item: any) => (
+                        <Pressable
+                          key={item.id}
+                          style={[styles.itemPickerRow, selectedItemId === item.id && styles.itemPickerRowActive]}
+                          onPress={() => handleSelectItem(item)}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.itemPickerName}>{item.name}</Text>
+                            {saleType === "service" && item.durationMinutes && (
+                              <Text style={styles.itemPickerMeta}>{item.durationMinutes} min</Text>
+                            )}
+                          </View>
+                          <Text style={styles.itemPickerPrice}>R$ {parseFloat(item.price).toFixed(2).replace(".", ",")}</Text>
+                        </Pressable>
+                      ))
+                    )}
+                  </View>
+                )}
 
                 <Text style={styles.fieldLabel}>Valor (R$) *</Text>
                 <TextInput style={styles.input} value={saleAmount} onChangeText={setSaleAmount} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
@@ -454,6 +500,12 @@ const styles = StyleSheet.create({
   paymentChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
   paymentChipText: { fontSize: 12, color: "#888880", fontWeight: "600" },
   paymentChipTextActive: { color: "#C9A84C" },
+  itemPickerList: { borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, marginBottom: 12, overflow: "hidden" },
+  itemPickerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#2A2A2A" },
+  itemPickerRowActive: { backgroundColor: "#C9A84C22" },
+  itemPickerName: { fontSize: 14, color: "#F5F5F0", fontWeight: "600" },
+  itemPickerMeta: { fontSize: 12, color: "#888880", marginTop: 2 },
+  itemPickerPrice: { fontSize: 14, color: "#C9A84C", fontWeight: "700" },
   saveBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginBottom: 8 },
   saveBtnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "800", letterSpacing: 1 },
 });

@@ -16,9 +16,11 @@ import { router } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
+import { useColors } from "@/hooks/use-colors";
 
 export default function AdminLoginScreen() {
   const { login } = useBarberAuth();
+  const colors = useColors();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -45,11 +47,13 @@ export default function AdminLoginScreen() {
     <ScreenContainer containerClassName="bg-background" edges={["top", "left", "right", "bottom"]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           {/* Logo */}
           <View style={styles.logoArea}>
@@ -58,22 +62,22 @@ export default function AdminLoginScreen() {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.brandName}>BARBER PRO</Text>
-            <Text style={styles.brandSub}>Painel Administrativo</Text>
+            <Text style={[styles.brandName, { color: colors.primary }]}>BARBER PRO</Text>
+            <Text style={[styles.brandSub, { color: colors.muted }]}>Painel Administrativo</Text>
           </View>
 
           {/* Card */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Entrar</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Entrar</Text>
 
             <View style={styles.field}>
-              <Text style={styles.label}>E-mail</Text>
+              <Text style={[styles.label, { color: colors.muted }]}>E-mail</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
                 value={email}
                 onChangeText={setEmail}
                 placeholder="seu@email.com"
-                placeholderTextColor="#555"
+                placeholderTextColor={colors.muted}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -82,14 +86,14 @@ export default function AdminLoginScreen() {
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.label}>Senha</Text>
+              <Text style={[styles.label, { color: colors.muted }]}>Senha</Text>
               <View style={styles.passwordRow}>
                 <TextInput
-                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  style={[styles.input, { flex: 1, marginBottom: 0, backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="••••••••"
-                  placeholderTextColor="#555"
+                  placeholderTextColor={colors.muted}
                   secureTextEntry={!showPassword}
                   returnKeyType="done"
                   onSubmitEditing={handleLogin}
@@ -104,21 +108,24 @@ export default function AdminLoginScreen() {
             </View>
 
             <Pressable
-              style={({ pressed }) => [styles.btn, pressed && { opacity: 0.8 }]}
+              style={({ pressed }) => [styles.btn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
               onPress={handleLogin}
               disabled={loginMutation.isPending}
             >
               {loginMutation.isPending ? (
-                <ActivityIndicator color="#0A0A0A" />
+                <ActivityIndicator color={colors.background} />
               ) : (
-                <Text style={styles.btnText}>ENTRAR</Text>
+                <Text style={[styles.btnText, { color: colors.background }]}>ENTRAR</Text>
               )}
             </Pressable>
 
             <Pressable onPress={() => router.push("/admin/setup" as any)} style={styles.setupLink}>
-              <Text style={styles.setupText}>Primeiro acesso? Criar conta de administrador</Text>
+              <Text style={[styles.setupText, { color: colors.primary }]}>Primeiro acesso? Criar conta de administrador</Text>
             </Pressable>
           </View>
+
+          {/* Espaço extra para garantir que o botão fique visível acima do teclado */}
+          <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </ScreenContainer>
@@ -133,7 +140,7 @@ const styles = StyleSheet.create({
   },
   logoArea: {
     alignItems: "center",
-    marginBottom: 40,
+    marginBottom: 32,
   },
   logo: {
     width: 90,
@@ -144,26 +151,21 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#C9A84C",
     letterSpacing: 4,
   },
   brandSub: {
     fontSize: 13,
-    color: "#888880",
     letterSpacing: 2,
     marginTop: 4,
   },
   card: {
-    backgroundColor: "#141414",
     borderRadius: 16,
     padding: 24,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
   },
   cardTitle: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#F5F5F0",
     marginBottom: 24,
   },
   field: {
@@ -171,20 +173,16 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    color: "#888880",
     marginBottom: 6,
     fontWeight: "500",
     letterSpacing: 0.5,
   },
   input: {
-    backgroundColor: "#1E1E1E",
     borderWidth: 1,
-    borderColor: "#2A2A2A",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: "#F5F5F0",
     marginBottom: 0,
   },
   passwordRow: {
@@ -199,14 +197,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   btn: {
-    backgroundColor: "#C9A84C",
     borderRadius: 12,
     paddingVertical: 15,
     alignItems: "center",
     marginTop: 8,
   },
   btnText: {
-    color: "#0A0A0A",
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: 2,
@@ -216,7 +212,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   setupText: {
-    color: "#C9A84C",
     fontSize: 13,
     textDecorationLine: "underline",
   },
