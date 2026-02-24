@@ -456,3 +456,7 @@
 - [x] Controle de Estoque — backend (getStockProducts, addStockMovement, getStockMovements, getStockConsumptionAverage, getLowStockProducts)
 - [x] Controle de Estoque — tela admin (filtros por tipo, entrada/saída/ajuste, histórico, previsão de ruptura, alerta de estoque baixo)
 - [x] Novas telas (Estoque, Recorrências, Conversão de Promoções) registradas no drawer de navegação admin
+
+## Bug v3.5.1
+
+- [x] Corrigir menu rodapé admin: exibir apenas 4 abas (Dashboard, Agenda, Clientes, Financeiro) — demais telas só no drawer

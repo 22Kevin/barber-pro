@@ -101,6 +101,62 @@ export default function AdminTabsLayout() {
           tabBarItemStyle: { display: "none" },
         }}
       />
+      <Tabs.Screen
+        name="return-messages"
+        options={{
+          title: "Retorno Automático",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="promotions"
+        options={{
+          title: "Promoções",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="waitlist"
+        options={{
+          title: "Lista de Espera",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="commissions"
+        options={{
+          title: "Comissões",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="my-commissions"
+        options={{
+          title: "Minhas Comissões",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="stock"
+        options={{
+          title: "Estoque",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="recurring"
+        options={{
+          title: "Recorrências",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="promotion-report"
+        options={{
+          title: "Conversão de Promoções",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
     </Tabs>
   );
 }
