@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Linking, Platform, ScrollView, Share, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Linking, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
@@ -308,39 +308,7 @@ export default function BookScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Compartilhar agendamento */}
-          <TouchableOpacity
-            onPress={() => {
-              const dateStr = selectedDate?.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) ?? "";
-              const msg = [
-                "💈 *Agendamento confirmado!*",
-                "",
-                `✂️ *Serviço:* ${selectedService?.name}`,
-                `👤 *Barbeiro:* ${selectedBarber?.name}`,
-                `📅 *Data:* ${dateStr}`,
-                `⏰ *Horário:* ${selectedSlot?.startTime} — ${selectedSlot?.endTime}`,
-                `💰 *Valor:* R$ ${finalPrice.toFixed(2).replace(".", ",")}`,
-                "",
-                "Agendado pelo app da barbearia 😎",
-              ].join("\n");
-              Share.share({ message: msg });
-            }}
-            style={{
-              backgroundColor: "#0D1F0D",
-              borderRadius: 16,
-              padding: 16,
-              alignItems: "center",
-              marginTop: 12,
-              borderWidth: 1,
-              borderColor: "#25D366",
-              flexDirection: "row",
-              justifyContent: "center",
-              gap: 8,
-            }}
-          >
-            <Text style={{ fontSize: 20 }}>💬</Text>
-            <Text style={{ color: "#25D366", fontWeight: "700", fontSize: 15 }}>Compartilhar agendamento</Text>
-          </TouchableOpacity>
+
         </ScrollView>
       </ScreenContainer>
     );

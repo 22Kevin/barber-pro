@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   appointments,
@@ -208,6 +208,22 @@ export async function getAllServices(activeOnly = false) {
   return db.select().from(services).orderBy(services.name);
 }
 
+export async function getAllServicesWithMedia(activeOnly = false) {
+  const db = await getDb();
+  if (!db) return [];
+  const svcs = activeOnly
+    ? await db.select().from(services).where(eq(services.isActive, true)).orderBy(services.name)
+    : await db.select().from(services).orderBy(services.name);
+  const ids = svcs.map((s) => s.id);
+  if (ids.length === 0) return svcs.map((s) => ({ ...s, thumbnailUrl: null as string | null }));
+  const media = await db.select().from(mediaFiles)
+    .where(and(eq(mediaFiles.entityType, "service"), inArray(mediaFiles.entityId, ids), eq(mediaFiles.type, "image")))
+    .orderBy(mediaFiles.order);
+  return svcs.map((s) => ({
+    ...s,
+    thumbnailUrl: media.find((m) => m.entityId === s.id)?.url ?? null,
+  }));
+}
 export async function getServiceById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
@@ -235,6 +251,22 @@ export async function deleteService(id: number) {
 }
 
 // ─── Produtos ─────────────────────────────────────────────────────────────────
+export async function getAllProductsWithMedia(activeOnly = false) {
+  const db = await getDb();
+  if (!db) return [];
+  const prods = activeOnly
+    ? await db.select().from(products).where(eq(products.isActive, true)).orderBy(products.name)
+    : await db.select().from(products).orderBy(products.name);
+  const ids = prods.map((p) => p.id);
+  if (ids.length === 0) return prods.map((p) => ({ ...p, thumbnailUrl: null as string | null }));
+  const media = await db.select().from(mediaFiles)
+    .where(and(eq(mediaFiles.entityType, "product"), inArray(mediaFiles.entityId, ids), eq(mediaFiles.type, "image")))
+    .orderBy(mediaFiles.order);
+  return prods.map((p) => ({
+    ...p,
+    thumbnailUrl: media.find((m) => m.entityId === p.id)?.url ?? null,
+  }));
+}
 export async function getAllProducts(activeOnly = false) {
   const db = await getDb();
   if (!db) return [];

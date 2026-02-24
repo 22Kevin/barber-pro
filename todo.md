@@ -348,3 +348,25 @@
 - [x] Desconto passado para a tela de pagamento Pix e para o registro da venda
 - [x] Validação em tempo real do código de cupom digitado manualmente
 - [x] Ao resgatar recompensa de pontos, deduzir pontos do cliente automaticamente ao confirmar
+
+## Redesign Home v3.2
+
+- [ ] Remover botão "Compartilhar Agendamento" do book.tsx após confirmação
+- [ ] Remover seção "Acesso Rápido" da Home do cliente
+- [ ] Atualizar rota services.list e products.list para incluir a primeira foto de cada item
+- [ ] Substituir emojis por logos reais do Instagram e Google Maps na seção "Nos encontre"
+- [ ] Converter seção "Produtos" para scroll horizontal (igual aos Serviços)
+- [ ] Exibir fotos reais dos serviços e produtos nos cards da Home
+- [ ] Melhorar visual geral da Home (hierarquia, espaçamento, tipografia)
+
+## Redesign Home do Cliente v3.2
+
+- [x] Remover botão "Compartilhar agendamento" da tela de confirmação de agendamento (book.tsx)
+- [x] Remover seção "Acesso rápido" da Home do cliente
+- [x] Substituir emoji 📸 por ícone SVG real do Instagram (gradiente colorido) na seção "Nos encontre"
+- [x] Substituir emoji 📍 por ícone SVG real do Google Maps (pin vermelho) na seção "Nos encontre"
+- [x] Converter seção de Produtos para scroll horizontal (FlatList horizontal) igual à seção de Serviços
+- [x] Criar rotas tRPC `services.listWithMedia` e `products.listWithMedia` que retornam thumbnail da primeira foto
+- [x] Exibir foto real dos serviços nos cards da Home (com fallback para emoji ✂️ se sem foto)
+- [x] Exibir foto real dos produtos nos cards da Home (com fallback para emoji 🧴 se sem foto)
+- [x] Migrar home.tsx para usar StyleSheet.create() em vez de inline styles

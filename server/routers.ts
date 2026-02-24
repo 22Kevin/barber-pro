@@ -183,6 +183,7 @@ export const appRouter = router({
 
   services: router({
     list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional() })).query(({ input }) => db.getAllServices(input.activeOnly)),
+    listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional() })).query(({ input }) => db.getAllServicesWithMedia(input.activeOnly)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getServiceById(input.id)),
     create: publicProcedure
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), durationMinutes: z.number().min(5), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true) }))
@@ -199,6 +200,7 @@ export const appRouter = router({
 
   products: router({
     list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional() })).query(({ input }) => db.getAllProducts(input.activeOnly)),
+    listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional() })).query(({ input }) => db.getAllProductsWithMedia(input.activeOnly)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getProductById(input.id)),
     create: publicProcedure
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), stock: z.number().min(0).default(0), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true) }))
