@@ -290,3 +290,14 @@
 - [x] Tela dedicada de pagamento Pix no app do cliente (fora do modal)
 - [x] Exibir QR Code, código copia-e-cola e timer de expiração
 - [x] Integrar tela Pix no fluxo de agendamento (book.tsx)
+
+## Cobrança de Pagamento pelo Barbeiro (Agenda)
+
+- [x] Rota tRPC appointments.getPaymentStatus (verifica se o agendamento já foi pago via tabela sales)
+- [x] Rota tRPC appointments.registerPayment (registra pagamento manual pelo barbeiro criando venda na tabela sales)
+- [x] Componente PaymentStatusModal: exibe status e opções de cobrança
+- [x] Ao concluir agendamento via swipe (→ Concluído), abrir modal de pagamento automaticamente
+- [x] Modal: se já pago → mensagem de confirmação com método e valor
+- [x] Modal: se não pago → opções: Pix QR Code na tela, link WhatsApp para cobrar, registrar pagamento manual (dinheiro/cartão/Pix no local)
+- [x] Badge "Pagamento pendente" / "✓ Pago" nos cards de agendamento concluídos
+- [x] Ao tocar em card concluído, reabre o modal de pagamento

@@ -32,9 +32,13 @@ interface Props {
   service: any;
   onPress: () => void;
   onStatusChange: (id: number, status: string) => void;
+  /** Chamado quando o agendamento é concluído via swipe — abre modal de pagamento */
+  onCompleted?: (appointment: any) => void;
+  /** Se true, exibe badge de pagamento pendente no card */
+  paymentPending?: boolean;
 }
 
-export function SwipeableAppointmentCard({ appointment, client, service, onPress, onStatusChange }: Props) {
+export function SwipeableAppointmentCard({ appointment, client, service, onPress, onStatusChange, onCompleted, paymentPending }: Props) {
   const swipeRef = useRef<Swipeable>(null);
   const status = STATUS_CONFIG[appointment.status] ?? { label: appointment.status, color: "#888880" };
   const nextPositive = getNextPositiveStatus(appointment.status);
@@ -46,6 +50,11 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
     }
     swipeRef.current?.close();
     onStatusChange(appointment.id, nextPositive);
+    // Se está concluindo (confirmed → completed), abre modal de pagamento
+    if (nextPositive === "completed" && onCompleted) {
+      // Pequeno delay para o status ser atualizado antes de abrir o modal
+      setTimeout(() => onCompleted(appointment), 400);
+    }
   }
 
   function handleSwipeLeft(action: "cancelled" | "no_show") {
@@ -114,11 +123,23 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
           <Text style={styles.aptClientName}>{client?.name ?? "Cliente não encontrado"}</Text>
           <Text style={styles.aptServiceName}>{service?.name ?? "Serviço"}</Text>
           {appointment.notes ? <Text style={styles.aptNotes}>{appointment.notes}</Text> : null}
-          {!isTerminal && (
-            <Text style={styles.swipeHint}>
-              {nextPositive ? `← Cancelar  |  ${STATUS_CONFIG[nextPositive].label} →` : "← Cancelar / Não veio"}
-            </Text>
-          )}
+          <View style={styles.bottomRow}>
+            {!isTerminal && (
+              <Text style={styles.swipeHint}>
+                {nextPositive ? `← Cancelar  |  ${STATUS_CONFIG[nextPositive].label} →` : "← Cancelar / Não veio"}
+              </Text>
+            )}
+            {appointment.status === "completed" && paymentPending && (
+              <View style={styles.paymentBadge}>
+                <Text style={styles.paymentBadgeText}>⏳ Pagamento pendente</Text>
+              </View>
+            )}
+            {appointment.status === "completed" && !paymentPending && (
+              <View style={[styles.paymentBadge, styles.paymentBadgePaid]}>
+                <Text style={[styles.paymentBadgeText, { color: "#32BCAD" }]}>✓ Pago</Text>
+              </View>
+            )}
+          </View>
         </View>
         <IconSymbol name="chevron.right" size={16} color="#555" />
       </Pressable>
@@ -178,4 +199,18 @@ const styles = StyleSheet.create({
   swipeNoShow: { backgroundColor: "#FF9800" },
   swipeCancel: { backgroundColor: "#F44336" },
   swipeLabel: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  bottomRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 4 },
+  paymentBadge: {
+    backgroundColor: "#F59E0B22",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: "#F59E0B44",
+  },
+  paymentBadgePaid: {
+    backgroundColor: "#32BCAD22",
+    borderColor: "#32BCAD44",
+  },
+  paymentBadgeText: { fontSize: 10, fontWeight: "700", color: "#F59E0B" },
 });

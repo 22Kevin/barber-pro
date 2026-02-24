@@ -18,6 +18,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { AdminHeader } from "@/components/admin-header";
 import { SwipeableAppointmentCard } from "@/components/swipeable-appointment-card";
+import { PaymentStatusModal } from "@/components/payment-status-modal";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { trpc } from "@/lib/trpc";
 import { scheduleAppointmentReminder, cancelAppointmentReminder } from "@/lib/use-notifications";
@@ -63,6 +64,10 @@ export default function AgendaScreen() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentAppointment, setPaymentAppointment] = useState<any>(null);
+  // Mapa de status de pagamento por appointmentId (true = pendente)
+  const [paymentPendingMap, setPaymentPendingMap] = useState<Record<number, boolean>>({});
 
   // Form state
   const [clientSearch, setClientSearch] = useState("");
@@ -152,6 +157,22 @@ export default function AgendaScreen() {
       { text: "Cancelar", style: "cancel" },
       { text: "Confirmar", onPress: () => updateMutation.mutate({ id, status: status as any }) },
     ]);
+  }
+
+  function handleAppointmentCompleted(apt: any) {
+    const client = (clientsQuery.data ?? []).find(c => c.id === apt.clientId);
+    const service = (servicesQuery.data ?? []).find(s => s.id === apt.serviceId);
+    setPaymentAppointment({
+      ...apt,
+      clientName: client?.name,
+      clientPhone: client?.phone,
+      serviceName: service?.name ?? "Serviço",
+      servicePrice: service?.price ?? "0",
+      serviceId: apt.serviceId,
+    });
+    setShowPaymentModal(true);
+    // Marca como pendente até confirmar
+    setPaymentPendingMap(prev => ({ ...prev, [apt.id]: true }));
   }
 
   // Calendar
@@ -268,13 +289,32 @@ export default function AgendaScreen() {
               const client = (clientsQuery.data ?? []).find(c => c.id === apt.clientId);
               const service = (servicesQuery.data ?? []).find(s => s.id === apt.serviceId);
               return (
-                <SwipeableAppointmentCard
+<SwipeableAppointmentCard
                   key={apt.id}
                   appointment={apt}
                   client={client}
                   service={service}
-                  onPress={() => { setSelectedAppointment({ ...apt, client, service }); setShowDetailModal(true); }}
+                  onPress={() => {
+                    if (apt.status === "completed") {
+                      // Ao tocar num card concluído, abre o modal de pagamento
+                      const svc = (servicesQuery.data ?? []).find(s => s.id === apt.serviceId);
+                      setPaymentAppointment({
+                        ...apt,
+                        clientName: client?.name,
+                        clientPhone: client?.phone,
+                        serviceName: svc?.name ?? "Serviço",
+                        servicePrice: svc?.price ?? "0",
+                        serviceId: apt.serviceId,
+                      });
+                      setShowPaymentModal(true);
+                    } else {
+                      setSelectedAppointment({ ...apt, client, service });
+                      setShowDetailModal(true);
+                    }
+                  }}
                   onStatusChange={handleStatusChange}
+                  onCompleted={handleAppointmentCompleted}
+                  paymentPending={apt.status === "completed" ? (paymentPendingMap[apt.id] ?? true) : undefined}
                 />
               );
             })}
@@ -469,6 +509,20 @@ export default function AgendaScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de Pagamento */}
+      <PaymentStatusModal
+        visible={showPaymentModal}
+        appointment={paymentAppointment}
+        onClose={() => setShowPaymentModal(false)}
+        onPaymentRegistered={() => {
+          if (paymentAppointment) {
+            setPaymentPendingMap(prev => ({ ...prev, [paymentAppointment.id]: false }));
+          }
+          utils.appointments.byDate.invalidate();
+          utils.dashboard.stats.invalidate();
+        }}
+      />
     </ScreenContainer>
   );
 }

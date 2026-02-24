@@ -249,6 +249,70 @@ export const appRouter = router({
     update: publicProcedure
       .input(z.object({ id: z.number(), status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).optional(), notes: z.string().optional().nullable(), reminderSent: z.boolean().optional(), whatsappConfirmationSent: z.boolean().optional() }))
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateAppointment(id, data as any); }),
+    getPaymentStatus: publicProcedure
+      .input(z.object({ appointmentId: z.number() }))
+      .query(async ({ input }) => {
+        // Busca a venda vinculada ao agendamento
+        const today = new Date();
+        const startDate = new Date(today);
+        startDate.setFullYear(today.getFullYear() - 5);
+        const endDate = new Date(today);
+        endDate.setFullYear(today.getFullYear() + 1);
+        const allSales = await db.getSalesByDateRange(
+          startDate.toISOString().split("T")[0],
+          endDate.toISOString().split("T")[0]
+        );
+        const sale = (allSales as any[]).find((s) => s.appointmentId === input.appointmentId) ?? null;
+        if (!sale) return { paid: false, sale: null };
+        return {
+          paid: sale.paymentStatus === "paid",
+          sale: {
+            id: sale.id,
+            paymentStatus: sale.paymentStatus,
+            paymentMethod: sale.paymentMethod,
+            total: sale.total,
+            createdAt: sale.createdAt,
+          },
+        };
+      }),
+    registerPayment: publicProcedure
+      .input(z.object({
+        appointmentId: z.number(),
+        barberId: z.number(),
+        clientId: z.number().optional().nullable(),
+        serviceId: z.number(),
+        serviceName: z.string(),
+        servicePrice: z.number(),
+        paymentMethod: z.enum(["cash", "credit_card", "debit_card", "pix", "mercado_pago", "other"]),
+        notes: z.string().optional().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        const total = input.servicePrice.toFixed(2);
+        const saleId = await db.createSale(
+          {
+            clientId: input.clientId ?? null,
+            barberId: input.barberId,
+            appointmentId: input.appointmentId,
+            subtotal: total,
+            discount: "0",
+            total,
+            paymentMethod: input.paymentMethod,
+            paymentStatus: "paid",
+            notes: input.notes ?? null,
+          } as any,
+          [
+            {
+              itemType: "service",
+              itemId: input.serviceId,
+              itemName: input.serviceName,
+              quantity: 1,
+              unitPrice: total,
+              total,
+            },
+          ]
+        );
+        return { saleId };
+      }),
     blockedSlots: router({
       get: publicProcedure.input(z.object({ barberId: z.number(), date: z.string() })).query(({ input }) => db.getBlockedSlots(input.barberId, input.date)),
       create: publicProcedure.input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), reason: z.string().optional() })).mutation(({ input }) => db.createBlockedSlot(input)),
