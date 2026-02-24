@@ -330,3 +330,7 @@
 - [x] Campo "Descrição" na venda substituído por seletor de serviços/produtos cadastrados (com preço automático)
 - [x] Corrigir teclado cobrindo campos no login do painel administrativo (KeyboardAvoidingView + ScrollView)
 - [x] Corrigir teclado no setup.tsx (Primeiro acesso)
+
+## Bug v3.0.1
+
+- [x] Erro na aba "Receitas" dentro do Financeiro — createdAt retornado como Date pelo Drizzle ORM, corrigido com new Date(sale.createdAt).toLocaleDateString("pt-BR")

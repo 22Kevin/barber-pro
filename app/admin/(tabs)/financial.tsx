@@ -259,7 +259,7 @@ export default function FinancialScreen() {
                     <Text style={styles.transactionDesc}>{sale.notes ?? "Venda"}</Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                       <Text style={styles.transactionMeta}>
-                        {PAYMENT_METHODS.find(p => p.key === sale.paymentMethod)?.label ?? sale.paymentMethod} · {sale.createdAt?.split("T")[0] ?? "—"}
+                        {PAYMENT_METHODS.find(p => p.key === sale.paymentMethod)?.label ?? sale.paymentMethod} · {sale.createdAt ? new Date(sale.createdAt).toLocaleDateString("pt-BR") : "—"}
                       </Text>
                       {sale.paymentMethod === "mercado_pago" && (
                         <View style={{ backgroundColor: sale.paymentStatus === "paid" ? "#009EE322" : "#F5A62322", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
