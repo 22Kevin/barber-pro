@@ -129,16 +129,18 @@ export default function PromotionsScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
-      <AdminHeader title="Promoções e Notícias" />
-
-      {/* FAB */}
-      <Pressable
-        style={({ pressed }) => [styles.fab, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
-        onPress={() => setModalVisible(true)}
-      >
-        <IconSymbol name="megaphone.fill" size={22} color="#fff" />
-        <Text style={styles.fabText}>Nova Promoção</Text>
-      </Pressable>
+      <AdminHeader
+        title="Promoções e Notícias"
+        rightElement={
+          <Pressable
+            style={({ pressed }) => [styles.headerBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
+            onPress={() => setModalVisible(true)}
+          >
+            <IconSymbol name="megaphone.fill" size={18} color="#fff" />
+            <Text style={styles.headerBtnText}>Nova</Text>
+          </Pressable>
+        }
+      />
 
       {listQuery.isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 60 }} />
@@ -250,24 +252,15 @@ export default function PromotionsScreen() {
 }
 
 const styles = StyleSheet.create({
-  fab: {
-    position: "absolute",
-    top: 12,
-    right: 16,
-    zIndex: 10,
+  headerBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
-  fabText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  headerBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 100, gap: 12 },
   emptyTitle: { fontSize: 18, fontWeight: "700" },
   emptySubtitle: { fontSize: 14, textAlign: "center", paddingHorizontal: 40 },

@@ -460,3 +460,8 @@
 ## Bug v3.5.1
 
 - [x] Corrigir menu rodapé admin: exibir apenas 4 abas (Dashboard, Agenda, Clientes, Financeiro) — demais telas só no drawer
+
+## Bug v3.5.2
+
+- [x] Corrigir botão "Nova Promoção" invadindo safe area do topo (promotions.tsx) — movido para rightElement do AdminHeader
+- [x] Auditar e corrigir todos os botões flutuantes nas telas admin que não respeitam useSafeAreaInsets — demais telas estão corretas
