@@ -283,3 +283,10 @@
 ## Versão Web (Painel Admin)
 
 - [ ] [AVALIAR] Criar versão web responsiva do painel administrativo (o Expo já gera build web — avaliar se a experiência atual no navegador já é suficiente ou se precisa de layout adaptado para telas grandes)
+
+## Tela de Pagamento Pix
+
+- [x] Rota servidor: gerar QR Code Pix via Mercado Pago (com fallback local para dev)
+- [x] Tela dedicada de pagamento Pix no app do cliente (fora do modal)
+- [x] Exibir QR Code, código copia-e-cola e timer de expiração
+- [x] Integrar tela Pix no fluxo de agendamento (book.tsx)

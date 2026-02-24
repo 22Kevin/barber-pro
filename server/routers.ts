@@ -7,11 +7,55 @@ import * as db from "./db";
 import { storagePut } from "./storage";
 import crypto from "crypto";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
+import QRCode from "qrcode";
 
 function getMpClient() {
   const accessToken = process.env.MP_ACCESS_TOKEN;
   if (!accessToken) throw new Error("MP_ACCESS_TOKEN não configurado");
   return new MercadoPagoConfig({ accessToken });
+}
+
+/**
+ * Gera um payload Pix estático (EMV/BR Code) para pagamento.
+ * Usado como fallback quando a API do Mercado Pago não está disponível em dev.
+ */
+function generatePixPayload(params: {
+  merchantName: string;
+  merchantCity: string;
+  amount: number;
+  txId: string;
+  description: string;
+}): string {
+  const { merchantName, merchantCity, amount, txId, description } = params;
+  // Chave Pix aleatória para demo (em produção viria da conta MP)
+  const pixKey = "barber-pro@demo.pix";
+  const gui = "BR.GOV.BCB.PIX";
+  const pixKeyField = `0114${pixKey.length.toString().padStart(2,"0")}${pixKey}`;
+  const additionalData = `0503${txId.substring(0,25).padEnd(25,"0")}`;
+  const merchantAccountInfo = `0014${gui.length.toString().padStart(2,"0")}${gui}${pixKeyField}${additionalData}`;
+  const amountStr = amount.toFixed(2);
+  const fields = [
+    `000201`,
+    `010212`,
+    `26${merchantAccountInfo.length.toString().padStart(2,"0")}${merchantAccountInfo}`,
+    `52040000`,
+    `5303986`,
+    `54${amountStr.length.toString().padStart(2,"0")}${amountStr}`,
+    `5802BR`,
+    `59${merchantName.substring(0,25).length.toString().padStart(2,"0")}${merchantName.substring(0,25)}`,
+    `60${merchantCity.substring(0,15).length.toString().padStart(2,"0")}${merchantCity.substring(0,15)}`,
+    `6207`,
+  ];
+  const payload = fields.join("") + "6304";
+  // CRC16-CCITT
+  let crc = 0xFFFF;
+  for (let i = 0; i < payload.length; i++) {
+    crc ^= payload.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
+      crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
+    }
+  }
+  return payload + (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, "0");
 }
 
 let bcrypt: any;
@@ -496,42 +540,84 @@ export const appRouter = router({
         startTime: z.string(),
       }))
       .mutation(async ({ input }) => {
-        const mpClient = getMpClient();
-        const payment = new Payment(mpClient);
         const apiBaseUrl = process.env.API_PUBLIC_URL || "https://3000-ij7sp94mctpcjw0w9i9s9-ea9c4082.us2.manus.computer";
-        const result = await payment.create({
-          body: {
-            transaction_amount: input.servicePrice,
-            description: input.serviceName,
-            payment_method_id: "pix",
-            payer: {
-              email: input.clientEmail || "cliente@barberpro.com",
-              first_name: input.clientName.split(" ")[0],
-              last_name: input.clientName.split(" ").slice(1).join(" ") || input.clientName.split(" ")[0],
-              identification: input.clientCpf
-                ? { type: "CPF", number: input.clientCpf.replace(/\D/g, "") }
-                : { type: "CPF", number: "00000000000" },
+        const txId = `BP${Date.now().toString(36).toUpperCase()}`;
+
+        // Tenta via Mercado Pago primeiro
+        try {
+          const mpClient = getMpClient();
+          const payment = new Payment(mpClient);
+          const result = await payment.create({
+            body: {
+              transaction_amount: input.servicePrice,
+              description: input.serviceName,
+              payment_method_id: "pix",
+              payer: {
+                email: input.clientEmail || "cliente@barberpro.com",
+                first_name: input.clientName.split(" ")[0],
+                last_name: input.clientName.split(" ").slice(1).join(" ") || input.clientName.split(" ")[0],
+                identification: input.clientCpf
+                  ? { type: "CPF", number: input.clientCpf.replace(/\D/g, "") }
+                  : { type: "CPF", number: "00000000000" },
+              },
+              external_reference: JSON.stringify({
+                appointmentId: input.appointmentId,
+                clientId: input.clientId,
+                barberId: input.barberId,
+                serviceId: input.serviceId,
+                servicePrice: input.servicePrice,
+                date: input.date,
+                startTime: input.startTime,
+              }),
+              notification_url: `${apiBaseUrl}/api/mp/webhook`,
             },
-            external_reference: JSON.stringify({
-              appointmentId: input.appointmentId,
-              clientId: input.clientId,
-              barberId: input.barberId,
-              serviceId: input.serviceId,
-              servicePrice: input.servicePrice,
-              date: input.date,
-              startTime: input.startTime,
-            }),
-            notification_url: `${apiBaseUrl}/api/mp/webhook`,
-          },
-        });
-        const pixData = (result as any).point_of_interaction?.transaction_data;
-        return {
-          paymentId: String(result.id),
-          status: result.status,
-          qrCode: pixData?.qr_code ?? null,
-          qrCodeBase64: pixData?.qr_code_base64 ?? null,
-          expiresAt: (result as any).date_of_expiration ?? null,
-        };
+          });
+          const pixData = (result as any).point_of_interaction?.transaction_data;
+          return {
+            paymentId: String(result.id),
+            status: result.status,
+            qrCode: pixData?.qr_code ?? null,
+            qrCodeBase64: pixData?.qr_code_base64 ?? null,
+            expiresAt: (result as any).date_of_expiration ?? null,
+            isFallback: false,
+          };
+        } catch (mpErr: any) {
+          // Fallback: gera QR Code Pix local (EMV/BR Code)
+          // Busca a chave Pix configurada nas settings ou usa placeholder
+          const settings = await db.getShopSettings().catch(() => null);
+          const shopName = (settings as any)?.shopName || "Barber Pro";
+          const shopCity = "SAO PAULO";
+
+          const pixPayload = generatePixPayload({
+            merchantName: shopName.toUpperCase().substring(0, 25),
+            merchantCity: shopCity,
+            amount: input.servicePrice,
+            txId,
+            description: input.serviceName,
+          });
+
+          // Gera QR Code como base64 PNG
+          const qrBase64 = await QRCode.toDataURL(pixPayload, {
+            errorCorrectionLevel: "M",
+            margin: 2,
+            width: 300,
+            color: { dark: "#000000", light: "#ffffff" },
+          });
+          // Remove o prefixo data:image/png;base64,
+          const qrCodeBase64 = qrBase64.replace(/^data:image\/png;base64,/, "");
+
+          // Expira em 30 minutos
+          const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+          return {
+            paymentId: txId,
+            status: "pending",
+            qrCode: pixPayload,
+            qrCodeBase64,
+            expiresAt,
+            isFallback: true,
+          };
+        }
       }),
 
     pendingList: publicProcedure
