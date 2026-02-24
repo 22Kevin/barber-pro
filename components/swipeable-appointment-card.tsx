@@ -6,6 +6,7 @@ import {
 } from "react-native-gesture-handler";
 import * as Haptics from "expo-haptics";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { cancelReviewNotification } from "@/lib/use-notifications";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   scheduled:   { label: "Agendado",       color: "#C9A84C" },
@@ -62,6 +63,10 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => null);
     }
     swipeRef.current?.close();
+    // Cancela a notificação de avaliação se o agendamento for cancelado
+    if (action === "cancelled") {
+      cancelReviewNotification(appointment.id).catch(() => null);
+    }
     onStatusChange(appointment.id, action);
   }
 

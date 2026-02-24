@@ -312,3 +312,13 @@
 - [x] Botão "Exportar PDF" na tela de Relatórios do admin
 - [x] Navegação híbrida no admin: 4 abas no rodapé (Dashboard, Agenda, Clientes, Financeiro)
 - [x] Drawer lateral (≡) no cabeçalho com: Serviços, Produtos, Fidelidade, Relatórios, Configurações
+
+## Melhorias v2.9
+
+- [x] Seletor de tema claro/escuro nas configurações do cliente (toggle: Claro / Escuro / Seguir sistema)
+- [x] Seletor de tema claro/escuro nas configurações do admin (mesmo padrão)
+- [x] Persistir preferência de tema com AsyncStorage
+- [x] Compartilhar agendamento confirmado no WhatsApp (card com data, horário, serviço e barbeiro)
+- [x] Botão "Compartilhar" na tela de confirmação de agendamento (book.tsx)
+- [x] Notificação push de avaliação 2h após o horário do atendimento (agendada ao confirmar agendamento)
+- [x] Cancelamento da notificação de avaliação ao cancelar agendamento via swipe

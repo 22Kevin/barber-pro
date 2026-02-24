@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Appearance, View, useColorScheme as useSystemColorScheme } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { colorScheme as nativewindColorScheme, vars } from "nativewind";
-
 import { SchemeColors, type ColorScheme } from "@/constants/theme";
 
 type ThemeContextValue = {
@@ -34,6 +34,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applyScheme(scheme);
   }, [applyScheme]);
 
+  // Carregar preferência salva no startup
+  useEffect(() => {
+    AsyncStorage.getItem("@theme_preference").then((saved) => {
+      if (saved === "light" || saved === "dark") {
+        setColorSchemeState(saved);
+        applyScheme(saved);
+      } else {
+        applyScheme(systemScheme);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     applyScheme(colorScheme);
   }, [applyScheme, colorScheme]);
@@ -61,8 +74,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }),
     [colorScheme, setColorScheme],
   );
-  console.log(value, themeVariables)
-
   return (
     <ThemeContext.Provider value={value}>
       <View style={[{ flex: 1 }, themeVariables]}>{children}</View>

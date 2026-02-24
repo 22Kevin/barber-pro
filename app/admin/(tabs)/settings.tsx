@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -22,7 +22,8 @@ import { trpc } from "@/lib/trpc";
 import { SingleImageUploader } from "@/components/media-uploader";
 import { TimePickerModal } from "@/components/time-picker-modal";
 import { AdminHeader } from "@/components/admin-header";
-
+import { useThemeContext } from "@/lib/theme-provider";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 type SettingsTab = "shop" | "barbers" | "hours";
 
 const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
@@ -71,6 +72,29 @@ export default function SettingsScreen() {
   // Time picker para horários de trabalho
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [timePickerTarget, setTimePickerTarget] = useState<{ dayOfWeek: number; field: "start" | "end"; existing: any } | null>(null);
+
+  const { setColorScheme } = useThemeContext();
+  const [themeOption, setThemeOption] = useState<"light" | "dark" | "system">("system");
+
+  useEffect(() => {
+    AsyncStorage.getItem("@theme_preference").then((saved) => {
+      if (saved === "light" || saved === "dark" || saved === "system") {
+        setThemeOption(saved as any);
+      }
+    });
+  }, []);
+
+  async function handleThemeChange(option: "light" | "dark" | "system") {
+    setThemeOption(option);
+    await AsyncStorage.setItem("@theme_preference", option);
+    const { Appearance } = await import("react-native");
+    if (option === "system") {
+      const sys = Appearance.getColorScheme() ?? "light";
+      setColorScheme(sys as any);
+    } else {
+      setColorScheme(option as any);
+    }
+  }
 
   const utils = trpc.useUtils();
 
@@ -387,6 +411,24 @@ export default function SettingsScreen() {
             <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleSaveShop} disabled={updateSettingsMutation.isPending}>
               {updateSettingsMutation.isPending ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>SALVAR CONFIGURAÇÕES</Text>}
             </Pressable>
+
+            <View style={styles.divider} />
+            <Text style={styles.sectionTitle}>Aparência</Text>
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+              {(["light", "dark", "system"] as const).map((opt) => {
+                const labels = { light: "☀️ Claro", dark: "🌙 Escuro", system: "⚙️ Sistema" };
+                const active = themeOption === opt;
+                return (
+                  <Pressable
+                    key={opt}
+                    onPress={() => handleThemeChange(opt)}
+                    style={({ pressed }) => [{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: "center", backgroundColor: active ? "#C9A84C" : "#1A1A1A", borderWidth: 1, borderColor: active ? "#C9A84C" : "#2A2A2A", opacity: pressed ? 0.8 : 1 }]}
+                  >
+                    <Text style={{ color: active ? "#0A0A0A" : "#888880", fontWeight: "600", fontSize: 12 }}>{labels[opt]}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </>
         )}
 

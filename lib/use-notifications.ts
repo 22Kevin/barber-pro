@@ -284,6 +284,67 @@ export async function notifyBarberNewAppointment(
 }
 
 /**
+ * Agenda uma notificação de avaliação pós-atendimento.
+ * Disparada 2 horas após o horário do atendimento, convidando o cliente a avaliar.
+ *
+ * @param appointmentId - ID do agendamento
+ * @param serviceName - Nome do serviço realizado
+ * @param barberName - Nome do barbeiro
+ * @param appointmentDate - Data e horário do início do atendimento
+ */
+export async function scheduleReviewNotification(
+  appointmentId: number,
+  serviceName: string,
+  barberName: string,
+  appointmentDate: Date,
+): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const hasPermission = await requestPermissionsAsync();
+    if (!hasPermission) return;
+
+    // Dispara 2 horas após o horário do atendimento
+    const triggerDate = new Date(appointmentDate.getTime() + 2 * 60 * 60 * 1000);
+
+    // Não agendar se o horário já passou
+    if (triggerDate <= new Date()) return;
+
+    await Notifications.scheduleNotificationAsync({
+      identifier: `review-${appointmentId}`,
+      content: {
+        title: "⭐ Como foi seu atendimento?",
+        body: `Você fez ${serviceName} com ${barberName}. Avalie sua experiência!`,
+        data: {
+          appointmentId,
+          type: "review_request",
+          screen: "/client/(tabs)/history",
+        },
+        sound: "default",
+        ...(Platform.OS === "android" && { color: "#EAB308" }),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: triggerDate,
+      },
+    });
+  } catch (error) {
+    console.warn("[Barber Pro] Erro ao agendar notificação de avaliação:", error);
+  }
+}
+
+/**
+ * Cancela a notificação de avaliação de um agendamento (ex: se o agendamento for cancelado).
+ */
+export async function cancelReviewNotification(appointmentId: number): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    await Notifications.cancelScheduledNotificationAsync(`review-${appointmentId}`);
+  } catch {
+    // Silencioso — pode não existir
+  }
+}
+
+/**
  * Formata a data do agendamento para exibição amigável na notificação.
  * Ex: "14:30 de hoje", "09:00 de amanhã", "15:00 de sex, 28/02"
  */

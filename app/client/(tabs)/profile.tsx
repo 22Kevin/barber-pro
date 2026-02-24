@@ -1,9 +1,11 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { Alert, FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useState, useEffect } from "react";
+import { Alert, Appearance, FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { DatePickerModal } from "@/components/date-picker-modal";
 import { useClientAuth } from "@/lib/client-auth-context";
+import { useThemeContext } from "@/lib/theme-provider";
 import { trpc } from "@/lib/trpc";
 
 type ProfileTab = "points" | "coupons" | "settings";
@@ -188,11 +190,34 @@ function CouponsTab({ clientBirthDate }: { clientBirthDate?: string | null }) {
   );
 }
 
+type ThemeOption = "light" | "dark" | "system";
+
 function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) => void }) {
   const [name, setName] = useState(client.name);
   const [phone, setPhone] = useState(client.phone);
   const [birthDate, setBirthDate] = useState<string | null>(client.birthDate ?? null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [themeOption, setThemeOption] = useState<ThemeOption>("system");
+  const { setColorScheme } = useThemeContext();
+
+  useEffect(() => {
+    AsyncStorage.getItem("@theme_preference").then((saved) => {
+      if (saved === "light" || saved === "dark" || saved === "system") {
+        setThemeOption(saved);
+      }
+    });
+  }, []);
+
+  async function handleThemeChange(option: ThemeOption) {
+    setThemeOption(option);
+    await AsyncStorage.setItem("@theme_preference", option);
+    if (option === "system") {
+      const sys = Appearance.getColorScheme() ?? "light";
+      setColorScheme(sys as any);
+    } else {
+      setColorScheme(option as any);
+    }
+  }
 
   const updateMutation = trpc.clientAuth.updateProfile.useMutation({
     onSuccess: () => {
@@ -208,6 +233,23 @@ function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) 
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+      {/* Seletor de tema */}
+      <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16, marginBottom: 12 }}>Aparência</Text>
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 24 }}>
+        {(["light", "dark", "system"] as ThemeOption[]).map((opt) => {
+          const labels: Record<ThemeOption, string> = { light: "☀️ Claro", dark: "🌙 Escuro", system: "⚙️ Sistema" };
+          const active = themeOption === opt;
+          return (
+            <TouchableOpacity
+              key={opt}
+              onPress={() => handleThemeChange(opt)}
+              style={{ flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: "center", backgroundColor: active ? "#EAB308" : "#111827", borderWidth: 1, borderColor: active ? "#EAB308" : "#374151" }}
+            >
+              <Text style={{ color: active ? "#000" : "#9CA3AF", fontWeight: "600", fontSize: 12 }}>{labels[opt]}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
       <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16, marginBottom: 16 }}>Editar perfil</Text>
       <View style={{ gap: 14 }}>
         {/* Nome */}
