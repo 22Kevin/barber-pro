@@ -56,6 +56,30 @@ const DRAWER_ITEMS: DrawerItem[] = [
     route: "/admin/(tabs)/settings",
     description: "Dados da barbearia e integrações",
   },
+  {
+    label: "Retorno Automático",
+    icon: "bell.badge.fill",
+    route: "/admin/(tabs)/return-messages",
+    description: "Mensagens automáticas pós-serviço",
+  },
+  {
+    label: "Promoções",
+    icon: "megaphone.fill",
+    route: "/admin/(tabs)/promotions",
+    description: "Enviar notificações para clientes",
+  },
+  {
+    label: "Lista de Espera",
+    icon: "person.badge.clock",
+    route: "/admin/(tabs)/waitlist",
+    description: "Clientes aguardando horário",
+  },
+  {
+    label: "Comissões",
+    icon: "chart.bar.fill",
+    route: "/admin/(tabs)/commissions",
+    description: "Controle de comissões por barbeiro",
+  },
 ];
 
 interface AdminDrawerProps {

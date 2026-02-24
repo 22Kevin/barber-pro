@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, like, lte, notInArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   appointments,
@@ -21,6 +21,11 @@ import {
   services,
   shopSettings,
   workingHours,
+  returnMessageConfigs,
+  promotions,
+  waitlist,
+  commissionConfigs,
+  commissionEntries,
   type InsertAppointment,
   type InsertBarber,
   type InsertClient,
@@ -732,6 +737,283 @@ export async function getAllServicesWithMediaAndRatings(activeOnly = false) {
       thumbnailUrl: media.find((m) => m.entityId === s.id)?.url ?? null,
       avgRating,
       reviewCount: svcReviews.length,
+    };
+  });
+}
+
+// ─── Mensagens de Retorno Automáticas ────────────────────────────────────────
+
+export async function listReturnMessageConfigs() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(returnMessageConfigs).orderBy(returnMessageConfigs.serviceId);
+}
+
+export async function upsertReturnMessageConfig(input: {
+  serviceId: number;
+  delayDays: number;
+  messageTemplate: string;
+  isActive: boolean;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select().from(returnMessageConfigs)
+    .where(eq(returnMessageConfigs.serviceId, input.serviceId))
+    .limit(1);
+  if (existing.length > 0) {
+    await db.update(returnMessageConfigs)
+      .set({ delayDays: input.delayDays, messageTemplate: input.messageTemplate, isActive: input.isActive })
+      .where(eq(returnMessageConfigs.serviceId, input.serviceId));
+  } else {
+    await db.insert(returnMessageConfigs).values(input);
+  }
+  return { success: true };
+}
+
+export async function deleteReturnMessageConfig(serviceId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(returnMessageConfigs).where(eq(returnMessageConfigs.serviceId, serviceId));
+  return { success: true };
+}
+
+// ─── Promoções e Notícias ─────────────────────────────────────────────────────
+
+export async function listPromotions() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(promotions).orderBy(desc(promotions.createdAt));
+}
+
+export async function getPromotionRecipientCount(
+  targetAudience: "all" | "inactive_30" | "inactive_60" | "birthday_month"
+): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const now = new Date();
+  if (targetAudience === "all") {
+    const [row] = await db.select({ count: count() }).from(clients).where(eq(clients.isActive, true));
+    return row?.count ?? 0;
+  }
+  if (targetAudience === "inactive_30" || targetAudience === "inactive_60") {
+    const days = targetAudience === "inactive_30" ? 30 : 60;
+    const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const cutoffStr = cutoff.toISOString().split("T")[0];
+    const activeClientIds = await db
+      .selectDistinct({ clientId: appointments.clientId })
+      .from(appointments)
+      .where(gte(appointments.date, cutoffStr));
+    const activeIds = activeClientIds.map((r) => r.clientId);
+    if (activeIds.length === 0) {
+      const [row] = await db.select({ count: count() }).from(clients).where(eq(clients.isActive, true));
+      return row?.count ?? 0;
+    }
+    const [row] = await db.select({ count: count() }).from(clients)
+      .where(and(eq(clients.isActive, true), notInArray(clients.id, activeIds)));
+    return row?.count ?? 0;
+  }
+  if (targetAudience === "birthday_month") {
+    const monthStr = String(now.getMonth() + 1).padStart(2, "0");
+    const [row] = await db.select({ count: count() }).from(clients)
+      .where(and(eq(clients.isActive, true), like(clients.birthDate as any, `%-${monthStr}-%`)));
+    return row?.count ?? 0;
+  }
+  return 0;
+}
+
+export async function createPromotion(input: {
+  title: string;
+  message: string;
+  targetAudience: "all" | "inactive_30" | "inactive_60" | "birthday_month";
+  createdBy: number;
+  recipientCount: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(promotions).values({ ...input, sentAt: new Date() });
+  return { success: true, recipientCount: input.recipientCount };
+}
+
+// ─── Lista de Espera ──────────────────────────────────────────────────────────
+
+export async function listWaitlistByDate(date: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const entries = await db.select().from(waitlist)
+    .where(and(eq(waitlist.date, date), eq(waitlist.status, "waiting")))
+    .orderBy(waitlist.createdAt);
+  if (entries.length === 0) return [];
+  const clientIds = [...new Set(entries.map((e) => e.clientId))];
+  const clientList = await db.select().from(clients).where(inArray(clients.id, clientIds));
+  return entries.map((e) => ({
+    ...e,
+    client: clientList.find((c) => c.id === e.clientId) ?? null,
+  }));
+}
+
+export async function joinWaitlist(input: {
+  clientId: number;
+  date: string;
+  barberId?: number;
+  serviceId?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select().from(waitlist)
+    .where(and(
+      eq(waitlist.clientId, input.clientId),
+      eq(waitlist.date, input.date),
+      eq(waitlist.status, "waiting")
+    ))
+    .limit(1);
+  if (existing.length > 0) return { success: true, alreadyInQueue: true };
+  await db.insert(waitlist).values({ ...input, status: "waiting" });
+  return { success: true, alreadyInQueue: false };
+}
+
+export async function leaveWaitlist(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(waitlist).set({ status: "cancelled" }).where(eq(waitlist.id, id));
+  return { success: true };
+}
+
+export async function getWaitlistEntry(clientId: number, date: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const [entry] = await db.select().from(waitlist)
+    .where(and(
+      eq(waitlist.clientId, clientId),
+      eq(waitlist.date, date),
+      eq(waitlist.status, "waiting")
+    ))
+    .limit(1);
+  return entry ?? null;
+}
+
+export async function notifyWaitlistOnCancellation(date: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const [first] = await db.select().from(waitlist)
+    .where(and(eq(waitlist.date, date), eq(waitlist.status, "waiting")))
+    .orderBy(waitlist.createdAt)
+    .limit(1);
+  if (!first) return null;
+  await db.update(waitlist)
+    .set({ status: "notified", notifiedAt: new Date() })
+    .where(eq(waitlist.id, first.id));
+  return first;
+}
+
+// ─── Comissões ────────────────────────────────────────────────────────────────
+
+export async function getCommissionConfig(barberId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [config] = await db.select().from(commissionConfigs)
+    .where(eq(commissionConfigs.barberId, barberId))
+    .limit(1);
+  return config ?? null;
+}
+
+export async function listCommissionConfigs() {
+  const db = await getDb();
+  if (!db) return [];
+  const configs = await db.select().from(commissionConfigs);
+  const barberList = await db.select().from(barbers).where(eq(barbers.isActive, true));
+  return barberList.map((b) => ({
+    ...b,
+    commissionRate: parseFloat(configs.find((c) => c.barberId === b.id)?.defaultRate ?? "50"),
+    hasConfig: configs.some((c) => c.barberId === b.id),
+  }));
+}
+
+export async function upsertCommissionConfig(input: { barberId: number; defaultRate: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select().from(commissionConfigs)
+    .where(eq(commissionConfigs.barberId, input.barberId))
+    .limit(1);
+  if (existing.length > 0) {
+    await db.update(commissionConfigs)
+      .set({ defaultRate: String(input.defaultRate) })
+      .where(eq(commissionConfigs.barberId, input.barberId));
+  } else {
+    await db.insert(commissionConfigs).values({
+      barberId: input.barberId,
+      defaultRate: String(input.defaultRate),
+    });
+  }
+  return { success: true };
+}
+
+export async function createCommissionEntry(input: {
+  barberId: number;
+  appointmentId?: number;
+  saleId?: number;
+  grossValue: number;
+  commissionRate: number;
+  type: "service" | "product";
+  description?: string;
+  date: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const commissionValue = (input.grossValue * input.commissionRate) / 100;
+  await db.insert(commissionEntries).values({
+    ...input,
+    grossValue: String(input.grossValue),
+    commissionRate: String(input.commissionRate),
+    commissionValue: String(commissionValue),
+  });
+  return { success: true };
+}
+
+export async function listCommissionEntries(input: {
+  barberId?: number;
+  startDate: string;
+  endDate: string;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions: any[] = [
+    gte(commissionEntries.date, input.startDate),
+    lte(commissionEntries.date, input.endDate),
+  ];
+  if (input.barberId) conditions.push(eq(commissionEntries.barberId, input.barberId));
+  const entries = await db.select().from(commissionEntries)
+    .where(and(...conditions))
+    .orderBy(desc(commissionEntries.date));
+  const barberList = await db.select().from(barbers);
+  return entries.map((e) => ({
+    ...e,
+    barberName: barberList.find((b) => b.id === e.barberId)?.name ?? "—",
+    grossValue: parseFloat(e.grossValue),
+    commissionRate: parseFloat(e.commissionRate),
+    commissionValue: parseFloat(e.commissionValue),
+  }));
+}
+
+export async function getCommissionSummary(startDate: string, endDate: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const entries = await db.select().from(commissionEntries)
+    .where(and(gte(commissionEntries.date, startDate), lte(commissionEntries.date, endDate)));
+  const barberList = await db.select().from(barbers).where(eq(barbers.isActive, true));
+  const configs = await db.select().from(commissionConfigs);
+  return barberList.map((b) => {
+    const barberEntries = entries.filter((e) => e.barberId === b.id);
+    const totalGross = barberEntries.reduce((s, e) => s + parseFloat(e.grossValue), 0);
+    const totalCommission = barberEntries.reduce((s, e) => s + parseFloat(e.commissionValue), 0);
+    const rate = parseFloat(configs.find((c) => c.barberId === b.id)?.defaultRate ?? "50");
+    return {
+      barberId: b.id,
+      barberName: b.name,
+      commissionRate: rate,
+      totalGross,
+      totalCommission,
+      totalNet: totalGross - totalCommission,
+      entriesCount: barberEntries.length,
     };
   });
 }

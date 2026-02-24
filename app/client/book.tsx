@@ -28,6 +28,53 @@ function formatDate(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function WaitlistButton({ clientId, date }: { clientId: number; date: string }) {
+  const entryQuery = trpc.waitlist.myEntry.useQuery({ clientId, date });
+  const joinMutation = trpc.waitlist.join.useMutation({
+    onSuccess: (data) => {
+      if (data.alreadyInQueue) {
+        Alert.alert("Já na fila", "Você já está na lista de espera para este dia.");
+      } else {
+        Alert.alert("Na fila! 🎉", "Você entrou na lista de espera. Te avisaremos assim que um horário abrir.");
+      }
+      entryQuery.refetch();
+    },
+  });
+  const leaveMutation = trpc.waitlist.leave.useMutation({
+    onSuccess: () => entryQuery.refetch(),
+  });
+
+  const isInQueue = !!entryQuery.data;
+
+  if (isInQueue) {
+    return (
+      <View style={{ alignItems: "center", gap: 8 }}>
+        <View style={{ backgroundColor: "#1A2E1A", borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: "#4ADE80", flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text style={{ fontSize: 16 }}>✅</Text>
+          <Text style={{ color: "#4ADE80", fontWeight: "700", fontSize: 14 }}>Você está na lista de espera</Text>
+        </View>
+        <TouchableOpacity onPress={() => entryQuery.data && leaveMutation.mutate({ id: entryQuery.data.id })}>
+          <Text style={{ color: "#6B7280", fontSize: 12 }}>Sair da fila</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      onPress={() => joinMutation.mutate({ clientId, date })}
+      disabled={joinMutation.isPending}
+      style={{ backgroundColor: "#1A1200", borderRadius: 14, paddingHorizontal: 20, paddingVertical: 14, borderWidth: 1, borderColor: "#EAB308", flexDirection: "row", alignItems: "center", gap: 10 }}
+    >
+      <Text style={{ fontSize: 20 }}>🔔</Text>
+      <View>
+        <Text style={{ color: "#EAB308", fontWeight: "700", fontSize: 14 }}>Entrar na lista de espera</Text>
+        <Text style={{ color: "#9CA3AF", fontSize: 12, marginTop: 2 }}>Te avisamos se abrir um horário</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export default function BookScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ serviceId?: string }>();
@@ -474,7 +521,11 @@ export default function BookScreen() {
             ) : slotsQuery.data?.length === 0 ? (
               <View style={{ alignItems: "center", paddingVertical: 40 }}>
                 <Text style={{ fontSize: 40, marginBottom: 12 }}>😔</Text>
-                <Text style={{ color: "#9CA3AF", fontSize: 16, textAlign: "center" }}>Nenhum horário disponível nesta data. Tente outro dia.</Text>
+                <Text style={{ color: "#9CA3AF", fontSize: 16, textAlign: "center", marginBottom: 8 }}>Nenhum horário disponível nesta data.</Text>
+                <Text style={{ color: "#6B7280", fontSize: 13, textAlign: "center", marginBottom: 20 }}>Quer ser avisado se abrir um horário?</Text>
+                {isAuthenticated && client && selectedDate && (
+                  <WaitlistButton clientId={client.id} date={formatDate(selectedDate)} />
+                )}
                 <TouchableOpacity onPress={() => setStep("date")} style={{ marginTop: 16 }}>
                   <Text style={{ color: "#EAB308" }}>← Escolher outra data</Text>
                 </TouchableOpacity>

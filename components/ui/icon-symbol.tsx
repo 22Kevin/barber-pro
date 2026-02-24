@@ -84,6 +84,17 @@ const MAPPING = {
   "power": "power-settings-new",
   "photo.on.rectangle": "photo-library",
   "mappin": "location-on",
+
+  // Novas funcionalidades
+  "bell.badge.fill": "notifications-active",
+  "megaphone.fill": "campaign",
+  "megaphone": "campaign",
+  "person.badge.clock": "person-pin-circle",
+  "person.3.fill": "groups",
+  "clock.badge.exclamationmark": "schedule",
+  "clock.badge.xmark": "event-busy",
+  "checkmark.circle": "check-circle-outline",
+  "chart.bar": "bar-chart",
 } as unknown as IconMapping;
 
 export function IconSymbol({

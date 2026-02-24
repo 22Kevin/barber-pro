@@ -970,5 +970,108 @@ export const appRouter = router({
       return { pdfBase64: pdfBuffer.toString("base64") };
     }),
   }),
+
+  // ─── Mensagens de Retorno Automáticas ────────────────────────────────────────
+  returnMessages: router({
+    list: publicProcedure.query(async () => {
+      return db.listReturnMessageConfigs();
+    }),
+    upsert: publicProcedure
+      .input(z.object({
+        serviceId: z.number(),
+        delayDays: z.number().min(1).max(365),
+        messageTemplate: z.string().min(1),
+        isActive: z.boolean(),
+      }))
+      .mutation(async ({ input }) => {
+        return db.upsertReturnMessageConfig(input);
+      }),
+    delete: publicProcedure
+      .input(z.object({ serviceId: z.number() }))
+      .mutation(async ({ input }) => {
+        return db.deleteReturnMessageConfig(input.serviceId);
+      }),
+  }),
+
+  // ─── Promoções e Notícias ─────────────────────────────────────────────────────
+  promotions: router({
+    list: publicProcedure.query(async () => {
+      return db.listPromotions();
+    }),
+    send: publicProcedure
+      .input(z.object({
+        title: z.string().min(1),
+        message: z.string().min(1),
+        targetAudience: z.enum(["all", "inactive_30", "inactive_60", "birthday_month"]),
+        createdBy: z.number(),
+      }))
+      .mutation(async ({ input }) => {
+        const count = await db.getPromotionRecipientCount(input.targetAudience);
+        return db.createPromotion({ ...input, recipientCount: count });
+      }),
+  }),
+
+  // ─── Lista de Espera ──────────────────────────────────────────────────────────
+  waitlist: router({
+    listByDate: publicProcedure
+      .input(z.object({ date: z.string() }))
+      .query(async ({ input }) => {
+        return db.listWaitlistByDate(input.date);
+      }),
+    join: publicProcedure
+      .input(z.object({
+        clientId: z.number(),
+        date: z.string(),
+        barberId: z.number().optional(),
+        serviceId: z.number().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        return db.joinWaitlist(input);
+      }),
+    leave: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        return db.leaveWaitlist(input.id);
+      }),
+    myEntry: publicProcedure
+      .input(z.object({ clientId: z.number(), date: z.string() }))
+      .query(async ({ input }) => {
+        return db.getWaitlistEntry(input.clientId, input.date);
+      }),
+  }),
+
+  // ─── Comissões ───────────────────────────────────────────────────────────────
+  commissions: router({
+    getConfig: publicProcedure
+      .input(z.object({ barberId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getCommissionConfig(input.barberId);
+      }),
+    listConfigs: publicProcedure.query(async () => {
+      return db.listCommissionConfigs();
+    }),
+    saveConfig: publicProcedure
+      .input(z.object({
+        barberId: z.number(),
+        defaultRate: z.number().min(0).max(100),
+      }))
+      .mutation(async ({ input }) => {
+        return db.upsertCommissionConfig(input);
+      }),
+    listEntries: publicProcedure
+      .input(z.object({
+        barberId: z.number().optional(),
+        startDate: z.string(),
+        endDate: z.string(),
+      }))
+      .query(async ({ input }) => {
+        return db.listCommissionEntries(input);
+      }),
+    summary: publicProcedure
+      .input(z.object({ startDate: z.string(), endDate: z.string() }))
+      .query(async ({ input }) => {
+        return db.getCommissionSummary(input.startDate, input.endDate);
+      }),
+  }),
 });
 export type AppRouter = typeof appRouter;

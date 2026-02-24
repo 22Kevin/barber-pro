@@ -50,6 +50,13 @@
       "when": 1771940653615,
       "tag": "0006_strange_lady_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1771963655156,
+      "tag": "0007_nostalgic_proudstar",
+      "breakpoints": true
     }
   ]
 }

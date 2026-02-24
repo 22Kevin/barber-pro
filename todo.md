@@ -378,3 +378,34 @@
 - [x] Rota tRPC `services.listWithMediaAndRatings` que retorna thumbnail + avgRating + reviewCount por serviço
 - [x] Estrelas de avaliação (★) nos cards de serviços da Home (média e contagem de avaliações)
 - [x] Texto "Sem avaliações" para serviços sem reviews cadastradas
+
+## Novas Funcionalidades v3.4 — Paridade AppBarber + Comissões
+
+### Mensagens de Retorno Automáticas
+- [x] Tabela `return_messages` no banco (serviceId, delayDays, messageTemplate, isActive)
+- [x] Rota admin para configurar mensagem de retorno por serviço
+- [x] Job no servidor: ao concluir agendamento, agendar push de retorno com delay configurado
+- [x] Tela admin: "Mensagens de Retorno" — lista de serviços com configuração de dias e mensagem
+- [x] Cancelar push agendado se cliente reagendar antes do prazo
+
+### Envio de Promoções e Notícias
+- [x] Tabela `promotions` no banco (title, message, targetAudience, sentAt, recipientCount)
+- [x] Rota admin para criar e disparar promoção para público segmentado
+- [x] Segmentos: todos, clientes inativos há X dias, aniversariantes do mês
+- [x] Tela admin: "Promoções" — formulário de criação + histórico de envios com métricas
+- [x] Tela cliente: notificação push recebida abre modal com detalhes da promoção
+
+### Lista de Espera Automática
+- [x] Tabela `waitlist` no banco (clientId, barberId, date, serviceId, notifiedAt)
+- [x] Rota cliente para entrar/sair da lista de espera de um dia
+- [x] Trigger no servidor: ao cancelar agendamento, notificar próximo da fila
+- [x] Tela cliente: botão "Entrar na lista de espera" quando não há horário disponível
+- [x] Tela admin: painel de lista de espera por dia e barbeiro
+
+### Controle de Comissões por Barbeiro
+- [x] Campo `commissionRate` (%) na tabela de barbeiros
+- [x] Tabela `commission_entries` (barberId, appointmentId, saleId, grossValue, commissionValue, date)
+- [x] Cálculo automático de comissão ao concluir agendamento ou venda
+- [x] Tela admin: "Comissões" — relatório por barbeiro e período com total bruto, comissão e líquido
+- [x] Tela admin: configuração de % de comissão por barbeiro (pode ser diferente por serviço)
+- [x] Tela barbeiro (app): visualização das próprias comissões do período

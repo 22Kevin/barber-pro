@@ -287,6 +287,66 @@ export const reviews = mysqlTable("reviews", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+// ─── Mensagens de Retorno Automáticas ───────────────────────────────────────
+export const returnMessageConfigs = mysqlTable("return_message_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  serviceId: int("serviceId").notNull().unique(),
+  delayDays: int("delayDays").notNull().default(21),
+  messageTemplate: text("messageTemplate").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+// ─── Promoções e Notícias ─────────────────────────────────────────────────────
+export const promotions = mysqlTable("promotions", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  targetAudience: mysqlEnum("targetAudience", ["all", "inactive_30", "inactive_60", "birthday_month"]).notNull().default("all"),
+  sentAt: timestamp("sentAt"),
+  recipientCount: int("recipientCount").default(0).notNull(),
+  createdBy: int("createdBy").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// ─── Lista de Espera ──────────────────────────────────────────────────────────
+export const waitlist = mysqlTable("waitlist", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: int("clientId").notNull(),
+  barberId: int("barberId"),
+  serviceId: int("serviceId"),
+  date: varchar("date", { length: 10 }).notNull(),
+  notifiedAt: timestamp("notifiedAt"),
+  status: mysqlEnum("status", ["waiting", "notified", "booked", "cancelled"]).default("waiting").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// ─── Configuração de Comissões por Barbeiro ───────────────────────────────────
+export const commissionConfigs = mysqlTable("commission_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  barberId: int("barberId").notNull().unique(),
+  defaultRate: decimal("defaultRate", { precision: 5, scale: 2 }).notNull().default("50.00"), // % padrão
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+// ─── Entradas de Comissão ─────────────────────────────────────────────────────
+export const commissionEntries = mysqlTable("commission_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  barberId: int("barberId").notNull(),
+  appointmentId: int("appointmentId"),
+  saleId: int("saleId"),
+  grossValue: decimal("grossValue", { precision: 10, scale: 2 }).notNull(),
+  commissionRate: decimal("commissionRate", { precision: 5, scale: 2 }).notNull(),
+  commissionValue: decimal("commissionValue", { precision: 10, scale: 2 }).notNull(),
+  type: mysqlEnum("type", ["service", "product"]).notNull().default("service"),
+  description: varchar("description", { length: 255 }),
+  date: varchar("date", { length: 10 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 // ─── Tipos Exportados ─────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -316,3 +376,8 @@ export type Category = typeof categories.$inferSelect;
 export type ClientAccount = typeof clientAccounts.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type ReturnMessageConfig = typeof returnMessageConfigs.$inferSelect;
+export type Promotion = typeof promotions.$inferSelect;
+export type WaitlistEntry = typeof waitlist.$inferSelect;
+export type CommissionConfig = typeof commissionConfigs.$inferSelect;
+export type CommissionEntry = typeof commissionEntries.$inferSelect;
