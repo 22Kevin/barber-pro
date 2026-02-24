@@ -709,3 +709,29 @@ export async function consumePasswordResetToken(email: string, token: string): P
     .where(and(eq(passwordResetTokens.email, email), eq(passwordResetTokens.token, token)));
   return true;
 }
+
+export async function getAllServicesWithMediaAndRatings(activeOnly = false) {
+  const db = await getDb();
+  if (!db) return [];
+  const svcs = activeOnly
+    ? await db.select().from(services).where(eq(services.isActive, true)).orderBy(services.name)
+    : await db.select().from(services).orderBy(services.name);
+  const ids = svcs.map((s) => s.id);
+  if (ids.length === 0) return svcs.map((s) => ({ ...s, thumbnailUrl: null as string | null, avgRating: null as number | null, reviewCount: 0 }));
+  const media = await db.select().from(mediaFiles)
+    .where(and(eq(mediaFiles.entityType, "service"), inArray(mediaFiles.entityId, ids), eq(mediaFiles.type, "image")))
+    .orderBy(mediaFiles.order);
+  const allReviews = await db.select().from(reviews).where(inArray(reviews.serviceId, ids));
+  return svcs.map((s) => {
+    const svcReviews = allReviews.filter((r) => r.serviceId === s.id);
+    const avgRating = svcReviews.length > 0
+      ? Math.round((svcReviews.reduce((sum, r) => sum + r.rating, 0) / svcReviews.length) * 10) / 10
+      : null;
+    return {
+      ...s,
+      thumbnailUrl: media.find((m) => m.entityId === s.id)?.url ?? null,
+      avgRating,
+      reviewCount: svcReviews.length,
+    };
+  });
+}

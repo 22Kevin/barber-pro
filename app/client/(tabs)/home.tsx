@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
-import { FlatList, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Svg, { Defs, LinearGradient, Path, Rect, Stop, Circle, G } from "react-native-svg";
+import { FlatList, Image, ImageBackground, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Svg, { Defs, LinearGradient, Path, Rect, Stop, Circle } from "react-native-svg";
 import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
@@ -19,7 +19,6 @@ function InstagramIcon({ size = 28 }: { size?: number }) {
         </LinearGradient>
       </Defs>
       <Rect x="2" y="2" width="20" height="20" rx="5.5" ry="5.5" fill="url(#ig1)" />
-      <Rect x="2" y="2" width="20" height="20" rx="5.5" ry="5.5" fill="none" stroke="white" strokeWidth="0" />
       <Circle cx="12" cy="12" r="4.5" fill="none" stroke="white" strokeWidth="1.8" />
       <Circle cx="17.5" cy="6.5" r="1.2" fill="white" />
     </Svg>
@@ -39,19 +38,37 @@ function MapsIcon({ size = 28 }: { size?: number }) {
   );
 }
 
+// ─── Componente de estrelas ───────────────────────────────────────────────────
+function StarRating({ rating, count }: { rating: number; count: number }) {
+  const stars = [1, 2, 3, 4, 5];
+  return (
+    <View style={styles.starRow}>
+      {stars.map((s) => (
+        <Text key={s} style={[styles.star, { color: s <= Math.round(rating) ? "#EAB308" : "#374151" }]}>
+          ★
+        </Text>
+      ))}
+      <Text style={styles.starLabel}>{rating.toFixed(1)} ({count})</Text>
+    </View>
+  );
+}
+
 export default function ClientHome() {
   const router = useRouter();
   const { client, isAuthenticated } = useClientAuth();
 
-  const servicesQuery = trpc.services.listWithMedia.useQuery({ activeOnly: true });
+  const servicesQuery = trpc.services.listWithMediaAndRatings.useQuery({ activeOnly: true });
   const productsQuery = trpc.products.listWithMedia.useQuery({ activeOnly: true });
   const settingsQuery = trpc.settings.get.useQuery();
 
-  const featuredServices = (servicesQuery.data ?? []).slice(0, 6);
-  const featuredProducts = (productsQuery.data ?? []).slice(0, 6);
-  const shopName = (settingsQuery.data as any)?.shopName ?? "Barber Pro";
-  const shopInstagram = (settingsQuery.data as any)?.instagram ?? null;
-  const shopGoogleMapsUrl = (settingsQuery.data as any)?.googleMapsUrl ?? null;
+  const featuredServices = (servicesQuery.data ?? []).slice(0, 8);
+  const featuredProducts = (productsQuery.data ?? []).slice(0, 8);
+
+  const settings = settingsQuery.data as any;
+  const shopName = settings?.shopName ?? "Barber Pro";
+  const shopInstagram = settings?.instagram ?? null;
+  const shopGoogleMapsUrl = settings?.googleMapsUrl ?? null;
+  const heroImageUrl = settings?.logoUrl ?? null;
 
   function openInstagram() {
     if (!shopInstagram) return;
@@ -87,19 +104,43 @@ export default function ClientHome() {
           )}
         </View>
 
-        {/* ── Banner de agendamento ───────────────────────────────────────── */}
-        <View style={styles.bookingBanner}>
-          <View style={styles.bookingBannerContent}>
-            <Text style={styles.bookingTitle}>Agende seu horário</Text>
-            <Text style={styles.bookingSubtitle}>Escolha seu barbeiro, data e horário preferido</Text>
-            <TouchableOpacity
-              style={styles.bookingButton}
-              onPress={() => router.push("/client/book" as any)}
-              activeOpacity={0.8}
+        {/* ── Banner de agendamento com hero image ────────────────────────── */}
+        <View style={styles.bookingBannerWrapper}>
+          {heroImageUrl ? (
+            <ImageBackground
+              source={{ uri: heroImageUrl }}
+              style={styles.bookingBannerBg}
+              imageStyle={styles.bookingBannerBgImage}
             >
-              <Text style={styles.bookingButtonText}>Agendar agora ✂️</Text>
-            </TouchableOpacity>
-          </View>
+              {/* Overlay escuro para legibilidade */}
+              <View style={styles.bookingBannerOverlay} />
+              <View style={styles.bookingBannerContent}>
+                <Text style={styles.bookingTitle}>Agende seu horário</Text>
+                <Text style={styles.bookingSubtitle}>Escolha seu barbeiro, data e horário preferido</Text>
+                <TouchableOpacity
+                  style={styles.bookingButton}
+                  onPress={() => router.push("/client/book" as any)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.bookingButtonText}>Agendar agora ✂️</Text>
+                </TouchableOpacity>
+              </View>
+            </ImageBackground>
+          ) : (
+            <View style={[styles.bookingBannerBg, styles.bookingBannerFallback]}>
+              <View style={styles.bookingBannerContent}>
+                <Text style={styles.bookingTitle}>Agende seu horário</Text>
+                <Text style={styles.bookingSubtitle}>Escolha seu barbeiro, data e horário preferido</Text>
+                <TouchableOpacity
+                  style={styles.bookingButton}
+                  onPress={() => router.push("/client/book" as any)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.bookingButtonText}>Agendar agora ✂️</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* ── Login CTA para não autenticados ────────────────────────────── */}
@@ -162,8 +203,16 @@ export default function ClientHome() {
                   )}
                   <View style={styles.serviceCardInfo}>
                     <Text style={styles.serviceCardName} numberOfLines={1}>{svc.name}</Text>
-                    <Text style={styles.serviceCardPrice}>R$ {parseFloat(svc.price).toFixed(2)}</Text>
-                    <Text style={styles.serviceCardDuration}>⏱ {svc.durationMinutes} min</Text>
+                    {/* Estrelas de avaliação */}
+                    {svc.avgRating !== null && svc.reviewCount > 0 ? (
+                      <StarRating rating={svc.avgRating} count={svc.reviewCount} />
+                    ) : (
+                      <Text style={styles.noReviews}>Sem avaliações</Text>
+                    )}
+                    <View style={styles.serviceCardFooter}>
+                      <Text style={styles.serviceCardPrice}>R$ {parseFloat(svc.price).toFixed(2)}</Text>
+                      <Text style={styles.serviceCardDuration}>⏱ {svc.durationMinutes} min</Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
               )}
@@ -290,14 +339,29 @@ const styles = StyleSheet.create({
   },
 
   // Booking banner
-  bookingBanner: {
+  bookingBannerWrapper: {
     marginHorizontal: 20,
     marginBottom: 20,
-    backgroundColor: "#111827",
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#EAB308",
+  },
+  bookingBannerBg: {
+    minHeight: 160,
+    justifyContent: "flex-end",
+  },
+  bookingBannerBgImage: {
+    borderRadius: 20,
+    opacity: 0.55,
+  },
+  bookingBannerFallback: {
+    backgroundColor: "#111827",
+  },
+  bookingBannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.52)",
+    borderRadius: 20,
   },
   bookingBannerContent: {
     padding: 20,
@@ -309,8 +373,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   bookingSubtitle: {
-    color: "#9CA3AF",
-    fontSize: 14,
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 13,
     marginBottom: 16,
   },
   bookingButton: {
@@ -399,7 +463,7 @@ const styles = StyleSheet.create({
 
   // Service card
   serviceCard: {
-    width: 160,
+    width: 168,
     backgroundColor: "#111827",
     borderRadius: 16,
     overflow: "hidden",
@@ -408,36 +472,62 @@ const styles = StyleSheet.create({
   },
   serviceCardImage: {
     width: "100%",
-    height: 100,
+    height: 108,
   },
   serviceCardPlaceholder: {
     width: "100%",
-    height: 100,
+    height: 108,
     backgroundColor: "#1F2937",
     alignItems: "center",
     justifyContent: "center",
   },
   serviceCardInfo: {
     padding: 12,
+    gap: 4,
   },
   serviceCardName: {
     color: "#fff",
     fontWeight: "600",
     fontSize: 14,
+    lineHeight: 18,
+  },
+  starRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 1,
+    marginTop: 2,
+  },
+  star: {
+    fontSize: 13,
+    lineHeight: 16,
+  },
+  starLabel: {
+    color: "#9CA3AF",
+    fontSize: 11,
+    marginLeft: 3,
+  },
+  noReviews: {
+    color: "#4B5563",
+    fontSize: 11,
+    marginTop: 2,
+  },
+  serviceCardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 4,
   },
   serviceCardPrice: {
     color: "#EAB308",
     fontWeight: "700",
     fontSize: 14,
-    marginTop: 4,
   },
   serviceCardDuration: {
     color: "#6B7280",
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 11,
   },
 
-  // Product card (horizontal, slightly wider)
+  // Product card (horizontal)
   productCard: {
     width: 150,
     backgroundColor: "#111827",

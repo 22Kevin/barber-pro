@@ -184,6 +184,7 @@ export const appRouter = router({
   services: router({
     list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional() })).query(({ input }) => db.getAllServices(input.activeOnly)),
     listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional() })).query(({ input }) => db.getAllServicesWithMedia(input.activeOnly)),
+    listWithMediaAndRatings: publicProcedure.input(z.object({ activeOnly: z.boolean().optional() })).query(({ input }) => db.getAllServicesWithMediaAndRatings(input.activeOnly)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getServiceById(input.id)),
     create: publicProcedure
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), durationMinutes: z.number().min(5), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true) }))

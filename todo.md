@@ -370,3 +370,11 @@
 - [x] Exibir foto real dos serviços nos cards da Home (com fallback para emoji ✂️ se sem foto)
 - [x] Exibir foto real dos produtos nos cards da Home (com fallback para emoji 🧴 se sem foto)
 - [x] Migrar home.tsx para usar StyleSheet.create() em vez de inline styles
+
+## Melhorias Home v3.3 — Hero Image e Avaliações
+
+- [x] Hero image configurável no banner de agendamento (usa logoUrl das settings; fallback para fundo sólido)
+- [x] Overlay escuro sobre a hero image para garantir legibilidade do texto
+- [x] Rota tRPC `services.listWithMediaAndRatings` que retorna thumbnail + avgRating + reviewCount por serviço
+- [x] Estrelas de avaliação (★) nos cards de serviços da Home (média e contagem de avaliações)
+- [x] Texto "Sem avaliações" para serviços sem reviews cadastradas
