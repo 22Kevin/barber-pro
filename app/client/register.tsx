@@ -126,7 +126,7 @@ export default function ClientRegister() {
               ) : (
                 <>
                   <Text style={styles.googleIcon}>G</Text>
-                  <Text style={styles.googleBtnText}>Criar conta com Google</Text>
+                  <Text style={styles.googleBtnText}>Continuar com Google</Text>
                 </>
               )}
             </Pressable>

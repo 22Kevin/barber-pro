@@ -1,5 +1,4 @@
-import { Redirect } from "expo-router";
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -36,6 +35,7 @@ export default function AdminTabsLayout() {
         },
       }}
     >
+      {/* ── 4 abas principais no rodapé ── */}
       <Tabs.Screen
         name="dashboard"
         options={{
@@ -48,20 +48,6 @@ export default function AdminTabsLayout() {
         options={{
           title: "Agenda",
           tabBarIcon: ({ color }) => <IconSymbol name="calendar" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="services"
-        options={{
-          title: "Serviços",
-          tabBarIcon: ({ color }) => <IconSymbol name="scissors" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="products"
-        options={{
-          title: "Produtos",
-          tabBarIcon: ({ color }) => <IconSymbol name="cube.box.fill" size={24} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -78,25 +64,41 @@ export default function AdminTabsLayout() {
           tabBarIcon: ({ color }) => <IconSymbol name="dollarsign.circle.fill" size={24} color={color} />,
         }}
       />
+
+      {/* ── Abas secundárias — acessíveis via drawer, ocultas do rodapé ── */}
+      <Tabs.Screen
+        name="services"
+        options={{
+          title: "Serviços",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="products"
+        options={{
+          title: "Produtos",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
       <Tabs.Screen
         name="loyalty"
         options={{
           title: "Fidelidade",
-          tabBarIcon: ({ color }) => <IconSymbol name="star.fill" size={24} color={color} />,
+          tabBarItemStyle: { display: "none" },
         }}
       />
       <Tabs.Screen
         name="reports"
         options={{
           title: "Relatórios",
-          tabBarIcon: ({ color }) => <IconSymbol name="chart.line.uptrend.xyaxis" size={24} color={color} />,
+          tabBarItemStyle: { display: "none" },
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Config",
-          tabBarIcon: ({ color }) => <IconSymbol name="gearshape.fill" size={24} color={color} />,
+          title: "Configurações",
+          tabBarItemStyle: { display: "none" },
         }}
       />
     </Tabs>

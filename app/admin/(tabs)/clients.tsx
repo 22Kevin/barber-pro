@@ -17,6 +17,7 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import { DatePickerModal } from "@/components/date-picker-modal";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
@@ -142,29 +143,29 @@ export default function ClientsScreen() {
   };
 
   return (
-    <ScreenContainer containerClassName="bg-background">
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Clientes</Text>
-        <View style={{ flexDirection: "row", gap: 8 }}>
-          {/* Botão aniversariantes */}
-          <Pressable
-            style={({ pressed }) => [styles.birthdayBtn, pressed && { opacity: 0.8 }]}
-            onPress={() => setShowBirthdayPanel(true)}
-          >
-            <Text style={{ fontSize: 16 }}>🎂</Text>
-            {birthdayToday.length > 0 && (
-              <View style={styles.birthdayBadge}>
-                <Text style={styles.birthdayBadgeText}>{birthdayToday.length}</Text>
-              </View>
-            )}
-          </Pressable>
-          <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreate}>
-            <IconSymbol name="person.badge.plus" size={18} color="#0A0A0A" />
-            <Text style={styles.addBtnText}>Novo</Text>
-          </Pressable>
-        </View>
-      </View>
+    <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
+      <AdminHeader
+        title="Clientes"
+        rightElement={
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Pressable
+              style={({ pressed }) => [styles.birthdayBtn, pressed && { opacity: 0.8 }]}
+              onPress={() => setShowBirthdayPanel(true)}
+            >
+              <Text style={{ fontSize: 16 }}>🎂</Text>
+              {birthdayToday.length > 0 && (
+                <View style={styles.birthdayBadge}>
+                  <Text style={styles.birthdayBadgeText}>{birthdayToday.length}</Text>
+                </View>
+              )}
+            </Pressable>
+            <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreate}>
+              <IconSymbol name="person.badge.plus" size={18} color="#0A0A0A" />
+              <Text style={styles.addBtnText}>Novo</Text>
+            </Pressable>
+          </View>
+        }
+      />
 
       {/* Busca */}
       <View style={styles.searchRow}>

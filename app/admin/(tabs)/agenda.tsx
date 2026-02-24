@@ -16,6 +16,9 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
+import { AdminHeader } from "@/components/admin-header";
+import { SwipeableAppointmentCard } from "@/components/swipeable-appointment-card";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { trpc } from "@/lib/trpc";
 import { scheduleAppointmentReminder, cancelAppointmentReminder } from "@/lib/use-notifications";
 
@@ -185,11 +188,10 @@ export default function AgendaScreen() {
   const appointments = appointmentsQuery.data ?? [];
 
   return (
-    <ScreenContainer containerClassName="bg-background">
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Agenda</Text>
+    <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
+      <AdminHeader
+        title="Agenda"
+        rightElement={
           <Pressable
             style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]}
             onPress={() => setShowNewModal(true)}
@@ -197,7 +199,9 @@ export default function AgendaScreen() {
             <IconSymbol name="plus" size={20} color="#0A0A0A" />
             <Text style={styles.addBtnText}>Novo</Text>
           </Pressable>
-        </View>
+        }
+      />
+      <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* Calendário */}
         <View style={styles.calendarCard}>
@@ -259,32 +263,22 @@ export default function AgendaScreen() {
             <Text style={styles.emptyText}>Nenhum agendamento neste dia</Text>
           </View>
         ) : (
-          appointments.map((apt) => {
-            const status = STATUS_CONFIG[apt.status] ?? { label: apt.status, color: "#888880" };
-            const client = (clientsQuery.data ?? []).find(c => c.id === apt.clientId);
-            const service = (servicesQuery.data ?? []).find(s => s.id === apt.serviceId);
-            return (
-              <Pressable
-                key={apt.id}
-                style={({ pressed }) => [styles.aptCard, pressed && { opacity: 0.8 }]}
-                onPress={() => { setSelectedAppointment({ ...apt, client, service }); setShowDetailModal(true); }}
-              >
-                <View style={[styles.aptStatusBar, { backgroundColor: status.color }]} />
-                <View style={styles.aptContent}>
-                  <View style={styles.aptRow}>
-                    <Text style={styles.aptTime}>{apt.startTime} – {apt.endTime}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: status.color + "22" }]}>
-                      <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.aptClientName}>{client?.name ?? "Cliente não encontrado"}</Text>
-                  <Text style={styles.aptServiceName}>{service?.name ?? "Serviço"}</Text>
-                  {apt.notes ? <Text style={styles.aptNotes}>{apt.notes}</Text> : null}
-                </View>
-                <IconSymbol name="chevron.right" size={16} color="#555" />
-              </Pressable>
-            );
-          })
+          <GestureHandlerRootView>
+            {appointments.map((apt) => {
+              const client = (clientsQuery.data ?? []).find(c => c.id === apt.clientId);
+              const service = (servicesQuery.data ?? []).find(s => s.id === apt.serviceId);
+              return (
+                <SwipeableAppointmentCard
+                  key={apt.id}
+                  appointment={apt}
+                  client={client}
+                  service={service}
+                  onPress={() => { setSelectedAppointment({ ...apt, client, service }); setShowDetailModal(true); }}
+                  onStatusChange={handleStatusChange}
+                />
+              );
+            })}
+          </GestureHandlerRootView>
         )}
 
         <View style={{ height: 32 }} />

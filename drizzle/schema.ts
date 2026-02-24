@@ -248,6 +248,9 @@ export const shopSettings = mysqlTable("shop_settings", {
   mercadoPagoPublicKey: text("mercadoPagoPublicKey"),
   whatsappMessageTemplate: text("whatsappMessageTemplate"),
   reminderMessageTemplate: text("reminderMessageTemplate"),
+  instagram: varchar("instagram", { length: 100 }),
+  cnpj: varchar("cnpj", { length: 20 }),
+  googleMapsUrl: text("googleMapsUrl"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 // ─── Tokens de Recuperação de Senha ────────────────────────────────────────

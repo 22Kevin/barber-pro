@@ -50,6 +50,9 @@ export default function SettingsScreen() {
   const [shopLogoUrl, setShopLogoUrl] = useState<string | null>(null);
   const [shopGallery, setShopGallery] = useState<string[]>([]);
   const [shopLoaded, setShopLoaded] = useState(false);
+  const [shopInstagram, setShopInstagram] = useState("");
+  const [shopCnpj, setShopCnpj] = useState("");
+  const [shopGoogleMapsUrl, setShopGoogleMapsUrl] = useState("");
   // Google Places
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -78,6 +81,9 @@ export default function SettingsScreen() {
     setShopWhatsapp(d.whatsapp ?? "");
     setMpAccessToken(d.mercadoPagoAccessToken ?? "");
     setMpPublicKey(d.mercadoPagoPublicKey ?? "");
+    setShopInstagram(d.instagram ?? "");
+    setShopCnpj(d.cnpj ?? "");
+    setShopGoogleMapsUrl(d.googleMapsUrl ?? "");
     if (d.logoUrl) setShopLogoUrl(d.logoUrl);
     if (d.galleryUrls) {
       try { setShopGallery(JSON.parse(d.galleryUrls)); } catch {}
@@ -171,6 +177,9 @@ export default function SettingsScreen() {
       whatsapp: shopWhatsapp.trim() || null,
       mercadoPagoAccessToken: mpAccessToken.trim() || null,
       mercadoPagoPublicKey: mpPublicKey.trim() || null,
+      instagram: shopInstagram.trim() || null,
+      cnpj: shopCnpj.trim() || null,
+      googleMapsUrl: shopGoogleMapsUrl.trim() || null,
       logoUrl: shopLogoUrl || null,
       galleryUrls: shopGallery.length > 0 ? JSON.stringify(shopGallery) : null,
     } as any);
@@ -318,6 +327,20 @@ export default function SettingsScreen() {
                   ))}
                 </View>
               )}
+            </View>
+
+            {/* CNPJ e Redes Sociais */}
+            <View style={{ marginBottom: 14 }}>
+              <Text style={styles.fieldLabel}>CNPJ</Text>
+              <TextInput style={styles.input} value={shopCnpj} onChangeText={setShopCnpj} placeholder="00.000.000/0001-00" placeholderTextColor="#555" keyboardType="numeric" />
+            </View>
+            <View style={{ marginBottom: 14 }}>
+              <Text style={styles.fieldLabel}>Instagram (usuário)</Text>
+              <TextInput style={styles.input} value={shopInstagram} onChangeText={setShopInstagram} placeholder="@barberpro" placeholderTextColor="#555" autoCapitalize="none" autoCorrect={false} />
+            </View>
+            <View style={{ marginBottom: 14 }}>
+              <Text style={styles.fieldLabel}>Link do Google Maps</Text>
+              <TextInput style={styles.input} value={shopGoogleMapsUrl} onChangeText={setShopGoogleMapsUrl} placeholder="https://maps.google.com/..." placeholderTextColor="#555" autoCapitalize="none" autoCorrect={false} keyboardType="url" />
             </View>
 
             <View style={styles.divider} />

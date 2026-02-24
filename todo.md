@@ -225,14 +225,61 @@
 
 ## Melhorias Mercado Pago (Round 2)
 
-- [ ] Pix com QR Code nativo no app (rota servidor + tela cliente)
-- [ ] Card de pagamentos pendentes no dashboard admin
-- [ ] Tutorial de configuração do webhook IPN no Mercado Pago (PDF)
+- [x] Pix com QR Code nativo no app (rota servidor + tela cliente)
+- [x] Card de pagamentos pendentes no dashboard admin
+- [x] Tutorial de configuração do webhook IPN no Mercado Pago (PDF)
 
 ## Fase B — Relatórios e Inteligência de Negócio
 
-- [ ] Tela de Relatórios no painel admin (nova aba)
-- [ ] Gráfico de faturamento por semana/mês (barras)
-- [ ] Ranking dos serviços mais vendidos
-- [ ] Clientes mais frequentes e com maior ticket médio
-- [ ] Taxa de ocupação dos barbeiros por período
+- [x] Tela de Relatórios no painel admin (nova aba)
+- [x] Gráfico de faturamento por semana/mês (barras)
+- [x] Ranking dos serviços mais vendidos
+- [x] Clientes mais frequentes e com maior ticket médio
+- [x] Taxa de ocupação dos barbeiros por período
+
+## Melhorias de UX/Navegação
+
+- [ ] Navegação híbrida no painel admin: 4 abas no rodapé (Dashboard, Agenda, Clientes, Financeiro) + botão hamburguer (≡) no cabeçalho abrindo drawer lateral com Serviços, Produtos, Fidelidade, Relatórios e Configurações
+
+## Correções de Texto/Semântica
+
+- [x] Alterar texto do botão Google em register.tsx de "Criar conta com Google" para "Continuar com Google"
+
+## Melhorias na Agenda (Admin)
+
+- [x] Swipe gesture nos cards de agendamento: arrastar direita (→) avança status positivo (Agendado→Confirmado→Concluído), arrastar esquerda (←) abre menu rápido com Cancelar / Não compareceu
+- [x] Corrigir botão "Alterar Status" que não executa ação (substituído pelo swipe)
+
+## Integração Instagram
+
+- [x] Campo @instagram da barbearia nas configurações (settings.tsx)
+- [x] Botão "Siga-nos no Instagram" na tela Home do cliente, abrindo o perfil diretamente no app do Instagram
+
+## Integrações Futuras — Redes Sociais
+
+- [ ] [FUTURO] Compartilhar agendamento confirmado nos Instagram Stories: gerar card estilizado com react-native-view-shot e abrir via expo-sharing com imagem pré-carregada
+
+- [ ] Google Business (avaliações): após atendimento concluído, enviar notificação ao cliente com link direto para avaliar a barbearia no Google Maps
+- [ ] [FUTURO] TikTok Share: compartilhar resultado do corte no TikTok com card da barbearia
+- [ ] [FUTURO] Facebook/Instagram Booking API: agendamento direto pelo perfil da barbearia no Instagram
+- [ ] [FUTURO] WhatsApp Business API: sincronizar catálogo de serviços com o catálogo do WhatsApp Business
+
+## Melhorias Financeiras
+
+- [ ] Pix QR Code nativo no app (rota servidor + tela cliente com QR Code gerado via Mercado Pago)
+- [ ] Exportação de relatório financeiro em PDF para contabilidade (receitas, despesas, lucro por período)
+- [x] Campo CNPJ da barbearia nas configurações
+- [ ] Relatório mensal no formato adequado para imposto de renda (DRE simplificado)
+
+## Personalização de Tema
+
+- [ ] Seletor de tema claro/escuro nas configurações do cliente e do admin (respeitar preferência do sistema por padrão)
+
+## Melhorias na Home do Cliente
+
+- [x] Botão Instagram na Home do cliente (usa o @ cadastrado nas configurações do admin)
+- [x] Botão "Como chegar" na Home do cliente abrindo Google Maps com endereço da barbearia
+
+## Versão Web (Painel Admin)
+
+- [ ] [AVALIAR] Criar versão web responsiva do painel administrativo (o Expo já gera build web — avaliar se a experiência atual no navegador já é suficiente ou se precisa de layout adaptado para telas grandes)

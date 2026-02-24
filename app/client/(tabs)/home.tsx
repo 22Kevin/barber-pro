@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Image, Linking, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
@@ -14,7 +14,24 @@ export default function ClientHome() {
 
   const featuredServices = (servicesQuery.data ?? []).slice(0, 4);
   const featuredProducts = (productsQuery.data ?? []).slice(0, 4);
-  const shopName = settingsQuery.data?.shopName ?? "Barber Pro";
+  const shopName = (settingsQuery.data as any)?.shopName ?? "Barber Pro";
+  const shopInstagram = (settingsQuery.data as any)?.instagram ?? null;
+  const shopGoogleMapsUrl = (settingsQuery.data as any)?.googleMapsUrl ?? null;
+
+  function openInstagram() {
+    if (!shopInstagram) return;
+    const handle = shopInstagram.replace(/^@/, "");
+    const appUrl = `instagram://user?username=${handle}`;
+    const webUrl = `https://instagram.com/${handle}`;
+    Linking.canOpenURL(appUrl).then((supported) => {
+      Linking.openURL(supported ? appUrl : webUrl);
+    });
+  }
+
+  function openGoogleMaps() {
+    if (!shopGoogleMapsUrl) return;
+    Linking.openURL(shopGoogleMapsUrl);
+  }
 
   return (
     <ScreenContainer containerClassName="bg-black">
@@ -131,6 +148,39 @@ export default function ClientHome() {
                   </TouchableOpacity>
                 ))}
               </View>
+            </View>
+          </View>
+        )}
+
+        {/* Instagram e Google Maps */}
+        {(shopInstagram || shopGoogleMapsUrl) && (
+          <View style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 18, marginBottom: 12 }}>Nos encontre</Text>
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              {shopInstagram && (
+                <TouchableOpacity
+                  onPress={openInstagram}
+                  style={{ flex: 1, backgroundColor: "#1a0a1a", borderRadius: 14, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#7C3AED", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                >
+                  <Text style={{ fontSize: 22 }}>📸</Text>
+                  <View>
+                    <Text style={{ color: "#C084FC", fontWeight: "700", fontSize: 13 }}>Instagram</Text>
+                    <Text style={{ color: "#7C3AED", fontSize: 11 }}>{shopInstagram.startsWith("@") ? shopInstagram : `@${shopInstagram}`}</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+              {shopGoogleMapsUrl && (
+                <TouchableOpacity
+                  onPress={openGoogleMaps}
+                  style={{ flex: 1, backgroundColor: "#0a1a0a", borderRadius: 14, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#16A34A", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                >
+                  <Text style={{ fontSize: 22 }}>📍</Text>
+                  <View>
+                    <Text style={{ color: "#4ADE80", fontWeight: "700", fontSize: 13 }}>Como chegar</Text>
+                    <Text style={{ color: "#16A34A", fontSize: 11 }}>Google Maps</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}

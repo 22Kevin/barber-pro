@@ -15,6 +15,7 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
+import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
 
 type Tab = "overview" | "sales" | "expenses";
@@ -146,21 +147,22 @@ export default function FinancialScreen() {
   })).filter(pm => pm.total > 0);
 
   return (
-    <ScreenContainer containerClassName="bg-background">
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Financeiro</Text>
-        <View style={styles.headerActions}>
-          <Pressable style={({ pressed }) => [styles.expenseBtn, pressed && { opacity: 0.8 }]} onPress={() => setShowExpenseModal(true)}>
-            <IconSymbol name="minus.circle.fill" size={16} color="#F44336" />
-            <Text style={styles.expenseBtnText}>Despesa</Text>
-          </Pressable>
-          <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={() => setShowSaleModal(true)}>
-            <IconSymbol name="plus" size={18} color="#0A0A0A" />
-            <Text style={styles.addBtnText}>Venda</Text>
-          </Pressable>
-        </View>
-      </View>
+    <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
+      <AdminHeader
+        title="Financeiro"
+        rightElement={
+          <View style={styles.headerActions}>
+            <Pressable style={({ pressed }) => [styles.expenseBtn, pressed && { opacity: 0.8 }]} onPress={() => setShowExpenseModal(true)}>
+              <IconSymbol name="minus.circle.fill" size={16} color="#F44336" />
+              <Text style={styles.expenseBtnText}>Despesa</Text>
+            </Pressable>
+            <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={() => setShowSaleModal(true)}>
+              <IconSymbol name="plus" size={18} color="#0A0A0A" />
+              <Text style={styles.addBtnText}>Venda</Text>
+            </Pressable>
+          </View>
+        }
+      />
 
       {/* Seletor de mês */}
       <View style={styles.monthSelector}>

@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
+import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
 
 function formatCurrency(value: number) {
@@ -71,20 +72,16 @@ export default function DashboardScreen() {
   };
 
   return (
-    <ScreenContainer containerClassName="bg-background">
+    <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
+      <AdminHeader title="Dashboard" />
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A84C" />}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Olá, {barber?.name?.split(" ")[0]} 👋</Text>
-            <Text style={styles.date}>{formatDatePT(today)} — Hoje</Text>
-          </View>
-          <Pressable onPress={handleLogout} style={styles.logoutBtn}>
-            <IconSymbol name="power" size={20} color="#888880" />
-          </Pressable>
+        {/* Saudação */}
+        <View style={styles.greetingRow}>
+          <Text style={styles.greeting}>Olá, {barber?.name?.split(" ")[0]} 👋</Text>
+          <Text style={styles.date}>{formatDatePT(today)} — Hoje</Text>
         </View>
 
         {/* Métricas */}
@@ -205,16 +202,13 @@ function QuickAction({ icon, label, onPress }: { icon: any; label: string; onPre
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  greetingRow: {
     padding: 20,
     paddingTop: 16,
+    paddingBottom: 8,
   },
   greeting: { fontSize: 22, fontWeight: "700", color: "#F5F5F0" },
   date: { fontSize: 13, color: "#888880", marginTop: 2 },
-  logoutBtn: { padding: 8 },
   metricsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
