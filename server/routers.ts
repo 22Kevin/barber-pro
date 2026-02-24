@@ -362,8 +362,31 @@ export const appRouter = router({
     update: publicProcedure
       .input(z.object({ id: z.number(), isActive: z.boolean().optional(), description: z.string().optional(), maxUses: z.number().optional().nullable(), validUntil: z.string().optional().nullable() }))
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateCoupon(id, data as any); }),
+    getAvailableForClient: publicProcedure
+      .input(z.object({ clientId: z.number().optional().nullable(), orderValue: z.number() }))
+      .query(async ({ input }) => {
+        const today = new Date().toISOString().split("T")[0];
+        const allCoupons = await db.getAllCoupons();
+        const validCoupons = allCoupons.filter((c: any) => {
+          if (!c.isActive) return false;
+          if (c.maxUses !== null && c.usedCount >= c.maxUses) return false;
+          if (c.validFrom && today < c.validFrom) return false;
+          if (c.validUntil && today > c.validUntil) return false;
+          if (c.minOrderValue && input.orderValue < parseFloat(c.minOrderValue)) return false;
+          return true;
+        });
+        let redeemableRewards: any[] = [];
+        if (input.clientId) {
+          const client = await db.getClientById(input.clientId);
+          const rewards = await db.getLoyaltyRewards();
+          const config = await db.getLoyaltyConfig();
+          if (config?.isActive && client) {
+            redeemableRewards = (rewards as any[]).filter((r: any) => r.isActive && (client.totalPoints ?? 0) >= r.pointsRequired);
+          }
+        }
+        return { coupons: validCoupons, redeemableRewards };
+      }),
   }),
-
   loyalty: router({
     getConfig: publicProcedure.query(() => db.getLoyaltyConfig()),
     updateConfig: publicProcedure

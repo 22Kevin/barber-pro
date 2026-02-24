@@ -334,3 +334,17 @@
 ## Bug v3.0.1
 
 - [x] Erro na aba "Receitas" dentro do Financeiro — createdAt retornado como Date pelo Drizzle ORM, corrigido com new Date(sale.createdAt).toLocaleDateString("pt-BR")
+
+## Fidelidade v3.1 — Aplicação de Cupons no Agendamento
+
+- [x] Rota tRPC `coupons.getAvailableForClient`: retorna cupons ativos + recompensas resgatáveis pelo cliente
+- [x] Componente `DiscountSheet`: bottom sheet com campo de código manual, lista de cupons disponíveis e recompensas de pontos
+- [x] Banner proativo na tela de confirmação: aparece se cliente tiver cupom ou pontos suficientes para resgatar recompensa
+- [x] Botão "Tenho um cupom ou quero usar pontos" na tela de confirmação (step confirm)
+- [x] Desconto aplicado no resumo do agendamento com valor final calculado
+- [x] Valor com desconto passado para tela de pagamento Pix e Mercado Pago
+- [x] Banner verde ao aplicar desconto com opção de remover
+- [x] Desconto resetado ao trocar de serviço
+- [x] Desconto passado para a tela de pagamento Pix e para o registro da venda
+- [x] Validação em tempo real do código de cupom digitado manualmente
+- [x] Ao resgatar recompensa de pontos, deduzir pontos do cliente automaticamente ao confirmar

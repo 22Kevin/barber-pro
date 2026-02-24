@@ -6,6 +6,7 @@ import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
 import { sendConfirmationWhatsApp, type AppointmentInfo } from "@/lib/whatsapp";
 import { scheduleAppointmentReminder, notifyBarberNewAppointment, scheduleReviewNotification } from "@/lib/use-notifications";
+import { DiscountSheet, type AppliedDiscount } from "@/components/discount-sheet";
 
 type Step = "service" | "barber" | "date" | "time" | "confirm";
 
@@ -40,7 +41,8 @@ export default function BookScreen() {
   const [notes, setNotes] = useState("");
   const [pendingApptId, setPendingApptId] = useState<number | null>(null);
   const [isOpeningPayment, setIsOpeningPayment] = useState(false);
-
+  const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
+  const [showDiscountSheet, setShowDiscountSheet] = useState(false);
 
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true });
   const barbersQuery = trpc.barbers.list.useQuery();
@@ -48,6 +50,16 @@ export default function BookScreen() {
     { barberId: selectedBarber?.id ?? 0, date: selectedDate ? formatDate(selectedDate) : "", durationMinutes: selectedService?.durationMinutes ?? 30 },
     { enabled: !!selectedBarber && !!selectedDate && !!selectedService }
   );
+
+  // Verificar cupons/recompensas disponíveis para o banner proativo
+  const orderValue = selectedService ? parseFloat(selectedService.price) : 0;
+  const availableDiscountsQuery = trpc.coupons.getAvailableForClient.useQuery(
+    { clientId: client?.id ?? null, orderValue },
+    { enabled: !!selectedService && isAuthenticated }
+  );
+  const hasAvailableDiscounts =
+    (availableDiscountsQuery.data?.coupons?.length ?? 0) > 0 ||
+    (availableDiscountsQuery.data?.redeemableRewards?.length ?? 0) > 0;
 
   const createPreference = trpc.payments.createPreference.useMutation();
 
@@ -87,6 +99,11 @@ export default function BookScreen() {
     }
   }, [params.serviceId, servicesQuery.data]);
 
+  // Calcular valor final com desconto
+  const basePrice = selectedService ? parseFloat(selectedService.price) : 0;
+  const discountAmount = appliedDiscount?.discountAmount ?? 0;
+  const finalPrice = Math.max(0, basePrice - discountAmount);
+
   const handleConfirm = () => {
     if (!isAuthenticated) {
       Alert.alert("Login necessário", "Faça login para confirmar o agendamento.", [
@@ -116,7 +133,7 @@ export default function BookScreen() {
         appointmentId: pendingApptId,
         serviceId: selectedService.id,
         serviceName: selectedService.name,
-        servicePrice: parseFloat(selectedService.price),
+        servicePrice: finalPrice,
         clientName: client.name,
         clientEmail: client.email ?? undefined,
         barberId: selectedBarber.id,
@@ -155,7 +172,7 @@ export default function BookScreen() {
       params: {
         serviceId: String(selectedService.id),
         serviceName: selectedService.name,
-        servicePrice: String(parseFloat(selectedService.price)),
+        servicePrice: String(finalPrice),
         clientName: client.name,
         clientEmail: client.email ?? "",
         clientId: String(client.id),
@@ -216,11 +233,15 @@ export default function BookScreen() {
               { label: "Barbeiro", value: selectedBarber?.name },
               { label: "Data", value: selectedDate?.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) },
               { label: "Horário", value: selectedSlot ? `${selectedSlot.startTime} — ${selectedSlot.endTime}` : "" },
-              { label: "Valor", value: `R$ ${parseFloat(selectedService?.price ?? "0").toFixed(2)}` },
+              ...(appliedDiscount ? [
+                { label: "Subtotal", value: `R$ ${basePrice.toFixed(2).replace(".", ",")}` },
+                { label: `Desconto (${appliedDiscount.type === "coupon" ? appliedDiscount.code : (appliedDiscount as any).rewardName})`, value: `− R$ ${discountAmount.toFixed(2).replace(".", ",")}` },
+              ] : []),
+              { label: "Total", value: `R$ ${finalPrice.toFixed(2).replace(".", ",")}` },
             ].map((item) => (
               <View key={item.label} style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ color: "#9CA3AF", fontSize: 14 }}>{item.label}</Text>
-                <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14, textAlign: "right", flex: 1, marginLeft: 16 }}>{item.value}</Text>
+                <Text style={{ color: item.label === "Total" ? "#EAB308" : "#9CA3AF", fontSize: 14, fontWeight: item.label === "Total" ? "700" : "400" }}>{item.label}</Text>
+                <Text style={{ color: item.label === "Total" ? "#EAB308" : item.label.startsWith("Desconto") ? "#4ADE80" : "#fff", fontWeight: item.label === "Total" ? "800" : "600", fontSize: 14, textAlign: "right", flex: 1, marginLeft: 16 }}>{item.value}</Text>
               </View>
             ))}
           </View>
@@ -266,6 +287,7 @@ export default function BookScreen() {
               Escaneie o QR Code com qualquer banco
             </Text>
           </TouchableOpacity>
+
           {/* Opção 3: Pagar no local */}
           <TouchableOpacity
             onPress={handlePayOnSite}
@@ -297,7 +319,7 @@ export default function BookScreen() {
                 `👤 *Barbeiro:* ${selectedBarber?.name}`,
                 `📅 *Data:* ${dateStr}`,
                 `⏰ *Horário:* ${selectedSlot?.startTime} — ${selectedSlot?.endTime}`,
-                `💰 *Valor:* R$ ${parseFloat(selectedService?.price ?? "0").toFixed(2)}`,
+                `💰 *Valor:* R$ ${finalPrice.toFixed(2).replace(".", ",")}`,
                 "",
                 "Agendado pelo app da barbearia 😎",
               ].join("\n");
@@ -320,8 +342,6 @@ export default function BookScreen() {
             <Text style={{ color: "#25D366", fontWeight: "700", fontSize: 15 }}>Compartilhar agendamento</Text>
           </TouchableOpacity>
         </ScrollView>
-
-
       </ScreenContainer>
     );
   }
@@ -344,6 +364,68 @@ export default function BookScreen() {
 
       <StepIndicator />
 
+      {/* Banner proativo de desconto — aparece quando o cliente tem cupons/recompensas disponíveis */}
+      {step === "confirm" && isAuthenticated && hasAvailableDiscounts && !appliedDiscount && (
+        <TouchableOpacity
+          onPress={() => setShowDiscountSheet(true)}
+          style={{
+            marginHorizontal: 20,
+            marginBottom: 8,
+            backgroundColor: "#1A1200",
+            borderRadius: 14,
+            padding: 14,
+            borderWidth: 1,
+            borderColor: "#EAB308",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <Text style={{ fontSize: 22 }}>🎁</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#EAB308", fontWeight: "700", fontSize: 14 }}>Você tem descontos disponíveis!</Text>
+            <Text style={{ color: "#9CA3AF", fontSize: 12, marginTop: 2 }}>Toque para aplicar um cupom ou resgatar pontos</Text>
+          </View>
+          <Text style={{ color: "#EAB308", fontSize: 18 }}>›</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Banner de desconto aplicado */}
+      {step === "confirm" && appliedDiscount && (
+        <TouchableOpacity
+          onPress={() => setShowDiscountSheet(true)}
+          style={{
+            marginHorizontal: 20,
+            marginBottom: 8,
+            backgroundColor: "#0D1F0D",
+            borderRadius: 14,
+            padding: 14,
+            borderWidth: 1,
+            borderColor: "#4ADE80",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <Text style={{ fontSize: 22 }}>✅</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#4ADE80", fontWeight: "700", fontSize: 14 }}>
+              Desconto aplicado: − R$ {discountAmount.toFixed(2).replace(".", ",")}
+            </Text>
+            <Text style={{ color: "#9CA3AF", fontSize: 12, marginTop: 2 }}>
+              {appliedDiscount.type === "coupon" ? `Cupom: ${appliedDiscount.code}` : `Recompensa: ${(appliedDiscount as any).rewardName}`}
+              {" · "}Toque para alterar
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation(); setAppliedDiscount(null); }}
+            style={{ padding: 4 }}
+          >
+            <Text style={{ color: "#6B7280", fontSize: 18 }}>✕</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      )}
+
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
         {/* STEP 1: Serviço */}
@@ -354,7 +436,7 @@ export default function BookScreen() {
             {(servicesQuery.data ?? []).map((svc: any) => (
               <TouchableOpacity
                 key={svc.id}
-                onPress={() => { setSelectedService(svc); setStep("barber"); }}
+                onPress={() => { setSelectedService(svc); setAppliedDiscount(null); setStep("barber"); }}
                 style={{ backgroundColor: "#111827", borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: selectedService?.id === svc.id ? "#EAB308" : "#1F2937", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
               >
                 <View style={{ flex: 1 }}>
@@ -459,14 +541,40 @@ export default function BookScreen() {
                 { label: "Data", value: selectedDate.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) },
                 { label: "Horário", value: `${selectedSlot.startTime} — ${selectedSlot.endTime}` },
                 { label: "Duração", value: `${selectedService.durationMinutes} minutos` },
-                { label: "Valor", value: `R$ ${parseFloat(selectedService.price).toFixed(2)}` },
+                ...(appliedDiscount ? [
+                  { label: "Subtotal", value: `R$ ${basePrice.toFixed(2).replace(".", ",")}` },
+                  { label: "Desconto", value: `− R$ ${discountAmount.toFixed(2).replace(".", ",")}` },
+                ] : []),
+                { label: "Valor", value: `R$ ${finalPrice.toFixed(2).replace(".", ",")}` },
               ].map((item) => (
                 <View key={item.label} style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <Text style={{ color: "#9CA3AF", fontSize: 14 }}>{item.label}</Text>
-                  <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14, textAlign: "right", flex: 1, marginLeft: 16 }}>{item.value}</Text>
+                  <Text style={{ color: item.label === "Desconto" ? "#4ADE80" : "#fff", fontWeight: "600", fontSize: 14, textAlign: "right", flex: 1, marginLeft: 16 }}>{item.value}</Text>
                 </View>
               ))}
             </View>
+
+            {/* Botão de desconto — aparece se não há desconto aplicado */}
+            {isAuthenticated && !appliedDiscount && (
+              <TouchableOpacity
+                onPress={() => setShowDiscountSheet(true)}
+                style={{
+                  backgroundColor: "#111827",
+                  borderRadius: 14,
+                  padding: 14,
+                  marginTop: 14,
+                  borderWidth: 1,
+                  borderColor: "#374151",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <Text style={{ fontSize: 18 }}>🏷️</Text>
+                <Text style={{ color: "#9CA3AF", fontSize: 14, flex: 1 }}>Tenho um cupom ou quero usar pontos</Text>
+                <Text style={{ color: "#6B7280", fontSize: 16 }}>›</Text>
+              </TouchableOpacity>
+            )}
 
             {!isAuthenticated && (
               <View style={{ backgroundColor: "#1F1500", borderRadius: 12, padding: 14, marginTop: 16, borderWidth: 1, borderColor: "#EAB308" }}>
@@ -486,6 +594,19 @@ export default function BookScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* DiscountSheet — bottom sheet para aplicar cupons e recompensas */}
+      <DiscountSheet
+        visible={showDiscountSheet}
+        onClose={() => setShowDiscountSheet(false)}
+        onApply={(discount) => {
+          setAppliedDiscount(discount);
+          setShowDiscountSheet(false);
+        }}
+        orderValue={basePrice}
+        clientId={client?.id ?? null}
+        currentDiscount={appliedDiscount}
+      />
     </ScreenContainer>
   );
 }
