@@ -664,6 +664,72 @@ async function renderConfiguracoes(req: Request, res: Response) {
 }
 
 // ─── Registro das rotas ───────────────────────────────────────────────────────
+// ─── Novo Agendamento (Admin Web) ───────────────────────────────────────────────
+async function renderNovoAgendamento(req: Request, res: Response) {
+  const session = (req as any).adminSession as { barberId: number; role: string };
+  const barber = await db.getBarberById(session.barberId);
+  const clients = await db.getAllClients();
+  const services = await db.getAllServices(true);
+  const barbers = await db.getAllBarbers();
+  const error = req.query.error as string | undefined;
+  const preDate = (req.query.date as string) || today();
+
+  const body = `
+    <div style="max-width:560px">
+      ${error ? `<div style="background:#F8717122;border:1px solid #F8717144;color:#F87171;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:13px">${esc(error)}</div>` : ""}
+      <form method="POST" action="/admin/agenda/novo">
+        <div class="form-group">
+          <label class="form-label">CLIENTE *</label>
+          <select name="clientId" class="form-input" required>
+            <option value="">Selecione o cliente</option>
+            ${clients.map((c: any) => `<option value="${c.id}">${esc(c.name)}${c.phone ? " — " + esc(c.phone) : ""}</option>`).join("")}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">SERVIÇO *</label>
+          <select name="serviceId" class="form-input" required id="serviceSelect" onchange="updateDuration(this)">
+            <option value="">Selecione o serviço</option>
+            ${services.map((s: any) => `<option value="${s.id}" data-duration="${s.duration ?? 30}">${esc(s.name)} — ${fmtCurrency(s.price)} (${s.duration ?? 30}min)</option>`).join("")}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">PROFISSIONAL *</label>
+          <select name="barberId" class="form-input" required>
+            <option value="">Selecione o profissional</option>
+            ${barbers.map((b: any) => `<option value="${b.id}"${b.id === session.barberId ? " selected" : ""}>${esc(b.name)}</option>`).join("")}
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="form-group">
+            <label class="form-label">DATA *</label>
+            <input type="date" name="date" class="form-input" value="${preDate}" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">HORÁRIO DE INÍCIO *</label>
+            <input type="time" name="startTime" class="form-input" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">OBSERVAÇÕES</label>
+          <input type="text" name="notes" class="form-input" placeholder="Observações opcionais" />
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <a href="/admin/agenda" class="btn btn-ghost">Cancelar</a>
+          <button type="submit" class="btn btn-primary">Criar Agendamento</button>
+        </div>
+      </form>
+    </div>
+    <script>
+      function updateDuration(sel) {
+        const opt = sel.options[sel.selectedIndex];
+        const dur = opt.dataset.duration;
+        if (dur) document.title = 'Novo Agendamento (' + dur + 'min) — Barber Pro Admin';
+      }
+    </script>
+  `;
+  res.send(adminLayout("Novo Agendamento", "agenda", body, barber?.name));
+}
+
 export function registerAdminRoutes(app: Express): void {
   // Middleware de parse de cookie simples (sem dependência externa)
   app.use((req: Request, _res: Response, next: NextFunction) => {
@@ -718,6 +784,33 @@ export function registerAdminRoutes(app: Express): void {
     const { shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl } = req.body ?? {};
     await db.upsertShopSettings({ shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl });
     res.redirect("/admin/configuracoes?saved=1");
+  });
+
+  // Criar agendamento (admin web)
+  app.get("/admin/agenda/novo", requireAdminAuth, (req, res) => renderNovoAgendamento(req, res));
+  app.post("/admin/agenda/novo", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const { clientId, serviceId, barberId, date, startTime, notes } = req.body ?? {};
+      if (!clientId || !serviceId || !barberId || !date || !startTime) {
+        res.redirect("/admin/agenda/novo?error=Preencha+todos+os+campos+obrigat%C3%B3rios"); return;
+      }
+      const svc = await db.getServiceById(parseInt(serviceId));
+      if (!svc) { res.redirect("/admin/agenda/novo?error=Servi%C3%A7o+n%C3%A3o+encontrado"); return; }
+      const [h, m] = startTime.split(":").map(Number);
+      const totalMin = h * 60 + m + (svc.durationMinutes ?? 30);
+      const endTime = `${String(Math.floor(totalMin / 60)).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}:00`;
+      const startTimeFmt = startTime.length === 5 ? startTime + ":00" : startTime;
+      const available = await db.checkSlotAvailability(parseInt(barberId), date, startTimeFmt, endTime);
+      if (!available) { res.redirect("/admin/agenda/novo?error=Hor%C3%A1rio+j%C3%A1+ocupado"); return; }
+      await db.createAppointment({
+        clientId: parseInt(clientId), serviceId: parseInt(serviceId), barberId: parseInt(barberId),
+        date, startTime: startTimeFmt, endTime, status: "scheduled",
+        notes: notes ?? null,
+      });
+      res.redirect(`/admin/agenda?date=${date}&created=1`);
+    } catch (e: any) {
+      res.redirect(`/admin/agenda/novo?error=${encodeURIComponent(e.message)}`);
+    }
   });
 
   // Rotas protegidas

@@ -716,3 +716,24 @@
 - [x] Logout do cliente (/pub/:slug/logout)
 - [x] Sessão do cliente via cookie (7 dias)
 - [x] Pré-preenchimento de campos via query string após login
+
+## Fase 7 Web — Meus Agendamentos, Admin Web e E-mail (v6.5)
+
+- [ ] Página /pub/:slug/meus-agendamentos: lista de agendamentos do cliente logado (próximos e passados)
+- [ ] Botão cancelar agendamento na página de meus agendamentos
+- [ ] Link "Meus Agendamentos" na página de agendamento e no cabeçalho quando logado
+- [ ] Formulário de criar agendamento no painel admin web (/admin)
+- [ ] Seleção de cliente, serviço, barbeiro e horário disponível no formulário admin web
+- [ ] E-mail de confirmação de agendamento via SMTP após agendar pela web
+- [ ] Template de e-mail com detalhes do agendamento (data, hora, serviço, barbeiro)
+
+## Fase 7 Web — Meus Agendamentos, Criar Agendamento Admin e E-mail
+
+- [x] Página /pub/:slug/meus-agendamentos com lista de agendamentos do cliente logado
+- [x] Cancelamento de agendamento pela página de meus agendamentos
+- [x] Formulário /admin/agenda/novo: criar agendamento com cliente, serviço, barbeiro, data e horário
+- [x] Validação de conflito de horário no formulário admin web
+- [x] Módulo email.ts com nodemailer para envio de e-mails transacionais
+- [x] E-mail de confirmação de agendamento enviado ao cliente após agendar pela web
+- [x] Template HTML responsivo do e-mail de confirmação com detalhes do agendamento
+- [x] Variáveis SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM para configuração

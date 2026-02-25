@@ -13,6 +13,7 @@
 import type { Express, Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import * as db from "./db";
+import { sendBookingConfirmationEmail } from "./email";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function escapeHtml(str: string | null | undefined): string {
@@ -624,6 +625,127 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
 }
 
 // ─── Registro das rotas ───────────────────────────────────────────────────────
+// ─── Página de Meus Agendamentos ───────────────────────────────────────────────
+async function renderMyAppointmentsPage(slug: string, res: Response, req: Request) {
+  const tenant = await db.getTenantBySlug(slug);
+  if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
+  const settings = await db.getShopSettingsByTenantId(tenant.id);
+  const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
+
+  // Verificar sessão do cliente
+  const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+  let loggedClient: { id: number; name: string; email: string } | null = null;
+  if (clientSessionRaw) {
+    try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+  }
+
+  if (!loggedClient) {
+    res.redirect(`/pub/${slug}/login?redirect=meus-agendamentos`);
+    return;
+  }
+
+  // Buscar agendamentos do cliente com dados de serviço e barbeiro
+  const rawAppts = await db.getClientAppointments(loggedClient.id);
+  const allServices = await db.getAllServicesWithMediaAndRatings(true);
+  const allBarbers = await db.getAllBarbers(tenant.id);
+  const serviceMap = Object.fromEntries(allServices.map((s) => [s.id, s]));
+  const barberMap = Object.fromEntries(allBarbers.map((b) => [b.id, b]));
+
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = rawAppts.filter((a: any) => a.date >= today && a.status !== "cancelled");
+  const past = rawAppts.filter((a: any) => a.date < today || a.status === "cancelled");
+
+  function statusBadge(status: string) {
+    const map: Record<string, { label: string; color: string }> = {
+      scheduled: { label: "Agendado", color: "#3B82F6" },
+      confirmed: { label: "Confirmado", color: "#22C55E" },
+      in_progress: { label: "Em andamento", color: "#F59E0B" },
+      completed: { label: "Concluído", color: "#6B7280" },
+      cancelled: { label: "Cancelado", color: "#EF4444" },
+      no_show: { label: "Não compareceu", color: "#EF4444" },
+    };
+    const s = map[status] ?? { label: status, color: "#6B7280" };
+    return `<span style="background:${s.color}22;color:${s.color};font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:0.5px">${s.label}</span>`;
+  }
+
+  function apptCard(a: any, canCancel: boolean) {
+    const svc = serviceMap[a.serviceId];
+    const barber = barberMap[a.barberId];
+    return `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:12px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div style="font-size:15px;font-weight:800;margin-bottom:4px">${escapeHtml(svc?.name ?? "Serviço")}</div>
+            <div style="font-size:13px;color:var(--muted)">${barber ? escapeHtml(barber.name) : "Qualquer profissional"}</div>
+          </div>
+          ${statusBadge(a.status)}
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;font-size:13px;color:var(--muted);margin-bottom:${canCancel ? "16" : "0"}px">
+          <span>📅 ${a.date}</span>
+          <span>🕐 ${a.startTime} – ${a.endTime}</span>
+          ${svc ? `<span style="color:var(--primary);font-weight:700">${formatPrice(svc.price)}</span>` : ""}
+        </div>
+        ${canCancel ? `
+          <button onclick="cancelAppt(${a.id}, this)" style="width:100%;padding:10px;background:transparent;border:1px solid #EF444466;border-radius:10px;color:#F87171;font-size:13px;font-weight:600;cursor:pointer">
+            Cancelar agendamento
+          </button>` : ""}
+      </div>`;
+  }
+
+  const upcomingHtml = upcoming.length === 0
+    ? `<div style="text-align:center;padding:32px;color:var(--muted);font-size:14px">Nenhum agendamento próximo.<br><a href="/pub/${slug}/agendar" style="color:var(--primary);font-weight:700">Agendar agora</a></div>`
+    : upcoming.map((a: any) => apptCard(a, ["scheduled", "confirmed"].includes(a.status))).join("");
+
+  const pastHtml = past.length === 0
+    ? `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Nenhum agendamento anterior.</div>`
+    : past.slice(0, 10).map((a: any) => apptCard(a, false)).join("");
+
+  const body = `
+    <div style="max-width:560px;margin:0 auto;padding:32px 24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <a href="/pub/${slug}" style="color:var(--muted);font-size:20px">←</a>
+          <div>
+            <div style="font-size:18px;font-weight:800">Meus Agendamentos</div>
+            <div style="font-size:12px;color:var(--muted)">${escapeHtml(loggedClient.name)}</div>
+          </div>
+        </div>
+        <a href="/pub/${slug}/agendar" style="background:var(--primary);color:#0A0A0A;font-size:13px;font-weight:800;padding:10px 16px;border-radius:10px">+ Novo</a>
+      </div>
+
+      <div style="font-size:14px;font-weight:800;margin-bottom:16px;color:var(--muted);letter-spacing:1px">PRÓXIMOS</div>
+      ${upcomingHtml}
+
+      ${past.length > 0 ? `
+        <div style="font-size:14px;font-weight:800;margin:28px 0 16px;color:var(--muted);letter-spacing:1px">HISTÓRICO</div>
+        ${pastHtml}
+      ` : ""}
+    </div>
+    <script>
+      async function cancelAppt(id, btn) {
+        if (!confirm('Deseja cancelar este agendamento?')) return;
+        btn.disabled = true;
+        btn.textContent = 'Cancelando...';
+        try {
+          var r = await fetch('/pub-api/cancel-appointment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appointmentId: id, slug: '${slug}' })
+          });
+          var data = await r.json();
+          if (!r.ok) throw new Error(data.error || 'Erro ao cancelar');
+          window.location.reload();
+        } catch(e) {
+          alert(e.message);
+          btn.disabled = false;
+          btn.textContent = 'Cancelar agendamento';
+        }
+      }
+    </script>
+  `;
+  res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body));
+}
+
 export function registerPublicRoutes(app: Express): void {
   app.use(cookieParser());
   // Rota de desenvolvimento: /pub/:slug
@@ -707,12 +829,31 @@ export function registerPublicRoutes(app: Express): void {
       const available = await db.checkSlotAvailability(barberId, date, startTime, endTime);
       if (!available) { res.status(409).json({ error: "Horário não disponível. Por favor, escolha outro horário." }); return; }
       const apptId = await db.createAppointment({ clientId, barberId, serviceId, date, startTime, endTime, status: "confirmed" } as any);
+      // Buscar dados para notificações
+      const client = await db.getClientById(clientId);
+      const service = await db.getServiceById(serviceId);
+      const barberData = await db.getBarberById(barberId);
       // Notificar barbeiro via push
       const pushToken = await db.getBarberPushToken(barberId);
       if (pushToken) {
-        const client = await db.getClientById(clientId);
-        const service = await db.getServiceById(serviceId);
         await db.sendExpoPushNotification(pushToken, "📅 Novo agendamento online", `${client?.name ?? "Cliente"} agendou ${service?.name ?? "Serviço"} para ${date} às ${startTime}`, { appointmentId: apptId, screen: "agenda" });
+      }
+      // Enviar e-mail de confirmação ao cliente
+      if (client?.email && slug) {
+        const tenant = await db.getTenantBySlug(slug);
+        const settings = await db.getShopSettings();
+        await sendBookingConfirmationEmail({
+          clientName: client.name,
+          clientEmail: client.email,
+          shopName: settings?.shopName ?? tenant?.name ?? "Barbearia",
+          shopSlug: slug,
+          serviceName: service?.name ?? "Serviço",
+          barberName: barberData?.name ?? "Profissional",
+          date,
+          startTime,
+          endTime,
+          price: service ? `R$ ${parseFloat(service.price).toFixed(2).replace(".", ",")}` : undefined,
+        });
       }
       res.json({ id: apptId, success: true });
     } catch (e: any) {
@@ -736,6 +877,34 @@ export function registerPublicRoutes(app: Express): void {
     res.clearCookie(`client_session_${slug}`);
     res.clearCookie("client_session");
     res.redirect(`/pub/${slug}`);
+  });
+
+  // GET /pub/:slug/meus-agendamentos
+  app.get("/pub/:slug/meus-agendamentos", async (req: Request, res: Response) => {
+    await renderMyAppointmentsPage(req.params.slug, res, req);
+  });
+
+  // POST /pub-api/cancel-appointment
+  app.post("/pub-api/cancel-appointment", async (req: Request, res: Response) => {
+    try {
+      const { appointmentId, slug } = req.body;
+      if (!appointmentId) { res.status(400).json({ error: "appointmentId é obrigatório" }); return; }
+      // Verificar sessão do cliente
+      const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+      if (!clientSessionRaw) { res.status(401).json({ error: "Não autenticado" }); return; }
+      let loggedClient: { id: number } | null = null;
+      try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+      if (!loggedClient) { res.status(401).json({ error: "Sessão inválida" }); return; }
+      // Verificar que o agendamento pertence ao cliente
+      const appts = await db.getClientAppointments(loggedClient.id);
+      const appt = appts.find((a: any) => a.id === parseInt(appointmentId));
+      if (!appt) { res.status(404).json({ error: "Agendamento não encontrado" }); return; }
+      if ((appt as any).status === "cancelled") { res.status(400).json({ error: "Agendamento já cancelado" }); return; }
+      await db.updateAppointment(parseInt(appointmentId), { status: "cancelled" });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // Roteamento por subdomínio (produção: slug.barberpro.com.br)
