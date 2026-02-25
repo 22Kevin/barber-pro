@@ -1479,3 +1479,9 @@ export async function getShopSettingsByTenantId(tenantId: number) {
     .limit(1);
   return result.length > 0 ? result[0] : null;
 }
+
+export async function updateAppointmentStatus(id: number, status: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(appointments).set({ status } as any).where(eq(appointments.id, id));
+}

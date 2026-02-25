@@ -737,3 +737,15 @@
 - [x] E-mail de confirmação de agendamento enviado ao cliente após agendar pela web
 - [x] Template HTML responsivo do e-mail de confirmação com detalhes do agendamento
 - [x] Variáveis SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM para configuração
+
+## Fase 8 Web — SMTP, Ações Agendamento e Login Google
+
+- [x] Configurar Resend como provedor de e-mail (API Key via secrets)
+- [x] Módulo email.ts usando SDK Resend para envio de e-mails HTML
+- [x] E-mail de confirmação de agendamento enviado automaticamente após booking online
+- [x] Ações de status na tabela de agendamentos do painel admin web (Confirmar, Iniciar, Concluir, Cancelar, Não veio)
+- [x] Endpoint POST /admin-api/appointment-status para atualizar status via AJAX
+- [x] Função updateAppointmentStatus no db.ts
+- [x] Botão "Continuar com Google" na página de login/cadastro pública
+- [x] Rota GET /pub-api/oauth-start para iniciar fluxo OAuth Google público
+- [x] Rota GET /pub-api/oauth-callback para processar retorno OAuth e criar sessão de cliente
