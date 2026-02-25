@@ -253,6 +253,7 @@ export const shopSettings = mysqlTable("shop_settings", {
   reminderMessageTemplate: text("reminderMessageTemplate"),
   instagram: varchar("instagram", { length: 100 }),
   cnpj: varchar("cnpj", { length: 20 }),
+  cep: varchar("cep", { length: 10 }),
   googleMapsUrl: text("googleMapsUrl"),
   pixKey: varchar("pixKey", { length: 255 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

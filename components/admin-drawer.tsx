@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import {
   Animated,
+  Image,
   Pressable,
   ScrollView,
   Text,
@@ -143,7 +144,11 @@ export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
         {/* Header: avatar + nome + role */}
         <TouchableOpacity style={styles.drawerHeader} onPress={() => handleNavigate("/admin/(tabs)/my-profile")} activeOpacity={0.8}>
           <View style={styles.drawerAvatar}>
-            <Text style={styles.drawerAvatarText}>{initials}</Text>
+            {barber?.photoUrl ? (
+              <Image source={{ uri: barber.photoUrl }} style={styles.drawerAvatarImage} />
+            ) : (
+              <Text style={styles.drawerAvatarText}>{initials}</Text>
+            )}
           </View>
           <View style={styles.drawerUserInfo}>
             <Text style={styles.drawerUserName} numberOfLines={1}>{barber?.name ?? "Administrador"}</Text>
@@ -236,6 +241,7 @@ const styles = StyleSheet.create({
     justifyContent: "center", alignItems: "center",
   },
   drawerAvatarText: { color: "#C9A84C", fontSize: 19, fontWeight: "800" },
+  drawerAvatarImage: { width: 46, height: 46, borderRadius: 23 },
   drawerUserInfo: { flex: 1 },
   drawerUserName: { fontSize: 15, fontWeight: "700", color: "#F5F5F0" },
   drawerUserRole: { fontSize: 11, color: "#C9A84C", marginTop: 1 },

@@ -21,7 +21,7 @@ import { trpc } from "@/lib/trpc";
 import { SingleImageUploader } from "@/components/media-uploader";
 import { TimePickerModal } from "@/components/time-picker-modal";
 import { AdminHeader } from "@/components/admin-header";
-import { applyDocumentMask, applyPhoneMask, stripMask } from "@/hooks/use-mask";
+import { applyDocumentMask, applyCepMask, applyPhoneMask, stripMask, validateDocument } from "@/hooks/use-mask";
 
 type BarbeariaTab = "dados" | "equipe" | "horarios" | "integracoes";
 
@@ -50,10 +50,52 @@ export default function BarbeariaScreen() {
   const [shopWhatsapp, setShopWhatsapp] = useState("");
   const [shopInstagram, setShopInstagram] = useState("");
   const [shopCnpj, setShopCnpj] = useState("");
-  const handleCnpjChange = (t: string) => setShopCnpj(applyDocumentMask(t));
+  const [cnpjError, setCnpjError] = useState<string | null>(null);
+  const handleCnpjChange = (t: string) => {
+    const masked = applyDocumentMask(t);
+    setShopCnpj(masked);
+    const result = validateDocument(masked);
+    if (result === false) {
+      const digits = masked.replace(/\D/g, "");
+      setCnpjError(digits.length === 11 ? "CPF inválido" : "CNPJ inválido");
+    } else {
+      setCnpjError(null);
+    }
+  };
   const [shopGoogleMapsUrl, setShopGoogleMapsUrl] = useState("");
   const [shopLogoUrl, setShopLogoUrl] = useState<string | null>(null);
   const [shopGallery, setShopGallery] = useState<string[]>([]);
+
+  // CEP
+  const [shopCep, setShopCep] = useState("");
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState<string | null>(null);
+
+  async function handleCepChange(raw: string) {
+    const masked = applyCepMask(raw);
+    setShopCep(masked);
+    setCepError(null);
+    const digits = masked.replace(/\D/g, "");
+    if (digits.length === 8) {
+      setCepLoading(true);
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+        const data = await res.json();
+        if (data.erro) {
+          setCepError("CEP não encontrado");
+        } else {
+          const fullAddress = `${data.logradouro}, ${data.bairro} — ${data.localidade}/${data.uf}`;
+          setShopAddress(fullAddress);
+          setAddressSuggestions([]);
+          setShowSuggestions(false);
+        }
+      } catch {
+        setCepError("Erro ao buscar CEP");
+      } finally {
+        setCepLoading(false);
+      }
+    }
+  }
 
   // Integrações
   const [shopPixKey, setShopPixKey] = useState("");
@@ -85,6 +127,7 @@ export default function BarbeariaScreen() {
     const d = settingsQuery.data as any;
     setShopName(d.shopName ?? "");
     setShopAddress(d.address ?? "");
+    setShopCep(applyCepMask(d.cep ?? ""));
     setShopPhone(applyPhoneMask(d.phone ?? ""));
     setShopWhatsapp(d.whatsapp ?? "");
     setMpAccessToken(d.mercadoPagoAccessToken ?? "");
@@ -179,6 +222,7 @@ export default function BarbeariaScreen() {
     updateSettingsMutation.mutate({
       shopName: shopName.trim() || undefined,
       address: shopAddress.trim() || null,
+      cep: stripMask(shopCep).trim() || null,
       phone: stripMask(shopPhone).trim() || null,
       whatsapp: shopWhatsapp.trim() || null,
       instagram: shopInstagram.trim() || null,
@@ -303,7 +347,6 @@ export default function BarbeariaScreen() {
               { label: "Nome da Barbearia", value: shopName, setter: setShopName, placeholder: "Barber Pro", keyboard: "default" as const },
               { label: "Telefone", value: shopPhone, setter: handleShopPhoneChange, placeholder: "(11) 3333-4444", keyboard: "phone-pad" as const },
               { label: "WhatsApp (com DDD)", value: shopWhatsapp, setter: setShopWhatsapp, placeholder: "5511999999999", keyboard: "phone-pad" as const },
-              { label: "CPF / CNPJ", value: shopCnpj, setter: handleCnpjChange, placeholder: "000.000.000-00 ou 00.000.000/0001-00", keyboard: "numeric" as const },
               { label: "Instagram (usuário)", value: shopInstagram, setter: setShopInstagram, placeholder: "@barberpro", keyboard: "default" as const },
               { label: "Link do Google Maps", value: shopGoogleMapsUrl, setter: setShopGoogleMapsUrl, placeholder: "https://maps.google.com/...", keyboard: "url" as const },
             ].map(f => (
@@ -312,6 +355,61 @@ export default function BarbeariaScreen() {
                 <TextInput style={styles.input} value={f.value} onChangeText={f.setter} placeholder={f.placeholder} placeholderTextColor="#555" keyboardType={f.keyboard} autoCapitalize={f.keyboard === "default" && f.label.includes("Instagram") ? "none" : "sentences"} autoCorrect={false} />
               </View>
             ))}
+
+            {/* CPF / CNPJ com validação */}
+            <View style={{ marginBottom: 14 }}>
+              <Text style={styles.fieldLabel}>CPF / CNPJ</Text>
+              <View style={{ position: "relative" }}>
+                <TextInput
+                  style={[styles.input, cnpjError ? { borderColor: "#EF4444" } : shopCnpj && validateDocument(shopCnpj) === true ? { borderColor: "#22C55E" } : {}]}
+                  value={shopCnpj}
+                  onChangeText={handleCnpjChange}
+                  placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                  placeholderTextColor="#555"
+                  keyboardType="numeric"
+                  autoCorrect={false}
+                />
+                {shopCnpj.replace(/\D/g, "").length >= 11 && (
+                  <View style={{ position: "absolute", right: 12, top: 0, bottom: 0, justifyContent: "center" }}>
+                    {cnpjError ? (
+                      <IconSymbol name="xmark.circle.fill" size={18} color="#EF4444" />
+                    ) : validateDocument(shopCnpj) === true ? (
+                      <IconSymbol name="checkmark.circle.fill" size={18} color="#22C55E" />
+                    ) : null}
+                  </View>
+                )}
+              </View>
+              {cnpjError && <Text style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>{cnpjError}</Text>}
+            </View>
+
+            {/* CEP com busca automática ViaCEP */}
+            <View style={{ marginBottom: 14 }}>
+              <Text style={styles.fieldLabel}>CEP</Text>
+              <View style={{ position: "relative" }}>
+                <TextInput
+                  style={[styles.input, cepError ? { borderColor: "#EF4444" } : {}]}
+                  value={shopCep}
+                  onChangeText={handleCepChange}
+                  placeholder="00000-000"
+                  placeholderTextColor="#555"
+                  keyboardType="numeric"
+                  maxLength={9}
+                  returnKeyType="done"
+                />
+                {cepLoading && (
+                  <View style={{ position: "absolute", right: 12, top: 0, bottom: 0, justifyContent: "center" }}>
+                    <ActivityIndicator size="small" color="#C9A84C" />
+                  </View>
+                )}
+              </View>
+              {cepError ? (
+                <Text style={{ color: "#EF4444", fontSize: 12, marginTop: 4 }}>{cepError}</Text>
+              ) : shopCep.replace(/\D/g, "").length === 8 && !cepLoading ? (
+                <Text style={{ color: "#22C55E", fontSize: 12, marginTop: 4 }}>✓ Endereço preenchido automaticamente</Text>
+              ) : (
+                <Text style={{ color: "#555", fontSize: 12, marginTop: 4 }}>Digite o CEP para preencher o endereço automaticamente</Text>
+              )}
+            </View>
 
             {/* Endereço com Google Places */}
             <View style={{ marginBottom: 14 }}>

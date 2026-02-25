@@ -494,3 +494,9 @@
 - [x] Foto de perfil no Meu Perfil (upload via câmera/galeria, exibir avatar real no drawer)
 - [x] Máscara de telefone em todo o sistema (formato (99) 99999-9999)
 - [x] Campo CNPJ/CPF unificado na tela Barbearia com detecção automática do tipo de documento
+
+## Melhorias v3.8
+
+- [x] Avatar real no drawer lateral (exibir foto de perfil do barbeiro logado no cabeçalho do drawer)
+- [x] Validação de CPF/CNPJ com dígito verificador (aviso discreto se documento inválido)
+- [x] Máscara de CEP (XXXXX-XXX) com busca automática de endereço via ViaCEP na tela Barbearia
