@@ -20,6 +20,7 @@ import { trpc } from "@/lib/trpc";
 import { MediaUploader } from "@/components/media-uploader";
 import { DurationPicker } from "@/components/duration-picker";
 import { AdminHeader } from "@/components/admin-header";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Service = {
   id: number;
@@ -34,6 +35,7 @@ type Service = {
 
 
 export default function ServicesScreen() {
+  const insets = useSafeAreaInsets();
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
   const [search, setSearch] = useState("");
@@ -140,7 +142,7 @@ export default function ServicesScreen() {
         <FlatList
           data={services}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ padding: 16, paddingTop: 8, paddingBottom: 80 }}
+          contentContainerStyle={{ padding: 16, paddingTop: 8, paddingBottom: Math.max(insets.bottom + 24, 80) }}
           ListEmptyComponent={
             <View style={styles.emptyCard}>
               <IconSymbol name="scissors" size={40} color="#2A2A2A" />

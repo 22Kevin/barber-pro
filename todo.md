@@ -505,3 +505,9 @@
 
 - [x] Campo Número/Complemento após busca de CEP na tela Barbearia (compõe endereço completo)
 - [x] Reordenação da galeria de fotos da barbearia por arrastar e soltar (drag-and-drop)
+
+## Correções v3.9.1
+
+- [x] Máscara de telefone no campo WhatsApp (com DDD) na tela Barbearia
+- [x] Corrigir rota da Agenda no drawer lateral (não encontra a tela)
+- [x] Ajustar safe area em todas as telas admin (paddingBottom dinâmico com useSafeAreaInsets)

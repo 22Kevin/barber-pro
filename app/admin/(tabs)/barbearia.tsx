@@ -22,6 +22,7 @@ import { SortableGallery } from "@/components/sortable-gallery";
 import { TimePickerModal } from "@/components/time-picker-modal";
 import { AdminHeader } from "@/components/admin-header";
 import { applyDocumentMask, applyCepMask, applyPhoneMask, stripMask, validateDocument } from "@/hooks/use-mask";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type BarbeariaTab = "dados" | "equipe" | "horarios" | "integracoes";
 
@@ -36,6 +37,7 @@ const ROLES = [
 
 export default function BarbeariaScreen() {
   const { barber } = useBarberAuth();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<BarbeariaTab>("dados");
   const [showBarberModal, setShowBarberModal] = useState(false);
   const [editingBarber, setEditingBarber] = useState<any>(null);
@@ -48,6 +50,7 @@ export default function BarbeariaScreen() {
   const [shopPhone, setShopPhone] = useState("");
   const handleShopPhoneChange = (t: string) => setShopPhone(applyPhoneMask(t));
   const [shopWhatsapp, setShopWhatsapp] = useState("");
+  const handleShopWhatsappChange = (t: string) => setShopWhatsapp(applyPhoneMask(t));
   const [shopInstagram, setShopInstagram] = useState("");
   const [shopCnpj, setShopCnpj] = useState("");
   const [cnpjError, setCnpjError] = useState<string | null>(null);
@@ -159,7 +162,7 @@ export default function BarbeariaScreen() {
     setShopAddressComplement(d.addressComplement ?? "");
     if (d.cep) setCepFilled(true);
     setShopPhone(applyPhoneMask(d.phone ?? ""));
-    setShopWhatsapp(d.whatsapp ?? "");
+    setShopWhatsapp(applyPhoneMask(d.whatsapp ?? ""));
     setMpAccessToken(d.mercadoPagoAccessToken ?? "");
     setMpPublicKey(d.mercadoPagoPublicKey ?? "");
     setShopInstagram(d.instagram ?? "");
@@ -256,7 +259,7 @@ export default function BarbeariaScreen() {
       addressNumber: shopAddressNumber.trim() || null,
       addressComplement: shopAddressComplement.trim() || null,
       phone: stripMask(shopPhone).trim() || null,
-      whatsapp: shopWhatsapp.trim() || null,
+      whatsapp: stripMask(shopWhatsapp).trim() || null,
       instagram: shopInstagram.trim() || null,
       cnpj: stripMask(shopCnpj).trim() || null,
       googleMapsUrl: shopGoogleMapsUrl.trim() || null,
@@ -339,7 +342,7 @@ export default function BarbeariaScreen() {
         ))}
       </ScrollView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: Math.max(insets.bottom + 24, 80) }} keyboardShouldPersistTaps="handled">
 
         {/* ── ABA DADOS ── */}
         {activeTab === "dados" && (
@@ -366,7 +369,7 @@ export default function BarbeariaScreen() {
             {[
               { label: "Nome da Barbearia", value: shopName, setter: setShopName, placeholder: "Barber Pro", keyboard: "default" as const },
               { label: "Telefone", value: shopPhone, setter: handleShopPhoneChange, placeholder: "(11) 3333-4444", keyboard: "phone-pad" as const },
-              { label: "WhatsApp (com DDD)", value: shopWhatsapp, setter: setShopWhatsapp, placeholder: "5511999999999", keyboard: "phone-pad" as const },
+              { label: "WhatsApp (com DDD)", value: shopWhatsapp, setter: handleShopWhatsappChange, placeholder: "(11) 99999-9999", keyboard: "phone-pad" as const },
               { label: "Instagram (usuário)", value: shopInstagram, setter: setShopInstagram, placeholder: "@barberpro", keyboard: "default" as const },
               { label: "Link do Google Maps", value: shopGoogleMapsUrl, setter: setShopGoogleMapsUrl, placeholder: "https://maps.google.com/...", keyboard: "url" as const },
             ].map(f => (

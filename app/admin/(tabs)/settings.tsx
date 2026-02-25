@@ -11,6 +11,7 @@ import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useThemeContext } from "@/lib/theme-provider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ThemeOption = "light" | "dark" | "system";
 
@@ -21,6 +22,7 @@ const THEME_OPTIONS: { key: ThemeOption; label: string; icon: string; descriptio
 ];
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
   const { setColorScheme } = useThemeContext();
   const [themeOption, setThemeOption] = useState<ThemeOption>("system");
 
@@ -47,7 +49,7 @@ export default function SettingsScreen() {
   return (
     <ScreenContainer containerClassName="bg-background">
       <AdminHeader title="Configurações" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 80 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: Math.max(insets.bottom + 24, 80) }}>
 
         {/* Aparência */}
         <View style={styles.section}>

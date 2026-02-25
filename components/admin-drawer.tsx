@@ -38,7 +38,7 @@ const DRAWER_GROUPS: DrawerGroup[] = [
     label: "OPERAÇÃO",
     items: [
       { label: "Dashboard",       icon: "chart.bar.fill",              route: "/admin/(tabs)/dashboard",         roles: ["super_admin", "barber", "receptionist"] },
-      { label: "Agenda",          icon: "calendar",                    route: "/admin/(tabs)/appointments",      roles: ["super_admin", "barber", "receptionist"] },
+      { label: "Agenda",          icon: "calendar",                    route: "/admin/(tabs)/agenda",            roles: ["super_admin", "barber", "receptionist"] },
       { label: "Clientes",        icon: "person.2.fill",               route: "/admin/(tabs)/clients",           roles: ["super_admin", "barber", "receptionist"] },
       { label: "Lista de Espera", icon: "person.badge.clock",          route: "/admin/(tabs)/waitlist",          roles: ["super_admin", "receptionist"] },
     ],

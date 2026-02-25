@@ -17,6 +17,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Tab = "overview" | "sales" | "expenses";
 
@@ -50,6 +51,7 @@ function getMonthRange(offset = 0) {
 }
 
 export default function FinancialScreen() {
+  const insets = useSafeAreaInsets();
   const { barber } = useBarberAuth();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [monthOffset, setMonthOffset] = useState(0);
@@ -198,7 +200,7 @@ export default function FinancialScreen() {
         ))}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 24, 80) }}>
         {/* Overview */}
         {activeTab === "overview" && (
           <>
