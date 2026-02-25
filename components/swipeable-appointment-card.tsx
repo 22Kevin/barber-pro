@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Animated, StyleSheet, Text, View, Pressable, Platform } from "react-native";
+import { Animated, StyleSheet, Text, View, Pressable, Platform, Linking } from "react-native";
 import {
   Swipeable,
   GestureHandlerRootView,
@@ -37,9 +37,10 @@ interface Props {
   onCompleted?: (appointment: any) => void;
   /** Se true, exibe badge de pagamento pendente no card */
   paymentPending?: boolean;
+  /** Chamado ao cancelar com motivo (substitui o swipe de cancelar quando fornecido) */
+  onCancelWithReason?: (id: number) => void;
 }
-
-export function SwipeableAppointmentCard({ appointment, client, service, onPress, onStatusChange, onCompleted, paymentPending }: Props) {
+export function SwipeableAppointmentCard({ appointment, client, service, onPress, onStatusChange, onCompleted, paymentPending, onCancelWithReason }: Props) {
   const swipeRef = useRef<Swipeable>(null);
   const status = STATUS_CONFIG[appointment.status] ?? { label: appointment.status, color: "#888880" };
   const nextPositive = getNextPositiveStatus(appointment.status);
@@ -63,11 +64,20 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => null);
     }
     swipeRef.current?.close();
-    // Cancela a notificação de avaliação se o agendamento for cancelado
     if (action === "cancelled") {
       cancelReviewNotification(appointment.id).catch(() => null);
+      if (onCancelWithReason) {
+        onCancelWithReason(appointment.id);
+        return;
+      }
     }
     onStatusChange(appointment.id, action);
+  }
+  function handleWhatsApp() {
+    const phone = client?.phone?.replace(/\D/g, "");
+    if (!phone) return;
+    const intlPhone = phone.startsWith("55") ? phone : `55${phone}`;
+    Linking.openURL(`https://wa.me/${intlPhone}`).catch(() => null);
   }
 
   // Ação direita (positiva) — só mostra se há próximo status positivo
@@ -133,6 +143,14 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
               <Text style={styles.swipeHint}>
                 {nextPositive ? `← Cancelar  |  ${STATUS_CONFIG[nextPositive].label} →` : "← Cancelar / Não veio"}
               </Text>
+            )}
+            {client?.phone && !isTerminal && (
+              <Pressable
+                onPress={handleWhatsApp}
+                style={({ pressed }) => [styles.whatsappBtn, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={styles.whatsappBtnText}>📱 WhatsApp</Text>
+              </Pressable>
             )}
             {appointment.status === "completed" && paymentPending && (
               <View style={styles.paymentBadge}>
@@ -218,4 +236,13 @@ const styles = StyleSheet.create({
     borderColor: "#32BCAD44",
   },
   paymentBadgeText: { fontSize: 10, fontWeight: "700", color: "#F59E0B" },
+  whatsappBtn: {
+    backgroundColor: "#25D36622",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: "#25D36644",
+  },
+  whatsappBtnText: { fontSize: 10, fontWeight: "700", color: "#25D366" },
 });

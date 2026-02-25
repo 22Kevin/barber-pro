@@ -117,6 +117,9 @@ export default function AgendaScreen() {
   const [selectedTime, setSelectedTime] = useState("");
   const [notes, setNotes] = useState("");
   const [showClientPicker, setShowClientPicker] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelApptId, setCancelApptId] = useState<number | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   const dateStr = dateToString(selectedDate);
   const utils = trpc.useUtils();
@@ -159,7 +162,6 @@ export default function AgendaScreen() {
 
   const updateMutation = trpc.appointments.update.useMutation({
     onSuccess: (_data: unknown, variables: any) => {
-      // Se o agendamento foi cancelado, remove o lembrete push
       if (variables.status === "cancelled" || variables.status === "no_show") {
         cancelAppointmentReminder(variables.id).catch(() => null);
       }
@@ -169,6 +171,26 @@ export default function AgendaScreen() {
     },
     onError: (e) => Alert.alert("Erro", e.message),
   });
+  const cancelWithReasonMutation = trpc.appointments.cancelWithReason.useMutation({
+    onSuccess: () => {
+      utils.appointments.byDate.invalidate();
+      utils.dashboard.stats.invalidate();
+      setShowCancelModal(false);
+      setCancelReason("");
+      setCancelApptId(null);
+    },
+    onError: (e) => Alert.alert("Erro", e.message),
+  });
+  function handleCancelWithReason(id: number) {
+    setCancelApptId(id);
+    setCancelReason("");
+    setShowCancelModal(true);
+  }
+  function confirmCancelWithReason() {
+    if (!cancelApptId) return;
+    cancelWithReasonMutation.mutate({ id: cancelApptId, reason: cancelReason || undefined });
+    cancelAppointmentReminder(cancelApptId).catch(() => null);
+  }
 
   function closeNewModal() {
     setShowNewModal(false);
@@ -361,6 +383,7 @@ export default function AgendaScreen() {
                   }}
                   onStatusChange={handleStatusChange}
                   onCompleted={handleAppointmentCompleted}
+                  onCancelWithReason={handleCancelWithReason}
                   paymentPending={apt.status === "completed" ? (paymentPendingMap[apt.id] ?? true) : undefined}
                 />
               );
@@ -570,6 +593,49 @@ export default function AgendaScreen() {
           utils.dashboard.stats.invalidate();
         }}
       />
+
+      {/* Modal Cancelamento com Motivo */}
+      <Modal visible={showCancelModal} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: 340 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Cancelar Agendamento</Text>
+              <Pressable onPress={() => setShowCancelModal(false)}>
+                <IconSymbol name="xmark" size={22} color="#888880" />
+              </Pressable>
+            </View>
+            <Text style={[styles.fieldLabel, { marginBottom: 8 }]}>Motivo (opcional)</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+              {["Imprevisto", "Feriado", "Problema técnico", "Outro"].map(r => (
+                <Pressable
+                  key={r}
+                  onPress={() => setCancelReason(r)}
+                  style={[styles.serviceChip, cancelReason === r && styles.serviceChipActive, { minWidth: 0, paddingHorizontal: 14 }]}
+                >
+                  <Text style={[styles.serviceChipText, cancelReason === r && styles.serviceChipTextActive]}>{r}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Ou escreva um motivo personalizado..."
+              placeholderTextColor="#555"
+              value={cancelReason}
+              onChangeText={setCancelReason}
+              returnKeyType="done"
+            />
+            <Pressable
+              style={[styles.saveBtn, { backgroundColor: "#F44336" }]}
+              onPress={confirmCancelWithReason}
+              disabled={cancelWithReasonMutation.isPending}
+            >
+              {cancelWithReasonMutation.isPending
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.saveBtnText}>CONFIRMAR CANCELAMENTO</Text>}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }

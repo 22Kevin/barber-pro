@@ -34,6 +34,7 @@ export const barbers = mysqlTable("barbers", {
   specialties: text("specialties"),
   isActive: boolean("isActive").default(true).notNull(),
   passwordHash: varchar("passwordHash", { length: 255 }),
+  pushToken: text("pushToken"), // Expo Push Token para notificações server-side
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -137,6 +138,7 @@ export const appointments = mysqlTable("appointments", {
     .default("scheduled")
     .notNull(),
   notes: text("notes"),
+  cancelReason: text("cancelReason"), // Motivo do cancelamento (preenchido pelo barbeiro)
   reminderSent: boolean("reminderSent").default(false).notNull(),
   whatsappConfirmationSent: boolean("whatsappConfirmationSent").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

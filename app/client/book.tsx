@@ -91,6 +91,8 @@ export default function BookScreen() {
   const [isOpeningPayment, setIsOpeningPayment] = useState(false);
   const [appliedDiscount, setAppliedDiscount] = useState<AppliedDiscount | null>(null);
   const [showDiscountSheet, setShowDiscountSheet] = useState(false);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [pendingApptDateTime, setPendingApptDateTime] = useState<Date | null>(null);
 
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true });
   const barbersQuery = trpc.barbers.list.useQuery();
@@ -114,32 +116,16 @@ export default function BookScreen() {
   const createAppointment = trpc.appointments.create.useMutation({
     onSuccess: async (apptId) => {
       const numApptId = typeof apptId === "number" ? apptId : Number(apptId);
-      setPendingApptId(numApptId);
-
+       setPendingApptId(numApptId);
       if (client && selectedBarber && selectedService && selectedDate && selectedSlot) {
-        const info: AppointmentInfo = {
-          clientName: client.name,
-          clientPhone: client.phone,
-          serviceName: selectedService.name,
-          barberName: selectedBarber.name,
-          date: formatDate(selectedDate),
-          startTime: selectedSlot.startTime,
-          endTime: selectedSlot.endTime,
-        };
-        sendConfirmationWhatsApp(info).catch(() => null);
-
-        const [hours, minutes] = selectedSlot.startTime.split(":").map(Number);
+        const [h, m] = selectedSlot.startTime.split(":").map(Number);
         const appointmentDateTime = new Date(selectedDate);
-        appointmentDateTime.setHours(hours, minutes, 0, 0);
-        // Lê preferência de antecedência do lembrete (padrão: 1h)
-        AsyncStorage.getItem("@reminder_hours").then((saved) => {
-          const reminderH = saved === "2" ? 2 : saved === "24" ? 24 : 1;
-          scheduleAppointmentReminder(numApptId, selectedService.name, selectedBarber.name, appointmentDateTime, reminderH).catch(() => null);
-        }).catch(() => {
-          scheduleAppointmentReminder(numApptId, selectedService.name, selectedBarber.name, appointmentDateTime).catch(() => null);
-        });
-        notifyBarberNewAppointment(client.name, selectedService.name, appointmentDateTime, numApptId).catch(() => null);
+        appointmentDateTime.setHours(h, m, 0, 0);
+        setPendingApptDateTime(appointmentDateTime);
+        // Agenda notificação de avaliação pós-atendimento
         scheduleReviewNotification(numApptId, selectedService.name, selectedBarber.name, appointmentDateTime).catch(() => null);
+        // Mostra modal para o cliente escolher a antecedência do lembrete
+        setShowReminderModal(true);
       }
     },
     onError: (err) => Alert.alert("Erro", err.message),
@@ -241,7 +227,7 @@ export default function BookScreen() {
   const handlePayOnSite = () => {
     Alert.alert(
       "Agendamento confirmado!",
-      "Você receberá uma confirmação pelo WhatsApp e um lembrete 1 hora antes. O pagamento será realizado na barbearia.",
+      "Seu agendamento está confirmado! Você receberá um lembrete no horário escolhido. O pagamento será realizado na barbearia.",
       [
         { text: "Ver meus agendamentos", onPress: () => router.replace("/client/(tabs)/history" as any) },
         { text: "Início", onPress: () => router.replace("/client/(tabs)/home" as any) },
@@ -266,6 +252,58 @@ export default function BookScreen() {
       </View>
     );
   };
+
+  // Modal de seleção de antecedência do lembrete
+  if (showReminderModal && pendingApptId !== null && pendingApptDateTime && selectedService && selectedBarber) {
+    const reminderOptions = [
+      { label: "15 minutos antes", value: 0.25 },
+      { label: "30 minutos antes", value: 0.5 },
+      { label: "45 minutos antes", value: 0.75 },
+      { label: "1 hora antes", value: 1 },
+    ];
+    const handleReminderSelect = (hours: number) => {
+      const apptId = pendingApptId!;
+      const dt = pendingApptDateTime!;
+      const svcName = selectedService!.name;
+      const bName = selectedBarber!.name;
+      scheduleAppointmentReminder(apptId, svcName, bName, dt, hours).catch(() => null);
+      AsyncStorage.setItem("@reminder_hours", String(hours)).catch(() => null);
+      setShowReminderModal(false);
+    };
+    return (
+      <ScreenContainer containerClassName="bg-black">
+        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: 24 }}>
+          <View style={{ alignItems: "center", marginBottom: 32 }}>
+            <Text style={{ fontSize: 52, marginBottom: 12 }}>✅</Text>
+            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 22, textAlign: "center" }}>Agendamento confirmado!</Text>
+            <Text style={{ color: "#9CA3AF", fontSize: 14, textAlign: "center", marginTop: 8 }}>
+              {selectedService!.name} com {selectedBarber!.name}
+            </Text>
+          </View>
+          <Text style={{ color: "#EAB308", fontWeight: "700", fontSize: 16, textAlign: "center", marginBottom: 20 }}>
+            ⏰ Com quanto tempo de antecedência você quer ser lembrado?
+          </Text>
+          <View style={{ gap: 12 }}>
+            {reminderOptions.map((opt) => (
+              <TouchableOpacity
+                key={opt.value}
+                onPress={() => handleReminderSelect(opt.value)}
+                style={{ backgroundColor: "#111827", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#1F2937", alignItems: "center" }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              onPress={() => { setShowReminderModal(false); }}
+              style={{ alignItems: "center", paddingVertical: 12 }}
+            >
+              <Text style={{ color: "#6B7280", fontSize: 14 }}>Sem lembrete</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   // Tela de seleção de forma de pagamento (após criar o agendamento)
   if (pendingApptId !== null) {
@@ -604,7 +642,7 @@ export default function BookScreen() {
 
             {!isAuthenticated && (
               <View style={{ backgroundColor: "#1F1500", borderRadius: 12, padding: 14, marginTop: 16, borderWidth: 1, borderColor: "#EAB308" }}>
-                <Text style={{ color: "#EAB308", fontSize: 14, textAlign: "center" }}>⚠️ Faça login para confirmar o agendamento e receber confirmação pelo WhatsApp.</Text>
+                <Text style={{ color: "#EAB308", fontSize: 14, textAlign: "center" }}>⚠️ Faça login para confirmar o agendamento e receber lembretes.</Text>
               </View>
             )}
 

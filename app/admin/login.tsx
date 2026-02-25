@@ -17,6 +17,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
+import { getExpoPushToken } from "@/lib/use-notifications";
 
 export default function AdminLoginScreen() {
   const { login } = useBarberAuth();
@@ -25,9 +26,14 @@ export default function AdminLoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const savePushToken = trpc.barbers.savePushToken.useMutation();
   const loginMutation = trpc.admin.login.useMutation({
     onSuccess: async (data) => {
       await login(data as any);
+      // Salva o push token do dispositivo para notificações server-side
+      getExpoPushToken().then((token) => {
+        if (token && data.id) savePushToken.mutate({ barberId: data.id, pushToken: token });
+      }).catch(() => null);
       router.replace("/admin/(tabs)/dashboard" as any);
     },
     onError: (err) => {

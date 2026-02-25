@@ -156,6 +156,34 @@ export async function reactivateBarber(id: number) {
   if (!db) throw new Error("Database not available");
   await db.update(barbers).set({ isActive: true }).where(eq(barbers.id, id));
 }
+export async function saveBarberPushToken(barberId: number, pushToken: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(barbers).set({ pushToken }).where(eq(barbers.id, barberId));
+}
+export async function getBarberPushToken(barberId: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select({ pushToken: barbers.pushToken }).from(barbers).where(eq(barbers.id, barberId)).limit(1);
+  return result[0]?.pushToken ?? null;
+}
+/**
+ * Envia notificação push via Expo Push API (funciona com app fechado).
+ */
+export async function sendExpoPushNotification(expoPushToken: string, title: string, body: string, data?: Record<string, unknown>): Promise<boolean> {
+  if (!expoPushToken || !expoPushToken.startsWith("ExponentPushToken")) return false;
+  try {
+    const response = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json", "Accept-Encoding": "gzip, deflate" },
+      body: JSON.stringify({ to: expoPushToken, title, body, data: data ?? {}, sound: "default", priority: "high" }),
+    });
+    return response.ok;
+  } catch (e) {
+    console.warn("[Push] Erro ao enviar notificação:", e);
+    return false;
+  }
+}
 export async function createBarber(data: InsertBarber) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

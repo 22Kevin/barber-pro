@@ -590,3 +590,16 @@
 - [x] Carrossel automático com auto-play animado na Home do cliente (troca a cada 4s com fade/slide suave)
 - [x] Botão "Reagendar" no card de próximo agendamento (abre fluxo book.tsx com serviço pré-selecionado)
 - [x] Configuração de antecedência do lembrete no perfil do cliente (1h, 2h, 24h) com persistência AsyncStorage
+
+### Fluxo de Agendamento Otimizado v5.0
+- [x] Backend: campo pushToken na tabela barbers + campo cancelReason na tabela appointments
+- [x] Backend: endpoint barbers.savePushToken para registrar token ao fazer login
+- [x] Backend: endpoint appointments.create com push server-side ao barbeiro via Expo Push API
+- [x] Backend: endpoint appointments.cancelWithReason com campo de motivo
+- [x] Fluxo book.tsx: status inicial confirmed (sem passar por scheduled)
+- [x] Fluxo book.tsx: remover abertura automática do WhatsApp ao criar agendamento
+- [x] Fluxo book.tsx: modal de seleção de lembrete pós-agendamento (1h, 45min, 30min, 15min)
+- [x] Admin: salvar push token ao fazer login no painel admin (login.tsx)
+- [x] Admin: botão WhatsApp no card de agendamento (abre wa.me com número do cliente)
+- [x] Admin: modal de cancelamento com motivo (Imprevisto, Fériado, Problema técnico, Outro)
+- [x] Avaliação rápida pós-atendimento: modal automático na Home do cliente com estrelas (1-5) e comentário

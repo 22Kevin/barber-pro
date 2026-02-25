@@ -134,6 +134,9 @@ export const appRouter = router({
         return { success: true };
       }),
     delete: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBarber(input.id)),
+    savePushToken: publicProcedure
+      .input(z.object({ barberId: z.number(), pushToken: z.string() }))
+      .mutation(({ input }) => db.saveBarberPushToken(input.barberId, input.pushToken)),
     workingHours: router({
       get: publicProcedure.input(z.object({ barberId: z.number() })).query(({ input }) => db.getWorkingHours(input.barberId)),
       upsert: publicProcedure
@@ -257,15 +260,47 @@ export const appRouter = router({
       .input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), excludeId: z.number().optional() }))
       .query(({ input }) => db.checkSlotAvailability(input.barberId, input.date, input.startTime, input.endTime, input.excludeId)),
     create: publicProcedure
-      .input(z.object({ clientId: z.number(), barberId: z.number(), serviceId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), notes: z.string().optional().nullable(), status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).default("scheduled") }))
+      .input(z.object({ clientId: z.number(), barberId: z.number(), serviceId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), notes: z.string().optional().nullable(), status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).default("confirmed") }))
       .mutation(async ({ input }) => {
         const available = await db.checkSlotAvailability(input.barberId, input.date, input.startTime, input.endTime);
         if (!available) throw new Error("Horário não disponível. Por favor, escolha outro horário.");
-        return db.createAppointment(input as any);
+        // Confirma automaticamente (sem etapa de confirmação manual)
+        const apptId = await db.createAppointment({ ...input, status: "confirmed" } as any);
+        // Notifica o barbeiro via Expo Push (server-side, funciona com app fechado)
+        const pushToken = await db.getBarberPushToken(input.barberId);
+        if (pushToken) {
+          const client = await db.getClientById(input.clientId);
+          const service = await db.getServiceById(input.serviceId);
+          const clientName = client?.name ?? "Cliente";
+          const serviceName = service?.name ?? "Serviço";
+          await db.sendExpoPushNotification(
+            pushToken,
+            "📅 Novo agendamento",
+            `${clientName} agendou ${serviceName} para ${input.date} às ${input.startTime}`,
+            { appointmentId: apptId, screen: "agenda" }
+          );
+        }
+        return apptId;
       }),
     update: publicProcedure
       .input(z.object({ id: z.number(), status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).optional(), notes: z.string().optional().nullable(), reminderSent: z.boolean().optional(), whatsappConfirmationSent: z.boolean().optional() }))
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateAppointment(id, data as any); }),
+    cancelWithReason: publicProcedure
+      .input(z.object({ id: z.number(), reason: z.string().optional(), clientPushToken: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        await db.updateAppointment(input.id, { status: "cancelled", cancelReason: input.reason ?? null } as any);
+        // Notifica o cliente se tiver token
+        if (input.clientPushToken) {
+          const reasonText = input.reason ? ` Motivo: ${input.reason}.` : "";
+          await db.sendExpoPushNotification(
+            input.clientPushToken,
+            "❌ Agendamento cancelado",
+            `Seu agendamento foi cancelado pela barbearia.${reasonText} Que tal reagendar?`,
+            { screen: "book" }
+          );
+        }
+        return { success: true };
+      }),
     getPaymentStatus: publicProcedure
       .input(z.object({ appointmentId: z.number() }))
       .query(async ({ input }) => {

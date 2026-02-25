@@ -61,6 +61,26 @@ export function useNotifications() {
 }
 
 /**
+ * Obtém o Expo Push Token do dispositivo para notificações server-side.
+ * Retorna null se não for possível (web, sem permissão, etc.).
+ */
+export async function getExpoPushToken(): Promise<string | null> {
+  if (Platform.OS === "web") return null;
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== "granted") {
+      const { status: newStatus } = await Notifications.requestPermissionsAsync();
+      if (newStatus !== "granted") return null;
+    }
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    return tokenData.data;
+  } catch (e) {
+    console.warn("[Push] Não foi possível obter push token:", e);
+    return null;
+  }
+}
+
+/**
  * Solicita permissão de notificações ao usuário.
  * Retorna true se a permissão foi concedida.
  */

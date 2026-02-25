@@ -14,9 +14,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/screen-container";
@@ -196,6 +198,9 @@ export default function ClientHome() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useTabBarHeight();
   const { client, isAuthenticated } = useClientAuth();
+  const [pendingReviewAppt, setPendingReviewAppt] = useState<any>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
 
   // Animações de entrada
   const headerFade = useRef(new Animated.Value(0)).current;
@@ -229,6 +234,46 @@ export default function ClientHome() {
   const cancelApptMutation = trpc.appointments.update.useMutation({
     onSuccess: () => nextAppointmentQuery.refetch(),
   });
+  const clientAppointmentsQuery = trpc.clients.appointments.useQuery(
+    { clientId: client?.id ?? 0 },
+    { enabled: isAuthenticated && !!client?.id }
+  );
+  const createReviewMutation = trpc.reviews.create.useMutation({
+    onSuccess: () => {
+      Alert.alert("⭐ Obrigado!", "Sua avaliação foi enviada!");
+      setPendingReviewAppt(null);
+      setReviewRating(5);
+      setReviewComment("");
+    },
+    onError: (err: any) => Alert.alert("Erro", err.message),
+  });
+  // Detectar agendamentos concluídos recentes sem avaliação
+  useEffect(() => {
+    if (!isAuthenticated || !client?.id || !clientAppointmentsQuery.data) return;
+    const checkPendingReview = async () => {
+      try {
+        const dismissed = await AsyncStorage.getItem("dismissed_reviews");
+        const dismissedIds: number[] = dismissed ? JSON.parse(dismissed) : [];
+        const nowBrasilia = new Date(Date.now() - 3 * 60 * 60 * 1000);
+        const yesterday = new Date(nowBrasilia.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const completed = (clientAppointmentsQuery.data as any[]).find((a: any) =>
+          a.status === "completed" &&
+          a.date >= yesterday &&
+          !dismissedIds.includes(a.id)
+        );
+        if (completed) setPendingReviewAppt(completed);
+      } catch { /* ignore */ }
+    };
+    checkPendingReview();
+  }, [isAuthenticated, client?.id, clientAppointmentsQuery.data]);
+  async function dismissReview(id: number) {
+    try {
+      const dismissed = await AsyncStorage.getItem("dismissed_reviews");
+      const ids: number[] = dismissed ? JSON.parse(dismissed) : [];
+      await AsyncStorage.setItem("dismissed_reviews", JSON.stringify([...ids, id]));
+    } catch { /* ignore */ }
+    setPendingReviewAppt(null);
+  }
 
   const settings = settingsQuery.data as any;
   const shopName = settings?.shopName ?? "Barber Pro";
@@ -520,12 +565,69 @@ export default function ClientHome() {
             </View>
           </View>
         )}
-        </Animated.View>
+         </Animated.View>
       </ScrollView>
+
+      {/* Modal de Avaliação Pós-Atendimento */}
+      <Modal visible={!!pendingReviewAppt} animationType="slide" transparent>
+        <View style={styles.reviewOverlay}>
+          <View style={styles.reviewSheet}>
+            <View style={styles.reviewHandle} />
+            <Text style={styles.reviewTitle}>⭐ Como foi seu atendimento?</Text>
+            <Text style={styles.reviewSubtitle}>
+              {pendingReviewAppt?.serviceName ?? "Serviço"} • {pendingReviewAppt?.barberName ?? "Barbeiro"}
+            </Text>
+            {/* Estrelas interativas */}
+            <View style={styles.reviewStarsRow}>
+              {[1, 2, 3, 4, 5].map(s => (
+                <TouchableOpacity key={s} onPress={() => setReviewRating(s)} activeOpacity={0.7}>
+                  <Text style={[styles.reviewStar, { color: s <= reviewRating ? "#EAB308" : "#374151" }]}>★</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              style={styles.reviewInput}
+              placeholder="Comentário opcional..."
+              placeholderTextColor="#4B5563"
+              value={reviewComment}
+              onChangeText={setReviewComment}
+              multiline
+              numberOfLines={3}
+              returnKeyType="done"
+            />
+            <View style={styles.reviewBtns}>
+              <TouchableOpacity
+                onPress={() => pendingReviewAppt && dismissReview(pendingReviewAppt.id)}
+                style={styles.reviewBtnSkip}
+              >
+                <Text style={styles.reviewBtnSkipText}>Agora não</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  if (!client || !pendingReviewAppt) return;
+                  createReviewMutation.mutate({
+                    clientId: client.id,
+                    serviceId: pendingReviewAppt.serviceId,
+                    appointmentId: pendingReviewAppt.id,
+                    rating: reviewRating,
+                    comment: reviewComment || undefined,
+                  });
+                  dismissReview(pendingReviewAppt.id);
+                }}
+                disabled={createReviewMutation.isPending}
+                style={styles.reviewBtnSend}
+              >
+                <Text style={styles.reviewBtnSendText}>
+                  {createReviewMutation.isPending ? "Enviando..." : "Enviar avaliação"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
-
 const styles = StyleSheet.create({
   // ── Header ──────────────────────────────────────────────────────────────────
   header: {
@@ -1000,5 +1102,92 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#EF4444",
     fontWeight: "600",
+  },
+  // ── Modal Avaliação Pós-Atendimento ────────────────────────────────────────
+  reviewOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "flex-end",
+  },
+  reviewSheet: {
+    backgroundColor: "#111",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+    borderTopWidth: 1,
+    borderColor: "#2A2A2A",
+  },
+  reviewHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#333",
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  reviewTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#F5F5F0",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  reviewSubtitle: {
+    fontSize: 14,
+    color: "#888880",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  reviewStarsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
+    marginBottom: 20,
+  },
+  reviewStar: {
+    fontSize: 40,
+  },
+  reviewInput: {
+    backgroundColor: "#1E1E1E",
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: "#F5F5F0",
+    marginBottom: 20,
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  reviewBtns: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  reviewBtnSkip: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+    alignItems: "center",
+  },
+  reviewBtnSkipText: {
+    fontSize: 14,
+    color: "#888880",
+    fontWeight: "600",
+  },
+  reviewBtnSend: {
+    flex: 2,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#C9A84C",
+    alignItems: "center",
+  },
+  reviewBtnSendText: {
+    fontSize: 14,
+    color: "#0A0A0A",
+    fontWeight: "800",
   },
 });
