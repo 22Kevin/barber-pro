@@ -28,6 +28,9 @@ import {
   commissionEntries,
   recurringAppointments,
   stockMovements,
+  tenants,
+  type Tenant,
+  type InsertTenant,
   type InsertAppointment,
   type InsertBarber,
   type InsertClient,
@@ -1380,4 +1383,81 @@ export async function getLowStockProducts() {
   if (!db) return [];
   const prods = await db.select().from(products).where(eq(products.isActive, true));
   return prods.filter((p) => (p.stockQuantity ?? 0) <= (p.minStockAlert ?? 5));
+}
+
+// ─── Tenants (Multi-tenant SaaS) ──────────────────────────────────────────────
+export async function createTenant(data: InsertTenant): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(tenants).values(data);
+  return result[0].insertId;
+}
+
+export async function getTenantBySlug(slug: string): Promise<Tenant | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(tenants).where(eq(tenants.slug, slug)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getTenantById(id: number): Promise<Tenant | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(tenants).where(eq(tenants.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAllTenants(): Promise<Tenant[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(tenants).orderBy(tenants.createdAt);
+}
+
+export async function updateTenant(id: number, data: Partial<InsertTenant>): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(tenants).set(data).where(eq(tenants.id, id));
+}
+
+export async function createShopSettingsForTenant(tenantId: number, data: {
+  shopName: string;
+  phone?: string;
+  cnpj?: string;
+  instagram?: string;
+  cep?: string;
+  address?: string;
+  addressNumber?: string;
+  addressComplement?: string;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(shopSettings).values({
+    tenantId,
+    shopName: data.shopName,
+    phone: data.phone,
+    cnpj: data.cnpj,
+    instagram: data.instagram,
+    cep: data.cep,
+    address: data.address,
+    addressNumber: data.addressNumber,
+    addressComplement: data.addressComplement,
+  });
+}
+
+export async function getBarberByEmailAndTenant(email: string, tenantId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(barbers)
+    .where(and(eq(barbers.email, email), eq(barbers.tenantId, tenantId)))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getShopSettingsByTenantId(tenantId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(shopSettings)
+    .where(eq(shopSettings.tenantId, tenantId))
+    .limit(1);
+  return result.length > 0 ? result[0] : null;
 }

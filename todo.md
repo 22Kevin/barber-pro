@@ -613,3 +613,14 @@
 - [x] Relatório de ocupação por barbeiro: gráfico de barras com agendamentos e % de ocupação por período
 - [x] Bloqueio de horário em lote: selecionar intervalo de datas para bloquear horários de um barbeiro
 - [x] Busca de agendamento por cliente na agenda do admin (campo de busca no topo)
+
+## Fase 1 SaaS — Fundação Multi-Tenant (v6.0)
+- [x] Tabela `tenants` no banco (id, slug, nome, plano, status, createdAt)
+- [x] Campo `tenantId` nas tabelas core: barbers, clients, shopSettings (tabelas filho herdam via join)
+- [x] Endpoints de onboarding: onboarding.register, onboarding.checkSlug, onboarding.listTenants
+- [x] Wizard de cadastro da barbearia: Etapa 1 — Dados básicos (nome, telefone, CNPJ)
+- [x] Wizard de cadastro da barbearia: Etapa 2 — Endereço (CEP com auto-preenchimento, número, complemento)
+- [x] Wizard de cadastro da barbearia: Etapa 3 — Horários de funcionamento (dias e horários)
+- [x] Wizard de cadastro da barbearia: Etapa 4 — Conta do administrador (nome, email, senha)
+- [ ] Tela de seleção de plano (Solo R$49, Equipe R$89, Estúdio R$149)
+- [ ] Integrar fluxo completo: tela inicial → selecionar plano → wizard → dashboard

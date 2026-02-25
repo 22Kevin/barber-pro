@@ -1218,5 +1218,124 @@ export const appRouter = router({
       return db.getLowStockProducts();
     }),
   }),
+  // ─── Onboarding SaaS (criação de novo tenant) ─────────────────────────────
+  onboarding: router({
+    register: publicProcedure
+      .input(z.object({
+        shop: z.object({
+          name: z.string().min(2, "Nome da barbearia é obrigatório"),
+          phone: z.string().min(8, "Telefone é obrigatório"),
+          cnpj: z.string().optional(),
+          instagram: z.string().optional(),
+          cep: z.string().optional(),
+          address: z.string().optional(),
+          addressNumber: z.string().optional(),
+          addressComplement: z.string().optional(),
+          city: z.string().optional(),
+          state: z.string().optional(),
+        }),
+        schedule: z.object({
+          workDays: z.array(z.number().min(0).max(6)),
+          openTime: z.string(),
+          closeTime: z.string(),
+          lunchStart: z.string().optional(),
+          lunchEnd: z.string().optional(),
+        }),
+        admin: z.object({
+          name: z.string().min(2, "Nome é obrigatório"),
+          email: z.string().email("Email inválido"),
+          password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        // 1. Verificar se email já está em uso globalmente
+        const existingBarber = await db.getBarberByEmail(input.admin.email);
+        if (existingBarber) throw new Error("Este email já está cadastrado");
+        // 2. Gerar slug único para o tenant
+        const baseSlug = input.shop.name
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .substring(0, 50);
+        let slug = baseSlug;
+        let attempt = 0;
+        while (await db.getTenantBySlug(slug)) {
+          attempt++;
+          slug = `${baseSlug}-${attempt}`;
+        }
+        // 3. Criar tenant
+        const trialEndsAt = new Date();
+        trialEndsAt.setDate(trialEndsAt.getDate() + 14); // 14 dias de trial
+        const tenantId = await db.createTenant({
+          slug,
+          name: input.shop.name,
+          phone: input.shop.phone,
+          cnpj: input.shop.cnpj,
+          address: input.shop.address,
+          cep: input.shop.cep,
+          addressNumber: input.shop.addressNumber,
+          addressComplement: input.shop.addressComplement,
+          city: input.shop.city,
+          state: input.shop.state,
+          plan: "solo",
+          status: "trial",
+          trialEndsAt,
+        });
+        // 4. Criar configurações da loja
+        await db.createShopSettingsForTenant(tenantId, {
+          shopName: input.shop.name,
+          phone: input.shop.phone,
+          cnpj: input.shop.cnpj,
+          instagram: input.shop.instagram,
+          cep: input.shop.cep,
+          address: input.shop.address,
+          addressNumber: input.shop.addressNumber,
+          addressComplement: input.shop.addressComplement,
+        });
+        // 5. Criar barbeiro admin (super_admin)
+        const passwordHash = await hashPassword(input.admin.password);
+        const barberId = await db.createBarber({
+          tenantId,
+          name: input.admin.name,
+          email: input.admin.email,
+          passwordHash,
+          role: "super_admin",
+          isActive: true,
+        });
+        // 6. Criar horários de trabalho para o admin (usando os dias selecionados)
+        for (const dayOfWeek of input.schedule.workDays) {
+          await db.upsertWorkingHours(barberId, dayOfWeek, {
+            startTime: input.schedule.openTime,
+            endTime: input.schedule.closeTime,
+            lunchStart: input.schedule.lunchStart ?? null,
+            lunchEnd: input.schedule.lunchEnd ?? null,
+            isWorking: true,
+          });
+        }
+        // 7. Retornar dados do admin para login automático
+        return {
+          tenantId,
+          tenantSlug: slug,
+          admin: {
+            id: barberId,
+            name: input.admin.name,
+            email: input.admin.email,
+            role: "super_admin" as const,
+            tenantId,
+          },
+        };
+      }),
+    checkSlug: publicProcedure
+      .input(z.object({ slug: z.string().min(2) }))
+      .query(async ({ input }) => {
+        const existing = await db.getTenantBySlug(input.slug);
+        return { available: !existing };
+      }),
+    listTenants: publicProcedure.query(async () => {
+      return db.getAllTenants();
+    }),
+  }),
 });
 export type AppRouter = typeof appRouter;

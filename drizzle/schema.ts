@@ -10,6 +10,27 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 
+// ─── Tenants (Barbearias/Salões) ──────────────────────────────────────────────
+export const tenants = mysqlTable("tenants", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(), // URL-friendly identifier
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }),
+  cnpj: varchar("cnpj", { length: 20 }),
+  address: text("address"),
+  cep: varchar("cep", { length: 10 }),
+  addressNumber: varchar("addressNumber", { length: 20 }),
+  addressComplement: varchar("addressComplement", { length: 100 }),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 2 }),
+  plan: mysqlEnum("plan", ["solo", "team", "studio"]).default("solo").notNull(),
+  status: mysqlEnum("status", ["active", "trial", "suspended", "cancelled"]).default("trial").notNull(),
+  trialEndsAt: timestamp("trialEndsAt"),
+  logoUrl: text("logoUrl"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 // ─── Usuários do Sistema ───────────────────────────────────────────────────────
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -26,6 +47,7 @@ export const users = mysqlTable("users", {
 // ─── Barbeiros / Funcionários ─────────────────────────────────────────────────
 export const barbers = mysqlTable("barbers", {
   id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId"), // null = instalação single-tenant (legado)
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 20 }),
@@ -42,6 +64,7 @@ export const barbers = mysqlTable("barbers", {
 // ─── Clientes da Barbearia ────────────────────────────────────────────────────
 export const clients = mysqlTable("clients", {
   id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId"), // null = instalação single-tenant (legado)
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 20 }).notNull(),
@@ -244,6 +267,7 @@ export const coupons = mysqlTable("coupons", {
 // ─── Configurações da Barbearia ───────────────────────────────────────────────
 export const shopSettings = mysqlTable("shop_settings", {
   id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId"), // null = instalação single-tenant (legado)
   shopName: varchar("shopName", { length: 255 }).default("Barber Pro").notNull(),
   address: text("address"),
   phone: varchar("phone", { length: 20 }),
@@ -421,3 +445,6 @@ export type CommissionConfig = typeof commissionConfigs.$inferSelect;
 export type CommissionEntry = typeof commissionEntries.$inferSelect;
 export type RecurringAppointment = typeof recurringAppointments.$inferSelect;
 export type StockMovement = typeof stockMovements.$inferSelect;
+
+export type Tenant = typeof tenants.$inferSelect;
+export type InsertTenant = typeof tenants.$inferInsert;
