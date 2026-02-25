@@ -635,3 +635,14 @@
 - [ ] Isolamento por tenantId: getAllProducts, getAllProductsWithMedia filtrar por tenantId
 - [ ] Isolamento por tenantId: getAllAppointmentsByDate, getAppointmentsByDate filtrar por tenantId via barbeiro
 - [x] Isolamento por tenantId: getShopSettings filtrar por tenantId quando presente
+
+## Fase 2 Web — Backoffice Super-Admin (v6.2)
+- [x] Rota GET /superadmin/login — página de login com senha protegida
+- [x] Rota POST /superadmin/login — autenticação com cookie de sessão (HttpOnly, 24h)
+- [x] Rota GET /superadmin/logout — limpar cookie e redirecionar para login
+- [x] Rota GET /superadmin — dashboard com métricas (total, ativos, trial, suspensos, MRR)
+- [x] Tabela de tenants com nome, slug, plano, status, dias de trial, data de cadastro
+- [x] Ações: ativar, suspender, alterar plano por tenant
+- [x] Modal de alteração de plano (Solo/Equipe/Estúdio)
+- [x] SUPERADMIN_PASSWORD configurada via secrets
+- [x] ENV.superadminPassword lido do process.env com fallback
