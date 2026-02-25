@@ -500,3 +500,8 @@
 - [x] Avatar real no drawer lateral (exibir foto de perfil do barbeiro logado no cabeçalho do drawer)
 - [x] Validação de CPF/CNPJ com dígito verificador (aviso discreto se documento inválido)
 - [x] Máscara de CEP (XXXXX-XXX) com busca automática de endereço via ViaCEP na tela Barbearia
+
+## Melhorias v3.9
+
+- [x] Campo Número/Complemento após busca de CEP na tela Barbearia (compõe endereço completo)
+- [x] Reordenação da galeria de fotos da barbearia por arrastar e soltar (drag-and-drop)

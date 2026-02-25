@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -19,6 +18,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
 import { SingleImageUploader } from "@/components/media-uploader";
+import { SortableGallery } from "@/components/sortable-gallery";
 import { TimePickerModal } from "@/components/time-picker-modal";
 import { AdminHeader } from "@/components/admin-header";
 import { applyDocumentMask, applyCepMask, applyPhoneMask, stripMask, validateDocument } from "@/hooks/use-mask";
@@ -70,11 +70,16 @@ export default function BarbeariaScreen() {
   const [shopCep, setShopCep] = useState("");
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState<string | null>(null);
+  const [shopAddressNumber, setShopAddressNumber] = useState("");
+  const [shopAddressComplement, setShopAddressComplement] = useState("");
+  const [cepFilled, setCepFilled] = useState(false);
+  const numberInputRef = useRef<any>(null);
 
   async function handleCepChange(raw: string) {
     const masked = applyCepMask(raw);
     setShopCep(masked);
     setCepError(null);
+    setCepFilled(false);
     const digits = masked.replace(/\D/g, "");
     if (digits.length === 8) {
       setCepLoading(true);
@@ -84,10 +89,14 @@ export default function BarbeariaScreen() {
         if (data.erro) {
           setCepError("CEP não encontrado");
         } else {
-          const fullAddress = `${data.logradouro}, ${data.bairro} — ${data.localidade}/${data.uf}`;
-          setShopAddress(fullAddress);
+          const street = data.logradouro ? `${data.logradouro}, ` : "";
+          const baseAddress = `${street}${data.bairro} — ${data.localidade}/${data.uf}`;
+          setShopAddress(baseAddress);
           setAddressSuggestions([]);
           setShowSuggestions(false);
+          setCepFilled(true);
+          // Foca no campo Número após preencher o endereço
+          setTimeout(() => numberInputRef.current?.focus(), 300);
         }
       } catch {
         setCepError("Erro ao buscar CEP");
@@ -95,6 +104,24 @@ export default function BarbeariaScreen() {
         setCepLoading(false);
       }
     }
+  }
+
+  // Monta endereço completo com número e complemento
+  function buildFullAddress(): string {
+    let addr = shopAddress.trim();
+    if (shopAddressNumber.trim()) {
+      // Insere o número após a vírgula do logradouro (ex: "Rua X, 123 — Bairro")
+      const commaIdx = addr.indexOf(",");
+      if (commaIdx !== -1) {
+        addr = addr.slice(0, commaIdx) + ", " + shopAddressNumber.trim() + addr.slice(commaIdx + 1);
+      } else {
+        addr = addr + ", " + shopAddressNumber.trim();
+      }
+    }
+    if (shopAddressComplement.trim()) {
+      addr = addr + " (" + shopAddressComplement.trim() + ")";
+    }
+    return addr;
   }
 
   // Integrações
@@ -128,6 +155,9 @@ export default function BarbeariaScreen() {
     setShopName(d.shopName ?? "");
     setShopAddress(d.address ?? "");
     setShopCep(applyCepMask(d.cep ?? ""));
+    setShopAddressNumber(d.addressNumber ?? "");
+    setShopAddressComplement(d.addressComplement ?? "");
+    if (d.cep) setCepFilled(true);
     setShopPhone(applyPhoneMask(d.phone ?? ""));
     setShopWhatsapp(d.whatsapp ?? "");
     setMpAccessToken(d.mercadoPagoAccessToken ?? "");
@@ -221,8 +251,10 @@ export default function BarbeariaScreen() {
   function handleSaveDados() {
     updateSettingsMutation.mutate({
       shopName: shopName.trim() || undefined,
-      address: shopAddress.trim() || null,
+      address: buildFullAddress() || null,
       cep: stripMask(shopCep).trim() || null,
+      addressNumber: shopAddressNumber.trim() || null,
+      addressComplement: shopAddressComplement.trim() || null,
       phone: stripMask(shopPhone).trim() || null,
       whatsapp: shopWhatsapp.trim() || null,
       instagram: shopInstagram.trim() || null,
@@ -319,25 +351,13 @@ export default function BarbeariaScreen() {
                 <Text style={{ color: "#888880", fontSize: 11 }}>Logo</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.fieldLabel, { marginBottom: 8 }]}>Fotos do Ambiente</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: "row", gap: 10 }}>
-                    {shopGallery.map((url, i) => (
-                      <View key={i} style={{ position: "relative" }}>
-                        <Image source={{ uri: url }} style={{ width: 80, height: 80, borderRadius: 10, backgroundColor: "#1A1A1A" }} />
-                        <Pressable
-                          style={{ position: "absolute", top: -6, right: -6, backgroundColor: "#EF4444", borderRadius: 10, width: 20, height: 20, alignItems: "center", justifyContent: "center" }}
-                          onPress={() => setShopGallery(shopGallery.filter((_, j) => j !== i))}
-                        >
-                          <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800" }}>✕</Text>
-                        </Pressable>
-                      </View>
-                    ))}
-                    {shopGallery.length < 8 && (
-                      <SingleImageUploader value={null} onUpload={(url) => setShopGallery([...shopGallery, url])} imageType="gallery" label="+ Foto" size={80} />
-                    )}
-                  </View>
-                </ScrollView>
+                <Text style={[styles.fieldLabel, { marginBottom: 4 }]}>Fotos do Ambiente</Text>
+                <Text style={{ color: "#555", fontSize: 11, marginBottom: 8 }}>Pressione e segure para reordenar</Text>
+                <SortableGallery
+                  images={shopGallery}
+                  onChange={setShopGallery}
+                  maxImages={8}
+                />
               </View>
             </View>
 
@@ -410,6 +430,36 @@ export default function BarbeariaScreen() {
                 <Text style={{ color: "#555", fontSize: 12, marginTop: 4 }}>Digite o CEP para preencher o endereço automaticamente</Text>
               )}
             </View>
+
+            {/* Número e Complemento (aparecem após CEP preenchido) */}
+            {cepFilled && (
+              <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.fieldLabel}>Número</Text>
+                  <TextInput
+                    ref={numberInputRef}
+                    style={styles.input}
+                    value={shopAddressNumber}
+                    onChangeText={setShopAddressNumber}
+                    placeholder="123"
+                    placeholderTextColor="#555"
+                    keyboardType="numeric"
+                    returnKeyType="next"
+                  />
+                </View>
+                <View style={{ flex: 2 }}>
+                  <Text style={styles.fieldLabel}>Complemento</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={shopAddressComplement}
+                    onChangeText={setShopAddressComplement}
+                    placeholder="Sala 2, Andar 3..."
+                    placeholderTextColor="#555"
+                    returnKeyType="done"
+                  />
+                </View>
+              </View>
+            )}
 
             {/* Endereço com Google Places */}
             <View style={{ marginBottom: 14 }}>
