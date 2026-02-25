@@ -563,3 +563,9 @@
 
 - [x] Drawer lateral ainda cortando dados da barbearia — removido paddingBottom do painel, movido para contentContainerStyle do ScrollView com insets.bottom+48
 - [x] Logo da barbearia não aparecia na Home do cliente — logo e galeria agora são salvos automaticamente no banco após o upload (sem precisar clicar em SALVAR DADOS)
+
+## Correções e Funcionalidades v4.6
+
+- [x] Corrigir corte das abas da tela Barbearia (removido marginHorizontal do tabsScroll, adicionado paddingHorizontal no contentContainer)
+- [x] Corrigir corte dos campos de texto na aba Integrações (ScreenContainer com edges=["top"] para evitar safe area lateral)
+- [x] Gestão de usuários exclusiva do Super Admin (botão excluir com confirmação, protegido contra exclusão do próprio Super Admin)

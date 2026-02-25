@@ -219,9 +219,27 @@ export default function BarbeariaScreen() {
     onError: (e: any) => Alert.alert("Erro", e.message),
   });
 
+  const deleteBarberMutation = trpc.barbers.delete.useMutation({
+    onSuccess: () => utils.barbers.list.invalidate(),
+    onError: (e: any) => Alert.alert("Erro", e.message),
+  });
   const upsertHoursMutation = trpc.barbers.workingHours.upsert.useMutation({
     onSuccess: () => utils.barbers.workingHours.get.invalidate(),
   });
+  function handleDeleteBarber(b: any) {
+    if (b.role === "super_admin") {
+      Alert.alert("Não permitido", "Não é possível excluir o Super Admin.");
+      return;
+    }
+    Alert.alert(
+      "Excluir usuário",
+      `Tem certeza que deseja excluir "${b.name}"? Esta ação desativará o acesso deste usuário.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Excluir", style: "destructive", onPress: () => deleteBarberMutation.mutate({ id: b.id }) },
+      ]
+    );
+  }
 
   function openCreateBarber() {
     setEditingBarber(null);
@@ -332,7 +350,7 @@ export default function BarbeariaScreen() {
   ];
 
   return (
-    <ScreenContainer containerClassName="bg-background">
+    <ScreenContainer containerClassName="bg-background" edges={["top"]}>
       <AdminHeader
         title="Barbearia"
         rightElement={
@@ -549,9 +567,20 @@ export default function BarbeariaScreen() {
                   <View style={styles.barberActions}>
                     {!b.isActive && <View style={styles.inactiveBadge}><Text style={styles.inactiveBadgeText}>Inativo</Text></View>}
                     {isSuperAdmin && (
-                      <Pressable onPress={() => openEditBarber(b)} style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.6 }]}>
-                        <IconSymbol name="pencil" size={16} color="#C9A84C" />
-                      </Pressable>
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        <Pressable onPress={() => openEditBarber(b)} style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.6 }]}>
+                          <IconSymbol name="pencil" size={16} color="#C9A84C" />
+                        </Pressable>
+                        {b.role !== "super_admin" && (
+                          <Pressable
+                            onPress={() => handleDeleteBarber(b)}
+                            style={({ pressed }) => [styles.editBtn, { borderColor: "#F4433644", backgroundColor: "#F4433611" }, pressed && { opacity: 0.6 }]}
+                            disabled={deleteBarberMutation.isPending}
+                          >
+                            <IconSymbol name="trash" size={16} color="#F44336" />
+                          </Pressable>
+                        )}
+                      </View>
                     )}
                   </View>
                 </View>
@@ -773,8 +802,8 @@ export default function BarbeariaScreen() {
 const styles = StyleSheet.create({
   addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
-  tabsScroll: { flexGrow: 0, marginHorizontal: 16, marginBottom: 4 },
-  tabsContent: { gap: 8, paddingVertical: 8 },
+  tabsScroll: { flexGrow: 0, marginBottom: 4 },
+  tabsContent: { gap: 8, paddingVertical: 8, paddingHorizontal: 16 },
   tab: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: "#141414", borderWidth: 1, borderColor: "#2A2A2A" },
   tabActive: { backgroundColor: "#C9A84C", borderColor: "#C9A84C" },
   tabText: { fontSize: 13, color: "#888880", fontWeight: "600" },
