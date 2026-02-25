@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Image,
@@ -91,6 +91,7 @@ export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
   const { barber, logout } = useBarberAuth();
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const [shouldRender, setShouldRender] = useState(visible);
 
   const role = (barber?.role ?? "barber") as Role;
   const initials = (barber?.name ?? "?").split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -98,6 +99,7 @@ export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
 
   useEffect(() => {
     if (visible) {
+      setShouldRender(true);
       Animated.parallel([
         Animated.timing(translateX, { toValue: 0, duration: 280, useNativeDriver: true }),
         Animated.timing(overlayOpacity, { toValue: 1, duration: 280, useNativeDriver: true }),
@@ -106,11 +108,13 @@ export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
       Animated.parallel([
         Animated.timing(translateX, { toValue: -DRAWER_WIDTH, duration: 240, useNativeDriver: true }),
         Animated.timing(overlayOpacity, { toValue: 0, duration: 240, useNativeDriver: true }),
-      ]).start();
+      ]).start(({ finished }) => {
+        if (finished) setShouldRender(false);
+      });
     }
   }, [visible]);
 
-  if (!visible && (translateX as any)._value === -DRAWER_WIDTH) return null;
+  if (!shouldRender) return null;
 
   function handleNavigate(route: string) {
     onClose();

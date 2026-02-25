@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -153,29 +153,30 @@ export default function BarbeariaScreen() {
 
   const utils = trpc.useUtils();
   const settingsQuery = trpc.settings.get.useQuery();
-
-  if (settingsQuery.data && !dataLoaded) {
-    const d = settingsQuery.data as any;
-    setShopName(d.shopName ?? "");
-    setShopAddress(d.address ?? "");
-    setShopCep(applyCepMask(d.cep ?? ""));
-    setShopAddressNumber(d.addressNumber ?? "");
-    setShopAddressComplement(d.addressComplement ?? "");
-    if (d.cep) setCepFilled(true);
-    setShopPhone(applyPhoneMask(d.phone ?? ""));
-    setShopWhatsapp(applyPhoneMask(d.whatsapp ?? ""));
-    setMpAccessToken(d.mercadoPagoAccessToken ?? "");
-    setMpPublicKey(d.mercadoPagoPublicKey ?? "");
-    setShopInstagram(d.instagram ?? "");
-    setShopCnpj(applyDocumentMask(d.cnpj ?? ""));
-    setShopGoogleMapsUrl(d.googleMapsUrl ?? "");
-    setShopPixKey(d.pixKey ?? "");
-    if (d.logoUrl) setShopLogoUrl(d.logoUrl);
-    if (d.galleryUrls) {
-      try { setShopGallery(JSON.parse(d.galleryUrls)); } catch {}
+  useEffect(() => {
+    if (settingsQuery.data && !dataLoaded) {
+      const d = settingsQuery.data as any;
+      setShopName(d.shopName ?? "");
+      setShopAddress(d.address ?? "");
+      setShopCep(applyCepMask(d.cep ?? ""));
+      setShopAddressNumber(d.addressNumber ?? "");
+      setShopAddressComplement(d.addressComplement ?? "");
+      if (d.cep) setCepFilled(true);
+      setShopPhone(applyPhoneMask(d.phone ?? ""));
+      setShopWhatsapp(applyPhoneMask(d.whatsapp ?? ""));
+      setMpAccessToken(d.mercadoPagoAccessToken ?? "");
+      setMpPublicKey(d.mercadoPagoPublicKey ?? "");
+      setShopInstagram(d.instagram ?? "");
+      setShopCnpj(applyDocumentMask(d.cnpj ?? ""));
+      setShopGoogleMapsUrl(d.googleMapsUrl ?? "");
+      setShopPixKey(d.pixKey ?? "");
+      if (d.logoUrl) setShopLogoUrl(d.logoUrl);
+      if (d.galleryUrls) {
+        try { setShopGallery(JSON.parse(d.galleryUrls)); } catch {}
+      }
+      setDataLoaded(true);
     }
-    setDataLoaded(true);
-  }
+  }, [settingsQuery.data, dataLoaded]);
 
   async function searchAddress(text: string) {
     setShopAddress(text);

@@ -32,14 +32,11 @@ function Stars({ rating, size = 13 }: { rating: number; size?: number }) {
 }
 
 // ─── Card de serviço ──────────────────────────────────────────────────────────
+// service já contém thumbnailUrl, avgRating e reviewCount do endpoint batch
 function ServiceCard({ service, onPress }: { service: any; onPress: () => void }) {
-  const mediaQuery = trpc.services.media.list.useQuery({ serviceId: service.id });
-  const reviewsQuery = trpc.reviews.byService.useQuery({ serviceId: service.id });
-  const firstImage = mediaQuery.data?.find((m: any) => m.type === "image");
-  const avgRating = reviewsQuery.data?.length
-    ? reviewsQuery.data.reduce((s: number, r: any) => s + r.rating, 0) / reviewsQuery.data.length
-    : 0;
-  const reviewCount = reviewsQuery.data?.length ?? 0;
+  const firstImage = service.thumbnailUrl ? { url: service.thumbnailUrl } : null;
+  const avgRating = (service.avgRating as number | null) ?? 0;
+  const reviewCount = (service.reviewCount as number) ?? 0;
 
   return (
     <TouchableOpacity onPress={onPress} style={styles.card} activeOpacity={0.85}>
@@ -217,7 +214,7 @@ export default function ClientServices() {
   const [selectedService, setSelectedService] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
-  const servicesQuery = trpc.services.list.useQuery({ activeOnly: true });
+  const servicesQuery = trpc.services.listWithMediaAndRatings.useQuery({ activeOnly: true });
   const categoriesQuery = trpc.categories.list.useQuery({ type: "service" });
   const services = servicesQuery.data ?? [];
   const categories = categoriesQuery.data ?? [];

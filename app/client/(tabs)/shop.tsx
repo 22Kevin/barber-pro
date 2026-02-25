@@ -21,9 +21,9 @@ const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = (SCREEN_W - 20 * 2 - 12) / 2; // 2 colunas com gap de 12
 
 // ─── Card de produto ──────────────────────────────────────────────────────────
+// product já contém thumbnailUrl do endpoint batch
 function ProductCard({ product, onPress }: { product: any; onPress: () => void }) {
-  const mediaQuery = trpc.products.media.list.useQuery({ productId: product.id });
-  const firstImage = mediaQuery.data?.find((m: any) => m.type === "image");
+  const firstImage = product.thumbnailUrl ? { url: product.thumbnailUrl } : null;
 
   return (
     <TouchableOpacity onPress={onPress} style={[styles.card, { width: CARD_W }]} activeOpacity={0.85}>
@@ -190,7 +190,7 @@ export default function ClientShop() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
-  const productsQuery = trpc.products.list.useQuery({ activeOnly: true });
+  const productsQuery = trpc.products.listWithMedia.useQuery({ activeOnly: true });
   const categoriesQuery = trpc.categories.list.useQuery({ type: "product" });
   const products = productsQuery.data ?? [];
   const categories = categoriesQuery.data ?? [];

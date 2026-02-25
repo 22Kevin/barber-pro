@@ -569,3 +569,12 @@
 - [x] Corrigir corte das abas da tela Barbearia (removido marginHorizontal do tabsScroll, adicionado paddingHorizontal no contentContainer)
 - [x] Corrigir corte dos campos de texto na aba Integrações (ScreenContainer com edges=["top"] para evitar safe area lateral)
 - [x] Gestão de usuários exclusiva do Super Admin (botão excluir com confirmação, protegido contra exclusão do próprio Super Admin)
+
+## Diagnóstico e Correções v4.7
+
+- [x] Mover hidratação de estado do settingsQuery em barbearia.tsx para useEffect (side-effect no render causando loops)
+- [x] Garantir GestureHandlerRootView no app/_layout.tsx raiz (gestos quebrados em outras telas)
+- [x] Corrigir AdminDrawer: substituir acesso a _value interno do Animated por estado React
+- [x] Otimizar queries N+1 nas telas de Serviços e Produtos do cliente (usar listWithMediaAndRatings e listWithMedia)
+- [x] Auditar SafeArea/padding em todas as telas admin (já corrigido em v3.9.1 e v3.10)
+- [x] Validar lógica de fuso horário (UTC-3 fixo correto para Brasil desde 2019 sem horário de verão)
