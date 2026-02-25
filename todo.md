@@ -533,3 +533,8 @@
 - [x] Avaliações em destaque (últimas 5, carrossel horizontal)
 - [x] Botões "Nos Encontre" (WhatsApp, Instagram, Google Maps)
 - [x] Remover serviços e produtos da Home (já existem abas dedicadas)
+
+## Melhorias v4.1
+
+- [x] Atualizar visual da aba Serviços do cliente (fundo escuro, tipografia dourada, consistente com Home)
+- [x] Animação de entrada (fade-in suave) nos elementos da Home do cliente

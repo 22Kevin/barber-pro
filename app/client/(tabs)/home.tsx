@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
+  Animated,
   Dimensions,
   FlatList,
   Image,
@@ -171,6 +172,27 @@ export default function ClientHome() {
   const tabBarHeight = useTabBarHeight();
   const { client, isAuthenticated } = useClientAuth();
 
+  // Animações de entrada
+  const headerFade = useRef(new Animated.Value(0)).current;
+  const headerSlide = useRef(new Animated.Value(-12)).current;
+  const carouselFade = useRef(new Animated.Value(0)).current;
+  const carouselSlide = useRef(new Animated.Value(20)).current;
+  const contentFade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(headerFade, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.timing(headerSlide, { toValue: 0, duration: 350, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.timing(carouselFade, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(carouselSlide, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]),
+      Animated.timing(contentFade, { toValue: 1, duration: 280, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
   const settingsQuery = trpc.settings.get.useQuery();
   const openStatusQuery = trpc.settings.openStatus.useQuery(undefined, { refetchInterval: 60_000 });
   const recentReviewsQuery = trpc.reviews.recent.useQuery({ limit: 5 });
@@ -256,7 +278,8 @@ export default function ClientHome() {
         contentContainerStyle={{ paddingBottom: tabBarHeight + 16 }}
       >
         {/* ── Header ─────────────────────────────────────────────────────────── */}
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <Animated.View style={{ opacity: headerFade, transform: [{ translateY: headerSlide }] }}>
+          <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           {/* Logo redondo */}
           <View style={styles.logoWrapper}>
             {shopLogoUrl ? (
@@ -285,12 +308,18 @@ export default function ClientHome() {
               <Text style={styles.pointsLabel}>pts</Text>
             </View>
           )}
-        </View>
+          </View>
+        </Animated.View>
 
         {/* ── Carrossel de fotos ─────────────────────────────────────────────── */}
-        <View style={styles.carouselSection}>
-          <PhotoCarousel images={galleryImages} />
-        </View>
+        <Animated.View style={{ opacity: carouselFade, transform: [{ translateY: carouselSlide }] }}>
+          <View style={styles.carouselSection}>
+            <PhotoCarousel images={galleryImages} />
+          </View>
+        </Animated.View>
+
+        {/* ── Conteúdo restante com fade-in ──────────────────────────────────── */}
+        <Animated.View style={{ opacity: contentFade }}>
 
         {/* ── CTA de Login (não autenticado) ─────────────────────────────────── */}
         {!isAuthenticated && (
@@ -394,6 +423,7 @@ export default function ClientHome() {
             </View>
           </View>
         )}
+        </Animated.View>
       </ScrollView>
     </ScreenContainer>
   );
