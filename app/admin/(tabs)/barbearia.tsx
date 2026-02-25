@@ -21,6 +21,7 @@ import { trpc } from "@/lib/trpc";
 import { SingleImageUploader } from "@/components/media-uploader";
 import { TimePickerModal } from "@/components/time-picker-modal";
 import { AdminHeader } from "@/components/admin-header";
+import { applyDocumentMask, applyPhoneMask, stripMask } from "@/hooks/use-mask";
 
 type BarbeariaTab = "dados" | "equipe" | "horarios" | "integracoes";
 
@@ -45,9 +46,11 @@ export default function BarbeariaScreen() {
   const [shopName, setShopName] = useState("");
   const [shopAddress, setShopAddress] = useState("");
   const [shopPhone, setShopPhone] = useState("");
+  const handleShopPhoneChange = (t: string) => setShopPhone(applyPhoneMask(t));
   const [shopWhatsapp, setShopWhatsapp] = useState("");
   const [shopInstagram, setShopInstagram] = useState("");
   const [shopCnpj, setShopCnpj] = useState("");
+  const handleCnpjChange = (t: string) => setShopCnpj(applyDocumentMask(t));
   const [shopGoogleMapsUrl, setShopGoogleMapsUrl] = useState("");
   const [shopLogoUrl, setShopLogoUrl] = useState<string | null>(null);
   const [shopGallery, setShopGallery] = useState<string[]>([]);
@@ -66,6 +69,7 @@ export default function BarbeariaScreen() {
   const [bName, setBName] = useState("");
   const [bEmail, setBEmail] = useState("");
   const [bPhone, setBPhone] = useState("");
+  const handleBPhoneChange = (t: string) => setBPhone(applyPhoneMask(t));
   const [bPassword, setBPassword] = useState("");
   const [bRole, setBRole] = useState("barber");
   const [bSpecialties, setBSpecialties] = useState("");
@@ -81,12 +85,12 @@ export default function BarbeariaScreen() {
     const d = settingsQuery.data as any;
     setShopName(d.shopName ?? "");
     setShopAddress(d.address ?? "");
-    setShopPhone(d.phone ?? "");
+    setShopPhone(applyPhoneMask(d.phone ?? ""));
     setShopWhatsapp(d.whatsapp ?? "");
     setMpAccessToken(d.mercadoPagoAccessToken ?? "");
     setMpPublicKey(d.mercadoPagoPublicKey ?? "");
     setShopInstagram(d.instagram ?? "");
-    setShopCnpj(d.cnpj ?? "");
+    setShopCnpj(applyDocumentMask(d.cnpj ?? ""));
     setShopGoogleMapsUrl(d.googleMapsUrl ?? "");
     setShopPixKey(d.pixKey ?? "");
     if (d.logoUrl) setShopLogoUrl(d.logoUrl);
@@ -150,7 +154,7 @@ export default function BarbeariaScreen() {
 
   function openEditBarber(b: any) {
     setEditingBarber(b);
-    setBName(b.name); setBEmail(b.email ?? ""); setBPhone(b.phone ?? ""); setBPassword(""); setBRole(b.role); setBSpecialties(b.specialties ?? "");
+    setBName(b.name); setBEmail(b.email ?? ""); setBPhone(applyPhoneMask(b.phone ?? "")); setBPassword(""); setBRole(b.role); setBSpecialties(b.specialties ?? "");
     setShowBarberModal(true);
   }
 
@@ -162,12 +166,12 @@ export default function BarbeariaScreen() {
     if (editingBarber) {
       const data: any = { id: editingBarber.id, name: bName.trim(), role: bRole as any };
       if (bEmail) data.email = bEmail.trim();
-      if (bPhone) data.phone = bPhone.trim();
+      if (bPhone) data.phone = stripMask(bPhone).trim();
       if (bSpecialties) data.specialties = bSpecialties.trim();
       if (bPassword && bPassword.length >= 6) data.password = bPassword;
       updateBarberMutation.mutate(data);
     } else {
-      createBarberMutation.mutate({ name: bName.trim(), email: bEmail.trim() || undefined, phone: bPhone.trim() || undefined, password: bPassword, role: bRole as any, specialties: bSpecialties.trim() || undefined });
+      createBarberMutation.mutate({ name: bName.trim(), email: bEmail.trim() || undefined, phone: stripMask(bPhone).trim() || undefined, password: bPassword, role: bRole as any, specialties: bSpecialties.trim() || undefined });
     }
   }
 
@@ -175,10 +179,10 @@ export default function BarbeariaScreen() {
     updateSettingsMutation.mutate({
       shopName: shopName.trim() || undefined,
       address: shopAddress.trim() || null,
-      phone: shopPhone.trim() || null,
+      phone: stripMask(shopPhone).trim() || null,
       whatsapp: shopWhatsapp.trim() || null,
       instagram: shopInstagram.trim() || null,
-      cnpj: shopCnpj.trim() || null,
+      cnpj: stripMask(shopCnpj).trim() || null,
       googleMapsUrl: shopGoogleMapsUrl.trim() || null,
       logoUrl: shopLogoUrl || null,
       galleryUrls: shopGallery.length > 0 ? JSON.stringify(shopGallery) : null,
@@ -297,9 +301,9 @@ export default function BarbeariaScreen() {
             <Text style={styles.sectionTitle}>Informações da Barbearia</Text>
             {[
               { label: "Nome da Barbearia", value: shopName, setter: setShopName, placeholder: "Barber Pro", keyboard: "default" as const },
-              { label: "Telefone", value: shopPhone, setter: setShopPhone, placeholder: "(11) 3333-4444", keyboard: "phone-pad" as const },
+              { label: "Telefone", value: shopPhone, setter: handleShopPhoneChange, placeholder: "(11) 3333-4444", keyboard: "phone-pad" as const },
               { label: "WhatsApp (com DDD)", value: shopWhatsapp, setter: setShopWhatsapp, placeholder: "5511999999999", keyboard: "phone-pad" as const },
-              { label: "CNPJ", value: shopCnpj, setter: setShopCnpj, placeholder: "00.000.000/0001-00", keyboard: "numeric" as const },
+              { label: "CPF / CNPJ", value: shopCnpj, setter: handleCnpjChange, placeholder: "000.000.000-00 ou 00.000.000/0001-00", keyboard: "numeric" as const },
               { label: "Instagram (usuário)", value: shopInstagram, setter: setShopInstagram, placeholder: "@barberpro", keyboard: "default" as const },
               { label: "Link do Google Maps", value: shopGoogleMapsUrl, setter: setShopGoogleMapsUrl, placeholder: "https://maps.google.com/...", keyboard: "url" as const },
             ].map(f => (
@@ -511,7 +515,7 @@ export default function BarbeariaScreen() {
                 {[
                   { label: "Nome *", value: bName, setter: setBName, placeholder: "João Barbeiro", keyboard: "default" as const },
                   { label: "E-mail", value: bEmail, setter: setBEmail, placeholder: "joao@email.com", keyboard: "email-address" as const },
-                  { label: "Telefone", value: bPhone, setter: setBPhone, placeholder: "(11) 99999-9999", keyboard: "phone-pad" as const },
+                  { label: "Telefone", value: bPhone, setter: handleBPhoneChange, placeholder: "(11) 99999-9999", keyboard: "phone-pad" as const },
                   { label: editingBarber ? "Nova Senha (deixe vazio para manter)" : "Senha *", value: bPassword, setter: setBPassword, placeholder: "Mínimo 6 caracteres", keyboard: "default" as const },
                   { label: "Especialidades", value: bSpecialties, setter: setBSpecialties, placeholder: "Corte, Barba, Coloração...", keyboard: "default" as const },
                 ].map(f => (

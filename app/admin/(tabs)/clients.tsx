@@ -20,6 +20,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { applyPhoneMask, stripMask } from "@/hooks/use-mask";
 
 type Client = {
   id: number;
@@ -69,6 +70,7 @@ export default function ClientsScreen() {
   // Form
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const handlePhoneChange = (t: string) => setPhone(applyPhoneMask(t));
   const [email, setEmail] = useState("");
   const [birthDate, setBirthDate] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -102,7 +104,7 @@ export default function ClientsScreen() {
 
   function openEdit(c: Client) {
     setEditing(c);
-    setName(c.name); setPhone(c.phone); setEmail(c.email ?? ""); setBirthDate(c.birthDate ?? null); setNotes(c.notes ?? "");
+    setName(c.name); setPhone(applyPhoneMask(c.phone)); setEmail(c.email ?? ""); setBirthDate(c.birthDate ?? null); setNotes(c.notes ?? "");
     setShowModal(true);
   }
 
@@ -110,8 +112,9 @@ export default function ClientsScreen() {
 
   function handleSave() {
     if (!name.trim()) { Alert.alert("Atenção", "Informe o nome do cliente."); return; }
-    if (!phone.trim() || phone.length < 8) { Alert.alert("Atenção", "Informe um telefone válido."); return; }
-    const data = { name: name.trim(), phone: phone.trim(), email: email.trim() || null, birthDate: birthDate || null, notes: notes.trim() || null };
+    const rawPhone = stripMask(phone);
+    if (!rawPhone || rawPhone.length < 10) { Alert.alert("Atenção", "Informe um telefone válido."); return; }
+    const data = { name: name.trim(), phone: rawPhone, email: email.trim() || null, birthDate: birthDate || null, notes: notes.trim() || null };
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data });
     } else {
@@ -316,7 +319,7 @@ export default function ClientsScreen() {
               <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 {[
                   { label: "Nome completo *", value: name, setter: setName, placeholder: "João da Silva", keyboard: "default" as const },
-                  { label: "Telefone/WhatsApp *", value: phone, setter: setPhone, placeholder: "(11) 99999-9999", keyboard: "phone-pad" as const },
+                  { label: "Telefone/WhatsApp *", value: phone, setter: handlePhoneChange, placeholder: "(11) 99999-9999", keyboard: "phone-pad" as const },
                   { label: "E-mail", value: email, setter: setEmail, placeholder: "joao@email.com", keyboard: "email-address" as const },
                 ].map(field => (
                   <View key={field.label} style={{ marginBottom: 14 }}>

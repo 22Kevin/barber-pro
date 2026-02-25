@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import { Alert, Appearance, FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { applyPhoneMask, stripMask } from "@/hooks/use-mask";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { DatePickerModal } from "@/components/date-picker-modal";
@@ -194,7 +195,8 @@ type ThemeOption = "light" | "dark" | "system";
 
 function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) => void }) {
   const [name, setName] = useState(client.name);
-  const [phone, setPhone] = useState(client.phone);
+  const [phone, setPhone] = useState(applyPhoneMask(client.phone ?? ""));
+  const handlePhoneChange = (t: string) => setPhone(applyPhoneMask(t));
   const [birthDate, setBirthDate] = useState<string | null>(client.birthDate ?? null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [themeOption, setThemeOption] = useState<ThemeOption>("system");
@@ -221,14 +223,14 @@ function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) 
 
   const updateMutation = trpc.clientAuth.updateProfile.useMutation({
     onSuccess: () => {
-      onUpdate({ name, phone, birthDate });
+      onUpdate({ name, phone: stripMask(phone), birthDate });
       Alert.alert("Sucesso", "Perfil atualizado!");
     },
     onError: (err: any) => Alert.alert("Erro", err.message),
   });
 
   const handleSave = () => {
-    updateMutation.mutate({ clientId: client.id, name, phone, birthDate });
+      updateMutation.mutate({ clientId: client.id, name, phone: stripMask(phone), birthDate });
   };
 
   return (
@@ -268,7 +270,7 @@ function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) 
           <Text style={{ color: "#9CA3AF", fontSize: 13, marginBottom: 6 }}>Telefone / WhatsApp</Text>
           <TextInput
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={handlePhoneChange}
             keyboardType="phone-pad"
             style={{ backgroundColor: "#111827", color: "#fff", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#374151", fontSize: 15 }}
           />

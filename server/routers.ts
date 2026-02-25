@@ -123,7 +123,7 @@ export const appRouter = router({
         return db.createBarber({ ...input, passwordHash, isActive: true });
       }),
     update: publicProcedure
-      .input(z.object({ id: z.number(), name: z.string().min(2).optional(), email: z.string().email().optional().nullable(), phone: z.string().optional().nullable(), role: z.enum(["super_admin", "barber", "receptionist"]).optional(), specialties: z.string().optional().nullable(), isActive: z.boolean().optional(), password: z.string().min(6).optional() }))
+      .input(z.object({ id: z.number(), name: z.string().min(2).optional(), email: z.string().email().optional().nullable(), phone: z.string().optional().nullable(), photoUrl: z.string().optional().nullable(), role: z.enum(["super_admin", "barber", "receptionist"]).optional(), specialties: z.string().optional().nullable(), isActive: z.boolean().optional(), password: z.string().min(6).optional() }))
       .mutation(async ({ input }) => {
         const { id, password, ...data } = input;
         const updateData: Record<string, unknown> = { ...data };
@@ -231,6 +231,15 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const ext = input.mimeType.split("/")[1] || "jpg";
         const key = `barber-pro/shop/${input.imageType}-${randomSuffix()}.${ext}`;
+        const buffer = Buffer.from(input.fileBase64, "base64");
+        const { url } = await storagePut(key, buffer, input.mimeType);
+        return { url };
+      }),
+    profilePhoto: publicProcedure
+      .input(z.object({ fileBase64: z.string(), mimeType: z.string() }))
+      .mutation(async ({ input }) => {
+        const ext = input.mimeType.split("/")[1] || "jpg";
+        const key = `barber-pro/profiles/avatar-${randomSuffix()}.${ext}`;
         const buffer = Buffer.from(input.fileBase64, "base64");
         const { url } = await storagePut(key, buffer, input.mimeType);
         return { url };

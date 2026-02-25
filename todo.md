@@ -488,3 +488,9 @@
 - [x] Configurações simplificada (apenas tema/aparência + versão do app)
 - [x] Novas telas registradas no _layout.tsx com display none (barbearia, my-profile)
 - [x] Ícones novos adicionados ao icon-symbol.tsx (building.2.fill, tray.full.fill, etc.)
+
+## Melhorias v3.7
+
+- [x] Foto de perfil no Meu Perfil (upload via câmera/galeria, exibir avatar real no drawer)
+- [x] Máscara de telefone em todo o sistema (formato (99) 99999-9999)
+- [x] Campo CNPJ/CPF unificado na tela Barbearia com detecção automática do tipo de documento

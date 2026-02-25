@@ -20,6 +20,7 @@ interface AuthContextType {
   login: (barber: AuthBarber) => Promise<void>;
   logout: () => Promise<void>;
   hasPermission: (requiredRole: BarberRole | BarberRole[]) => boolean;
+  updateBarber: (data: Partial<AuthBarber>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -63,6 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
   }
 
+  async function updateBarber(data: Partial<AuthBarber>) {
+    if (!barber) return;
+    const updated = { ...barber, ...data };
+    setBarber(updated);
+    await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updated));
+  }
+
   function hasPermission(requiredRole: BarberRole | BarberRole[]): boolean {
     if (!barber) return false;
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
@@ -79,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         hasPermission,
+        updateBarber,
       }}
     >
       {children}

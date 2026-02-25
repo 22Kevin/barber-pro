@@ -18,6 +18,7 @@ import { DatePickerModal } from "@/components/date-picker-modal";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { useGoogleAuth } from "@/lib/use-google-auth";
 import { trpc } from "@/lib/trpc";
+import { applyPhoneMask, stripMask } from "@/hooks/use-mask";
 
 function formatBirthDate(dateStr: string | null): string {
   if (!dateStr) return "";
@@ -32,6 +33,7 @@ export default function ClientRegister() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const handlePhoneChange = (t: string) => setPhone(applyPhoneMask(t));
   const [birthDate, setBirthDate] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [password, setPassword] = useState("");
@@ -92,7 +94,7 @@ export default function ClientRegister() {
     registerMutation.mutate({
       name: name.trim(),
       email: email.trim(),
-      phone: phone.trim(),
+      phone: stripMask(phone),
       password,
       birthDate: birthDate ?? undefined,
     });
@@ -143,7 +145,7 @@ export default function ClientRegister() {
               {[
                 { label: "Nome completo *", value: name, setter: setName, placeholder: "Seu nome", keyboard: "default" as const },
                 { label: "E-mail *", value: email, setter: setEmail, placeholder: "seu@email.com", keyboard: "email-address" as const },
-                { label: "Telefone / WhatsApp *", value: phone, setter: setPhone, placeholder: "(11) 99999-9999", keyboard: "phone-pad" as const },
+                { label: "Telefone / WhatsApp *", value: phone, setter: handlePhoneChange, placeholder: "(11) 99999-9999", keyboard: "phone-pad" as const },
               ].map((field) => (
                 <View key={field.label}>
                   <Text style={styles.label}>{field.label}</Text>
