@@ -1,25 +1,36 @@
-import { useState } from "react";
-import { Alert, FlatList, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  Animated,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
+import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { trpc } from "@/lib/trpc";
-import { useRouter } from "expo-router";
 import { cancelAppointmentReminder } from "@/lib/use-notifications";
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  scheduled: { label: "Agendado", color: "#EAB308", bg: "#1F1500" },
-  confirmed: { label: "Confirmado", color: "#22C55E", bg: "#052e16" },
-  in_progress: { label: "Em andamento", color: "#3B82F6", bg: "#0c1a2e" },
-  completed: { label: "Concluído", color: "#9CA3AF", bg: "#111827" },
-  cancelled: { label: "Cancelado", color: "#EF4444", bg: "#1c0a0a" },
-  no_show: { label: "Não compareceu", color: "#F97316", bg: "#1c0e00" },
+  scheduled:   { label: "Agendado",        color: "#EAB308", bg: "#1F1500" },
+  confirmed:   { label: "Confirmado",       color: "#22C55E", bg: "#052e16" },
+  in_progress: { label: "Em andamento",     color: "#3B82F6", bg: "#0c1a2e" },
+  completed:   { label: "Concluído",        color: "#9CA3AF", bg: "#111827" },
+  cancelled:   { label: "Cancelado",        color: "#EF4444", bg: "#1c0a0a" },
+  no_show:     { label: "Não compareceu",   color: "#F97316", bg: "#1c0e00" },
 };
 
+// ─── Modal de avaliação ───────────────────────────────────────────────────────
 function ReviewModal({ appointment, onClose }: { appointment: any; onClose: () => void }) {
   const { client } = useClientAuth();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
-  const { TextInput } = require("react-native");
 
   const createReview = trpc.reviews.create.useMutation({
     onSuccess: () => { Alert.alert("Obrigado!", "Sua avaliação foi enviada."); onClose(); },
@@ -29,21 +40,24 @@ function ReviewModal({ appointment, onClose }: { appointment: any; onClose: () =
   if (!client) return null;
 
   return (
-    <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "flex-end", zIndex: 100 }}>
-      <View style={{ backgroundColor: "#111827", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
-        <Text style={{ color: "#fff", fontWeight: "800", fontSize: 20, marginBottom: 6 }}>Avaliar serviço</Text>
-        <Text style={{ color: "#9CA3AF", marginBottom: 20 }}>{appointment.serviceName ?? "Serviço"}</Text>
+    <View style={styles.modalOverlay}>
+      <View style={styles.modalSheet}>
+        {/* Handle */}
+        <View style={styles.modalHandle} />
 
-        <Text style={{ color: "#fff", fontWeight: "600", marginBottom: 12 }}>Sua nota</Text>
-        <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
+        <Text style={styles.modalTitle}>Avaliar serviço</Text>
+        <Text style={styles.modalSubtitle}>{appointment.serviceName ?? "Serviço"}</Text>
+
+        <Text style={styles.modalLabel}>Sua nota</Text>
+        <View style={styles.starsRow}>
           {[1, 2, 3, 4, 5].map((s) => (
-            <TouchableOpacity key={s} onPress={() => setRating(s)}>
-              <Text style={{ fontSize: 36, color: s <= rating ? "#EAB308" : "#374151" }}>★</Text>
+            <TouchableOpacity key={s} onPress={() => setRating(s)} activeOpacity={0.7}>
+              <Text style={[styles.starIcon, { color: s <= rating ? "#EAB308" : "#374151" }]}>★</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={{ color: "#fff", fontWeight: "600", marginBottom: 8 }}>Comentário (opcional)</Text>
+        <Text style={styles.modalLabel}>Comentário (opcional)</Text>
         <TextInput
           value={comment}
           onChangeText={setComment}
@@ -51,19 +65,27 @@ function ReviewModal({ appointment, onClose }: { appointment: any; onClose: () =
           placeholderTextColor="#4B5563"
           multiline
           numberOfLines={3}
-          style={{ backgroundColor: "#1F2937", color: "#fff", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#374151", fontSize: 15, minHeight: 80 }}
+          style={styles.modalInput}
         />
 
-        <View style={{ flexDirection: "row", gap: 12, marginTop: 20 }}>
-          <TouchableOpacity onPress={onClose} style={{ flex: 1, borderRadius: 14, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: "#374151" }}>
-            <Text style={{ color: "#9CA3AF", fontWeight: "600" }}>Cancelar</Text>
+        <View style={styles.modalButtons}>
+          <TouchableOpacity onPress={onClose} style={styles.modalBtnCancel}>
+            <Text style={styles.modalBtnCancelText}>Cancelar</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => createReview.mutate({ clientId: client.id, serviceId: appointment.serviceId, appointmentId: appointment.id, rating, comment: comment || undefined })}
+            onPress={() => createReview.mutate({
+              clientId: client.id,
+              serviceId: appointment.serviceId,
+              appointmentId: appointment.id,
+              rating,
+              comment: comment || undefined,
+            })}
             disabled={createReview.isPending}
-            style={{ flex: 1, backgroundColor: "#EAB308", borderRadius: 14, paddingVertical: 14, alignItems: "center" }}
+            style={styles.modalBtnConfirm}
           >
-            <Text style={{ color: "#000", fontWeight: "700" }}>{createReview.isPending ? "Enviando..." : "Enviar avaliação"}</Text>
+            <Text style={styles.modalBtnConfirmText}>
+              {createReview.isPending ? "Enviando..." : "Enviar avaliação"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -71,15 +93,86 @@ function ReviewModal({ appointment, onClose }: { appointment: any; onClose: () =
   );
 }
 
+// ─── Card de agendamento ──────────────────────────────────────────────────────
+function AppointmentCard({
+  item,
+  tab,
+  onReview,
+  onCancel,
+}: {
+  item: any;
+  tab: "upcoming" | "past";
+  onReview: () => void;
+  onCancel: () => void;
+}) {
+  const status = STATUS_LABELS[item.status] ?? STATUS_LABELS.scheduled;
+  const date = new Date(item.date + "T12:00:00");
+
+  return (
+    <View style={styles.card}>
+      {/* Linha superior: serviço + badge status */}
+      <View style={styles.cardTop}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cardService}>{item.serviceName ?? "Serviço"}</Text>
+          <Text style={styles.cardBarber}>✂️  {item.barberName ?? "Barbeiro"}</Text>
+        </View>
+        <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+          <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+        </View>
+      </View>
+
+      {/* Linha de data e hora */}
+      <View style={styles.cardMeta}>
+        <View style={styles.cardMetaItem}>
+          <Text style={styles.cardMetaIcon}>📅</Text>
+          <Text style={styles.cardMetaText}>
+            {date.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}
+          </Text>
+        </View>
+        <View style={styles.cardMetaItem}>
+          <Text style={styles.cardMetaIcon}>⏰</Text>
+          <Text style={styles.cardMetaText}>{item.startTime}</Text>
+        </View>
+        {item.price && (
+          <View style={styles.cardMetaItem}>
+            <Text style={styles.cardMetaIcon}>💰</Text>
+            <Text style={styles.cardMetaText}>R$ {parseFloat(item.price).toFixed(2)}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Ações */}
+      {item.status === "completed" && (
+        <TouchableOpacity onPress={onReview} style={styles.cardAction}>
+          <Text style={styles.cardActionGold}>⭐  Avaliar este serviço</Text>
+        </TouchableOpacity>
+      )}
+      {(item.status === "scheduled" || item.status === "confirmed") && tab === "upcoming" && (
+        <TouchableOpacity onPress={onCancel} style={styles.cardAction}>
+          <Text style={styles.cardActionRed}>✕  Cancelar agendamento</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+// ─── Tela principal ───────────────────────────────────────────────────────────
 export default function ClientHistory() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarHeight();
   const { client, isAuthenticated } = useClientAuth();
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [reviewAppt, setReviewAppt] = useState<any>(null);
 
-  const cancelAppointment = trpc.appointments.update.useMutation({
+  // Fade-in de entrada
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+  }, []);
+
+  const cancelMutation = trpc.appointments.update.useMutation({
     onSuccess: (_data: unknown, variables: any) => {
-      // Cancela o lembrete push quando o agendamento é cancelado
       cancelAppointmentReminder(variables.id).catch(() => null);
       appointmentsQuery.refetch();
       Alert.alert("Agendamento cancelado", "Seu agendamento foi cancelado com sucesso.");
@@ -87,17 +180,13 @@ export default function ClientHistory() {
     onError: (err: any) => Alert.alert("Erro", err.message),
   });
 
-  const handleCancelAppointment = (appt: any) => {
+  const handleCancel = (appt: any) => {
     Alert.alert(
       "Cancelar agendamento",
-      `Deseja cancelar o agendamento de ${(appt as any).serviceName ?? "serviço"} em ${appt.date} às ${appt.startTime}?`,
+      `Deseja cancelar o agendamento de ${appt.serviceName ?? "serviço"} em ${appt.date} às ${appt.startTime}?`,
       [
         { text: "Não", style: "cancel" },
-        {
-          text: "Sim, cancelar",
-          style: "destructive",
-          onPress: () => cancelAppointment.mutate({ id: appt.id, status: "cancelled" }),
-        },
+        { text: "Sim, cancelar", style: "destructive", onPress: () => cancelMutation.mutate({ id: appt.id, status: "cancelled" }) },
       ]
     );
   };
@@ -107,20 +196,24 @@ export default function ClientHistory() {
     { enabled: !!client }
   );
 
+  // ── Não autenticado ──────────────────────────────────────────────────────
   if (!isAuthenticated) {
     return (
-      <ScreenContainer containerClassName="bg-black">
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32 }}>
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>📋</Text>
-          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 20, marginBottom: 8, textAlign: "center" }}>Histórico de agendamentos</Text>
-          <Text style={{ color: "#9CA3AF", textAlign: "center", marginBottom: 24 }}>Faça login para ver seus agendamentos e histórico de cortes.</Text>
+      <ScreenContainer containerClassName="bg-black" edges={["left", "right"]}>
+        <Animated.View style={[{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32 }, { opacity: fadeAnim }]}>
+          <Text style={{ fontSize: 56, marginBottom: 16 }}>📋</Text>
+          <Text style={styles.guestTitle}>Meus Agendamentos</Text>
+          <Text style={styles.guestSubtitle}>
+            Faça login para ver seus próximos agendamentos e histórico de cortes.
+          </Text>
           <TouchableOpacity
-            style={{ backgroundColor: "#EAB308", borderRadius: 16, paddingVertical: 14, paddingHorizontal: 32 }}
+            style={styles.loginButton}
             onPress={() => router.push("/client/login" as any)}
+            activeOpacity={0.85}
           >
-            <Text style={{ color: "#000", fontWeight: "700", fontSize: 16 }}>Fazer login</Text>
+            <Text style={styles.loginButtonText}>Fazer login</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </ScreenContainer>
     );
   }
@@ -138,39 +231,56 @@ export default function ClientHistory() {
   const displayed = tab === "upcoming" ? upcoming : past;
 
   return (
-    <ScreenContainer containerClassName="bg-black">
-      <View style={{ flex: 1 }}>
-        <View style={{ padding: 20, paddingBottom: 12 }}>
-          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 24, marginBottom: 16 }}>Meus Agendamentos</Text>
-          <View style={{ flexDirection: "row", backgroundColor: "#111827", borderRadius: 12, padding: 4 }}>
-            {[{ key: "upcoming", label: `Próximos (${upcoming.length})` }, { key: "past", label: `Histórico (${past.length})` }].map((t) => (
+    <ScreenContainer containerClassName="bg-black" edges={["left", "right"]}>
+      <Animated.View style={[{ flex: 1 }, { opacity: fadeAnim }]}>
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
+        <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
+          <Text style={styles.headerTitle}>Meus Agendamentos</Text>
+          <Text style={styles.headerSubtitle}>Próximos e histórico de cortes</Text>
+        </View>
+
+        {/* ── Toggle próximos / histórico ─────────────────────────────────── */}
+        <View style={styles.toggleWrapper}>
+          <View style={styles.toggleTrack}>
+            {([
+              { key: "upcoming", label: `Próximos (${upcoming.length})` },
+              { key: "past",     label: `Histórico (${past.length})` },
+            ] as const).map((t) => (
               <TouchableOpacity
                 key={t.key}
-                onPress={() => setTab(t.key as any)}
-                style={{ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center", backgroundColor: tab === t.key ? "#EAB308" : "transparent" }}
+                onPress={() => setTab(t.key)}
+                style={[styles.toggleBtn, tab === t.key && styles.toggleBtnActive]}
+                activeOpacity={0.8}
               >
-                <Text style={{ color: tab === t.key ? "#000" : "#9CA3AF", fontWeight: "600", fontSize: 13 }}>{t.label}</Text>
+                <Text style={[styles.toggleBtnText, tab === t.key && styles.toggleBtnTextActive]}>
+                  {t.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
+        {/* ── Lista ──────────────────────────────────────────────────────── */}
         {appointmentsQuery.isLoading ? (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ color: "#9CA3AF" }}>Carregando...</Text>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>Carregando...</Text>
           </View>
         ) : displayed.length === 0 ? (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32 }}>
-            <Text style={{ fontSize: 48, marginBottom: 12 }}>{tab === "upcoming" ? "📅" : "📋"}</Text>
-            <Text style={{ color: "#9CA3AF", fontSize: 16, textAlign: "center" }}>
-              {tab === "upcoming" ? "Nenhum agendamento próximo.\nAgende um horário agora!" : "Nenhum histórico ainda."}
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateIcon}>{tab === "upcoming" ? "📅" : "📋"}</Text>
+            <Text style={styles.emptyStateText}>
+              {tab === "upcoming"
+                ? "Nenhum agendamento próximo."
+                : "Nenhum histórico ainda."}
             </Text>
             {tab === "upcoming" && (
               <TouchableOpacity
-                style={{ backgroundColor: "#EAB308", borderRadius: 14, paddingVertical: 12, paddingHorizontal: 24, marginTop: 20 }}
+                style={styles.bookNowButton}
                 onPress={() => router.push("/client/book" as any)}
+                activeOpacity={0.85}
               >
-                <Text style={{ color: "#000", fontWeight: "700" }}>Agendar agora</Text>
+                <Text style={styles.bookNowText}>✂️  Agendar agora</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -178,50 +288,292 @@ export default function ClientHistory() {
           <FlatList
             data={displayed}
             keyExtractor={(item) => String(item.id)}
-            renderItem={({ item }) => {
-              const status = STATUS_LABELS[item.status] ?? STATUS_LABELS.scheduled;
-              const date = new Date(item.date + "T12:00:00");
-              return (
-                <View style={{ backgroundColor: "#111827", borderRadius: 16, padding: 16, marginHorizontal: 20, marginBottom: 12, borderWidth: 1, borderColor: "#1F2937" }}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>{(item as any).serviceName ?? "Serviço"}</Text>
-                      <Text style={{ color: "#9CA3AF", fontSize: 13, marginTop: 2 }}>💈 {(item as any).barberName ?? "Barbeiro"}</Text>
-                    </View>
-                    <View style={{ backgroundColor: status.bg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
-                      <Text style={{ color: status.color, fontSize: 12, fontWeight: "600" }}>{status.label}</Text>
-                    </View>
-                  </View>
-                  <View style={{ flexDirection: "row", gap: 16, marginTop: 12 }}>
-                    <Text style={{ color: "#D1D5DB", fontSize: 14 }}>📅 {date.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</Text>
-                    <Text style={{ color: "#D1D5DB", fontSize: 14 }}>⏰ {item.startTime}</Text>
-                  </View>
-                  {item.status === "completed" && (
-                    <TouchableOpacity
-                      onPress={() => setReviewAppt(item)}
-                      style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: "#1F2937", paddingTop: 12 }}
-                    >
-                      <Text style={{ color: "#EAB308", fontWeight: "600", fontSize: 14 }}>⭐ Avaliar este serviço</Text>
-                    </TouchableOpacity>
-                  )}
-                  {(item.status === "scheduled" || item.status === "confirmed") && tab === "upcoming" && (
-                    <TouchableOpacity
-                      onPress={() => handleCancelAppointment(item)}
-                      style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: "#1F2937", paddingTop: 12 }}
-                    >
-                      <Text style={{ color: "#EF4444", fontWeight: "600", fontSize: 14 }}>❌ Cancelar agendamento</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              );
-            }}
-            contentContainerStyle={{ paddingBottom: 100 }}
+            renderItem={({ item }) => (
+              <AppointmentCard
+                item={item}
+                tab={tab}
+                onReview={() => setReviewAppt(item)}
+                onCancel={() => handleCancel(item)}
+              />
+            )}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: tabBarHeight + 16 }}
             showsVerticalScrollIndicator={false}
           />
         )}
-      </View>
+      </Animated.View>
 
       {reviewAppt && <ReviewModal appointment={reviewAppt} onClose={() => setReviewAppt(null)} />}
     </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  // ── Header ──────────────────────────────────────────────────────────────────
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  headerTitle: {
+    color: "#EAB308",
+    fontWeight: "800",
+    fontSize: 26,
+    letterSpacing: 0.5,
+  },
+  headerSubtitle: {
+    color: "#6B7280",
+    fontSize: 14,
+    marginTop: 2,
+  },
+
+  // ── Toggle ───────────────────────────────────────────────────────────────────
+  toggleWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  toggleTrack: {
+    flexDirection: "row",
+    backgroundColor: "#111827",
+    borderRadius: 14,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  toggleBtnActive: {
+    backgroundColor: "#EAB308",
+  },
+  toggleBtnText: {
+    color: "#6B7280",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  toggleBtnTextActive: {
+    color: "#000",
+  },
+
+  // ── Card ─────────────────────────────────────────────────────────────────────
+  card: {
+    backgroundColor: "#111827",
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
+  cardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  cardService: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  cardBarber: {
+    color: "#9CA3AF",
+    fontSize: 13,
+    marginTop: 3,
+  },
+  statusBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginLeft: 8,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  cardMeta: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#1F2937",
+  },
+  cardMetaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  cardMetaIcon: {
+    fontSize: 13,
+  },
+  cardMetaText: {
+    color: "#D1D5DB",
+    fontSize: 13,
+  },
+  cardAction: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#1F2937",
+  },
+  cardActionGold: {
+    color: "#EAB308",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  cardActionRed: {
+    color: "#EF4444",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+
+  // ── Estado vazio ─────────────────────────────────────────────────────────────
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+    gap: 12,
+  },
+  emptyStateIcon: {
+    fontSize: 52,
+  },
+  emptyStateText: {
+    color: "#6B7280",
+    fontSize: 16,
+    textAlign: "center",
+  },
+  bookNowButton: {
+    backgroundColor: "#EAB308",
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    marginTop: 8,
+  },
+  bookNowText: {
+    color: "#000",
+    fontWeight: "800",
+    fontSize: 15,
+  },
+
+  // ── Guest (não autenticado) ───────────────────────────────────────────────────
+  guestTitle: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 22,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  guestSubtitle: {
+    color: "#6B7280",
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 28,
+  },
+  loginButton: {
+    backgroundColor: "#EAB308",
+    borderRadius: 16,
+    paddingVertical: 15,
+    paddingHorizontal: 40,
+  },
+  loginButtonText: {
+    color: "#000",
+    fontWeight: "800",
+    fontSize: 16,
+  },
+
+  // ── Modal de avaliação ────────────────────────────────────────────────────────
+  modalOverlay: {
+    position: "absolute",
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.85)",
+    justifyContent: "flex-end",
+    zIndex: 100,
+  },
+  modalSheet: {
+    backgroundColor: "#111827",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: 36,
+    borderTopWidth: 1,
+    borderColor: "#1F2937",
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#374151",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    color: "#9CA3AF",
+    fontSize: 14,
+    marginBottom: 20,
+  },
+  modalLabel: {
+    color: "#D1D5DB",
+    fontWeight: "600",
+    fontSize: 14,
+    marginBottom: 10,
+  },
+  starsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 20,
+  },
+  starIcon: {
+    fontSize: 38,
+  },
+  modalInput: {
+    backgroundColor: "#1F2937",
+    color: "#fff",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#374151",
+    fontSize: 15,
+    minHeight: 80,
+    textAlignVertical: "top",
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalBtnCancel: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#374151",
+  },
+  modalBtnCancelText: {
+    color: "#9CA3AF",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  modalBtnConfirm: {
+    flex: 1,
+    backgroundColor: "#EAB308",
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  modalBtnConfirmText: {
+    color: "#000",
+    fontWeight: "800",
+    fontSize: 15,
+  },
+});

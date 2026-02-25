@@ -542,3 +542,14 @@
 ## Melhorias v4.2
 
 - [x] Aplicar identidade visual da aba Serviços na aba Produtos (fundo escuro, badge de preço, filtro por categoria, animação de entrada, grid 2 colunas)
+
+## Identidade Visual Completa v4.3
+
+- [x] Reformular history.tsx (histórico de agendamentos do cliente)
+- [x] Reformular profile.tsx (perfil do cliente)
+- [x] book.tsx já usa identidade visual correta (fundo preto, dourado)
+- [x] Reformular recurring.tsx (agendamento recorrente)
+- [x] Reformular login.tsx (login do cliente)
+- [x] Reformular register.tsx (cadastro do cliente)
+- [x] Reformular forgot-password.tsx (recuperação de senha)
+- [x] pix-payment.tsx já usa identidade visual correta

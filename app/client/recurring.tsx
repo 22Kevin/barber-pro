@@ -7,12 +7,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/screen-container";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
-import { useColors } from "@/hooks/use-colors";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -35,9 +35,12 @@ function getNextOccurrences(startDate: string, intervalWeeks: number, count: num
   return dates;
 }
 
+const DAYS_PT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
 export default function RecurringScreen() {
-  const colors = useColors();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const utils = trpc.useUtils();
 
   const [clientId, setClientId] = useState<number | null>(null);
@@ -65,7 +68,7 @@ export default function RecurringScreen() {
   const createMutation = trpc.recurring.create.useMutation({
     onSuccess: (result) => {
       Alert.alert(
-        "Recorrência criada!",
+        "Recorrência criada! 🔄",
         `${result.createdCount} agendamentos foram criados com sucesso.`,
         [{ text: "OK", onPress: () => { setStep("list"); utils.recurring.listByClient.invalidate(); } }]
       );
@@ -87,7 +90,6 @@ export default function RecurringScreen() {
     const [h, m] = selectedTime.split(":").map(Number);
     const endDate = new Date(2000, 0, 1, h, m + duration);
     const endTime = `${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`;
-
     createMutation.mutate({
       clientId,
       barberId: selectedBarber.id,
@@ -104,63 +106,56 @@ export default function RecurringScreen() {
     ? getNextOccurrences(selectedDate, intervalWeeks, Math.min(occurrences, 4))
     : [];
 
+  // ─── LISTA ───────────────────────────────────────────────────────────────────
   if (step === "list") {
     const list = recurringQuery.data ?? [];
     return (
-      <ScreenContainer edges={["top", "left", "right"]}>
+      <ScreenContainer containerClassName="bg-black" edges={["left", "right"]}>
         {/* Header */}
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-            <IconSymbol name="arrow.left" size={24} color={colors.foreground} />
-          </Pressable>
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Agendamentos Recorrentes</Text>
-          <Pressable
-            style={({ pressed }) => [styles.newBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
-            onPress={() => setStep("create")}
-          >
-            <IconSymbol name="plus" size={18} color="#fff" />
-          </Pressable>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+            <Text style={styles.backText}>← Voltar</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Recorrências</Text>
+          <TouchableOpacity onPress={() => setStep("create")} style={styles.addBtn} activeOpacity={0.8}>
+            <Text style={styles.addBtnText}>+ Nova</Text>
+          </TouchableOpacity>
         </View>
 
         {recurringQuery.isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: 60 }} />
+          <ActivityIndicator color="#EAB308" style={{ marginTop: 60 }} />
         ) : list.length === 0 ? (
           <View style={styles.emptyState}>
-            <IconSymbol name="arrow.clockwise" size={56} color={colors.muted} />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Nenhuma recorrência ativa</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
+            <View style={styles.emptyIcon}>
+              <Text style={{ fontSize: 40 }}>🔄</Text>
+            </View>
+            <Text style={styles.emptyTitle}>Nenhuma recorrência ativa</Text>
+            <Text style={styles.emptySubtitle}>
               Crie uma recorrência para agendar automaticamente o mesmo serviço a cada semana ou mês.
             </Text>
-            <Pressable
-              style={({ pressed }) => [styles.createBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
-              onPress={() => setStep("create")}
-            >
+            <TouchableOpacity onPress={() => setStep("create")} style={styles.createBtn} activeOpacity={0.85}>
               <Text style={styles.createBtnText}>Criar Recorrência</Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         ) : (
           <FlatList
             data={list}
             keyExtractor={(item) => String(item.id)}
-            contentContainerStyle={{ padding: 16, gap: 12 }}
+            contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: insets.bottom + 24 }}
             renderItem={({ item }) => {
               const intervalLabel = INTERVAL_OPTIONS.find((o) => o.weeks === item.intervalWeeks)?.label ?? `A cada ${item.intervalWeeks} semanas`;
               return (
-                <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={styles.card}>
                   <View style={styles.cardRow}>
-                    <View style={[styles.cardIcon, { backgroundColor: colors.primary + "22" }]}>
-                      <IconSymbol name="arrow.clockwise" size={22} color={colors.primary} />
+                    <View style={styles.cardIconWrap}>
+                      <Text style={{ fontSize: 22 }}>🔄</Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.cardService, { color: colors.foreground }]}>
-                        {(item as any).serviceName}
-                      </Text>
-                      <Text style={[styles.cardBarber, { color: colors.muted }]}>
-                        {(item as any).barberName} · {intervalLabel}
-                      </Text>
+                      <Text style={styles.cardService}>{(item as any).serviceName}</Text>
+                      <Text style={styles.cardBarber}>{(item as any).barberName} · {intervalLabel}</Text>
                     </View>
-                    <Pressable
-                      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+                    <TouchableOpacity
+                      activeOpacity={0.7}
                       onPress={() => Alert.alert(
                         "Cancelar recorrência",
                         "Deseja cancelar esta série? Os agendamentos já criados não serão removidos.",
@@ -170,24 +165,24 @@ export default function RecurringScreen() {
                         ]
                       )}
                     >
-                      <IconSymbol name="xmark.circle.fill" size={22} color={colors.error} />
-                    </Pressable>
+                      <Text style={{ color: "#EF4444", fontSize: 20 }}>✕</Text>
+                    </TouchableOpacity>
                   </View>
-                  <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.cardDivider} />
                   <View style={styles.cardInfo}>
                     <View style={styles.infoItem}>
-                      <Text style={[styles.infoLabel, { color: colors.muted }]}>Início</Text>
-                      <Text style={[styles.infoValue, { color: colors.foreground }]}>
+                      <Text style={styles.infoLabel}>Início</Text>
+                      <Text style={styles.infoValue}>
                         {item.startDate ? new Date(item.startDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "—"}
                       </Text>
                     </View>
                     <View style={styles.infoItem}>
-                      <Text style={[styles.infoLabel, { color: colors.muted }]}>Horário</Text>
-                      <Text style={[styles.infoValue, { color: colors.foreground }]}>{item.startTime?.slice(0, 5) ?? "—"}</Text>
+                      <Text style={styles.infoLabel}>Horário</Text>
+                      <Text style={styles.infoValue}>{item.startTime?.slice(0, 5) ?? "—"}</Text>
                     </View>
                     <View style={styles.infoItem}>
-                      <Text style={[styles.infoLabel, { color: colors.muted }]}>Ocorrências</Text>
-                      <Text style={[styles.infoValue, { color: colors.foreground }]}>{item.occurrences}x</Text>
+                      <Text style={styles.infoLabel}>Ocorrências</Text>
+                      <Text style={styles.infoValue}>{item.occurrences}x</Text>
                     </View>
                   </View>
                 </View>
@@ -199,11 +194,10 @@ export default function RecurringScreen() {
     );
   }
 
-  // Step: create
+  // ─── CRIAÇÃO ─────────────────────────────────────────────────────────────────
   const barbers = barbersQuery.data?.filter((b: any) => b.isActive) ?? [];
   const services = servicesQuery.data ?? [];
 
-  // Gerar próximas 4 semanas como opções de data
   const dateOptions: string[] = [];
   for (let i = 1; i <= 28; i++) {
     const d = new Date();
@@ -219,90 +213,80 @@ export default function RecurringScreen() {
   ];
 
   return (
-    <ScreenContainer edges={["top", "left", "right"]}>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => setStep("list")} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-          <IconSymbol name="arrow.left" size={24} color={colors.foreground} />
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Nova Recorrência</Text>
-        <View style={{ width: 40 }} />
+    <ScreenContainer containerClassName="bg-black" edges={["left", "right"]}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity onPress={() => setStep("list")} style={styles.backBtn} activeOpacity={0.7}>
+          <Text style={styles.backText}>← Voltar</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Nova Recorrência</Text>
+        <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 20, paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 24, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+
         {/* Barbeiro */}
         <View>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Barbeiro</Text>
+          <Text style={styles.sectionTitle}>Barbeiro</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-            {barbers.map((b: any) => (
-              <Pressable
-                key={b.id}
-                style={({ pressed }) => [
-                  styles.optionChip,
-                  {
-                    backgroundColor: selectedBarber?.id === b.id ? colors.primary : colors.surface,
-                    borderColor: selectedBarber?.id === b.id ? colors.primary : colors.border,
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-                onPress={() => setSelectedBarber(b)}
-              >
-                <Text style={{ color: selectedBarber?.id === b.id ? "#fff" : colors.foreground, fontWeight: "600" }}>
-                  {b.name}
-                </Text>
-              </Pressable>
-            ))}
+            {barbers.map((b: any) => {
+              const active = selectedBarber?.id === b.id;
+              return (
+                <TouchableOpacity
+                  key={b.id}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => setSelectedBarber(b)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{b.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
 
         {/* Serviço */}
         <View>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Serviço</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-            {services.map((s: any) => (
-              <Pressable
-                key={s.id}
-                style={({ pressed }) => [
-                  styles.optionChip,
-                  {
-                    backgroundColor: selectedService?.id === s.id ? colors.primary : colors.surface,
-                    borderColor: selectedService?.id === s.id ? colors.primary : colors.border,
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-                onPress={() => setSelectedService(s)}
-              >
-                <Text style={{ color: selectedService?.id === s.id ? "#fff" : colors.foreground, fontWeight: "600" }}>
-                  {s.name}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+          <Text style={styles.sectionTitle}>Serviço</Text>
+          <View style={{ gap: 8 }}>
+            {services.map((s: any) => {
+              const active = selectedService?.id === s.id;
+              return (
+                <TouchableOpacity
+                  key={s.id}
+                  style={[styles.serviceCard, active && styles.serviceCardActive]}
+                  onPress={() => setSelectedService(s)}
+                  activeOpacity={0.8}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.serviceName, active && { color: "#000" }]}>{s.name}</Text>
+                    <Text style={[styles.serviceDuration, active && { color: "#00000088" }]}>⏱ {s.durationMinutes} min</Text>
+                  </View>
+                  <Text style={[styles.servicePrice, active && { color: "#000" }]}>R$ {parseFloat(s.price).toFixed(2)}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
-        {/* Data de início */}
+        {/* Data */}
         <View>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Data de início</Text>
+          <Text style={styles.sectionTitle}>Data de início</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-            {dateOptions.slice(0, 14).map((d) => {
+            {dateOptions.map((d) => {
               const dateObj = new Date(d + "T12:00:00");
-              const label = dateObj.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" });
+              const active = selectedDate === d;
               return (
-                <Pressable
+                <TouchableOpacity
                   key={d}
-                  style={({ pressed }) => [
-                    styles.dateChip,
-                    {
-                      backgroundColor: selectedDate === d ? colors.primary : colors.surface,
-                      borderColor: selectedDate === d ? colors.primary : colors.border,
-                      opacity: pressed ? 0.7 : 1,
-                    },
-                  ]}
+                  style={[styles.dateCard, active && styles.dateCardActive]}
                   onPress={() => setSelectedDate(d)}
+                  activeOpacity={0.8}
                 >
-                  <Text style={{ color: selectedDate === d ? "#fff" : colors.foreground, fontWeight: "600", fontSize: 12 }}>
-                    {label}
-                  </Text>
-                </Pressable>
+                  <Text style={[styles.dateDow, active && { color: "#000" }]}>{DAYS_PT[dateObj.getDay()]}</Text>
+                  <Text style={[styles.dateNum, active && { color: "#000" }]}>{dateObj.getDate()}</Text>
+                  <Text style={[styles.dateMon, active && { color: "#000" }]}>{MONTHS_PT[dateObj.getMonth()]}</Text>
+                </TouchableOpacity>
               );
             })}
           </ScrollView>
@@ -310,154 +294,267 @@ export default function RecurringScreen() {
 
         {/* Horário */}
         <View>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Horário</Text>
-          <View style={styles.timeGrid}>
-            {timeSlots.map((t) => (
-              <Pressable
-                key={t}
-                style={({ pressed }) => [
-                  styles.timeChip,
-                  {
-                    backgroundColor: selectedTime === t ? colors.primary : colors.surface,
-                    borderColor: selectedTime === t ? colors.primary : colors.border,
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-                onPress={() => setSelectedTime(t)}
-              >
-                <Text style={{ color: selectedTime === t ? "#fff" : colors.foreground, fontWeight: "600", fontSize: 13 }}>
-                  {t}
-                </Text>
-              </Pressable>
-            ))}
+          <Text style={styles.sectionTitle}>Horário</Text>
+          <View style={styles.timesGrid}>
+            {timeSlots.map((t) => {
+              const active = selectedTime === t;
+              return (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.timeChip, active && styles.timeChipActive]}
+                  onPress={() => setSelectedTime(t)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.timeText, active && { color: "#000" }]}>{t}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
-        {/* Frequência */}
+        {/* Intervalo */}
         <View>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Frequência</Text>
+          <Text style={styles.sectionTitle}>Frequência</Text>
           <View style={{ gap: 8 }}>
-            {INTERVAL_OPTIONS.map((opt) => (
-              <Pressable
-                key={opt.weeks}
-                style={({ pressed }) => [
-                  styles.radioRow,
-                  {
-                    backgroundColor: intervalWeeks === opt.weeks ? colors.primary + "11" : colors.surface,
-                    borderColor: intervalWeeks === opt.weeks ? colors.primary : colors.border,
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-                onPress={() => setIntervalWeeks(opt.weeks)}
-              >
-                <View style={[
-                  styles.radioCircle,
-                  { borderColor: intervalWeeks === opt.weeks ? colors.primary : colors.border },
-                ]}>
-                  {intervalWeeks === opt.weeks && <View style={[styles.radioDot, { backgroundColor: colors.primary }]} />}
-                </View>
-                <Text style={[styles.radioLabel, { color: colors.foreground }]}>{opt.label}</Text>
-              </Pressable>
-            ))}
+            {INTERVAL_OPTIONS.map((opt) => {
+              const active = intervalWeeks === opt.weeks;
+              return (
+                <TouchableOpacity
+                  key={opt.weeks}
+                  style={[styles.radioRow, active && styles.radioRowActive]}
+                  onPress={() => setIntervalWeeks(opt.weeks)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.radioCircle, active && styles.radioCircleActive]}>
+                    {active && <View style={styles.radioDot} />}
+                  </View>
+                  <Text style={[styles.radioLabel, active && { color: "#EAB308" }]}>{opt.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
-        {/* Número de ocorrências */}
+        {/* Ocorrências */}
         <View>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Número de agendamentos</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
-            {OCCURRENCE_OPTIONS.map((n) => (
-              <Pressable
-                key={n}
-                style={({ pressed }) => [
-                  styles.optionChip,
-                  {
-                    backgroundColor: occurrences === n ? colors.primary : colors.surface,
-                    borderColor: occurrences === n ? colors.primary : colors.border,
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-                onPress={() => setOccurrences(n)}
-              >
-                <Text style={{ color: occurrences === n ? "#fff" : colors.foreground, fontWeight: "700" }}>
-                  {n}x
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+          <Text style={styles.sectionTitle}>Número de ocorrências</Text>
+          <View style={styles.occurrencesGrid}>
+            {OCCURRENCE_OPTIONS.map((n) => {
+              const active = occurrences === n;
+              return (
+                <TouchableOpacity
+                  key={n}
+                  style={[styles.occChip, active && styles.occChipActive]}
+                  onPress={() => setOccurrences(n)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.occText, active && { color: "#000" }]}>{n}x</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
-        {/* Preview das datas */}
+        {/* Preview */}
         {previewDates.length > 0 && (
-          <View style={[styles.previewBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.previewTitle, { color: colors.foreground }]}>Próximos agendamentos</Text>
+          <View style={styles.previewBox}>
+            <Text style={styles.previewTitle}>Próximas datas</Text>
             {previewDates.map((d, i) => (
               <View key={i} style={styles.previewRow}>
-                <View style={[styles.previewDot, { backgroundColor: colors.primary }]} />
-                <Text style={[styles.previewDate, { color: colors.muted }]}>{d}</Text>
+                <View style={styles.previewDot} />
+                <Text style={styles.previewDate}>{d}</Text>
               </View>
             ))}
             {occurrences > 4 && (
-              <Text style={[styles.previewMore, { color: colors.muted }]}>
-                + {occurrences - 4} mais...
-              </Text>
+              <Text style={styles.previewMore}>+ {occurrences - 4} mais...</Text>
             )}
           </View>
         )}
 
         {/* Botão criar */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.confirmBtn,
-            { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
-          ]}
+        <TouchableOpacity
+          style={[styles.createBtn, createMutation.isPending && { opacity: 0.7 }]}
           onPress={handleCreate}
+          disabled={createMutation.isPending}
+          activeOpacity={0.85}
         >
           {createMutation.isPending ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#000" />
           ) : (
-            <Text style={styles.confirmBtnText}>Criar {occurrences} Agendamentos</Text>
+            <Text style={styles.createBtnText}>Criar Recorrência</Text>
           )}
-        </Pressable>
+        </TouchableOpacity>
       </ScrollView>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
-  headerTitle: { fontSize: 17, fontWeight: "700" },
-  newBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 20, fontWeight: "800", textAlign: "center" },
-  emptySubtitle: { fontSize: 14, textAlign: "center", lineHeight: 22, color: "#888" },
-  createBtn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14 },
-  createBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  card: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1F2937",
+  },
+  backBtn: { paddingVertical: 4 },
+  backText: { color: "#EAB308", fontSize: 15, fontWeight: "600" },
+  headerTitle: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  addBtn: {
+    backgroundColor: "#EAB308",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  addBtnText: { color: "#000", fontWeight: "700", fontSize: 13 },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  emptyIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "#1A1000",
+    borderWidth: 2,
+    borderColor: "#EAB308",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyTitle: { color: "#fff", fontSize: 20, fontWeight: "700", textAlign: "center" },
+  emptySubtitle: { color: "#6B7280", fontSize: 14, textAlign: "center", lineHeight: 22 },
+  card: {
+    backgroundColor: "#111827",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
   cardRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  cardIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  cardService: { fontSize: 15, fontWeight: "700" },
-  cardBarber: { fontSize: 13, marginTop: 2 },
-  cardDivider: { height: 1 },
-  cardInfo: { flexDirection: "row", gap: 16 },
-  infoItem: {},
-  infoLabel: { fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
-  infoValue: { fontSize: 14, fontWeight: "700", marginTop: 2 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
-  optionChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5 },
-  dateChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5 },
-  timeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  timeChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, minWidth: 70, alignItems: "center" },
-  radioRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 12, borderWidth: 1.5 },
-  radioCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-  radioDot: { width: 10, height: 10, borderRadius: 5 },
-  radioLabel: { fontSize: 14, fontWeight: "600" },
-  previewBox: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 8 },
-  previewTitle: { fontSize: 14, fontWeight: "700", marginBottom: 4 },
+  cardIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#1A1000",
+    borderWidth: 1,
+    borderColor: "#EAB308",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cardService: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  cardBarber: { color: "#9CA3AF", fontSize: 13, marginTop: 2 },
+  cardDivider: { height: 1, backgroundColor: "#1F2937", marginVertical: 12 },
+  cardInfo: { flexDirection: "row", justifyContent: "space-around" },
+  infoItem: { alignItems: "center", gap: 4 },
+  infoLabel: { color: "#6B7280", fontSize: 11, fontWeight: "500" },
+  infoValue: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  sectionTitle: { color: "#EAB308", fontSize: 14, fontWeight: "700", marginBottom: 12, textTransform: "uppercase", letterSpacing: 0.5 },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: "#111827",
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
+  chipActive: { backgroundColor: "#EAB308", borderColor: "#EAB308" },
+  chipText: { color: "#9CA3AF", fontWeight: "600", fontSize: 14 },
+  chipTextActive: { color: "#000" },
+  serviceCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#111827",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
+  serviceCardActive: { backgroundColor: "#EAB308", borderColor: "#EAB308" },
+  serviceName: { color: "#fff", fontWeight: "600", fontSize: 15 },
+  serviceDuration: { color: "#9CA3AF", fontSize: 12, marginTop: 2 },
+  servicePrice: { color: "#EAB308", fontWeight: "700", fontSize: 15 },
+  dateCard: {
+    width: 64,
+    backgroundColor: "#111827",
+    borderRadius: 14,
+    padding: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
+  dateCardActive: { backgroundColor: "#EAB308", borderColor: "#EAB308" },
+  dateDow: { color: "#9CA3AF", fontSize: 11, fontWeight: "600" },
+  dateNum: { color: "#fff", fontSize: 20, fontWeight: "800" },
+  dateMon: { color: "#9CA3AF", fontSize: 11 },
+  timesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  timeChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: "#111827",
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
+  timeChipActive: { backgroundColor: "#EAB308", borderColor: "#EAB308" },
+  timeText: { color: "#fff", fontWeight: "600", fontSize: 14 },
+  radioRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#111827",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
+  radioRowActive: { borderColor: "#EAB308" },
+  radioCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: "#374151",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioCircleActive: { borderColor: "#EAB308" },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#EAB308" },
+  radioLabel: { color: "#fff", fontSize: 15, fontWeight: "500" },
+  occurrencesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  occChip: {
+    width: 64,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#111827",
+    borderWidth: 1,
+    borderColor: "#1F2937",
+    alignItems: "center",
+  },
+  occChipActive: { backgroundColor: "#EAB308", borderColor: "#EAB308" },
+  occText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  previewBox: {
+    backgroundColor: "#111827",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#1F2937",
+    gap: 8,
+  },
+  previewTitle: { color: "#EAB308", fontWeight: "700", fontSize: 13, marginBottom: 4 },
   previewRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  previewDot: { width: 8, height: 8, borderRadius: 4 },
-  previewDate: { fontSize: 13 },
-  previewMore: { fontSize: 12, fontStyle: "italic", marginTop: 4 },
-  confirmBtn: { paddingVertical: 16, borderRadius: 14, alignItems: "center" },
-  confirmBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  previewDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#EAB308" },
+  previewDate: { color: "#D1D5DB", fontSize: 14 },
+  previewMore: { color: "#6B7280", fontSize: 12, marginTop: 4 },
+  createBtn: {
+    backgroundColor: "#EAB308",
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  createBtnText: { color: "#000", fontWeight: "800", fontSize: 16 },
 });
