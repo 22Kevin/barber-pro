@@ -174,7 +174,7 @@ export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
         <View style={styles.divider} />
 
         {/* Grupos */}
-        <ScrollView style={styles.drawerItems} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.drawerItems} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
           {DRAWER_GROUPS.map((group) => {
             const visibleItems = group.items.filter(item => item.roles.includes(role));
             if (visibleItems.length === 0) return null;
@@ -227,6 +227,7 @@ const styles = StyleSheet.create({
     position: "absolute", left: 0, top: 0, bottom: 0,
     backgroundColor: "#0F0F0F",
     borderRightWidth: 1, borderRightColor: "#222",
+    flexDirection: "column",
     ...(Platform.OS === "ios"
       ? { shadowColor: "#000", shadowOffset: { width: 6, height: 0 }, shadowOpacity: 0.45, shadowRadius: 14 }
       : { elevation: 20 }),
@@ -256,7 +257,7 @@ const styles = StyleSheet.create({
   profileBtnText: { fontSize: 13, fontWeight: "600", color: "#C9A84C" },
   profileBtnTextActive: { color: "#0A0A0A" },
   divider: { height: 1, backgroundColor: "#1E1E1E", marginHorizontal: 14, marginBottom: 4 },
-  drawerItems: { flex: 1, paddingHorizontal: 10 },
+  drawerItems: { flex: 1, paddingHorizontal: 10, minHeight: 0 },
   group: { marginBottom: 2 },
   groupLabel: {
     fontSize: 9, fontWeight: "800", color: "#3A3A3A",

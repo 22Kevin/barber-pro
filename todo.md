@@ -553,3 +553,8 @@
 - [x] Reformular register.tsx (cadastro do cliente)
 - [x] Reformular forgot-password.tsx (recuperação de senha)
 - [x] pix-payment.tsx já usa identidade visual correta
+
+## Bugs v4.4
+
+- [x] Dados da barbearia cortados no drawer lateral (flexDirection + contentContainerStyle corrigidos)
+- [x] Logo da barbearia não aparece na Home da área do cliente (logoUrl adicionado ao settings.update)
