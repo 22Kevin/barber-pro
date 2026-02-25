@@ -157,6 +157,20 @@ export default function AdminTabsLayout() {
           tabBarItemStyle: { display: "none" },
         }}
       />
+      <Tabs.Screen
+        name="barbearia"
+        options={{
+          title: "Barbearia",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="my-profile"
+        options={{
+          title: "Meu Perfil",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
     </Tabs>
   );
 }

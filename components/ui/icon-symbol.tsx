@@ -102,6 +102,17 @@ const MAPPING = {
   "pencil.circle.fill": "edit",
   "clock.arrow.circlepath": "history",
   "calendar.badge.clock": "event-available",
+
+  // Reorganização menu admin v3.6
+  "tray.full.fill": "inventory-2",
+  "building.2.fill": "store",
+  "person.text.rectangle": "badge",
+  "chart.bar.doc.horizontal": "receipt-long",
+  "paintbrush.fill": "brush",
+  "rectangle.portrait.and.arrow.right": "logout",
+  "sun.max.fill": "wb-sunny",
+  "moon.fill": "dark-mode",
+  "person.badge.checkmark": "how-to-reg",
 } as unknown as IconMapping;
 
 export function IconSymbol({

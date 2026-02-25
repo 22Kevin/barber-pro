@@ -465,3 +465,26 @@
 
 - [x] Corrigir botão "Nova Promoção" invadindo safe area do topo (promotions.tsx) — movido para rightElement do AdminHeader
 - [x] Auditar e corrigir todos os botões flutuantes nas telas admin que não respeitam useSafeAreaInsets — demais telas estão corretas
+
+## Bug v3.5.3
+
+- [ ] Corrigir erro de login: "Failed query: select from barbers" — coluna inexistente no banco (schema desatualizado)
+
+## Reorganização Menu Admin v3.6
+
+- [ ] Criar tela "Barbearia" com: nome, CNPJ, endereço, telefone, WhatsApp, Instagram, logo, galeria, chave Pix, token Mercado Pago, equipe (barbeiros), horários de funcionamento
+- [ ] Criar tela "Meu Perfil" independente (nome, foto, e-mail, alterar senha)
+- [ ] Simplificar settings.tsx para conter apenas preferências do sistema (tema, notificações)
+- [ ] Refatorar admin-drawer.tsx com grupos rotulados: OPERAÇÃO, CATÁLOGO, MARKETING, FINANCEIRO, SISTEMA
+- [ ] Aplicar hierarquia de acesso por role no drawer: super_admin vê tudo, barber vê apenas Agenda/Clientes/Minhas Comissões, receptionist vê Agenda/Clientes/Serviços/Produtos
+- [ ] Registrar novas telas (barbearia, my-profile) no _layout.tsx com tabBarItemStyle display none
+
+## Reorganização Menu Admin v3.6
+
+- [x] Drawer com grupos rotulados (OPERAÇÃO, CATÁLOGO, MARKETING, FINANCEIRO, SISTEMA)
+- [x] Hierarquia de acesso por role (super_admin, barber, receptionist) — itens filtrados por role
+- [x] Tela Barbearia criada (dados da empresa, equipe, horários, integrações/Mercado Pago/Pix)
+- [x] Tela Meu Perfil independente no topo do drawer (nome, telefone, alterar senha, sair)
+- [x] Configurações simplificada (apenas tema/aparência + versão do app)
+- [x] Novas telas registradas no _layout.tsx com display none (barbearia, my-profile)
+- [x] Ícones novos adicionados ao icon-symbol.tsx (building.2.fill, tray.full.fill, etc.)
