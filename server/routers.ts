@@ -1222,6 +1222,7 @@ export const appRouter = router({
   onboarding: router({
     register: publicProcedure
       .input(z.object({
+        plan: z.enum(["solo", "team", "studio"]).default("solo"),
         shop: z.object({
           name: z.string().min(2, "Nome da barbearia é obrigatório"),
           phone: z.string().min(8, "Telefone é obrigatório"),
@@ -1279,7 +1280,7 @@ export const appRouter = router({
           addressComplement: input.shop.addressComplement,
           city: input.shop.city,
           state: input.shop.state,
-          plan: "solo",
+          plan: input.plan,
           status: "trial",
           trialEndsAt,
         });

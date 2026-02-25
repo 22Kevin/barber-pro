@@ -13,7 +13,7 @@ import {
   Animated,
   Image,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useBarberAuth } from "@/lib/auth-context";
@@ -61,6 +61,8 @@ const DEFAULT_WORK_DAYS = [1, 2, 3, 4, 5, 6]; // Seg-Sab
 export default function OnboardingRegisterScreen() {
   const router = useRouter();
   const { login } = useBarberAuth();
+  const params = useLocalSearchParams<{ plan?: string }>();
+  const selectedPlan = (params.plan as "solo" | "team" | "studio") ?? "solo";
 
   const [currentStep, setCurrentStep] = useState(1);
   const progressAnim = useRef(new Animated.Value(0.25)).current;
@@ -199,6 +201,7 @@ export default function OnboardingRegisterScreen() {
   function handleSubmit() {
     if (!validateStep4()) return;
     registerMutation.mutate({
+      plan: selectedPlan,
       shop: {
         name: step1.shopName.trim(),
         phone: step1.phone.trim(),

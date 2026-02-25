@@ -624,3 +624,14 @@
 - [x] Wizard de cadastro da barbearia: Etapa 4 — Conta do administrador (nome, email, senha)
 - [ ] Tela de seleção de plano (Solo R$49, Equipe R$89, Estúdio R$149)
 - [ ] Integrar fluxo completo: tela inicial → selecionar plano → wizard → dashboard
+
+## Fase 1 SaaS — Continuação (v6.1)
+- [x] Botão "Cadastrar minha barbearia" na tela inicial (index.tsx)
+- [x] Tela de seleção de plano (plan-selection.tsx): Solo R$49, Equipe R$89, Estúdio R$149 com comparativo
+- [x] Endpoint onboarding.register: aceitar campo `plan` vindo da tela de seleção
+- [x] Isolamento por tenantId: getAllBarbers, getAllBarbersIncludingInactive filtrar por tenantId quando presente
+- [x] Isolamento por tenantId: getAllClients filtrar por tenantId quando presente
+- [ ] Isolamento por tenantId: getAllServices, getAllServicesWithMedia, getAllServicesWithMediaAndRatings filtrar por tenantId
+- [ ] Isolamento por tenantId: getAllProducts, getAllProductsWithMedia filtrar por tenantId
+- [ ] Isolamento por tenantId: getAllAppointmentsByDate, getAppointmentsByDate filtrar por tenantId via barbeiro
+- [x] Isolamento por tenantId: getShopSettings filtrar por tenantId quando presente

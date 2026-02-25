@@ -75,6 +75,21 @@ export default function HomeScreen() {
         <Animated.View style={[styles.options, { opacity: optionsOpacity, transform: [{ translateY: optionsSlide }] }]}>
           <Text style={styles.optionsLabel}>SELECIONE O ACESSO</Text>
 
+          {/* Botão de cadastro de nova barbearia */}
+          <Pressable
+            style={({ pressed }) => [styles.optionCard, styles.registerCard, pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }]}
+            onPress={() => router.push("/onboarding/plan-selection" as any)}
+          >
+            <View style={[styles.optionIconBox, { backgroundColor: "#C9A84C22" }]}>
+              <IconSymbol name="building.2.fill" size={28} color="#C9A84C" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.optionTitle, { color: "#C9A84C" }]}>Cadastrar minha barbearia</Text>
+              <Text style={[styles.optionSubtitle, { color: "#888880" }]}>Comece seu período gratuito de 14 dias</Text>
+            </View>
+            <IconSymbol name="chevron.right" size={20} color="#C9A84C" />
+          </Pressable>
+
           <Pressable
             style={({ pressed }) => [styles.optionCard, styles.adminCard, pressed && { opacity: 0.82, transform: [{ scale: 0.98 }] }]}
             onPress={() => router.push("/admin/login" as any)}
@@ -147,6 +162,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   clientCard: { backgroundColor: "#141414", borderColor: "#2A2A2A" },
+  registerCard: { backgroundColor: "#0A0A0A", borderColor: "#C9A84C44", borderWidth: 1.5 },
   optionIconBox: { width: 52, height: 52, borderRadius: 14, backgroundColor: "#0A0A0A22", justifyContent: "center", alignItems: "center" },
   optionTitle: { fontSize: 16, fontWeight: "700", color: "#0A0A0A", marginBottom: 2 },
   optionSubtitle: { fontSize: 12, color: "#0A0A0A99" },

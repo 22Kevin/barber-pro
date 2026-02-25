@@ -144,14 +144,24 @@ export async function getBarberById(id: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function getAllBarbers() {
+export async function getAllBarbers(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  if (tenantId != null) {
+    return db.select().from(barbers)
+      .where(and(eq(barbers.isActive, true), eq(barbers.tenantId, tenantId)))
+      .orderBy(barbers.name);
+  }
   return db.select().from(barbers).where(eq(barbers.isActive, true)).orderBy(barbers.name);
 }
-export async function getAllBarbersIncludingInactive() {
+export async function getAllBarbersIncludingInactive(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  if (tenantId != null) {
+    return db.select().from(barbers)
+      .where(eq(barbers.tenantId, tenantId))
+      .orderBy(barbers.name);
+  }
   return db.select().from(barbers).orderBy(barbers.name);
 }
 export async function reactivateBarber(id: number) {
@@ -207,9 +217,14 @@ export async function deleteBarber(id: number) {
 }
 
 // ─── Clientes ─────────────────────────────────────────────────────────────────
-export async function getAllClients() {
+export async function getAllClients(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  if (tenantId != null) {
+    return db.select().from(clients)
+      .where(and(eq(clients.isActive, true), eq(clients.tenantId, tenantId)))
+      .orderBy(clients.name);
+  }
   return db.select().from(clients).where(eq(clients.isActive, true)).orderBy(clients.name);
 }
 
@@ -675,21 +690,24 @@ export async function addClientPoints(clientId: number, points: number, type: "e
 }
 
 // ─── Configurações da Barbearia ───────────────────────────────────────────────
-export async function getShopSettings() {
+export async function getShopSettings(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return null;
+  if (tenantId != null) {
+    const result = await db.select().from(shopSettings).where(eq(shopSettings.tenantId, tenantId)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
   const result = await db.select().from(shopSettings).limit(1);
   return result.length > 0 ? result[0] : null;
 }
-
-export async function upsertShopSettings(data: Partial<typeof shopSettings.$inferInsert>) {
+export async function upsertShopSettings(data: Partial<typeof shopSettings.$inferInsert>, tenantId?: number | null) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const existing = await getShopSettings();
+  const existing = await getShopSettings(tenantId);
   if (existing) {
     await db.update(shopSettings).set(data).where(eq(shopSettings.id, existing.id));
   } else {
-    await db.insert(shopSettings).values({ shopName: "Barber Pro", ...data });
+    await db.insert(shopSettings).values({ shopName: "Barber Pro", ...data, ...(tenantId != null ? { tenantId } : {}) });
   }
 }
 
