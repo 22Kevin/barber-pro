@@ -5,6 +5,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
 import { sendConfirmationWhatsApp, type AppointmentInfo } from "@/lib/whatsapp";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { scheduleAppointmentReminder, notifyBarberNewAppointment, scheduleReviewNotification } from "@/lib/use-notifications";
 import { DiscountSheet, type AppliedDiscount } from "@/components/discount-sheet";
 
@@ -130,7 +131,13 @@ export default function BookScreen() {
         const [hours, minutes] = selectedSlot.startTime.split(":").map(Number);
         const appointmentDateTime = new Date(selectedDate);
         appointmentDateTime.setHours(hours, minutes, 0, 0);
-        scheduleAppointmentReminder(numApptId, selectedService.name, selectedBarber.name, appointmentDateTime).catch(() => null);
+        // Lê preferência de antecedência do lembrete (padrão: 1h)
+        AsyncStorage.getItem("@reminder_hours").then((saved) => {
+          const reminderH = saved === "2" ? 2 : saved === "24" ? 24 : 1;
+          scheduleAppointmentReminder(numApptId, selectedService.name, selectedBarber.name, appointmentDateTime, reminderH).catch(() => null);
+        }).catch(() => {
+          scheduleAppointmentReminder(numApptId, selectedService.name, selectedBarber.name, appointmentDateTime).catch(() => null);
+        });
         notifyBarberNewAppointment(client.name, selectedService.name, appointmentDateTime, numApptId).catch(() => null);
         scheduleReviewNotification(numApptId, selectedService.name, selectedBarber.name, appointmentDateTime).catch(() => null);
       }

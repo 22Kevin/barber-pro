@@ -218,13 +218,22 @@ function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) 
   const [birthDate, setBirthDate] = useState<string | null>(client.birthDate ?? null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [themeOption, setThemeOption] = useState<ThemeOption>("system");
+  const [reminderHours, setReminderHours] = useState<1 | 2 | 24>(1);
   const { setColorScheme } = useThemeContext();
 
   useEffect(() => {
     AsyncStorage.getItem("@theme_preference").then((saved) => {
       if (saved === "light" || saved === "dark" || saved === "system") setThemeOption(saved as ThemeOption);
     });
+    AsyncStorage.getItem("@reminder_hours").then((saved) => {
+      if (saved === "1" || saved === "2" || saved === "24") setReminderHours(Number(saved) as 1 | 2 | 24);
+    });
   }, []);
+
+  async function handleReminderChange(hours: 1 | 2 | 24) {
+    setReminderHours(hours);
+    await AsyncStorage.setItem("@reminder_hours", String(hours));
+  }
 
   async function handleThemeChange(option: ThemeOption) {
     setThemeOption(option);
@@ -258,6 +267,26 @@ function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) 
               activeOpacity={0.8}
             >
               <Text style={[styles.themeBtnText, active && styles.themeBtnTextActive]}>{labels[opt]}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Notificações */}
+      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Lembrete de agendamento</Text>
+      <Text style={{ color: "#6B7280", fontSize: 13, marginBottom: 10 }}>Com quanto tempo de antecedência você quer ser lembrado?</Text>
+      <View style={styles.themeRow}>
+        {([1, 2, 24] as (1 | 2 | 24)[]).map((h) => {
+          const labels: Record<number, string> = { 1: "⏰ 1 hora", 2: "⏰ 2 horas", 24: "📅 1 dia" };
+          const active = reminderHours === h;
+          return (
+            <TouchableOpacity
+              key={h}
+              onPress={() => handleReminderChange(h)}
+              style={[styles.themeBtn, active && styles.themeBtnActive]}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.themeBtnText, active && styles.themeBtnTextActive]}>{labels[h]}</Text>
             </TouchableOpacity>
           );
         })}

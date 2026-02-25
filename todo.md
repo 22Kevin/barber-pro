@@ -584,3 +584,9 @@
 - [x] Tela de boas-vindas premium: splash screen animada com logo dourado antes dos botões de acesso
 - [x] Reativar usuários excluídos: botão de reativação no painel de Equipe (soft delete reverso)
 - [x] Card de próximo agendamento na Home do cliente (data, horário, serviço, barbeiro, botão cancelar)
+
+## Melhorias v4.9
+
+- [x] Carrossel automático com auto-play animado na Home do cliente (troca a cada 4s com fade/slide suave)
+- [x] Botão "Reagendar" no card de próximo agendamento (abre fluxo book.tsx com serviço pré-selecionado)
+- [x] Configuração de antecedência do lembrete no perfil do cliente (1h, 2h, 24h) com persistência AsyncStorage

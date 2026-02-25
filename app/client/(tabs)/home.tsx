@@ -86,7 +86,26 @@ function PhotoCarousel({ images }: { images: string[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const flatRef = useRef<FlatList>(null);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  // Auto-play: avança slide a cada 4s com fade suave
+  useEffect(() => {
+    if (images.length <= 1 || isPaused) return;
+    const timer = setInterval(() => {
+      setActiveIndex(prev => {
+        const next = (prev + 1) % images.length;
+        // Fade out → scroll → fade in
+        Animated.timing(fadeAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+          flatRef.current?.scrollToIndex({ index: next, animated: false });
+          Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+        });
+        return next;
+      });
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [images.length, isPaused]);
 
   function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
@@ -109,27 +128,32 @@ function PhotoCarousel({ images }: { images: string[] }) {
 
   return (
     <View style={styles.carouselWrapper}>
-      <FlatList
-        ref={flatRef}
-        data={images}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        keyExtractor={(_, i) => String(i)}
-        renderItem={({ item, index }) => (
-          <TouchableOpacity
-            activeOpacity={0.92}
-            onPress={() => openLightbox(index)}
-            style={styles.carouselSlide}
-          >
-            <Image source={{ uri: item }} style={styles.carouselImage} resizeMode="cover" />
-            {/* Gradiente inferior */}
-            <View style={styles.carouselGradient} />
-          </TouchableOpacity>
-        )}
-      />
+      <Animated.View style={{ opacity: fadeAnim }}>
+        <FlatList
+          ref={flatRef}
+          data={images}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          scrollEnabled={true}
+          onScrollBeginDrag={() => setIsPaused(true)}
+          onScrollEndDrag={() => setTimeout(() => setIsPaused(false), 3000)}
+          keyExtractor={(_, i) => String(i)}
+          renderItem={({ item, index }) => (
+            <TouchableOpacity
+              activeOpacity={0.92}
+              onPress={() => openLightbox(index)}
+              style={styles.carouselSlide}
+            >
+              <Image source={{ uri: item }} style={styles.carouselImage} resizeMode="cover" />
+              {/* Gradiente inferior */}
+              <View style={styles.carouselGradient} />
+            </TouchableOpacity>
+          )}
+        />
+      </Animated.View>
       {/* Indicadores */}
       <View style={styles.dotsRow}>
         {images.map((_, i) => (
@@ -372,16 +396,25 @@ export default function ClientHome() {
                   <Text style={styles.nextApptMeta}>🕐  {time}</Text>
                 </View>
               </View>
-              {nextAppt.status !== "in_progress" && (
+              <View style={styles.nextApptActions}>
                 <TouchableOpacity
-                  style={styles.nextApptCancelBtn}
-                  onPress={handleCancel}
-                  activeOpacity={0.75}
-                  disabled={cancelApptMutation.isPending}
+                  style={styles.nextApptRescheduleBtn}
+                  onPress={() => router.push(`/client/book?serviceId=${nextAppt.serviceId}` as any)}
+                  activeOpacity={0.8}
                 >
-                  <Text style={styles.nextApptCancelText}>{cancelApptMutation.isPending ? "Cancelando..." : "Cancelar agendamento"}</Text>
+                  <Text style={styles.nextApptRescheduleText}>🗓  Reagendar</Text>
                 </TouchableOpacity>
-              )}
+                {nextAppt.status !== "in_progress" && (
+                  <TouchableOpacity
+                    style={styles.nextApptCancelBtn}
+                    onPress={handleCancel}
+                    activeOpacity={0.75}
+                    disabled={cancelApptMutation.isPending}
+                  >
+                    <Text style={styles.nextApptCancelText}>{cancelApptMutation.isPending ? "Cancelando..." : "Cancelar"}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           );
         })()}
@@ -932,12 +965,36 @@ const styles = StyleSheet.create({
     color: "#888880",
     lineHeight: 18,
   },
-  nextApptCancelBtn: {
-    alignItems: "center",
-    paddingVertical: 8,
+  nextApptActions: {
+    flexDirection: "row",
+    gap: 8,
     borderTopWidth: 1,
     borderTopColor: "#2A2A2A",
     marginTop: 4,
+    paddingTop: 10,
+  },
+  nextApptRescheduleBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#C9A84C22",
+    borderWidth: 1,
+    borderColor: "#C9A84C55",
+  },
+  nextApptRescheduleText: {
+    fontSize: 13,
+    color: "#C9A84C",
+    fontWeight: "600",
+  },
+  nextApptCancelBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#EF444411",
+    borderWidth: 1,
+    borderColor: "#EF444433",
   },
   nextApptCancelText: {
     fontSize: 13,
