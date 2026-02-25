@@ -749,3 +749,35 @@
 - [x] Botão "Continuar com Google" na página de login/cadastro pública
 - [x] Rota GET /pub-api/oauth-start para iniciar fluxo OAuth Google público
 - [x] Rota GET /pub-api/oauth-callback para processar retorno OAuth e criar sessão de cliente
+
+## Fase 9 Web — Relatórios, Clientes Detalhado e E-mail Barbeiro
+
+- [x] Tela de Relatórios no painel admin web: KPIs (faturamento, despesas, lucro, vendas)
+- [x] Gráfico SVG de faturamento por dia com período configurável (7/14/30/60/90 dias)
+- [x] Ranking de serviços mais vendidos com barra de progresso
+- [x] Desempenho por barbeiro: faturamento e atendimentos concluídos
+- [x] Relatórios adicionado ao menu de navegação do painel admin
+- [x] Tela de detalhe do cliente: histórico de agendamentos e pontos de fidelidade
+- [x] Link de detalhe do cliente na tabela de clientes
+- [x] Função sendBarberNotificationEmail: e-mail HTML dark com detalhes do agendamento
+- [x] Envio de e-mail ao barbeiro quando cliente agenda pela página pública
+
+## Fase 10 — Notificações Aprimoradas para Agendamentos Online
+
+- [ ] Canal Android "online_booking" com som diferenciado e prioridade alta
+- [ ] Categoria iOS "ONLINE_BOOKING" com som diferenciado
+- [ ] Badge no ícone do app incrementado a cada agendamento online recebido
+- [ ] Badge zerado quando barbeiro abre a tela de agenda
+- [ ] Servidor envia channelId e badge corretos na notificação push
+
+## Fase 10 — Notificações Aprimoradas para Agendamentos Online
+
+- [x] Canal Android "online-booking" com importância MAX, vibração tripla e badge
+- [x] Canal Android "barber-pro-reminders" mantido para lembretes padrão
+- [x] Funções incrementAppBadge() e clearAppBadge() exportadas do use-notifications.ts
+- [x] Tela de agenda: badge zerado automaticamente ao abrir (useEffect)
+- [x] sendExpoPushNotification: aceita channelId e badge opcionais
+- [x] Endpoint /pub-api/book: notificação usa channelId "online-booking" e badge=1
+- [x] Relatórios no painel admin web: gráfico de faturamento, ranking de serviços, desempenho por barbeiro
+- [x] Gestão de clientes no painel admin web: busca, tabela, detalhe do cliente
+- [x] Notificação por e-mail ao barbeiro quando cliente agenda pela página pública

@@ -157,3 +157,118 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData): Prom
     // Não propaga o erro — o agendamento já foi criado com sucesso
   }
 }
+
+export interface BarberNotificationEmailData {
+  barberName: string;
+  barberEmail: string;
+  clientName: string;
+  clientPhone?: string;
+  shopName: string;
+  serviceName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+function barberNotificationHtml(data: BarberNotificationEmailData): string {
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Novo Agendamento Online</title>
+</head>
+<body style="margin:0;padding:0;background:#0C0C0C;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:560px;margin:32px auto;background:#161616;border-radius:20px;overflow:hidden;border:1px solid #2A2A2A">
+    <!-- Header -->
+    <div style="background:#C9A84C;padding:24px 40px;text-align:center">
+      <div style="font-size:20px;font-weight:900;color:#0A0A0A;letter-spacing:1px">📅 NOVO AGENDAMENTO ONLINE</div>
+      <div style="font-size:13px;color:#0A0A0A99;margin-top:4px">${data.shopName}</div>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:32px 40px">
+      <div style="font-size:16px;color:#F0EEE8;margin-bottom:24px">
+        Olá, <strong style="color:#C9A84C">${data.barberName}</strong>! Você recebeu um novo agendamento pelo site.
+      </div>
+
+      <!-- Detalhes -->
+      <div style="background:#1E1E1E;border-radius:16px;padding:24px;margin-bottom:24px;border:1px solid #2A2A2A">
+        <table style="width:100%;border-collapse:collapse">
+          <tr>
+            <td style="padding:8px 0;font-size:11px;color:#888880;text-transform:uppercase;letter-spacing:0.5px;width:40%">Cliente</td>
+            <td style="padding:8px 0;font-size:14px;font-weight:700;color:#F0EEE8">${data.clientName}</td>
+          </tr>
+          ${data.clientPhone ? `
+          <tr>
+            <td style="padding:8px 0;font-size:11px;color:#888880;text-transform:uppercase;letter-spacing:0.5px">Telefone</td>
+            <td style="padding:8px 0;font-size:14px;font-weight:700;color:#F0EEE8">${data.clientPhone}</td>
+          </tr>` : ""}
+          <tr>
+            <td style="padding:8px 0;font-size:11px;color:#888880;text-transform:uppercase;letter-spacing:0.5px">Serviço</td>
+            <td style="padding:8px 0;font-size:14px;font-weight:700;color:#F0EEE8">${data.serviceName}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;font-size:11px;color:#888880;text-transform:uppercase;letter-spacing:0.5px">Data</td>
+            <td style="padding:8px 0;font-size:14px;font-weight:700;color:#F0EEE8">${fmtDate(data.date)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;font-size:11px;color:#888880;text-transform:uppercase;letter-spacing:0.5px">Horário</td>
+            <td style="padding:8px 0;font-size:16px;font-weight:900;color:#C9A84C">${fmtTime(data.startTime)} – ${fmtTime(data.endTime)}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- CTA -->
+      <div style="text-align:center;margin-bottom:24px">
+        <a href="${process.env.PUBLIC_BASE_URL ?? "https://barberpro.com.br"}/admin/agenda"
+           style="display:inline-block;background:#C9A84C;color:#0A0A0A;font-size:14px;font-weight:800;padding:14px 32px;border-radius:12px;text-decoration:none">
+          Ver agenda no painel
+        </a>
+      </div>
+
+      <div style="font-size:12px;color:#888880;text-align:center">
+        Este agendamento já está confirmado no sistema. Acesse o painel para gerenciá-lo.
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#0C0C0C;padding:16px 40px;text-align:center;border-top:1px solid #2A2A2A">
+      <div style="font-size:11px;color:#555550">
+        Barber Pro — Sistema de Gestão para Barbearias
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+/**
+ * Envia e-mail de notificação de novo agendamento ao barbeiro.
+ * Falha silenciosamente se SMTP não estiver configurado ou barbeiro não tiver e-mail.
+ */
+export async function sendBarberNotificationEmail(data: BarberNotificationEmailData): Promise<void> {
+  const transporter = createTransporter();
+  if (!transporter) {
+    console.log("[email] SMTP não configurado — notificação ao barbeiro não enviada.");
+    return;
+  }
+  if (!data.barberEmail) {
+    console.log("[email] Barbeiro sem e-mail cadastrado — notificação não enviada.");
+    return;
+  }
+
+  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+
+  try {
+    await transporter.sendMail({
+      from: `"Barber Pro" <${from}>`,
+      to: data.barberEmail,
+      subject: `📅 Novo agendamento: ${data.clientName} — ${fmtDate(data.date)} às ${fmtTime(data.startTime)}`,
+      html: barberNotificationHtml(data),
+    });
+    console.log(`[email] Notificação de agendamento enviada para barbeiro ${data.barberEmail}`);
+  } catch (err) {
+    console.error("[email] Erro ao enviar notificação ao barbeiro:", err);
+  }
+}

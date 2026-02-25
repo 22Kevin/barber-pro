@@ -23,8 +23,9 @@ export function useNotifications() {
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
-    // Configura canal Android (obrigatório para Android 8+)
+    // Configura canais Android (obrigatório para Android 8+)
     if (Platform.OS === "android") {
+      // Canal padrão: lembretes de agendamento
       Notifications.setNotificationChannelAsync("barber-pro-reminders", {
         name: "Lembretes de Agendamento",
         description: "Notificações de lembrete 1 hora antes do seu agendamento",
@@ -32,6 +33,18 @@ export function useNotifications() {
         vibrationPattern: [0, 250, 250, 250],
         lightColor: "#C9A84C",
         sound: "default",
+      });
+      // Canal especial: agendamentos online recebidos pelo barbeiro
+      Notifications.setNotificationChannelAsync("online-booking", {
+        name: "Agendamentos Online",
+        description: "Alertas de novos agendamentos feitos pela página pública",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 400, 200, 400, 200, 400],
+        lightColor: "#C9A84C",
+        sound: "default",
+        enableLights: true,
+        enableVibrate: true,
+        showBadge: true,
       });
     }
 
@@ -393,5 +406,32 @@ export function formatAppointmentDateForNotification(date: Date): string {
       month: "2-digit",
     });
     return `${timeStr} de ${dayStr}`;
+  }
+}
+
+/**
+ * Incrementa o badge do ícone do app em 1.
+ * Chamado quando um agendamento online é recebido pelo barbeiro via push.
+ */
+export async function incrementAppBadge(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const current = await Notifications.getBadgeCountAsync();
+    await Notifications.setBadgeCountAsync(current + 1);
+  } catch (e) {
+    console.warn("[Barber Pro] Erro ao incrementar badge:", e);
+  }
+}
+
+/**
+ * Zera o badge do ícone do app.
+ * Deve ser chamado quando o barbeiro abre a tela de agenda.
+ */
+export async function clearAppBadge(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    await Notifications.setBadgeCountAsync(0);
+  } catch (e) {
+    console.warn("[Barber Pro] Erro ao limpar badge:", e);
   }
 }

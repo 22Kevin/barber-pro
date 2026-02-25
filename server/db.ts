@@ -182,14 +182,32 @@ export async function getBarberPushToken(barberId: number): Promise<string | nul
 }
 /**
  * Envia notificação push via Expo Push API (funciona com app fechado).
+ * @param options.channelId - Canal Android (ex: "online-booking" para agendamentos online)
+ * @param options.badge    - Número a exibir no badge do ícone do app
  */
-export async function sendExpoPushNotification(expoPushToken: string, title: string, body: string, data?: Record<string, unknown>): Promise<boolean> {
+export async function sendExpoPushNotification(
+  expoPushToken: string,
+  title: string,
+  body: string,
+  data?: Record<string, unknown>,
+  options?: { channelId?: string; badge?: number }
+): Promise<boolean> {
   if (!expoPushToken || !expoPushToken.startsWith("ExponentPushToken")) return false;
   try {
+    const payload: Record<string, unknown> = {
+      to: expoPushToken,
+      title,
+      body,
+      data: data ?? {},
+      sound: "default",
+      priority: "high",
+    };
+    if (options?.channelId) payload.channelId = options.channelId;
+    if (options?.badge !== undefined) payload.badge = options.badge;
     const response = await fetch("https://exp.host/--/api/v2/push/send", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Accept": "application/json", "Accept-Encoding": "gzip, deflate" },
-      body: JSON.stringify({ to: expoPushToken, title, body, data: data ?? {}, sound: "default", priority: "high" }),
+      body: JSON.stringify(payload),
     });
     return response.ok;
   } catch (e) {

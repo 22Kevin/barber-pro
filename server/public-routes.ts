@@ -13,7 +13,7 @@
 import type { Express, Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import * as db from "./db";
-import { sendBookingConfirmationEmail } from "./email";
+import { sendBookingConfirmationEmail, sendBarberNotificationEmail } from "./email";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function escapeHtml(str: string | null | undefined): string {
@@ -846,23 +846,45 @@ export function registerPublicRoutes(app: Express): void {
       // Notificar barbeiro via push
       const pushToken = await db.getBarberPushToken(barberId);
       if (pushToken) {
-        await db.sendExpoPushNotification(pushToken, "📅 Novo agendamento online", `${client?.name ?? "Cliente"} agendou ${service?.name ?? "Serviço"} para ${date} às ${startTime}`, { appointmentId: apptId, screen: "agenda" });
+        await db.sendExpoPushNotification(
+          pushToken,
+          "📅 Novo agendamento online",
+          `${client?.name ?? "Cliente"} agendou ${service?.name ?? "Serviço"} para ${date} às ${startTime}`,
+          { appointmentId: apptId, screen: "agenda", source: "web" },
+          { channelId: "online-booking", badge: 1 }
+        );
       }
+      // Buscar dados comuns para e-mails
+      const tenant2 = slug ? await db.getTenantBySlug(slug) : null;
+      const settings2 = await db.getShopSettings();
+      const shopName2 = settings2?.shopName ?? tenant2?.name ?? "Barbearia";
       // Enviar e-mail de confirmação ao cliente
-      if (client?.email && slug) {
-        const tenant = await db.getTenantBySlug(slug);
-        const settings = await db.getShopSettings();
+      if (client?.email) {
         await sendBookingConfirmationEmail({
           clientName: client.name,
           clientEmail: client.email,
-          shopName: settings?.shopName ?? tenant?.name ?? "Barbearia",
-          shopSlug: slug,
+          shopName: shopName2,
+          shopSlug: slug ?? "",
           serviceName: service?.name ?? "Serviço",
           barberName: barberData?.name ?? "Profissional",
           date,
           startTime,
           endTime,
           price: service ? `R$ ${parseFloat(service.price).toFixed(2).replace(".", ",")}` : undefined,
+        });
+      }
+      // Enviar e-mail de notificação ao barbeiro
+      if (barberData?.email) {
+        await sendBarberNotificationEmail({
+          barberName: barberData.name,
+          barberEmail: barberData.email,
+          clientName: client?.name ?? "Cliente",
+          clientPhone: (client as any)?.phone ?? undefined,
+          shopName: shopName2,
+          serviceName: service?.name ?? "Serviço",
+          date,
+          startTime,
+          endTime,
         });
       }
       res.json({ id: apptId, success: true });

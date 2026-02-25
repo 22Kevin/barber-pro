@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,7 +21,7 @@ import { SwipeableAppointmentCard } from "@/components/swipeable-appointment-car
 import { PaymentStatusModal } from "@/components/payment-status-modal";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { trpc } from "@/lib/trpc";
-import { scheduleAppointmentReminder, cancelAppointmentReminder } from "@/lib/use-notifications";
+import { scheduleAppointmentReminder, cancelAppointmentReminder, clearAppBadge } from "@/lib/use-notifications";
 
 const DAYS_PT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -99,6 +99,11 @@ function generateTimeSlots(
 
 export default function AgendaScreen() {
   const { barber } = useBarberAuth();
+
+  // Zera o badge do ícone do app ao abrir a tela de agenda
+  useEffect(() => {
+    clearAppBadge().catch(() => null);
+  }, []);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showNewModal, setShowNewModal] = useState(false);
