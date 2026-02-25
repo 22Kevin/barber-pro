@@ -2,6 +2,7 @@ import { z } from "zod";
 import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
+import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { storagePut } from "./storage";
@@ -119,8 +120,27 @@ export const appRouter = router({
     listAll: publicProcedure.query(() => db.getAllBarbersIncludingInactive()),
     reactivate: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.reactivateBarber(input.id)),
     create: publicProcedure
-      .input(z.object({ name: z.string().min(2), email: z.string().email().optional(), phone: z.string().optional(), password: z.string().min(6), role: z.enum(["super_admin", "barber", "receptionist"]).default("barber"), specialties: z.string().optional() }))
+      .input(z.object({ name: z.string().min(2), email: z.string().email().optional(), phone: z.string().optional(), password: z.string().min(6), role: z.enum(["super_admin", "barber", "receptionist"]).default("barber"), specialties: z.string().optional(), tenantId: z.number().optional().nullable() }))
       .mutation(async ({ input }) => {
+        // Validação de limite de barbeiros por plano
+        if (input.tenantId != null) {
+          const tenant = await db.getTenantById(input.tenantId);
+          if (tenant) {
+            const limits: Record<string, number> = { solo: 1, team: 5, studio: Infinity };
+            const limit = limits[tenant.plan] ?? Infinity;
+            if (limit !== Infinity) {
+              const existing = await db.getAllBarbersIncludingInactive(input.tenantId);
+              const activeBarbers = existing.filter((b) => b.isActive);
+              if (activeBarbers.length >= limit) {
+                const planNames: Record<string, string> = { solo: "Solo (máx. 1 barbeiro)", team: "Equipe (máx. 5 barbeiros)" };
+                throw new TRPCError({
+                  code: "FORBIDDEN",
+                  message: `Limite de barbeiros atingido para o plano ${planNames[tenant.plan] ?? tenant.plan}. Faça upgrade do plano para adicionar mais profissionais.`,
+                });
+              }
+            }
+          }
+        }
         const passwordHash = await hashPassword(input.password);
         return db.createBarber({ ...input, passwordHash, isActive: true });
       }),

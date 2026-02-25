@@ -646,3 +646,21 @@
 - [x] Modal de alteração de plano (Solo/Equipe/Estúdio)
 - [x] SUPERADMIN_PASSWORD configurada via secrets
 - [x] ENV.superadminPassword lido do process.env com fallback
+
+## Fase 2 Web — Infraestrutura de Subdomínios (v6.3)
+- [x] Middleware de roteamento por subdomínio: ler header Host, extrair slug, buscar tenant
+- [x] Rota GET /:slug/* — servir página pública do tenant identificado pelo subdomínio
+- [x] Fallback para domínio principal (sem slug) — redirecionar para landing do Barber Pro
+
+## Fase 3 Web — Página Pública de cada Barbearia (v6.3)
+- [x] Landing page: hero com logo, banner, nome e descrição da barbearia
+- [x] Seção de serviços: lista com nome, duração, preço e foto
+- [x] Seção de galeria: fotos do ambiente
+- [x] Seção de avaliações: nota média e depoimentos de clientes
+- [x] Botão de agendamento online com login do cliente
+- [x] Página de agendamento: seleção de serviço, barbeiro, data e hora
+- [ ] Confirmação de agendamento por email/WhatsApp
+
+## Limite de Barbeiros por Plano (v6.3)
+- [x] Validação no endpoint barber.create: Solo ≤ 1, Equipe ≤ 5, Estúdio = ilimitado
+- [x] Mensagem de erro clara quando o limite é atingido
