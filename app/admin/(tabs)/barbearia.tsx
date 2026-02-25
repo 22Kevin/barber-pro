@@ -243,6 +243,60 @@ export default function BarbeariaScreen() {
   const upsertHoursMutation = trpc.barbers.workingHours.upsert.useMutation({
     onSuccess: () => utils.barbers.workingHours.get.invalidate(),
   });
+
+  // Bloqueio em lote
+  const [batchBlockStart, setBatchBlockStart] = useState("");
+  const [batchBlockEnd, setBatchBlockEnd] = useState("");
+  const [batchBlockReason, setBatchBlockReason] = useState("Férias");
+  const [batchBlockLoading, setBatchBlockLoading] = useState(false);
+  const createBlockedSlotMutation = trpc.appointments.blockedSlots.create.useMutation();
+  const BLOCK_REASONS = ["Férias", "Feriado", "Evento", "Outro"];
+
+  async function handleBatchBlock() {
+    if (!selectedBarberId || !batchBlockStart || !batchBlockEnd) {
+      Alert.alert("Atenção", "Selecione o barbeiro e as datas de início e fim.");
+      return;
+    }
+    const start = new Date(batchBlockStart + "T12:00:00");
+    const end = new Date(batchBlockEnd + "T12:00:00");
+    if (end < start) { Alert.alert("Erro", "A data de fim deve ser após a data de início."); return; }
+    const days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+    if (days > 60) { Alert.alert("Limite", "Máximo de 60 dias por bloqueio."); return; }
+    const barberName = activeBarbers.find((b: any) => b.id === selectedBarberId)?.name ?? "barbeiro";
+    Alert.alert(
+      "Confirmar bloqueio",
+      `Bloquear ${days} dia${days > 1 ? "s" : ""} (${batchBlockStart} a ${batchBlockEnd}) para ${barberName}?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Bloquear", style: "destructive", onPress: async () => {
+          setBatchBlockLoading(true);
+          try {
+            const promises: Promise<any>[] = [];
+            for (let i = 0; i < days; i++) {
+              const d = new Date(start);
+              d.setDate(start.getDate() + i);
+              const dateStr = d.toISOString().split("T")[0];
+              promises.push(createBlockedSlotMutation.mutateAsync({
+                barberId: selectedBarberId!,
+                date: dateStr,
+                startTime: "00:00",
+                endTime: "23:59",
+                reason: batchBlockReason,
+              }));
+            }
+            await Promise.all(promises);
+            Alert.alert("Sucesso", `${days} dia${days > 1 ? "s bloqueados" : " bloqueado"} com sucesso!`);
+            setBatchBlockStart("");
+            setBatchBlockEnd("");
+          } catch (e: any) {
+            Alert.alert("Erro", e.message);
+          } finally {
+            setBatchBlockLoading(false);
+          }
+        }},
+      ]
+    );
+  }
   function handleDeleteBarber(b: any) {
     if (b.role === "super_admin") {
       Alert.alert("Não permitido", "Não é possível excluir o Super Admin.");
@@ -654,7 +708,7 @@ export default function BarbeariaScreen() {
             ) : workingHoursQuery.isLoading ? (
               <ActivityIndicator color="#C9A84C" />
             ) : (
-              DAYS.map((day, idx) => {
+              <>{DAYS.map((day, idx) => {
                 const existing = hours.find((h: any) => h.dayOfWeek === idx);
                 const isWorking = existing?.isWorking ?? false;
                 return (
@@ -731,11 +785,71 @@ export default function BarbeariaScreen() {
                     </View>
                   </View>
                 );
-              })
+              })}</>
+            )}
+            {/* Bloqueio em lote */}
+            {selectedBarberId && (
+              <View style={{ marginTop: 24, backgroundColor: "#141414", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#2A2A2A" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                  <IconSymbol name="calendar.badge.minus" size={18} color="#EF4444" />
+                  <Text style={{ color: "#F5F5F0", fontSize: 15, fontWeight: "700" }}>Bloquear Período</Text>
+                </View>
+                <Text style={{ color: "#888880", fontSize: 12, marginBottom: 14, lineHeight: 18 }}>Bloqueie um intervalo de datas (ex: férias, feriados) para este barbeiro. Nenhum agendamento poderá ser feito nos dias bloqueados.</Text>
+
+                {/* Motivo */}
+                <Text style={{ color: "#888880", fontSize: 12, marginBottom: 8 }}>Motivo</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    {BLOCK_REASONS.map(r => (
+                      <Pressable key={r} style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: batchBlockReason === r ? "#EF4444" : "#1E1E1E", borderWidth: 1, borderColor: batchBlockReason === r ? "#EF4444" : "#2A2A2A" }} onPress={() => setBatchBlockReason(r)}>
+                        <Text style={{ color: batchBlockReason === r ? "#FFF" : "#888880", fontSize: 13, fontWeight: batchBlockReason === r ? "700" : "400" }}>{r}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+
+                {/* Datas */}
+                <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "#888880", fontSize: 12, marginBottom: 6 }}>Data de início</Text>
+                    <TextInput
+                      style={{ backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: "#F5F5F0" }}
+                      value={batchBlockStart}
+                      onChangeText={setBatchBlockStart}
+                      placeholder="AAAA-MM-DD"
+                      placeholderTextColor="#555"
+                      keyboardType="numeric"
+                      maxLength={10}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "#888880", fontSize: 12, marginBottom: 6 }}>Data de fim</Text>
+                    <TextInput
+                      style={{ backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: "#F5F5F0" }}
+                      value={batchBlockEnd}
+                      onChangeText={setBatchBlockEnd}
+                      placeholder="AAAA-MM-DD"
+                      placeholderTextColor="#555"
+                      keyboardType="numeric"
+                      maxLength={10}
+                    />
+                  </View>
+                </View>
+
+                <Pressable
+                  style={({ pressed }) => ({ backgroundColor: batchBlockLoading ? "#2A2A2A" : "#EF444422", borderWidth: 1, borderColor: "#EF4444", borderRadius: 10, paddingVertical: 12, alignItems: "center", opacity: pressed ? 0.7 : 1 })}
+                  onPress={handleBatchBlock}
+                  disabled={batchBlockLoading}
+                >
+                  {batchBlockLoading
+                    ? <ActivityIndicator color="#EF4444" />
+                    : <Text style={{ color: "#EF4444", fontSize: 14, fontWeight: "700" }}>BLOQUEAR PERÍODO</Text>
+                  }
+                </Pressable>
+              </View>
             )}
           </>
         )}
-
         {/* ── ABA INTEGRAÇÕES ── */}
         {activeTab === "integracoes" && (
           <>

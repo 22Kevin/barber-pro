@@ -447,6 +447,14 @@ export async function getAppointmentsByDateRange(barberId: number, startDate: st
       sql`${appointments.status} NOT IN ('cancelled', 'no_show')`))
     .orderBy(appointments.date, appointments.startTime);
 }
+export async function getAllAppointmentsByDateRange(barberId: number, startDate: string, endDate: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(appointments)
+    .where(and(eq(appointments.barberId, barberId),
+      gte(appointments.date, startDate), lte(appointments.date, endDate)))
+    .orderBy(appointments.date, appointments.startTime);
+}
 
 export async function getAllAppointmentsByDate(date: string) {
   const db = await getDb();

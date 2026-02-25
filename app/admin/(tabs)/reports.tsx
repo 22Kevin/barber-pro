@@ -266,21 +266,47 @@ export default function ReportsScreen() {
           ) : occupancy.length === 0 ? (
             <Text style={styles.emptyText}>Nenhum dado disponível</Text>
           ) : (
-            occupancy.map((b, i) => {
-              const maxRev = occupancy[0]?.revenue ?? 1;
-              const pct = maxRev > 0 ? (b.revenue / maxRev) * 100 : 0;
+            (occupancy as any[]).map((b: any, i: number) => {
+              const maxRev = (occupancy as any[])[0]?.revenue ?? 1;
+              const revPct = maxRev > 0 ? (b.revenue / maxRev) * 100 : 0;
+              const occPct: number = b.occupancyPct ?? 0;
+              const occColor = occPct >= 70 ? "#4CAF50" : occPct >= 40 ? "#F59E0B" : "#EF4444";
               return (
-                <View key={b.barberId} style={styles.rankRow}>
-                  <Text style={styles.rankPos}>#{i + 1}</Text>
-                  <View style={styles.rankInfo}>
+                <View key={b.barberId} style={[styles.rankRow, { marginBottom: 20, alignItems: "flex-start" }]}>
+                  <Text style={[styles.rankPos, { marginTop: 2 }]}>#{i + 1}</Text>
+                  <View style={[styles.rankInfo, { flex: 1 }]}>
+                    {/* Nome e receita */}
                     <View style={styles.rankLabelRow}>
                       <Text style={styles.rankName} numberOfLines={1}>{b.name}</Text>
                       <Text style={styles.rankValue}>{formatCurrency(b.revenue)}</Text>
                     </View>
+                    {/* Barra de receita */}
                     <View style={styles.barBg}>
-                      <View style={[styles.barFill, { width: `${pct}%` as any, backgroundColor: "#4CAF50" }]} />
+                      <View style={[styles.barFill, { width: `${revPct}%` as any, backgroundColor: "#C9A84C" }]} />
                     </View>
-                    <Text style={styles.rankCount}>{b.appointments} atendimento{b.appointments !== 1 ? "s" : ""}</Text>
+                    {/* Taxa de ocupação */}
+                    <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, marginBottom: 3 }}>
+                      <Text style={[styles.rankCount, { flex: 1 }]}>Taxa de ocupação</Text>
+                      <Text style={{ fontSize: 12, color: occColor, fontWeight: "700" }}>{occPct}%</Text>
+                    </View>
+                    <View style={[styles.barBg, { height: 6 }]}>
+                      <View style={[styles.barFill, { width: `${occPct}%` as any, height: 6, backgroundColor: occColor }]} />
+                    </View>
+                    {/* Breakdown de status */}
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#4CAF50" }} />
+                        <Text style={styles.rankCount}>{b.completed ?? 0} concluídos</Text>
+                      </View>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#EF4444" }} />
+                        <Text style={styles.rankCount}>{b.cancelled ?? 0} cancelados</Text>
+                      </View>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#F59E0B" }} />
+                        <Text style={styles.rankCount}>{b.noShow ?? 0} não compareceu</Text>
+                      </View>
+                    </View>
                   </View>
                 </View>
               );

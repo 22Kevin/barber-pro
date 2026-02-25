@@ -608,3 +608,8 @@
 - [x] Barra de progresso animada no carrossel (substitui pontos estáticos, mostra tempo restante até próxima troca)
 - [x] Motivo de cancelamento exibido no card do histórico do cliente
 - [x] Filtro de barbeiro na agenda do admin (seletor rápido no topo da tela, apenas super_admin/receptionist)
+
+## Melhorias v5.2
+- [x] Relatório de ocupação por barbeiro: gráfico de barras com agendamentos e % de ocupação por período
+- [x] Bloqueio de horário em lote: selecionar intervalo de datas para bloquear horários de um barbeiro
+- [x] Busca de agendamento por cliente na agenda do admin (campo de busca no topo)

@@ -896,14 +896,40 @@ export const appRouter = router({
     .input(z.object({ startDate: z.string(), endDate: z.string() }))
     .query(async ({ input }) => {
       const allBarbers = await db.getAllBarbers();
-      const result: { barberId: number; name: string; appointments: number; revenue: number }[] = [];
+      const result: {
+        barberId: number; name: string; appointments: number; revenue: number;
+        completed: number; cancelled: number; noShow: number; occupancyPct: number;
+      }[] = [];
+
+      // Calcular dias no período para estimar slots disponíveis
+      const start = new Date(input.startDate + "T12:00:00");
+      const end = new Date(input.endDate + "T12:00:00");
+      const daysDiff = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+
       for (const barber of allBarbers as any[]) {
+        // Receita
         const sales = await db.getSalesByDateRange(input.startDate, input.endDate, barber.id);
-        const paidSales = (sales as any[]).filter(s => s.paymentStatus === "paid");
+        const paidSales = (sales as any[]).filter((s: any) => s.paymentStatus === "paid");
         const revenue = paidSales.reduce((sum: number, s: any) => sum + parseFloat(s.total ?? "0"), 0);
-        result.push({ barberId: barber.id, name: barber.name, appointments: paidSales.length, revenue });
+
+        // Agendamentos por status no período (todos os status)
+        const allAppts = await db.getAllAppointmentsByDateRange(barber.id, input.startDate, input.endDate);
+        const allApptsAny = allAppts as any[];
+        const completed = allApptsAny.filter((a: any) => a.status === "completed").length;
+        const cancelled = allApptsAny.filter((a: any) => a.status === "cancelled").length;
+        const noShow = allApptsAny.filter((a: any) => a.status === "no_show").length;
+        const totalAppts = allApptsAny.length;
+
+        // Horários de trabalho para estimar slots (1 slot = 30min)
+        const workingHrs = await db.getWorkingHours(barber.id);
+        const workingDaysPerWeek = (workingHrs as any[]).filter((h: any) => h.isWorking).length || 5;
+        const estimatedWorkingDays = Math.max(1, Math.round(daysDiff * (workingDaysPerWeek / 7)));
+        const estimatedSlots = estimatedWorkingDays * 16; // 16 slots de 30min por diaútil
+        const occupancyPct = Math.min(100, Math.round((completed / estimatedSlots) * 100));
+
+        result.push({ barberId: barber.id, name: barber.name, appointments: totalAppts, revenue, completed, cancelled, noShow, occupancyPct });
       }
-        return result.sort((a, b) => b.revenue - a.revenue);
+      return result.sort((a, b) => b.revenue - a.revenue);
     }),
   exportPdf: publicProcedure
     .input(z.object({ startDate: z.string(), endDate: z.string(), period: z.string().optional() }))

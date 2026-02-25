@@ -286,9 +286,20 @@ export default function AgendaScreen() {
   const rawAppointments = isManager
     ? (allAppointmentsQuery.data ?? [])
     : (appointmentsQuery.data ?? []);
-  const appointments = isManager && filterBarberId !== null
+  const [apptSearch, setApptSearch] = useState("");
+  const filteredByBarber = isManager && filterBarberId !== null
     ? rawAppointments.filter((a: any) => a.barberId === filterBarberId)
     : rawAppointments;
+  const appointments = apptSearch.trim()
+    ? filteredByBarber.filter((a: any) => {
+        const clientsData = clientsQuery.data ?? [];
+        const client = clientsData.find((c: any) => c.id === a.clientId);
+        const name = (client?.name ?? "").toLowerCase();
+        const phone = client?.phone ?? "";
+        const q = apptSearch.toLowerCase();
+        return name.includes(q) || phone.includes(apptSearch);
+      })
+    : filteredByBarber;
   const isLoadingAppointments = isManager ? allAppointmentsQuery.isLoading : appointmentsQuery.isLoading;
 
   return (
@@ -378,6 +389,26 @@ export default function AgendaScreen() {
           </View>
         )}
 
+        {/* Campo de busca por cliente */}
+        <View style={{ marginHorizontal: 16, marginBottom: 8 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#141414", borderRadius: 10, borderWidth: 1, borderColor: apptSearch ? "#C9A84C" : "#2A2A2A", paddingHorizontal: 12, gap: 8 }}>
+            <IconSymbol name="magnifyingglass" size={16} color={apptSearch ? "#C9A84C" : "#555"} />
+            <TextInput
+              style={{ flex: 1, color: "#F5F5F0", fontSize: 14, paddingVertical: 10 }}
+              value={apptSearch}
+              onChangeText={setApptSearch}
+              placeholder="Buscar por nome ou telefone..."
+              placeholderTextColor="#555"
+              returnKeyType="search"
+              clearButtonMode="while-editing"
+            />
+            {apptSearch.length > 0 && (
+              <Pressable onPress={() => setApptSearch("")} style={{ padding: 4 }}>
+                <IconSymbol name="xmark" size={14} color="#888880" />
+              </Pressable>
+            )}
+          </View>
+        </View>
         {/* Agendamentos do dia */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
