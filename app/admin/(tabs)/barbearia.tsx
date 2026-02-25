@@ -363,7 +363,17 @@ export default function BarbeariaScreen() {
             <Text style={styles.sectionTitle}>Identidade Visual</Text>
             <View style={{ flexDirection: "row", gap: 16, marginBottom: 20, alignItems: "flex-start" }}>
               <View style={{ alignItems: "center", gap: 6 }}>
-                <SingleImageUploader value={shopLogoUrl} onUpload={(url) => setShopLogoUrl(url)} imageType="logo" label="Logo" size={90} />
+                <SingleImageUploader
+                  value={shopLogoUrl}
+                  onUpload={(url) => {
+                    setShopLogoUrl(url);
+                    // Salva automaticamente o logo no banco após o upload
+                    updateSettingsMutation.mutate({ logoUrl: url } as any);
+                  }}
+                  imageType="logo"
+                  label="Logo"
+                  size={90}
+                />
                 <Text style={{ color: "#888880", fontSize: 11 }}>Logo</Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -371,7 +381,13 @@ export default function BarbeariaScreen() {
                 <Text style={{ color: "#555", fontSize: 11, marginBottom: 8 }}>Pressione e segure para reordenar</Text>
                 <SortableGallery
                   images={shopGallery}
-                  onChange={setShopGallery}
+                  onChange={(newGallery) => {
+                    setShopGallery(newGallery);
+                    // Salva automaticamente a galeria no banco após mudanças
+                    updateSettingsMutation.mutate({
+                      galleryUrls: newGallery.length > 0 ? JSON.stringify(newGallery) : null,
+                    } as any);
+                  }}
                   maxImages={8}
                 />
               </View>

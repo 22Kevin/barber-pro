@@ -136,7 +136,6 @@ export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
           {
             width: DRAWER_WIDTH,
             paddingTop: insets.top + 8,
-            paddingBottom: insets.bottom + 8,
             transform: [{ translateX }],
           },
         ]}
@@ -174,7 +173,7 @@ export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
         <View style={styles.divider} />
 
         {/* Grupos */}
-        <ScrollView style={styles.drawerItems} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <ScrollView style={styles.drawerItems} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 48 }}>
           {DRAWER_GROUPS.map((group) => {
             const visibleItems = group.items.filter(item => item.roles.includes(role));
             if (visibleItems.length === 0) return null;
@@ -214,7 +213,6 @@ export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
             </TouchableOpacity>
           </View>
 
-          <View style={{ height: 24 }} />
         </ScrollView>
       </Animated.View>
     </View>
@@ -228,6 +226,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0F0F0F",
     borderRightWidth: 1, borderRightColor: "#222",
     flexDirection: "column",
+    flex: 1,
     ...(Platform.OS === "ios"
       ? { shadowColor: "#000", shadowOffset: { width: 6, height: 0 }, shadowOpacity: 0.45, shadowRadius: 14 }
       : { elevation: 20 }),

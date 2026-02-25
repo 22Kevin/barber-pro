@@ -1,0 +1,18 @@
+{
+  "query": "SELECT id, shopName, logoUrl, galleryUrls, cep, addressNumber FROM shop_settings LIMIT 1;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT id, shopName, logoUrl, galleryUrls, cep, addressNumber FROM shop_settings LIMIT 1;",
+  "rows": [
+    {
+      "id": "1",
+      "shopName": "Kevin Barbearia",
+      "logoUrl": "NULL",
+      "galleryUrls": "[\"https://d2xsxph8kpxj0f.cloudfront.net/310419663028442847/9fdXPX6chg63KWfUcPP4iP/barber-pro/shop/gallery-57161706d837a0c6.jpeg\",\"https://d2xsxph8kpxj0f.cloudfront.net/310419663028442847/9fdXPX6chg63KWfUcPP4iP/barber-pro/shop/gallery-70394d128fc5959c.jpeg\",\"https://d2xsxph8kpxj0f.cloudfront.net/310419663028442847/9fdXPX6chg63KWfUcPP4iP/barber-pro/shop/gallery-c12fab116d39f5f6.jpeg\",\"https://d2xsxph8kpxj0f.cloudfront.net/310419663028442847/9fdXPX6chg63KWfUcPP4iP/barber-pro/shop/gallery-c20d71edf296285b.jpeg\",\"https://d2xsxph8kpxj0f.cloudfront.net/310419663028442847/9fdXPX6chg63KWfUcPP4iP/barber-pro/shop/gallery-0242f119c1a0fe9e.jpeg\"]",
+      "cep": "NULL",
+      "addressNumber": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tshopName\tlogoUrl\tgalleryUrls\tcep\taddressNumber\n1\tKevin Barbearia\tNULL\t[\"https://d2xsxph8kpxj0f.cloudfront.net/310419663028442847/9fdXPX6chg63KWfUcPP4iP/barber-pro/shop/gallery-57161706d837a0c6.jpeg\",\"https://d2xsxph8kpxj0f.cloudfront.net/310419663028442847/9fdXPX6chg63KWfUcPP4iP/barber-pro/shop/gallery-70394d128fc5959c.jpeg\",\"https://d2xsxph8kpxj0f.cloudfront.net/310419663028442847/9fdXPX6chg63KWfUcPP4iP/barber-pro/shop/gallery-c12fab116d39f5f6.jpeg\",\"https://d2xsxph8kpxj0f.cloudfront.net/310419663028442847/9fdXPX6chg63KWfUcPP4iP/barber-pro/shop/gallery-c20d71edf296285b.jpeg\",\"https://d2xsxph8kpxj0f.cloudfront.net/310419663028442847/9fdXPX6chg63KWfUcPP4iP/barber-pro/shop/gallery-0242f119c1a0fe9e.jpeg\"]\tNULL\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 56
+}

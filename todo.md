@@ -558,3 +558,8 @@
 
 - [x] Dados da barbearia cortados no drawer lateral (flexDirection + contentContainerStyle corrigidos)
 - [x] Logo da barbearia não aparece na Home da área do cliente (logoUrl adicionado ao settings.update)
+
+## Bugs v4.5 (reincidentes)
+
+- [x] Drawer lateral ainda cortando dados da barbearia — removido paddingBottom do painel, movido para contentContainerStyle do ScrollView com insets.bottom+48
+- [x] Logo da barbearia não aparecia na Home do cliente — logo e galeria agora são salvos automaticamente no banco após o upload (sem precisar clicar em SALVAR DADOS)
