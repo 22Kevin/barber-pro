@@ -120,6 +120,9 @@ export default function AgendaScreen() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelApptId, setCancelApptId] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  // Filtro de barbeiro para managers (null = todos)
+  const [filterBarberId, setFilterBarberId] = useState<number | null>(null);
+  const isManager = barber?.role === "super_admin" || barber?.role === "receptionist";
 
   const dateStr = dateToString(selectedDate);
   const utils = trpc.useUtils();
@@ -129,7 +132,11 @@ export default function AgendaScreen() {
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true });
   const appointmentsQuery = trpc.appointments.byDate.useQuery(
     { barberId: barber?.id ?? 0, date: dateStr },
-    { enabled: !!barber?.id }
+    { enabled: !!barber?.id && !isManager }
+  );
+  const allAppointmentsQuery = trpc.appointments.allByDate.useQuery(
+    { date: dateStr },
+    { enabled: isManager }
   );
   const workingHoursQuery = trpc.barbers.workingHours.get.useQuery(
     { barberId: barber?.id ?? 0 },
@@ -275,7 +282,14 @@ export default function AgendaScreen() {
     c.phone.includes(clientSearch)
   );
 
-  const appointments = appointmentsQuery.data ?? [];
+  // Para managers: usa allByDate e aplica filtro de barbeiro; para barbeiros: usa byDate
+  const rawAppointments = isManager
+    ? (allAppointmentsQuery.data ?? [])
+    : (appointmentsQuery.data ?? []);
+  const appointments = isManager && filterBarberId !== null
+    ? rawAppointments.filter((a: any) => a.barberId === filterBarberId)
+    : rawAppointments;
+  const isLoadingAppointments = isManager ? allAppointmentsQuery.isLoading : appointmentsQuery.isLoading;
 
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
@@ -337,6 +351,33 @@ export default function AgendaScreen() {
           </View>
         </View>
 
+        {/* Filtro de barbeiro (apenas para managers) */}
+        {isManager && (barbersQuery.data ?? []).length > 1 && (
+          <View style={styles.barberFilterWrapper}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.barberFilterScroll}>
+              <Pressable
+                style={[styles.barberFilterChip, filterBarberId === null && styles.barberFilterChipActive]}
+                onPress={() => setFilterBarberId(null)}
+              >
+                <Text style={[styles.barberFilterChipText, filterBarberId === null && styles.barberFilterChipTextActive]}>
+                  Todos
+                </Text>
+              </Pressable>
+              {(barbersQuery.data ?? []).map((b: any) => (
+                <Pressable
+                  key={b.id}
+                  style={[styles.barberFilterChip, filterBarberId === b.id && styles.barberFilterChipActive]}
+                  onPress={() => setFilterBarberId(filterBarberId === b.id ? null : b.id)}
+                >
+                  <Text style={[styles.barberFilterChipText, filterBarberId === b.id && styles.barberFilterChipTextActive]}>
+                    {b.name.split(" ")[0]}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Agendamentos do dia */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
@@ -345,7 +386,7 @@ export default function AgendaScreen() {
           <Text style={styles.sectionCount}>{appointments.length} agendamento(s)</Text>
         </View>
 
-        {appointmentsQuery.isLoading ? (
+        {isLoadingAppointments ? (
           <ActivityIndicator color="#C9A84C" style={{ marginVertical: 20 }} />
         ) : appointments.length === 0 ? (
           <View style={styles.emptyCard}>
@@ -712,4 +753,11 @@ const styles = StyleSheet.create({
   detailValue: { fontSize: 14, color: "#F5F5F0", fontWeight: "600", flex: 1, textAlign: "right" },
   statusChangeBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   statusChangeBtnText: { fontSize: 12, fontWeight: "600" },
+  // Filtro de barbeiro
+  barberFilterWrapper: { paddingHorizontal: 16, paddingBottom: 12 },
+  barberFilterScroll: { flexDirection: "row", gap: 8, paddingVertical: 4 },
+  barberFilterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A" },
+  barberFilterChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
+  barberFilterChipText: { fontSize: 13, color: "#888880", fontWeight: "600" },
+  barberFilterChipTextActive: { color: "#C9A84C" },
 });

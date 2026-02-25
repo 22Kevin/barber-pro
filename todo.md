@@ -603,3 +603,8 @@
 - [x] Admin: botão WhatsApp no card de agendamento (abre wa.me com número do cliente)
 - [x] Admin: modal de cancelamento com motivo (Imprevisto, Fériado, Problema técnico, Outro)
 - [x] Avaliação rápida pós-atendimento: modal automático na Home do cliente com estrelas (1-5) e comentário
+
+## Melhorias v5.1
+- [x] Barra de progresso animada no carrossel (substitui pontos estáticos, mostra tempo restante até próxima troca)
+- [x] Motivo de cancelamento exibido no card do histórico do cliente
+- [x] Filtro de barbeiro na agenda do admin (seletor rápido no topo da tela, apenas super_admin/receptionist)

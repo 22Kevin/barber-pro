@@ -141,6 +141,13 @@ function AppointmentCard({
         )}
       </View>
 
+      {/* Motivo de cancelamento */}
+      {item.status === "cancelled" && item.cancelReason && (
+        <View style={styles.cancelReasonBox}>
+          <Text style={styles.cancelReasonLabel}>Cancelado pelo barbeiro</Text>
+          <Text style={styles.cancelReasonText}>{item.cancelReason}</Text>
+        </View>
+      )}
       {/* Ações */}
       {item.status === "completed" && (
         <TouchableOpacity onPress={onReview} style={styles.cardAction}>
@@ -427,6 +434,28 @@ const styles = StyleSheet.create({
     color: "#EF4444",
     fontWeight: "700",
     fontSize: 14,
+  },
+  cancelReasonBox: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#1F2937",
+    backgroundColor: "#1c0a0a",
+    borderRadius: 10,
+    padding: 12,
+  },
+  cancelReasonLabel: {
+    color: "#EF4444",
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  cancelReasonText: {
+    color: "#FCA5A5",
+    fontSize: 13,
+    lineHeight: 18,
   },
 
   // ── Estado vazio ─────────────────────────────────────────────────────────────

@@ -84,6 +84,7 @@ function Stars({ rating }: { rating: number }) {
 }
 
 // ─── Carrossel de fotos ───────────────────────────────────────────────────────
+const SLIDE_DURATION = 4000;
 function PhotoCarousel({ images }: { images: string[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
@@ -91,23 +92,46 @@ function PhotoCarousel({ images }: { images: string[] }) {
   const [isPaused, setIsPaused] = useState(false);
   const flatRef = useRef<FlatList>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  // Progresso da barra: 0 → 1 em SLIDE_DURATION ms
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const progressRef = useRef<ReturnType<typeof Animated.timing> | null>(null);
+
+  function startProgress() {
+    progressAnim.setValue(0);
+    progressRef.current = Animated.timing(progressAnim, {
+      toValue: 1,
+      duration: SLIDE_DURATION,
+      useNativeDriver: false,
+    });
+    progressRef.current.start();
+  }
+
+  function pauseProgress() {
+    progressRef.current?.stop();
+  }
+
+  function resetProgress() {
+    progressRef.current?.stop();
+    progressAnim.setValue(0);
+  }
 
   // Auto-play: avança slide a cada 4s com fade suave
   useEffect(() => {
     if (images.length <= 1 || isPaused) return;
+    startProgress();
     const timer = setInterval(() => {
       setActiveIndex(prev => {
         const next = (prev + 1) % images.length;
-        // Fade out → scroll → fade in
         Animated.timing(fadeAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
           flatRef.current?.scrollToIndex({ index: next, animated: false });
           Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
         });
         return next;
       });
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [images.length, isPaused]);
+      startProgress();
+    }, SLIDE_DURATION);
+    return () => { clearInterval(timer); resetProgress(); };
+  }, [images.length, isPaused]);;
 
   function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
@@ -140,8 +164,8 @@ function PhotoCarousel({ images }: { images: string[] }) {
           onScroll={onScroll}
           scrollEventThrottle={16}
           scrollEnabled={true}
-          onScrollBeginDrag={() => setIsPaused(true)}
-          onScrollEndDrag={() => setTimeout(() => setIsPaused(false), 3000)}
+          onScrollBeginDrag={() => { setIsPaused(true); pauseProgress(); }}
+          onScrollEndDrag={() => setTimeout(() => { setIsPaused(false); }, 3000)}
           keyExtractor={(_, i) => String(i)}
           renderItem={({ item, index }) => (
             <TouchableOpacity
@@ -156,15 +180,25 @@ function PhotoCarousel({ images }: { images: string[] }) {
           )}
         />
       </Animated.View>
-      {/* Indicadores */}
-      <View style={styles.dotsRow}>
-        {images.map((_, i) => (
-          <View
-            key={i}
-            style={[styles.dot, i === activeIndex && styles.dotActive]}
-          />
-        ))}
-      </View>
+      {/* Barra de progresso animada */}
+      {images.length > 1 && (
+        <View style={styles.progressBarContainer}>
+          {images.map((_, i) => (
+            <View key={i} style={styles.progressBarTrack}>
+              {i === activeIndex ? (
+                <Animated.View
+                  style={[
+                    styles.progressBarFill,
+                    { width: progressAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }) },
+                  ]}
+                />
+              ) : (
+                <View style={[styles.progressBarFill, { width: i < activeIndex ? "100%" : "0%" }]} />
+              )}
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Lightbox */}
       <Modal visible={lightboxVisible} transparent animationType="fade" onRequestClose={() => setLightboxVisible(false)}>
@@ -747,24 +781,25 @@ const styles = StyleSheet.create({
     height: 60,
     backgroundColor: "rgba(0,0,0,0.45)",
   },
-  dotsRow: {
+  progressBarContainer: {
     position: "absolute",
-    bottom: 12,
-    left: 0,
-    right: 0,
+    top: 10,
+    left: 10,
+    right: 10,
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 6,
+    gap: 4,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.35)",
+  progressBarTrack: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    overflow: "hidden",
   },
-  dotActive: {
+  progressBarFill: {
+    height: 3,
+    borderRadius: 2,
     backgroundColor: "#EAB308",
-    width: 18,
   },
   carouselEmpty: {
     height: CAROUSEL_H,
