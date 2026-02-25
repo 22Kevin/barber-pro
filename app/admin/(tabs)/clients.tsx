@@ -21,7 +21,8 @@ import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { applyPhoneMask, stripMask } from "@/hooks/use-mask";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {} from "react-native-safe-area-context";
+import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 
 type Client = {
   id: number;
@@ -61,7 +62,7 @@ const MONTH_NAMES = [
 ];
 
 export default function ClientsScreen() {
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarHeight();
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -188,7 +189,7 @@ export default function ClientsScreen() {
         <FlatList
           data={clients}
           keyExtractor={item => String(item.id)}
-          contentContainerStyle={{ padding: 16, paddingTop: 4, paddingBottom: Math.max(insets.bottom + 24, 80) }}
+          contentContainerStyle={{ padding: 16, paddingTop: 4, paddingBottom: tabBarHeight }}
           ListEmptyComponent={
             <View style={styles.emptyCard}>
               <IconSymbol name="person.2.fill" size={40} color="#2A2A2A" />

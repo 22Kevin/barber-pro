@@ -18,7 +18,8 @@ import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {} from "react-native-safe-area-context";
+import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 
 const ROLES: Record<string, string> = {
   super_admin: "Super Admin",
@@ -36,7 +37,7 @@ function applyPhoneMask(raw: string): string {
 }
 
 export default function MyProfileScreen() {
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarHeight();
   const { barber, logout, updateBarber } = useBarberAuth();
   const utils = trpc.useUtils();
 
@@ -149,7 +150,7 @@ export default function MyProfileScreen() {
     <ScreenContainer containerClassName="bg-background">
       <AdminHeader title="Meu Perfil" />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: Math.max(insets.bottom + 24, 80) }} keyboardShouldPersistTaps="handled">
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: tabBarHeight }} keyboardShouldPersistTaps="handled">
 
           {/* Avatar com botão de editar */}
           <View style={styles.avatarSection}>

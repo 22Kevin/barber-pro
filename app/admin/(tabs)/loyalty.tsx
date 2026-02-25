@@ -17,7 +17,8 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { AdminHeader } from "@/components/admin-header";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {} from "react-native-safe-area-context";
+import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 
 type LoyaltyTab = "config" | "rewards" | "coupons";
 
@@ -29,7 +30,7 @@ const REWARD_TYPES = [
 ];
 
 export default function LoyaltyScreen() {
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarHeight();
   const [activeTab, setActiveTab] = useState<LoyaltyTab>("config");
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [showCouponModal, setShowCouponModal] = useState(false);
@@ -178,7 +179,7 @@ export default function LoyaltyScreen() {
         ))}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: Math.max(insets.bottom + 24, 80) }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: tabBarHeight }}>
         {/* Config de Pontos */}
         {activeTab === "config" && (
           <>

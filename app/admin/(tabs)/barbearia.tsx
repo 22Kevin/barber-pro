@@ -22,7 +22,8 @@ import { SortableGallery } from "@/components/sortable-gallery";
 import { TimePickerModal } from "@/components/time-picker-modal";
 import { AdminHeader } from "@/components/admin-header";
 import { applyDocumentMask, applyCepMask, applyPhoneMask, stripMask, validateDocument } from "@/hooks/use-mask";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {} from "react-native-safe-area-context";
+import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 
 type BarbeariaTab = "dados" | "equipe" | "horarios" | "integracoes";
 
@@ -36,8 +37,8 @@ const ROLES = [
 ];
 
 export default function BarbeariaScreen() {
+  const tabBarHeight = useTabBarHeight();
   const { barber } = useBarberAuth();
-  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<BarbeariaTab>("dados");
   const [showBarberModal, setShowBarberModal] = useState(false);
   const [editingBarber, setEditingBarber] = useState<any>(null);
@@ -148,7 +149,7 @@ export default function BarbeariaScreen() {
 
   // Horários
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [timePickerTarget, setTimePickerTarget] = useState<{ dayOfWeek: number; field: "start" | "end"; existing: any } | null>(null);
+  const [timePickerTarget, setTimePickerTarget] = useState<{ dayOfWeek: number; field: "start" | "end" | "lunchStart" | "lunchEnd"; existing: any } | null>(null);
 
   const utils = trpc.useUtils();
   const settingsQuery = trpc.settings.get.useQuery();
@@ -287,7 +288,7 @@ export default function BarbeariaScreen() {
     });
   }
 
-  function openTimePicker(dayOfWeek: number, field: "start" | "end", existing: any) {
+  function openTimePicker(dayOfWeek: number, field: "start" | "end" | "lunchStart" | "lunchEnd", existing: any) {
     setTimePickerTarget({ dayOfWeek, field, existing });
     setShowTimePicker(true);
   }
@@ -300,11 +301,23 @@ export default function BarbeariaScreen() {
       isWorking: existing?.isWorking ?? true,
       startTime: field === "start" ? time : (existing?.startTime ?? "09:00"),
       endTime: field === "end" ? time : (existing?.endTime ?? "18:00"),
-      lunchStart: existing?.lunchStart ?? null,
-      lunchEnd: existing?.lunchEnd ?? null,
+      lunchStart: field === "lunchStart" ? time : (existing?.lunchStart ?? null),
+      lunchEnd: field === "lunchEnd" ? time : (existing?.lunchEnd ?? null),
     });
     setShowTimePicker(false);
     setTimePickerTarget(null);
+  }
+
+  function handleRemoveLunch(dayOfWeek: number, existing: any) {
+    if (!selectedBarberId) return;
+    upsertHoursMutation.mutate({
+      barberId: selectedBarberId, dayOfWeek,
+      isWorking: existing?.isWorking ?? true,
+      startTime: existing?.startTime ?? "09:00",
+      endTime: existing?.endTime ?? "18:00",
+      lunchStart: null,
+      lunchEnd: null,
+    });
   }
 
   const barbers = (barbersQuery.data ?? []) as any[];
@@ -342,7 +355,7 @@ export default function BarbeariaScreen() {
         ))}
       </ScrollView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: Math.max(insets.bottom + 24, 80) }} keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: tabBarHeight }} keyboardShouldPersistTaps="handled">
 
         {/* ── ABA DADOS ── */}
         {activeTab === "dados" && (
@@ -569,17 +582,63 @@ export default function BarbeariaScreen() {
                         />
                       </View>
                       {isWorking && (
-                        <View style={styles.timeRow}>
-                          <Pressable style={styles.timeBtn} onPress={() => openTimePicker(idx, "start", existing)}>
-                            <Text style={styles.timeBtnLabel}>Entrada</Text>
-                            <Text style={styles.timeBtnValue}>{existing?.startTime ?? "09:00"}</Text>
-                          </Pressable>
-                          <Text style={styles.timeSep}>→</Text>
-                          <Pressable style={styles.timeBtn} onPress={() => openTimePicker(idx, "end", existing)}>
-                            <Text style={styles.timeBtnLabel}>Saída</Text>
-                            <Text style={styles.timeBtnValue}>{existing?.endTime ?? "18:00"}</Text>
-                          </Pressable>
-                        </View>
+                        <>
+                          {/* Entrada / Saída principal */}
+                          <View style={styles.timeRow}>
+                            <Pressable style={styles.timeBtn} onPress={() => openTimePicker(idx, "start", existing)}>
+                              <Text style={styles.timeBtnLabel}>Entrada</Text>
+                              <Text style={styles.timeBtnValue}>{existing?.startTime ?? "09:00"}</Text>
+                            </Pressable>
+                            <Text style={styles.timeSep}>→</Text>
+                            <Pressable style={styles.timeBtn} onPress={() => openTimePicker(idx, "end", existing)}>
+                              <Text style={styles.timeBtnLabel}>Saída</Text>
+                              <Text style={styles.timeBtnValue}>{existing?.endTime ?? "18:00"}</Text>
+                            </Pressable>
+                          </View>
+
+                          {/* Intervalo de almoço */}
+                          {existing?.lunchStart && existing?.lunchEnd ? (
+                            <View style={[styles.timeRow, { marginTop: 6 }]}>
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flex: 1 }}>
+                                <IconSymbol name="fork.knife" size={12} color="#888880" />
+                                <Text style={{ color: "#888880", fontSize: 11 }}>Almoço</Text>
+                              </View>
+                              <Pressable style={[styles.timeBtn, { backgroundColor: "#1A1A1A" }]} onPress={() => openTimePicker(idx, "lunchStart", existing)}>
+                                <Text style={styles.timeBtnLabel}>Início</Text>
+                                <Text style={styles.timeBtnValue}>{existing.lunchStart}</Text>
+                              </Pressable>
+                              <Text style={styles.timeSep}>→</Text>
+                              <Pressable style={[styles.timeBtn, { backgroundColor: "#1A1A1A" }]} onPress={() => openTimePicker(idx, "lunchEnd", existing)}>
+                                <Text style={styles.timeBtnLabel}>Fim</Text>
+                                <Text style={styles.timeBtnValue}>{existing.lunchEnd}</Text>
+                              </Pressable>
+                              <Pressable
+                                style={{ padding: 6, marginLeft: 4 }}
+                                onPress={() => handleRemoveLunch(idx, existing)}
+                              >
+                                <IconSymbol name="xmark" size={12} color="#EF4444" />
+                              </Pressable>
+                            </View>
+                          ) : (
+                            <Pressable
+                              style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: "#2A2A2A", borderStyle: "dashed", alignSelf: "flex-start" }}
+                              onPress={() => {
+                                // Define almoço padrão 12:00-13:00 e abre o picker para ajustar
+                                upsertHoursMutation.mutate({
+                                  barberId: selectedBarberId!, dayOfWeek: idx,
+                                  isWorking: true,
+                                  startTime: existing?.startTime ?? "09:00",
+                                  endTime: existing?.endTime ?? "18:00",
+                                  lunchStart: "12:00",
+                                  lunchEnd: "13:00",
+                                });
+                              }}
+                            >
+                              <IconSymbol name="plus" size={12} color="#C9A84C" />
+                              <Text style={{ color: "#C9A84C", fontSize: 11, fontWeight: "600" }}>Intervalo de almoço</Text>
+                            </Pressable>
+                          )}
+                        </>
                       )}
                     </View>
                   </View>

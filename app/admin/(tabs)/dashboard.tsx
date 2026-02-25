@@ -16,6 +16,7 @@ import { useBarberAuth } from "@/lib/auth-context";
 import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
+import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -42,6 +43,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 export default function DashboardScreen() {
   const { barber, logout } = useBarberAuth();
   const colors = useColors();
+  const tabBarHeight = useTabBarHeight();
   const today = getTodayString();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -221,7 +223,7 @@ export default function DashboardScreen() {
           })
         )}
 
-        <View style={{ height: 32 }} />
+        <View style={{ height: tabBarHeight }} />
       </ScrollView>
     </ScreenContainer>
   );

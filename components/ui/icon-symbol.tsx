@@ -113,6 +113,9 @@ const MAPPING = {
   "sun.max.fill": "wb-sunny",
   "moon.fill": "dark-mode",
   "person.badge.checkmark": "how-to-reg",
+
+  // Intervalo de almoço
+  "fork.knife": "restaurant",
 } as unknown as IconMapping;
 
 export function IconSymbol({

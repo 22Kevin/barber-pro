@@ -13,7 +13,7 @@ export function AdminHeader({ title, rightElement }: AdminHeaderProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+    <View style={[styles.header, { paddingTop: insets.top + 2 }]}>
       {/* Botão hamburguer */}
       <TouchableOpacity style={styles.menuBtn} onPress={toggleDrawer} activeOpacity={0.7}>
         <View style={styles.hamburgerLine} />

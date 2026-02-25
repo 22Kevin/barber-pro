@@ -511,3 +511,9 @@
 - [x] Máscara de telefone no campo WhatsApp (com DDD) na tela Barbearia
 - [x] Corrigir rota da Agenda no drawer lateral (não encontra a tela)
 - [x] Ajustar safe area em todas as telas admin (paddingBottom dinâmico com useSafeAreaInsets)
+
+## Melhorias v3.10
+
+- [x] Reduzir padding superior do AdminHeader (aproveitar área abaixo da status bar)
+- [x] Corrigir corte de itens no rodapé (tab bar sobrepondo conteúdo)
+- [x] Intervalo de almoço (entrada/saída) na aba Horários da Barbearia
