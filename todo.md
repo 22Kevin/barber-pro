@@ -538,3 +538,7 @@
 
 - [x] Atualizar visual da aba Serviços do cliente (fundo escuro, tipografia dourada, consistente com Home)
 - [x] Animação de entrada (fade-in suave) nos elementos da Home do cliente
+
+## Melhorias v4.2
+
+- [x] Aplicar identidade visual da aba Serviços na aba Produtos (fundo escuro, badge de preço, filtro por categoria, animação de entrada, grid 2 colunas)
