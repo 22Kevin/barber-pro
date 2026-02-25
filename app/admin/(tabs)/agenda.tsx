@@ -47,11 +47,51 @@ function addMinutes(time: string, minutes: number) {
   return `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`;
 }
 
-function generateTimeSlots(start: string, end: string, step = 30) {
+function toMinutes(t: string) {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+/**
+ * Gera slots de horário respeitando:
+ * - Intervalo de almoço do barbeiro
+ * - Horários já passados (quando a data é hoje)
+ */
+function generateTimeSlots(
+  start: string,
+  end: string,
+  step = 30,
+  lunchStart?: string | null,
+  lunchEnd?: string | null,
+  dateStr?: string,
+) {
   const slots: string[] = [];
   let current = start;
+
+  // Calcular o minuto atual no fuso de Brasília (UTC-3)
+  const nowBrasilia = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const todayBrasilia = nowBrasilia.toISOString().split("T")[0];
+  const isToday = dateStr === todayBrasilia;
+  const currentMinute = isToday
+    ? nowBrasilia.getUTCHours() * 60 + nowBrasilia.getUTCMinutes() + 5 // margem de 5 min
+    : 0;
+
+  const lunchStartMin = lunchStart ? toMinutes(lunchStart) : null;
+  const lunchEndMin = lunchEnd ? toMinutes(lunchEnd) : null;
+
   while (current < end) {
-    slots.push(current);
+    const slotMin = toMinutes(current);
+    // Filtrar horários passados
+    const isPast = isToday && slotMin < currentMinute;
+    // Filtrar intervalo de almoço
+    const isLunch =
+      lunchStartMin !== null &&
+      lunchEndMin !== null &&
+      slotMin >= lunchStartMin &&
+      slotMin < lunchEndMin;
+    if (!isPast && !isLunch) {
+      slots.push(current);
+    }
     current = addMinutes(current, step);
   }
   return slots;
@@ -192,7 +232,14 @@ export default function AgendaScreen() {
 
   const workingDay = workingHoursQuery.data?.find(wh => wh.dayOfWeek === selectedDate.getDay());
   const timeSlots = workingDay?.isWorking
-    ? generateTimeSlots(workingDay.startTime, workingDay.endTime, 30)
+    ? generateTimeSlots(
+        workingDay.startTime,
+        workingDay.endTime,
+        30,
+        workingDay.lunchStart ?? null,
+        workingDay.lunchEnd ?? null,
+        dateStr,
+      )
     : [];
 
   const bookedTimes = new Set(

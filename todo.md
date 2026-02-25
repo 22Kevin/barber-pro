@@ -517,3 +517,8 @@
 - [x] Reduzir padding superior do AdminHeader (aproveitar área abaixo da status bar)
 - [x] Corrigir corte de itens no rodapé (tab bar sobrepondo conteúdo)
 - [x] Intervalo de almoço (entrada/saída) na aba Horários da Barbearia
+
+## Melhorias v3.11
+
+- [x] Bloquear agendamentos durante o intervalo de almoço do barbeiro
+- [x] Ocultar horários passados ao agendar para o dia atual

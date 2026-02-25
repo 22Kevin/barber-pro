@@ -671,12 +671,24 @@ export async function getAvailableSlots(barberId: number, date: string, duration
     ...blocked.map((b: any) => ({ s: toMinutes(b.startTime), e: toMinutes(b.endTime) })),
     ...(lunchStart && lunchEnd ? [{ s: lunchStart, e: lunchEnd }] : []),
   ];
+  // Calcular o minuto atual no fuso de Brasília (UTC-3) para filtrar horários passados
+  // Só aplica o filtro se a data solicitada for o dia de hoje
+  const nowBrasilia = new Date(Date.now() - 3 * 60 * 60 * 1000); // UTC-3
+  const todayBrasilia = nowBrasilia.toISOString().split("T")[0];
+  const isToday = date === todayBrasilia;
+  const currentMinute = isToday ? nowBrasilia.getUTCHours() * 60 + nowBrasilia.getUTCMinutes() : 0;
+  // Adiciona margem de 5 minutos para não exibir horários que estão prestes a passar
+  const minStartMinute = isToday ? currentMinute + 5 : 0;
+
   const slots: { startTime: string; endTime: string }[] = [];
   let cursor = startMin;
   while (cursor + durationMinutes <= endMin) {
     const slotEnd = cursor + durationMinutes;
     const conflict = busyIntervals.some(({ s, e }) => cursor < e && slotEnd > s);
-    if (!conflict) slots.push({ startTime: fromMinutes(cursor), endTime: fromMinutes(slotEnd) });
+    // Ignorar slots que já passaram (apenas para hoje)
+    if (!conflict && cursor >= minStartMinute) {
+      slots.push({ startTime: fromMinutes(cursor), endTime: fromMinutes(slotEnd) });
+    }
     cursor += 15;
   }
   return slots;
