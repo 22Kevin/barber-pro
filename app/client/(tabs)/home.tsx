@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
+  Alert,
   Animated,
   Dimensions,
   FlatList,
@@ -196,6 +197,14 @@ export default function ClientHome() {
   const settingsQuery = trpc.settings.get.useQuery();
   const openStatusQuery = trpc.settings.openStatus.useQuery(undefined, { refetchInterval: 60_000 });
   const recentReviewsQuery = trpc.reviews.recent.useQuery({ limit: 5 });
+  const nextAppointmentQuery = trpc.appointments.nextByClient.useQuery(
+    { clientId: client?.id ?? 0 },
+    { enabled: isAuthenticated && !!client?.id, refetchInterval: 120_000 }
+  );
+  const nextAppt = nextAppointmentQuery.data as any ?? null;
+  const cancelApptMutation = trpc.appointments.update.useMutation({
+    onSuccess: () => nextAppointmentQuery.refetch(),
+  });
 
   const settings = settingsQuery.data as any;
   const shopName = settings?.shopName ?? "Barber Pro";
@@ -321,6 +330,61 @@ export default function ClientHome() {
         {/* ── Conteúdo restante com fade-in ──────────────────────────────────── */}
         <Animated.View style={{ opacity: contentFade }}>
 
+        {/* ── Próximo Agendamento ───────────────────────────────────────── */}
+        {isAuthenticated && nextAppt && (() => {
+          const dateStr: string = nextAppt.date ?? "";
+          const [yr, mo, dy] = dateStr.split("-").map(Number);
+          const dateObj = new Date(yr, mo - 1, dy);
+          const dayName = dateObj.toLocaleDateString("pt-BR", { weekday: "long" });
+          const dayNum = dateObj.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+          const time = (nextAppt.startTime ?? "").slice(0, 5);
+          const statusColors: Record<string, string> = { scheduled: "#C9A84C", confirmed: "#22C55E", in_progress: "#3B82F6" };
+          const statusLabels: Record<string, string> = { scheduled: "Agendado", confirmed: "Confirmado", in_progress: "Em andamento" };
+          const statusColor = statusColors[nextAppt.status] ?? "#C9A84C";
+          const statusLabel = statusLabels[nextAppt.status] ?? nextAppt.status;
+          function handleCancel() {
+            Alert.alert(
+              "Cancelar agendamento",
+              "Tem certeza que deseja cancelar este agendamento?",
+              [
+                { text: "Não", style: "cancel" },
+                { text: "Cancelar", style: "destructive", onPress: () => cancelApptMutation.mutate({ id: nextAppt.id, status: "cancelled" }) },
+              ]
+            );
+          }
+          return (
+            <View style={styles.nextApptCard}>
+              <View style={styles.nextApptHeader}>
+                <Text style={styles.nextApptTitle}>Próximo agendamento</Text>
+                <View style={[styles.nextApptBadge, { backgroundColor: statusColor + "22", borderColor: statusColor + "55" }]}>
+                  <Text style={[styles.nextApptBadgeText, { color: statusColor }]}>{statusLabel}</Text>
+                </View>
+              </View>
+              <View style={styles.nextApptBody}>
+                <View style={styles.nextApptDateBox}>
+                  <Text style={styles.nextApptDayNum}>{dayNum}</Text>
+                  <Text style={styles.nextApptDayName}>{dayName}</Text>
+                </View>
+                <View style={styles.nextApptDivider} />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={styles.nextApptService} numberOfLines={1}>{nextAppt.serviceName ?? "Serviço"}</Text>
+                  <Text style={styles.nextApptMeta}>✂️  {nextAppt.barberName ?? "Barbeiro"}</Text>
+                  <Text style={styles.nextApptMeta}>🕐  {time}</Text>
+                </View>
+              </View>
+              {nextAppt.status !== "in_progress" && (
+                <TouchableOpacity
+                  style={styles.nextApptCancelBtn}
+                  onPress={handleCancel}
+                  activeOpacity={0.75}
+                  disabled={cancelApptMutation.isPending}
+                >
+                  <Text style={styles.nextApptCancelText}>{cancelApptMutation.isPending ? "Cancelando..." : "Cancelar agendamento"}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })()}
         {/* ── CTA de Login (não autenticado) ─────────────────────────────────── */}
         {!isAuthenticated && (
           <View style={styles.loginCta}>
@@ -792,5 +856,92 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     fontSize: 12,
     marginTop: 2,
+  },
+  // ── Próximo Agendamento ────────────────────────────────────────────────────
+  nextApptCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: "#141414",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#C9A84C33",
+    padding: 16,
+    gap: 12,
+    shadowColor: "#C9A84C",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  nextApptHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  nextApptTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#C9A84C",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  nextApptBadge: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  nextApptBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  nextApptBody: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  nextApptDateBox: {
+    alignItems: "center",
+    minWidth: 56,
+  },
+  nextApptDayNum: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#ECEDEE",
+    lineHeight: 22,
+  },
+  nextApptDayName: {
+    fontSize: 11,
+    color: "#888880",
+    textTransform: "capitalize",
+    marginTop: 2,
+  },
+  nextApptDivider: {
+    width: 1,
+    height: 48,
+    backgroundColor: "#2A2A2A",
+  },
+  nextApptService: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#ECEDEE",
+    lineHeight: 20,
+  },
+  nextApptMeta: {
+    fontSize: 13,
+    color: "#888880",
+    lineHeight: 18,
+  },
+  nextApptCancelBtn: {
+    alignItems: "center",
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#2A2A2A",
+    marginTop: 4,
+  },
+  nextApptCancelText: {
+    fontSize: 13,
+    color: "#EF4444",
+    fontWeight: "600",
   },
 });

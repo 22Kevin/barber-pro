@@ -146,7 +146,16 @@ export async function getAllBarbers() {
   if (!db) return [];
   return db.select().from(barbers).where(eq(barbers.isActive, true)).orderBy(barbers.name);
 }
-
+export async function getAllBarbersIncludingInactive() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(barbers).orderBy(barbers.name);
+}
+export async function reactivateBarber(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(barbers).set({ isActive: true }).where(eq(barbers.id, id));
+}
 export async function createBarber(data: InsertBarber) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -424,6 +433,40 @@ export async function getClientAppointments(clientId: number) {
   return db.select().from(appointments)
     .where(eq(appointments.clientId, clientId))
     .orderBy(desc(appointments.date), desc(appointments.startTime));
+}
+export async function getNextClientAppointment(clientId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  // Data atual no fuso de Brasília (UTC-3)
+  const nowBrasilia = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const todayStr = nowBrasilia.toISOString().slice(0, 10);
+  const rows = await db
+    .select({
+      id: appointments.id,
+      date: appointments.date,
+      startTime: appointments.startTime,
+      endTime: appointments.endTime,
+      status: appointments.status,
+      notes: appointments.notes,
+      serviceId: appointments.serviceId,
+      barberId: appointments.barberId,
+      serviceName: services.name,
+      servicePrice: services.price,
+      barberName: barbers.name,
+    })
+    .from(appointments)
+    .leftJoin(services, eq(appointments.serviceId, services.id))
+    .leftJoin(barbers, eq(appointments.barberId, barbers.id))
+    .where(
+      and(
+        eq(appointments.clientId, clientId),
+        gte(appointments.date, todayStr),
+        sql`${appointments.status} IN ('scheduled', 'confirmed', 'in_progress')`
+      )
+    )
+    .orderBy(appointments.date, appointments.startTime)
+    .limit(1);
+  return rows.length > 0 ? rows[0] : null;
 }
 
 export async function createAppointment(data: InsertAppointment) {

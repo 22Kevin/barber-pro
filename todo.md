@@ -578,3 +578,9 @@
 - [x] Otimizar queries N+1 nas telas de Serviços e Produtos do cliente (usar listWithMediaAndRatings e listWithMedia)
 - [x] Auditar SafeArea/padding em todas as telas admin (já corrigido em v3.9.1 e v3.10)
 - [x] Validar lógica de fuso horário (UTC-3 fixo correto para Brasil desde 2019 sem horário de verão)
+
+## Melhorias v4.8
+
+- [x] Tela de boas-vindas premium: splash screen animada com logo dourado antes dos botões de acesso
+- [x] Reativar usuários excluídos: botão de reativação no painel de Equipe (soft delete reverso)
+- [x] Card de próximo agendamento na Home do cliente (data, horário, serviço, barbeiro, botão cancelar)

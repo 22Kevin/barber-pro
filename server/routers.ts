@@ -116,6 +116,8 @@ export const appRouter = router({
 
   barbers: router({
     list: publicProcedure.query(() => db.getAllBarbers()),
+    listAll: publicProcedure.query(() => db.getAllBarbersIncludingInactive()),
+    reactivate: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.reactivateBarber(input.id)),
     create: publicProcedure
       .input(z.object({ name: z.string().min(2), email: z.string().email().optional(), phone: z.string().optional(), password: z.string().min(6), role: z.enum(["super_admin", "barber", "receptionist"]).default("barber"), specialties: z.string().optional() }))
       .mutation(async ({ input }) => {
@@ -249,6 +251,7 @@ export const appRouter = router({
   appointments: router({
     byDate: publicProcedure.input(z.object({ barberId: z.number(), date: z.string() })).query(({ input }) => db.getAppointmentsByDate(input.barberId, input.date)),
     allByDate: publicProcedure.input(z.object({ date: z.string() })).query(({ input }) => db.getAllAppointmentsByDate(input.date)),
+    nextByClient: publicProcedure.input(z.object({ clientId: z.number() })).query(({ input }) => db.getNextClientAppointment(input.clientId)),
     byDateRange: publicProcedure.input(z.object({ barberId: z.number(), startDate: z.string(), endDate: z.string() })).query(({ input }) => db.getAppointmentsByDateRange(input.barberId, input.startDate, input.endDate)),
     checkAvailability: publicProcedure
       .input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), excludeId: z.number().optional() }))

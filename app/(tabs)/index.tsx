@@ -1,4 +1,5 @@
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -6,29 +7,76 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 export default function HomeScreen() {
   const router = useRouter();
 
+  // Animações
+  const logoScale = useRef(new Animated.Value(0.6)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const nameSlide = useRef(new Animated.Value(30)).current;
+  const nameOpacity = useRef(new Animated.Value(0)).current;
+  const taglineOpacity = useRef(new Animated.Value(0)).current;
+  const dividerScale = useRef(new Animated.Value(0)).current;
+  const optionsOpacity = useRef(new Animated.Value(0)).current;
+  const optionsSlide = useRef(new Animated.Value(24)).current;
+  const footerOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      // 1. Logo aparece com fade + spring
+      Animated.parallel([
+        Animated.spring(logoScale, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }),
+        Animated.timing(logoOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ]),
+      // 2. Nome sobe com fade
+      Animated.parallel([
+        Animated.timing(nameOpacity, { toValue: 1, duration: 280, useNativeDriver: true }),
+        Animated.timing(nameSlide, { toValue: 0, duration: 280, useNativeDriver: true }),
+      ]),
+      // 3. Tagline aparece
+      Animated.timing(taglineOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      // 4. Divisor expande
+      Animated.timing(dividerScale, { toValue: 1, duration: 320, useNativeDriver: true }),
+      // 5. Botões sobem com fade
+      Animated.parallel([
+        Animated.timing(optionsOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(optionsSlide, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]),
+      // 6. Rodapé aparece
+      Animated.timing(footerOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
   return (
     <ScreenContainer containerClassName="bg-[#0A0A0A]" edges={["top", "left", "right", "bottom"]}>
       <View style={styles.container}>
-        {/* Logo */}
+
+        {/* ── Logo animado ─────────────────────────────────────────────────── */}
         <View style={styles.logoContainer}>
-          <Image
-            source={require("../../assets/images/icon.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.appName}>BARBER PRO</Text>
-          <Text style={styles.tagline}>Sistema Completo de Barbearia</Text>
+          <Animated.View style={[styles.logoWrapper, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}>
+            <View style={styles.logoGlow} />
+            <Image
+              source={require("../../assets/images/icon.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </Animated.View>
+
+          <Animated.Text style={[styles.appName, { opacity: nameOpacity, transform: [{ translateY: nameSlide }] }]}>
+            BARBER PRO
+          </Animated.Text>
+
+          <Animated.Text style={[styles.tagline, { opacity: taglineOpacity }]}>
+            Sistema Completo de Barbearia
+          </Animated.Text>
         </View>
 
-        {/* Divider */}
-        <View style={styles.divider} />
+        {/* ── Divisor animado ──────────────────────────────────────────────── */}
+        <Animated.View style={[styles.divider, { transform: [{ scaleX: dividerScale }] }]} />
 
-        {/* Access Options */}
-        <View style={styles.options}>
+        {/* ── Botões de acesso ─────────────────────────────────────────────── */}
+        <Animated.View style={[styles.options, { opacity: optionsOpacity, transform: [{ translateY: optionsSlide }] }]}>
           <Text style={styles.optionsLabel}>SELECIONE O ACESSO</Text>
 
           <Pressable
-            style={({ pressed }) => [styles.optionCard, styles.adminCard, pressed && { opacity: 0.85 }]}
+            style={({ pressed }) => [styles.optionCard, styles.adminCard, pressed && { opacity: 0.82, transform: [{ scale: 0.98 }] }]}
             onPress={() => router.push("/admin/login" as any)}
           >
             <View style={styles.optionIconBox}>
@@ -42,7 +90,7 @@ export default function HomeScreen() {
           </Pressable>
 
           <Pressable
-            style={({ pressed }) => [styles.optionCard, styles.clientCard, pressed && { opacity: 0.85 }]}
+            style={({ pressed }) => [styles.optionCard, styles.clientCard, pressed && { opacity: 0.75, transform: [{ scale: 0.98 }] }]}
             onPress={() => router.push("/client" as any)}
           >
             <View style={[styles.optionIconBox, { backgroundColor: "#F5F5F022" }]}>
@@ -54,10 +102,12 @@ export default function HomeScreen() {
             </View>
             <IconSymbol name="chevron.right" size={20} color="#888880" />
           </Pressable>
-        </View>
+        </Animated.View>
 
-        {/* Footer */}
-        <Text style={styles.footer}>Barber Pro © 2025 · Todos os direitos reservados</Text>
+        {/* ── Rodapé ───────────────────────────────────────────────────────── */}
+        <Animated.Text style={[styles.footer, { opacity: footerOpacity }]}>
+          Barber Pro © 2025 · Todos os direitos reservados
+        </Animated.Text>
       </View>
     </ScreenContainer>
   );
@@ -65,20 +115,40 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", paddingHorizontal: 24, gap: 32 },
-  logoContainer: { alignItems: "center", gap: 8 },
+  logoContainer: { alignItems: "center", gap: 10 },
+  logoWrapper: { position: "relative", alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  logoGlow: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "#C9A84C",
+    opacity: 0.12,
+    shadowColor: "#C9A84C",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 30,
+    elevation: 20,
+  },
   logo: { width: 100, height: 100, borderRadius: 22 },
   appName: { fontSize: 32, fontWeight: "900", color: "#C9A84C", letterSpacing: 6 },
-  tagline: { fontSize: 14, color: "#888880", letterSpacing: 1 },
+  tagline: { fontSize: 13, color: "#666660", letterSpacing: 1.5 },
   divider: { height: 1, backgroundColor: "#2A2A2A" },
   options: { gap: 14 },
-  optionsLabel: { fontSize: 11, color: "#555", letterSpacing: 2, textAlign: "center", marginBottom: 4 },
-  optionCard: { flexDirection: "row", alignItems: "center", borderRadius: 16, padding: 18, gap: 14, borderWidth: 1 },
-  adminCard: { backgroundColor: "#C9A84C", borderColor: "#C9A84C" },
+  optionsLabel: { fontSize: 11, color: "#444", letterSpacing: 2.5, textAlign: "center", marginBottom: 4 },
+  optionCard: { flexDirection: "row", alignItems: "center", borderRadius: 18, padding: 18, gap: 14, borderWidth: 1 },
+  adminCard: {
+    backgroundColor: "#C9A84C",
+    borderColor: "#C9A84C",
+    shadowColor: "#C9A84C",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
   clientCard: { backgroundColor: "#141414", borderColor: "#2A2A2A" },
   optionIconBox: { width: 52, height: 52, borderRadius: 14, backgroundColor: "#0A0A0A22", justifyContent: "center", alignItems: "center" },
   optionTitle: { fontSize: 16, fontWeight: "700", color: "#0A0A0A", marginBottom: 2 },
   optionSubtitle: { fontSize: 12, color: "#0A0A0A99" },
-  comingSoonBadge: { backgroundColor: "#2A2A2A", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  comingSoonText: { fontSize: 11, color: "#888880", fontWeight: "600" },
   footer: { fontSize: 11, color: "#333", textAlign: "center" },
 });

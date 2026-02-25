@@ -199,7 +199,9 @@ export default function BarbeariaScreen() {
     setShowSuggestions(false);
   }
 
+  const [showInactiveBarbers, setShowInactiveBarbers] = useState(false);
   const barbersQuery = trpc.barbers.list.useQuery();
+  const allBarbersQuery = trpc.barbers.listAll.useQuery(undefined, { enabled: showInactiveBarbers });
   const workingHoursQuery = trpc.barbers.workingHours.get.useQuery(
     { barberId: selectedBarberId ?? 0 },
     { enabled: !!selectedBarberId }
@@ -221,9 +223,23 @@ export default function BarbeariaScreen() {
   });
 
   const deleteBarberMutation = trpc.barbers.delete.useMutation({
-    onSuccess: () => utils.barbers.list.invalidate(),
+    onSuccess: () => { utils.barbers.list.invalidate(); utils.barbers.listAll.invalidate(); },
     onError: (e: any) => Alert.alert("Erro", e.message),
   });
+  const reactivateBarberMutation = trpc.barbers.reactivate.useMutation({
+    onSuccess: () => { utils.barbers.list.invalidate(); utils.barbers.listAll.invalidate(); Alert.alert("Sucesso", "Usuário reativado com sucesso!"); },
+    onError: (e: any) => Alert.alert("Erro", e.message),
+  });
+  function handleReactivateBarber(b: any) {
+    Alert.alert(
+      "Reativar usuário",
+      `Deseja reativar "${b.name}"? O acesso será restaurado.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Reativar", onPress: () => reactivateBarberMutation.mutate({ id: b.id }) },
+      ]
+    );
+  }
   const upsertHoursMutation = trpc.barbers.workingHours.upsert.useMutation({
     onSuccess: () => utils.barbers.workingHours.get.invalidate(),
   });
@@ -339,7 +355,9 @@ export default function BarbeariaScreen() {
     });
   }
 
-  const barbers = (barbersQuery.data ?? []) as any[];
+  const activeBarbers = (barbersQuery.data ?? []) as any[];
+  const allBarbers = (allBarbersQuery.data ?? []) as any[];
+  const barbers = showInactiveBarbers ? allBarbers : activeBarbers;
   const hours = (workingHoursQuery.data ?? []) as any[];
   const isSuperAdmin = barber?.role === "super_admin";
 
@@ -545,7 +563,19 @@ export default function BarbeariaScreen() {
         {/* ── ABA EQUIPE ── */}
         {activeTab === "equipe" && (
           <>
-            {barbersQuery.isLoading ? (
+            {/* Toggle mostrar inativos */}
+            {isSuperAdmin && (
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12, paddingHorizontal: 4 }}>
+                <Text style={{ fontSize: 13, color: "#888880" }}>Mostrar membros inativos</Text>
+                <Switch
+                  value={showInactiveBarbers}
+                  onValueChange={setShowInactiveBarbers}
+                  trackColor={{ false: "#2A2A2A", true: "#C9A84C44" }}
+                  thumbColor={showInactiveBarbers ? "#C9A84C" : "#555"}
+                />
+              </View>
+            )}
+            {(showInactiveBarbers ? allBarbersQuery.isLoading : barbersQuery.isLoading) ? (
               <ActivityIndicator color="#C9A84C" style={{ marginTop: 40 }} />
             ) : barbers.length === 0 ? (
               <View style={styles.emptyCard}>
@@ -555,8 +585,8 @@ export default function BarbeariaScreen() {
               </View>
             ) : (
               barbers.map((b: any) => (
-                <View key={b.id} style={styles.barberCard}>
-                  <View style={styles.barberAvatar}>
+                <View key={b.id} style={[styles.barberCard, !b.isActive && { opacity: 0.65, borderColor: "#F4433633" }]}>
+                  <View style={[styles.barberAvatar, !b.isActive && { backgroundColor: "#2A2A2A" }]}>
                     <Text style={styles.barberAvatarText}>{b.name.charAt(0).toUpperCase()}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
@@ -569,16 +599,28 @@ export default function BarbeariaScreen() {
                     {!b.isActive && <View style={styles.inactiveBadge}><Text style={styles.inactiveBadgeText}>Inativo</Text></View>}
                     {isSuperAdmin && (
                       <View style={{ flexDirection: "row", gap: 8 }}>
-                        <Pressable onPress={() => openEditBarber(b)} style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.6 }]}>
-                          <IconSymbol name="pencil" size={16} color="#C9A84C" />
-                        </Pressable>
-                        {b.role !== "super_admin" && (
+                        {b.isActive ? (
+                          <>
+                            <Pressable onPress={() => openEditBarber(b)} style={({ pressed }) => [styles.editBtn, pressed && { opacity: 0.6 }]}>
+                              <IconSymbol name="pencil" size={16} color="#C9A84C" />
+                            </Pressable>
+                            {b.role !== "super_admin" && (
+                              <Pressable
+                                onPress={() => handleDeleteBarber(b)}
+                                style={({ pressed }) => [styles.editBtn, { borderColor: "#F4433644", backgroundColor: "#F4433611" }, pressed && { opacity: 0.6 }]}
+                                disabled={deleteBarberMutation.isPending}
+                              >
+                                <IconSymbol name="trash" size={16} color="#F44336" />
+                              </Pressable>
+                            )}
+                          </>
+                        ) : (
                           <Pressable
-                            onPress={() => handleDeleteBarber(b)}
-                            style={({ pressed }) => [styles.editBtn, { borderColor: "#F4433644", backgroundColor: "#F4433611" }, pressed && { opacity: 0.6 }]}
-                            disabled={deleteBarberMutation.isPending}
+                            onPress={() => handleReactivateBarber(b)}
+                            style={({ pressed }) => [styles.editBtn, { borderColor: "#22C55E44", backgroundColor: "#22C55E11" }, pressed && { opacity: 0.6 }]}
+                            disabled={reactivateBarberMutation.isPending}
                           >
-                            <IconSymbol name="trash" size={16} color="#F44336" />
+                            <IconSymbol name="checkmark.circle.fill" size={16} color="#22C55E" />
                           </Pressable>
                         )}
                       </View>
