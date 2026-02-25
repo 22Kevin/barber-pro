@@ -258,6 +258,7 @@ export const shopSettings = mysqlTable("shop_settings", {
   addressComplement: varchar("addressComplement", { length: 100 }),
   googleMapsUrl: text("googleMapsUrl"),
   pixKey: varchar("pixKey", { length: 255 }),
+  galleryUrls: text("galleryUrls"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 // ─── Tokens de Recuperação de Senha ────────────────────────────────────────

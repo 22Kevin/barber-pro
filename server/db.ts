@@ -330,6 +330,34 @@ export async function getWorkingHours(barberId: number) {
   return db.select().from(workingHours).where(eq(workingHours.barberId, barberId)).orderBy(workingHours.dayOfWeek);
 }
 
+export async function getShopOpenStatus() {
+  const db = await getDb();
+  if (!db) return { isOpen: false, opensAt: null, closesAt: null, lunchStart: null, lunchEnd: null };
+  // Usa o fuso de Brasília (UTC-3)
+  const nowBrasilia = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const dayOfWeek = nowBrasilia.getUTCDay();
+  const currentMinute = nowBrasilia.getUTCHours() * 60 + nowBrasilia.getUTCMinutes();
+  const toMinutes = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  // Busca todos os horários de trabalho do dia atual de todos os barbeiros ativos
+  const allHours = await db
+    .select({ startTime: workingHours.startTime, endTime: workingHours.endTime, lunchStart: workingHours.lunchStart, lunchEnd: workingHours.lunchEnd })
+    .from(workingHours)
+    .where(and(eq(workingHours.dayOfWeek, dayOfWeek), eq(workingHours.isWorking, true)));
+  if (!allHours.length) return { isOpen: false, opensAt: null, closesAt: null, lunchStart: null, lunchEnd: null };
+  // Horário mais cedo de abertura e mais tarde de fechamento
+  const earliestStart = allHours.reduce((min, h) => toMinutes(h.startTime) < toMinutes(min) ? h.startTime : min, allHours[0].startTime);
+  const latestEnd = allHours.reduce((max, h) => toMinutes(h.endTime) > toMinutes(max) ? h.endTime : max, allHours[0].endTime);
+  const lunchStart = allHours[0].lunchStart ?? null;
+  const lunchEnd = allHours[0].lunchEnd ?? null;
+  const startMin = toMinutes(earliestStart);
+  const endMin = toMinutes(latestEnd);
+  const lunchStartMin = lunchStart ? toMinutes(lunchStart) : null;
+  const lunchEndMin = lunchEnd ? toMinutes(lunchEnd) : null;
+  const inLunch = lunchStartMin !== null && lunchEndMin !== null && currentMinute >= lunchStartMin && currentMinute < lunchEndMin;
+  const isOpen = currentMinute >= startMin && currentMinute < endMin && !inLunch;
+  return { isOpen, opensAt: earliestStart, closesAt: latestEnd, lunchStart, lunchEnd };
+}
+
 export async function upsertWorkingHours(barberId: number, dayOfWeek: number, data: { startTime: string; endTime: string; lunchStart?: string | null; lunchEnd?: string | null; isWorking: boolean }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -637,6 +665,37 @@ export async function getReviewsByClient(clientId: number) {
   if (!db) return [];
   return db.select().from(reviews).where(eq(reviews.clientId, clientId)).orderBy(desc(reviews.createdAt));
 }
+export async function getRecentReviews(limit = 5) {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db
+    .select({
+      id: reviews.id,
+      rating: reviews.rating,
+      comment: reviews.comment,
+      createdAt: reviews.createdAt,
+      clientId: reviews.clientId,
+      serviceId: reviews.serviceId,
+    })
+    .from(reviews)
+    .orderBy(desc(reviews.createdAt))
+    .limit(limit);
+  // Enriquecer com nome do cliente e serviço
+  const clientIds = [...new Set(result.map(r => r.clientId))];
+  const serviceIds = [...new Set(result.map(r => r.serviceId))];
+  const [clientList, serviceList] = await Promise.all([
+    clientIds.length > 0 ? db.select({ id: clients.id, name: clients.name }).from(clients).where(inArray(clients.id, clientIds)) : [],
+    serviceIds.length > 0 ? db.select({ id: services.id, name: services.name }).from(services).where(inArray(services.id, serviceIds)) : [],
+  ]);
+  const clientMap = Object.fromEntries(clientList.map(c => [c.id, c.name]));
+  const serviceMap = Object.fromEntries(serviceList.map(s => [s.id, s.name]));
+  return result.map(r => ({
+    ...r,
+    clientName: clientMap[r.clientId] ?? "Cliente",
+    serviceName: serviceMap[r.serviceId] ?? "Serviço",
+  }));
+}
+
 export async function createReview(data: { clientId: number; serviceId: number; appointmentId?: number; rating: number; comment?: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

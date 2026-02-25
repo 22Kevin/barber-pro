@@ -522,3 +522,14 @@
 
 - [x] Bloquear agendamentos durante o intervalo de almoço do barbeiro
 - [x] Ocultar horários passados ao agendar para o dia atual
+
+## Reformulação Home do Cliente v4.0
+
+- [x] Logo redondo da barbearia no canto superior esquerdo
+- [x] Nome da barbearia e saudação ao usuário no header
+- [x] Indicador "Aberto agora / Fechado" com horário em tempo real
+- [x] Carrossel de fotos do ambiente da barbearia
+- [x] Botão "Agende seu horário" em destaque
+- [x] Avaliações em destaque (últimas 5, carrossel horizontal)
+- [x] Botões "Nos Encontre" (WhatsApp, Instagram, Google Maps)
+- [x] Remover serviços e produtos da Home (já existem abas dedicadas)

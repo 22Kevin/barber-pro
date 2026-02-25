@@ -420,8 +420,9 @@ export const appRouter = router({
 
   settings: router({
     get: publicProcedure.query(() => db.getShopSettings()),
+    openStatus: publicProcedure.query(() => db.getShopOpenStatus()),
     update: publicProcedure
-      .input(z.object({ shopName: z.string().optional(), address: z.string().optional().nullable(), phone: z.string().optional().nullable(), whatsapp: z.string().optional().nullable(), mercadoPagoAccessToken: z.string().optional().nullable(), mercadoPagoPublicKey: z.string().optional().nullable(), whatsappMessageTemplate: z.string().optional().nullable(), reminderMessageTemplate: z.string().optional().nullable(), instagram: z.string().optional().nullable(), cnpj: z.string().optional().nullable(), googleMapsUrl: z.string().optional().nullable(), pixKey: z.string().optional().nullable() }))
+      .input(z.object({ shopName: z.string().optional(), address: z.string().optional().nullable(), phone: z.string().optional().nullable(), whatsapp: z.string().optional().nullable(), mercadoPagoAccessToken: z.string().optional().nullable(), mercadoPagoPublicKey: z.string().optional().nullable(), whatsappMessageTemplate: z.string().optional().nullable(), reminderMessageTemplate: z.string().optional().nullable(), instagram: z.string().optional().nullable(), cnpj: z.string().optional().nullable(), googleMapsUrl: z.string().optional().nullable(), pixKey: z.string().optional().nullable(), galleryUrls: z.string().optional().nullable(), cep: z.string().optional().nullable(), addressNumber: z.string().optional().nullable(), addressComplement: z.string().optional().nullable() }))
       .mutation(({ input }) => db.upsertShopSettings(input)),
   }),
 
@@ -552,6 +553,9 @@ export const appRouter = router({
   }),
 
   reviews: router({
+    recent: publicProcedure
+      .input(z.object({ limit: z.number().optional() }))
+      .query(({ input }) => db.getRecentReviews(input.limit ?? 5)),
     byService: publicProcedure
       .input(z.object({ serviceId: z.number() }))
       .query(({ input }) => db.getReviewsByService(input.serviceId)),

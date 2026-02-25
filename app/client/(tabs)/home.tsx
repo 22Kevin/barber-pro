@@ -1,12 +1,32 @@
+import { useRef, useState } from "react";
 import { useRouter } from "expo-router";
-import { FlatList, Image, ImageBackground, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Svg, { Defs, LinearGradient, Path, Rect, Stop, Circle } from "react-native-svg";
+import {
+  Dimensions,
+  FlatList,
+  Image,
+  Linking,
+  Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from "react-native-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
+import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 
-// ─── Ícone do Instagram (gradiente oficial) ───────────────────────────────────
-function InstagramIcon({ size = 28 }: { size?: number }) {
+const { width: SCREEN_W } = Dimensions.get("window");
+const CAROUSEL_H = 220;
+
+// ─── Ícone Instagram ──────────────────────────────────────────────────────────
+function InstagramIcon({ size = 26 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Defs>
@@ -25,59 +45,162 @@ function InstagramIcon({ size = 28 }: { size?: number }) {
   );
 }
 
-// ─── Ícone do Google Maps (pin colorido) ─────────────────────────────────────
-function MapsIcon({ size = 28 }: { size?: number }) {
+// ─── Ícone Google Maps ────────────────────────────────────────────────────────
+function MapsIcon({ size = 26 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path
-        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
-        fill="#EA4335"
-      />
+      <Path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#EA4335" />
       <Circle cx="12" cy="9" r="2.5" fill="white" />
     </Svg>
   );
 }
 
-// ─── Componente de estrelas ───────────────────────────────────────────────────
-function StarRating({ rating, count }: { rating: number; count: number }) {
-  const stars = [1, 2, 3, 4, 5];
+// ─── Ícone WhatsApp ───────────────────────────────────────────────────────────
+function WhatsAppIcon({ size = 26 }: { size?: number }) {
   return (
-    <View style={styles.starRow}>
-      {stars.map((s) => (
-        <Text key={s} style={[styles.star, { color: s <= Math.round(rating) ? "#EAB308" : "#374151" }]}>
-          ★
-        </Text>
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx="12" cy="12" r="11" fill="#25D366" />
+      <Path
+        d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"
+        fill="white"
+      />
+    </Svg>
+  );
+}
+
+// ─── Estrelas ─────────────────────────────────────────────────────────────────
+function Stars({ rating }: { rating: number }) {
+  return (
+    <View style={styles.starsRow}>
+      {[1, 2, 3, 4, 5].map((s) => (
+        <Text key={s} style={{ fontSize: 13, color: s <= Math.round(rating) ? "#EAB308" : "#374151" }}>★</Text>
       ))}
-      <Text style={styles.starLabel}>{rating.toFixed(1)} ({count})</Text>
     </View>
   );
 }
 
+// ─── Carrossel de fotos ───────────────────────────────────────────────────────
+function PhotoCarousel({ images }: { images: string[] }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [lightboxVisible, setLightboxVisible] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const flatRef = useRef<FlatList>(null);
+
+  function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
+    setActiveIndex(idx);
+  }
+
+  function openLightbox(i: number) {
+    setLightboxIndex(i);
+    setLightboxVisible(true);
+  }
+
+  if (!images.length) {
+    return (
+      <View style={styles.carouselEmpty}>
+        <Text style={styles.carouselEmptyText}>✂️</Text>
+        <Text style={styles.carouselEmptyLabel}>Nenhuma foto cadastrada</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.carouselWrapper}>
+      <FlatList
+        ref={flatRef}
+        data={images}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        keyExtractor={(_, i) => String(i)}
+        renderItem={({ item, index }) => (
+          <TouchableOpacity
+            activeOpacity={0.92}
+            onPress={() => openLightbox(index)}
+            style={styles.carouselSlide}
+          >
+            <Image source={{ uri: item }} style={styles.carouselImage} resizeMode="cover" />
+            {/* Gradiente inferior */}
+            <View style={styles.carouselGradient} />
+          </TouchableOpacity>
+        )}
+      />
+      {/* Indicadores */}
+      <View style={styles.dotsRow}>
+        {images.map((_, i) => (
+          <View
+            key={i}
+            style={[styles.dot, i === activeIndex && styles.dotActive]}
+          />
+        ))}
+      </View>
+
+      {/* Lightbox */}
+      <Modal visible={lightboxVisible} transparent animationType="fade" onRequestClose={() => setLightboxVisible(false)}>
+        <View style={styles.lightboxBg}>
+          <TouchableOpacity style={styles.lightboxClose} onPress={() => setLightboxVisible(false)}>
+            <Text style={styles.lightboxCloseText}>✕</Text>
+          </TouchableOpacity>
+          <FlatList
+            data={images}
+            horizontal
+            pagingEnabled
+            initialScrollIndex={lightboxIndex}
+            getItemLayout={(_, index) => ({ length: SCREEN_W, offset: SCREEN_W * index, index })}
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(_, i) => String(i)}
+            renderItem={({ item }) => (
+              <View style={styles.lightboxSlide}>
+                <Image source={{ uri: item }} style={styles.lightboxImage} resizeMode="contain" />
+              </View>
+            )}
+          />
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 export default function ClientHome() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarHeight();
   const { client, isAuthenticated } = useClientAuth();
 
-  const servicesQuery = trpc.services.listWithMediaAndRatings.useQuery({ activeOnly: true });
-  const productsQuery = trpc.products.listWithMedia.useQuery({ activeOnly: true });
   const settingsQuery = trpc.settings.get.useQuery();
-
-  const featuredServices = (servicesQuery.data ?? []).slice(0, 8);
-  const featuredProducts = (productsQuery.data ?? []).slice(0, 8);
+  const openStatusQuery = trpc.settings.openStatus.useQuery(undefined, { refetchInterval: 60_000 });
+  const recentReviewsQuery = trpc.reviews.recent.useQuery({ limit: 5 });
 
   const settings = settingsQuery.data as any;
   const shopName = settings?.shopName ?? "Barber Pro";
+  const shopLogoUrl = settings?.logoUrl ?? null;
   const shopInstagram = settings?.instagram ?? null;
+  const shopWhatsapp = settings?.whatsapp ?? null;
   const shopGoogleMapsUrl = settings?.googleMapsUrl ?? null;
-  const heroImageUrl = settings?.logoUrl ?? null;
+  const galleryImages: string[] = (() => {
+    try { return settings?.galleryUrls ? JSON.parse(settings.galleryUrls) : []; } catch { return []; }
+  })();
+
+  const openStatus = openStatusQuery.data;
+  const recentReviews = recentReviewsQuery.data ?? [];
 
   function openInstagram() {
     if (!shopInstagram) return;
     const handle = shopInstagram.replace(/^@/, "");
-    const appUrl = `instagram://user?username=${handle}`;
-    const webUrl = `https://instagram.com/${handle}`;
-    Linking.canOpenURL(appUrl).then((supported) => {
-      Linking.openURL(supported ? appUrl : webUrl);
-    });
+    Linking.canOpenURL(`instagram://user?username=${handle}`).then((ok) =>
+      Linking.openURL(ok ? `instagram://user?username=${handle}` : `https://instagram.com/${handle}`)
+    );
+  }
+
+  function openWhatsApp() {
+    if (!shopWhatsapp) return;
+    const digits = shopWhatsapp.replace(/\D/g, "");
+    const number = digits.startsWith("55") ? digits : `55${digits}`;
+    Linking.openURL(`https://wa.me/${number}`);
   }
 
   function openGoogleMaps() {
@@ -85,349 +208,422 @@ export default function ClientHome() {
     Linking.openURL(shopGoogleMapsUrl);
   }
 
-  return (
-    <ScreenContainer containerClassName="bg-black">
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+  // ── Status aberto/fechado ──────────────────────────────────────────────────
+  function renderOpenStatus() {
+    if (!openStatus) return null;
+    const { isOpen, opensAt, closesAt, lunchStart, lunchEnd } = openStatus;
+    const toHM = (t: string) => t.slice(0, 5);
+    let label = "";
+    let color = "";
+    let bg = "";
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.shopName}>{shopName.toUpperCase()}</Text>
+    if (isOpen) {
+      // Verificar se está em almoço
+      if (lunchStart && lunchEnd) {
+        const now = new Date();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const lsMin = parseInt(lunchStart.split(":")[0]) * 60 + parseInt(lunchStart.split(":")[1]);
+        const leMin = parseInt(lunchEnd.split(":")[0]) * 60 + parseInt(lunchEnd.split(":")[1]);
+        if (nowMin >= lsMin && nowMin < leMin) {
+          label = `Intervalo · volta às ${toHM(lunchEnd)}`;
+          color = "#F59E0B";
+          bg = "#1a1200";
+        }
+      }
+      if (!label) {
+        label = closesAt ? `Aberto · fecha às ${toHM(closesAt)}` : "Aberto agora";
+        color = "#22C55E";
+        bg = "#0a1a0a";
+      }
+    } else {
+      label = opensAt ? `Fechado · abre às ${toHM(opensAt)}` : "Fechado no momento";
+      color = "#EF4444";
+      bg = "#1a0a0a";
+    }
+
+    return (
+      <View style={[styles.statusPill, { backgroundColor: bg, borderColor: color }]}>
+        <View style={[styles.statusDot, { backgroundColor: color }]} />
+        <Text style={[styles.statusText, { color }]}>{label}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScreenContainer containerClassName="bg-black" edges={["left", "right"]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + 16 }}
+      >
+        {/* ── Header ─────────────────────────────────────────────────────────── */}
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          {/* Logo redondo */}
+          <View style={styles.logoWrapper}>
+            {shopLogoUrl ? (
+              <Image source={{ uri: shopLogoUrl }} style={styles.logoImage} resizeMode="cover" />
+            ) : (
+              <View style={styles.logoFallback}>
+                <Text style={styles.logoFallbackText}>✂️</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Nome + saudação + status */}
+          <View style={styles.headerInfo}>
+            <Text style={styles.shopName} numberOfLines={1}>{shopName.toUpperCase()}</Text>
             <Text style={styles.greeting}>
               {isAuthenticated ? `Olá, ${client?.name.split(" ")[0]}! 👋` : "Bem-vindo!"}
             </Text>
+            {renderOpenStatus()}
           </View>
+
+          {/* Badge de pontos */}
           {isAuthenticated && (
             <View style={styles.pointsBadge}>
-              <Text style={styles.pointsText}>⭐ {client?.totalPoints ?? 0} pts</Text>
+              <Text style={styles.pointsText}>⭐</Text>
+              <Text style={styles.pointsValue}>{client?.totalPoints ?? 0}</Text>
+              <Text style={styles.pointsLabel}>pts</Text>
             </View>
           )}
         </View>
 
-        {/* ── Banner de agendamento com hero image ────────────────────────── */}
-        <View style={styles.bookingBannerWrapper}>
-          {heroImageUrl ? (
-            <ImageBackground
-              source={{ uri: heroImageUrl }}
-              style={styles.bookingBannerBg}
-              imageStyle={styles.bookingBannerBgImage}
-            >
-              {/* Overlay escuro para legibilidade */}
-              <View style={styles.bookingBannerOverlay} />
-              <View style={styles.bookingBannerContent}>
-                <Text style={styles.bookingTitle}>Agende seu horário</Text>
-                <Text style={styles.bookingSubtitle}>Escolha seu barbeiro, data e horário preferido</Text>
-                <TouchableOpacity
-                  style={styles.bookingButton}
-                  onPress={() => router.push("/client/book" as any)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.bookingButtonText}>Agendar agora ✂️</Text>
-                </TouchableOpacity>
-              </View>
-            </ImageBackground>
-          ) : (
-            <View style={[styles.bookingBannerBg, styles.bookingBannerFallback]}>
-              <View style={styles.bookingBannerContent}>
-                <Text style={styles.bookingTitle}>Agende seu horário</Text>
-                <Text style={styles.bookingSubtitle}>Escolha seu barbeiro, data e horário preferido</Text>
-                <TouchableOpacity
-                  style={styles.bookingButton}
-                  onPress={() => router.push("/client/book" as any)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.bookingButtonText}>Agendar agora ✂️</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
+        {/* ── Carrossel de fotos ─────────────────────────────────────────────── */}
+        <View style={styles.carouselSection}>
+          <PhotoCarousel images={galleryImages} />
         </View>
 
-        {/* ── Login CTA para não autenticados ────────────────────────────── */}
+        {/* ── CTA de Login (não autenticado) ─────────────────────────────────── */}
         {!isAuthenticated && (
-          <View style={styles.loyaltyCta}>
-            <Text style={styles.loyaltyTitle}>⭐ Programa de Fidelidade</Text>
-            <Text style={styles.loyaltySubtitle}>
+          <View style={styles.loginCta}>
+            <Text style={styles.loginCtaTitle}>⭐ Programa de Fidelidade</Text>
+            <Text style={styles.loginCtaSubtitle}>
               Crie sua conta e acumule pontos a cada visita para ganhar recompensas exclusivas!
             </Text>
-            <View style={styles.loyaltyButtons}>
+            <View style={styles.loginCtaButtons}>
               <TouchableOpacity
-                style={styles.loyaltyButtonPrimary}
+                style={styles.loginCtaBtnPrimary}
                 onPress={() => router.push("/client/register" as any)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.loyaltyButtonPrimaryText}>Criar conta</Text>
+                <Text style={styles.loginCtaBtnPrimaryText}>Criar conta</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.loyaltyButtonSecondary}
+                style={styles.loginCtaBtnSecondary}
                 onPress={() => router.push("/client/login" as any)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.loyaltyButtonSecondaryText}>Entrar</Text>
+                <Text style={styles.loginCtaBtnSecondaryText}>Entrar</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* ── Serviços em destaque ────────────────────────────────────────── */}
-        {featuredServices.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Nossos Serviços</Text>
-              <TouchableOpacity onPress={() => router.push("/client/(tabs)/services" as any)}>
-                <Text style={styles.seeAll}>Ver todos →</Text>
-              </TouchableOpacity>
-            </View>
+        {/* ── Agende seu horário ─────────────────────────────────────────────── */}
+        <View style={styles.bookSection}>
+          <Text style={styles.sectionTitle}>Agende seu horário</Text>
+          <Text style={styles.bookSubtitle}>Escolha seu barbeiro, data e horário preferido</Text>
+          <TouchableOpacity
+            style={styles.bookButton}
+            onPress={() => router.push("/client/book" as any)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.bookButtonText}>✂️  Agendar agora</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Avaliações em destaque ─────────────────────────────────────────── */}
+        {recentReviews.length > 0 && (
+          <View style={styles.reviewsSection}>
+            <Text style={styles.sectionTitle}>O que dizem nossos clientes</Text>
             <FlatList
-              data={featuredServices}
+              data={recentReviews}
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+              contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingTop: 12 }}
               keyExtractor={(item: any) => String(item.id)}
-              renderItem={({ item: svc }: { item: any }) => (
-                <TouchableOpacity
-                  onPress={() => router.push({ pathname: "/client/book" as any, params: { serviceId: svc.id } })}
-                  style={styles.serviceCard}
-                  activeOpacity={0.8}
-                >
-                  {svc.thumbnailUrl ? (
-                    <Image
-                      source={{ uri: svc.thumbnailUrl }}
-                      style={styles.serviceCardImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.serviceCardPlaceholder}>
-                      <Text style={{ fontSize: 38 }}>✂️</Text>
-                    </View>
-                  )}
-                  <View style={styles.serviceCardInfo}>
-                    <Text style={styles.serviceCardName} numberOfLines={1}>{svc.name}</Text>
-                    {/* Estrelas de avaliação */}
-                    {svc.avgRating !== null && svc.reviewCount > 0 ? (
-                      <StarRating rating={svc.avgRating} count={svc.reviewCount} />
-                    ) : (
-                      <Text style={styles.noReviews}>Sem avaliações</Text>
-                    )}
-                    <View style={styles.serviceCardFooter}>
-                      <Text style={styles.serviceCardPrice}>R$ {parseFloat(svc.price).toFixed(2)}</Text>
-                      <Text style={styles.serviceCardDuration}>⏱ {svc.durationMinutes} min</Text>
-                    </View>
+              renderItem={({ item }: { item: any }) => (
+                <View style={styles.reviewCard}>
+                  <Stars rating={item.rating} />
+                  {item.comment ? (
+                    <Text style={styles.reviewComment} numberOfLines={3}>"{item.comment}"</Text>
+                  ) : null}
+                  <View style={styles.reviewFooter}>
+                    <Text style={styles.reviewClient}>{item.clientName}</Text>
+                    <Text style={styles.reviewService}>{item.serviceName}</Text>
                   </View>
-                </TouchableOpacity>
+                </View>
               )}
             />
           </View>
         )}
 
-        {/* ── Produtos em destaque (scroll horizontal) ────────────────────── */}
-        {featuredProducts.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Produtos</Text>
-              <TouchableOpacity onPress={() => router.push("/client/(tabs)/shop" as any)}>
-                <Text style={styles.seeAll}>Ver todos →</Text>
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={featuredProducts}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
-              keyExtractor={(item: any) => String(item.id)}
-              renderItem={({ item: prod }: { item: any }) => (
-                <TouchableOpacity
-                  onPress={() => router.push("/client/(tabs)/shop" as any)}
-                  style={styles.productCard}
-                  activeOpacity={0.8}
-                >
-                  {prod.thumbnailUrl ? (
-                    <Image
-                      source={{ uri: prod.thumbnailUrl }}
-                      style={styles.productCardImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.productCardPlaceholder}>
-                      <Text style={{ fontSize: 34 }}>🧴</Text>
-                    </View>
-                  )}
-                  <View style={styles.productCardInfo}>
-                    <Text style={styles.productCardName} numberOfLines={2}>{prod.name}</Text>
-                    <Text style={styles.productCardPrice}>R$ {parseFloat(prod.price).toFixed(2)}</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        )}
-
-        {/* ── Nos encontre (Instagram + Google Maps) ─────────────────────── */}
-        {(shopInstagram || shopGoogleMapsUrl) && (
+        {/* ── Nos Encontre ──────────────────────────────────────────────────── */}
+        {(shopInstagram || shopGoogleMapsUrl || shopWhatsapp) && (
           <View style={styles.findUsSection}>
             <Text style={styles.sectionTitle}>Nos encontre</Text>
-            <View style={styles.findUsRow}>
+            <View style={styles.findUsGrid}>
+              {shopWhatsapp && (
+                <TouchableOpacity onPress={openWhatsApp} style={styles.findUsCardWhatsapp} activeOpacity={0.8}>
+                  <WhatsAppIcon size={28} />
+                  <View style={styles.findUsCardText}>
+                    <Text style={styles.findUsCardTitle}>WhatsApp</Text>
+                    <Text style={styles.findUsCardSub}>Fale conosco</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
               {shopInstagram && (
-                <TouchableOpacity
-                  onPress={openInstagram}
-                  style={styles.findUsCardInstagram}
-                  activeOpacity={0.8}
-                >
-                  <InstagramIcon size={26} />
+                <TouchableOpacity onPress={openInstagram} style={styles.findUsCardInstagram} activeOpacity={0.8}>
+                  <InstagramIcon size={28} />
                   <View style={styles.findUsCardText}>
                     <Text style={styles.findUsCardTitle}>Instagram</Text>
-                    <Text style={styles.findUsCardHandle} numberOfLines={1}>
+                    <Text style={styles.findUsCardSub} numberOfLines={1}>
                       {shopInstagram.startsWith("@") ? shopInstagram : `@${shopInstagram}`}
                     </Text>
                   </View>
                 </TouchableOpacity>
               )}
               {shopGoogleMapsUrl && (
-                <TouchableOpacity
-                  onPress={openGoogleMaps}
-                  style={styles.findUsCardMaps}
-                  activeOpacity={0.8}
-                >
-                  <MapsIcon size={26} />
+                <TouchableOpacity onPress={openGoogleMaps} style={styles.findUsCardMaps} activeOpacity={0.8}>
+                  <MapsIcon size={28} />
                   <View style={styles.findUsCardText}>
                     <Text style={styles.findUsCardTitle}>Como chegar</Text>
-                    <Text style={styles.findUsCardHandle}>Google Maps</Text>
+                    <Text style={styles.findUsCardSub}>Google Maps</Text>
                   </View>
                 </TouchableOpacity>
               )}
             </View>
           </View>
         )}
-
       </ScrollView>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  // Header
+  // ── Header ──────────────────────────────────────────────────────────────────
   header: {
-    padding: 20,
-    paddingBottom: 8,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    gap: 14,
+  },
+  logoWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: "#EAB308",
+    backgroundColor: "#1F2937",
+    flexShrink: 0,
+  },
+  logoImage: {
+    width: "100%",
+    height: "100%",
+  },
+  logoFallback: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1F2937",
+  },
+  logoFallbackText: {
+    fontSize: 26,
+  },
+  headerInfo: {
+    flex: 1,
+    gap: 2,
   },
   shopName: {
     color: "#EAB308",
     fontWeight: "800",
-    fontSize: 22,
-    letterSpacing: 2,
+    fontSize: 17,
+    letterSpacing: 1.5,
   },
   greeting: {
     color: "#9CA3AF",
-    fontSize: 14,
-    marginTop: 2,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 4,
+    gap: 5,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: "600",
   },
   pointsBadge: {
     backgroundColor: "#1F1500",
     borderRadius: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 8,
     borderWidth: 1,
     borderColor: "#EAB308",
+    alignItems: "center",
+    flexShrink: 0,
   },
   pointsText: {
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  pointsValue: {
     color: "#EAB308",
-    fontWeight: "700",
-    fontSize: 13,
+    fontWeight: "800",
+    fontSize: 15,
+    lineHeight: 18,
+  },
+  pointsLabel: {
+    color: "#EAB308",
+    fontSize: 10,
+    fontWeight: "600",
+    opacity: 0.8,
   },
 
-  // Booking banner
-  bookingBannerWrapper: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 20,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#EAB308",
+  // ── Carrossel ───────────────────────────────────────────────────────────────
+  carouselSection: {
+    marginBottom: 24,
   },
-  bookingBannerBg: {
-    minHeight: 160,
-    justifyContent: "flex-end",
+  carouselWrapper: {
+    position: "relative",
   },
-  bookingBannerBgImage: {
-    borderRadius: 20,
-    opacity: 0.55,
+  carouselSlide: {
+    width: SCREEN_W,
+    height: CAROUSEL_H,
+    position: "relative",
   },
-  bookingBannerFallback: {
-    backgroundColor: "#111827",
+  carouselImage: {
+    width: "100%",
+    height: "100%",
   },
-  bookingBannerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.52)",
-    borderRadius: 20,
+  carouselGradient: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
-  bookingBannerContent: {
-    padding: 20,
+  dotsRow: {
+    position: "absolute",
+    bottom: 12,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
   },
-  bookingTitle: {
-    color: "#fff",
-    fontWeight: "800",
-    fontSize: 20,
-    marginBottom: 6,
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.35)",
   },
-  bookingSubtitle: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 13,
-    marginBottom: 16,
-  },
-  bookingButton: {
+  dotActive: {
     backgroundColor: "#EAB308",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignSelf: "flex-start",
+    width: 18,
   },
-  bookingButtonText: {
-    color: "#000",
-    fontWeight: "700",
+  carouselEmpty: {
+    height: CAROUSEL_H,
+    backgroundColor: "#111827",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  carouselEmptyText: {
+    fontSize: 48,
+  },
+  carouselEmptyLabel: {
+    color: "#4B5563",
     fontSize: 14,
   },
 
-  // Loyalty CTA
-  loyaltyCta: {
+  // ── Lightbox ─────────────────────────────────────────────────────────────────
+  lightboxBg: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.95)",
+    justifyContent: "center",
+  },
+  lightboxClose: {
+    position: "absolute",
+    top: 52,
+    right: 20,
+    zIndex: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lightboxCloseText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  lightboxSlide: {
+    width: SCREEN_W,
+    flex: 1,
+    justifyContent: "center",
+  },
+  lightboxImage: {
+    width: SCREEN_W,
+    height: SCREEN_W,
+  },
+
+  // ── Login CTA ────────────────────────────────────────────────────────────────
+  loginCta: {
     marginHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 24,
     backgroundColor: "#0f1a0f",
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
     borderColor: "#22C55E",
   },
-  loyaltyTitle: {
+  loginCtaTitle: {
     color: "#22C55E",
     fontWeight: "700",
     fontSize: 15,
     marginBottom: 4,
   },
-  loyaltySubtitle: {
+  loginCtaSubtitle: {
     color: "#9CA3AF",
     fontSize: 13,
     marginBottom: 12,
+    lineHeight: 18,
   },
-  loyaltyButtons: {
+  loginCtaButtons: {
     flexDirection: "row",
     gap: 10,
   },
-  loyaltyButtonPrimary: {
+  loginCtaBtnPrimary: {
     flex: 1,
     backgroundColor: "#22C55E",
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: "center",
   },
-  loyaltyButtonPrimaryText: {
+  loginCtaBtnPrimaryText: {
     color: "#000",
     fontWeight: "700",
     fontSize: 13,
   },
-  loyaltyButtonSecondary: {
+  loginCtaBtnSecondary: {
     flex: 1,
     borderRadius: 10,
     paddingVertical: 10,
@@ -435,164 +631,122 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#374151",
   },
-  loyaltyButtonSecondaryText: {
+  loginCtaBtnSecondaryText: {
     color: "#9CA3AF",
     fontSize: 13,
   },
 
-  // Sections
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    marginBottom: 12,
+  // ── Agendar ──────────────────────────────────────────────────────────────────
+  bookSection: {
+    marginHorizontal: 20,
+    marginBottom: 28,
+    backgroundColor: "#111827",
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#EAB308",
   },
   sectionTitle: {
     color: "#fff",
     fontWeight: "700",
     fontSize: 18,
+    marginBottom: 4,
   },
-  seeAll: {
-    color: "#EAB308",
-    fontSize: 14,
-  },
-
-  // Service card
-  serviceCard: {
-    width: 168,
-    backgroundColor: "#111827",
-    borderRadius: 16,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#1F2937",
-  },
-  serviceCardImage: {
-    width: "100%",
-    height: 108,
-  },
-  serviceCardPlaceholder: {
-    width: "100%",
-    height: 108,
-    backgroundColor: "#1F2937",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  serviceCardInfo: {
-    padding: 12,
-    gap: 4,
-  },
-  serviceCardName: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 14,
+  bookSubtitle: {
+    color: "#6B7280",
+    fontSize: 13,
+    marginBottom: 16,
     lineHeight: 18,
   },
-  starRow: {
-    flexDirection: "row",
+  bookButton: {
+    backgroundColor: "#EAB308",
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: "center",
-    gap: 1,
-    marginTop: 2,
   },
-  star: {
+  bookButtonText: {
+    color: "#000",
+    fontWeight: "800",
+    fontSize: 16,
+    letterSpacing: 0.3,
+  },
+
+  // ── Avaliações ───────────────────────────────────────────────────────────────
+  reviewsSection: {
+    marginBottom: 28,
+    paddingHorizontal: 20,
+  },
+  starsRow: {
+    flexDirection: "row",
+    gap: 2,
+    marginBottom: 8,
+  },
+  reviewCard: {
+    width: 220,
+    backgroundColor: "#111827",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#1F2937",
+    gap: 6,
+  },
+  reviewComment: {
+    color: "#D1D5DB",
     fontSize: 13,
-    lineHeight: 16,
+    lineHeight: 19,
+    fontStyle: "italic",
   },
-  starLabel: {
-    color: "#9CA3AF",
-    fontSize: 11,
-    marginLeft: 3,
-  },
-  noReviews: {
-    color: "#4B5563",
-    fontSize: 11,
-    marginTop: 2,
-  },
-  serviceCardFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  reviewFooter: {
     marginTop: 4,
+    gap: 2,
   },
-  serviceCardPrice: {
+  reviewClient: {
     color: "#EAB308",
     fontWeight: "700",
-    fontSize: 14,
+    fontSize: 12,
   },
-  serviceCardDuration: {
+  reviewService: {
     color: "#6B7280",
     fontSize: 11,
   },
 
-  // Product card (horizontal)
-  productCard: {
-    width: 150,
-    backgroundColor: "#111827",
-    borderRadius: 16,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#1F2937",
-  },
-  productCardImage: {
-    width: "100%",
-    height: 110,
-  },
-  productCardPlaceholder: {
-    width: "100%",
-    height: 110,
-    backgroundColor: "#1F2937",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  productCardInfo: {
-    padding: 10,
-  },
-  productCardName: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  productCardPrice: {
-    color: "#EAB308",
-    fontWeight: "700",
-    fontSize: 13,
-    marginTop: 4,
-  },
-
-  // Find us
+  // ── Nos Encontre ─────────────────────────────────────────────────────────────
   findUsSection: {
     paddingHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 8,
     gap: 12,
   },
-  findUsRow: {
-    flexDirection: "row",
-    gap: 12,
+  findUsGrid: {
+    gap: 10,
     marginTop: 12,
   },
+  findUsCardWhatsapp: {
+    backgroundColor: "#0a1a0e",
+    borderRadius: 14,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#25D366",
+  },
   findUsCardInstagram: {
-    flex: 1,
     backgroundColor: "#1a0a1a",
     borderRadius: 14,
     padding: 14,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
     borderWidth: 1,
     borderColor: "#7C3AED",
   },
   findUsCardMaps: {
-    flex: 1,
     backgroundColor: "#0a1a0a",
     borderRadius: 14,
     padding: 14,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 12,
     borderWidth: 1,
     borderColor: "#16A34A",
   },
@@ -602,11 +756,11 @@ const styles = StyleSheet.create({
   findUsCardTitle: {
     color: "#fff",
     fontWeight: "700",
-    fontSize: 13,
+    fontSize: 14,
   },
-  findUsCardHandle: {
+  findUsCardSub: {
     color: "#9CA3AF",
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 2,
   },
 });
