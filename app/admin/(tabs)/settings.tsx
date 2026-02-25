@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -24,6 +25,7 @@ const THEME_OPTIONS: { key: ThemeOption; label: string; icon: string; descriptio
 
 export default function SettingsScreen() {
   const tabBarHeight = useTabBarHeight();
+  const router = useRouter();
   const { setColorScheme } = useThemeContext();
   const [themeOption, setThemeOption] = useState<ThemeOption>("system");
 
@@ -85,6 +87,30 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Página Pública */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <IconSymbol name="globe" size={18} color="#C9A84C" />
+            <Text style={styles.sectionTitle}>Página Pública</Text>
+          </View>
+          <Text style={styles.sectionSubtitle}>Personalize a aparência da sua página pública online.</Text>
+          <Pressable
+            style={({ pressed }) => [styles.linkCard, pressed && { opacity: 0.7 }]}
+            onPress={() => router.push("/admin/page-appearance" as any)}
+          >
+            <View style={styles.linkCardLeft}>
+              <View style={styles.linkIconBox}>
+                <IconSymbol name="paintbrush.fill" size={18} color="#C9A84C" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.linkCardTitle}>Aparência da Página Pública</Text>
+                <Text style={styles.linkCardSub}>Cor primária, banner e identidade visual</Text>
+              </View>
+            </View>
+            <IconSymbol name="chevron.right" size={16} color="#555" />
+          </Pressable>
+        </View>
+
         {/* Versão */}
         <View style={styles.versionCard}>
           <IconSymbol name="info.circle.fill" size={16} color="#555" />
@@ -112,4 +138,9 @@ const styles = StyleSheet.create({
   themeCheck: { width: 24, height: 24, borderRadius: 12, backgroundColor: "#0A0A0A33", justifyContent: "center", alignItems: "center" },
   versionCard: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 20 },
   versionText: { fontSize: 12, color: "#444" },
+  linkCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#1A1A1A", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#2A2A2A" },
+  linkCardLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  linkIconBox: { width: 40, height: 40, borderRadius: 10, backgroundColor: "#C9A84C22", alignItems: "center", justifyContent: "center" },
+  linkCardTitle: { fontSize: 14, fontWeight: "700", color: "#F5F5F0" },
+  linkCardSub: { fontSize: 12, color: "#888880", marginTop: 2 },
 });

@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerMercadoPagoRoutes } from "../mp-routes";
 import { registerSuperAdminRoutes } from "../superadmin-routes";
 import { registerPublicRoutes } from "../public-routes";
+import { registerAdminRoutes } from "../admin-routes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 
@@ -60,6 +61,7 @@ async function startServer() {
   registerOAuthRoutes(app);
   registerMercadoPagoRoutes(app);
   registerSuperAdminRoutes(app);
+  registerAdminRoutes(app);
   registerPublicRoutes(app);
 
   app.get("/api/health", (_req, res) => {

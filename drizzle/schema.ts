@@ -285,6 +285,8 @@ export const shopSettings = mysqlTable("shop_settings", {
   googleMapsUrl: text("googleMapsUrl"),
   pixKey: varchar("pixKey", { length: 255 }),
   galleryUrls: text("galleryUrls"),
+  primaryColor: varchar("primaryColor", { length: 20 }).default("#C9A84C"),
+  bannerUrl: text("bannerUrl"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 // ─── Tokens de Recuperação de Senha ────────────────────────────────────────

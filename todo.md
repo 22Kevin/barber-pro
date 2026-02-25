@@ -664,3 +664,55 @@
 ## Limite de Barbeiros por Plano (v6.3)
 - [x] Validação no endpoint barber.create: Solo ≤ 1, Equipe ≤ 5, Estúdio = ilimitado
 - [x] Mensagem de erro clara quando o limite é atingido
+
+## Fase 4 Web — Painel Admin Web (v6.4)
+- [ ] Rota /admin/login — autenticação com email/senha do barbeiro (super_admin)
+- [ ] Rota /admin — dashboard com métricas do dia (agendamentos, faturamento, clientes)
+- [ ] Rota /admin/agenda — agenda do dia com lista de agendamentos e status
+- [ ] Rota /admin/clientes — lista de clientes com busca e histórico
+- [ ] Rota /admin/servicos — gestão de serviços (listar, ativar/desativar)
+- [ ] Rota /admin/financeiro — resumo financeiro mensal com receitas e despesas
+- [ ] Rota /admin/configuracoes — configurações da barbearia (nome, telefone, horários)
+- [ ] Navegação lateral com menu e logout
+
+## Fase 5 Web — Personalização Visual (v6.4)
+- [ ] Adicionar campos primaryColor e bannerUrl ao schema shopSettings
+- [ ] Migração de banco de dados para novos campos
+- [ ] Tela de personalização no app (Configurações → Aparência da Página Pública)
+- [ ] Aplicar primaryColor e bannerUrl na página pública de cada barbearia
+
+## Fase 6 Web — Agendamento Online Completo (v6.4)
+- [ ] Página de login do cliente na página pública (/pub/:slug/login)
+- [ ] Consulta de horários disponíveis em tempo real via API
+- [ ] Criação de agendamento pelo cliente logado
+- [ ] Confirmação de agendamento com mensagem WhatsApp
+
+## Fase 4 Web — Painel Admin (v6.4)
+
+- [x] Painel web admin (/admin) com autenticação por sessão (barbeiro/admin)
+- [x] Dashboard admin web: agendamentos do dia, clientes, serviços, financeiro
+- [x] Agenda semanal no painel web admin
+- [x] Gestão de clientes no painel web admin
+- [x] Relatórios financeiros no painel web admin
+
+## Fase 5 Web — Personalização Visual (v6.4)
+
+- [x] Campo primaryColor no schema shopSettings (migração aplicada)
+- [x] Campo bannerUrl no schema shopSettings (migração aplicada)
+- [x] Endpoint settings.update aceita primaryColor e bannerUrl
+- [x] Tela de personalização visual no app (page-appearance.tsx)
+- [x] Link para tela de personalização na tela de configurações
+- [x] Página pública usa primaryColor do tenant (não mais hardcoded)
+
+## Fase 6 Web — Agendamento Online Completo (v6.4)
+
+- [x] Endpoint REST GET /pub-api/slots: retorna horários disponíveis em tempo real
+- [x] Endpoint REST POST /pub-api/login: autentica cliente com email/senha
+- [x] Endpoint REST POST /pub-api/register: cria conta de cliente
+- [x] Endpoint REST POST /pub-api/book: cria agendamento e notifica barbeiro
+- [x] Página de agendamento com seleção de horário interativa (JavaScript)
+- [x] Página de login do cliente (/pub/:slug/login)
+- [x] Página de cadastro do cliente (/pub/:slug/cadastro)
+- [x] Logout do cliente (/pub/:slug/logout)
+- [x] Sessão do cliente via cookie (7 dias)
+- [x] Pré-preenchimento de campos via query string após login
