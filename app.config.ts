@@ -9,7 +9,7 @@ const schemeFromBundleId = `manus${timestamp}`;
 const env = {
   appName: "Barber Pro",
   appSlug: "barber_app",
-  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/NpmDpDCWGUVnfftl.png",
+  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/FgpHiLApsPbUWFQS.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
