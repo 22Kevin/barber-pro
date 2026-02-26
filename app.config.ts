@@ -9,7 +9,7 @@ const schemeFromBundleId = `manus${timestamp}`;
 const env = {
   appName: "Barber Pro",
   appSlug: "barber_app",
-  logoUrl: "https://private-us-east-1.manuscdn.com/sessionFile/4hYWl403sUWuLZe3Q6D4lv/sandbox/2FSZI6NQh6VJ6weakU9Y4V-img-1_1771809092000_na1fn_YmFyYmVyLXByby1pY29u.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvNGhZV2w0MDNzVVd1TFplM1E2RDRsdi9zYW5kYm94LzJGU1pJNk5RaDZWSjZ3ZWFrVTlZNFYtaW1nLTFfMTc3MTgwOTA5MjAwMF9uYTFmbl9ZbUZ5WW1WeUxYQnlieTFwWTI5dS5wbmc~eC1vc3MtcHJvY2Vzcz1pbWFnZS9yZXNpemUsd18xOTIwLGhfMTkyMC9mb3JtYXQsd2VicC9xdWFsaXR5LHFfODAiLCJDb25kaXRpb24iOnsiRGF0ZUxlc3NUaGFuIjp7IkFXUzpFcG9jaFRpbWUiOjE3OTg3NjE2MDB9fX1dfQ__&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=Q-XgQbNGEI1qVs7kCGj3OFimcmdIOiwBhxtFial3D~H6r6C24ss~nqqEbXknudyic3WyA9wlxeB7ii6n4BN15SQTWhUSz3GRudXc5eTTOr7XKvdPUIBh-tF-4bHefbY~zRQAo7DaUCZUEVTazdUKc2PxEttPR5wBEMxumoXbx3E1tL1CFnXI7yVijqR9ivw6AzH63CKdaLNgpOab9mcVyzPSt5Fs3DrF8xD5ypZQAmHCyiVAgVnQ0w95EunQdoGf~yXZZXm5lwe-mNlSguDUH82n6SI3QbcxdyHybyR-iD8w6AYcq51C3TxfI8xSDvln75PFmFpTwPjHhNMpJZDfHg__",
+  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/pnlpDobzMvXKjnHx.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
