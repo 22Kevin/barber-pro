@@ -300,6 +300,7 @@ function loginPage(error = false): string {
       <input type="password" name="password" placeholder="••••••••" required />
       <button type="submit">Entrar</button>
     </form>
+    <a href="/admin/forgot-password" class="back" style="margin-top:14px;color:#C9A84C">Esqueci minha senha</a>
     <a href="/" class="back">← Voltar ao app</a>
   </div>
 </body>
@@ -1437,6 +1438,140 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/logout", (_req: Request, res: Response) => {
     res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=; Path=/admin; HttpOnly; Max-Age=0`);
     res.redirect("/admin/login");
+  });
+
+  // ─── Recuperação de Senha ────────────────────────────────────────────────────
+  // GET /admin/forgot-password
+  app.get("/admin/forgot-password", (_req: Request, res: Response) => {
+    const sent = _req.query.sent === "1";
+    const error = _req.query.error === "1";
+    res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recuperar Senha — Barber Pro</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0C0C0C; color: #F0EEE8; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #161616; border: 1px solid #2A2A2A; border-radius: 20px; padding: 40px; width: 100%; max-width: 380px; }
+    .logo { font-size: 22px; font-weight: 900; color: #C9A84C; letter-spacing: 2px; text-align: center; margin-bottom: 6px; }
+    .subtitle { font-size: 13px; color: #888880; text-align: center; margin-bottom: 8px; }
+    .desc { font-size: 13px; color: #9BA1A6; text-align: center; margin-bottom: 28px; line-height: 1.6; }
+    label { display: block; font-size: 12px; color: #888880; margin-bottom: 6px; }
+    input { width: 100%; padding: 12px 14px; background: #0C0C0C; border: 1px solid #2A2A2A; border-radius: 10px; color: #F0EEE8; font-size: 14px; margin-bottom: 16px; }
+    input:focus { outline: none; border-color: #C9A84C; }
+    button { width: 100%; padding: 14px; background: #C9A84C; color: #0C0C0C; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 8px; }
+    button:hover { opacity: 0.9; }
+    .error { background: #F8717122; border: 1px solid #F8717144; color: #F87171; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+    .success { background: #22C55E22; border: 1px solid #22C55E44; color: #4ADE80; padding: 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; text-align: center; line-height: 1.6; }
+    .back { display: block; text-align: center; margin-top: 20px; font-size: 12px; color: #888880; text-decoration: none; }
+    .back:hover { color: #C9A84C; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">BARBER PRO</div>
+    <div class="subtitle">Recuperar Senha</div>
+    ${sent ? `<div class="success">✅ E-mail enviado!<br>Verifique sua caixa de entrada e use o código para redefinir sua senha.<br><small style="color:#9BA1A6">(Verifique também a pasta de spam)</small></div>` : ""}
+    ${error ? `<div class="error">E-mail não encontrado. Verifique e tente novamente.</div>` : ""}
+    ${!sent ? `
+    <div class="desc">Digite o e-mail da sua conta e enviaremos um código para redefinir sua senha.</div>
+    <form method="POST" action="/admin/forgot-password">
+      <label>E-mail da conta</label>
+      <input type="email" name="email" placeholder="seu@email.com" required autofocus />
+      <button type="submit">Enviar código →</button>
+    </form>` : `
+    <a href="/admin/reset-password" style="display:block;text-align:center;background:#C9A84C;color:#0C0C0C;font-weight:800;padding:14px;border-radius:12px;text-decoration:none;margin-top:8px">Inserir código →</a>`}
+    <a href="/admin/login" class="back">← Voltar ao login</a>
+  </div>
+</body>
+</html>`);
+  });
+
+  // POST /admin/forgot-password
+  app.post("/admin/forgot-password", async (req: Request, res: Response) => {
+    const { email } = req.body ?? {};
+    if (!email) return res.redirect("/admin/forgot-password?error=1");
+    const barber = await db.getBarberByEmail(email);
+    if (!barber) return res.redirect("/admin/forgot-password?error=1");
+    try {
+      const token = await db.createPasswordResetToken(email);
+      const { sendPasswordResetEmail } = await import("./email");
+      const baseUrl = process.env.PUBLIC_BASE_URL ?? `${req.protocol}://${req.get("host")}`;
+      await sendPasswordResetEmail({ toEmail: email, token, baseUrl });
+    } catch (err) {
+      console.error("[reset] Erro ao criar token:", err);
+    }
+    res.redirect("/admin/forgot-password?sent=1");
+  });
+
+  // GET /admin/reset-password
+  app.get("/admin/reset-password", (req: Request, res: Response) => {
+    const email = (req.query.email as string) ?? "";
+    const token = (req.query.token as string) ?? "";
+    const error = req.query.error === "1";
+    res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nova Senha — Barber Pro</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0C0C0C; color: #F0EEE8; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #161616; border: 1px solid #2A2A2A; border-radius: 20px; padding: 40px; width: 100%; max-width: 380px; }
+    .logo { font-size: 22px; font-weight: 900; color: #C9A84C; letter-spacing: 2px; text-align: center; margin-bottom: 6px; }
+    .subtitle { font-size: 13px; color: #888880; text-align: center; margin-bottom: 28px; }
+    label { display: block; font-size: 12px; color: #888880; margin-bottom: 6px; }
+    input { width: 100%; padding: 12px 14px; background: #0C0C0C; border: 1px solid #2A2A2A; border-radius: 10px; color: #F0EEE8; font-size: 14px; margin-bottom: 16px; }
+    input:focus { outline: none; border-color: #C9A84C; }
+    button { width: 100%; padding: 14px; background: #C9A84C; color: #0C0C0C; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 8px; }
+    button:hover { opacity: 0.9; }
+    .error { background: #F8717122; border: 1px solid #F8717144; color: #F87171; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+    .back { display: block; text-align: center; margin-top: 20px; font-size: 12px; color: #888880; text-decoration: none; }
+    .back:hover { color: #C9A84C; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">BARBER PRO</div>
+    <div class="subtitle">Criar nova senha</div>
+    ${error ? `<div class="error">Código inválido ou expirado. <a href="/admin/forgot-password" style="color:#C9A84C">Solicitar novo código</a>.</div>` : ""}
+    <form method="POST" action="/admin/reset-password">
+      <label>E-mail</label>
+      <input type="email" name="email" value="${esc(email)}" placeholder="seu@email.com" required />
+      <label>Código de verificação</label>
+      <input type="text" name="token" value="${esc(token)}" placeholder="000000" maxlength="6" required style="letter-spacing:4px;font-size:20px;font-weight:700" />
+      <label>Nova senha</label>
+      <input type="password" name="password" placeholder="Mínimo 6 caracteres" minlength="6" required />
+      <label>Confirmar nova senha</label>
+      <input type="password" name="confirm" placeholder="Repita a senha" minlength="6" required />
+      <button type="submit">Salvar nova senha →</button>
+    </form>
+    <a href="/admin/login" class="back">← Voltar ao login</a>
+  </div>
+</body>
+</html>`);
+  });
+
+  // POST /admin/reset-password
+  app.post("/admin/reset-password", async (req: Request, res: Response) => {
+    const { email, token, password, confirm } = req.body ?? {};
+    if (!email || !token || !password || password !== confirm || password.length < 6) {
+      return res.redirect(`/admin/reset-password?email=${encodeURIComponent(email ?? "")}&token=${encodeURIComponent(token ?? "")}&error=1`);
+    }
+    const valid = await db.consumePasswordResetToken(email, token);
+    if (!valid) {
+      return res.redirect(`/admin/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}&error=1`);
+    }
+    let bcrypt: any;
+    try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
+    const hash = bcrypt ? await bcrypt.hash(password, 10) : password;
+    const barber = await db.getBarberByEmail(email);
+    if (!barber) return res.redirect("/admin/login?error=1");
+    await db.updateBarber(barber.id, { passwordHash: hash });
+    res.redirect("/admin/login?reset=1");
   });
 
   // POST /admin/configuracoes (salvar)

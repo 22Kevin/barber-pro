@@ -348,3 +348,67 @@ export async function sendReviewRequestEmail(opts: {
     console.error("[email] Erro ao enviar e-mail de avaliação:", err);
   }
 }
+
+// ─── E-mail de Recuperação de Senha ──────────────────────────────────────────
+export async function sendPasswordResetEmail(opts: {
+  toEmail: string;
+  token: string;
+  baseUrl: string;
+}): Promise<void> {
+  const transporter = createTransporter();
+  if (!transporter) {
+    console.log("[email] SMTP não configurado — e-mail de recuperação não enviado.");
+    return;
+  }
+  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+  const resetUrl = `${opts.baseUrl}/admin/reset-password?email=${encodeURIComponent(opts.toEmail)}&token=${opts.token}`;
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recuperação de Senha — Barber Pro</title>
+</head>
+<body style="margin:0;padding:0;background:#0C0C0C;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:560px;margin:32px auto;background:#161616;border-radius:20px;overflow:hidden;border:1px solid #2A2A2A">
+    <div style="background:#C9A84C;padding:28px 40px;text-align:center">
+      <div style="font-size:22px;font-weight:900;color:#0A0A0A;letter-spacing:2px">BARBER PRO</div>
+      <div style="font-size:13px;color:#0A0A0A99;margin-top:4px">Recuperação de Senha</div>
+    </div>
+    <div style="padding:36px 40px">
+      <div style="font-size:22px;font-weight:800;color:#F0EEE8;margin-bottom:12px">Redefinir sua senha 🔑</div>
+      <div style="font-size:15px;color:#9BA1A6;margin-bottom:28px">
+        Recebemos uma solicitação para redefinir a senha da sua conta no Barber Pro.<br><br>
+        Use o código abaixo ou clique no botão para criar uma nova senha. O código expira em <strong style="color:#C9A84C">15 minutos</strong>.
+      </div>
+      <div style="background:#1E1E1E;border-radius:16px;padding:24px;text-align:center;margin-bottom:28px;border:1px solid #2A2A2A">
+        <div style="font-size:13px;color:#9BA1A6;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Código de verificação</div>
+        <div style="font-size:40px;font-weight:900;color:#C9A84C;letter-spacing:8px">${opts.token}</div>
+      </div>
+      <div style="text-align:center;margin-bottom:28px">
+        <a href="${resetUrl}" style="display:inline-block;background:#C9A84C;color:#0A0A0A;font-size:14px;font-weight:800;padding:14px 32px;border-radius:12px;text-decoration:none">
+          Redefinir minha senha →
+        </a>
+      </div>
+      <div style="font-size:13px;color:#555550;text-align:center">
+        Se você não solicitou a recuperação de senha, ignore este e-mail. Sua senha permanece a mesma.
+      </div>
+    </div>
+    <div style="background:#0C0C0C;padding:16px 40px;text-align:center;border-top:1px solid #2A2A2A">
+      <div style="font-size:11px;color:#555550">Barber Pro — Sistema de Gestão para Barbearias</div>
+    </div>
+  </div>
+</body>
+</html>`;
+  try {
+    await transporter.sendMail({
+      from: `"Barber Pro" <${from}>`,
+      to: opts.toEmail,
+      subject: "🔑 Recuperação de senha — Barber Pro",
+      html,
+    });
+    console.log(`[email] E-mail de recuperação enviado para ${opts.toEmail}`);
+  } catch (err) {
+    console.error("[email] Erro ao enviar e-mail de recuperação:", err);
+  }
+}
