@@ -51,6 +51,8 @@
     .nav-links a { font-size: 14px; font-weight: 500; color: var(--gray-light); text-decoration: none; transition: color 0.2s; }
     .nav-links a:hover { color: var(--gold); }
     .nav-cta { background: linear-gradient(135deg, var(--gold-light), var(--gold)); color: var(--black) !important; padding: 10px 24px; border-radius: 8px; font-weight: 700 !important; font-size: 14px; text-decoration: none; }
+    .nav-login { border: 1px solid rgba(201,168,76,0.4) !important; color: var(--gold) !important; padding: 9px 20px; border-radius: 8px; font-weight: 600 !important; font-size: 14px; text-decoration: none; transition: all 0.2s !important; }
+    .nav-login:hover { background: rgba(201,168,76,0.1) !important; border-color: var(--gold) !important; }
 
     /* HERO — imagem de fundo */
     #hero {
@@ -276,6 +278,106 @@
     .modal-success-link { display: inline-block; background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.3); border-radius: 8px; padding: 10px 20px; font-size: 14px; color: var(--gold); font-family: monospace; margin-bottom: 24px; word-break: break-all; }
     .modal-form-content { }
 
+    /* MODAL DE LOGIN */
+    .login-modal-overlay {
+      position: fixed; inset: 0; z-index: 2001;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .login-modal-overlay.open { opacity: 1; pointer-events: all; }
+    .login-modal-box {
+      background: var(--black-3); border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 440px;
+      position: relative; transform: translateY(20px); transition: transform 0.3s;
+    }
+    .login-modal-overlay.open .login-modal-box { transform: translateY(0); }
+    .login-error {
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #f87171;
+      margin-bottom: 20px; display: none;
+    }
+    .login-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+    .login-divider-line { flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+    .login-divider-text { font-size: 12px; color: var(--gray); }
+
+    /* SEÇÃO DEMO */
+    #demo { background: var(--black-2); padding: 100px 0; overflow: hidden; }
+    .demo-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+    .demo-mockup {
+      background: var(--black-3); border: 1px solid rgba(201,168,76,0.15);
+      border-radius: 16px; overflow: hidden; box-shadow: 0 40px 80px rgba(0,0,0,0.6);
+      position: relative;
+    }
+    .demo-mockup-bar {
+      background: var(--black-4); padding: 12px 16px;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .demo-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .demo-dot-r { background: #ff5f57; }
+    .demo-dot-y { background: #febc2e; }
+    .demo-dot-g { background: #28c840; }
+    .demo-url-bar {
+      flex: 1; background: rgba(255,255,255,0.04); border-radius: 6px;
+      padding: 4px 12px; font-size: 11px; color: var(--gray); font-family: monospace;
+      margin-left: 8px;
+    }
+    .demo-content { padding: 20px; }
+    /* Stat cards animados */
+    .demo-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+    .demo-stat-card {
+      background: var(--black-4); border-radius: 10px; padding: 14px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .demo-stat-label { font-size: 10px; color: var(--gray); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .demo-stat-val { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--gold); }
+    .demo-stat-change { font-size: 10px; color: #4ade80; margin-top: 2px; }
+    /* Agenda do dia */
+    .demo-agenda-title { font-size: 11px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .demo-appt {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--black-4); border-radius: 8px; padding: 10px 12px;
+      margin-bottom: 8px; border-left: 3px solid var(--gold);
+      opacity: 0; transform: translateX(-10px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .demo-appt.visible { opacity: 1; transform: translateX(0); }
+    .demo-appt-time { font-size: 11px; color: var(--gold); font-weight: 700; min-width: 40px; }
+    .demo-appt-info { flex: 1; }
+    .demo-appt-name { font-size: 12px; font-weight: 600; }
+    .demo-appt-service { font-size: 11px; color: var(--gray); }
+    .demo-appt-status {
+      font-size: 10px; padding: 3px 8px; border-radius: 100px; font-weight: 600;
+    }
+    .demo-appt-status.confirmed { background: rgba(74,222,128,0.15); color: #4ade80; }
+    .demo-appt-status.pending { background: rgba(251,191,36,0.15); color: #fbbf24; }
+    /* Notificação animada */
+    .demo-notification {
+      position: absolute; top: 60px; right: -10px;
+      background: var(--black-2); border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 12px; padding: 12px 16px; width: 200px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      opacity: 0; transform: translateX(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    .demo-notification.visible { opacity: 1; transform: translateX(0); }
+    .demo-notif-title { font-size: 11px; font-weight: 700; margin-bottom: 4px; }
+    .demo-notif-body { font-size: 11px; color: var(--gray); line-height: 1.4; }
+    .demo-notif-icon { font-size: 20px; margin-bottom: 6px; }
+    /* Texto da seção demo */
+    .demo-feature-list { list-style: none; margin-top: 32px; }
+    .demo-feature-list li {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 15px; color: var(--gray-light);
+    }
+    .demo-feature-list li:last-child { border-bottom: none; }
+    .demo-feature-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .demo-feature-text strong { display: block; color: var(--white); font-size: 15px; margin-bottom: 2px; }
+    @media (max-width: 900px) { .demo-inner { grid-template-columns: 1fr; } }
+
     /* RESPONSIVE */
     @media (max-width: 1024px) {
       .features-grid { grid-template-columns: repeat(2, 1fr); }
@@ -311,6 +413,7 @@
       <li><a href="#planos">Planos</a></li>
       <li><a href="#faq">FAQ</a></li>
       <li><a href="#" class="nav-cta" onclick="openModal('Equipe', 'R$89'); return false;">Começar grátis</a></li>
+      <li><a href="#" class="nav-login" onclick="openLoginModal(); return false;">Entrar</a></li>
     </ul>
   </nav>
 
@@ -539,6 +642,122 @@
     </div>
   </section>
 
+  <!-- SEÇÃO DEMO -->
+  <section id="demo">
+    <div class="container">
+      <div class="demo-inner">
+        <!-- Mockup do painel -->
+        <div style="position:relative">
+          <div class="demo-mockup">
+            <div class="demo-mockup-bar">
+              <div class="demo-dot demo-dot-r"></div>
+              <div class="demo-dot demo-dot-y"></div>
+              <div class="demo-dot demo-dot-g"></div>
+              <div class="demo-url-bar">barberpro.app/admin</div>
+            </div>
+            <div class="demo-content">
+              <!-- Stats -->
+              <div class="demo-stats">
+                <div class="demo-stat-card">
+                  <div class="demo-stat-label">Hoje</div>
+                  <div class="demo-stat-val" id="demoStat1">0</div>
+                  <div class="demo-stat-change">↑ agendamentos</div>
+                </div>
+                <div class="demo-stat-card">
+                  <div class="demo-stat-label">Faturamento</div>
+                  <div class="demo-stat-val" id="demoStat2">R$0</div>
+                  <div class="demo-stat-change">↑ vs ontem</div>
+                </div>
+                <div class="demo-stat-card">
+                  <div class="demo-stat-label">Clientes</div>
+                  <div class="demo-stat-val" id="demoStat3">0</div>
+                  <div class="demo-stat-change">↑ novos hoje</div>
+                </div>
+              </div>
+              <!-- Agenda -->
+              <div class="demo-agenda-title">Agenda de hoje</div>
+              <div class="demo-appt" id="appt1">
+                <div class="demo-appt-time">09:00</div>
+                <div class="demo-appt-info">
+                  <div class="demo-appt-name">Carlos Silva</div>
+                  <div class="demo-appt-service">Corte + Barba &middot; R$65</div>
+                </div>
+                <div class="demo-appt-status confirmed">Confirmado</div>
+              </div>
+              <div class="demo-appt" id="appt2">
+                <div class="demo-appt-time">10:30</div>
+                <div class="demo-appt-info">
+                  <div class="demo-appt-name">Marcos Oliveira</div>
+                  <div class="demo-appt-service">Corte Degradê &middot; R$45</div>
+                </div>
+                <div class="demo-appt-status confirmed">Confirmado</div>
+              </div>
+              <div class="demo-appt" id="appt3">
+                <div class="demo-appt-time">11:00</div>
+                <div class="demo-appt-info">
+                  <div class="demo-appt-name">Pedro Alves</div>
+                  <div class="demo-appt-service">Barba &middot; R$35</div>
+                </div>
+                <div class="demo-appt-status pending">Pendente</div>
+              </div>
+              <div class="demo-appt" id="appt4">
+                <div class="demo-appt-time">14:00</div>
+                <div class="demo-appt-info">
+                  <div class="demo-appt-name">Lucas Ferreira</div>
+                  <div class="demo-appt-service">Corte Social &middot; R$40</div>
+                </div>
+                <div class="demo-appt-status confirmed">Confirmado</div>
+              </div>
+            </div>
+          </div>
+          <!-- Notificação flutuante -->
+          <div class="demo-notification" id="demoNotif">
+            <div class="demo-notif-icon">🔔</div>
+            <div class="demo-notif-title">Novo agendamento!</div>
+            <div class="demo-notif-body">João Souza agendou Corte + Barba para amanhã às 15:00</div>
+          </div>
+        </div>
+        <!-- Texto -->
+        <div>
+          <div class="section-label">Veja em ação</div>
+          <h2 class="section-title">Seu painel,<br/><span class="gold-text">simples assim.</span></h2>
+          <p class="section-sub">Tudo que você precisa para gerenciar sua barbearia em uma única tela. Acesse pelo celular ou computador, a qualquer hora.</p>
+          <ul class="demo-feature-list">
+            <li>
+              <span class="demo-feature-icon">📅</span>
+              <div class="demo-feature-text">
+                <strong>Agenda em tempo real</strong>
+                Visualize todos os agendamentos do dia. Novos pedidos aparecem instantaneamente.
+              </div>
+            </li>
+            <li>
+              <span class="demo-feature-icon">📲</span>
+              <div class="demo-feature-text">
+                <strong>Notificações instantâneas</strong>
+                Receba alertas push no celular a cada novo agendamento, cancelamento ou pagamento.
+              </div>
+            </li>
+            <li>
+              <span class="demo-feature-icon">💰</span>
+              <div class="demo-feature-text">
+                <strong>Financeiro no controle</strong>
+                Acompanhe o faturamento do dia, semana e mês com gráficos detalhados.
+              </div>
+            </li>
+            <li>
+              <span class="demo-feature-icon">✨</span>
+              <div class="demo-feature-text">
+                <strong>Pronto em 5 minutos</strong>
+                Configure sua barbearia agora e comece a receber agendamentos ainda hoje.
+              </div>
+            </li>
+          </ul>
+          <a href="#" class="btn-primary" style="margin-top:36px;display:inline-flex" onclick="openModal('Equipe', 'R$89'); return false;">Experimentar grátis →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="faq" class="section">
     <div class="container">
       <div style="text-align:center">
@@ -625,6 +844,33 @@
       </div>
     </div>
   </footer>
+
+  <!-- MODAL DE LOGIN -->
+  <div class="login-modal-overlay" id="loginModal" onclick="handleLoginOverlayClick(event)">
+    <div class="login-modal-box">
+      <button class="modal-close" onclick="closeLoginModal()">&#10005;</button>
+      <div class="modal-logo">
+        <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/KtacAshnHHXcsNrg.png" alt="Barber Pro" />
+        <span class="modal-logo-text">BARBER <span>PRO</span></span>
+      </div>
+      <h2 class="modal-title">Bem-vindo de volta</h2>
+      <p class="modal-sub">Acesse o painel da sua barbearia.</p>
+      <div class="login-error" id="loginError">E-mail ou senha incorretos. Verifique e tente novamente.</div>
+      <form method="POST" action="/admin/login" onsubmit="handleLoginSubmit(event)">
+        <div class="form-group">
+          <label class="form-label">E-mail</label>
+          <input type="email" class="form-input" name="email" id="loginEmail" placeholder="seu@email.com" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Senha</label>
+          <input type="password" class="form-input" name="password" id="loginPassword" placeholder="Sua senha" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn-submit" id="loginBtn">Entrar no painel &rarr;</button>
+      </form>
+      <div class="login-divider"><div class="login-divider-line"></div><div class="login-divider-text">ou</div><div class="login-divider-line"></div></div>
+      <p style="text-align:center;font-size:14px;color:var(--gray)">Não tem conta? <a href="#" onclick="closeLoginModal(); openModal('Equipe', 'R$89'); return false;" style="color:var(--gold-light);font-weight:600;text-decoration:none">Criar barbearia grátis</a></p>
+    </div>
+  </div>
 
   <!-- MODAL DE CADASTRO -->
   <div class="modal-overlay" id="signupModal" onclick="handleOverlayClick(event)">
@@ -922,13 +1168,87 @@
 
     function goToLogin() {
       closeModal();
-      // Redirecionar para o painel de login
-      window.location.href = 'https://3000-ij7sp94mctpcjw0w9i9s9-ea9c4082.us2.manus.computer/admin/login';
+      openLoginModal();
     }
 
-    // Fechar modal com ESC
+    // --- MODAL DE LOGIN ---
+    function openLoginModal() {
+      document.getElementById('loginModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+      document.getElementById('loginError').style.display = 'none';
+      document.getElementById('loginEmail').value = '';
+      document.getElementById('loginPassword').value = '';
+      setTimeout(function() { document.getElementById('loginEmail').focus(); }, 100);
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    function handleLoginOverlayClick(e) {
+      if (e.target === document.getElementById('loginModal')) closeLoginModal();
+    }
+
+    function handleLoginSubmit(e) {
+      // O form usa action="/admin/login" method="POST" — deixa o browser redirecionar nativamente.
+      // Apenas mostramos estado de loading.
+      var btn = document.getElementById('loginBtn');
+      btn.textContent = 'Entrando...';
+      btn.disabled = true;
+      // Se houver erro na URL após redirect, o servidor redireciona para /admin/login?error=1
+      // Mas como é um redirect nativo, o browser navega para lá — não precisamos tratar aqui.
+    }
+
+    // Verificar se veio de um redirect de erro de login
+    if (window.location.pathname === '/admin/login' && window.location.search.includes('error=1')) {
+      // Não estamos na landing page, mas por segurança:
+    }
+
+    // --- ANIMAÇÃO DA SEÇÃO DEMO ---
+    function animateCounter(el, target, prefix, duration) {
+      var start = 0;
+      var step = target / (duration / 30);
+      var timer = setInterval(function() {
+        start += step;
+        if (start >= target) { start = target; clearInterval(timer); }
+        el.textContent = prefix + Math.floor(start);
+      }, 30);
+    }
+
+    var demoAnimated = false;
+    var demoObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting && !demoAnimated) {
+          demoAnimated = true;
+          // Animar contadores
+          animateCounter(document.getElementById('demoStat1'), 12, '', 800);
+          animateCounter(document.getElementById('demoStat2'), 840, 'R$', 1000);
+          animateCounter(document.getElementById('demoStat3'), 5, '', 600);
+          // Animar agendamentos com delay
+          setTimeout(function() { document.getElementById('appt1').classList.add('visible'); }, 200);
+          setTimeout(function() { document.getElementById('appt2').classList.add('visible'); }, 450);
+          setTimeout(function() { document.getElementById('appt3').classList.add('visible'); }, 700);
+          setTimeout(function() { document.getElementById('appt4').classList.add('visible'); }, 950);
+          // Notificação flutuante
+          setTimeout(function() { document.getElementById('demoNotif').classList.add('visible'); }, 1400);
+          // Ocultar notificação após 4s e reaparecer em loop
+          setTimeout(function() {
+            setInterval(function() {
+              var notif = document.getElementById('demoNotif');
+              notif.classList.remove('visible');
+              setTimeout(function() { notif.classList.add('visible'); }, 2000);
+            }, 5000);
+          }, 5000);
+        }
+      });
+    }, { threshold: 0.2 });
+    var demoSection = document.getElementById('demo');
+    if (demoSection) demoObserver.observe(demoSection);
+
+    // Fechar modais com ESC
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeModal();
+      if (e.key === 'Escape') { closeModal(); closeLoginModal(); }
     });
 
     // Spin animation para loading
