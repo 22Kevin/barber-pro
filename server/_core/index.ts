@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import path from "path";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerMercadoPagoRoutes } from "../mp-routes";
@@ -64,6 +65,11 @@ async function startServer() {
   registerSuperAdminRoutes(app);
   registerAdminRoutes(app);
   registerPublicRoutes(app);
+
+  // Serve landing page at root and /landing
+  const landingPath = path.join(__dirname, "..", "landing", "index.html");
+  app.get("/", (_req, res) => res.sendFile(landingPath));
+  app.get("/landing", (_req, res) => res.sendFile(landingPath));
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
