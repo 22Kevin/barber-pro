@@ -854,3 +854,9 @@
 - [x] Hierarquia de acesso por role no drawer do admin: barber vê apenas Agenda/Clientes/Minhas Comissões, receptionist vê Agenda/Clientes/Serviços/Produtos, super_admin vê tudo
 - [x] Personalização visual da página pública: aplicar primaryColor e bannerUrl do banco em cada tenant
 - [x] Configuração SMTP e envio de e-mails transacionais (recuperação de senha, confirmação de agendamento)
+
+## Melhorias v6.9
+
+- [x] Tela de aniversariantes no admin (app e web): lista de clientes aniversariantes do mês com botão de mensagem WhatsApp
+- [x] Integração Mercado Pago: pagamento online via Pix/cartão no fluxo de agendamento da página pública com webhook de confirmação
+- [x] Página pública /status: status operacional do sistema para comunicar manutenções

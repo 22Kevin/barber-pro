@@ -14,6 +14,7 @@ import type { Express, Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import * as db from "./db";
 import { sendBookingConfirmationEmail, sendBarberNotificationEmail } from "./email";
+import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function escapeHtml(str: string | null | undefined): string {
@@ -331,8 +332,9 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
     try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
   }
 
+  const hasMp = !!(settings as any)?.mercadoPagoAccessToken;
   const servicesOptions = serviceList.map((s) =>
-    `<option value="${s.id}" data-duration="${s.durationMinutes}">${escapeHtml(s.name)} — ${formatPrice(s.price)} (${formatDuration(s.durationMinutes)})</option>`
+    `<option value="${s.id}" data-duration="${s.durationMinutes}" data-price="${s.price}">${escapeHtml(s.name)} — ${formatPrice(s.price)} (${formatDuration(s.durationMinutes)})</option>`
   ).join("");
   const barbersOptions = barberList.map((b) =>
     `<option value="${b.id}">${escapeHtml(b.name)}</option>`
@@ -349,6 +351,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
        </div>`;
 
   const loggedClientJson = loggedClient ? JSON.stringify(loggedClient) : "null";
+  const hasMpJson = JSON.stringify(hasMp);
 
   const body = `
     <div style="max-width:480px;margin:0 auto;padding:32px 24px">
@@ -478,6 +481,15 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         }
       }
 
+      var HAS_MP = ${hasMpJson};
+      var lastAppointmentId = null;
+      var lastServicePrice = null;
+
+      function getSelectedPrice() {
+        var opt = serviceSelect.options[serviceSelect.selectedIndex];
+        return opt ? parseFloat(opt.dataset.price || '0') : 0;
+      }
+
       async function confirmBooking() {
         if (!LOGGED_CLIENT || !selectedSlot || !serviceSelect.value) return;
         confirmBtn.disabled = true;
@@ -500,14 +512,110 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           });
           var data = await r.json();
           if (!r.ok) throw new Error(data.error || 'Erro ao confirmar agendamento');
-          successMsg.innerHTML = '✅ Agendamento confirmado!<br><strong>' + dateInput.value + ' às ' + selectedSlot.startTime + '</strong><br><br><a href="/pub/' + SLUG + '" style="color:var(--primary)">← Voltar para a página da barbearia</a>';
-          successMsg.style.display = 'block';
+          lastAppointmentId = data.id;
+          lastServicePrice = getSelectedPrice();
+          // Mostrar painel de pagamento ou mensagem de sucesso simples
           confirmBtn.style.display = 'none';
+          if (HAS_MP && lastServicePrice > 0) {
+            showPaymentPanel(data.id, lastServicePrice, dateInput.value, selectedSlot.startTime);
+          } else {
+            successMsg.innerHTML = '✅ Agendamento confirmado!<br><strong>' + dateInput.value + ' às ' + selectedSlot.startTime + '</strong><br><br><a href="/pub/' + SLUG + '" style="color:var(--primary)">← Voltar para a página da barbearia</a>';
+            successMsg.style.display = 'block';
+          }
         } catch(e) {
           errorMsg.textContent = e.message;
           errorMsg.style.display = 'block';
           confirmBtn.disabled = false;
           confirmBtn.textContent = 'Confirmar Agendamento';
+        }
+      }
+
+      function showPaymentPanel(appointmentId, price, date, time) {
+        var priceFormatted = 'R$ ' + price.toFixed(2).replace('.', ',');
+        successMsg.innerHTML = [
+          '<div style="text-align:center;margin-bottom:20px">',
+            '<div style="font-size:32px;margin-bottom:8px">✅</div>',
+            '<div style="font-size:16px;font-weight:800;color:#4ADE80">Agendamento confirmado!</div>',
+            '<div style="font-size:13px;color:var(--muted);margin-top:4px">' + date + ' às ' + time + '</div>',
+          '</div>',
+          '<div style="font-size:13px;color:var(--muted);margin-bottom:16px;text-align:center">Como deseja pagar?</div>',
+          '<div style="display:flex;flex-direction:column;gap:10px">',
+            '<button onclick="payOnline(' + appointmentId + ',' + price + ')" id="btn-pay-online"',
+              ' style="width:100%;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:800;border:none;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">',
+              '💳 Pagar Online (' + priceFormatted + ')',
+            '</button>',
+            '<button onclick="payPix(' + appointmentId + ',' + price + ')" id="btn-pay-pix"',
+              ' style="width:100%;padding:14px;background:var(--surface2);color:var(--text);font-size:15px;font-weight:700;border:1px solid var(--border);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">',
+              '📱 Pagar via Pix (' + priceFormatted + ')',
+            '</button>',
+            '<button onclick="payAtShop()"',
+              ' style="width:100%;padding:14px;background:transparent;color:var(--muted);font-size:14px;font-weight:600;border:1px solid var(--border);border-radius:12px;cursor:pointer">',
+              'Pagar na barbearia',
+            '</button>',
+          '</div>',
+          '<div id="payment-status" style="margin-top:14px;text-align:center;font-size:13px"></div>',
+        ].join('');
+        successMsg.style.display = 'block';
+      }
+
+      function payAtShop() {
+        successMsg.innerHTML = '✅ Agendamento confirmado!<br><strong>' + (lastAppointmentId ? '' : '') + '</strong><br><div style="font-size:13px;color:var(--muted);margin-top:8px">Você pagará na barbearia no dia do atendimento.</div><br><a href="/pub/' + SLUG + '" style="color:var(--primary)">← Voltar para a página da barbearia</a>';
+      }
+
+      async function payOnline(appointmentId, price) {
+        var btn = document.getElementById('btn-pay-online');
+        var status = document.getElementById('payment-status');
+        btn.disabled = true;
+        btn.textContent = 'Aguarde...';
+        status.textContent = '';
+        try {
+          var r = await fetch('/pub-api/mp-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: SLUG, appointmentId: appointmentId, price: price })
+          });
+          var data = await r.json();
+          if (!r.ok) throw new Error(data.error || 'Erro ao criar pagamento');
+          window.location.href = data.checkoutUrl;
+        } catch(e) {
+          status.style.color = '#F87171';
+          status.textContent = e.message;
+          btn.disabled = false;
+          btn.textContent = '💳 Pagar Online';
+        }
+      }
+
+      async function payPix(appointmentId, price) {
+        var btn = document.getElementById('btn-pay-pix');
+        var status = document.getElementById('payment-status');
+        btn.disabled = true;
+        btn.textContent = 'Gerando QR Code...';
+        status.textContent = '';
+        try {
+          var r = await fetch('/pub-api/pix-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: SLUG, appointmentId: appointmentId, price: price })
+          });
+          var data = await r.json();
+          if (!r.ok) throw new Error(data.error || 'Erro ao gerar Pix');
+          // Mostrar QR Code e código copia-e-cola
+          document.getElementById('payment-status').innerHTML = [
+            '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:20px;margin-top:8px">',
+              '<div style="font-size:13px;font-weight:700;margin-bottom:12px">📱 Pague via Pix</div>',
+              data.qrCodeBase64 ? '<img src="data:image/png;base64,' + data.qrCodeBase64 + '" style="width:180px;height:180px;display:block;margin:0 auto 12px" />' : '',
+              '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Código Pix (copia e cola):</div>',
+              '<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;word-break:break-all;color:var(--text);font-family:monospace">' + data.pixCode + '</div>',
+              '<button onclick="navigator.clipboard.writeText(\'' + data.pixCode.replace(/'/g, "\\'") + '\').then(function(){this.textContent=\'✅ Copiado!\';}).bind(this)" style="margin-top:10px;width:100%;padding:10px;background:var(--primary);color:#0A0A0A;font-weight:700;border:none;border-radius:10px;cursor:pointer;font-size:13px">Copiar código Pix</button>',
+              '<div style="font-size:11px;color:var(--muted);margin-top:10px">Após o pagamento, seu agendamento será confirmado automaticamente.</div>',
+            '</div>',
+          ].join('');
+          btn.style.display = 'none';
+        } catch(e) {
+          status.style.color = '#F87171';
+          status.textContent = e.message;
+          btn.disabled = false;
+          btn.textContent = '📱 Pagar via Pix';
         }
       }
 
@@ -1226,6 +1334,190 @@ export function registerPublicRoutes(app: Express): void {
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
+  });
+
+  // POST /pub-api/mp-checkout — Criar preferência Checkout Pro do Mercado Pago
+  app.post("/pub-api/mp-checkout", async (req: Request, res: Response) => {
+    try {
+      const { slug, appointmentId, price } = req.body;
+      if (!slug || !appointmentId || !price) { res.status(400).json({ error: "Dados incompletos" }); return; }
+      const tenant = await db.getTenantBySlug(slug);
+      if (!tenant) { res.status(404).json({ error: "Barbearia não encontrada" }); return; }
+      const settings = await db.getShopSettingsByTenantId(tenant.id);
+      const accessToken = (settings as any)?.mercadoPagoAccessToken;
+      if (!accessToken) { res.status(400).json({ error: "Pagamento online não configurado para esta barbearia" }); return; }
+      const appt = await db.getAppointmentById(parseInt(appointmentId));
+      if (!appt) { res.status(404).json({ error: "Agendamento não encontrado" }); return; }
+      const service = await db.getServiceById(appt.serviceId);
+      const client = await db.getClientById(appt.clientId);
+      const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://localhost:3000`;
+      const mpClient = new MercadoPagoConfig({ accessToken });
+      const preference = new Preference(mpClient);
+      const pref = await preference.create({
+        body: {
+          items: [{
+            id: String(appt.serviceId),
+            title: service?.name ?? "Serviço de Barbearia",
+            quantity: 1,
+            unit_price: parseFloat(String(price)),
+            currency_id: "BRL",
+          }],
+          payer: client?.email ? { email: client.email } : undefined,
+          back_urls: {
+            success: `${apiBaseUrl}/pub/${slug}/pagamento/sucesso`,
+            failure: `${apiBaseUrl}/pub/${slug}/pagamento/falha`,
+            pending: `${apiBaseUrl}/pub/${slug}/pagamento/pendente`,
+          },
+          auto_return: "approved",
+          external_reference: JSON.stringify({
+            appointmentId: parseInt(appointmentId),
+            clientId: appt.clientId,
+            barberId: appt.barberId,
+            serviceId: appt.serviceId,
+            servicePrice: parseFloat(String(price)),
+            date: appt.date,
+            startTime: appt.startTime,
+            slug,
+          }),
+          notification_url: `${apiBaseUrl}/api/mp/webhook`,
+        }
+      });
+      res.json({ checkoutUrl: pref.init_point ?? pref.sandbox_init_point });
+    } catch (e: any) {
+      console.error("[MP Checkout]", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /pub-api/pix-checkout — Criar pagamento Pix via Mercado Pago
+  app.post("/pub-api/pix-checkout", async (req: Request, res: Response) => {
+    try {
+      const { slug, appointmentId, price } = req.body;
+      if (!slug || !appointmentId || !price) { res.status(400).json({ error: "Dados incompletos" }); return; }
+      const tenant = await db.getTenantBySlug(slug);
+      if (!tenant) { res.status(404).json({ error: "Barbearia não encontrada" }); return; }
+      const settings = await db.getShopSettingsByTenantId(tenant.id);
+      const accessToken = (settings as any)?.mercadoPagoAccessToken;
+      if (!accessToken) { res.status(400).json({ error: "Pagamento online não configurado para esta barbearia" }); return; }
+      const appt = await db.getAppointmentById(parseInt(appointmentId));
+      if (!appt) { res.status(404).json({ error: "Agendamento não encontrado" }); return; }
+      const service = await db.getServiceById(appt.serviceId);
+      const client = await db.getClientById(appt.clientId);
+      const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://localhost:3000`;
+      const mpClient = new MercadoPagoConfig({ accessToken });
+      const payment = new Payment(mpClient);
+      const paymentData = await payment.create({
+        body: {
+          transaction_amount: parseFloat(String(price)),
+          description: service?.name ?? "Serviço de Barbearia",
+          payment_method_id: "pix",
+          payer: {
+            email: client?.email ?? "cliente@barberpro.com.br",
+            first_name: client?.name?.split(" ")[0] ?? "Cliente",
+            last_name: client?.name?.split(" ").slice(1).join(" ") || "Barber",
+          },
+          external_reference: JSON.stringify({
+            appointmentId: parseInt(appointmentId),
+            clientId: appt.clientId,
+            barberId: appt.barberId,
+            serviceId: appt.serviceId,
+            servicePrice: parseFloat(String(price)),
+            date: appt.date,
+            startTime: appt.startTime,
+            slug,
+          }),
+          notification_url: `${apiBaseUrl}/api/mp/webhook`,
+        }
+      });
+      const txInfo = (paymentData as any).point_of_interaction?.transaction_data;
+      res.json({
+        pixCode: txInfo?.qr_code ?? "",
+        qrCodeBase64: txInfo?.qr_code_base64 ?? "",
+        paymentId: paymentData.id,
+      });
+    } catch (e: any) {
+      console.error("[Pix Checkout]", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // GET /pub/:slug/pagamento/sucesso — Página de retorno após pagamento aprovado
+  app.get("/pub/:slug/pagamento/sucesso", async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    const paymentId = req.query.payment_id as string;
+    const tenant = await db.getTenantBySlug(slug);
+    const settings = tenant ? await db.getShopSettingsByTenantId(tenant.id) : null;
+    const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
+    const shopName = settings?.shopName ?? tenant?.name ?? "Barbearia";
+    // Processar pagamento aprovado usando as credenciais do tenant
+    if (paymentId && tenant) {
+      const accessToken = (settings as any)?.mercadoPagoAccessToken;
+      if (accessToken) {
+        try {
+          const mpClient = new MercadoPagoConfig({ accessToken });
+          const payment = new Payment(mpClient);
+          const paymentData = await payment.get({ id: paymentId });
+          if (paymentData.status === "approved" && paymentData.external_reference) {
+            const ref = JSON.parse(paymentData.external_reference) as any;
+            const service = await db.getServiceById(ref.serviceId);
+            const price = String(ref.servicePrice);
+            await db.createSale({
+              clientId: ref.clientId, barberId: ref.barberId, appointmentId: ref.appointmentId,
+              subtotal: price, discount: "0", total: price,
+              paymentMethod: "mercado_pago", paymentStatus: "paid",
+              mercadoPagoPaymentId: paymentId,
+              notes: `Pago via Mercado Pago (web). ID: ${paymentId}`,
+            } as any, [{ itemType: "service", itemId: ref.serviceId, itemName: service?.name ?? "Serviço", quantity: 1, unitPrice: price, total: price }]);
+            await db.updateAppointment(ref.appointmentId, { status: "confirmed" } as any);
+          }
+        } catch (err) { console.error("[MP success page]", err); }
+      }
+    }
+    const body = `
+      <div style="max-width:400px;margin:80px auto;padding:32px 24px;text-align:center">
+        <div style="font-size:64px;margin-bottom:16px">✅</div>
+        <div style="font-size:22px;font-weight:900;margin-bottom:8px">Pagamento confirmado!</div>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:32px">Seu agendamento está confirmado. Até logo!</div>
+        <a href="/pub/${slug}" style="display:inline-block;background:var(--primary);color:#0A0A0A;font-weight:800;padding:14px 32px;border-radius:50px;text-decoration:none;font-size:15px">← Voltar para ${escapeHtml(shopName)}</a>
+      </div>
+    `;
+    res.send(publicLayout(shopName, primaryColor, body));
+  });
+
+  // GET /pub/:slug/pagamento/falha — Página de retorno após falha no pagamento
+  app.get("/pub/:slug/pagamento/falha", async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    const tenant = await db.getTenantBySlug(slug);
+    const settings = tenant ? await db.getShopSettingsByTenantId(tenant.id) : null;
+    const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
+    const shopName = settings?.shopName ?? tenant?.name ?? "Barbearia";
+    const body = `
+      <div style="max-width:400px;margin:80px auto;padding:32px 24px;text-align:center">
+        <div style="font-size:64px;margin-bottom:16px">❌</div>
+        <div style="font-size:22px;font-weight:900;margin-bottom:8px">Pagamento não concluído</div>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:32px">Houve um problema com o pagamento. Tente novamente ou pague na barbearia.</div>
+        <a href="/pub/${slug}/agendar" style="display:inline-block;background:var(--primary);color:#0A0A0A;font-weight:800;padding:14px 32px;border-radius:50px;text-decoration:none;font-size:15px">Tentar novamente</a>
+      </div>
+    `;
+    res.send(publicLayout(shopName, primaryColor, body));
+  });
+
+  // GET /pub/:slug/pagamento/pendente — Página de retorno para pagamento pendente
+  app.get("/pub/:slug/pagamento/pendente", async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    const tenant = await db.getTenantBySlug(slug);
+    const settings = tenant ? await db.getShopSettingsByTenantId(tenant.id) : null;
+    const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
+    const shopName = settings?.shopName ?? tenant?.name ?? "Barbearia";
+    const body = `
+      <div style="max-width:400px;margin:80px auto;padding:32px 24px;text-align:center">
+        <div style="font-size:64px;margin-bottom:16px">⏳</div>
+        <div style="font-size:22px;font-weight:900;margin-bottom:8px">Pagamento em análise</div>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:32px">Seu pagamento está sendo processado. Você receberá uma confirmação em breve.</div>
+        <a href="/pub/${slug}" style="display:inline-block;background:var(--primary);color:#0A0A0A;font-weight:800;padding:14px 32px;border-radius:50px;text-decoration:none;font-size:15px">← Voltar para ${escapeHtml(shopName)}</a>
+      </div>
+    `;
+    res.send(publicLayout(shopName, primaryColor, body));
   });
 
   // Roteamento por subdomínio (produção: slug.barberpro.com.br)
