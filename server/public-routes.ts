@@ -634,8 +634,172 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
   res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body));
 }
 
-// ─── Registro das rotas ───────────────────────────────────────────────────────
-// ─── Página de Meus Agendamentos ───────────────────────────────────────────────
+// ─── // ─── Página de Avaliação Pós-Atendimento ────────────────────────────────────
+async function renderReviewPage(slug: string, appointmentIdStr: string, res: Response, req: Request) {
+  const appointmentId = parseInt(appointmentIdStr);
+  if (isNaN(appointmentId)) { res.status(400).send("ID de agendamento inválido."); return; }
+
+  const tenant = await db.getTenantBySlug(slug);
+  if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
+  const settings = await db.getShopSettingsByTenantId(tenant.id);
+  const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
+  const shopName = settings?.shopName ?? tenant.name;
+
+  // Verificar se o agendamento existe e está concluído
+  const appt = await db.getAppointmentById(appointmentId);
+  if (!appt) { res.status(404).send("Agendamento não encontrado."); return; }
+  if (appt.status !== "completed") {
+    const body = `
+      <div style="max-width:480px;margin:0 auto;padding:48px 24px;text-align:center">
+        <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+        <div style="font-size:18px;font-weight:800;margin-bottom:8px">Avaliação Indisponível</div>
+        <div style="font-size:14px;color:var(--muted)">Este agendamento ainda não foi concluído ou foi cancelado.</div>
+        <a href="/pub/${slug}" style="display:inline-block;margin-top:24px;background:var(--primary);color:#0A0A0A;font-weight:700;padding:12px 28px;border-radius:50px">Voltar</a>
+      </div>`;
+    res.send(publicLayout(shopName, primaryColor, body));
+    return;
+  }
+
+  // Verificar se já foi avaliado
+  const existingReview = await db.getReviewByAppointmentId(appointmentId);
+
+  // Buscar dados do serviço e barbeiro
+  const service = await db.getServiceById(appt.serviceId);
+  const barber = await db.getBarberById(appt.barberId);
+  const client = await db.getClientById(appt.clientId);
+
+  // Verificar rating pré-selecionado via query string (link do e-mail)
+  const preRating = req.query.rating ? parseInt(req.query.rating as string) : 0;
+
+  if (existingReview) {
+    // Já avaliado: mostrar agradecimento
+    const starsHtml = "★".repeat(existingReview.rating) + "☆".repeat(5 - existingReview.rating);
+    const body = `
+      <div style="max-width:480px;margin:0 auto;padding:48px 24px;text-align:center">
+        <div style="font-size:56px;margin-bottom:16px">🌟</div>
+        <div style="font-size:22px;font-weight:900;margin-bottom:8px">Obrigado pela avaliação!</div>
+        <div style="font-size:32px;color:#FBBF24;margin:16px 0">${starsHtml}</div>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:8px">Sua opinião é muito importante para nós.</div>
+        ${existingReview.comment ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin:20px 0;font-size:14px;font-style:italic;color:var(--muted)">"​${escapeHtml(existingReview.comment)}"​</div>` : ""}
+        <a href="/pub/${slug}" style="display:inline-block;margin-top:24px;background:var(--primary);color:#0A0A0A;font-weight:700;padding:12px 28px;border-radius:50px">Agendar novamente</a>
+      </div>`;
+    res.send(publicLayout(shopName, primaryColor, body));
+    return;
+  }
+
+  // Formatar data
+  const [year, month, day] = appt.date.split("-");
+  const dateStr = `${day}/${month}/${year}`;
+
+  const body = `
+    <div style="max-width:480px;margin:0 auto;padding:32px 24px">
+      <!-- Cabeçalho -->
+      <div style="text-align:center;margin-bottom:32px">
+        <div style="font-size:48px;margin-bottom:12px">✂️</div>
+        <div style="font-size:22px;font-weight:900;margin-bottom:6px">Como foi seu atendimento?</div>
+        <div style="font-size:14px;color:var(--muted)">Sua opinião ajuda outros clientes e melhora nosso serviço.</div>
+      </div>
+
+      <!-- Detalhes do atendimento -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:28px">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px;letter-spacing:0.5px">ATENDIMENTO</div>
+        <div style="font-size:16px;font-weight:800;margin-bottom:4px">${escapeHtml(service?.name ?? "Serviço")}</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:4px">com ${escapeHtml(barber?.name ?? "Profissional")}</div>
+        <div style="font-size:12px;color:var(--muted)">📅 ${dateStr} às ${appt.startTime.slice(0, 5)}</div>
+      </div>
+
+      <!-- Formulário de avaliação -->
+      <form id="reviewForm">
+        <input type="hidden" name="appointmentId" value="${appointmentId}" />
+        <input type="hidden" name="slug" value="${escapeHtml(slug)}" />
+
+        <!-- Seleção de estrelas -->
+        <div style="margin-bottom:24px">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:12px;letter-spacing:0.5px">SUA NOTA</div>
+          <div id="starContainer" style="display:flex;gap:8px;justify-content:center">
+            ${[1,2,3,4,5].map(n => `
+              <button type="button" onclick="selectStar(${n})" id="star${n}"
+                style="background:none;border:none;font-size:44px;cursor:pointer;padding:4px;transition:transform 0.1s;color:${n <= preRating ? '#FBBF24' : '#2A2A2A'}">
+                ★
+              </button>`).join("")}
+          </div>
+          <input type="hidden" name="rating" id="ratingInput" value="${preRating}" />
+          <div id="ratingLabel" style="text-align:center;font-size:13px;color:var(--muted);margin-top:8px;height:18px">${preRating > 0 ? ["Péssimo","Ruim","Regular","Bom","Excelente!"][preRating-1] : ""}</div>
+        </div>
+
+        <!-- Comentário -->
+        <div style="margin-bottom:24px">
+          <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:8px;letter-spacing:0.5px">COMENTÁRIO (OPCIONAL)</label>
+          <textarea name="comment" placeholder="Conte como foi sua experiência..."
+            style="width:100%;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;resize:vertical;min-height:100px;font-family:inherit"
+          ></textarea>
+        </div>
+
+        <!-- Botão enviar -->
+        <button type="submit" id="submitBtn"
+          style="width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:800;border:none;border-radius:14px;cursor:pointer">
+          Enviar Avaliação
+        </button>
+        <div id="errorMsg" style="display:none;color:#F87171;font-size:13px;text-align:center;margin-top:12px"></div>
+      </form>
+    </div>
+
+    <script>
+      const labels = ['Péssimo', 'Ruim', 'Regular', 'Bom', 'Excelente!'];
+      let currentRating = ${preRating};
+
+      function selectStar(n) {
+        currentRating = n;
+        document.getElementById('ratingInput').value = n;
+        document.getElementById('ratingLabel').textContent = labels[n-1];
+        for (let i = 1; i <= 5; i++) {
+          var btn = document.getElementById('star' + i);
+          btn.style.color = i <= n ? '#FBBF24' : '#2A2A2A';
+          btn.style.transform = i === n ? 'scale(1.2)' : 'scale(1)';
+        }
+      }
+
+      // Inicializar estrelas pré-selecionadas
+      if (currentRating > 0) selectStar(currentRating);
+
+      document.getElementById('reviewForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        var rating = parseInt(document.getElementById('ratingInput').value);
+        if (!rating || rating < 1) {
+          document.getElementById('errorMsg').style.display = 'block';
+          document.getElementById('errorMsg').textContent = 'Por favor, selecione uma nota.';
+          return;
+        }
+        var btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+        document.getElementById('errorMsg').style.display = 'none';
+        try {
+          var formData = new FormData(this);
+          var data = Object.fromEntries(formData.entries());
+          var r = await fetch('/pub-api/submit-review', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          var result = await r.json();
+          if (!r.ok) throw new Error(result.error || 'Erro ao enviar avaliação');
+          // Sucesso: mostrar mensagem
+          document.getElementById('reviewForm').innerHTML = '<div style="text-align:center;padding:32px 0"><div style="font-size:56px;margin-bottom:16px">🌟</div><div style="font-size:22px;font-weight:900;margin-bottom:8px">Obrigado!</div><div style="font-size:14px;color:var(--muted);margin-bottom:24px">Sua avaliação foi registrada com sucesso.</div><a href="/pub/${slug}" style="display:inline-block;background:var(--primary);color:#0A0A0A;font-weight:700;padding:12px 28px;border-radius:50px">Agendar novamente</a></div>';
+        } catch(err) {
+          btn.disabled = false;
+          btn.textContent = 'Enviar Avaliação';
+          document.getElementById('errorMsg').style.display = 'block';
+          document.getElementById('errorMsg').textContent = err.message;
+        }
+      });
+    </script>
+  `;
+  res.send(publicLayout(shopName, primaryColor, body));
+}
+
+// ─── Registro das rotas ─────────────────────────────────────────────
+// ─── Página de Meus Agendamentos ─────────────────────────────────────────
 async function renderMyAppointmentsPage(slug: string, res: Response, req: Request) {
   const tenant = await db.getTenantBySlug(slug);
   if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
@@ -1019,6 +1183,42 @@ export function registerPublicRoutes(app: Express): void {
       if (!appt) { res.status(404).json({ error: "Agendamento não encontrado" }); return; }
       if ((appt as any).status === "cancelled") { res.status(400).json({ error: "Agendamento já cancelado" }); return; }
       await db.updateAppointment(parseInt(appointmentId), { status: "cancelled" });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ─── Avaliação Pós-Atendimento ─────────────────────────────────────────────
+  // GET /pub/:slug/avaliar/:appointmentId — Página de avaliação
+  app.get("/pub/:slug/avaliar/:appointmentId", async (req: Request, res: Response) => {
+    await renderReviewPage(req.params.slug, req.params.appointmentId, res, req);
+  });
+
+  // POST /pub-api/submit-review — Enviar avaliação
+  app.post("/pub-api/submit-review", async (req: Request, res: Response) => {
+    try {
+      const { appointmentId, slug, rating, comment } = req.body;
+      if (!appointmentId || !rating) { res.status(400).json({ error: "appointmentId e rating são obrigatórios" }); return; }
+      const ratingNum = parseInt(rating);
+      if (ratingNum < 1 || ratingNum > 5) { res.status(400).json({ error: "Rating deve ser entre 1 e 5" }); return; }
+
+      const appt = await db.getAppointmentById(parseInt(appointmentId));
+      if (!appt) { res.status(404).json({ error: "Agendamento não encontrado" }); return; }
+      if (appt.status !== "completed") { res.status(400).json({ error: "Apenas agendamentos concluídos podem ser avaliados" }); return; }
+
+      // Verificar se já existe avaliação
+      const existing = await db.getReviewByAppointmentId(parseInt(appointmentId));
+      if (existing) { res.status(400).json({ error: "Este agendamento já foi avaliado" }); return; }
+
+      await db.createReview({
+        clientId: appt.clientId,
+        serviceId: appt.serviceId,
+        appointmentId: parseInt(appointmentId),
+        rating: ratingNum,
+        comment: comment?.trim() || undefined,
+      });
+
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message });

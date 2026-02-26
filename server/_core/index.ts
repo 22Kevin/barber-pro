@@ -10,6 +10,7 @@ import { registerPublicRoutes } from "../public-routes";
 import { registerAdminRoutes } from "../admin-routes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
+import { startReviewEmailJob } from "../review-job";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -85,6 +86,8 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`[api] server listening on port ${port}`);
+    // Iniciar job de e-mail de avaliação pós-atendimento
+    startReviewEmailJob();
   });
 }
 

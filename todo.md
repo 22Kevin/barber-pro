@@ -781,3 +781,10 @@
 - [x] Relatórios no painel admin web: gráfico de faturamento, ranking de serviços, desempenho por barbeiro
 - [x] Gestão de clientes no painel admin web: busca, tabela, detalhe do cliente
 - [x] Notificação por e-mail ao barbeiro quando cliente agenda pela página pública
+
+### Fase 11 — Últimos passos do dia
+- [x] CRUD de serviços no painel admin web: criar, editar, ativar/desativar
+- [x] CRUD de produtos no painel admin web: criar, editar, controle de estoque
+- [x] E-mail automático de avaliação pós-atendimento (2h após horário agendado)
+- [x] Página pública de avaliação: /pub/:slug/avaliar/:appointmentId
+- [x] Configurações da barbearia no painel web: horários, equipe, personalização visual

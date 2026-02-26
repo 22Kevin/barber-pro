@@ -510,42 +510,202 @@ async function renderClientes(req: Request, res: Response) {
 async function renderServicos(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
-  const services = await db.getAllServicesWithMediaAndRatings();
+  const services = await db.getAllServicesWithMedia(false);
+  const saved = req.query.saved === "1";
+  const deleted = req.query.deleted === "1";
+  const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+  const editService = editId ? services.find((s: any) => s.id === editId) : null;
 
-  const body = `
-    <div class="card">
+  const formHtml = `
+    <div class="card" style="margin-bottom:24px">
       <div class="card-header">
-        <div class="card-title">✂️ Serviços (${services.length})</div>
+        <div class="card-title">${editService ? "✏️ Editar Serviço" : "➕ Novo Serviço"}</div>
       </div>
-      <div class="card-body">
-        ${services.length === 0
-          ? `<div class="empty">Nenhum serviço cadastrado. Adicione serviços pelo app mobile.</div>`
-          : `<table>
-              <thead><tr><th>Nome</th><th>Preço</th><th>Duração</th><th>Avaliação</th><th>Status</th></tr></thead>
-              <tbody>
-                ${services.map((s) => `
-                  <tr>
-                    <td>
-                      <div style="display:flex;align-items:center;gap:10px">
-                        ${s.thumbnailUrl ? `<img src="${esc(s.thumbnailUrl)}" style="width:36px;height:36px;border-radius:8px;object-fit:cover" />` : `<div style="width:36px;height:36px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px">✂️</div>`}
-                        <strong>${esc(s.name)}</strong>
-                      </div>
-                    </td>
-                    <td style="color:var(--gold);font-weight:700">${fmtCurrency(s.price)}</td>
-                    <td style="color:var(--muted)">${s.durationMinutes} min</td>
-                    <td>${s.avgRating ? `<span style="color:#FBBF24">★ ${s.avgRating}</span> <span style="color:var(--muted);font-size:12px">(${s.reviewCount})</span>` : `<span style="color:var(--muted)">—</span>`}</td>
-                    <td>${s.isActive ? `<span class="badge badge-success">Ativo</span>` : `<span class="badge badge-muted">Inativo</span>`}</td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>`
-        }
+      <div class="card-body" style="padding:24px">
+        <form method="POST" action="/admin/servicos${editService ? `?edit=${editService.id}` : ""}">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="form-group">
+              <label class="form-label">Nome do Serviço *</label>
+              <input class="form-input" type="text" name="name" value="${esc(editService?.name ?? "")}" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Preço (R$) *</label>
+              <input class="form-input" type="number" name="price" step="0.01" min="0" value="${editService?.price ?? ""}" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Duração (minutos) *</label>
+              <input class="form-input" type="number" name="durationMinutes" min="5" step="5" value="${editService?.durationMinutes ?? 30}" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select class="form-input" name="isActive">
+                <option value="true" ${!editService || editService.isActive ? "selected" : ""}>Ativo</option>
+                <option value="false" ${editService && !editService.isActive ? "selected" : ""}>Inativo</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Descrição</label>
+            <textarea class="form-input" name="description" rows="3" style="resize:vertical">${esc(editService?.description ?? "")}</textarea>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:8px">
+            <button type="submit" class="btn btn-primary" style="padding:12px 28px">${editService ? "Salvar Alterações" : "Criar Serviço"}</button>
+            ${editService ? `<a href="/admin/servicos" class="btn" style="padding:12px 20px;background:var(--surface2);color:var(--text)">Cancelar</a>` : ""}
+          </div>
+        </form>
       </div>
     </div>
-    <p style="color:var(--muted);font-size:13px;margin-top:12px">💡 Para adicionar ou editar serviços, use o app mobile no Painel Administrativo → Serviços.</p>
   `;
 
+  const tableHtml = services.length === 0
+    ? `<div style="text-align:center;padding:40px;color:var(--muted)">Nenhum serviço cadastrado ainda.</div>`
+    : `<table class="table">
+        <thead><tr><th>Nome</th><th>Preço</th><th>Duração</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody>
+          ${services.map((s: any) => `
+            <tr>
+              <td><strong>${esc(s.name)}</strong>${s.description ? `<br><small style="color:var(--muted)">${esc(s.description.substring(0, 60))}${s.description.length > 60 ? "..." : ""}</small>` : ""}</td>
+              <td style="font-weight:700;color:var(--primary)">R$ ${parseFloat(s.price).toFixed(2).replace(".", ",")}</td>
+              <td>${s.durationMinutes} min</td>
+              <td>${s.isActive ? `<span class="badge badge-success">Ativo</span>` : `<span class="badge badge-muted">Inativo</span>`}</td>
+              <td>
+                <div style="display:flex;gap:8px">
+                  <a href="/admin/servicos?edit=${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">✏️ Editar</a>
+                  <form method="POST" action="/admin/servicos/toggle" style="display:inline" onsubmit="return confirm('Alterar status?')">
+                    <input type="hidden" name="id" value="${s.id}" />
+                    <input type="hidden" name="isActive" value="${!s.isActive}" />
+                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">${s.isActive ? "⏸ Desativar" : "▶ Ativar"}</button>
+                  </form>
+                  <form method="POST" action="/admin/servicos/delete" style="display:inline" onsubmit="return confirm('Excluir este serviço? Esta ação não pode ser desfeita.')">
+                    <input type="hidden" name="id" value="${s.id}" />
+                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:#EF444422;color:#F87171">🗑 Excluir</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>`;
+
+  const body = `
+    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Serviço salvo com sucesso!</div>` : ""}
+    ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Serviço excluído com sucesso!</div>` : ""}
+    ${formHtml}
+    <div class="card">
+      <div class="card-header"><div class="card-title">✂️ Serviços Cadastrados (${services.length})</div></div>
+      <div class="card-body">${tableHtml}</div>
+    </div>
+  `;
   res.send(adminLayout("Serviços", "servicos", body, barber?.name));
+}
+
+async function renderProdutos(req: Request, res: Response) {
+  const session = (req as any).adminSession as { barberId: number; role: string };
+  const barber = await db.getBarberById(session.barberId);
+  const products = await db.getAllProductsWithMedia(false);
+  const saved = req.query.saved === "1";
+  const deleted = req.query.deleted === "1";
+  const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+  const editProduct = editId ? products.find((p: any) => p.id === editId) : null;
+
+  const formHtml = `
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header">
+        <div class="card-title">${editProduct ? "✏️ Editar Produto" : "➕ Novo Produto"}</div>
+      </div>
+      <div class="card-body" style="padding:24px">
+        <form method="POST" action="/admin/produtos${editProduct ? `?edit=${editProduct.id}` : ""}">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="form-group">
+              <label class="form-label">Nome do Produto *</label>
+              <input class="form-input" type="text" name="name" value="${esc(editProduct?.name ?? "")}" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Preço (R$) *</label>
+              <input class="form-input" type="number" name="price" step="0.01" min="0" value="${editProduct?.price ?? ""}" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tipo</label>
+              <select class="form-input" name="productType">
+                <option value="sale" ${!editProduct || editProduct.productType === "sale" ? "selected" : ""}>Venda</option>
+                <option value="internal" ${editProduct?.productType === "internal" ? "selected" : ""}>Uso interno</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Estoque atual</label>
+              <input class="form-input" type="number" name="stockQuantity" min="0" value="${editProduct?.stockQuantity ?? 0}" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Alerta mínimo de estoque</label>
+              <input class="form-input" type="number" name="minStockAlert" min="0" value="${editProduct?.minStockAlert ?? 5}" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select class="form-input" name="isActive">
+                <option value="true" ${!editProduct || editProduct.isActive ? "selected" : ""}>Ativo</option>
+                <option value="false" ${editProduct && !editProduct.isActive ? "selected" : ""}>Inativo</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Descrição</label>
+            <textarea class="form-input" name="description" rows="3" style="resize:vertical">${esc(editProduct?.description ?? "")}</textarea>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:8px">
+            <button type="submit" class="btn btn-primary" style="padding:12px 28px">${editProduct ? "Salvar Alterações" : "Criar Produto"}</button>
+            ${editProduct ? `<a href="/admin/produtos" class="btn" style="padding:12px 20px;background:var(--surface2);color:var(--text)">Cancelar</a>` : ""}
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  const tableHtml = products.length === 0
+    ? `<div style="text-align:center;padding:40px;color:var(--muted)">Nenhum produto cadastrado ainda.</div>`
+    : `<table class="table">
+        <thead><tr><th>Nome</th><th>Tipo</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody>
+          ${products.map((p: any) => `
+            <tr>
+              <td><strong>${esc(p.name)}</strong>${p.description ? `<br><small style="color:var(--muted)">${esc(p.description.substring(0, 50))}${p.description.length > 50 ? "..." : ""}</small>` : ""}</td>
+              <td><span class="badge ${p.productType === "sale" ? "badge-success" : "badge-muted"}">${p.productType === "sale" ? "Venda" : "Interno"}</span></td>
+              <td style="font-weight:700;color:var(--primary)">R$ ${parseFloat(p.price).toFixed(2).replace(".", ",")}</td>
+              <td>
+                <span style="color:${p.stockQuantity <= p.minStockAlert ? "var(--error)" : "var(--success)"}">
+                  ${p.stockQuantity} un.
+                </span>
+                ${p.stockQuantity <= p.minStockAlert ? `<br><small style="color:var(--error)">⚠ Estoque baixo</small>` : ""}
+              </td>
+              <td>${p.isActive ? `<span class="badge badge-success">Ativo</span>` : `<span class="badge badge-muted">Inativo</span>`}</td>
+              <td>
+                <div style="display:flex;gap:8px">
+                  <a href="/admin/produtos?edit=${p.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">✏️ Editar</a>
+                  <form method="POST" action="/admin/produtos/toggle" style="display:inline" onsubmit="return confirm('Alterar status?')">
+                    <input type="hidden" name="id" value="${p.id}" />
+                    <input type="hidden" name="isActive" value="${!p.isActive}" />
+                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">${p.isActive ? "⏸ Desativar" : "▶ Ativar"}</button>
+                  </form>
+                  <form method="POST" action="/admin/produtos/delete" style="display:inline" onsubmit="return confirm('Excluir este produto?')">
+                    <input type="hidden" name="id" value="${p.id}" />
+                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:#EF444422;color:#F87171">🗑 Excluir</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>`;
+
+  const body = `
+    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Produto salvo com sucesso!</div>` : ""}
+    ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Produto excluído com sucesso!</div>` : ""}
+    ${formHtml}
+    <div class="card">
+      <div class="card-header"><div class="card-title">📦 Produtos Cadastrados (${products.length})</div></div>
+      <div class="card-body">${tableHtml}</div>
+    </div>
+  `;
+  res.send(adminLayout("Produtos", "produtos", body, barber?.name));
 }
 
 // ─── Financeiro ───────────────────────────────────────────────────────────────
@@ -636,56 +796,248 @@ async function renderConfiguracoes(req: Request, res: Response) {
   const barber = await db.getBarberById(session.barberId);
   const settings = await db.getShopSettings();
   const saved = req.query.saved === "1";
+  const activeTab = (req.query.tab as string) ?? "dados";
+
+  // Buscar equipe e horários de trabalho
+  const allBarbers = await db.getAllBarbersIncludingInactive();
+  const workingHoursMap: Record<number, any[]> = {};
+  for (const b of allBarbers) {
+    workingHoursMap[b.id] = await db.getWorkingHours(b.id);
+  }
+
+  const dayNames = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+  // Aba: Dados da Barbearia
+  const tabDados = `
+    <form method="POST" action="/admin/configuracoes?tab=dados">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group">
+          <label class="form-label">Nome da Barbearia *</label>
+          <input class="form-input" type="text" name="shopName" value="${esc(settings?.shopName ?? "")}" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Telefone</label>
+          <input class="form-input" type="text" name="phone" value="${esc(settings?.phone ?? "")}" placeholder="(11) 99999-9999" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">WhatsApp</label>
+          <input class="form-input" type="text" name="whatsapp" value="${esc(settings?.whatsapp ?? "")}" placeholder="5511999999999" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Instagram</label>
+          <input class="form-input" type="text" name="instagram" value="${esc(settings?.instagram ?? "")}" placeholder="@seuinstagram" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Endereço</label>
+          <input class="form-input" type="text" name="address" value="${esc(settings?.address ?? "")}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Número</label>
+          <input class="form-input" type="text" name="addressNumber" value="${esc(settings?.addressNumber ?? "")}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Complemento</label>
+          <input class="form-input" type="text" name="addressComplement" value="${esc(settings?.addressComplement ?? "")}" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">CEP</label>
+          <input class="form-input" type="text" name="cep" value="${esc(settings?.cep ?? "")}" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:4px">
+        <label class="form-label">Link Google Maps</label>
+        <input class="form-input" type="text" name="googleMapsUrl" value="${esc(settings?.googleMapsUrl ?? "")}" placeholder="https://maps.google.com/..." />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Chave Pix</label>
+        <input class="form-input" type="text" name="pixKey" value="${esc(settings?.pixKey ?? "")}" placeholder="CPF, CNPJ, e-mail ou chave aleatória" />
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">✓ Salvar Dados</button>
+    </form>
+  `;
+
+  // Aba: Personalização Visual
+  const tabVisual = `
+    <form method="POST" action="/admin/configuracoes?tab=visual">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
+        <div>
+          <div class="form-group">
+            <label class="form-label">Cor Principal da Página Pública</label>
+            <div style="display:flex;align-items:center;gap:12px">
+              <input type="color" name="primaryColor" value="${esc(settings?.primaryColor ?? "#C9A84C")}" style="width:48px;height:40px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;padding:2px" />
+              <input class="form-input" type="text" id="colorHex" value="${esc(settings?.primaryColor ?? "#C9A84C")}" style="flex:1" placeholder="#C9A84C" />
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">Cor usada nos botões e destaques da página de agendamento online.</div>
+          </div>
+        </div>
+        <div>
+          <div class="form-group">
+            <label class="form-label">URL do Banner</label>
+            <input class="form-input" type="text" name="bannerUrl" value="${esc(settings?.bannerUrl ?? "")}" placeholder="https://..." />
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">Imagem de fundo do hero da página pública (1200x400px recomendado).</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">URL do Logo</label>
+        <input class="form-input" type="text" name="logoUrl" value="${esc(settings?.logoUrl ?? "")}" placeholder="https://..." />
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Logo exibido na página pública e nos e-mails.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">URLs da Galeria (uma por linha)</label>
+        <textarea name="galleryUrls" class="form-input" rows="4" placeholder="https://...\nhttps://...">${esc(settings?.galleryUrls ?? "")}</textarea>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Fotos exibidas na galeria da página pública.</div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">✓ Salvar Visual</button>
+    </form>
+    <script>
+      document.querySelector('input[type=color]').addEventListener('input', function() {
+        document.getElementById('colorHex').value = this.value;
+      });
+      document.getElementById('colorHex').addEventListener('input', function() {
+        if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+          document.querySelector('input[type=color]').value = this.value;
+        }
+      });
+    </script>
+  `;
+
+  // Aba: Horários de Trabalho
+  const tabHorarios = allBarbers.length === 0
+    ? `<div class="empty">Nenhum profissional cadastrado ainda.</div>`
+    : allBarbers.map((b: any) => {
+        const wh = workingHoursMap[b.id] ?? [];
+        const whByDay: Record<number, any> = {};
+        wh.forEach((h: any) => { whByDay[h.dayOfWeek] = h; });
+        return `
+          <div class="card" style="margin-bottom:20px">
+            <div class="card-header">
+              <div class="card-title">💈 ${esc(b.name)}</div>
+              <span class="badge ${b.isActive ? 'badge-success' : 'badge-muted'}">${b.isActive ? 'Ativo' : 'Inativo'}</span>
+            </div>
+            <div class="card-body" style="padding:20px">
+              <form method="POST" action="/admin/configuracoes/horarios/${b.id}">
+                <div style="display:grid;gap:8px">
+                  ${[0,1,2,3,4,5,6].map(day => {
+                    const h = whByDay[day];
+                    const isWorking = h?.isWorking ?? (day >= 1 && day <= 6);
+                    return `
+                      <div style="display:grid;grid-template-columns:120px 1fr 1fr 1fr 1fr auto;gap:8px;align-items:center;padding:8px;background:var(--surface2);border-radius:8px">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <input type="checkbox" name="working_${day}" value="1" ${isWorking ? 'checked' : ''} id="w${b.id}_${day}" style="width:16px;height:16px;accent-color:var(--gold)" />
+                          <label for="w${b.id}_${day}" style="font-size:13px;font-weight:600">${dayNames[day]}</label>
+                        </div>
+                        <div>
+                          <label style="font-size:10px;color:var(--muted)">ENTRADA</label>
+                          <input type="time" name="start_${day}" value="${h?.startTime ?? '09:00'}" class="form-input" style="padding:6px 8px;font-size:13px" />
+                        </div>
+                        <div>
+                          <label style="font-size:10px;color:var(--muted)">SAÍDA</label>
+                          <input type="time" name="end_${day}" value="${h?.endTime ?? '18:00'}" class="form-input" style="padding:6px 8px;font-size:13px" />
+                        </div>
+                        <div>
+                          <label style="font-size:10px;color:var(--muted)">ALMOÇO INÍCIO</label>
+                          <input type="time" name="lunch_start_${day}" value="${h?.lunchStart ?? '12:00'}" class="form-input" style="padding:6px 8px;font-size:13px" />
+                        </div>
+                        <div>
+                          <label style="font-size:10px;color:var(--muted)">ALMOÇO FIM</label>
+                          <input type="time" name="lunch_end_${day}" value="${h?.lunchEnd ?? '13:00'}" class="form-input" style="padding:6px 8px;font-size:13px" />
+                        </div>
+                      </div>`;
+                  }).join('')}
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top:16px;padding:10px 24px">✓ Salvar Horários de ${esc(b.name)}</button>
+              </form>
+            </div>
+          </div>`;
+      }).join('');
+
+  // Aba: Equipe
+  const tabEquipe = `
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header">
+        <div class="card-title">👥 Profissionais Cadastrados</div>
+        <a href="/admin/configuracoes?tab=equipe&novo=1" class="btn btn-primary" style="font-size:12px;padding:8px 16px">+ Novo Profissional</a>
+      </div>
+      <table>
+        <thead><tr><th>Nome</th><th>E-mail</th><th>Função</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody>
+          ${allBarbers.length === 0
+            ? `<tr><td colspan="5" class="empty">Nenhum profissional cadastrado.</td></tr>`
+            : allBarbers.map((b: any) => `
+              <tr>
+                <td style="font-weight:600">${esc(b.name)}</td>
+                <td style="color:var(--muted)">${esc(b.email ?? "—")}</td>
+                <td><span class="badge badge-gold">${b.role === 'super_admin' ? 'Super Admin' : b.role === 'barber' ? 'Barbeiro' : b.role}</span></td>
+                <td><span class="badge ${b.isActive ? 'badge-success' : 'badge-muted'}">${b.isActive ? 'Ativo' : 'Inativo'}</span></td>
+                <td>
+                  <form method="POST" action="/admin/configuracoes/equipe/toggle" style="display:inline">
+                    <input type="hidden" name="id" value="${b.id}" />
+                    <input type="hidden" name="isActive" value="${!b.isActive}" />
+                    <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px">${b.isActive ? 'Desativar' : 'Reativar'}</button>
+                  </form>
+                </td>
+              </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    ${req.query.novo === '1' ? `
+    <div class="card">
+      <div class="card-header"><div class="card-title">➕ Novo Profissional</div></div>
+      <div class="card-body" style="padding:24px">
+        <form method="POST" action="/admin/configuracoes/equipe/novo">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div class="form-group">
+              <label class="form-label">Nome *</label>
+              <input class="form-input" type="text" name="name" required placeholder="Nome do profissional" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">E-mail *</label>
+              <input class="form-input" type="email" name="email" required placeholder="email@exemplo.com" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Senha *</label>
+              <input class="form-input" type="password" name="password" required placeholder="Mínimo 6 caracteres" minlength="6" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Telefone</label>
+              <input class="form-input" type="text" name="phone" placeholder="(11) 99999-9999" />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">Cadastrar Profissional</button>
+          <a href="/admin/configuracoes?tab=equipe" class="btn btn-ghost" style="margin-left:8px;padding:12px 20px">Cancelar</a>
+        </form>
+      </div>
+    </div>` : ''}
+  `;
+
+  const tabs = [
+    { id: 'dados', label: '🏪 Dados' },
+    { id: 'visual', label: '🎨 Visual' },
+    { id: 'horarios', label: '🕒 Horários' },
+    { id: 'equipe', label: '👥 Equipe' },
+  ];
+
+  const tabContent: Record<string, string> = {
+    dados: tabDados,
+    visual: tabVisual,
+    horarios: tabHorarios,
+    equipe: tabEquipe,
+  };
 
   const body = `
     ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Configurações salvas com sucesso!</div>` : ""}
 
-    <div class="card">
-      <div class="card-header"><div class="card-title">⚙️ Dados da Barbearia</div></div>
-      <div class="card-body" style="padding:24px">
-        <form method="POST" action="/admin/configuracoes">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-            <div class="form-group">
-              <label class="form-label">Nome da Barbearia</label>
-              <input class="form-input" type="text" name="shopName" value="${esc(settings?.shopName ?? "")}" required />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Telefone</label>
-              <input class="form-input" type="text" name="phone" value="${esc(settings?.phone ?? "")}" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">WhatsApp</label>
-              <input class="form-input" type="text" name="whatsapp" value="${esc(settings?.whatsapp ?? "")}" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Instagram</label>
-              <input class="form-input" type="text" name="instagram" value="${esc(settings?.instagram ?? "")}" placeholder="@seuinstagram" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Endereço</label>
-              <input class="form-input" type="text" name="address" value="${esc(settings?.address ?? "")}" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Número</label>
-              <input class="form-input" type="text" name="addressNumber" value="${esc(settings?.addressNumber ?? "")}" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Complemento</label>
-              <input class="form-input" type="text" name="addressComplement" value="${esc(settings?.addressComplement ?? "")}" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">CEP</label>
-              <input class="form-input" type="text" name="cep" value="${esc(settings?.cep ?? "")}" />
-            </div>
-          </div>
-          <div class="form-group" style="margin-top:8px">
-            <label class="form-label">Link Google Maps</label>
-            <input class="form-input" type="text" name="googleMapsUrl" value="${esc(settings?.googleMapsUrl ?? "")}" placeholder="https://maps.google.com/..." />
-          </div>
-          <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">Salvar Configurações</button>
-        </form>
-      </div>
+    <!-- Abas -->
+    <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px">
+      ${tabs.map(t => `
+        <a href="/admin/configuracoes?tab=${t.id}" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;
+          ${activeTab === t.id ? 'background:var(--gold);color:#0C0C0C' : 'color:var(--muted)'}
+        ">${t.label}</a>`).join('')}
     </div>
+
+    <!-- Conteúdo da aba ativa -->
+    ${tabContent[activeTab] ?? tabDados}
   `;
 
   res.send(adminLayout("Configurações", "configuracoes", body, barber?.name));
@@ -1050,9 +1402,74 @@ export function registerAdminRoutes(app: Express): void {
 
   // POST /admin/configuracoes (salvar)
   app.post("/admin/configuracoes", requireAdminAuth, async (req: Request, res: Response) => {
-    const { shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl } = req.body ?? {};
-    await db.upsertShopSettings({ shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl });
-    res.redirect("/admin/configuracoes?saved=1");
+    const tab = (req.query.tab as string) ?? "dados";
+    const body = req.body ?? {};
+    if (tab === "visual") {
+      const { primaryColor, bannerUrl, logoUrl, galleryUrls } = body;
+      await db.upsertShopSettings({ primaryColor, bannerUrl, logoUrl, galleryUrls });
+    } else {
+      // tab === "dados" (padrão)
+      const { shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl, pixKey } = body;
+      await db.upsertShopSettings({ shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl, pixKey });
+    }
+    res.redirect(`/admin/configuracoes?tab=${tab}&saved=1`);
+  });
+
+  // POST /admin/configuracoes/horarios/:barberId (salvar horários de trabalho)
+  app.post("/admin/configuracoes/horarios/:barberId", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const barberId = parseInt(req.params.barberId);
+      const body = req.body ?? {};
+      for (let day = 0; day <= 6; day++) {
+        const isWorking = body[`working_${day}`] === "1";
+        const startTime = body[`start_${day}`] ?? "09:00";
+        const endTime = body[`end_${day}`] ?? "18:00";
+        const lunchStart = body[`lunch_start_${day}`] || null;
+        const lunchEnd = body[`lunch_end_${day}`] || null;
+        await db.upsertWorkingHours(barberId, day, {
+          startTime: startTime.length === 5 ? startTime + ":00" : startTime,
+          endTime: endTime.length === 5 ? endTime + ":00" : endTime,
+          lunchStart: lunchStart ? (lunchStart.length === 5 ? lunchStart + ":00" : lunchStart) : null,
+          lunchEnd: lunchEnd ? (lunchEnd.length === 5 ? lunchEnd + ":00" : lunchEnd) : null,
+          isWorking,
+        });
+      }
+      res.redirect("/admin/configuracoes?tab=horarios&saved=1");
+    } catch (e: any) {
+      res.redirect(`/admin/configuracoes?tab=horarios&error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // POST /admin/configuracoes/equipe/toggle (ativar/desativar profissional)
+  app.post("/admin/configuracoes/equipe/toggle", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const { id, isActive } = req.body ?? {};
+      await db.updateBarber(parseInt(id), { isActive: isActive === "true" });
+      res.redirect("/admin/configuracoes?tab=equipe&saved=1");
+    } catch (e: any) {
+      res.redirect(`/admin/configuracoes?tab=equipe&error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // POST /admin/configuracoes/equipe/novo (criar novo profissional)
+  app.post("/admin/configuracoes/equipe/novo", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const { name, email, password, phone } = req.body ?? {};
+      if (!name || !email || !password) {
+        res.redirect("/admin/configuracoes?tab=equipe&novo=1&error=Preencha+todos+os+campos"); return;
+      }
+      if (password.length < 6) {
+        res.redirect("/admin/configuracoes?tab=equipe&novo=1&error=Senha+deve+ter+m%C3%ADnimo+6+caracteres"); return;
+      }
+      let bcrypt: any;
+      try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
+      const passwordHash = bcrypt ? await bcrypt.hash(password, 10) : password;
+      await db.createBarber({ name, email, phone: phone || null, passwordHash, role: "barber", isActive: true });
+      res.redirect("/admin/configuracoes?tab=equipe&saved=1");
+    } catch (e: any) {
+      const msg = e.message?.includes("Duplicate") ? "E-mail+j%C3%A1+cadastrado" : encodeURIComponent(e.message);
+      res.redirect(`/admin/configuracoes?tab=equipe&novo=1&error=${msg}`);
+    }
   });
 
   // Criar agendamento (admin web)
@@ -1106,5 +1523,51 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/financeiro", requireAdminAuth, (req, res) => renderFinanceiro(req, res));
   app.get("/admin/configuracoes", requireAdminAuth, (req, res) => renderConfiguracoes(req, res));
   app.get("/admin/relatorios", requireAdminAuth, (req, res) => renderRelatorios(req, res));
+
+  // ─── CRUD Serviços ────────────────────────────────────────────────────────
+  app.post("/admin/servicos", requireAdminAuth, async (req: Request, res: Response) => {
+    const { name, description, price, durationMinutes, isActive } = req.body;
+    const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+    if (editId) {
+      await db.updateService(editId, { name, description, price, durationMinutes: parseInt(durationMinutes), isActive: isActive === "true" });
+    } else {
+      await db.createService({ name, description, price, durationMinutes: parseInt(durationMinutes), isActive: isActive === "true" });
+    }
+    res.redirect("/admin/servicos?saved=1");
+  });
+  app.post("/admin/servicos/toggle", requireAdminAuth, async (req: Request, res: Response) => {
+    const { id, isActive } = req.body;
+    await db.updateService(parseInt(id), { isActive: isActive === "true" });
+    res.redirect("/admin/servicos");
+  });
+  app.post("/admin/servicos/delete", requireAdminAuth, async (req: Request, res: Response) => {
+    const { id } = req.body;
+    await db.deleteService(parseInt(id));
+    res.redirect("/admin/servicos?deleted=1");
+  });
+
+  // ─── CRUD Produtos ────────────────────────────────────────────────────────
+  app.get("/admin/produtos", requireAdminAuth, (req, res) => renderProdutos(req, res));
+  app.post("/admin/produtos", requireAdminAuth, async (req: Request, res: Response) => {
+    const { name, description, price, productType, stockQuantity, minStockAlert, isActive } = req.body;
+    const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+    if (editId) {
+      await db.updateProduct(editId, { name, description, price, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true" });
+    } else {
+      await db.createProduct({ name, description, price, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true" });
+    }
+    res.redirect("/admin/produtos?saved=1");
+  });
+  app.post("/admin/produtos/toggle", requireAdminAuth, async (req: Request, res: Response) => {
+    const { id, isActive } = req.body;
+    await db.updateProduct(parseInt(id), { isActive: isActive === "true" });
+    res.redirect("/admin/produtos");
+  });
+  app.post("/admin/produtos/delete", requireAdminAuth, async (req: Request, res: Response) => {
+    const { id } = req.body;
+    await db.deleteProduct(parseInt(id));
+    res.redirect("/admin/produtos?deleted=1");
+  });
+
   app.get("/admin/clientes/:id", requireAdminAuth, (req, res) => renderClienteDetalhe(req, res));
 }

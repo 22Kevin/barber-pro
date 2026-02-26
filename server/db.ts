@@ -1503,3 +1503,77 @@ export async function updateAppointmentStatus(id: number, status: string) {
   if (!db) throw new Error("Database not available");
   await db.update(appointments).set({ status } as any).where(eq(appointments.id, id));
 }
+
+export async function deleteProduct(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(products).set({ isActive: false }).where(eq(products.id, id));
+}
+
+// ─── Avaliação Pós-Atendimento ────────────────────────────────────────────────
+export async function getAppointmentById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(appointments).where(eq(appointments.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function getReviewByAppointmentId(appointmentId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(reviews).where(eq(reviews.appointmentId, appointmentId)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+/**
+ * Busca agendamentos concluídos nas últimas N horas que ainda não receberam e-mail de avaliação.
+ * Usa o campo `reminderSent` como flag de "e-mail de avaliação enviado" para evitar adicionar
+ * nova coluna ao schema (reutilização pragmática — o campo é true após o envio do e-mail de avaliação).
+ * 
+ * NOTA: Esta função busca agendamentos com status "completed" cuja data/hora de término
+ * está entre (agora - maxHoursAgo) e (agora - minHoursAgo).
+ */
+export async function getCompletedAppointmentsForReview(minHoursAgo = 2, maxHoursAgo = 4) {
+  const db = await getDb();
+  if (!db) return [];
+  // Calcular janela de tempo em UTC-3 (Brasília)
+  const nowMs = Date.now() - 3 * 60 * 60 * 1000; // agora em UTC-3
+  const minAgo = new Date(nowMs - minHoursAgo * 60 * 60 * 1000);
+  const maxAgo = new Date(nowMs - maxHoursAgo * 60 * 60 * 1000);
+  const minDate = minAgo.toISOString().slice(0, 10);
+  const maxDate = maxAgo.toISOString().slice(0, 10);
+
+  // Buscar agendamentos concluídos recentemente (sem e-mail de avaliação enviado)
+  const result = await db
+    .select({
+      id: appointments.id,
+      clientId: appointments.clientId,
+      barberId: appointments.barberId,
+      serviceId: appointments.serviceId,
+      date: appointments.date,
+      startTime: appointments.startTime,
+      endTime: appointments.endTime,
+    })
+    .from(appointments)
+    .where(
+      and(
+        eq(appointments.status, "completed"),
+        eq(appointments.reminderSent, false), // reutilizado como flag de e-mail de avaliação
+        gte(appointments.date, maxDate),
+        lte(appointments.date, minDate)
+      )
+    );
+
+  // Filtrar por hora exata (a query de data é aproximada)
+  return result.filter((a) => {
+    const apptDateTime = new Date(`${a.date}T${a.endTime}`);
+    const apptMs = apptDateTime.getTime();
+    return apptMs >= maxAgo.getTime() && apptMs <= minAgo.getTime();
+  });
+}
+
+export async function markAppointmentReviewEmailSent(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(appointments).set({ reminderSent: true }).where(eq(appointments.id, id));
+}

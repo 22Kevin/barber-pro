@@ -272,3 +272,79 @@ export async function sendBarberNotificationEmail(data: BarberNotificationEmailD
     console.error("[email] Erro ao enviar notificação ao barbeiro:", err);
   }
 }
+
+// ─── E-mail de Solicitação de Avaliação ───────────────────────────────────────
+export async function sendReviewRequestEmail(opts: {
+  clientEmail: string;
+  clientName: string;
+  shopName: string;
+  shopSlug: string;
+  serviceName: string;
+  barberName: string;
+  appointmentId: number;
+  baseUrl: string;
+}): Promise<void> {
+  const transporter = createTransporter();
+  if (!transporter) {
+    console.log("[email] SMTP não configurado — e-mail de avaliação não enviado.");
+    return;
+  }
+  if (!opts.clientEmail) return;
+
+  const reviewUrl = `${opts.baseUrl}/pub/${opts.shopSlug}/avaliar/${opts.appointmentId}`;
+  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+
+  const starsHtml = [1, 2, 3, 4, 5]
+    .map(
+      (n) =>
+        `<a href="${reviewUrl}?rating=${n}" style="display:inline-block;width:48px;height:48px;line-height:48px;text-align:center;font-size:28px;text-decoration:none;margin:0 4px">⭐</a>`
+    )
+    .join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:'Segoe UI',Arial,sans-serif">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+    <div style="background:linear-gradient(135deg,#1a1a1a 0%,#2d2d2d 100%);padding:32px 40px;text-align:center">
+      <div style="font-size:36px;margin-bottom:8px">✂️</div>
+      <div style="color:#D4AF37;font-size:22px;font-weight:700;letter-spacing:1px">${opts.shopName}</div>
+    </div>
+    <div style="padding:40px">
+      <h2 style="margin:0 0 8px;font-size:22px;color:#1a1a1a">Como foi sua experiência?</h2>
+      <p style="margin:0 0 24px;color:#555;font-size:15px;line-height:1.6">
+        Olá, <strong>${opts.clientName}</strong>! Seu atendimento de <strong>${opts.serviceName}</strong>
+        com <strong>${opts.barberName}</strong> foi concluído. Sua opinião é muito importante para nós.
+      </p>
+      <div style="background:#f9f9f9;border-radius:12px;padding:24px;text-align:center;margin-bottom:28px">
+        <p style="margin:0 0 16px;font-size:14px;color:#777">Toque em uma estrela para avaliar:</p>
+        <div>${starsHtml}</div>
+      </div>
+      <div style="text-align:center">
+        <a href="${reviewUrl}" style="display:inline-block;background:#D4AF37;color:#1a1a1a;font-weight:700;font-size:15px;padding:14px 36px;border-radius:50px;text-decoration:none">
+          Deixar Avaliação Completa
+        </a>
+      </div>
+    </div>
+    <div style="background:#f9f9f9;padding:20px 40px;text-align:center">
+      <p style="margin:0;font-size:12px;color:#aaa">
+        Você recebeu este e-mail porque realizou um atendimento em ${opts.shopName}.<br>
+        Se não reconhece este atendimento, ignore este e-mail.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  try {
+    await transporter.sendMail({
+      from: `"${opts.shopName}" <${from}>`,
+      to: opts.clientEmail,
+      subject: `⭐ Como foi seu atendimento em ${opts.shopName}?`,
+      html,
+    });
+    console.log(`[email] E-mail de avaliação enviado para ${opts.clientEmail}`);
+  } catch (err) {
+    console.error("[email] Erro ao enviar e-mail de avaliação:", err);
+  }
+}
