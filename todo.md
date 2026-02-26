@@ -842,3 +842,9 @@
 - [x] Canal Android "online-booking" com som diferenciado e prioridade MAX para agendamentos online
 - [x] Badge no ícone do app incrementado a cada agendamento online recebido
 - [x] Badge zerado quando barbeiro abre a tela de agenda
+
+## Média Prioridade v6.7
+
+- [x] Comissões no app do barbeiro: aba "Minhas Comissões" visível para role barber com seletor de mês e lista de atendimentos
+- [x] Agendamento recorrente no app do cliente: opção "Repetir agendamento" no fluxo de booking (semanal/quinzenal/mensal)
+- [x] Relatório de conversão de promoções: coluna "Conversões" e gráfico na tela de Promoções do admin

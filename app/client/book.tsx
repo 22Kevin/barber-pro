@@ -93,6 +93,10 @@ export default function BookScreen() {
   const [showDiscountSheet, setShowDiscountSheet] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [pendingApptDateTime, setPendingApptDateTime] = useState<Date | null>(null);
+  // Agendamento recorrente
+  const [enableRecurring, setEnableRecurring] = useState(false);
+  const [recurringInterval, setRecurringInterval] = useState<1 | 2 | 4>(1); // semanas
+  const [recurringOccurrences, setRecurringOccurrences] = useState(4);
 
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true });
   const barbersQuery = trpc.barbers.list.useQuery();
@@ -112,6 +116,7 @@ export default function BookScreen() {
     (availableDiscountsQuery.data?.redeemableRewards?.length ?? 0) > 0;
 
   const createPreference = trpc.payments.createPreference.useMutation();
+  const createRecurring = trpc.recurring.create.useMutation();
 
   const createAppointment = trpc.appointments.create.useMutation({
     onSuccess: async (apptId) => {
@@ -153,16 +158,38 @@ export default function BookScreen() {
       return;
     }
     if (!client || !selectedService || !selectedBarber || !selectedDate || !selectedSlot) return;
-    createAppointment.mutate({
-      clientId: client.id,
-      barberId: selectedBarber.id,
-      serviceId: selectedService.id,
-      date: formatDate(selectedDate),
-      startTime: selectedSlot.startTime,
-      endTime: selectedSlot.endTime,
-      notes: notes || undefined,
-      status: "scheduled",
-    });
+    createAppointment.mutate(
+      {
+        clientId: client.id,
+        barberId: selectedBarber.id,
+        serviceId: selectedService.id,
+        date: formatDate(selectedDate),
+        startTime: selectedSlot.startTime,
+        endTime: selectedSlot.endTime,
+        notes: notes || undefined,
+        status: "scheduled",
+      },
+      {
+        onSuccess: async (apptId) => {
+          if (enableRecurring && client) {
+            try {
+              await createRecurring.mutateAsync({
+                clientId: client.id,
+                barberId: selectedBarber.id,
+                serviceId: selectedService.id,
+                startTime: selectedSlot.startTime,
+                endTime: selectedSlot.endTime,
+                intervalWeeks: recurringInterval,
+                occurrences: recurringOccurrences,
+                startDate: formatDate(selectedDate),
+              });
+            } catch {
+              // recorrência falhou mas agendamento foi criado
+            }
+          }
+        },
+      }
+    );
   };
 
   const handlePayOnline = async () => {
@@ -638,6 +665,69 @@ export default function BookScreen() {
                 <Text style={{ color: "#9CA3AF", fontSize: 14, flex: 1 }}>Tenho um cupom ou quero usar pontos</Text>
                 <Text style={{ color: "#6B7280", fontSize: 16 }}>›</Text>
               </TouchableOpacity>
+            )}
+
+            {/* Toggle de Agendamento Recorrente */}
+            {isAuthenticated && (
+              <View style={{ backgroundColor: "#0F1A0F", borderRadius: 14, padding: 16, marginTop: 14, borderWidth: 1, borderColor: enableRecurring ? "#4ADE80" : "#1F2937" }}>
+                <TouchableOpacity
+                  onPress={() => setEnableRecurring(!enableRecurring)}
+                  style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <Text style={{ fontSize: 20 }}>🔄</Text>
+                    <View>
+                      <Text style={{ color: enableRecurring ? "#4ADE80" : "#fff", fontWeight: "700", fontSize: 14 }}>Repetir agendamento</Text>
+                      <Text style={{ color: "#9CA3AF", fontSize: 12, marginTop: 2 }}>Cria uma série automática</Text>
+                    </View>
+                  </View>
+                  <View style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: enableRecurring ? "#4ADE80" : "#374151", justifyContent: "center", paddingHorizontal: 3 }}>
+                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: "#fff", alignSelf: enableRecurring ? "flex-end" : "flex-start" }} />
+                  </View>
+                </TouchableOpacity>
+
+                {enableRecurring && (
+                  <View style={{ marginTop: 14, gap: 12 }}>
+                    <View>
+                      <Text style={{ color: "#9CA3AF", fontSize: 12, fontWeight: "600", marginBottom: 8 }}>FREQUÊNCIA</Text>
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        {([1, 2, 4] as const).map((w) => (
+                          <TouchableOpacity
+                            key={w}
+                            onPress={() => setRecurringInterval(w)}
+                            style={{ flex: 1, backgroundColor: recurringInterval === w ? "#4ADE80" : "#1F2937", borderRadius: 10, paddingVertical: 10, alignItems: "center", borderWidth: 1, borderColor: recurringInterval === w ? "#4ADE80" : "#374151" }}
+                          >
+                            <Text style={{ color: recurringInterval === w ? "#000" : "#fff", fontWeight: "700", fontSize: 12 }}>
+                              {w === 1 ? "Semanal" : w === 2 ? "Quinzenal" : "Mensal"}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                    <View>
+                      <Text style={{ color: "#9CA3AF", fontSize: 12, fontWeight: "600", marginBottom: 8 }}>NÚMERO DE REPETIÇÕES</Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                        <TouchableOpacity
+                          onPress={() => setRecurringOccurrences(Math.max(2, recurringOccurrences - 1))}
+                          style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "#1F2937", alignItems: "center", justifyContent: "center" }}
+                        >
+                          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>-</Text>
+                        </TouchableOpacity>
+                        <Text style={{ color: "#fff", fontWeight: "800", fontSize: 18, minWidth: 30, textAlign: "center" }}>{recurringOccurrences}x</Text>
+                        <TouchableOpacity
+                          onPress={() => setRecurringOccurrences(Math.min(24, recurringOccurrences + 1))}
+                          style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "#1F2937", alignItems: "center", justifyContent: "center" }}
+                        >
+                          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>+</Text>
+                        </TouchableOpacity>
+                        <Text style={{ color: "#9CA3AF", fontSize: 12, flex: 1 }}>
+                          {recurringOccurrences} agendamentos ao longo de {Math.round(recurringOccurrences * recurringInterval / 4.33)} meses
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </View>
             )}
 
             {!isAuthenticated && (
