@@ -802,3 +802,7 @@
 - [x] Landing page do Barber Pro: hero, funcionalidades, planos, depoimentos, download, footer
 - [x] Tela de confirmação pós-onboarding: boas-vindas, link da página pública, atalho para painel web
 - [x] Validação do fluxo completo: cadastro de barbearia → página pública acessível → painel admin funcional
+
+## Fase 14 — Redesign da Landing Page
+- [x] Gerar logo profissional do Barber Pro (navalha douráda com círculo de barbearia)
+- [x] Redesenhar landing page com identidade visual forte, hero impactante e logo integrado
