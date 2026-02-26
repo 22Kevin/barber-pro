@@ -46,7 +46,21 @@ function stars(avg: number | null): string {
 }
 
 // ─── Layout base da página pública ───────────────────────────────────────────
-function publicLayout(shopName: string, primaryColor: string, body: string, extraHead = ""): string {
+function buildTrackingScripts(settings: any): string {
+  let scripts = "";
+  if (settings?.ga4MeasurementId) {
+    const gid = settings.ga4MeasurementId;
+    scripts += `\n  <!-- Google Analytics 4 -->\n  <script async src="https://www.googletagmanager.com/gtag/js?id=${gid}"></script>\n  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gid}');</script>`;
+  }
+  if (settings?.facebookPixelId) {
+    const pid = settings.facebookPixelId;
+    scripts += `\n  <!-- Facebook Pixel -->\n  <script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pid}');fbq('track','PageView');</script>\n  <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${pid}&ev=PageView&noscript=1"/></noscript>`;
+  }
+  return scripts;
+}
+
+function publicLayout(shopName: string, primaryColor: string, body: string, extraHead = "", settings?: any): string {
+  const trackingScripts = buildTrackingScripts(settings);
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -55,6 +69,7 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
   <title>${escapeHtml(shopName)}</title>
   <meta name="description" content="Agende seu horário em ${escapeHtml(shopName)} de forma rápida e fácil." />
   ${extraHead}
+  ${trackingScripts}
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -313,10 +328,10 @@ async function renderShopPage(slug: string, res: Response) {
     </div>
   `;
 
-  res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body));
+   res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
 }
 
-// ─── Página de agendamento ────────────────────────────────────────────────────
+// ─── Rota de agendamentoe login Página de agendamento ────────────────────────────────────────────────────
 async function renderBookingPage(slug: string, res: Response, req?: Request) {
   const tenant = await db.getTenantBySlug(slug);
   if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
@@ -644,10 +659,10 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       });
     </script>
   `;
-  res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body));
+  res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
 }
 
-// ─── Página de login/cadastro do cliente ─────────────────────────────────────
+// ─── Página de avaliaçãoastro do cliente ─────────────────────────────────────
 async function renderLoginPage(slug: string, res: Response, req: Request, mode: "login" | "cadastro" = "login") {
   const tenant = await db.getTenantBySlug(slug);
   if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
@@ -742,10 +757,10 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
       });
     </script>
   `;
-  res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body));
+   res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
 }
 
-// ─── // ─── Página de Avaliação Pós-Atendimento ────────────────────────────────────
+// ─── Página de perfilAvaliação Pós-Atendimento ────────────────────────────────────
 async function renderReviewPage(slug: string, appointmentIdStr: string, res: Response, req: Request) {
   const appointmentId = parseInt(appointmentIdStr);
   if (isNaN(appointmentId)) { res.status(400).send("ID de agendamento inválido."); return; }
@@ -767,7 +782,7 @@ async function renderReviewPage(slug: string, appointmentIdStr: string, res: Res
         <div style="font-size:14px;color:var(--muted)">Este agendamento ainda não foi concluído ou foi cancelado.</div>
         <a href="/pub/${slug}" style="display:inline-block;margin-top:24px;background:var(--primary);color:#0A0A0A;font-weight:700;padding:12px 28px;border-radius:50px">Voltar</a>
       </div>`;
-    res.send(publicLayout(shopName, primaryColor, body));
+    res.send(publicLayout(shopName, primaryColor, body, "", settings));
     return;
   }
 
@@ -794,7 +809,7 @@ async function renderReviewPage(slug: string, appointmentIdStr: string, res: Res
         ${existingReview.comment ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin:20px 0;font-size:14px;font-style:italic;color:var(--muted)">"​${escapeHtml(existingReview.comment)}"​</div>` : ""}
         <a href="/pub/${slug}" style="display:inline-block;margin-top:24px;background:var(--primary);color:#0A0A0A;font-weight:700;padding:12px 28px;border-radius:50px">Agendar novamente</a>
       </div>`;
-    res.send(publicLayout(shopName, primaryColor, body));
+    res.send(publicLayout(shopName, primaryColor, body, "", settings));
     return;
   }
 
@@ -906,10 +921,10 @@ async function renderReviewPage(slug: string, appointmentIdStr: string, res: Res
       });
     </script>
   `;
-  res.send(publicLayout(shopName, primaryColor, body));
+  res.send(publicLayout(shopName, primaryColor, body, "", settings));
 }
 
-// ─── Registro das rotas ─────────────────────────────────────────────
+// ─── Página de perfilas ─────────────────────────────────────────────
 // ─── Página de Meus Agendamentos ─────────────────────────────────────────
 async function renderMyAppointmentsPage(slug: string, res: Response, req: Request) {
   const tenant = await db.getTenantBySlug(slug);
@@ -1028,7 +1043,7 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
       }
     </script>
   `;
-  res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body));
+  res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
 }
 
 export function registerPublicRoutes(app: Express): void {
@@ -1481,7 +1496,7 @@ export function registerPublicRoutes(app: Express): void {
         <a href="/pub/${slug}" style="display:inline-block;background:var(--primary);color:#0A0A0A;font-weight:800;padding:14px 32px;border-radius:50px;text-decoration:none;font-size:15px">← Voltar para ${escapeHtml(shopName)}</a>
       </div>
     `;
-    res.send(publicLayout(shopName, primaryColor, body));
+    res.send(publicLayout(shopName, primaryColor, body, "", settings));
   });
 
   // GET /pub/:slug/pagamento/falha — Página de retorno após falha no pagamento
@@ -1499,7 +1514,7 @@ export function registerPublicRoutes(app: Express): void {
         <a href="/pub/${slug}/agendar" style="display:inline-block;background:var(--primary);color:#0A0A0A;font-weight:800;padding:14px 32px;border-radius:50px;text-decoration:none;font-size:15px">Tentar novamente</a>
       </div>
     `;
-    res.send(publicLayout(shopName, primaryColor, body));
+    res.send(publicLayout(shopName, primaryColor, body, "", settings));
   });
 
   // GET /pub/:slug/pagamento/pendente — Página de retorno para pagamento pendente
@@ -1517,7 +1532,7 @@ export function registerPublicRoutes(app: Express): void {
         <a href="/pub/${slug}" style="display:inline-block;background:var(--primary);color:#0A0A0A;font-weight:800;padding:14px 32px;border-radius:50px;text-decoration:none;font-size:15px">← Voltar para ${escapeHtml(shopName)}</a>
       </div>
     `;
-    res.send(publicLayout(shopName, primaryColor, body));
+    res.send(publicLayout(shopName, primaryColor, body, "", settings));
   });
 
   // Roteamento por subdomínio (produção: slug.barberpro.com.br)

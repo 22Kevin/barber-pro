@@ -129,6 +129,12 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       ],
     },
     {
+      label: "PÁGINA DO CLIENTE",
+      items: [
+        { href: "/admin/pagina-cliente", icon: "🌐", label: "Página do Cliente", id: "pagina-cliente" },
+      ],
+    },
+    {
       label: "SISTEMA",
       items: [
         { href: "/admin/meu-perfil", icon: "👤", label: "Meu Perfil", id: "meu-perfil" },
@@ -324,6 +330,12 @@ async function renderDashboard(req: Request, res: Response) {
   const appointments = await db.getAllAppointmentsByDate(dateStr);
   const barbers = await db.getAllBarbers();
 
+  // Buscar slug para o card de link de agendamento
+  const dashTenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
+  const dashSlug = dashTenant?.slug ?? "";
+  const dashBaseUrl = process.env.PUBLIC_BASE_URL ?? "";
+  const dashBookingUrl = dashSlug ? `${dashBaseUrl}/pub/${dashSlug}/agendar` : "";
+
   // Mapa de barbeiros e clientes para exibição
   const barberMap: Record<number, string> = Object.fromEntries(barbers.map((b) => [b.id, b.name]));
   const clientIds = [...new Set(appointments.map((a: any) => a.clientId))];
@@ -399,6 +411,23 @@ async function renderDashboard(req: Request, res: Response) {
         <div class="metric-sub">profissionais</div>
       </div>
     </div>
+
+    ${dashBookingUrl ? `
+    <div class="card" style="background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);border:1px solid var(--gold)44">
+      <div class="card-header">
+        <div class="card-title">🌐 Link de Agendamento Online</div>
+        <a href="/admin/pagina-cliente" class="btn btn-ghost" style="font-size:12px">Configurar página</a>
+      </div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Compartilhe este link com seus clientes para que eles possam agendar online:</p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="dash-booking-url" class="form-input" type="text" value="${esc(dashBookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
+          <button onclick="(function(btn){navigator.clipboard.writeText(document.getElementById('dash-booking-url').value).then(()=>{var o=btn.textContent;btn.textContent='✅ Copiado!';setTimeout(()=>btn.textContent=o,2000)});})(this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">📋 Copiar</button>
+          <a href="${esc(dashBookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">🔗 Abrir</a>
+          <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário: ' + dashBookingUrl)}" target="_blank" class="btn btn-primary" style="flex-shrink:0;padding:8px 14px;font-size:12px">📲 WhatsApp</a>
+        </div>
+      </div>
+    </div>` : ''}
 
     <div class="card">
       <div class="card-header">
@@ -1153,18 +1182,14 @@ async function renderConfiguracoes(req: Request, res: Response) {
 
   const tabs = [
     { id: 'dados', label: '🏦 Dados' },
-    { id: 'visual', label: '🎨 Visual' },
     { id: 'horarios', label: '🕒 Horários' },
     { id: 'equipe', label: '👥 Equipe' },
-    { id: 'url', label: '🔗 URL Pública' },
   ];
 
   const tabContent: Record<string, string> = {
     dados: tabDados,
-    visual: tabVisual,
     horarios: tabHorarios,
     equipe: tabEquipe,
-    url: tabUrl,
   };
 
   const body = `
@@ -1474,7 +1499,281 @@ async function renderRelatorios(req: Request, res: Response) {
   res.send(adminLayout("Relatórios", "relatorios", body, barber?.name));
 }
 
-// ─── Detalhe do Cliente ────────────────────────────────────────────────────────
+// ──// ─── Página do Cliente ───────────────────────────────────────────
+async function renderPaginaCliente(req: Request, res: Response) {
+  const session = (req as any).adminSession as { barberId: number; role: string };
+  const barber = await db.getBarberById(session.barberId);
+  const settings = await db.getShopSettings(barber?.tenantId);
+  const saved = req.query.saved === "1";
+  const slugSaved = req.query.slugsaved === "1";
+  const slugError = req.query.slugerror as string | undefined;
+  const activeTab = (req.query.tab as string) ?? "url";
+
+  // Buscar tenant para slug
+  const tenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
+  const currentSlug = tenant?.slug ?? "";
+  const baseUrl = process.env.PUBLIC_BASE_URL ?? "";
+  const publicUrl = currentSlug ? `${baseUrl}/pub/${currentSlug}` : "";
+  const bookingUrl = currentSlug ? `${baseUrl}/pub/${currentSlug}/agendar` : "";
+
+  // Gerar QR Code
+  let qrDataUrl = "";
+  if (bookingUrl) {
+    try {
+      const QRCode = await import("qrcode");
+      qrDataUrl = await QRCode.default.toDataURL(bookingUrl, { width: 220, margin: 2, color: { dark: "#000000", light: "#FFFFFF" } });
+    } catch { /* sem QR Code */ }
+  }
+
+  // ─── Aba: URL & QR Code ──────────────────────────────────────────────────
+  const tabUrlQr = `
+    ${slugSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ URL atualizada com sucesso!</div>` : ""}
+    ${slugError ? `<div style="background:#EF444422;border:1px solid #EF444444;color:var(--error);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">❌ ${esc(slugError)}</div>` : ""}
+
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header"><div class="card-title">🔗 Links de Agendamento</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Compartilhe estes links com seus clientes para que eles possam agendar online diretamente pela página da sua barbearia.</p>
+        ${bookingUrl ? `
+          <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+            ${qrDataUrl ? `
+              <div style="flex-shrink:0;text-align:center">
+                <div style="background:#fff;padding:12px;border-radius:16px;border:1px solid var(--border);display:inline-block">
+                  <img src="${qrDataUrl}" width="160" height="160" alt="QR Code" style="display:block" />
+                </div>
+                <div style="font-size:11px;color:var(--muted);margin-top:8px">QR Code de Agendamento</div>
+                <a href="${qrDataUrl}" download="qrcode-agendamento.png" class="btn btn-ghost" style="font-size:11px;padding:6px 12px;margin-top:8px">⬇️ Baixar PNG</a>
+              </div>` : ""}
+            <div style="flex:1;min-width:220px">
+              <div style="margin-bottom:16px">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">PÁGINA PRINCIPAL DA BARBEARIA</div>
+                <div style="display:flex;gap:8px">
+                  <input id="url-vitrine" class="form-input" type="text" value="${esc(publicUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
+                  <button onclick="copyUrl('url-vitrine', this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">📋 Copiar</button>
+                  <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">🔗 Abrir</a>
+                </div>
+              </div>
+              <div style="margin-bottom:20px">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">LINK DIRETO PARA AGENDAMENTO</div>
+                <div style="display:flex;gap:8px">
+                  <input id="url-booking" class="form-input" type="text" value="${esc(bookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
+                  <button onclick="copyUrl('url-booking', this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">📋 Copiar</button>
+                  <a href="${esc(bookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">🔗 Abrir</a>
+                </div>
+              </div>
+              <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário online: ' + bookingUrl)}" target="_blank" class="btn btn-primary" style="font-size:13px;padding:10px 20px">📲 Compartilhar no WhatsApp</a>
+            </div>
+          </div>
+        ` : `<div style="color:var(--muted);font-size:13px">⚠️ Não foi possível gerar o link. Configure o PUBLIC_BASE_URL no servidor.</div>`}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">⚙️ Personalizar URL</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">O slug é a parte final do link que identifica sua barbearia. Use apenas letras minúsculas, números e hífens.</p>
+        <form method="POST" action="/admin/pagina-cliente/slug">
+          <div style="display:flex;align-items:center;gap:0;margin-bottom:12px">
+            <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:12px;color:var(--muted);white-space:nowrap;font-family:monospace">${esc(baseUrl)}/pub/</div>
+            <input class="form-input" type="text" name="slug" value="${esc(currentSlug)}" required pattern="[a-z0-9\\-]+" title="Apenas letras minúsculas, números e hífens" style="border-radius:0 8px 8px 0;font-family:monospace;font-size:14px" placeholder="nome-da-barbearia" />
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:16px">⚠️ Ao alterar o slug, o link antigo deixará de funcionar. Atualize todos os locais onde o link foi compartilhado.</p>
+          <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar Nova URL</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+    function copyUrl(id, btn) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      navigator.clipboard.writeText(el.value).then(() => {
+        const orig = btn.textContent;
+        btn.textContent = '✅ Copiado!';
+        setTimeout(() => btn.textContent = orig, 2000);
+      });
+    }
+    </script>
+  `;
+
+  // ─── Aba: Personalização Visual ──────────────────────────────────────────────
+  const tabVisual = `
+    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Configurações visuais salvas!</div>` : ""}
+    <form method="POST" action="/admin/pagina-cliente/visual">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
+        <div class="form-group">
+          <label class="form-label">Cor Principal da Página</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <input type="color" name="primaryColor" value="${esc(settings?.primaryColor ?? "#C9A84C")}" style="width:48px;height:40px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;padding:2px" />
+            <input class="form-input" type="text" id="colorHex" value="${esc(settings?.primaryColor ?? "#C9A84C")}" style="flex:1" placeholder="#C9A84C" />
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px">Cor usada nos botões e destaques da página de agendamento.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">URL do Banner</label>
+          <input class="form-input" type="text" name="bannerUrl" value="${esc(settings?.bannerUrl ?? "")}" placeholder="https://..." />
+          <div style="font-size:11px;color:var(--muted);margin-top:6px">Imagem de fundo do hero (1200×400px recomendado).</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">URL do Logo</label>
+        <input class="form-input" type="text" name="logoUrl" value="${esc(settings?.logoUrl ?? "")}" placeholder="https://..." />
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Logo exibido na página pública e nos e-mails.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">URLs da Galeria (uma por linha)</label>
+        <textarea name="galleryUrls" class="form-input" rows="4" placeholder="https://...\nhttps://...">${esc(settings?.galleryUrls ?? "")}</textarea>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Fotos exibidas na galeria da página pública.</div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">✓ Salvar Visual</button>
+    </form>
+    <script>
+      document.querySelector('input[type=color]').addEventListener('input', function() {
+        document.getElementById('colorHex').value = this.value;
+      });
+      document.getElementById('colorHex').addEventListener('input', function() {
+        if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+          document.querySelector('input[type=color]').value = this.value;
+        }
+      });
+    </script>
+  `;
+
+  // ─── Aba: Domínio Customizado ──────────────────────────────────────────────
+  const domainSaved = req.query.domainsaved === "1";
+  const tabDominio = `
+    ${domainSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Domínio salvo com sucesso!</div>` : ""}
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header"><div class="card-title">🌐 Domínio Personalizado</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Configure um domínio próprio para a página de agendamento da sua barbearia (ex: <code>agendamento.minhabarbearia.com.br</code>). O domínio precisa ser apontado para este servidor via registro DNS do tipo CNAME ou A.</p>
+        <form method="POST" action="/admin/pagina-cliente/dominio">
+          <div class="form-group">
+            <label class="form-label">Domínio Personalizado</label>
+            <input class="form-input" type="text" name="customDomain" value="${esc(settings?.customDomain ?? "")}" placeholder="agendamento.minhabarbearia.com.br" />
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">Deixe em branco para usar apenas o link padrão do sistema.</div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar Domínio</button>
+        </form>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">📍 Como configurar o DNS</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Após salvar o domínio acima, acesse o painel do seu provedor de DNS e adicione um dos registros abaixo:</p>
+        <div style="background:var(--surface2);border-radius:8px;padding:16px;font-family:monospace;font-size:12px;margin-bottom:12px">
+          <div style="color:var(--muted);margin-bottom:8px"># Opção 1: Registro CNAME (recomendado para subdomínios)</div>
+          <div>Tipo: <strong>CNAME</strong></div>
+          <div>Nome: <strong>agendamento</strong> (ou o subdomínio desejado)</div>
+          <div>Valor: <strong>${esc(baseUrl.replace(/^https?:\/\//, ""))}</strong></div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:16px;font-family:monospace;font-size:12px">
+          <div style="color:var(--muted);margin-bottom:8px"># Opção 2: Registro A (para domínio raiz)</div>
+          <div>Tipo: <strong>A</strong></div>
+          <div>Nome: <strong>@</strong> ou <strong>agendamento</strong></div>
+          <div>Valor: <strong>[IP do servidor]</strong></div>
+        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:12px">⚠️ A propagação do DNS pode levar até 48 horas. Entre em contato com o suporte após configurar.</p>
+      </div>
+    </div>
+  `;
+
+  // ─── Aba: Rastreamento ──────────────────────────────────────────────────────
+  const trackingSaved = req.query.trackingsaved === "1";
+  const tabRastreamento = `
+    ${trackingSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Configurações de rastreamento salvas!</div>` : ""}
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header"><div class="card-title">📊 Google Analytics 4</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Acompanhe as visitas e conversões da sua página de agendamento com o Google Analytics 4. Crie uma propriedade em <a href="https://analytics.google.com" target="_blank" style="color:var(--gold)">analytics.google.com</a> e cole o Measurement ID abaixo.</p>
+        <form method="POST" action="/admin/pagina-cliente/rastreamento">
+          <div class="form-group">
+            <label class="form-label">Google Analytics 4 — Measurement ID</label>
+            <input class="form-input" type="text" name="ga4MeasurementId" value="${esc(settings?.ga4MeasurementId ?? "")}" placeholder="G-XXXXXXXXXX" style="font-family:monospace" />
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">Formato: G-XXXXXXXXXX. Encontrado em Administrador → Fluxos de dados → Tag do Google.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Facebook Pixel ID</label>
+            <input class="form-input" type="text" name="facebookPixelId" value="${esc(settings?.facebookPixelId ?? "")}" placeholder="123456789012345" style="font-family:monospace" />
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">Encontrado no Gerenciador de Anúncios → Fontes de Dados → Pixels.</div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar Rastreamento</button>
+        </form>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">ℹ️ Como funciona</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Quando configurados, os scripts de rastreamento são injetados automaticamente em todas as páginas públicas da sua barbearia (vitrine, agendamento, pagamento). Você poderá acompanhar:</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:var(--surface2);border-radius:8px;padding:12px">
+            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">📊 Google Analytics 4</div>
+            <div style="font-size:12px;color:var(--muted)">Visitas à página, origem do tráfego, taxa de conversão de agendamentos, dispositivos e localização dos visitantes.</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:12px">
+            <div style="font-size:12px;font-weight:700;color:#1877F2;margin-bottom:6px">📰 Facebook Pixel</div>
+            <div style="font-size:12px;color:var(--muted)">Rastreamento de conversões para anúncios no Facebook e Instagram, criação de públicos personalizados e retargeting.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ─── Aba: Preview ──────────────────────────────────────────────────────────
+  const tabPreview = publicUrl ? `
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">👁️ Preview da Página Pública</div>
+        <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">🔗 Abrir em nova aba</a>
+      </div>
+      <div class="card-body" style="padding:0">
+        <iframe src="${esc(publicUrl)}" style="width:100%;height:600px;border:none;border-radius:0 0 12px 12px" loading="lazy"></iframe>
+      </div>
+    </div>
+  ` : `
+    <div class="card">
+      <div class="card-body">
+        <div style="text-align:center;padding:40px;color:var(--muted)">
+          <div style="font-size:48px;margin-bottom:16px">🌐</div>
+          <div style="font-size:16px;font-weight:600;margin-bottom:8px">Página pública não disponível</div>
+          <div style="font-size:13px">Configure o PUBLIC_BASE_URL no servidor para habilitar o preview.</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const tabs = [
+    { id: 'url', label: '🔗 URL & QR Code' },
+    { id: 'visual', label: '🎨 Visual' },
+    { id: 'dominio', label: '🌐 Domínio' },
+    { id: 'rastreamento', label: '📊 Rastreamento' },
+    { id: 'preview', label: '👁️ Preview' },
+  ];
+
+  const tabContent: Record<string, string> = {
+    url: tabUrlQr,
+    visual: tabVisual,
+    dominio: tabDominio,
+    rastreamento: tabRastreamento,
+    preview: tabPreview,
+  };
+
+  const body = `
+    <!-- Abas -->
+    <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;overflow-x:auto">
+      ${tabs.map(t => `
+        <a href="/admin/pagina-cliente?tab=${t.id}" style="flex-shrink:0;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;
+          ${activeTab === t.id ? 'background:var(--gold);color:#0C0C0C' : 'color:var(--muted)'}
+        ">${t.label}</a>`).join('')}
+    </div>
+    <!-- Conteúdo da aba ativa -->
+    ${tabContent[activeTab] ?? tabUrlQr}
+  `;
+
+  res.send(adminLayout("Página do Cliente", "pagina-cliente", body, barber?.name));
+}
+
+// ─── Detalhe do Cliente ────────────────────────────────────────────
 async function renderClienteDetalhe(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
@@ -1896,6 +2195,67 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/financeiro", requireAdminAuth, (req, res) => renderFinanceiro(req, res));
   app.get("/admin/configuracoes", requireAdminAuth, (req, res) => renderConfiguracoes(req, res));
   app.get("/admin/relatorios", requireAdminAuth, (req, res) => renderRelatorios(req, res));
+  app.get("/admin/pagina-cliente", requireAdminAuth, (req, res) => renderPaginaCliente(req, res));
+
+  // POST /admin/pagina-cliente/slug — Alterar slug
+  app.post("/admin/pagina-cliente/slug", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      if (!barber?.tenantId) { res.redirect("/admin/pagina-cliente?tab=url&slugerror=Tenant+n%C3%A3o+encontrado"); return; }
+      const { slug } = req.body ?? {};
+      if (!slug || !/^[a-z0-9\-]+$/.test(slug)) {
+        res.redirect("/admin/pagina-cliente?tab=url&slugerror=Slug+inv%C3%A1lido.+Use+apenas+letras+min%C3%BAsculas%2C+n%C3%BAmeros+e+h%C3%ADfens"); return;
+      }
+      const existing = await db.getTenantBySlug(slug);
+      if (existing && existing.id !== barber.tenantId) {
+        res.redirect("/admin/pagina-cliente?tab=url&slugerror=Este+slug+j%C3%A1+est%C3%A1+em+uso"); return;
+      }
+      await db.updateTenant(barber.tenantId, { slug });
+      res.redirect("/admin/pagina-cliente?tab=url&slugsaved=1");
+    } catch (e: any) {
+      res.redirect(`/admin/pagina-cliente?tab=url&slugerror=${encodeURIComponent(e.message ?? "Erro ao salvar")}`);
+    }
+  });
+
+  // POST /admin/pagina-cliente/visual — Salvar visual
+  app.post("/admin/pagina-cliente/visual", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const { primaryColor, bannerUrl, logoUrl, galleryUrls } = req.body ?? {};
+      await db.upsertShopSettings({ primaryColor, bannerUrl, logoUrl, galleryUrls }, barber?.tenantId);
+      res.redirect("/admin/pagina-cliente?tab=visual&saved=1");
+    } catch (e: any) {
+      res.redirect("/admin/pagina-cliente?tab=visual");
+    }
+  });
+
+  // POST /admin/pagina-cliente/dominio — Salvar domínio customizado
+  app.post("/admin/pagina-cliente/dominio", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const { customDomain } = req.body ?? {};
+      await db.upsertShopSettings({ customDomain: customDomain || null }, barber?.tenantId);
+      res.redirect("/admin/pagina-cliente?tab=dominio&domainsaved=1");
+    } catch (e: any) {
+      res.redirect("/admin/pagina-cliente?tab=dominio");
+    }
+  });
+
+  // POST /admin/pagina-cliente/rastreamento — Salvar GA4 e Pixel
+  app.post("/admin/pagina-cliente/rastreamento", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const { ga4MeasurementId, facebookPixelId } = req.body ?? {};
+      await db.upsertShopSettings({ ga4MeasurementId: ga4MeasurementId || null, facebookPixelId: facebookPixelId || null }, barber?.tenantId);
+      res.redirect("/admin/pagina-cliente?tab=rastreamento&trackingsaved=1");
+    } catch (e: any) {
+      res.redirect("/admin/pagina-cliente?tab=rastreamento");
+    }
+  });
 
   // ─── CRUD Serviços ────────────────────────────────────────────────────────
   app.post("/admin/servicos", requireAdminAuth, async (req: Request, res: Response) => {

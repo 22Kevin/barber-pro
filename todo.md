@@ -865,3 +865,18 @@
 
 - [x] Exportação de relatório financeiro em PDF no painel admin web (DRE simplificado por período)
 - [x] Seção "URL Pública" nas Configurações do admin web: exibir link, botão copiar, QR Code e campo para alterar slug
+
+## Melhorias v7.1 — Seção "Página do Cliente"
+
+- [x] Nova entrada "Página do Cliente" no menu lateral do admin web
+- [x] Página /admin/pagina-cliente com 5 abas: URL/QR Code, Personalização Visual, Domínio, Rastreamento e Preview
+- [x] Aba URL/QR Code: link de vitrine, link de agendamento, botão copiar, QR Code, compartilhar WhatsApp, alterar slug
+- [x] Aba Personalização Visual: cor principal, banner, logo, galeria (movida de Configurações)
+- [x] Aba Domínio: campo para domínio customizado + instruções de configuração de DNS
+- [x] Aba Rastreamento: campo GA4 Measurement ID e campo Pixel ID do Facebook
+- [x] Aba Preview: iframe embutido da página pública da barbearia
+- [x] Card "Seu link de agendamento" no Dashboard do admin com botão de copiar
+- [x] Remover aba "URL Pública" de Configurações (consolidada na nova seção)
+- [x] Remover aba "Visual" de Configurações (consolidada na nova seção)
+- [x] Injetar scripts de GA4 e Pixel do Facebook na página pública quando configurados
+- [x] Suporte a domínio customizado: middleware de resolução por Host header na página pública

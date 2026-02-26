@@ -295,6 +295,9 @@ export const shopSettings = mysqlTable("shop_settings", {
   galleryUrls: text("galleryUrls"),
   primaryColor: varchar("primaryColor", { length: 20 }).default("#C9A84C"),
   bannerUrl: text("bannerUrl"),
+  customDomain: varchar("customDomain", { length: 255 }),  // domínio personalizado da página pública
+  ga4MeasurementId: varchar("ga4MeasurementId", { length: 50 }),  // Google Analytics 4 Measurement ID
+  facebookPixelId: varchar("facebookPixelId", { length: 50 }),   // Facebook Pixel ID
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 // ─── Tokens de Recuperação de Senha ────────────────────────────────────────
