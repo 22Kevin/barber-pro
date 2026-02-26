@@ -797,3 +797,8 @@
 - [x] Tela de Cupons no painel admin web: criar, editar, ativar/desativar cupons
 - [x] Tela de Avaliações no painel admin web: média geral, distribuição por estrelas, lista de avaliações
 - [x] Tela de Comissões no painel admin web: configurar percentual por barbeiro, resumo mensal
+
+## Fase 13 — Landing Page + Pós-Onboarding + Teste de Usuário
+- [x] Landing page do Barber Pro: hero, funcionalidades, planos, depoimentos, download, footer
+- [x] Tela de confirmação pós-onboarding: boas-vindas, link da página pública, atalho para painel web
+- [x] Validação do fluxo completo: cadastro de barbearia → página pública acessível → painel admin funcional

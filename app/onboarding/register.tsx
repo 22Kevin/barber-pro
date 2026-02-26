@@ -102,8 +102,14 @@ export default function OnboardingRegisterScreen() {
   const registerMutation = trpc.onboarding.register.useMutation({
     onSuccess: async (data) => {
       await login(data.admin as any);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace("/admin/(tabs)/dashboard" as any);
+      // Navega para a tela de boas-vindas com o slug e nome da barbearia
+      router.replace({
+        pathname: "/onboarding/welcome" as any,
+        params: {
+          slug: step1.shopName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
+          shopName: step1.shopName,
+        },
+      });
     },
     onError: (err) => {
       Alert.alert("Erro no cadastro", err.message);
