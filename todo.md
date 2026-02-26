@@ -284,6 +284,16 @@
 
 - [ ] [AVALIAR] Criar versão web responsiva do painel administrativo (o Expo já gera build web — avaliar se a experiência atual no navegador já é suficiente ou se precisa de layout adaptado para telas grandes)
 
+## Painel Admin Web — Novas Seções
+
+- [x] Lista de Espera no painel admin web
+- [x] Estoque no painel admin web
+- [x] Recorrências no painel admin web
+- [x] Conversão de Promoções no painel admin web
+- [x] Retorno Automático no painel admin web
+- [x] Relatórios no painel admin web
+- [x] Meu Perfil no painel admin web
+
 ## Tela de Pagamento Pix
 
 - [x] Rota servidor: gerar QR Code Pix via Mercado Pago (com fallback local para dev)

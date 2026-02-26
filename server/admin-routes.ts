@@ -96,6 +96,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin", icon: "⊞", label: "Dashboard", id: "dashboard" },
         { href: "/admin/agenda", icon: "📅", label: "Agenda", id: "agenda" },
         { href: "/admin/clientes", icon: "👥", label: "Clientes", id: "clientes" },
+        { href: "/admin/lista-espera", icon: "⏳", label: "Lista de Espera", id: "lista-espera" },
+        { href: "/admin/recorrencias", icon: "🔄", label: "Recorrências", id: "recorrencias" },
       ],
     },
     {
@@ -103,6 +105,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       items: [
         { href: "/admin/servicos", icon: "✂️", label: "Serviços", id: "servicos" },
         { href: "/admin/produtos", icon: "🛍️", label: "Produtos", id: "produtos" },
+        { href: "/admin/estoque", icon: "📦", label: "Estoque", id: "estoque" },
       ],
     },
     {
@@ -119,11 +122,14 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/fidelidade", icon: "⭐", label: "Fidelidade", id: "fidelidade" },
         { href: "/admin/cupons", icon: "🏷️", label: "Cupons", id: "cupons" },
         { href: "/admin/avaliacoes", icon: "💬", label: "Avaliações", id: "avaliacoes" },
+        { href: "/admin/retorno-automatico", icon: "📨", label: "Retorno Automático", id: "retorno-automatico" },
+        { href: "/admin/conversao-promocoes", icon: "📈", label: "Conversão de Promoções", id: "conversao-promocoes" },
       ],
     },
     {
       label: "SISTEMA",
       items: [
+        { href: "/admin/meu-perfil", icon: "👤", label: "Meu Perfil", id: "meu-perfil" },
         { href: "/admin/configuracoes", icon: "⚙️", label: "Configurações", id: "configuracoes" },
       ],
     },
@@ -2150,6 +2156,625 @@ export function registerAdminRoutes(app: Express): void {
       }
     }
     res.redirect("/admin/comissoes?saved=1");
+  });
+
+  // ─── Lista de Espera ────────────────────────────────────────────────────────
+  app.get("/admin/lista-espera", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const dateParam = (req.query.date as string) || today();
+    const entries = await db.listWaitlistByDate(dateParam);
+    const allClients = await db.getAllClients();
+    const allBarbers = await db.getAllBarbers();
+    const allServices = await db.getAllServices();
+    const saved = req.query.saved === "1";
+    const removed = req.query.removed === "1";
+    const body = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <div>
+          <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Lista de Espera</h1>
+          <p style="color:var(--muted);font-size:14px;margin-top:4px;">Clientes aguardando vaga para uma data específica</p>
+        </div>
+        <button onclick="document.getElementById('addModal').style.display='flex'" class="btn btn-primary">+ Adicionar à Fila</button>
+      </div>
+      ${saved ? `<div class="alert alert-success">Cliente adicionado à lista de espera.</div>` : ""}
+      ${removed ? `<div class="alert alert-success">Entrada removida da lista de espera.</div>` : ""}
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-body" style="padding:16px;">
+          <form method="GET" style="display:flex;align-items:center;gap:12px;">
+            <label style="color:var(--muted);font-size:13px;">Data:</label>
+            <input type="date" name="date" value="${dateParam}" class="form-input" style="width:180px;" onchange="this.form.submit()" />
+            <span style="color:var(--muted);font-size:13px;">${entries.length} cliente(s) na fila</span>
+          </form>
+        </div>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>#</th><th>Cliente</th><th>Barbeiro Preferido</th><th>Serviço</th><th>Na Fila Desde</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody>
+            ${entries.length === 0 ? `<tr><td colspan="7" class="empty">Nenhum cliente na lista de espera para ${fmtDate(dateParam)}.</td></tr>` : entries.map((e, i) => `
+              <tr>
+                <td><strong>#${i + 1}</strong></td>
+                <td>${esc(e.client?.name ?? "—")}<br><small style="color:var(--muted);">${esc(e.client?.phone ?? "")}</small></td>
+                <td>${esc(allBarbers.find(b => b.id === e.barberId)?.name ?? "Qualquer")}</td>
+                <td>${esc(allServices.find(s => s.id === e.serviceId)?.name ?? "Qualquer")}</td>
+                <td>${new Date(e.createdAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
+                <td><span class="badge ${e.status === "waiting" ? "badge-gold" : e.status === "notified" ? "badge-success" : "badge-muted"}">${e.status === "waiting" ? "Aguardando" : e.status === "notified" ? "Notificado" : esc(e.status)}</span></td>
+                <td>
+                  <form method="POST" action="/admin/lista-espera/remover" style="display:inline;">
+                    <input type="hidden" name="id" value="${e.id}" />
+                    <input type="hidden" name="date" value="${dateParam}" />
+                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="return confirm('Remover da lista?')">Remover</button>
+                  </form>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+      <!-- Modal Adicionar -->
+      <div id="addModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+        <div style="background:var(--surface);border-radius:12px;padding:28px;width:420px;max-width:90vw;">
+          <h2 style="font-size:18px;font-weight:700;margin-bottom:20px;">Adicionar à Lista de Espera</h2>
+          <form method="POST" action="/admin/lista-espera">
+            <div class="form-group">
+              <label class="form-label">Cliente *</label>
+              <select name="clientId" class="form-input" required>
+                <option value="">Selecione o cliente</option>
+                ${allClients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Data *</label>
+              <input type="date" name="date" value="${dateParam}" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Barbeiro Preferido</label>
+              <select name="barberId" class="form-input">
+                <option value="">Qualquer barbeiro</option>
+                ${allBarbers.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join("")}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Serviço</label>
+              <select name="serviceId" class="form-input">
+                <option value="">Qualquer serviço</option>
+                ${allServices.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}
+              </select>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:20px;">
+              <button type="button" onclick="document.getElementById('addModal').style.display='none'" class="btn" style="flex:1;">Cancelar</button>
+              <button type="submit" class="btn btn-primary" style="flex:1;">Adicionar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+    res.send(adminLayout("Lista de Espera", "lista-espera", body, barber?.name));
+  });
+
+  app.post("/admin/lista-espera", requireAdminAuth, async (req: Request, res: Response) => {
+    const { clientId, date, barberId, serviceId } = req.body;
+    if (!clientId || !date) { res.redirect("/admin/lista-espera?error=1"); return; }
+    await db.joinWaitlist({
+      clientId: parseInt(clientId),
+      date,
+      barberId: barberId ? parseInt(barberId) : undefined,
+      serviceId: serviceId ? parseInt(serviceId) : undefined,
+    });
+    res.redirect(`/admin/lista-espera?date=${date}&saved=1`);
+  });
+
+  app.post("/admin/lista-espera/remover", requireAdminAuth, async (req: Request, res: Response) => {
+    const { id, date } = req.body;
+    if (id) await db.leaveWaitlist(parseInt(id));
+    res.redirect(`/admin/lista-espera?date=${date || today()}&removed=1`);
+  });
+
+  // ─── Recorrências ────────────────────────────────────────────────────────────
+  app.get("/admin/recorrencias", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const allRecurring = await db.getAllRecurringAppointments();
+    const allClients = await db.getAllClients();
+    const allBarbers = await db.getAllBarbers();
+    const allServices = await db.getAllServices();
+    const cancelled = req.query.cancelled === "1";
+    const created = req.query.created === "1";
+    const body = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <div>
+          <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Agendamentos Recorrentes</h1>
+          <p style="color:var(--muted);font-size:14px;margin-top:4px;">Clientes com agendamentos periódicos configurados</p>
+        </div>
+        <button onclick="document.getElementById('newRecModal').style.display='flex'" class="btn btn-primary">+ Nova Recorrência</button>
+      </div>
+      ${cancelled ? `<div class="alert alert-success">Recorrência cancelada com sucesso.</div>` : ""}
+      ${created ? `<div class="alert alert-success">Recorrência criada! Agendamentos gerados automaticamente.</div>` : ""}
+      <div class="card">
+        <table>
+          <thead><tr><th>Cliente</th><th>Barbeiro</th><th>Serviço</th><th>Início</th><th>Horário</th><th>Intervalo</th><th>Ocorrências</th><th>Ações</th></tr></thead>
+          <tbody>
+            ${allRecurring.length === 0 ? `<tr><td colspan="8" class="empty">Nenhuma recorrência ativa.</td></tr>` : allRecurring.map(r => `
+              <tr>
+                <td><strong>${esc(r.clientName)}</strong></td>
+                <td>${esc(r.barberName)}</td>
+                <td>${esc(r.serviceName)}</td>
+                <td>${fmtDate(r.startDate)}</td>
+                <td>${r.startTime?.toString().slice(0,5) ?? "—"}</td>
+                <td>A cada ${r.intervalWeeks} semana(s)</td>
+                <td>${r.occurrences}x</td>
+                <td>
+                  <form method="POST" action="/admin/recorrencias/cancelar" style="display:inline;">
+                    <input type="hidden" name="id" value="${r.id}" />
+                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="return confirm('Cancelar esta recorrência?')">Cancelar</button>
+                  </form>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+      <!-- Modal Nova Recorrência -->
+      <div id="newRecModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+        <div style="background:var(--surface);border-radius:12px;padding:28px;width:480px;max-width:90vw;max-height:90vh;overflow-y:auto;">
+          <h2 style="font-size:18px;font-weight:700;margin-bottom:20px;">Nova Recorrência</h2>
+          <form method="POST" action="/admin/recorrencias">
+            <div class="form-group">
+              <label class="form-label">Cliente *</label>
+              <select name="clientId" class="form-input" required>
+                <option value="">Selecione o cliente</option>
+                ${allClients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Barbeiro *</label>
+              <select name="barberId" class="form-input" required>
+                <option value="">Selecione o barbeiro</option>
+                ${allBarbers.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join("")}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Serviço *</label>
+              <select name="serviceId" class="form-input" required>
+                <option value="">Selecione o serviço</option>
+                ${allServices.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Data de Início *</label>
+              <input type="date" name="startDate" class="form-input" required />
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="form-group">
+                <label class="form-label">Horário Início *</label>
+                <input type="time" name="startTime" class="form-input" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Horário Fim *</label>
+                <input type="time" name="endTime" class="form-input" required />
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="form-group">
+                <label class="form-label">Intervalo (semanas)</label>
+                <input type="number" name="intervalWeeks" value="4" min="1" max="12" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Nº de Ocorrências</label>
+                <input type="number" name="occurrences" value="6" min="1" max="52" class="form-input" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Observações</label>
+              <input type="text" name="notes" class="form-input" placeholder="Opcional" />
+            </div>
+            <div style="display:flex;gap:12px;margin-top:20px;">
+              <button type="button" onclick="document.getElementById('newRecModal').style.display='none'" class="btn" style="flex:1;">Cancelar</button>
+              <button type="submit" class="btn btn-primary" style="flex:1;">Criar Recorrência</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+    res.send(adminLayout("Recorrências", "recorrencias", body, barber?.name));
+  });
+
+  app.post("/admin/recorrencias", requireAdminAuth, async (req: Request, res: Response) => {
+    const { clientId, barberId, serviceId, startDate, startTime, endTime, intervalWeeks, occurrences, notes } = req.body;
+    if (!clientId || !barberId || !serviceId || !startDate || !startTime || !endTime) {
+      res.redirect("/admin/recorrencias?error=Preencha+todos+os+campos+obrigatórios"); return;
+    }
+    try {
+      await db.createRecurringAppointments({
+        clientId: parseInt(clientId),
+        barberId: parseInt(barberId),
+        serviceId: parseInt(serviceId),
+        startDate,
+        startTime,
+        endTime,
+        intervalWeeks: parseInt(intervalWeeks) || 4,
+        occurrences: parseInt(occurrences) || 6,
+        notes: notes || undefined,
+      });
+      res.redirect("/admin/recorrencias?created=1");
+    } catch (e: any) {
+      res.redirect(`/admin/recorrencias?error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  app.post("/admin/recorrencias/cancelar", requireAdminAuth, async (req: Request, res: Response) => {
+    const { id } = req.body;
+    if (id) await db.cancelRecurring(parseInt(id));
+    res.redirect("/admin/recorrencias?cancelled=1");
+  });
+
+  // ─── Estoque ─────────────────────────────────────────────────────────────────
+  app.get("/admin/estoque", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const products = await db.getStockProducts();
+    const saved = req.query.saved === "1";
+    const lowStock = products.filter(p => p.isLowStock);
+    const body = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <div>
+          <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Controle de Estoque</h1>
+          <p style="color:var(--muted);font-size:14px;margin-top:4px;">Movimentações e alertas de estoque dos produtos</p>
+        </div>
+      </div>
+      ${saved ? `<div class="alert alert-success">Movimentação registrada com sucesso.</div>` : ""}
+      ${lowStock.length > 0 ? `
+        <div class="alert" style="background:rgba(239,68,68,0.1);border:1px solid var(--error);color:var(--error);border-radius:8px;padding:12px 16px;margin-bottom:20px;">
+          ⚠️ <strong>${lowStock.length} produto(s) com estoque baixo:</strong> ${lowStock.map(p => esc(p.name)).join(", ")}
+        </div>
+      ` : ""}
+      <div class="card">
+        <table>
+          <thead><tr><th>Produto</th><th>Estoque Atual</th><th>Alerta Mínimo</th><th>Status</th><th>Preço</th><th>Registrar Movimentação</th></tr></thead>
+          <tbody>
+            ${products.length === 0 ? `<tr><td colspan="6" class="empty">Nenhum produto cadastrado.</td></tr>` : products.map(p => `
+              <tr>
+                <td><strong>${esc(p.name)}</strong></td>
+                <td style="font-size:18px;font-weight:700;color:${p.isLowStock ? "var(--error)" : "var(--success)"};">${p.stockQuantity}</td>
+                <td style="color:var(--muted);">${p.minStockAlert}</td>
+                <td>${p.isLowStock ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error);">Estoque Baixo</span>` : `<span class="badge badge-success">OK</span>`}</td>
+                <td>${fmtCurrency(p.price)}</td>
+                <td>
+                  <button onclick="openStockModal(${p.id}, '${esc(p.name)}', ${p.stockQuantity})" class="btn btn-sm btn-primary">+ Movimentação</button>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+      <!-- Modal Movimentação -->
+      <div id="stockModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+        <div style="background:var(--surface);border-radius:12px;padding:28px;width:400px;max-width:90vw;">
+          <h2 style="font-size:18px;font-weight:700;margin-bottom:4px;">Registrar Movimentação</h2>
+          <p id="stockModalProd" style="color:var(--muted);font-size:13px;margin-bottom:20px;"></p>
+          <form method="POST" action="/admin/estoque/movimentacao">
+            <input type="hidden" name="productId" id="stockProductId" />
+            <div class="form-group">
+              <label class="form-label">Tipo</label>
+              <select name="type" class="form-input" required>
+                <option value="in">Entrada (compra/reposição)</option>
+                <option value="out">Saída (uso/venda manual)</option>
+                <option value="adjustment">Ajuste de inventário</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Quantidade</label>
+              <input type="number" name="quantity" class="form-input" min="1" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Motivo</label>
+              <input type="text" name="reason" class="form-input" placeholder="Ex: Compra do fornecedor, uso no serviço..." />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Data</label>
+              <input type="date" name="date" class="form-input" value="${today()}" required />
+            </div>
+            <div style="display:flex;gap:12px;margin-top:20px;">
+              <button type="button" onclick="document.getElementById('stockModal').style.display='none'" class="btn" style="flex:1;">Cancelar</button>
+              <button type="submit" class="btn btn-primary" style="flex:1;">Registrar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <script>
+        function openStockModal(id, name, qty) {
+          document.getElementById('stockProductId').value = id;
+          document.getElementById('stockModalProd').textContent = name + ' — Estoque atual: ' + qty;
+          document.getElementById('stockModal').style.display = 'flex';
+        }
+      </script>
+    `;
+    res.send(adminLayout("Estoque", "estoque", body, barber?.name));
+  });
+
+  app.post("/admin/estoque/movimentacao", requireAdminAuth, async (req: Request, res: Response) => {
+    const { productId, type, quantity, reason, date } = req.body;
+    if (!productId || !type || !quantity || !date) { res.redirect("/admin/estoque?error=1"); return; }
+    await db.addStockMovement({
+      productId: parseInt(productId),
+      type: type as "in" | "out" | "adjustment",
+      quantity: parseInt(quantity),
+      reason: reason || undefined,
+      date,
+    });
+    res.redirect("/admin/estoque?saved=1");
+  });
+
+  // ─── Retorno Automático ──────────────────────────────────────────────────────
+  app.get("/admin/retorno-automatico", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const configs = await db.listReturnMessageConfigs();
+    const allServices = await db.getAllServices();
+    const saved = req.query.saved === "1";
+    const deleted = req.query.deleted === "1";
+    // Mapear configs com nome do serviço
+    const configsWithService = configs.map(c => ({
+      ...c,
+      serviceName: allServices.find(s => s.id === c.serviceId)?.name ?? "—",
+    }));
+    // Serviços sem config
+    const configuredIds = configs.map(c => c.serviceId);
+    const unconfiguredServices = allServices.filter(s => !configuredIds.includes(s.id));
+    const body = `
+      <div style="margin-bottom:24px;">
+        <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Retorno Automático</h1>
+        <p style="color:var(--muted);font-size:14px;margin-top:4px;">Configure mensagens automáticas de retorno por WhatsApp após o atendimento</p>
+      </div>
+      ${saved ? `<div class="alert alert-success">Configuração salva com sucesso.</div>` : ""}
+      ${deleted ? `<div class="alert alert-success">Configuração removida.</div>` : ""}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+        <!-- Adicionar nova config -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">➕ Nova Configuração</span></div>
+          <div class="card-body" style="padding:20px;">
+            <form method="POST" action="/admin/retorno-automatico">
+              <div class="form-group">
+                <label class="form-label">Serviço</label>
+                <select name="serviceId" class="form-input" required>
+                  <option value="">Selecione o serviço</option>
+                  ${unconfiguredServices.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}
+                  ${unconfiguredServices.length === 0 ? `<option disabled>Todos os serviços já configurados</option>` : ""}
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Enviar após (dias)</label>
+                <input type="number" name="delayDays" value="30" min="1" max="365" class="form-input" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Mensagem (use {nome} para o nome do cliente)</label>
+                <textarea name="messageTemplate" class="form-input" rows="4" required placeholder="Olá {nome}! Já faz um tempo desde o seu último {servico}. Que tal agendar uma visita? 😊"></textarea>
+              </div>
+              <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" name="isActive" id="isActive" value="1" checked style="width:16px;height:16px;" />
+                <label for="isActive" style="color:var(--foreground);font-size:14px;">Ativo</label>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%;">Salvar Configuração</button>
+            </form>
+          </div>
+        </div>
+        <!-- Lista de configs -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">📨 Configurações Ativas</span></div>
+          <div class="card-body" style="padding:0;">
+            ${configsWithService.length === 0 ? `<p style="padding:20px;color:var(--muted);font-size:13px;">Nenhuma configuração de retorno cadastrada.</p>` : configsWithService.map(c => `
+              <div style="padding:16px;border-bottom:1px solid var(--border);">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                  <div>
+                    <strong style="color:var(--foreground);">${esc(c.serviceName)}</strong>
+                    <span class="badge ${c.isActive ? "badge-success" : "badge-muted"}" style="margin-left:8px;">${c.isActive ? "Ativo" : "Inativo"}</span>
+                    <p style="color:var(--muted);font-size:12px;margin-top:4px;">Enviar ${c.delayDays} dia(s) após o atendimento</p>
+                    <p style="color:var(--muted);font-size:12px;margin-top:2px;font-style:italic;">&ldquo;${esc(c.messageTemplate.slice(0, 80))}${c.messageTemplate.length > 80 ? "..." : ""}&rdquo;</p>
+                  </div>
+                  <form method="POST" action="/admin/retorno-automatico/remover">
+                    <input type="hidden" name="serviceId" value="${c.serviceId}" />
+                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="return confirm('Remover esta configuração?')">Remover</button>
+                  </form>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px;">
+        <div class="card-header"><span class="card-title">ℹ️ Como funciona</span></div>
+        <div class="card-body" style="padding:20px;">
+          <p style="color:var(--muted);font-size:14px;line-height:1.7;">O sistema identifica clientes que realizaram um serviço configurado e não retornaram após o período definido. Uma mensagem personalizada é enviada via WhatsApp para incentivá-los a agendar novamente. Use <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;">{nome}</code> na mensagem para inserir o nome do cliente automaticamente.</p>
+        </div>
+      </div>
+    `;
+    res.send(adminLayout("Retorno Automático", "retorno-automatico", body, barber?.name));
+  });
+
+  app.post("/admin/retorno-automatico", requireAdminAuth, async (req: Request, res: Response) => {
+    const { serviceId, delayDays, messageTemplate, isActive } = req.body;
+    if (!serviceId || !delayDays || !messageTemplate) { res.redirect("/admin/retorno-automatico?error=1"); return; }
+    await db.upsertReturnMessageConfig({
+      serviceId: parseInt(serviceId),
+      delayDays: parseInt(delayDays),
+      messageTemplate,
+      isActive: isActive === "1",
+    });
+    res.redirect("/admin/retorno-automatico?saved=1");
+  });
+
+  app.post("/admin/retorno-automatico/remover", requireAdminAuth, async (req: Request, res: Response) => {
+    const { serviceId } = req.body;
+    if (serviceId) await db.deleteReturnMessageConfig(parseInt(serviceId));
+    res.redirect("/admin/retorno-automatico?deleted=1");
+  });
+
+  // ─── Conversão de Promoções ──────────────────────────────────────────────────
+  app.get("/admin/conversao-promocoes", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const report = await db.getPromotionConversionReport();
+    const totalSent = report.reduce((s, p) => s + (p.recipientCount ?? 0), 0);
+    const totalConversions = report.reduce((s, p) => s + (p.conversions ?? 0), 0);
+    const avgRate = report.length > 0 ? Math.round(report.reduce((s, p) => s + (p.conversionRate ?? 0), 0) / report.length) : 0;
+    const body = `
+      <div style="margin-bottom:24px;">
+        <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Conversão de Promoções</h1>
+        <p style="color:var(--muted);font-size:14px;margin-top:4px;">Relatório de efetividade das promoções enviadas</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+        <div class="card" style="padding:20px;text-align:center;">
+          <div style="font-size:32px;font-weight:700;color:var(--gold);">${report.length}</div>
+          <div style="color:var(--muted);font-size:13px;margin-top:4px;">Promoções Enviadas</div>
+        </div>
+        <div class="card" style="padding:20px;text-align:center;">
+          <div style="font-size:32px;font-weight:700;color:var(--gold);">${totalSent.toLocaleString("pt-BR")}</div>
+          <div style="color:var(--muted);font-size:13px;margin-top:4px;">Total de Destinatários</div>
+        </div>
+        <div class="card" style="padding:20px;text-align:center;">
+          <div style="font-size:32px;font-weight:700;color:${avgRate >= 20 ? "var(--success)" : avgRate >= 10 ? "var(--warning)" : "var(--error)"};">${avgRate}%</div>
+          <div style="color:var(--muted);font-size:13px;margin-top:4px;">Taxa Média de Conversão</div>
+        </div>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Promoção</th><th>Público-Alvo</th><th>Enviado em</th><th>Destinatários</th><th>Conversões (7 dias)</th><th>Taxa</th></tr></thead>
+          <tbody>
+            ${report.length === 0 ? `<tr><td colspan="6" class="empty">Nenhuma promoção enviada ainda. Crie promoções na seção de Cupons.</td></tr>` : report.map(p => {
+              const audienceLabel: Record<string, string> = {
+                all: "Todos os clientes",
+                inactive_30: "Inativos 30+ dias",
+                inactive_60: "Inativos 60+ dias",
+                birthday_month: "Aniversariantes do mês",
+              };
+              const rateColor = (p.conversionRate ?? 0) >= 20 ? "var(--success)" : (p.conversionRate ?? 0) >= 10 ? "var(--warning)" : "var(--error)";
+              return `
+                <tr>
+                  <td><strong>${esc(p.title)}</strong><br><small style="color:var(--muted);">${esc(p.message.slice(0, 60))}${p.message.length > 60 ? "..." : ""}</small></td>
+                  <td><span class="badge badge-gold">${audienceLabel[p.targetAudience] ?? esc(p.targetAudience)}</span></td>
+                  <td>${p.sentAt ? new Date(p.sentAt).toLocaleDateString("pt-BR") : "—"}</td>
+                  <td>${(p.recipientCount ?? 0).toLocaleString("pt-BR")}</td>
+                  <td style="font-weight:600;">${(p.conversions ?? 0).toLocaleString("pt-BR")}</td>
+                  <td><span style="color:${rateColor};font-weight:700;font-size:16px;">${p.conversionRate ?? 0}%</span></td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+      ${totalConversions > 0 ? `
+        <div class="card" style="margin-top:20px;padding:20px;">
+          <p style="color:var(--muted);font-size:13px;">💡 <strong>Dica:</strong> Promoções para clientes inativos tendem a ter maior taxa de conversão. Considere segmentar seu público para melhores resultados.</p>
+        </div>
+      ` : ""}
+    `;
+    res.send(adminLayout("Conversão de Promoções", "conversao-promocoes", body, barber?.name));
+  });
+
+  // ─── Meu Perfil ──────────────────────────────────────────────────────────────
+  app.get("/admin/meu-perfil", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    if (!barber) { res.redirect("/admin/login"); return; }
+    const saved = req.query.saved === "1";
+    const pwChanged = req.query.pw === "1";
+    const pwError = req.query.pwerr as string | undefined;
+    const body = `
+      <div style="margin-bottom:24px;">
+        <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Meu Perfil</h1>
+        <p style="color:var(--muted);font-size:14px;margin-top:4px;">Gerencie suas informações pessoais e senha de acesso</p>
+      </div>
+      ${saved ? `<div class="alert alert-success">Perfil atualizado com sucesso.</div>` : ""}
+      ${pwChanged ? `<div class="alert alert-success">Senha alterada com sucesso.</div>` : ""}
+      ${pwError ? `<div class="alert" style="background:rgba(239,68,68,0.1);border:1px solid var(--error);color:var(--error);border-radius:8px;padding:12px 16px;margin-bottom:16px;">${esc(decodeURIComponent(pwError))}</div>` : ""}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+        <!-- Dados pessoais -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">👤 Dados Pessoais</span></div>
+          <div class="card-body" style="padding:20px;">
+            <form method="POST" action="/admin/meu-perfil">
+              <div class="form-group">
+                <label class="form-label">Nome completo</label>
+                <input type="text" name="name" value="${esc(barber.name)}" class="form-input" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">E-mail</label>
+                <input type="email" name="email" value="${esc(barber.email ?? "")}" class="form-input" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Telefone / WhatsApp</label>
+                <input type="tel" name="phone" value="${esc(barber.phone ?? "")}" class="form-input" placeholder="(11) 99999-9999" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Especialidade</label>
+                <input type="text" name="specialties" value="${esc(barber.specialties ?? "")}" class="form-input" placeholder="Ex: Corte masculino, Barba..." />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Função</label>
+                <input type="text" value="${barber.role === "super_admin" ? "Super Administrador" : barber.role === "barber" ? "Barbeiro" : "Recepcionista"}" class="form-input" disabled style="opacity:0.6;cursor:not-allowed;" />
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%;">Salvar Alterações</button>
+            </form>
+          </div>
+        </div>
+        <!-- Alterar senha -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">🔐 Alterar Senha</span></div>
+          <div class="card-body" style="padding:20px;">
+            <form method="POST" action="/admin/meu-perfil/senha">
+              <div class="form-group">
+                <label class="form-label">Senha atual</label>
+                <input type="password" name="currentPassword" class="form-input" required placeholder="Sua senha atual" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Nova senha</label>
+                <input type="password" name="newPassword" class="form-input" required placeholder="Mínimo 6 caracteres" minlength="6" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Confirmar nova senha</label>
+                <input type="password" name="confirmPassword" class="form-input" required placeholder="Repita a nova senha" />
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%;">Alterar Senha</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    `;
+    res.send(adminLayout("Meu Perfil", "meu-perfil", body, barber?.name));
+  });
+
+  app.post("/admin/meu-perfil", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const { name, email, phone, specialties } = req.body;
+    if (!name || !email) { res.redirect("/admin/meu-perfil?error=1"); return; }
+    await db.updateBarber(session.barberId, { name, email, phone: phone || null, specialties: specialties || null });
+    res.redirect("/admin/meu-perfil?saved=1");
+  });
+
+  app.post("/admin/meu-perfil/senha", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      res.redirect("/admin/meu-perfil?pwerr=Preencha+todos+os+campos"); return;
+    }
+    if (newPassword !== confirmPassword) {
+      res.redirect("/admin/meu-perfil?pwerr=As+senhas+n%C3%A3o+coincidem"); return;
+    }
+    if (newPassword.length < 6) {
+      res.redirect("/admin/meu-perfil?pwerr=A+nova+senha+deve+ter+m%C3%ADnimo+6+caracteres"); return;
+    }
+    const barber = await db.getBarberById(session.barberId);
+    if (!barber || !barber.passwordHash) { res.redirect("/admin/meu-perfil?pwerr=Barbeiro+n%C3%A3o+encontrado"); return; }
+    let bcrypt: any;
+    try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
+    const valid = bcrypt
+      ? await bcrypt.compare(currentPassword, barber.passwordHash)
+      : currentPassword === barber.passwordHash;
+    if (!valid) { res.redirect("/admin/meu-perfil?pwerr=Senha+atual+incorreta"); return; }
+    const newHash = bcrypt ? await bcrypt.hash(newPassword, 10) : newPassword;
+    await db.updateBarber(session.barberId, { passwordHash: newHash });
+    res.redirect("/admin/meu-perfil?pw=1");
   });
 
 }
