@@ -18,6 +18,7 @@
 
 import type { Express, Request, Response, NextFunction } from "express";
 import * as db from "./db";
+import PDFDocument from "pdfkit";
 
 const ADMIN_SESSION_COOKIE = "bp_admin_session";
 const SESSION_MAX_AGE = 8 * 60 * 60; // 8 horas
@@ -838,13 +839,31 @@ async function renderFinanceiro(req: Request, res: Response) {
   res.send(adminLayout("Financeiro", "financeiro", body, barber?.name));
 }
 
-// ─── Configurações ────────────────────────────────────────────────────────────
+// ─── Configurações ────────────────────────────────────────────
 async function renderConfiguracoes(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
   const settings = await db.getShopSettings();
   const saved = req.query.saved === "1";
+  const slugSaved = req.query.slugsaved === "1";
+  const slugError = req.query.slugerror as string | undefined;
   const activeTab = (req.query.tab as string) ?? "dados";
+
+  // Buscar tenant para obter o slug
+  const tenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
+  const currentSlug = tenant?.slug ?? "";
+  const baseUrl = process.env.PUBLIC_BASE_URL ?? "";
+  const publicUrl = currentSlug ? `${baseUrl}/pub/${currentSlug}` : "";
+  const bookingUrl = currentSlug ? `${baseUrl}/pub/${currentSlug}/agendar` : "";
+
+  // Gerar QR Code como data URL
+  let qrDataUrl = "";
+  if (bookingUrl) {
+    try {
+      const QRCode = await import("qrcode");
+      qrDataUrl = await QRCode.default.toDataURL(bookingUrl, { width: 200, margin: 2, color: { dark: "#000000", light: "#FFFFFF" } });
+    } catch { /* sem QR Code */ }
+  }
 
   // Buscar equipe e horários de trabalho
   const allBarbers = await db.getAllBarbersIncludingInactive();
@@ -1059,11 +1078,85 @@ async function renderConfiguracoes(req: Request, res: Response) {
     </div>` : ''}
   `;
 
+  // Aba: URL Pública
+  const tabUrl = `
+    ${slugSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ URL atualizada com sucesso!</div>` : ""}
+    ${slugError ? `<div style="background:#EF444422;border:1px solid #EF444444;color:var(--error);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">❌ ${esc(slugError)}</div>` : ""}
+
+    <!-- Card principal: link de agendamento -->
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header"><div class="card-title">🔗 Link de Agendamento Online</div></div>
+      <div class="card-body">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Compartilhe este link com seus clientes para que eles possam agendar online diretamente pela página da sua barbearia.</div>
+        ${bookingUrl ? `
+          <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+            <!-- QR Code -->
+            ${qrDataUrl ? `<div style="flex-shrink:0;background:#fff;padding:8px;border-radius:12px;border:1px solid var(--border)">
+              <img src="${qrDataUrl}" width="140" height="140" alt="QR Code" style="display:block" />
+              <div style="font-size:10px;color:#666;text-align:center;margin-top:4px">QR Code</div>
+            </div>` : ""}
+            <!-- Links e ações -->
+            <div style="flex:1;min-width:200px">
+              <div style="margin-bottom:12px">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:6px">PÁGINA PRINCIPAL</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input id="url-vitrine" class="form-input" type="text" value="${esc(publicUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
+                  <button onclick="copyUrl('url-vitrine')" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:12px">📋 Copiar</button>
+                  <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:12px">🔗 Abrir</a>
+                </div>
+              </div>
+              <div style="margin-bottom:12px">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:6px">LINK DIRETO PARA AGENDAMENTO</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input id="url-booking" class="form-input" type="text" value="${esc(bookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
+                  <button onclick="copyUrl('url-booking')" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:12px">📋 Copiar</button>
+                  <a href="${esc(bookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:12px">🔗 Abrir</a>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário online: ' + bookingUrl)}" target="_blank" class="btn btn-primary" style="font-size:12px;padding:8px 16px">📲 Compartilhar no WhatsApp</a>
+                ${qrDataUrl ? `<a href="${qrDataUrl}" download="qrcode-agendamento.png" class="btn btn-ghost" style="font-size:12px;padding:8px 16px">⬇️ Baixar QR Code</a>` : ""}
+              </div>
+            </div>
+          </div>
+        ` : `<div style="color:var(--muted);font-size:13px">⚠️ Não foi possível gerar o link. Verifique as configurações do servidor.</div>`}
+      </div>
+    </div>
+
+    <!-- Card: personalizar slug -->
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header"><div class="card-title">⚙️ Personalizar URL</div></div>
+      <div class="card-body">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px">O identificador da URL (“slug”) é a parte final do link que identifica sua barbearia. Use apenas letras minúsculas, números e hífens.</div>
+        <form method="POST" action="/admin/configuracoes/slug">
+          <div style="display:flex;align-items:center;gap:0;margin-bottom:16px">
+            <div style="padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:12px;color:var(--muted);white-space:nowrap;font-family:monospace">${esc(baseUrl)}/pub/</div>
+            <input class="form-input" type="text" name="slug" value="${esc(currentSlug)}" required pattern="[a-z0-9\\-]+" title="Apenas letras minúsculas, números e hífens" style="border-radius:0 8px 8px 0;font-family:monospace;font-size:14px" placeholder="nome-da-barbearia" />
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:16px">⚠️ Ao alterar o slug, o link antigo deixará de funcionar. Atualize todos os locais onde o link foi compartilhado.</div>
+          <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar Nova URL</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+    function copyUrl(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      navigator.clipboard.writeText(el.value).then(() => {
+        const btn = el.nextElementSibling;
+        if (btn) { const orig = btn.textContent; btn.textContent = '✅ Copiado!'; setTimeout(() => btn.textContent = orig, 2000); }
+      });
+    }
+    </script>
+  `;
+
   const tabs = [
-    { id: 'dados', label: '🏪 Dados' },
+    { id: 'dados', label: '🏦 Dados' },
     { id: 'visual', label: '🎨 Visual' },
     { id: 'horarios', label: '🕒 Horários' },
     { id: 'equipe', label: '👥 Equipe' },
+    { id: 'url', label: '🔗 URL Pública' },
   ];
 
   const tabContent: Record<string, string> = {
@@ -1071,6 +1164,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
     visual: tabVisual,
     horarios: tabHorarios,
     equipe: tabEquipe,
+    url: tabUrl,
   };
 
   const body = `
@@ -1323,6 +1417,7 @@ async function renderRelatorios(req: Request, res: Response) {
         <label style="font-size:13px;color:var(--muted)">Período:</label>
         <select name="period" onchange="this.form.submit()" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">${periodOptions}</select>
         <a href="/admin/export/financeiro.csv?period=${period}" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a>
+        <a href="/admin/export/relatorio.pdf?period=${period}" class="btn btn-primary" style="font-size:12px;padding:6px 12px">📄 Exportar PDF</a>
       </form>
     </div>
     <!-- KPIs -->
@@ -1722,6 +1817,31 @@ export function registerAdminRoutes(app: Express): void {
     } catch (e: any) {
       const msg = e.message?.includes("Duplicate") ? "E-mail+j%C3%A1+cadastrado" : encodeURIComponent(e.message);
       res.redirect(`/admin/configuracoes?tab=equipe&novo=1&error=${msg}`);
+    }
+  });
+
+  // POST /admin/configuracoes/slug (alterar URL pública)
+  app.post("/admin/configuracoes/slug", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      if (!barber?.tenantId) {
+        res.redirect("/admin/configuracoes?tab=url&slugerror=Tenant+n%C3%A3o+encontrado"); return;
+      }
+      const { slug } = req.body ?? {};
+      if (!slug || !/^[a-z0-9\-]+$/.test(slug)) {
+        res.redirect("/admin/configuracoes?tab=url&slugerror=Slug+inv%C3%A1lido.+Use+apenas+letras+min%C3%BAsculas%2C+n%C3%BAmeros+e+h%C3%ADfens"); return;
+      }
+      // Verificar se o slug já está em uso por outro tenant
+      const existing = await db.getTenantBySlug(slug);
+      if (existing && existing.id !== barber.tenantId) {
+        res.redirect("/admin/configuracoes?tab=url&slugerror=Este+slug+j%C3%A1+est%C3%A1+em+uso+por+outra+barbearia"); return;
+      }
+      await db.updateTenant(barber.tenantId, { slug });
+      res.redirect("/admin/configuracoes?tab=url&slugsaved=1");
+    } catch (e: any) {
+      const msg = encodeURIComponent(e.message ?? "Erro ao salvar");
+      res.redirect(`/admin/configuracoes?tab=url&slugerror=${msg}`);
     }
   });
 
@@ -3027,6 +3147,153 @@ export function registerAdminRoutes(app: Express): void {
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", 'attachment; filename="estoque.csv"');
     res.send("\uFEFF" + csv);
+  });
+
+  // GET /admin/export/relatorio.pdf — Exportar DRE simplificado em PDF
+  app.get("/admin/export/relatorio.pdf", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const settings = await db.getShopSettings(barber?.tenantId);
+      const period = (req.query.period as string) || "30";
+      const days = parseInt(period) || 30;
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days + 1);
+      const startStr = startDate.toISOString().slice(0, 10);
+      const endStr = endDate.toISOString().slice(0, 10);
+      const allSales = await db.getSalesByDateRange(startStr, endStr);
+      const allExpenses = await db.getExpensesByDateRange(startStr, endStr);
+      const allBarbers = await db.getAllBarbers(barber?.tenantId);
+      const totalRevenue = allSales.reduce((s: number, sale: any) => s + parseFloat(sale.total ?? "0"), 0);
+      const totalExpenses = allExpenses.reduce((s: number, e: any) => s + parseFloat(e.amount ?? "0"), 0);
+      const netProfit = totalRevenue - totalExpenses;
+      // Receitas por forma de pagamento
+      const pmLabels: Record<string, string> = { cash: "Dinheiro", credit_card: "Cartão Crédito", debit_card: "Cartão Débito", pix: "Pix", mercado_pago: "Mercado Pago", other: "Outro" };
+      const pmMap: Record<string, number> = {};
+      allSales.forEach((s: any) => {
+        const pm = s.paymentMethod ?? "other";
+        pmMap[pm] = (pmMap[pm] ?? 0) + parseFloat(s.total ?? "0");
+      });
+      // Despesas por categoria
+      const catMap: Record<string, number> = {};
+      allExpenses.forEach((e: any) => {
+        const cat = e.category ?? "Outros";
+        catMap[cat] = (catMap[cat] ?? 0) + parseFloat(e.amount ?? "0");
+      });
+      // Desempenho por barbeiro
+      const barberStats = await Promise.all(allBarbers.map(async (b: any) => {
+        const bSales = allSales.filter((s: any) => s.barberId === b.id);
+        const bRevenue = bSales.reduce((sum: number, s: any) => sum + parseFloat(s.total ?? "0"), 0);
+        const bAppts = await db.getAllAppointmentsByDateRange(b.id, startStr, endStr);
+        const completed = bAppts.filter((a: any) => a.status === "completed").length;
+        return { name: b.name, revenue: bRevenue, completed };
+      }));
+
+      const shopName = settings?.shopName ?? "Barber Pro";
+      const cnpj = settings?.cnpj ?? "";
+      const fmt = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const periodLabel = `${startDate.toLocaleDateString("pt-BR")} a ${endDate.toLocaleDateString("pt-BR")}`;
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="relatorio-${endStr}.pdf"`);
+
+      const doc = new PDFDocument({ margin: 50, size: "A4" });
+      doc.pipe(res);
+
+      // Cabeçalho
+      doc.fontSize(20).font("Helvetica-Bold").fillColor("#C9A84C").text("BARBER PRO", { align: "center" });
+      doc.fontSize(14).font("Helvetica").fillColor("#333333").text(shopName, { align: "center" });
+      if (cnpj) doc.fontSize(10).fillColor("#666666").text(`CNPJ: ${cnpj}`, { align: "center" });
+      doc.moveDown(0.5);
+      doc.fontSize(16).font("Helvetica-Bold").fillColor("#000000").text("DEMONSTRATIVO DE RESULTADO", { align: "center" });
+      doc.fontSize(11).font("Helvetica").fillColor("#555555").text(`Período: ${periodLabel}`, { align: "center" });
+      doc.moveDown(0.5);
+      // Linha separadora
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#C9A84C").lineWidth(1.5).stroke();
+      doc.moveDown(1);
+
+      // KPIs
+      const kpiY = doc.y;
+      const kpiW = 155;
+      const kpiBoxes = [
+        { label: "Faturamento Bruto", value: `R$ ${fmt(totalRevenue)}`, color: "#C9A84C" },
+        { label: "Total de Despesas", value: `R$ ${fmt(totalExpenses)}`, color: "#EF4444" },
+        { label: "Lucro Líquido", value: `R$ ${fmt(netProfit)}`, color: netProfit >= 0 ? "#22C55E" : "#EF4444" },
+      ];
+      kpiBoxes.forEach((kpi, i) => {
+        const x = 50 + i * (kpiW + 10);
+        doc.rect(x, kpiY, kpiW, 60).fillColor("#F8F8F8").fill();
+        doc.rect(x, kpiY, kpiW, 60).strokeColor("#E5E5E5").lineWidth(0.5).stroke();
+        doc.fontSize(9).font("Helvetica").fillColor("#666666").text(kpi.label, x + 10, kpiY + 10, { width: kpiW - 20 });
+        doc.fontSize(16).font("Helvetica-Bold").fillColor(kpi.color).text(kpi.value, x + 10, kpiY + 28, { width: kpiW - 20 });
+      });
+      doc.y = kpiY + 75;
+      doc.moveDown(0.5);
+
+      // Receitas por forma de pagamento
+      doc.fontSize(13).font("Helvetica-Bold").fillColor("#000000").text("RECEITAS POR FORMA DE PAGAMENTO");
+      doc.moveDown(0.3);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#DDDDDD").lineWidth(0.5).stroke();
+      doc.moveDown(0.3);
+      Object.entries(pmMap).sort((a, b) => b[1] - a[1]).forEach(([pm, val]) => {
+        const pct = totalRevenue > 0 ? Math.round(val / totalRevenue * 100) : 0;
+        doc.fontSize(11).font("Helvetica").fillColor("#333333").text(`${pmLabels[pm] ?? pm}`, 50, doc.y, { continued: true, width: 300 });
+        doc.font("Helvetica-Bold").fillColor("#C9A84C").text(`R$ ${fmt(val)}  (${pct}%)`, { align: "right" });
+      });
+      if (Object.keys(pmMap).length === 0) doc.fontSize(10).fillColor("#999").text("Sem dados de receita no período.");
+      doc.moveDown(1);
+
+      // Despesas por categoria
+      doc.fontSize(13).font("Helvetica-Bold").fillColor("#000000").text("DESPESAS POR CATEGORIA");
+      doc.moveDown(0.3);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#DDDDDD").lineWidth(0.5).stroke();
+      doc.moveDown(0.3);
+      Object.entries(catMap).sort((a, b) => b[1] - a[1]).forEach(([cat, val]) => {
+        const pct = totalExpenses > 0 ? Math.round(val / totalExpenses * 100) : 0;
+        doc.fontSize(11).font("Helvetica").fillColor("#333333").text(cat, 50, doc.y, { continued: true, width: 300 });
+        doc.font("Helvetica-Bold").fillColor("#EF4444").text(`R$ ${fmt(val)}  (${pct}%)`, { align: "right" });
+      });
+      if (Object.keys(catMap).length === 0) doc.fontSize(10).fillColor("#999").text("Sem despesas registradas no período.");
+      doc.moveDown(1);
+
+      // Desempenho por barbeiro
+      doc.fontSize(13).font("Helvetica-Bold").fillColor("#000000").text("DESEMPENHO POR PROFISSIONAL");
+      doc.moveDown(0.3);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#DDDDDD").lineWidth(0.5).stroke();
+      doc.moveDown(0.3);
+      // Cabeçalho da tabela
+      doc.fontSize(10).font("Helvetica-Bold").fillColor("#555");
+      doc.text("Profissional", 50, doc.y, { continued: true, width: 250 });
+      doc.text("Faturamento", { continued: true, width: 130, align: "right" });
+      doc.text("Atend. Concluídos", { align: "right" });
+      doc.moveDown(0.3);
+      barberStats.sort((a, b) => b.revenue - a.revenue).forEach((b: any) => {
+        doc.fontSize(11).font("Helvetica").fillColor("#333333");
+        doc.text(b.name, 50, doc.y, { continued: true, width: 250 });
+        doc.font("Helvetica-Bold").fillColor("#C9A84C").text(`R$ ${fmt(b.revenue)}`, { continued: true, width: 130, align: "right" });
+        doc.font("Helvetica").fillColor("#333333").text(String(b.completed), { align: "right" });
+      });
+      if (barberStats.length === 0) doc.fontSize(10).fillColor("#999").text("Sem dados de profissionais no período.");
+      doc.moveDown(1.5);
+
+      // Resultado final
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#C9A84C").lineWidth(1.5).stroke();
+      doc.moveDown(0.5);
+      doc.fontSize(14).font("Helvetica-Bold").fillColor("#000000").text("RESULTADO DO PERÍODO", { continued: true });
+      doc.fillColor(netProfit >= 0 ? "#22C55E" : "#EF4444").text(`  R$ ${fmt(netProfit)}`, { align: "right" });
+      doc.moveDown(2);
+
+      // Rodapé
+      doc.fontSize(9).font("Helvetica").fillColor("#AAAAAA").text(
+        `Gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")} — Barber Pro`,
+        { align: "center" }
+      );
+
+      doc.end();
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
 }

@@ -860,3 +860,8 @@
 - [x] Tela de aniversariantes no admin (app e web): lista de clientes aniversariantes do mês com botão de mensagem WhatsApp
 - [x] Integração Mercado Pago: pagamento online via Pix/cartão no fluxo de agendamento da página pública com webhook de confirmação
 - [x] Página pública /status: status operacional do sistema para comunicar manutenções
+
+## Melhorias v7.0
+
+- [x] Exportação de relatório financeiro em PDF no painel admin web (DRE simplificado por período)
+- [x] Seção "URL Pública" nas Configurações do admin web: exibir link, botão copiar, QR Code e campo para alterar slug
