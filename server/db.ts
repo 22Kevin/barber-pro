@@ -284,18 +284,27 @@ export async function createCategory(name: string, type: "service" | "product") 
 }
 
 // ─── Serviços ─────────────────────────────────────────────────────────────────
-export async function getAllServices(activeOnly = false) {
+export async function getAllServices(activeOnly = false, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  if (activeOnly) return db.select().from(services).where(eq(services.isActive, true)).orderBy(services.name);
-  return db.select().from(services).orderBy(services.name);
+  const conditions = [];
+  if (activeOnly) conditions.push(eq(services.isActive, true));
+  if (tenantId != null) conditions.push(eq(services.tenantId, tenantId));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  return where
+    ? db.select().from(services).where(where).orderBy(services.name)
+    : db.select().from(services).orderBy(services.name);
 }
 
-export async function getAllServicesWithMedia(activeOnly = false) {
+export async function getAllServicesWithMedia(activeOnly = false, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  const svcs = activeOnly
-    ? await db.select().from(services).where(eq(services.isActive, true)).orderBy(services.name)
+  const conditions = [];
+  if (activeOnly) conditions.push(eq(services.isActive, true));
+  if (tenantId != null) conditions.push(eq(services.tenantId, tenantId));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const svcs = where
+    ? await db.select().from(services).where(where).orderBy(services.name)
     : await db.select().from(services).orderBy(services.name);
   const ids = svcs.map((s) => s.id);
   if (ids.length === 0) return svcs.map((s) => ({ ...s, thumbnailUrl: null as string | null }));
@@ -334,11 +343,15 @@ export async function deleteService(id: number) {
 }
 
 // ─── Produtos ─────────────────────────────────────────────────────────────────
-export async function getAllProductsWithMedia(activeOnly = false) {
+export async function getAllProductsWithMedia(activeOnly = false, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  const prods = activeOnly
-    ? await db.select().from(products).where(eq(products.isActive, true)).orderBy(products.name)
+  const conditions = [];
+  if (activeOnly) conditions.push(eq(products.isActive, true));
+  if (tenantId != null) conditions.push(eq(products.tenantId, tenantId));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const prods = where
+    ? await db.select().from(products).where(where).orderBy(products.name)
     : await db.select().from(products).orderBy(products.name);
   const ids = prods.map((p) => p.id);
   if (ids.length === 0) return prods.map((p) => ({ ...p, thumbnailUrl: null as string | null }));
@@ -350,11 +363,16 @@ export async function getAllProductsWithMedia(activeOnly = false) {
     thumbnailUrl: media.find((m) => m.entityId === p.id)?.url ?? null,
   }));
 }
-export async function getAllProducts(activeOnly = false) {
+export async function getAllProducts(activeOnly = false, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  if (activeOnly) return db.select().from(products).where(eq(products.isActive, true)).orderBy(products.name);
-  return db.select().from(products).orderBy(products.name);
+  const conditions = [];
+  if (activeOnly) conditions.push(eq(products.isActive, true));
+  if (tenantId != null) conditions.push(eq(products.tenantId, tenantId));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  return where
+    ? db.select().from(products).where(where).orderBy(products.name)
+    : db.select().from(products).orderBy(products.name);
 }
 
 export async function getProductById(id: number) {
@@ -495,9 +513,36 @@ export async function getAllAppointmentsByDateRange(barberId: number, startDate:
     .orderBy(appointments.date, appointments.startTime);
 }
 
-export async function getAllAppointmentsByDate(date: string) {
+export async function getAllAppointmentsByDate(date: string, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  if (tenantId != null) {
+    // Filtrar via join com barbeiros do tenant
+    const rows = await db.select({
+      id: appointments.id,
+      clientId: appointments.clientId,
+      barberId: appointments.barberId,
+      serviceId: appointments.serviceId,
+      date: appointments.date,
+      startTime: appointments.startTime,
+      endTime: appointments.endTime,
+      status: appointments.status,
+      notes: appointments.notes,
+      cancelReason: appointments.cancelReason,
+      reminderSent: appointments.reminderSent,
+      whatsappConfirmationSent: appointments.whatsappConfirmationSent,
+      createdAt: appointments.createdAt,
+      updatedAt: appointments.updatedAt,
+    })
+      .from(appointments)
+      .innerJoin(barbers, eq(appointments.barberId, barbers.id))
+      .where(and(
+        eq(appointments.date, date),
+        sql`${appointments.status} NOT IN ('cancelled', 'no_show')`,
+        eq(barbers.tenantId, tenantId)
+      ));
+    return rows;
+  }
   return db.select().from(appointments)
     .where(and(eq(appointments.date, date), sql`${appointments.status} NOT IN ('cancelled', 'no_show')`));
 }
@@ -909,11 +954,15 @@ export async function consumePasswordResetToken(email: string, token: string): P
   return true;
 }
 
-export async function getAllServicesWithMediaAndRatings(activeOnly = false) {
+export async function getAllServicesWithMediaAndRatings(activeOnly = false, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  const svcs = activeOnly
-    ? await db.select().from(services).where(eq(services.isActive, true)).orderBy(services.name)
+  const conditions = [];
+  if (activeOnly) conditions.push(eq(services.isActive, true));
+  if (tenantId != null) conditions.push(eq(services.tenantId, tenantId));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const svcs = where
+    ? await db.select().from(services).where(where).orderBy(services.name)
     : await db.select().from(services).orderBy(services.name);
   const ids = svcs.map((s) => s.id);
   if (ids.length === 0) return svcs.map((s) => ({ ...s, thumbnailUrl: null as string | null, avgRating: null as number | null, reviewCount: 0 }));

@@ -159,7 +159,7 @@ async function renderShopPage(slug: string, res: Response) {
 
   const settings = await db.getShopSettingsByTenantId(tenant.id);
   const barberList = await db.getAllBarbers(tenant.id);
-  const serviceList = await db.getAllServicesWithMediaAndRatings(true);
+  const serviceList = await db.getAllServicesWithMediaAndRatings(true, tenant.id);
   const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
 
   // Galeria
@@ -318,7 +318,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
   if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
   const settings = await db.getShopSettingsByTenantId(tenant.id);
   const barberList = await db.getAllBarbers(tenant.id);
-  const serviceList = await db.getAllServicesWithMediaAndRatings(true);
+  const serviceList = await db.getAllServicesWithMediaAndRatings(true, tenant.id);
   const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
 
   // Verificar se o cliente está logado via cookie de sessão
@@ -820,7 +820,7 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
 
   // Buscar agendamentos do cliente com dados de serviço e barbeiro
   const rawAppts = await db.getClientAppointments(loggedClient.id);
-  const allServices = await db.getAllServicesWithMediaAndRatings(true);
+  const allServices = await db.getAllServicesWithMediaAndRatings(true, tenant.id);
   const allBarbers = await db.getAllBarbers(tenant.id);
   const serviceMap = Object.fromEntries(allServices.map((s) => [s.id, s]));
   const barberMap = Object.fromEntries(allBarbers.map((b) => [b.id, b]));

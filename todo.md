@@ -827,3 +827,18 @@
 - [ ] Exportação CSV: Clientes (nome, telefone, email, pontos, último atendimento)
 - [ ] Exportação CSV: Financeiro (data, tipo, descrição, valor, forma de pagamento)
 - [ ] Exportação CSV: Estoque (produto, quantidade, alerta mínimo, movimentações)
+
+## Alta Prioridade v6.6
+
+- [x] Isolamento multi-tenant: getAllServices, getAllServicesWithMedia, getAllServicesWithMediaAndRatings filtrar por tenantId
+- [x] Isolamento multi-tenant: getAllProducts, getAllProductsWithMedia filtrar por tenantId
+- [x] Isolamento multi-tenant: getAllAppointmentsByDate, getAppointmentsByDate filtrar por tenantId via barbeiro
+- [x] Página /pub/:slug/meus-agendamentos: lista de agendamentos do cliente logado (próximos e passados)
+- [x] Botão cancelar agendamento na página de meus agendamentos (web pública)
+- [x] Link "Meus Agendamentos" no cabeçalho da página pública quando logado
+- [x] Formulário /admin/agenda/novo: criar agendamento com cliente, serviço, barbeiro, data e horário
+- [x] Validação de conflito de horário no formulário admin web
+- [x] Corrigir bug v3.5.3: erro "Failed query: select from barbers" — resolvido pela migração de tenantId
+- [x] Canal Android "online-booking" com som diferenciado e prioridade MAX para agendamentos online
+- [x] Badge no ícone do app incrementado a cada agendamento online recebido
+- [x] Badge zerado quando barbeiro abre a tela de agenda

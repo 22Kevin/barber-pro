@@ -94,6 +94,7 @@ export const categories = mysqlTable("categories", {
 // ─── Serviços ─────────────────────────────────────────────────────────────────
 export const services = mysqlTable("services", {
   id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId"), // null = instalação single-tenant (legado)
   categoryId: int("categoryId"),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
@@ -107,6 +108,7 @@ export const services = mysqlTable("services", {
 // ─── Produtos ─────────────────────────────────────────────────────────────────
 export const products = mysqlTable("products", {
   id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId"), // null = instalação single-tenant (legado)
   categoryId: int("categoryId"),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),

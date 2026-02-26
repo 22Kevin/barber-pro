@@ -207,9 +207,9 @@ export const appRouter = router({
   }),
 
   services: router({
-    list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional() })).query(({ input }) => db.getAllServices(input.activeOnly)),
-    listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional() })).query(({ input }) => db.getAllServicesWithMedia(input.activeOnly)),
-    listWithMediaAndRatings: publicProcedure.input(z.object({ activeOnly: z.boolean().optional() })).query(({ input }) => db.getAllServicesWithMediaAndRatings(input.activeOnly)),
+    list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllServices(input.activeOnly, input.tenantId)),
+    listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllServicesWithMedia(input.activeOnly, input.tenantId)),
+    listWithMediaAndRatings: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllServicesWithMediaAndRatings(input.activeOnly, input.tenantId)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getServiceById(input.id)),
     create: publicProcedure
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), durationMinutes: z.number().min(5), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true) }))
@@ -225,8 +225,8 @@ export const appRouter = router({
   }),
 
   products: router({
-    list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional() })).query(({ input }) => db.getAllProducts(input.activeOnly)),
-    listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional() })).query(({ input }) => db.getAllProductsWithMedia(input.activeOnly)),
+    list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllProducts(input.activeOnly, input.tenantId)),
+    listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllProductsWithMedia(input.activeOnly, input.tenantId)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getProductById(input.id)),
     create: publicProcedure
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), stock: z.number().min(0).default(0), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true) }))
@@ -273,7 +273,7 @@ export const appRouter = router({
 
   appointments: router({
     byDate: publicProcedure.input(z.object({ barberId: z.number(), date: z.string() })).query(({ input }) => db.getAppointmentsByDate(input.barberId, input.date)),
-    allByDate: publicProcedure.input(z.object({ date: z.string() })).query(({ input }) => db.getAllAppointmentsByDate(input.date)),
+    allByDate: publicProcedure.input(z.object({ date: z.string(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllAppointmentsByDate(input.date, input.tenantId)),
     nextByClient: publicProcedure.input(z.object({ clientId: z.number() })).query(({ input }) => db.getNextClientAppointment(input.clientId)),
     byDateRange: publicProcedure.input(z.object({ barberId: z.number(), startDate: z.string(), endDate: z.string() })).query(({ input }) => db.getAppointmentsByDateRange(input.barberId, input.startDate, input.endDate)),
     checkAvailability: publicProcedure
