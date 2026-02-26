@@ -272,9 +272,12 @@ async function renderShopPage(slug: string, res: Response) {
   `;
 
   const agendamentoUrl = `/pub/${slug}/agendar`;
-  const bannerStyle = settings?.logoUrl
-    ? `style="background-image:url('${escapeHtml(settings.logoUrl)}');background-size:cover;background-position:center"`
-    : `style="background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)"`;
+  const bannerUrl = (settings as any)?.bannerUrl;
+  const bannerStyle = bannerUrl
+    ? `style="background-image:url('${escapeHtml(bannerUrl)}');background-size:cover;background-position:center"`
+    : settings?.logoUrl
+      ? `style="background-image:url('${escapeHtml(settings.logoUrl)}');background-size:cover;background-position:center"`
+      : `style="background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)"` ;
 
   const body = `
     <!-- Hero -->

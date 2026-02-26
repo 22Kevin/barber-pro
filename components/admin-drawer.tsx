@@ -37,10 +37,10 @@ const DRAWER_GROUPS: DrawerGroup[] = [
   {
     label: "OPERAÇÃO",
     items: [
-      { label: "Dashboard",       icon: "chart.bar.fill",              route: "/admin/(tabs)/dashboard",         roles: ["super_admin", "barber", "receptionist"] },
+      { label: "Dashboard",       icon: "chart.bar.fill",              route: "/admin/(tabs)/dashboard",         roles: ["super_admin", "receptionist"] },
       { label: "Agenda",          icon: "calendar",                    route: "/admin/(tabs)/agenda",            roles: ["super_admin", "barber", "receptionist"] },
       { label: "Clientes",        icon: "person.2.fill",               route: "/admin/(tabs)/clients",           roles: ["super_admin", "barber", "receptionist"] },
-      { label: "Lista de Espera", icon: "person.badge.clock",          route: "/admin/(tabs)/waitlist",          roles: ["super_admin", "receptionist"] },
+      { label: "Lista de Espera", icon: "person.badge.clock",          route: "/admin/(tabs)/waitlist",          roles: ["super_admin", "barber", "receptionist"] },
     ],
   },
   {
@@ -74,7 +74,7 @@ const DRAWER_GROUPS: DrawerGroup[] = [
     label: "SISTEMA",
     items: [
       { label: "Barbearia",       icon: "building.2.fill",             route: "/admin/(tabs)/barbearia",         roles: ["super_admin"] },
-      { label: "Configurações",   icon: "gearshape.fill",              route: "/admin/(tabs)/settings",          roles: ["super_admin", "barber", "receptionist"] },
+      { label: "Configurações",   icon: "gearshape.fill",              route: "/admin/(tabs)/settings",          roles: ["super_admin"] },
     ],
   },
 ];

@@ -848,3 +848,9 @@
 - [x] Comissões no app do barbeiro: aba "Minhas Comissões" visível para role barber com seletor de mês e lista de atendimentos
 - [x] Agendamento recorrente no app do cliente: opção "Repetir agendamento" no fluxo de booking (semanal/quinzenal/mensal)
 - [x] Relatório de conversão de promoções: coluna "Conversões" e gráfico na tela de Promoções do admin
+
+## Melhorias v6.8
+
+- [x] Hierarquia de acesso por role no drawer do admin: barber vê apenas Agenda/Clientes/Minhas Comissões, receptionist vê Agenda/Clientes/Serviços/Produtos, super_admin vê tudo
+- [x] Personalização visual da página pública: aplicar primaryColor e bannerUrl do banco em cada tenant
+- [x] Configuração SMTP e envio de e-mails transacionais (recuperação de senha, confirmação de agendamento)
