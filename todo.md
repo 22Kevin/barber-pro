@@ -880,3 +880,9 @@
 - [x] Remover aba "Visual" de Configurações (consolidada na nova seção)
 - [x] Injetar scripts de GA4 e Pixel do Facebook na página pública quando configurados
 - [x] Suporte a domínio customizado: middleware de resolução por Host header na página pública
+
+## Melhorias v7.2 — Domínio Customizado, Preview e Compartilhamento
+
+- [x] Middleware de domínio customizado: resolver campo customDomain no servidor para servir página pública pelo domínio próprio da barbearia
+- [x] Aba Preview: botão "Recarregar preview" e timestamp de última atualização visual
+- [x] Aba URL: botões de compartilhamento no Instagram, Facebook e mensagem pronta para Stories/WhatsApp

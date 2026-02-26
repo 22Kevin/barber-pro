@@ -1561,7 +1561,23 @@ async function renderPaginaCliente(req: Request, res: Response) {
                   <a href="${esc(bookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">🔗 Abrir</a>
                 </div>
               </div>
-              <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário online: ' + bookingUrl)}" target="_blank" class="btn btn-primary" style="font-size:13px;padding:10px 20px">📲 Compartilhar no WhatsApp</a>
+              <!-- Compartilhamento -->
+              <div style="margin-top:4px">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:10px">COMPARTILHAR</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário online: ' + bookingUrl)}" target="_blank" class="btn btn-primary" style="font-size:12px;padding:8px 16px;display:flex;align-items:center;gap:6px">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.116 1.522 5.847L.057 23.776a.5.5 0 0 0 .614.614l5.929-1.465A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.695-.5-5.24-1.374l-.375-.216-3.878.959.975-3.764-.237-.388A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                    WhatsApp
+                  </a>
+                  <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(bookingUrl)}" target="_blank" class="btn btn-ghost" style="font-size:12px;padding:8px 16px;display:flex;align-items:center;gap:6px;background:#1877F2;color:#fff;border-color:#1877F2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    Facebook
+                  </a>
+                  <button onclick="(function(){var msg='Agende seu horário comigo!\n\n✂️ Serviços, preços e disponibilidade:\n${esc(bookingUrl)}\n\nClique no link e escolha o melhor horário para você!';navigator.clipboard.writeText(msg).then(function(){var b=event.target.closest('button');var o=b.innerHTML;b.innerHTML='✅ Copiado!';setTimeout(function(){b.innerHTML=o;},2500);});})()" class="btn btn-ghost" style="font-size:12px;padding:8px 16px;display:flex;align-items:center;gap:6px">
+                    📝 Mensagem pronta
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         ` : `<div style="color:var(--muted);font-size:13px">⚠️ Não foi possível gerar o link. Configure o PUBLIC_BASE_URL no servidor.</div>`}
@@ -1720,14 +1736,19 @@ async function renderPaginaCliente(req: Request, res: Response) {
   `;
 
   // ─── Aba: Preview ──────────────────────────────────────────────────────────
+  const previewTimestamp = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const tabPreview = publicUrl ? `
     <div class="card">
       <div class="card-header">
         <div class="card-title">👁️ Preview da Página Pública</div>
-        <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">🔗 Abrir em nova aba</a>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="preview-ts" style="font-size:11px;color:var(--muted)">Carregado às ${previewTimestamp}</span>
+          <button onclick="(function(){var f=document.getElementById('preview-iframe');var ts=document.getElementById('preview-ts');f.src=f.src.split('?')[0]+'?t='+Date.now();ts.textContent='Recarregado às '+new Date().toLocaleTimeString('pt-BR');})()" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">🔄 Recarregar</button>
+          <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">🔗 Abrir em nova aba</a>
+        </div>
       </div>
       <div class="card-body" style="padding:0">
-        <iframe src="${esc(publicUrl)}" style="width:100%;height:600px;border:none;border-radius:0 0 12px 12px" loading="lazy"></iframe>
+        <iframe id="preview-iframe" src="${esc(publicUrl)}" style="width:100%;height:600px;border:none;border-radius:0 0 12px 12px" loading="lazy"></iframe>
       </div>
     </div>
   ` : `

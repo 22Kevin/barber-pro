@@ -1537,16 +1537,43 @@ export function registerPublicRoutes(app: Express): void {
 
   // Roteamento por subdomínio (produção: slug.barberpro.com.br)
   // O middleware lê o header Host e extrai o slug do primeiro segmento
+  // Também suporta domínios customizados configurados pelo barbeiro
   app.use(async (req: Request, res: Response, next) => {
-    const host = req.headers.host ?? "";
-    // Ignora localhost, IPs, e domínios sem ponto duplo (ex: barberpro.com.br tem 2 pontos)
+    const host = (req.headers.host ?? "").split(":")[0]; // remove porta se houver
+    // Ignora caminhos de API e superadmin
+    if (req.path.startsWith("/api/") || req.path.startsWith("/superadmin") || req.path.startsWith("/admin") || req.path.startsWith("/pub/") || req.path.startsWith("/pub-api/") || req.path.startsWith("/status")) return next();
+
     const parts = host.split(".");
+
+    // 1º: Tentar resolver por domínio customizado (ex: agendamento.minhababarbearia.com.br)
+    // Só busca se o host não parece ser o domínio principal do sistema
+    const isSystemDomain = host.includes("manus.computer") || host.includes("barberpro.com.br") || host === "localhost" || /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+    if (!isSystemDomain) {
+      const customTenant = await db.getTenantByCustomDomain(host);
+      if (customTenant) {
+        const { slug } = customTenant;
+        if (req.path === "/" || req.path === "") {
+          await renderShopPage(slug, res);
+          return;
+        } else if (req.path === "/agendar") {
+          await renderBookingPage(slug, res, req);
+          return;
+        } else if (req.path.startsWith("/avaliar/")) {
+          const appointmentId = req.path.split("/avaliar/")[1];
+          await renderReviewPage(slug, appointmentId, res, req);
+          return;
+        } else if (req.path === "/meus-agendamentos") {
+          await renderMyAppointmentsPage(slug, res, req);
+          return;
+        }
+      }
+    }
+
+    // 2º: Tentar resolver por subdomínio (ex: minhababarbearia.barberpro.com.br)
     if (parts.length < 3) return next(); // não é subdomínio
     const slug = parts[0];
     // Ignora slugs de sistema
     if (["www", "api", "app", "admin", "superadmin"].includes(slug)) return next();
-    // Só intercepta rotas de página (não API)
-    if (req.path.startsWith("/api/") || req.path.startsWith("/superadmin")) return next();
 
     if (req.path === "/" || req.path === "") {
       await renderShopPage(slug, res);

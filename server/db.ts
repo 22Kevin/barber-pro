@@ -1501,6 +1501,22 @@ export async function getAllTenants(): Promise<Tenant[]> {
   return db.select().from(tenants).orderBy(tenants.createdAt);
 }
 
+/**
+ * Busca o tenant cujas shopSettings têm customDomain igual ao domínio informado.
+ * Usado pelo middleware de domínio customizado.
+ */
+export async function getTenantByCustomDomain(domain: string): Promise<{ tenant: Tenant; slug: string } | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select({ tenant: tenants, slug: tenants.slug })
+    .from(tenants)
+    .innerJoin(shopSettings, eq(shopSettings.tenantId, tenants.id))
+    .where(eq(shopSettings.customDomain, domain))
+    .limit(1);
+  return result.length > 0 ? { tenant: result[0].tenant, slug: result[0].slug } : undefined;
+}
+
 export async function updateTenant(id: number, data: Partial<InsertTenant>): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
