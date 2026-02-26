@@ -1,0 +1,37 @@
+{
+  "query": "SELECT id, name, email, role FROM barbers LIMIT 5; SELECT id, shopName, tenantId FROM shop_settings LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT id, name, email, role FROM barbers LIMIT 5; SELECT id, shopName, tenantId FROM shop_settings LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Kevin Rayan",
+      "email": "kevin.rayan@hotmail.com",
+      "role": "super_admin"
+    },
+    {
+      "id": "30001",
+      "name": "Felipe",
+      "email": "felipe.silva@hotmail.com",
+      "role": "barber"
+    },
+    {
+      "id": "60001",
+      "name": "Sabrina Stefani Alves Da Silva",
+      "email": "sasastefaniisilva@gmail.com",
+      "role": "receptionist"
+    },
+    {
+      "id": "90001",
+      "name": "Sabrina",
+      "email": "sabrina.stefani@hotmail.com",
+      "role": "receptionist"
+    }
+  ],
+  "messages": [
+    "id\tshopName\ttenantId",
+    "1\tKevin Barbearia\tNULL"
+  ],
+  "stdout": "id\tname\temail\trole\n1\tKevin Rayan\tkevin.rayan@hotmail.com\tsuper_admin\n30001\tFelipe\tfelipe.silva@hotmail.com\tbarber\n60001\tSabrina Stefani Alves Da Silva\tsasastefaniisilva@gmail.com\treceptionist\n90001\tSabrina\tsabrina.stefani@hotmail.com\treceptionist\nid\tshopName\ttenantId\n1\tKevin Barbearia\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 418
+}
