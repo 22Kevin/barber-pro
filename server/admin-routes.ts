@@ -89,14 +89,44 @@ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
 
 // ─── Layout base do painel ────────────────────────────────────────────────────
 function adminLayout(title: string, activePage: string, body: string, barberName = ""): string {
-  const navItems = [
-    { href: "/admin", icon: "⊞", label: "Dashboard", id: "dashboard" },
-    { href: "/admin/agenda", icon: "📅", label: "Agenda", id: "agenda" },
-    { href: "/admin/clientes", icon: "👥", label: "Clientes", id: "clientes" },
-    { href: "/admin/servicos", icon: "✂️", label: "Serviços", id: "servicos" },
-    { href: "/admin/financeiro", icon: "💰", label: "Financeiro", id: "financeiro" },
-    { href: "/admin/relatorios", icon: "📊", label: "Relatórios", id: "relatorios" },
-    { href: "/admin/configuracoes", icon: "⚙️", label: "Configurações", id: "configuracoes" },
+  const navGroups = [
+    {
+      label: "OPERACIONAL",
+      items: [
+        { href: "/admin", icon: "⊞", label: "Dashboard", id: "dashboard" },
+        { href: "/admin/agenda", icon: "📅", label: "Agenda", id: "agenda" },
+        { href: "/admin/clientes", icon: "👥", label: "Clientes", id: "clientes" },
+      ],
+    },
+    {
+      label: "CATÁLOGO",
+      items: [
+        { href: "/admin/servicos", icon: "✂️", label: "Serviços", id: "servicos" },
+        { href: "/admin/produtos", icon: "🛍️", label: "Produtos", id: "produtos" },
+      ],
+    },
+    {
+      label: "FINANCEIRO",
+      items: [
+        { href: "/admin/financeiro", icon: "💰", label: "Financeiro", id: "financeiro" },
+        { href: "/admin/relatorios", icon: "📊", label: "Relatórios", id: "relatorios" },
+        { href: "/admin/comissoes", icon: "🤝", label: "Comissões", id: "comissoes" },
+      ],
+    },
+    {
+      label: "MARKETING",
+      items: [
+        { href: "/admin/fidelidade", icon: "⭐", label: "Fidelidade", id: "fidelidade" },
+        { href: "/admin/cupons", icon: "🏷️", label: "Cupons", id: "cupons" },
+        { href: "/admin/avaliacoes", icon: "💬", label: "Avaliações", id: "avaliacoes" },
+      ],
+    },
+    {
+      label: "SISTEMA",
+      items: [
+        { href: "/admin/configuracoes", icon: "⚙️", label: "Configurações", id: "configuracoes" },
+      ],
+    },
   ];
 
   return `<!DOCTYPE html>
@@ -185,6 +215,10 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     .form-input { width: 100%; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; }
     .form-input:focus { outline: none; border-color: var(--gold); }
 
+    /* Nav groups */
+    .nav-group { margin-bottom: 4px; }
+    .nav-group-label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 1.2px; padding: 12px 20px 4px; opacity: 0.6; }
+
     /* Responsivo mobile */
     @media (max-width: 768px) {
       .sidebar { transform: translateX(-100%); }
@@ -199,11 +233,16 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       <div class="sidebar-logo-sub">Painel Administrativo</div>
     </div>
     <nav class="sidebar-nav">
-      ${navItems.map((n) => `
-        <a href="${n.href}" class="nav-item ${activePage === n.id ? "active" : ""}">
-          <span class="nav-icon">${n.icon}</span>
-          ${n.label}
-        </a>
+      ${navGroups.map((group) => `
+        <div class="nav-group">
+          <div class="nav-group-label">${group.label}</div>
+          ${group.items.map((n) => `
+            <a href="${n.href}" class="nav-item ${activePage === n.id ? "active" : ""}">
+              <span class="nav-icon">${n.icon}</span>
+              ${n.label}
+            </a>
+          `).join("")}
+        </div>
       `).join("")}
     </nav>
     <div class="sidebar-footer">
@@ -1570,4 +1609,412 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   app.get("/admin/clientes/:id", requireAdminAuth, (req, res) => renderClienteDetalhe(req, res));
+
+  // ─── Fidelidade ────────────────────────────────────────────────────────────
+  app.get("/admin/fidelidade", requireAdminAuth, async (req: Request, res: Response) => {
+    const barber = await db.getBarberById((req as any).adminSession.barberId);
+    const [config, rewards] = await Promise.all([
+      db.getLoyaltyConfig(),
+      db.getLoyaltyRewards(),
+    ]);
+    const saved = req.query.saved === "1";
+    const rewardTypes: Record<string, string> = {
+      free_service: "Serviço Grátis",
+      discount_percent: "Desconto %",
+      discount_fixed: "Desconto Fixo R$",
+      free_product: "Produto Grátis",
+    };
+    const body = `
+      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE80;border-radius:10px;padding:12px 18px;margin-bottom:20px;color:#4ADE80;font-size:13px;">Configurações salvas com sucesso.</div>` : ""}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+        <!-- Configuração do Programa -->
+        <div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">⭐ Programa de Pontos</span></div>
+            <div class="card-body" style="padding:20px;">
+              <form method="POST" action="/admin/fidelidade/config">
+                <div class="form-group">
+                  <label class="form-label">STATUS DO PROGRAMA</label>
+                  <select name="isActive" class="form-input">
+                    <option value="true" ${config?.isActive ? "selected" : ""}>Ativo</option>
+                    <option value="false" ${!config?.isActive ? "selected" : ""}>Inativo</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">PONTOS POR SERVIÇO CONCLUÍDO</label>
+                  <input type="number" name="pointsPerService" class="form-input" value="${config?.pointsPerService ?? 10}" min="0" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">PONTOS POR R$ 1,00 GASTO</label>
+                  <input type="number" name="pointsPerReal" class="form-input" value="${config?.pointsPerReal ?? '1'}" min="0" step="0.1" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">EXPIRAÇÃO DOS PONTOS (MESES, 0 = nunca)</label>
+                  <input type="number" name="pointsExpireMonths" class="form-input" value="${config?.pointsExpireMonths ?? 12}" min="0" />
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Salvar Configurações</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recompensas -->
+        <div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">🎁 Recompensas</span>
+              <button onclick="document.getElementById('new-reward-form').style.display='block';this.style.display='none';" class="btn btn-primary" style="font-size:12px;padding:6px 14px;">+ Nova</button>
+            </div>
+            <div id="new-reward-form" style="display:none;padding:16px;border-bottom:1px solid var(--border);">
+              <form method="POST" action="/admin/fidelidade/recompensa">
+                <div class="form-group">
+                  <label class="form-label">NOME DA RECOMPENSA</label>
+                  <input type="text" name="name" class="form-input" placeholder="Ex: Corte Grátis" required />
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div class="form-group">
+                    <label class="form-label">TIPO</label>
+                    <select name="rewardType" class="form-input">
+                      <option value="free_service">Serviço Grátis</option>
+                      <option value="discount_percent">Desconto %</option>
+                      <option value="discount_fixed">Desconto R$</option>
+                      <option value="free_product">Produto Grátis</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">PONTOS NECESSÁRIOS</label>
+                    <input type="number" name="pointsRequired" class="form-input" placeholder="100" min="1" required />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">VALOR (para desconto/produto)</label>
+                  <input type="text" name="rewardValue" class="form-input" placeholder="Ex: 20 (para 20% ou R$20)" />
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button type="submit" class="btn btn-primary" style="flex:1;">Salvar</button>
+                  <button type="button" onclick="document.getElementById('new-reward-form').style.display='none';document.querySelector('.btn.btn-primary').style.display='';" class="btn btn-ghost">Cancelar</button>
+                </div>
+              </form>
+            </div>
+            <table>
+              <thead><tr><th>Recompensa</th><th>Tipo</th><th>Pontos</th><th></th></tr></thead>
+              <tbody>
+                ${rewards.length === 0 ? `<tr><td colspan="4" class="empty">Nenhuma recompensa cadastrada.</td></tr>` : rewards.map((r) => `
+                  <tr>
+                    <td><strong>${esc(r.name)}</strong>${r.description ? `<br><span style="color:var(--muted);font-size:11px;">${esc(r.description)}</span>` : ""}</td>
+                    <td><span class="badge badge-gold">${rewardTypes[r.rewardType] ?? r.rewardType}</span></td>
+                    <td><strong>${r.pointsRequired}</strong> pts</td>
+                    <td>
+                      <form method="POST" action="/admin/fidelidade/recompensa/toggle" style="display:inline;">
+                        <input type="hidden" name="id" value="${r.id}" />
+                        <input type="hidden" name="isActive" value="${r.isActive ? 'false' : 'true'}" />
+                        <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;">${r.isActive ? "Desativar" : "Ativar"}</button>
+                      </form>
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+    res.send(adminLayout("Fidelidade", "fidelidade", body, barber?.name));
+  });
+
+  app.post("/admin/fidelidade/config", requireAdminAuth, async (req: Request, res: Response) => {
+    const { isActive, pointsPerService, pointsPerReal, pointsExpireMonths } = req.body;
+    await db.upsertLoyaltyConfig({
+      isActive: isActive === "true",
+      pointsPerService: parseInt(pointsPerService),
+      pointsPerReal,
+      pointsExpireMonths: parseInt(pointsExpireMonths),
+    });
+    res.redirect("/admin/fidelidade?saved=1");
+  });
+
+  app.post("/admin/fidelidade/recompensa", requireAdminAuth, async (req: Request, res: Response) => {
+    const { name, description, rewardType, pointsRequired, rewardValue } = req.body;
+    await db.createLoyaltyReward({
+      name,
+      description,
+      rewardType,
+      pointsRequired: parseInt(pointsRequired),
+      rewardValue: rewardValue || undefined,
+    });
+    res.redirect("/admin/fidelidade?saved=1");
+  });
+
+  app.post("/admin/fidelidade/recompensa/toggle", requireAdminAuth, async (req: Request, res: Response) => {
+    const { id, isActive } = req.body;
+    await db.updateLoyaltyReward(parseInt(id), { isActive: isActive === "true" });
+    res.redirect("/admin/fidelidade");
+  });
+
+  // ─── Cupons ────────────────────────────────────────────────────────────────
+  app.get("/admin/cupons", requireAdminAuth, async (req: Request, res: Response) => {
+    const barber = await db.getBarberById((req as any).adminSession.barberId);
+    const allCoupons = await db.getAllCoupons();
+    const saved = req.query.saved === "1";
+    const body = `
+      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE80;border-radius:10px;padding:12px 18px;margin-bottom:20px;color:#4ADE80;font-size:13px;">Salvo com sucesso.</div>` : ""}
+      <div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
+        <button onclick="document.getElementById('new-coupon-form').style.display='block';this.style.display='none';" class="btn btn-primary">🏷️ Novo Cupão</button>
+      </div>
+      <div id="new-coupon-form" style="display:none;" class="card">
+        <div class="card-header"><span class="card-title">Novo Cupão</span></div>
+        <div class="card-body" style="padding:20px;">
+          <form method="POST" action="/admin/cupons">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+              <div class="form-group">
+                <label class="form-label">CÓDIGO *</label>
+                <input type="text" name="code" class="form-input" placeholder="EX: PROMO10" required style="text-transform:uppercase;" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">TIPO DE DESCONTO *</label>
+                <select name="discountType" class="form-input">
+                  <option value="percent">Percentual (%)</option>
+                  <option value="fixed">Valor Fixo (R$)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">VALOR DO DESCONTO *</label>
+                <input type="number" name="discountValue" class="form-input" placeholder="10" min="0" step="0.01" required />
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+              <div class="form-group">
+                <label class="form-label">PEDIDO MÍNIMO (R$)</label>
+                <input type="number" name="minOrderValue" class="form-input" placeholder="0" min="0" step="0.01" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">MÁX. USOS (0 = ilimitado)</label>
+                <input type="number" name="maxUses" class="form-input" placeholder="0" min="0" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">DESCRIÇÃO</label>
+                <input type="text" name="description" class="form-input" placeholder="Descrição opcional" />
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div class="form-group">
+                <label class="form-label">VÁLIDO DE</label>
+                <input type="date" name="validFrom" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">VÁLIDO ATÉ</label>
+                <input type="date" name="validUntil" class="form-input" />
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button type="submit" class="btn btn-primary">Criar Cupão</button>
+              <button type="button" onclick="document.getElementById('new-coupon-form').style.display='none';" class="btn btn-ghost">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">🏷️ Todos os Cupões</span><span style="color:var(--muted);font-size:12px;">${allCoupons.length} cupões</span></div>
+        <table>
+          <thead><tr><th>Código</th><th>Desconto</th><th>Usos</th><th>Validade</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            ${allCoupons.length === 0 ? `<tr><td colspan="6" class="empty">Nenhum cupão cadastrado.</td></tr>` : allCoupons.map((c) => `
+              <tr>
+                <td><strong style="color:var(--gold);font-family:monospace;">${esc(c.code)}</strong>${c.description ? `<br><span style="color:var(--muted);font-size:11px;">${esc(c.description)}</span>` : ""}</td>
+                <td>${c.discountType === "percent" ? `${c.discountValue}%` : `R$ ${fmt(parseFloat(c.discountValue as any))}`}</td>
+                <td>${c.usedCount ?? 0}${c.maxUses ? ` / ${c.maxUses}` : " / ∞"}</td>
+                <td style="font-size:12px;">${c.validFrom ? fmtDate(c.validFrom as any) : "—"} ${c.validUntil ? `até ${fmtDate(c.validUntil as any)}` : ""}</td>
+                <td><span class="badge ${c.isActive ? 'badge-success' : 'badge-muted'}">${c.isActive ? "Ativo" : "Inativo"}</span></td>
+                <td>
+                  <form method="POST" action="/admin/cupons/toggle" style="display:inline;">
+                    <input type="hidden" name="id" value="${c.id}" />
+                    <input type="hidden" name="isActive" value="${c.isActive ? 'false' : 'true'}" />
+                    <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;">${c.isActive ? "Desativar" : "Ativar"}</button>
+                  </form>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+    res.send(adminLayout("Cupons", "cupons", body, barber?.name));
+  });
+
+  app.post("/admin/cupons", requireAdminAuth, async (req: Request, res: Response) => {
+    const { code, description, discountType, discountValue, minOrderValue, maxUses, validFrom, validUntil } = req.body;
+    await db.createCoupon({
+      code,
+      description: description || undefined,
+      discountType,
+      discountValue,
+      minOrderValue: minOrderValue || undefined,
+      maxUses: maxUses ? parseInt(maxUses) : undefined,
+      validFrom: validFrom || undefined,
+      validUntil: validUntil || undefined,
+    });
+    res.redirect("/admin/cupons?saved=1");
+  });
+
+  app.post("/admin/cupons/toggle", requireAdminAuth, async (req: Request, res: Response) => {
+    const { id, isActive } = req.body;
+    await db.updateCoupon(parseInt(id), { isActive: isActive === "true" });
+    res.redirect("/admin/cupons");
+  });
+
+  // ─── Avaliações ─────────────────────────────────────────────────────────────
+  app.get("/admin/avaliacoes", requireAdminAuth, async (req: Request, res: Response) => {
+    const barber = await db.getBarberById((req as any).adminSession.barberId);
+    const recentReviews = await db.getRecentReviews(100);
+    const avgRating = recentReviews.length > 0
+      ? (recentReviews.reduce((s, r) => s + r.rating, 0) / recentReviews.length).toFixed(1)
+      : "0.0";
+    const dist = [5, 4, 3, 2, 1].map((star) => ({
+      star,
+      count: recentReviews.filter((r) => r.rating === star).length,
+      pct: recentReviews.length > 0 ? Math.round((recentReviews.filter((r) => r.rating === star).length / recentReviews.length) * 100) : 0,
+    }));
+    const stars = (n: number) => "⭐".repeat(n) + "☆".repeat(5 - n);
+    const body = `
+      <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="metric-card">
+          <div class="metric-label">MÉDIA GERAL</div>
+          <div class="metric-value" style="color:var(--gold);">${avgRating} ⭐</div>
+          <div class="metric-sub">${recentReviews.length} avaliações no total</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">5 ESTRELAS</div>
+          <div class="metric-value" style="color:var(--success);">${dist[0].count}</div>
+          <div class="metric-sub">${dist[0].pct}% das avaliações</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">ABAIXO DE 3</div>
+          <div class="metric-value" style="color:var(--error);">${dist[3].count + dist[4].count}</div>
+          <div class="metric-sub">${dist[3].pct + dist[4].pct}% das avaliações</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:280px 1fr;gap:24px;">
+        <!-- Distribuição -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Distribuição</span></div>
+          <div class="card-body" style="padding:16px;">
+            ${dist.map((d) => `
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <span style="font-size:13px;width:24px;text-align:right;">${d.star}⭐</span>
+                <div style="flex:1;background:var(--surface2);border-radius:4px;height:8px;overflow:hidden;">
+                  <div style="width:${d.pct}%;height:100%;background:var(--gold);border-radius:4px;"></div>
+                </div>
+                <span style="font-size:12px;color:var(--muted);width:30px;">${d.count}</span>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
+        <!-- Lista -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">💬 Avaliações Recentes</span></div>
+          <table>
+            <thead><tr><th>Cliente</th><th>Serviço</th><th>Nota</th><th>Comentário</th><th>Data</th></tr></thead>
+            <tbody>
+              ${recentReviews.length === 0 ? `<tr><td colspan="5" class="empty">Nenhuma avaliação recebida ainda.</td></tr>` : recentReviews.map((r) => `
+                <tr>
+                  <td>${esc(r.clientName)}</td>
+                  <td><span style="color:var(--muted);font-size:12px;">${esc(r.serviceName)}</span></td>
+                  <td><span style="color:var(--gold);">${stars(r.rating)}</span></td>
+                  <td style="max-width:300px;font-size:12px;color:var(--muted);">${r.comment ? esc(r.comment) : "—"}</td>
+                  <td style="font-size:12px;color:var(--muted);">${new Date(r.createdAt).toLocaleDateString("pt-BR")}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    res.send(adminLayout("Avaliações", "avaliacoes", body, barber?.name));
+  });
+
+  // ─── Comissões ────────────────────────────────────────────────────────────
+  app.get("/admin/comissoes", requireAdminAuth, async (req: Request, res: Response) => {
+    const barber = await db.getBarberById((req as any).adminSession.barberId);
+    const configs = await db.listCommissionConfigs(); // retorna barbeiros com commissionRate embutido
+    const { start, end } = monthRange();
+    const summary = await db.getCommissionSummary(start, end);
+    const saved = req.query.saved === "1";
+    const totalCommission = summary.reduce((s, b) => s + b.totalCommission, 0);
+    const totalGross = summary.reduce((s, b) => s + b.totalGross, 0);
+    const body = `
+      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE80;border-radius:10px;padding:12px 18px;margin-bottom:20px;color:#4ADE80;font-size:13px;">Comissões atualizadas.</div>` : ""}
+      <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="metric-card">
+          <div class="metric-label">FATURAMENTO BRUTO (MES)</div>
+          <div class="metric-value">${fmtCurrency(totalGross)}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">TOTAL DE COMISSÕES</div>
+          <div class="metric-value" style="color:var(--warning);">${fmtCurrency(totalCommission)}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">LÍQUIDO DA BARBEARIA</div>
+          <div class="metric-value" style="color:var(--success);">${fmtCurrency(totalGross - totalCommission)}</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:300px 1fr;gap:24px;">
+        <!-- Configurar taxas -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">⚙️ Taxas de Comissão</span></div>
+          <div class="card-body" style="padding:16px;">
+            <form method="POST" action="/admin/comissoes/config">
+              ${configs.map((b) => `
+                  <div class="form-group">
+                    <label class="form-label">${esc(b.name).toUpperCase()}</label>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <input type="number" name="rate_${b.id}" class="form-input" value="${b.commissionRate}" min="0" max="100" step="1" style="width:80px;" />
+                      <span style="color:var(--muted);font-size:13px;">%</span>
+                    </div>
+                  </div>
+                `).join("")}
+              ${configs.length === 0 ? `<p style="color:var(--muted);font-size:13px;">Nenhum barbeiro cadastrado.</p>` : ""}
+              <button type="submit" class="btn btn-primary" style="width:100%;">Salvar Taxas</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Resumo por barbeiro -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">🤝 Resumo do Mês</span><span style="color:var(--muted);font-size:12px;">${fmtDate(start)} a ${fmtDate(end)}</span></div>
+          <table>
+            <thead><tr><th>Barbeiro</th><th>Taxa</th><th>Faturamento</th><th>Comissão</th><th>Líquido</th><th>Atend.</th></tr></thead>
+            <tbody>
+              ${summary.length === 0 ? `<tr><td colspan="6" class="empty">Nenhum dado de comissão no mês.</td></tr>` : summary.map((s) => `
+                <tr>
+                  <td><strong>${esc(s.barberName)}</strong></td>
+                  <td><span class="badge badge-gold">${s.commissionRate}%</span></td>
+                  <td>${fmtCurrency(s.totalGross)}</td>
+                  <td style="color:var(--warning);">${fmtCurrency(s.totalCommission)}</td>
+                  <td style="color:var(--success);">${fmtCurrency(s.totalNet)}</td>
+                  <td>${s.entriesCount}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    res.send(adminLayout("Comissões", "comissoes", body, barber?.name));
+  });
+
+  app.post("/admin/comissoes/config", requireAdminAuth, async (req: Request, res: Response) => {
+    const barbers = await db.getAllBarbers();
+    for (const b of barbers) {
+      const rate = req.body[`rate_${b.id}`];
+      if (rate !== undefined) {
+        await db.upsertCommissionConfig({ barberId: b.id, defaultRate: parseFloat(rate) });
+      }
+    }
+    res.redirect("/admin/comissoes?saved=1");
+  });
+
 }

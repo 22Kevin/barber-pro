@@ -27,6 +27,12 @@ export const tenants = mysqlTable("tenants", {
   status: mysqlEnum("status", ["active", "trial", "suspended", "cancelled"]).default("trial").notNull(),
   trialEndsAt: timestamp("trialEndsAt"),
   logoUrl: text("logoUrl"),
+  // ─── Campos para suporte futuro a marketplace ─────────────────────────────
+  latitude: decimal("latitude", { precision: 10, scale: 7 }),          // ex: -23.5505199
+  longitude: decimal("longitude", { precision: 10, scale: 7 }),         // ex: -46.6333094
+  descricao: text("descricao"),                                          // apresentação da barbearia no marketplace
+  fotoCapa: text("fotoCapa"),                                            // URL da foto de capa para o card do marketplace
+  visivelMarketplace: boolean("visivelMarketplace").default(false).notNull(), // opt-in: aparecer na listagem pública
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

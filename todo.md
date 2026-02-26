@@ -788,3 +788,12 @@
 - [x] E-mail automático de avaliação pós-atendimento (2h após horário agendado)
 - [x] Página pública de avaliação: /pub/:slug/avaliar/:appointmentId
 - [x] Configurações da barbearia no painel web: horários, equipe, personalização visual
+
+## Fase 12 — Banco de Dados Marketplace + Paridade Painel Web
+- [x] Adicionar campos marketplace na tabela tenants: latitude, longitude, visivelMarketplace, descricao, fotoCapa
+- [x] Migrar schema no banco de dados (migração 0016 aplicada)
+- [x] Menu lateral do painel admin reorganizado em grupos: Operacional, Catálogo, Financeiro, Marketing, Sistema
+- [x] Tela de Fidelidade no painel admin web: configurar regras de pontos e recompensas
+- [x] Tela de Cupons no painel admin web: criar, editar, ativar/desativar cupons
+- [x] Tela de Avaliações no painel admin web: média geral, distribuição por estrelas, lista de avaliações
+- [x] Tela de Comissões no painel admin web: configurar percentual por barbeiro, resumo mensal
