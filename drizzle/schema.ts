@@ -456,3 +456,18 @@ export type StockMovement = typeof stockMovements.$inferSelect;
 
 export type Tenant = typeof tenants.$inferSelect;
 export type InsertTenant = typeof tenants.$inferInsert;
+
+// ─── WhatsApp Chat Messages ───────────────────────────────────────────────────
+export const whatsappMessages = mysqlTable("whatsapp_messages", {
+  id: int("id").primaryKey().autoincrement(),
+  tenantId: int("tenantId").notNull(),
+  clientId: int("clientId").notNull(),
+  barberId: int("barberId").notNull(),
+  direction: mysqlEnum("direction", ["outgoing", "incoming"]).notNull().default("outgoing"),
+  message: text("message").notNull(),
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+  status: mysqlEnum("status", ["sent", "delivered", "read"]).notNull().default("sent"),
+});
+
+export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
+export type InsertWhatsappMessage = typeof whatsappMessages.$inferInsert;

@@ -29,6 +29,9 @@ import {
   recurringAppointments,
   stockMovements,
   tenants,
+  whatsappMessages,
+  type WhatsappMessage,
+  type InsertWhatsappMessage,
   type Tenant,
   type InsertTenant,
   type InsertAppointment,
@@ -1576,4 +1579,32 @@ export async function markAppointmentReviewEmailSent(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(appointments).set({ reminderSent: true }).where(eq(appointments.id, id));
+}
+
+// ─── WhatsApp Chat ────────────────────────────────────────────────────────────
+export async function getChatClients(tenantId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Retorna todos os clientes do tenant com a última mensagem
+  const allClients = await db.select().from(clients).where(eq(clients.tenantId, tenantId));
+  const msgs = await db.select().from(whatsappMessages).where(eq(whatsappMessages.tenantId, tenantId));
+  return allClients.map((c) => {
+    const clientMsgs = msgs.filter((m) => m.clientId === c.id).sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+    return { ...c, lastMessage: clientMsgs[0] ?? null, messageCount: clientMsgs.length };
+  });
+}
+
+export async function getChatHistory(tenantId: number, clientId: number): Promise<WhatsappMessage[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(whatsappMessages)
+    .where(and(eq(whatsappMessages.tenantId, tenantId), eq(whatsappMessages.clientId, clientId)))
+    .orderBy(whatsappMessages.sentAt);
+}
+
+export async function saveChatMessage(data: InsertWhatsappMessage): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(whatsappMessages).values(data);
+  return (result[0] as any).insertId;
 }

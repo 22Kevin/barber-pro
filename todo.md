@@ -816,3 +816,14 @@
 ## Fase 14 — Redesign da Landing Page
 - [x] Gerar logo profissional do Barber Pro (navalha douráda com círculo de barbearia)
 - [x] Redesenhar landing page com identidade visual forte, hero impactante e logo integrado
+
+## Painel Admin Web — Chat, Relatórios e Exportação
+
+- [ ] Tabela whatsapp_messages no banco (clientId, barberId, direction, message, sentAt, status)
+- [ ] Rota GET /admin/chat — lista de clientes com última mensagem e data
+- [ ] Rota GET /admin/chat/:clientId — histórico de mensagens com o cliente
+- [ ] Rota POST /admin/chat/:clientId — salvar mensagem enviada e abrir link wa.me
+- [ ] Relatórios web com gráficos SVG: faturamento por mês (barras), ranking de serviços (barras horizontais)
+- [ ] Exportação CSV: Clientes (nome, telefone, email, pontos, último atendimento)
+- [ ] Exportação CSV: Financeiro (data, tipo, descrição, valor, forma de pagamento)
+- [ ] Exportação CSV: Estoque (produto, quantidade, alerta mínimo, movimentações)

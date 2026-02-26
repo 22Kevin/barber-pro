@@ -124,6 +124,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/avaliacoes", icon: "💬", label: "Avaliações", id: "avaliacoes" },
         { href: "/admin/retorno-automatico", icon: "📨", label: "Retorno Automático", id: "retorno-automatico" },
         { href: "/admin/conversao-promocoes", icon: "📈", label: "Conversão de Promoções", id: "conversao-promocoes" },
+        { href: "/admin/chat", icon: "💬", label: "Chat WhatsApp", id: "chat" },
       ],
     },
     {
@@ -526,6 +527,7 @@ async function renderClientes(req: Request, res: Response) {
     <div class="card">
       <div class="card-header">
         <div class="card-title">👥 Clientes (${filtered.length})</div>
+        <a href="/admin/export/clientes.csv" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a>
       </div>
       <div class="card-body">
         ${filtered.length === 0
@@ -1237,6 +1239,66 @@ async function renderRelatorios(req: Request, res: Response) {
         <div style="background:#C9A84C;height:8px;border-radius:4px;width:${Math.round(s.count / maxCount * 100)}%"></div>
       </div>
     </div>`).join("") || '<div class="empty">Sem dados de serviços no período.</div>';
+  // Formas de pagamento
+  const paymentMap: Record<string, number> = {};
+  allSales.forEach((s: any) => {
+    const pm = s.paymentMethod ?? "other";
+    paymentMap[pm] = (paymentMap[pm] ?? 0) + parseFloat(s.total ?? "0");
+  });
+  const pmLabels: Record<string, string> = { cash: "Dinheiro", credit_card: "Cartão Crédito", debit_card: "Cartão Débito", pix: "Pix", mercado_pago: "Mercado Pago", other: "Outro" };
+  const pmColors = ["#C9A84C", "#4ADE80", "#60A5FA", "#F472B6", "#A78BFA", "#FB923C"];
+  const pmEntries = Object.entries(paymentMap).sort((a, b) => b[1] - a[1]);
+  const pmTotal = pmEntries.reduce((s, [, v]) => s + v, 0) || 1;
+  // Gerar gráfico de pizza SVG
+  let pieSvg = "";
+  if (pmEntries.length > 0) {
+    let angle = -Math.PI / 2;
+    const cx = 80, cy = 80, r = 65;
+    const slices = pmEntries.map(([key, val], i) => {
+      const pct = val / pmTotal;
+      const a1 = angle;
+      const a2 = angle + pct * 2 * Math.PI;
+      angle = a2;
+      const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+      const x2 = cx + r * Math.cos(a2), y2 = cy + r * Math.sin(a2);
+      const large = pct > 0.5 ? 1 : 0;
+      return `<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${pmColors[i % pmColors.length]}" opacity="0.9"/>`;
+    }).join("");
+    const legend = pmEntries.map(([key, val], i) => `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <div style="width:10px;height:10px;border-radius:2px;background:${pmColors[i % pmColors.length]};flex-shrink:0"></div>
+        <span style="font-size:12px">${pmLabels[key] ?? key}</span>
+        <span style="font-size:11px;color:var(--muted);margin-left:auto">${Math.round(val / pmTotal * 100)}%</span>
+      </div>`).join("");
+    pieSvg = `<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+      <svg width="160" height="160" viewBox="0 0 160 160">${slices}</svg>
+      <div style="flex:1;min-width:140px">${legend}</div>
+    </div>`;
+  } else {
+    pieSvg = '<div class="empty">Sem dados de pagamento no período.</div>';
+  }
+  // Gráfico de linha SVG — tendência de faturamento (acumulado por semana se > 14 dias)
+  let lineSvg = "";
+  if (days <= 14) {
+    // Linha diária
+    const lineVals = dayVals;
+    const lineKeys = dayKeys;
+    const lMax = Math.max(...lineVals, 1);
+    const pts = lineVals.map((v, i) => {
+      const x = 20 + i * (560 / Math.max(lineKeys.length - 1, 1));
+      const y = 130 - Math.round((v / lMax) * 110);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+    const dots = lineVals.map((v, i) => {
+      const x = 20 + i * (560 / Math.max(lineKeys.length - 1, 1));
+      const y = 130 - Math.round((v / lMax) * 110);
+      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="#C9A84C"/>`;
+    }).join("");
+    lineSvg = `<svg width="600" height="150" style="width:100%;max-width:600px">
+      <polyline points="${pts}" fill="none" stroke="#C9A84C" stroke-width="2.5" stroke-linejoin="round"/>
+      ${dots}
+    </svg>`;
+  }
   // Desempenho por barbeiro
   const barberStats = await Promise.all(allBarbers.map(async (b: any) => {
     const bSales = allSales.filter((s: any) => s.barberId === b.id);
@@ -1260,6 +1322,7 @@ async function renderRelatorios(req: Request, res: Response) {
       <form method="GET" style="display:flex;align-items:center;gap:8px">
         <label style="font-size:13px;color:var(--muted)">Período:</label>
         <select name="period" onchange="this.form.submit()" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">${periodOptions}</select>
+        <a href="/admin/export/financeiro.csv?period=${period}" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a>
       </form>
     </div>
     <!-- KPIs -->
@@ -1286,7 +1349,12 @@ async function renderRelatorios(req: Request, res: Response) {
       <div class="card-header"><div class="card-title">📈 Faturamento por Dia</div></div>
       <div class="card-body" style="overflow-x:auto">${chartSvg}</div>
     </div>
-    <!-- Grid ranking + barbeiros -->
+    <!-- Gráfico de linha (apenas para períodos curtos) -->
+    ${lineSvg ? `<div class="card" style="margin-bottom:24px">
+      <div class="card-header"><div class="card-title">📉 Tendência de Faturamento</div></div>
+      <div class="card-body" style="overflow-x:auto">${lineSvg}</div>
+    </div>` : ""}
+    <!-- Grid ranking + barbeiros + pizza -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
       <div class="card">
         <div class="card-header"><div class="card-title">✂️ Serviços Mais Vendidos</div></div>
@@ -1301,6 +1369,11 @@ async function renderRelatorios(req: Request, res: Response) {
           </table>
         </div>
       </div>
+    </div>
+    <!-- Formas de pagamento -->
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header"><div class="card-title">💳 Formas de Pagamento</div></div>
+      <div class="card-body">${pieSvg}</div>
     </div>
   `;
   res.send(adminLayout("Relatórios", "relatorios", body, barber?.name));
@@ -2422,6 +2495,7 @@ export function registerAdminRoutes(app: Express): void {
           <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Controle de Estoque</h1>
           <p style="color:var(--muted);font-size:14px;margin-top:4px;">Movimentações e alertas de estoque dos produtos</p>
         </div>
+        <a href="/admin/export/estoque.csv" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a>
       </div>
       ${saved ? `<div class="alert alert-success">Movimentação registrada com sucesso.</div>` : ""}
       ${lowStock.length > 0 ? `
@@ -2775,6 +2849,184 @@ export function registerAdminRoutes(app: Express): void {
     const newHash = bcrypt ? await bcrypt.hash(newPassword, 10) : newPassword;
     await db.updateBarber(session.barberId, { passwordHash: newHash });
     res.redirect("/admin/meu-perfil?pw=1");
+  });
+
+  // ─── Chat WhatsApp ────────────────────────────────────────────────────────────
+  app.get("/admin/chat", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number; role: string };
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? 1;
+    const chatClients = await db.getChatClients(tenantId);
+    // Ordenar: clientes com mensagens primeiro, depois por nome
+    chatClients.sort((a: any, b: any) => {
+      if (a.lastMessage && !b.lastMessage) return -1;
+      if (!a.lastMessage && b.lastMessage) return 1;
+      if (a.lastMessage && b.lastMessage) return new Date(b.lastMessage.sentAt).getTime() - new Date(a.lastMessage.sentAt).getTime();
+      return a.name.localeCompare(b.name);
+    });
+    const clientRows = chatClients.map((c: any) => {
+      const lastMsg = c.lastMessage ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px">${esc(c.lastMessage.message)}</div>` : `<div style="font-size:11px;color:var(--muted);margin-top:2px">Nenhuma mensagem ainda</div>`;
+      const badge = c.messageCount > 0 ? `<span style="background:#C9A84C;color:#000;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px">${c.messageCount}</span>` : "";
+      return `<a href="/admin/chat/${c.id}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background 0.15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='transparent'">
+        <div style="width:42px;height:42px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#000;flex-shrink:0">${esc(c.name.charAt(0).toUpperCase())}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:600;font-size:14px">${esc(c.name)}</span>
+            ${badge}
+          </div>
+          ${lastMsg}
+        </div>
+        <span style="font-size:18px;color:var(--muted)">›</span>
+      </a>`;
+    }).join("");
+    const body = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h2 style="font-size:20px;font-weight:700;margin:0">💬 Chat WhatsApp</h2>
+        <span style="font-size:12px;color:var(--muted)">${chatClients.length} cliente(s)</span>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        ${clientRows || '<div style="padding:40px;text-align:center;color:var(--muted)">Nenhum cliente cadastrado.</div>'}
+      </div>
+    `;
+    res.send(adminLayout("Chat WhatsApp", "chat", body, barber?.name));
+  });
+
+  app.get("/admin/chat/:clientId", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number; role: string };
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? 1;
+    const clientId = parseInt(req.params.clientId);
+    const client = await db.getClientById(clientId);
+    if (!client) { res.redirect("/admin/chat"); return; }
+    const history = await db.getChatHistory(tenantId, clientId);
+    const msgBubbles = history.map((m: any) => {
+      const isOut = m.direction === "outgoing";
+      const time = new Date(m.sentAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      const date = new Date(m.sentAt).toLocaleDateString("pt-BR");
+      return `<div style="display:flex;justify-content:${isOut ? "flex-end" : "flex-start"};margin-bottom:8px">
+        <div style="max-width:70%;background:${isOut ? "#C9A84C" : "var(--surface)"};color:${isOut ? "#000" : "var(--text)"};padding:10px 14px;border-radius:${isOut ? "18px 18px 4px 18px" : "18px 18px 18px 4px"};font-size:14px">
+          ${esc(m.message)}
+          <div style="font-size:10px;opacity:0.6;margin-top:4px;text-align:right">${date} ${time}</div>
+        </div>
+      </div>`;
+    }).join("");
+    // Templates de mensagem rápida
+    const templates = [
+      "Olá! Tudo bem? Gostaria de confirmar seu agendamento.",
+      "Seu agendamento foi confirmado! Te esperamos.",
+      "Lembrete: você tem um agendamento amanhã conosco.",
+      "Obrigado pela visita! Esperamos te ver em breve.",
+      "Temos uma promoção especial esta semana. Quer agendar?",
+    ];
+    const templateBtns = templates.map(t => `<button type="button" onclick="document.getElementById('msgInput').value='${t.replace(/'/g, "\\'")}"" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--text);text-align:left">${esc(t)}</button>`).join("");
+    const phone = client.phone?.replace(/\D/g, "") ?? "";
+    const body = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <a href="/admin/chat" style="color:var(--muted);text-decoration:none;font-size:20px">←</a>
+        <div style="width:42px;height:42px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#000">${esc(client.name.charAt(0).toUpperCase())}</div>
+        <div>
+          <div style="font-weight:700;font-size:16px">${esc(client.name)}</div>
+          <div style="font-size:12px;color:var(--muted)">${esc(client.phone ?? "")}</div>
+        </div>
+      </div>
+      <!-- Histórico de mensagens -->
+      <div class="card" style="margin-bottom:16px;padding:16px;min-height:300px;max-height:450px;overflow-y:auto" id="chatHistory">
+        ${msgBubbles || '<div style="text-align:center;color:var(--muted);padding:40px">Nenhuma mensagem ainda. Envie a primeira!</div>'}
+      </div>
+      <!-- Templates rápidos -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Mensagens rápidas:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">${templateBtns}</div>
+      </div>
+      <!-- Formulário de envio -->
+      <form method="POST" action="/admin/chat/${clientId}" style="display:flex;gap:8px">
+        <textarea id="msgInput" name="message" rows="2" placeholder="Digite sua mensagem..." required style="flex:1;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;resize:none"></textarea>
+        <button type="submit" class="btn" style="align-self:flex-end;padding:10px 20px">Enviar via WhatsApp</button>
+      </form>
+      <script>const h=document.getElementById('chatHistory');if(h)h.scrollTop=h.scrollHeight;</script>
+    `;
+    res.send(adminLayout(`Chat — ${client.name}`, "chat", body, barber?.name));
+  });
+
+  app.post("/admin/chat/:clientId", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number; role: string };
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? 1;
+    const clientId = parseInt(req.params.clientId);
+    const { message } = req.body;
+    if (!message?.trim()) { res.redirect(`/admin/chat/${clientId}`); return; }
+    const client = await db.getClientById(clientId);
+    if (!client) { res.redirect("/admin/chat"); return; }
+    // Salvar no histórico
+    await db.saveChatMessage({ tenantId, clientId, barberId: session.barberId, direction: "outgoing", message: message.trim(), status: "sent" });
+    // Redirecionar para WhatsApp com a mensagem
+    const phone = (client.phone ?? "").replace(/\D/g, "");
+    const waUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(message.trim())}`;
+    // Redirecionar para o WhatsApp e depois voltar ao chat
+    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Abrindo WhatsApp...</title></head><body style="font-family:sans-serif;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:16px">
+      <div style="font-size:48px">💬</div>
+      <div style="font-size:18px;font-weight:600">Abrindo WhatsApp...</div>
+      <div style="font-size:14px;color:#999">A mensagem foi salva no histórico.</div>
+      <script>window.open('${waUrl}','_blank');setTimeout(()=>location.href='/admin/chat/${clientId}',1500);</script>
+    </body></html>`);
+  });
+
+  // ─── Exportação CSV ───────────────────────────────────────────────────────────
+  app.get("/admin/export/clientes.csv", requireAdminAuth, async (req: Request, res: Response) => {
+    const allClients = await db.getAllClients();
+    const rows = [
+      ["ID", "Nome", "Telefone", "Email", "Data Nasc.", "Pontos", "Ativo", "Cadastrado em"],
+      ...allClients.map((c: any) => [
+        c.id, c.name, c.phone ?? "", c.email ?? "", c.birthDate ?? "",
+        c.totalPoints, c.isActive ? "Sim" : "Não",
+        new Date(c.createdAt).toLocaleDateString("pt-BR")
+      ])
+    ];
+    const csv = rows.map(r => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="clientes.csv"');
+    res.send("\uFEFF" + csv);
+  });
+
+  app.get("/admin/export/financeiro.csv", requireAdminAuth, async (req: Request, res: Response) => {
+    const period = (req.query.period as string) || "30";
+    const days = parseInt(period) || 30;
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days + 1);
+    const startStr = startDate.toISOString().slice(0, 10);
+    const endStr = endDate.toISOString().slice(0, 10);
+    const sales = await db.getSalesByDateRange(startStr, endStr);
+    const expenses = await db.getExpensesByDateRange(startStr, endStr);
+    const rows = [
+      ["Data", "Tipo", "Descrição", "Valor", "Forma de Pagamento", "Status"],
+      ...sales.map((s: any) => [
+        new Date(s.createdAt).toLocaleDateString("pt-BR"), "Receita",
+        s.notes ?? "Venda", s.total, s.paymentMethod, s.paymentStatus
+      ]),
+      ...expenses.map((e: any) => [
+        e.date, "Despesa", e.description, `-${e.amount}`, e.paymentMethod ?? "", "pago"
+      ])
+    ];
+    const csv = rows.map(r => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="financeiro.csv"');
+    res.send("\uFEFF" + csv);
+  });
+
+  app.get("/admin/export/estoque.csv", requireAdminAuth, async (req: Request, res: Response) => {
+    const products = await db.getAllProducts();
+    const rows = [
+      ["ID", "Nome", "Tipo", "Preço", "Estoque Atual", "Alerta Mínimo", "Ativo"],
+      ...products.map((p: any) => [
+        p.id, p.name, p.productType === "sale" ? "Venda" : "Uso Interno",
+        p.price, p.stockQuantity, p.minStockAlert, p.isActive ? "Sim" : "Não"
+      ])
+    ];
+    const csv = rows.map(r => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="estoque.csv"');
+    res.send("\uFEFF" + csv);
   });
 
 }
