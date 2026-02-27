@@ -1867,47 +1867,110 @@ async function renderPaginaCliente(req: Request, res: Response) {
     longitude: (tenant as any).longitude ?? "",
   } : null;
   const marketplaceSaved = req.query.mksaved === "1";
+  const mkName = esc(tenant?.name ?? "Sua Barbearia");
+  const mkCity = esc((tenant as any)?.city ?? "");
+  const mkState = esc((tenant as any)?.state ?? "");
+  const mkLocation = mkCity ? `${mkCity}${mkState ? ", " + mkState : ""}` : "";
+  const mkLogo = esc(settings?.logoUrl ?? "");
   const tabMarketplace = `
     ${marketplaceSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Configurações do Marketplace salvas!</div>` : ""}
-    <div class="card" style="margin-bottom:20px">
-      <div class="card-header"><h3>🏪 Marketplace Barber Pro</h3></div>
-      <div class="card-body">
-        <p style="font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.6">Aparecer no <a href="/marketplace" target="_blank" style="color:var(--gold)">Marketplace Barber Pro</a> permite que novos clientes descubram sua barbearia. Ative a visibilidade e preencha as informações abaixo.</p>
-        <form method="POST" action="/admin/pagina-cliente/marketplace">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;background:var(--surface2);border-radius:12px;padding:16px">
-            <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
-              <input type="checkbox" name="visivelMarketplace" value="1" ${tenantMarketplace?.visivelMarketplace ? "checked" : ""} style="opacity:0;width:0;height:0" onchange="this.closest('form').querySelector('#mk-status').textContent=this.checked?'Visível no Marketplace':'Oculto no Marketplace'" />
-              <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:${tenantMarketplace?.visivelMarketplace ? "var(--success)" : "var(--border)"};border-radius:26px;transition:0.3s" onclick="var cb=this.previousElementSibling;cb.checked=!cb.checked;this.style.background=cb.checked?'var(--success)':'var(--border)';document.getElementById('mk-status').textContent=cb.checked?'Visível no Marketplace':'Oculto no Marketplace'"></span>
-            </label>
-            <div>
-              <div style="font-size:14px;font-weight:700" id="mk-status">${tenantMarketplace?.visivelMarketplace ? "Visível no Marketplace" : "Oculto no Marketplace"}</div>
-              <div style="font-size:12px;color:var(--muted)">Quando ativo, sua barbearia aparece na página de descoberta</div>
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start">
+      <!-- Formulário -->
+      <div class="card">
+        <div class="card-header"><h3>🏪 Marketplace Barber Pro</h3></div>
+        <div class="card-body">
+          <p style="font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.6">Aparecer no <a href="/marketplace" target="_blank" style="color:var(--gold)">Marketplace Barber Pro</a> permite que novos clientes descubram sua barbearia. Ative a visibilidade e preencha as informações abaixo.</p>
+          <form method="POST" action="/admin/pagina-cliente/marketplace" id="mkForm">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;background:var(--surface2);border-radius:12px;padding:16px">
+              <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
+                <input type="checkbox" name="visivelMarketplace" value="1" id="mkVisible" ${tenantMarketplace?.visivelMarketplace ? "checked" : ""} style="opacity:0;width:0;height:0" />
+                <span id="mkToggle" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:${tenantMarketplace?.visivelMarketplace ? "var(--success)" : "var(--border)"};border-radius:26px;transition:0.3s" onclick="var cb=document.getElementById('mkVisible');cb.checked=!cb.checked;this.style.background=cb.checked?'var(--success)':'var(--border)';document.getElementById('mk-status').textContent=cb.checked?'Visível no Marketplace':'Oculto no Marketplace';updatePreview()"></span>
+              </label>
+              <div>
+                <div style="font-size:14px;font-weight:700" id="mk-status">${tenantMarketplace?.visivelMarketplace ? "Visível no Marketplace" : "Oculto no Marketplace"}</div>
+                <div style="font-size:12px;color:var(--muted)">Quando ativo, sua barbearia aparece na página de descoberta</div>
+              </div>
             </div>
-          </div>
-          <div style="margin-bottom:16px">
-            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">DESCRIÇÃO DA BARBEARIA</label>
-            <textarea name="descricao" rows="3" placeholder="Descreva sua barbearia, especialidades, diferenciais..." style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;resize:vertical">${esc(tenantMarketplace?.descricao ?? "")}</textarea>
-          </div>
-          <div style="margin-bottom:16px">
-            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">URL DA FOTO DE CAPA</label>
-            <input type="url" name="fotoCapa" value="${esc(tenantMarketplace?.fotoCapa ?? "")}" placeholder="https://..." style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
-            <div style="font-size:12px;color:var(--muted);margin-top:4px">Imagem de capa exibida no card do marketplace (recomendado: 800x400px)</div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
-            <div>
-              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">LATITUDE</label>
-              <input type="text" name="latitude" value="${esc(tenantMarketplace?.latitude ?? "")}" placeholder="-23.5505" style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+            <div style="margin-bottom:16px">
+              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">DESCRIÇÃO DA BARBEARIA</label>
+              <textarea id="mkDesc" name="descricao" rows="3" placeholder="Descreva sua barbearia, especialidades, diferenciais..." oninput="updatePreview()" style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;resize:vertical">${esc(tenantMarketplace?.descricao ?? "")}</textarea>
             </div>
-            <div>
-              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">LONGITUDE</label>
-              <input type="text" name="longitude" value="${esc(tenantMarketplace?.longitude ?? "")}" placeholder="-46.6333" style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+            <div style="margin-bottom:16px">
+              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">URL DA FOTO DE CAPA</label>
+              <input id="mkFoto" type="url" name="fotoCapa" value="${esc(tenantMarketplace?.fotoCapa ?? "")}" placeholder="https://..." oninput="updatePreview()" style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">Imagem de capa exibida no card do marketplace (recomendado: 800x400px)</div>
             </div>
+            <div style="margin-bottom:20px">
+              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">LOCALIZAÇÃO (COORDENADAS)</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
+                <div>
+                  <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Latitude</label>
+                  <input id="mkLat" type="text" name="latitude" value="${esc(tenantMarketplace?.latitude ?? "")}" placeholder="-23.5505" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px" />
+                </div>
+                <div>
+                  <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Longitude</label>
+                  <input id="mkLng" type="text" name="longitude" value="${esc(tenantMarketplace?.longitude ?? "")}" placeholder="-46.6333" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px" />
+                </div>
+                <button type="button" onclick="buscarCoordenadas()" style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;white-space:nowrap">📍 Buscar pelo endereço</button>
+              </div>
+              <div id="mkGeoStatus" style="font-size:11px;color:var(--muted);margin-top:4px">Preencha o endereço da barbearia em Configurações para usar a busca automática.</div>
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar Marketplace</button>
+            <a href="/marketplace" target="_blank" class="btn btn-ghost" style="margin-left:8px">🔍 Ver Marketplace</a>
+          </form>
+        </div>
+      </div>
+      <!-- Preview do Card -->
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em">👁️ Preview do Card</div>
+        <div id="mkPreviewCard" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
+          <div id="mkPreviewCapa" style="height:140px;background:${tenantMarketplace?.fotoCapa ? `url('${esc(tenantMarketplace.fotoCapa)}') center/cover` : "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)"};position:relative">
+            ${tenantMarketplace?.fotoCapa ? "" : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;color:rgba(255,255,255,0.3)">✂️</div>`}
           </div>
-          <button type="submit" class="btn btn-primary">Salvar Marketplace</button>
-          <a href="/marketplace" target="_blank" class="btn btn-ghost" style="margin-left:8px">🔍 Ver Marketplace</a>
-        </form>
+          <div style="padding:14px">
+            ${mkLogo ? `<img src="${mkLogo}" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);margin-top:-30px;margin-bottom:8px;object-fit:cover;background:var(--surface)" />` : `<div style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);margin-top:-30px;margin-bottom:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px">✂️</div>`}
+            <div id="mkPreviewName" style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">${mkName}</div>
+            ${mkLocation ? `<div style="font-size:12px;color:var(--muted);margin-bottom:6px">📍 ${mkLocation}</div>` : ""}
+            <div id="mkPreviewDesc" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px">${esc(tenantMarketplace?.descricao ?? "Adicione uma descrição para aparecer aqui...")}</div>
+            <a style="display:inline-block;padding:7px 14px;background:var(--gold, #c9a84c);color:#000;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">Agendar</a>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Assim seu card aparecerá no Marketplace</div>
       </div>
     </div>
+    <script>
+      function updatePreview() {
+        var foto = document.getElementById('mkFoto')?.value || '';
+        var desc = document.getElementById('mkDesc')?.value || 'Adicione uma descrição para aparecer aqui...';
+        var capa = document.getElementById('mkPreviewCapa');
+        var descEl = document.getElementById('mkPreviewDesc');
+        if (capa) capa.style.background = foto ? "url('" + foto + "') center/cover" : 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)';
+        if (descEl) descEl.textContent = desc;
+      }
+      async function buscarCoordenadas() {
+        var status = document.getElementById('mkGeoStatus');
+        status.textContent = '⏳ Buscando coordenadas...';
+        status.style.color = 'var(--muted)';
+        try {
+          var addr = '${esc((tenant as any)?.address ?? "")} ${esc((tenant as any)?.city ?? "")} ${esc((tenant as any)?.state ?? "")} Brasil'.trim();
+          if (!addr || addr === 'Brasil') { status.textContent = 'Preencha o endereço da barbearia em Configurações primeiro.'; return; }
+          var r = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(addr) + '&limit=1');
+          var data = await r.json();
+          if (data && data[0]) {
+            document.getElementById('mkLat').value = parseFloat(data[0].lat).toFixed(7);
+            document.getElementById('mkLng').value = parseFloat(data[0].lon).toFixed(7);
+            status.textContent = '✅ Coordenadas encontradas: ' + data[0].display_name.substring(0, 60) + '...';
+            status.style.color = 'var(--success)';
+          } else {
+            status.textContent = '❌ Endereço não encontrado. Preencha latitude e longitude manualmente.';
+            status.style.color = 'var(--error)';
+          }
+        } catch(e) {
+          status.textContent = '❌ Erro ao buscar. Preencha manualmente.';
+          status.style.color = 'var(--error)';
+        }
+      }
+    </script>
   `;
 
   const tabs = [

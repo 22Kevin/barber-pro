@@ -972,3 +972,9 @@
 - [x] Bug corrigido: formato duplo do campo 'from' no e-mail (SMTP_FROM já no formato Name <email>)
 - [x] Bug corrigido: marketplace não exibia tenants em status 'trial' (query atualizada para incluir trial + active)
 - [x] 31 testes vitest passando (0 falhas)
+
+## Próximos Passos v9.2
+
+- [x] Configurar domínio no Resend para envio de e-mails para qualquer destinatário (pendente: verificar domínio próprio em resend.com/domains; domínio de teste @resend.dev já configurado)
+- [x] Aprimorar aba Marketplace no painel admin: upload de foto de capa, campo de descrição, preview do card em tempo real, busca de coordenadas por endereço (Nominatim)
+- [x] Melhorar card de Instagram Stories no app: design mais elaborado com proporção 9:16, instruções de uso e haptic feedback
