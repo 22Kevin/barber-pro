@@ -8,6 +8,7 @@ import { sendConfirmationWhatsApp, type AppointmentInfo } from "@/lib/whatsapp";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { scheduleAppointmentReminder, notifyBarberNewAppointment, scheduleReviewNotification } from "@/lib/use-notifications";
 import { DiscountSheet, type AppliedDiscount } from "@/components/discount-sheet";
+import { AppointmentShareCard } from "@/components/appointment-share-card";
 
 type Step = "service" | "barber" | "date" | "time" | "confirm";
 
@@ -93,6 +94,7 @@ export default function BookScreen() {
   const [showDiscountSheet, setShowDiscountSheet] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [pendingApptDateTime, setPendingApptDateTime] = useState<Date | null>(null);
+  const [showShareCard, setShowShareCard] = useState(false);
   // Agendamento recorrente
   const [enableRecurring, setEnableRecurring] = useState(false);
   const [recurringInterval, setRecurringInterval] = useState<1 | 2 | 4>(1); // semanas
@@ -252,14 +254,7 @@ export default function BookScreen() {
   };
 
   const handlePayOnSite = () => {
-    Alert.alert(
-      "Agendamento confirmado!",
-      "Seu agendamento está confirmado! Você receberá um lembrete no horário escolhido. O pagamento será realizado na barbearia.",
-      [
-        { text: "Ver meus agendamentos", onPress: () => router.replace("/client/(tabs)/history" as any) },
-        { text: "Início", onPress: () => router.replace("/client/(tabs)/home" as any) },
-      ]
-    );
+    setShowShareCard(true);
   };
 
   const StepIndicator = () => {
@@ -428,6 +423,42 @@ export default function BookScreen() {
           </TouchableOpacity>
 
 
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
+
+  // Tela de sucesso com card de compartilhamento
+  if (showShareCard && selectedService && selectedBarber && selectedDate && selectedSlot) {
+    const dateStr = selectedDate.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+    return (
+      <ScreenContainer containerClassName="bg-black">
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40, paddingTop: 20, alignItems: "center" }}>
+          <Text style={{ fontSize: 52, marginBottom: 12 }}>✅</Text>
+          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 22, textAlign: "center", marginBottom: 6 }}>Agendamento confirmado!</Text>
+          <Text style={{ color: "#9CA3AF", fontSize: 14, textAlign: "center", marginBottom: 32 }}>Pagamento será realizado na barbearia</Text>
+          <AppointmentShareCard
+            shopName="Barber Pro"
+            serviceName={selectedService.name}
+            barberName={selectedBarber.name}
+            date={dateStr}
+            time={selectedSlot.startTime}
+            primaryColor="#EAB308"
+          />
+          <View style={{ width: "100%", gap: 12, marginTop: 32 }}>
+            <TouchableOpacity
+              onPress={() => router.replace("/client/(tabs)/history" as any)}
+              style={{ backgroundColor: "#111827", borderRadius: 14, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#1F2937" }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Ver meus agendamentos</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.replace("/client/(tabs)/home" as any)}
+              style={{ alignItems: "center", paddingVertical: 12 }}
+            >
+              <Text style={{ color: "#6B7280", fontSize: 14 }}>Ir para o início</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </ScreenContainer>
     );

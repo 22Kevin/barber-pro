@@ -283,6 +283,7 @@ export async function sendReviewRequestEmail(opts: {
   barberName: string;
   appointmentId: number;
   baseUrl: string;
+  googleMapsUrl?: string | null;
 }): Promise<void> {
   const transporter = createTransporter();
   if (!transporter) {
@@ -325,6 +326,13 @@ export async function sendReviewRequestEmail(opts: {
           Deixar Avaliação Completa
         </a>
       </div>
+      ${opts.googleMapsUrl ? `
+      <div style="text-align:center;margin-top:16px">
+        <a href="${opts.googleMapsUrl}" target="_blank" style="display:inline-block;background:#4285F4;color:#fff;font-weight:700;font-size:14px;padding:12px 28px;border-radius:50px;text-decoration:none">
+          🌐 Avaliar no Google Maps
+        </a>
+        <p style="margin:8px 0 0;font-size:12px;color:#aaa">Sua avaliação no Google ajuda outros clientes a nos encontrar!</p>
+      </div>` : ""}
     </div>
     <div style="background:#f9f9f9;padding:20px 40px;text-align:center">
       <p style="margin:0;font-size:12px;color:#aaa">

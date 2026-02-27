@@ -13,7 +13,7 @@
 import type { Express, Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import * as db from "./db";
-import { sendBookingConfirmationEmail, sendBarberNotificationEmail } from "./email";
+import { sendBookingConfirmationEmail, sendBarberNotificationEmail, sendPasswordResetEmail } from "./email";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -763,6 +763,9 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
             : `Já tem conta? <a href="/pub/${slug}/login?${queryStr}" style="color:var(--primary);font-weight:700">Fazer login</a>`
           }
         </div>
+        ${isLogin ? `<div style="text-align:center;margin-top:12px;font-size:13px">
+          <a href="/pub/${slug}/forgot-password" style="color:var(--muted);text-decoration:underline">Esqueci minha senha</a>
+        </div>` : ""}
       </div>
     </div>
     <script>
@@ -1406,6 +1409,110 @@ export function registerPublicRoutes(app: Express): void {
     await renderLoginPage(req.params.slug, res, req, "cadastro");
   });
 
+  // GET /pub/:slug/forgot-password — Solicitar recuperação de senha
+  app.get("/pub/:slug/forgot-password", async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    const tenant = await db.getTenantBySlug(slug);
+    if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
+    const settings = await db.getShopSettingsByTenantId(tenant.id);
+    const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
+    const sent = req.query.sent === "1";
+    const error = req.query.error === "1";
+    const step = (req.query.step as string) || "email";
+    const emailParam = (req.query.email as string) || "";
+    const esc = escapeHtml;
+    const body = `
+      <div style="min-height:60vh;display:flex;align-items:center;justify-content:center;padding:24px">
+        <div style="width:100%;max-width:400px">
+          <div style="text-align:center;margin-bottom:28px">
+            <a href="/pub/${slug}" style="font-size:13px;color:var(--muted);text-decoration:none">← Voltar à página da barbearia</a>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px">
+            <h2 style="font-size:22px;font-weight:800;margin-bottom:8px">${step === "code" ? "Verificar Código" : step === "newPassword" ? "Nova Senha" : "Recuperar Senha"}</h2>
+            <p style="font-size:14px;color:var(--muted);margin-bottom:24px;line-height:1.6">${step === "code" ? `Código enviado para <strong>${esc(emailParam)}</strong>. Verifique sua caixa de entrada.` : step === "newPassword" ? "Crie uma nova senha para sua conta." : "Informe seu e-mail para receber o código de recuperação."}</p>
+            ${error ? `<div style="background:#F871711A;border:1px solid #F87171;border-radius:10px;padding:12px;margin-bottom:20px;font-size:13px;color:#F87171">${step === "code" ? "Código inválido ou expirado." : "E-mail não encontrado."}</div>` : ""}
+            ${sent && step === "email" ? `<div style="background:#22C55E1A;border:1px solid #22C55E;border-radius:10px;padding:12px;margin-bottom:20px;font-size:13px;color:#22C55E">Código enviado! Verifique sua caixa de entrada.</div>` : ""}
+            <form method="POST" action="/pub-api/forgot-password">
+              <input type="hidden" name="slug" value="${slug}" />
+              ${step === "email" ? `
+                <div style="margin-bottom:16px">
+                  <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">E-MAIL</label>
+                  <input type="email" name="email" required placeholder="seu@email.com" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+                </div>
+                <button type="submit" style="width:100%;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:800;padding:14px;border-radius:12px;border:none;cursor:pointer">ENVIAR CÓDIGO</button>
+              ` : step === "code" ? `
+                <input type="hidden" name="email" value="${esc(emailParam)}" />
+                <input type="hidden" name="step" value="code" />
+                <div style="margin-bottom:16px">
+                  <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">CÓDIGO DE 6 DÍGITOS</label>
+                  <input type="text" name="token" required maxlength="6" placeholder="000000" style="width:100%;padding:16px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:28px;font-weight:700;text-align:center;letter-spacing:8px" />
+                </div>
+                <button type="submit" style="width:100%;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:800;padding:14px;border-radius:12px;border:none;cursor:pointer">VERIFICAR</button>
+                <div style="text-align:center;margin-top:14px">
+                  <a href="/pub/${slug}/forgot-password" style="font-size:13px;color:var(--muted);text-decoration:underline">Reenviar código</a>
+                </div>
+              ` : `
+                <input type="hidden" name="email" value="${esc(emailParam)}" />
+                <input type="hidden" name="token" value="${esc(req.query.token as string || "")}" />
+                <input type="hidden" name="step" value="newPassword" />
+                <div style="margin-bottom:16px">
+                  <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">NOVA SENHA</label>
+                  <input type="password" name="newPassword" required minlength="6" placeholder="Mínimo 6 caracteres" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+                </div>
+                <div style="margin-bottom:20px">
+                  <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">CONFIRMAR SENHA</label>
+                  <input type="password" name="confirmPassword" required minlength="6" placeholder="Repita a senha" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+                </div>
+                <button type="submit" style="width:100%;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:800;padding:14px;border-radius:12px;border:none;cursor:pointer">REDEFINIR SENHA</button>
+              `}
+            </form>
+          </div>
+          <div style="text-align:center;margin-top:20px;font-size:13px;color:var(--muted)">
+            <a href="/pub/${slug}/login" style="color:var(--primary);font-weight:700">Voltar ao login</a>
+          </div>
+        </div>
+      </div>
+    `;
+    res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
+  });
+
+  // POST /pub-api/forgot-password
+  app.post("/pub-api/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { email, slug, step, token, newPassword, confirmPassword } = req.body;
+      if (!slug) { res.status(400).send("Slug obrigatório"); return; }
+      if (step === "code") {
+        // Verificar código
+        const valid = await db.validatePasswordResetToken(email, token);
+        if (!valid) { res.redirect(`/pub/${slug}/forgot-password?step=code&email=${encodeURIComponent(email)}&error=1`); return; }
+        res.redirect(`/pub/${slug}/forgot-password?step=newPassword&email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}`);
+      } else if (step === "newPassword") {
+        // Redefinir senha
+        if (!newPassword || newPassword.length < 6) { res.redirect(`/pub/${slug}/forgot-password?step=newPassword&email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}&error=1`); return; }
+        if (newPassword !== confirmPassword) { res.redirect(`/pub/${slug}/forgot-password?step=newPassword&email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}&error=1`); return; }
+        const consumed = await db.consumePasswordResetToken(email, token);
+        if (!consumed) { res.redirect(`/pub/${slug}/forgot-password?step=code&email=${encodeURIComponent(email)}&error=1`); return; }
+        const account = await db.getClientAccountByEmail(email);
+        if (!account) { res.redirect(`/pub/${slug}/forgot-password?error=1`); return; }
+        let bcrypt: any;
+        try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
+        const passwordHash = bcrypt ? await bcrypt.hash(newPassword, 10) : newPassword;
+        await db.updateClientAccount(account.id, { passwordHash });
+        res.redirect(`/pub/${slug}/login?reset=1`);
+      } else {
+        // Enviar código por e-mail
+        const account = await db.getClientAccountByEmail(email);
+        if (!account) { res.redirect(`/pub/${slug}/forgot-password?sent=1`); return; } // por segurança
+        const resetToken = await db.createPasswordResetToken(email);
+        const baseUrl = process.env.PUBLIC_BASE_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
+        await sendPasswordResetEmail({ toEmail: email, token: resetToken, baseUrl });
+        res.redirect(`/pub/${slug}/forgot-password?step=code&email=${encodeURIComponent(email)}&sent=1`);
+      }
+    } catch (e: any) {
+      res.status(500).send("Erro interno: " + e.message);
+    }
+  });
+
   // GET /pub/:slug/logout
   app.get("/pub/:slug/logout", (req: Request, res: Response) => {
     const slug = req.params.slug;
@@ -1473,6 +1580,51 @@ export function registerPublicRoutes(app: Express): void {
       const { slug } = req.body;
       res.redirect(`/pub/${slug ?? ""}/perfil?error=${encodeURIComponent(e.message)}`);
     }
+  });
+
+  // ─── Marketplace Público ──────────────────────────────────────────────────
+  // GET /marketplace — Página de descoberta de barbearias
+  app.get("/marketplace", async (req: Request, res: Response) => {
+    const search = (req.query.q as string) || "";
+    const tenantsList = await db.getMarketplaceTenants(search || undefined);
+    const cards = tenantsList.map((t: any) => `
+      <a href="/pub/${t.slug}" style="text-decoration:none;color:inherit;display:block">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:box-shadow 0.2s" onmouseover="this.style.boxShadow='0 4px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.boxShadow='none'">
+          <div style="height:140px;background:${t.fotoCapa ? `url('${t.fotoCapa}') center/cover no-repeat` : 'linear-gradient(135deg,#1e2022,#2d3035)'};position:relative">
+            ${t.logoUrl ? `<img src="${t.logoUrl}" style="position:absolute;bottom:-24px;left:16px;width:48px;height:48px;border-radius:50%;border:3px solid var(--surface);object-fit:cover" />` : `<div style="position:absolute;bottom:-24px;left:16px;width:48px;height:48px;border-radius:50%;border:3px solid var(--surface);background:#333;display:flex;align-items:center;justify-content:center;font-size:20px">✂️</div>`}
+          </div>
+          <div style="padding:32px 16px 16px">
+            <div style="font-size:16px;font-weight:800;margin-bottom:4px">${t.name}</div>
+            ${t.city ? `<div style="font-size:13px;color:var(--muted);margin-bottom:8px">📍 ${t.city}${t.state ? `, ${t.state}` : ""}</div>` : ""}
+            ${t.descricao ? `<div style="font-size:13px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${t.descricao}</div>` : ""}
+            <div style="margin-top:12px;display:inline-block;background:var(--primary);color:#0A0A0A;font-size:12px;font-weight:700;padding:6px 14px;border-radius:20px">Agendar →</div>
+          </div>
+        </div>
+      </a>
+    `).join("");
+    const body = `
+      <div style="max-width:1100px;margin:0 auto;padding:32px 20px">
+        <div style="text-align:center;margin-bottom:40px">
+          <h1 style="font-size:32px;font-weight:900;margin-bottom:8px">✂️ Encontre sua Barbearia</h1>
+          <p style="font-size:16px;color:var(--muted)">Descubra as melhores barbearias e salões da sua região</p>
+        </div>
+        <form method="GET" action="/marketplace" style="margin-bottom:40px;display:flex;gap:12px;max-width:600px;margin-left:auto;margin-right:auto">
+          <input type="text" name="q" value="${search}" placeholder="Buscar por nome, cidade ou serviço..." style="flex:1;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:15px" />
+          <button type="submit" style="background:var(--primary);color:#0A0A0A;font-weight:800;padding:14px 24px;border-radius:12px;border:none;cursor:pointer;font-size:15px">Buscar</button>
+        </form>
+        ${tenantsList.length === 0
+          ? `<div style="text-align:center;padding:60px 20px;color:var(--muted)">
+              <div style="font-size:48px;margin-bottom:16px">🔍</div>
+              <div style="font-size:18px;font-weight:700;margin-bottom:8px">Nenhuma barbearia encontrada</div>
+              <div style="font-size:14px">${search ? `Nenhum resultado para "${search}". Tente outro termo.` : "Ainda não há barbearias cadastradas no marketplace."}</div>
+            </div>`
+          : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">${cards}</div>`
+        }
+      </div>
+    `;
+    // Usar um layout genérico sem tenant
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Marketplace — Barber Pro</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1011;color:#ECEDEE;min-height:100vh}:root{--surface:#1e2022;--border:#334155;--muted:#9BA1A6;--primary:#C9A84C;--text:#ECEDEE;--bg:#0f1011}nav{background:#1e2022;border-bottom:1px solid #334155;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}<a{color:inherit}</style></head><body><nav><span style="font-size:18px;font-weight:900">✂️ Barber Pro</span><a href="/marketplace" style="font-size:13px;color:#9BA1A6">Marketplace</a></nav>${body}</body></html>`;
+    res.send(html);
   });
 
   // ─── Avaliação Pós-Atendimento ─────────────────────────────────────────────

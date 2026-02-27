@@ -46,6 +46,7 @@ async function runReviewEmailJob() {
         // Determinar o slug da barbearia (via tenantId do barbeiro ou configurações)
         let shopSlug = "barbearia";
         let shopName = "Barber Pro";
+        let googleMapsUrl: string | null = null;
 
         // Tentar buscar o tenant pelo barbeiro
         if ((barber as any).tenantId) {
@@ -54,10 +55,19 @@ async function runReviewEmailJob() {
             shopSlug = tenant.slug;
             shopName = tenant.name;
           }
+          // Buscar configurações do tenant para obter googleMapsUrl
+          const tenantSettings = await db.getShopSettings((barber as any).tenantId);
+          if (tenantSettings) {
+            shopName = tenantSettings.shopName ?? shopName;
+            googleMapsUrl = tenantSettings.googleMapsUrl ?? null;
+          }
         } else {
           // Fallback: buscar configurações globais
           const settings = await db.getShopSettings();
-          if (settings) shopName = settings.shopName ?? shopName;
+          if (settings) {
+            shopName = settings.shopName ?? shopName;
+            googleMapsUrl = settings.googleMapsUrl ?? null;
+          }
         }
 
         // Verificar se já existe avaliação para este agendamento
@@ -77,6 +87,7 @@ async function runReviewEmailJob() {
           barberName: barber.name,
           appointmentId: appt.id,
           baseUrl,
+          googleMapsUrl,
         });
 
         // Marcar como enviado

@@ -132,15 +132,16 @@ export default function AgendaScreen() {
   const dateStr = dateToString(selectedDate);
   const utils = trpc.useUtils();
 
+  const tenantId = barber?.tenantId ?? undefined;
   const barbersQuery = trpc.barbers.list.useQuery();
   const clientsQuery = trpc.clients.list.useQuery();
-  const servicesQuery = trpc.services.list.useQuery({ activeOnly: true });
+  const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
   const appointmentsQuery = trpc.appointments.byDate.useQuery(
     { barberId: barber?.id ?? 0, date: dateStr },
     { enabled: !!barber?.id && !isManager }
   );
   const allAppointmentsQuery = trpc.appointments.allByDate.useQuery(
-    { date: dateStr },
+    { date: dateStr, tenantId },
     { enabled: isManager }
   );
   const workingHoursQuery = trpc.barbers.workingHours.get.useQuery(

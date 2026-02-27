@@ -10,6 +10,7 @@ import crypto from "crypto";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import QRCode from "qrcode";
 import PDFDocument from "pdfkit";
+import { sendPasswordResetEmail } from "./email";
 
 function getMpClient() {
   const accessToken = process.env.MP_ACCESS_TOKEN;
@@ -113,6 +114,35 @@ export const appRouter = router({
       const allBarbers = await db.getAllBarbers();
       return { hasAdmin: allBarbers.some((b: any) => b.role === "super_admin") };
     }),
+    forgotPassword: publicProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ input }) => {
+        const barber = await db.getBarberByEmail(input.email);
+        // Por segurança, não revelamos se o e-mail existe ou não
+        if (!barber || !barber.isActive) return { success: true };
+        const token = await db.createPasswordResetToken(input.email);
+        const baseUrl = process.env.PUBLIC_BASE_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
+        await sendPasswordResetEmail({ toEmail: input.email, token, baseUrl });
+        return { success: true };
+      }),
+    verifyResetToken: publicProcedure
+      .input(z.object({ email: z.string().email(), token: z.string().length(6) }))
+      .mutation(async ({ input }) => {
+        const valid = await db.validatePasswordResetToken(input.email, input.token);
+        if (!valid) throw new Error("Código inválido ou expirado. Solicite um novo código.");
+        return { success: true };
+      }),
+    resetPassword: publicProcedure
+      .input(z.object({ email: z.string().email(), token: z.string().length(6), newPassword: z.string().min(6) }))
+      .mutation(async ({ input }) => {
+        const consumed = await db.consumePasswordResetToken(input.email, input.token);
+        if (!consumed) throw new Error("Código inválido ou expirado. Solicite um novo código.");
+        const barber = await db.getBarberByEmail(input.email);
+        if (!barber) throw new Error("Conta não encontrada.");
+        const passwordHash = await hashPassword(input.newPassword);
+        await db.updateBarber(barber.id, { passwordHash } as any);
+        return { success: true, message: "Senha redefinida com sucesso!" };
+      }),
   }),
 
   barbers: router({

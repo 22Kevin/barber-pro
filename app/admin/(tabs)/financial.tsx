@@ -54,6 +54,7 @@ function getMonthRange(offset = 0) {
 export default function FinancialScreen() {
   const tabBarHeight = useTabBarHeight();
   const { barber } = useBarberAuth();
+  const tenantId = barber?.tenantId ?? undefined;
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [monthOffset, setMonthOffset] = useState(0);
   const [showSaleModal, setShowSaleModal] = useState(false);
@@ -75,8 +76,8 @@ export default function FinancialScreen() {
   const range = getMonthRange(monthOffset);
   const utils = trpc.useUtils();
 
-  const servicesQuery = trpc.services.list.useQuery({ activeOnly: true });
-  const productsQuery = trpc.products.list.useQuery({ activeOnly: true });
+  const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
+  const productsQuery = trpc.products.list.useQuery({ activeOnly: true, tenantId });
   const salesQuery = trpc.sales.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
   const expensesQuery = trpc.expenses.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
   const statsQuery = trpc.dashboard.stats.useQuery({ date: new Date().toISOString().split("T")[0] });

@@ -927,3 +927,35 @@
 ### No Web (faltam funcionalidades do app)
 - [x] Seção Minhas Comissões no web para barbeiros (não super_admin)
 - [x] Seletor de Tema (claro/escuro/sistema) no web
+
+## Implementação Completa v9.0 — Todas as Pendências
+
+### Alta Prioridade
+- [x] Chat WhatsApp no painel web — tabela whatsapp_messages, rota /admin/chat, histórico por cliente, salvar mensagem + abrir wa.me
+- [x] Exportação CSV no painel web — Clientes, Financeiro e Estoque
+- [x] Confirmação de agendamento por e-mail/WhatsApp na página pública após booking online
+- [x] Notificações aprimoradas — canal Android "online-booking" com som diferenciado, badge no ícone, badge zerado ao abrir agenda
+
+### Média Prioridade
+- [x] Página pública /pub/:slug/meus-agendamentos com cancelamento e link no cabeçalho
+- [x] Isolamento multi-tenant completo — getAllServices, getAllProducts, getAllAppointmentsByDate filtrando por tenantId
+- [x] Seleção de plano integrada ao fluxo completo de onboarding (tela inicial → plano → wizard → dashboard)
+- [x] Relatório de conversão de promoções no painel web (gráfico de barras, coluna de conversão)
+
+### Baixa Prioridade / Polimento
+- [x] Redesign Home do Cliente v3.2 — remover botão "Compartilhar Agendamento", remover "Acesso Rápido", melhorar hierarquia visual
+- [x] DRE completo — relatório mensal com receitas e despesas por categoria (DRE estruturado + ranking de serviços + margem líquida)
+- [x] Marketplace — interface de descoberta de barbearias em /marketplace + aba de configuração no admin
+- [x] Compartilhar agendamento nos Instagram Stories com card estilizado (react-native-view-shot + expo-sharing)
+- [x] Google Business — botão "Avaliar no Google Maps" no e-mail de avaliação pós-atendimento
+
+## Esqueci Minha Senha — Todos os Logins
+
+- [x] Backend: rota tRPC `admin.forgotPassword` e `admin.resetPassword` para barbeiros
+- [x] Backend: rotas web `POST /admin/forgot-password` e `GET /admin/reset-password` para painel web admin (já existiam)
+- [x] Backend: rotas web para área do cliente público (forgot/reset por slug) em public-routes.ts
+- [x] Painel web admin: link "Esqueci minha senha" na tela de login (já existia)
+- [x] Painel web cliente: link "Esqueci minha senha" na tela de login do cliente
+- [x] Painel web cliente: páginas `/pub/:slug/forgot-password` e `/pub/:slug/reset-password`
+- [x] App mobile: link "Esqueci minha senha" na tela de login do barbeiro
+- [x] App mobile: tela `forgot-password.tsx` com formulário de e-mail (3 etapas: e-mail → código → nova senha)

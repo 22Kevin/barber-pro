@@ -1744,3 +1744,68 @@ export async function saveChatMessage(data: InsertWhatsappMessage): Promise<numb
   const result = await db.insert(whatsappMessages).values(data);
   return (result[0] as any).insertId;
 }
+
+// ─── Marketplace ───────────────────────────────────────────────────────────────
+export async function getMarketplaceTenants(search?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const results = await db.select({
+    id: tenants.id,
+    slug: tenants.slug,
+    name: tenants.name,
+    city: tenants.city,
+    state: tenants.state,
+    address: tenants.address,
+    phone: tenants.phone,
+    logoUrl: tenants.logoUrl,
+    fotoCapa: tenants.fotoCapa,
+    descricao: tenants.descricao,
+    latitude: tenants.latitude,
+    longitude: tenants.longitude,
+  }).from(tenants).where(and(eq(tenants.visivelMarketplace, true), eq(tenants.status, "active"))).orderBy(tenants.name);
+  if (search) {
+    const q = search.toLowerCase();
+    return results.filter((t) =>
+      t.name.toLowerCase().includes(q) ||
+      (t.city ?? "").toLowerCase().includes(q) ||
+      (t.state ?? "").toLowerCase().includes(q) ||
+      (t.descricao ?? "").toLowerCase().includes(q)
+    );
+  }
+  return results;
+}
+
+export async function updateTenantMarketplace(tenantId: number, data: {
+  visivelMarketplace?: boolean;
+  descricao?: string | null;
+  fotoCapa?: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(tenants).set(data).where(eq(tenants.id, tenantId));
+}
+
+// Busca itens de venda (servicos/produtos) agrupados por nome para DRE detalhado
+export async function getSaleItemsByDateRange(startDate: string, endDate: string, tenantId?: number | null): Promise<Array<{ itemName: string; itemType: string; quantity: number; total: number }>> {
+  const db = await getDb();
+  if (!db) return [];
+  const salesInPeriod = await getSalesByDateRange(startDate, endDate, undefined, tenantId);
+  if (salesInPeriod.length === 0) return [];
+  const saleIds = salesInPeriod.map((s: any) => s.id);
+  const items = await db
+    .select()
+    .from(saleItems)
+    .where(sql`${saleItems.saleId} IN (${sql.join(saleIds.map((id: number) => sql`${id}`), sql`, `)})`);
+  const grouped: Record<string, { itemName: string; itemType: string; quantity: number; total: number }> = {};
+  items.forEach((item: any) => {
+    const key = `${item.itemType}::${item.itemName}`;
+    if (!grouped[key]) {
+      grouped[key] = { itemName: item.itemName, itemType: item.itemType, quantity: 0, total: 0 };
+    }
+    grouped[key].quantity += item.quantity ?? 1;
+    grouped[key].total += parseFloat(item.total ?? "0");
+  });
+  return Object.values(grouped).sort((a, b) => b.total - a.total);
+}

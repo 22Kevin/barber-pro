@@ -1858,12 +1858,65 @@ async function renderPaginaCliente(req: Request, res: Response) {
     </div>
   `;
 
+  // Buscar dados de marketplace do tenant
+  const tenantMarketplace = tenant ? {
+    visivelMarketplace: (tenant as any).visivelMarketplace ?? false,
+    descricao: (tenant as any).descricao ?? "",
+    fotoCapa: (tenant as any).fotoCapa ?? "",
+    latitude: (tenant as any).latitude ?? "",
+    longitude: (tenant as any).longitude ?? "",
+  } : null;
+  const marketplaceSaved = req.query.mksaved === "1";
+  const tabMarketplace = `
+    ${marketplaceSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Configurações do Marketplace salvas!</div>` : ""}
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header"><h3>🏪 Marketplace Barber Pro</h3></div>
+      <div class="card-body">
+        <p style="font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.6">Aparecer no <a href="/marketplace" target="_blank" style="color:var(--gold)">Marketplace Barber Pro</a> permite que novos clientes descubram sua barbearia. Ative a visibilidade e preencha as informações abaixo.</p>
+        <form method="POST" action="/admin/pagina-cliente/marketplace">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;background:var(--surface2);border-radius:12px;padding:16px">
+            <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
+              <input type="checkbox" name="visivelMarketplace" value="1" ${tenantMarketplace?.visivelMarketplace ? "checked" : ""} style="opacity:0;width:0;height:0" onchange="this.closest('form').querySelector('#mk-status').textContent=this.checked?'Visível no Marketplace':'Oculto no Marketplace'" />
+              <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:${tenantMarketplace?.visivelMarketplace ? "var(--success)" : "var(--border)"};border-radius:26px;transition:0.3s" onclick="var cb=this.previousElementSibling;cb.checked=!cb.checked;this.style.background=cb.checked?'var(--success)':'var(--border)';document.getElementById('mk-status').textContent=cb.checked?'Visível no Marketplace':'Oculto no Marketplace'"></span>
+            </label>
+            <div>
+              <div style="font-size:14px;font-weight:700" id="mk-status">${tenantMarketplace?.visivelMarketplace ? "Visível no Marketplace" : "Oculto no Marketplace"}</div>
+              <div style="font-size:12px;color:var(--muted)">Quando ativo, sua barbearia aparece na página de descoberta</div>
+            </div>
+          </div>
+          <div style="margin-bottom:16px">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">DESCRIÇÃO DA BARBEARIA</label>
+            <textarea name="descricao" rows="3" placeholder="Descreva sua barbearia, especialidades, diferenciais..." style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;resize:vertical">${esc(tenantMarketplace?.descricao ?? "")}</textarea>
+          </div>
+          <div style="margin-bottom:16px">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">URL DA FOTO DE CAPA</label>
+            <input type="url" name="fotoCapa" value="${esc(tenantMarketplace?.fotoCapa ?? "")}" placeholder="https://..." style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">Imagem de capa exibida no card do marketplace (recomendado: 800x400px)</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+            <div>
+              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">LATITUDE</label>
+              <input type="text" name="latitude" value="${esc(tenantMarketplace?.latitude ?? "")}" placeholder="-23.5505" style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+            </div>
+            <div>
+              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">LONGITUDE</label>
+              <input type="text" name="longitude" value="${esc(tenantMarketplace?.longitude ?? "")}" placeholder="-46.6333" style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Salvar Marketplace</button>
+          <a href="/marketplace" target="_blank" class="btn btn-ghost" style="margin-left:8px">🔍 Ver Marketplace</a>
+        </form>
+      </div>
+    </div>
+  `;
+
   const tabs = [
     { id: 'url', label: '🔗 URL & QR Code' },
     { id: 'visual', label: '🎨 Visual' },
     { id: 'dominio', label: '🌐 Domínio' },
     { id: 'rastreamento', label: '📊 Rastreamento' },
     { id: 'seo', label: '🔍 SEO' },
+    { id: 'marketplace', label: '🏪 Marketplace' },
     { id: 'preview', label: '👁️ Preview' },
   ];
 
@@ -1873,6 +1926,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
     dominio: tabDominio,
     rastreamento: tabRastreamento,
     seo: tabSeo,
+    marketplace: tabMarketplace,
     preview: tabPreview,
   };
 
@@ -2394,7 +2448,27 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
-  // ─── CRUD Serviços ─────────────────────────────────────────────────────
+  // POST /admin/pagina-cliente/marketplace - Salvar configuracoes do marketplace
+  app.post("/admin/pagina-cliente/marketplace", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      if (!barber?.tenantId) { res.redirect("/admin/pagina-cliente?tab=marketplace"); return; }
+      const { visivelMarketplace, descricao, fotoCapa, latitude, longitude } = req.body ?? {};
+      await db.updateTenantMarketplace(barber.tenantId, {
+        visivelMarketplace: visivelMarketplace === "1",
+        descricao: descricao?.trim() || null,
+        fotoCapa: fotoCapa?.trim() || null,
+        latitude: latitude?.trim() || null,
+        longitude: longitude?.trim() || null,
+      });
+      res.redirect("/admin/pagina-cliente?tab=marketplace&mksaved=1");
+    } catch (e: any) {
+      res.redirect("/admin/pagina-cliente?tab=marketplace");
+    }
+  });
+
+  // ─── CRUD Serviços ──────────────────────────────────────────────────
   app.post("/admin/servicos", requireAdminAuth, async (req: Request, res: Response) => {
     const { name, description, price, durationMinutes, isActive } = req.body;
     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
@@ -3723,9 +3797,12 @@ export function registerAdminRoutes(app: Express): void {
       const allSales = await db.getSalesByDateRange(startStr, endStr, undefined, barber?.tenantId);
       const allExpenses = await db.getExpensesByDateRange(startStr, endStr, barber?.tenantId);
       const allBarbers = await db.getAllBarbers(barber?.tenantId);
+      const saleItemsData = await db.getSaleItemsByDateRange(startStr, endStr, barber?.tenantId);
       const totalRevenue = allSales.reduce((s: number, sale: any) => s + parseFloat(sale.total ?? "0"), 0);
+      const totalDiscount = allSales.reduce((s: number, sale: any) => s + parseFloat(sale.discount ?? "0"), 0);
       const totalExpenses = allExpenses.reduce((s: number, e: any) => s + parseFloat(e.amount ?? "0"), 0);
       const netProfit = totalRevenue - totalExpenses;
+      const grossMargin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0;
       // Receitas por forma de pagamento
       const pmLabels: Record<string, string> = { cash: "Dinheiro", credit_card: "Cartão Crédito", debit_card: "Cartão Débito", pix: "Pix", mercado_pago: "Mercado Pago", other: "Outro" };
       const pmMap: Record<string, number> = {};
@@ -3771,23 +3848,49 @@ export function registerAdminRoutes(app: Express): void {
       doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#C9A84C").lineWidth(1.5).stroke();
       doc.moveDown(1);
 
-      // KPIs
+      // KPIs (4 boxes)
       const kpiY = doc.y;
-      const kpiW = 155;
+      const kpiW = 115;
       const kpiBoxes = [
         { label: "Faturamento Bruto", value: `R$ ${fmt(totalRevenue)}`, color: "#C9A84C" },
         { label: "Total de Despesas", value: `R$ ${fmt(totalExpenses)}`, color: "#EF4444" },
         { label: "Lucro Líquido", value: `R$ ${fmt(netProfit)}`, color: netProfit >= 0 ? "#22C55E" : "#EF4444" },
+        { label: "Margem Líquida", value: `${grossMargin}%`, color: grossMargin >= 0 ? "#22C55E" : "#EF4444" },
       ];
       kpiBoxes.forEach((kpi, i) => {
-        const x = 50 + i * (kpiW + 10);
+        const x = 50 + i * (kpiW + 8);
         doc.rect(x, kpiY, kpiW, 60).fillColor("#F8F8F8").fill();
         doc.rect(x, kpiY, kpiW, 60).strokeColor("#E5E5E5").lineWidth(0.5).stroke();
-        doc.fontSize(9).font("Helvetica").fillColor("#666666").text(kpi.label, x + 10, kpiY + 10, { width: kpiW - 20 });
-        doc.fontSize(16).font("Helvetica-Bold").fillColor(kpi.color).text(kpi.value, x + 10, kpiY + 28, { width: kpiW - 20 });
+        doc.fontSize(8).font("Helvetica").fillColor("#666666").text(kpi.label, x + 8, kpiY + 10, { width: kpiW - 16 });
+        doc.fontSize(14).font("Helvetica-Bold").fillColor(kpi.color).text(kpi.value, x + 8, kpiY + 28, { width: kpiW - 16 });
       });
       doc.y = kpiY + 75;
       doc.moveDown(0.5);
+
+      // DRE Estruturado (formato contabil)
+      doc.fontSize(13).font("Helvetica-Bold").fillColor("#000000").text("DEMONSTRATIVO DE RESULTADO DO EXERCÍCIO (DRE)");
+      doc.moveDown(0.3);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#C9A84C").lineWidth(1).stroke();
+      doc.moveDown(0.3);
+      const dreRow = (label: string, value: number, bold = false, indent = 0, color = "#333333") => {
+        const x = 50 + indent;
+        doc.fontSize(bold ? 11 : 10).font(bold ? "Helvetica-Bold" : "Helvetica").fillColor(color);
+        doc.text(label, x, doc.y, { continued: true, width: 350 - indent });
+        doc.font(bold ? "Helvetica-Bold" : "Helvetica").fillColor(color).text(`R$ ${fmt(value)}`, { align: "right" });
+      };
+      dreRow("(+) Receita Bruta de Serviços e Produtos", totalRevenue, true, 0, "#C9A84C");
+      if (totalDiscount > 0) dreRow("(-) Descontos Concedidos", -totalDiscount, false, 16, "#EF4444");
+      dreRow("(=) Receita Líquida", totalRevenue - totalDiscount, true);
+      doc.moveDown(0.3);
+      dreRow("(-) Total de Despesas Operacionais", -totalExpenses, false, 0, "#EF4444");
+      Object.entries(catMap).sort((a, b) => b[1] - a[1]).forEach(([cat, val]) => {
+        dreRow(`    • ${cat}`, -val, false, 16, "#999999");
+      });
+      doc.moveDown(0.3);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#DDDDDD").lineWidth(0.5).stroke();
+      doc.moveDown(0.3);
+      dreRow("(=) RESULTADO LÍQUIDO DO PERÍODO", netProfit, true, 0, netProfit >= 0 ? "#22C55E" : "#EF4444");
+      doc.moveDown(1);
 
       // Receitas por forma de pagamento
       doc.fontSize(13).font("Helvetica-Bold").fillColor("#000000").text("RECEITAS POR FORMA DE PAGAMENTO");
@@ -3833,7 +3936,33 @@ export function registerAdminRoutes(app: Express): void {
         doc.font("Helvetica").fillColor("#333333").text(String(b.completed), { align: "right" });
       });
       if (barberStats.length === 0) doc.fontSize(10).fillColor("#999").text("Sem dados de profissionais no período.");
-      doc.moveDown(1.5);
+      doc.moveDown(1);
+
+      // Ranking de Serviços e Produtos
+      if (saleItemsData.length > 0) {
+        doc.fontSize(13).font("Helvetica-Bold").fillColor("#000000").text("RANKING DE SERVIÇOS E PRODUTOS");
+        doc.moveDown(0.3);
+        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#DDDDDD").lineWidth(0.5).stroke();
+        doc.moveDown(0.3);
+        doc.fontSize(10).font("Helvetica-Bold").fillColor("#555");
+        doc.text("Item", 50, doc.y, { continued: true, width: 220 });
+        doc.text("Tipo", { continued: true, width: 80, align: "center" });
+        doc.text("Qtd", { continued: true, width: 60, align: "right" });
+        doc.text("Faturamento", { align: "right" });
+        doc.moveDown(0.3);
+        const topItems = saleItemsData.slice(0, 10);
+        topItems.forEach((item: any, idx: number) => {
+          const pct = totalRevenue > 0 ? Math.round(item.total / totalRevenue * 100) : 0;
+          doc.fontSize(10).font("Helvetica").fillColor(idx % 2 === 0 ? "#333333" : "#555555");
+          doc.text(item.itemName, 50, doc.y, { continued: true, width: 220 });
+          doc.fillColor(item.itemType === "service" ? "#0a7ea4" : "#C9A84C");
+          doc.text(item.itemType === "service" ? "Serviço" : "Produto", { continued: true, width: 80, align: "center" });
+          doc.fillColor("#333333");
+          doc.text(String(item.quantity), { continued: true, width: 60, align: "right" });
+          doc.font("Helvetica-Bold").fillColor("#C9A84C").text(`R$ ${fmt(item.total)}  (${pct}%)`, { align: "right" });
+        });
+        doc.moveDown(1);
+      }
 
       // Resultado final
       doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#C9A84C").lineWidth(1.5).stroke();

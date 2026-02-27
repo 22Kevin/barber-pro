@@ -125,6 +125,10 @@ export default function AdminLoginScreen() {
               )}
             </Pressable>
 
+            <Pressable onPress={() => router.push("/admin/forgot-password" as any)} style={styles.forgotLink}>
+              <Text style={[styles.forgotText, { color: colors.muted }]}>Esqueci minha senha</Text>
+            </Pressable>
+
             <Pressable onPress={() => router.push("/admin/setup" as any)} style={styles.setupLink}>
               <Text style={[styles.setupText, { color: colors.primary }]}>Primeiro acesso? Criar conta de administrador</Text>
             </Pressable>
@@ -213,8 +217,16 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 2,
   },
+  forgotLink: {
+    marginTop: 14,
+    alignItems: "center",
+  },
+  forgotText: {
+    fontSize: 13,
+    textDecorationLine: "underline",
+  },
   setupLink: {
-    marginTop: 16,
+    marginTop: 12,
     alignItems: "center",
   },
   setupText: {

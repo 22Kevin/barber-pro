@@ -21,6 +21,7 @@ import { MediaUploader } from "@/components/media-uploader";
 import { AdminHeader } from "@/components/admin-header";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { useBarberAuth } from "@/lib/auth-context";
 
 type Product = {
   id: number;
@@ -34,6 +35,8 @@ type Product = {
 
 export default function ProductsScreen() {
   const tabBarHeight = useTabBarHeight();
+  const { barber } = useBarberAuth();
+  const tenantId = barber?.tenantId ?? undefined;
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
@@ -46,7 +49,7 @@ export default function ProductsScreen() {
   const [savedProductId, setSavedProductId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
-  const productsQuery = trpc.products.list.useQuery({ activeOnly: false });
+  const productsQuery = trpc.products.list.useQuery({ activeOnly: false, tenantId });
   const createMutation = trpc.products.create.useMutation({
     onSuccess: () => { utils.products.list.invalidate(); closeModal(); },
     onError: (e) => Alert.alert("Erro", e.message),

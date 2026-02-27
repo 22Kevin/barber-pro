@@ -22,6 +22,7 @@ import { DurationPicker } from "@/components/duration-picker";
 import { AdminHeader } from "@/components/admin-header";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { useBarberAuth } from "@/lib/auth-context";
 
 type Service = {
   id: number;
@@ -37,6 +38,8 @@ type Service = {
 
 export default function ServicesScreen() {
   const tabBarHeight = useTabBarHeight();
+  const { barber } = useBarberAuth();
+  const tenantId = barber?.tenantId ?? undefined;
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
   const [search, setSearch] = useState("");
@@ -50,7 +53,7 @@ export default function ServicesScreen() {
   const [showDurationPicker, setShowDurationPicker] = useState(false);
 
   const utils = trpc.useUtils();
-  const servicesQuery = trpc.services.list.useQuery({ activeOnly: false });
+  const servicesQuery = trpc.services.list.useQuery({ activeOnly: false, tenantId });
   const createMutation = trpc.services.create.useMutation({
     onSuccess: () => { utils.services.list.invalidate(); closeModal(); },
     onError: (e) => Alert.alert("Erro", e.message),

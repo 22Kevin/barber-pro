@@ -17,6 +17,7 @@ import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
+import { useBarberAuth } from "@/lib/auth-context";
 
 const PLACEHOLDERS = [
   "{nome}" ,
@@ -26,6 +27,8 @@ const PLACEHOLDERS = [
 
 export default function ReturnMessagesScreen() {
   const colors = useColors();
+  const { barber } = useBarberAuth();
+  const tenantId = barber?.tenantId ?? undefined;
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState<{
     serviceId: number;
@@ -35,7 +38,7 @@ export default function ReturnMessagesScreen() {
     isActive: boolean;
   } | null>(null);
 
-  const servicesQuery = trpc.services.list.useQuery({ activeOnly: false });
+  const servicesQuery = trpc.services.list.useQuery({ activeOnly: false, tenantId });
   const configsQuery = trpc.returnMessages.list.useQuery();
   const upsertMutation = trpc.returnMessages.upsert.useMutation({
     onSuccess: () => {
