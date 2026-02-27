@@ -116,6 +116,18 @@ const MAPPING = {
 
   // Intervalo de almoço
   "fork.knife": "restaurant",
+
+  // Paridade v8.1
+  "star.bubble.fill": "rate-review",
+  "globe": "language",
+  "qrcode": "qr-code",
+  "link": "link",
+  "safari.fill": "open-in-browser",
+  "doc.on.clipboard": "content-copy",
+  "square.and.pencil": "edit-note",
+  "paintpalette.fill": "palette",
+  "antenna.radiowaves.left.and.right": "wifi-tethering",
+  "magnifyingglass.circle.fill": "manage-search",
 } as unknown as IconMapping;
 
 export function IconSymbol({

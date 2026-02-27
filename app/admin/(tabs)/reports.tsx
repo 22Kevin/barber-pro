@@ -15,6 +15,8 @@ import { trpc } from "@/lib/trpc";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { AdminHeader } from "@/components/admin-header";
+import { exportCsv } from "@/hooks/use-csv-export";
+import { useBarberAuth } from "@/lib/auth-context";
 
 type Period = "week" | "month" | "year";
 
@@ -82,9 +84,28 @@ function BarChart({ labels, data }: { labels: string[]; data: number[] }) {
 
 // ─── Tela principal ───────────────────────────────────────────────────────────
 export default function ReportsScreen() {
+  const { barber } = useBarberAuth();
+  const tenantId = barber?.tenantId ?? undefined;
   const [period, setPeriod] = useState<Period>("month");
   const [exporting, setExporting] = useState(false);
   const dateRange = useMemo(() => getDateRange(period), [period]);
+  const periodDays = period === "week" ? 7 : period === "month" ? 30 : 365;
+
+  const exportCsvQuery = trpc.export.financeiroCsv.useQuery(
+    { tenantId, days: periodDays },
+    { enabled: false }
+  );
+
+  async function handleExportCsv() {
+    try {
+      const result = await exportCsvQuery.refetch();
+      if (result.data) {
+        await exportCsv(result.data, `financeiro-${dateRange.startDate}.csv`);
+      }
+    } catch (e: any) {
+      Alert.alert("Erro ao exportar", e?.message ?? "Falha na exportação");
+    }
+  }
 
   const revenueQuery = trpc.reports.revenue.useQuery({ period });
   const topServicesQuery = trpc.reports.topServices.useQuery(dateRange);
@@ -141,26 +162,34 @@ export default function ReportsScreen() {
         <AdminHeader
           title="Relatórios"
           rightElement={
-            <Pressable
-              style={({ pressed }) => [{
-                backgroundColor: "#C9A84C",
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderRadius: 20,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                opacity: pressed || exporting ? 0.7 : 1,
-              }]}
-              onPress={handleExportPdf}
-              disabled={exporting}
-            >
-              {exporting ? (
-                <ActivityIndicator size="small" color="#0A0A0A" />
-              ) : (
-                <Text style={{ fontSize: 13, fontWeight: "700", color: "#0A0A0A" }}>Exportar PDF</Text>
-              )}
-            </Pressable>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <Pressable
+                style={({ pressed }) => [{ padding: 8, borderRadius: 8, backgroundColor: "#1A1A1A", opacity: pressed ? 0.7 : 1 }]}
+                onPress={handleExportCsv}
+              >
+                <Text style={{ fontSize: 14 }}>📥</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [{
+                  backgroundColor: "#C9A84C",
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 20,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  opacity: pressed || exporting ? 0.7 : 1,
+                }]}
+                onPress={handleExportPdf}
+                disabled={exporting}
+              >
+                {exporting ? (
+                  <ActivityIndicator size="small" color="#0A0A0A" />
+                ) : (
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#0A0A0A" }}>PDF</Text>
+                )}
+              </Pressable>
+            </View>
           }
         />
 

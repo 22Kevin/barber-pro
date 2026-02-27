@@ -98,7 +98,7 @@ export const appRouter = router({
         if (!barber.passwordHash) throw new Error("Senha não configurada");
         const valid = await comparePassword(input.password, barber.passwordHash);
         if (!valid) throw new Error("Credenciais inválidas");
-        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties };
+        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId };
       }),
     setup: publicProcedure
       .input(z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(6) }))
@@ -480,7 +480,7 @@ export const appRouter = router({
     get: publicProcedure.query(() => db.getShopSettings()),
     openStatus: publicProcedure.query(() => db.getShopOpenStatus()),
     update: publicProcedure
-      .input(z.object({ shopName: z.string().optional(), address: z.string().optional().nullable(), phone: z.string().optional().nullable(), whatsapp: z.string().optional().nullable(), mercadoPagoAccessToken: z.string().optional().nullable(), mercadoPagoPublicKey: z.string().optional().nullable(), whatsappMessageTemplate: z.string().optional().nullable(), reminderMessageTemplate: z.string().optional().nullable(), instagram: z.string().optional().nullable(), cnpj: z.string().optional().nullable(), googleMapsUrl: z.string().optional().nullable(), pixKey: z.string().optional().nullable(), galleryUrls: z.string().optional().nullable(), cep: z.string().optional().nullable(), addressNumber: z.string().optional().nullable(), addressComplement: z.string().optional().nullable(), logoUrl: z.string().optional().nullable(), primaryColor: z.string().optional().nullable(), bannerUrl: z.string().optional().nullable() }))
+      .input(z.object({ shopName: z.string().optional(), address: z.string().optional().nullable(), phone: z.string().optional().nullable(), whatsapp: z.string().optional().nullable(), mercadoPagoAccessToken: z.string().optional().nullable(), mercadoPagoPublicKey: z.string().optional().nullable(), whatsappMessageTemplate: z.string().optional().nullable(), reminderMessageTemplate: z.string().optional().nullable(), instagram: z.string().optional().nullable(), cnpj: z.string().optional().nullable(), googleMapsUrl: z.string().optional().nullable(), pixKey: z.string().optional().nullable(), galleryUrls: z.string().optional().nullable(), cep: z.string().optional().nullable(), addressNumber: z.string().optional().nullable(), addressComplement: z.string().optional().nullable(), logoUrl: z.string().optional().nullable(), primaryColor: z.string().optional().nullable(), bannerUrl: z.string().optional().nullable(), customDomain: z.string().optional().nullable(), ga4MeasurementId: z.string().optional().nullable(), facebookPixelId: z.string().optional().nullable(), seoTitle: z.string().optional().nullable(), seoDescription: z.string().optional().nullable(), seoImageUrl: z.string().optional().nullable() }))
       .mutation(({ input }) => db.upsertShopSettings(input)),
   }),
 
@@ -612,8 +612,8 @@ export const appRouter = router({
 
   reviews: router({
     recent: publicProcedure
-      .input(z.object({ limit: z.number().optional() }))
-      .query(({ input }) => db.getRecentReviews(input.limit ?? 5)),
+      .input(z.object({ limit: z.number().optional(), tenantId: z.number().optional() }))
+      .query(({ input }) => db.getRecentReviews(input.limit ?? 5, input.tenantId)),
     byService: publicProcedure
       .input(z.object({ serviceId: z.number() }))
       .query(({ input }) => db.getReviewsByService(input.serviceId)),
@@ -623,6 +623,84 @@ export const appRouter = router({
     create: publicProcedure
       .input(z.object({ clientId: z.number(), serviceId: z.number(), appointmentId: z.number().optional(), rating: z.number().min(1).max(5), comment: z.string().optional() }))
       .mutation(({ input }) => db.createReview(input)),
+  }),
+
+  export: router({
+    clientsCsv: publicProcedure
+      .input(z.object({ tenantId: z.number().optional().nullable() }))
+      .query(async ({ input }) => {
+        const allClients = await db.getAllClients(input.tenantId);
+        const rows = [
+          ["ID", "Nome", "Telefone", "Email", "Data Nasc.", "Ativo", "Cadastrado em"],
+          ...allClients.map((c: any) => [
+            String(c.id), c.name, c.phone ?? "", c.email ?? "", c.birthDate ?? "",
+            c.isActive ? "Sim" : "Não",
+            new Date(c.createdAt).toLocaleDateString("pt-BR")
+          ])
+        ];
+        return rows.map(r => r.map((v: string) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+      }),
+    financeiroCsv: publicProcedure
+      .input(z.object({ tenantId: z.number().optional().nullable(), days: z.number().optional() }))
+      .query(async ({ input }) => {
+        const days = input.days ?? 30;
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days + 1);
+        const startStr = startDate.toISOString().slice(0, 10);
+        const endStr = endDate.toISOString().slice(0, 10);
+        const salesData = await db.getSalesByDateRange(startStr, endStr, undefined, input.tenantId);
+        const expensesData = await db.getExpensesByDateRange(startStr, endStr, input.tenantId);
+        const rows = [
+          ["Data", "Tipo", "Descrição", "Valor", "Forma de Pagamento", "Status"],
+          ...salesData.map((s: any) => [
+            new Date(s.createdAt).toLocaleDateString("pt-BR"), "Receita",
+            s.notes ?? "Venda", String(s.total), s.paymentMethod, s.paymentStatus
+          ]),
+          ...expensesData.map((e: any) => [
+            e.date, "Despesa", e.description, `-${e.amount}`, e.paymentMethod ?? "", "pago"
+          ])
+        ];
+        return rows.map(r => r.map((v: string) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+      }),
+    estoqueCsv: publicProcedure
+      .input(z.object({ tenantId: z.number().optional().nullable() }))
+      .query(async ({ input }) => {
+        const products = await db.getAllProducts(false, input.tenantId);
+        const rows = [
+          ["ID", "Nome", "Tipo", "Preço", "Estoque Atual", "Alerta Mínimo", "Ativo"],
+          ...products.map((p: any) => [
+            String(p.id), p.name, p.productType === "sale" ? "Venda" : "Uso Interno",
+            String(p.price), String(p.stockQuantity), String(p.minStockAlert), p.isActive ? "Sim" : "Não"
+          ])
+        ];
+        return rows.map(r => r.map((v: string) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+      }),
+  }),
+
+  chat: router({
+    clients: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(({ input }) => db.getChatClients(input.tenantId)),
+    history: publicProcedure
+      .input(z.object({ tenantId: z.number(), clientId: z.number() }))
+      .query(({ input }) => db.getChatHistory(input.tenantId, input.clientId)),
+    sendMessage: publicProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        clientId: z.number(),
+        barberId: z.number().optional(),
+        direction: z.enum(["outgoing", "incoming"]),
+        message: z.string().min(1),
+      }))
+      .mutation(({ input }) => db.saveChatMessage({
+        tenantId: input.tenantId,
+        clientId: input.clientId,
+        barberId: input.barberId ?? 0,
+        direction: input.direction,
+        message: input.message,
+        sentAt: new Date(),
+      })),
   }),
 
   slots: router({
@@ -1357,6 +1435,11 @@ export const appRouter = router({
     listTenants: publicProcedure.query(async () => {
       return db.getAllTenants();
     }),
+    getById: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return db.getTenantById(input.id);
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;

@@ -909,3 +909,21 @@
 - [x] Banner de download do app na página pública com links App Store e Google Play
 - [x] CTA de download do app na página pública
 - [x] Vinculação do cliente ao slug da barbearia ao baixar o app via link público
+
+## Paridade v8.1 — Web = App (funcionalidades iguais nos dois painéis)
+
+### No App (faltam funcionalidades do web)
+- [x] Tela de Avaliações no app: listagem de notas e comentários dos clientes
+- [x] Tela de Chat WhatsApp no app: lista de conversas e histórico por cliente
+- [x] Aba URL/QR Code da página pública no app (seção Página do Cliente)
+- [x] Campos de Domínio customizado no app
+- [x] Campos de Rastreamento (GA4/Pixel) no app
+- [x] Campos de SEO (título, descrição, OG) no app
+- [x] Preview da página pública no app (WebView)
+- [x] Exportar CSV de clientes no app via compartilhamento nativo
+- [x] Exportar CSV financeiro no app via compartilhamento nativo
+- [x] Exportar CSV de estoque no app via compartilhamento nativo
+
+### No Web (faltam funcionalidades do app)
+- [x] Seção Minhas Comissões no web para barbeiros (não super_admin)
+- [x] Seletor de Tema (claro/escuro/sistema) no web

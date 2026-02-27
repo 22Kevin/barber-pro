@@ -23,6 +23,8 @@ import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { applyPhoneMask, stripMask } from "@/hooks/use-mask";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { exportCsv } from "@/hooks/use-csv-export";
+import { useBarberAuth } from "@/lib/auth-context";
 
 type Client = {
   id: number;
@@ -63,6 +65,8 @@ const MONTH_NAMES = [
 
 export default function ClientsScreen() {
   const tabBarHeight = useTabBarHeight();
+  const { barber } = useBarberAuth();
+  const tenantId = barber?.tenantId ?? undefined;
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -81,6 +85,21 @@ export default function ClientsScreen() {
 
   const utils = trpc.useUtils();
   const clientsQuery = trpc.clients.list.useQuery();
+  const exportQuery = trpc.export.clientsCsv.useQuery(
+    { tenantId },
+    { enabled: false }
+  );
+
+  async function handleExportCsv() {
+    try {
+      const result = await exportQuery.refetch();
+      if (result.data) {
+        await exportCsv(result.data, "clientes.csv");
+      }
+    } catch (e: any) {
+      Alert.alert("Erro ao exportar", e?.message ?? "Falha na exportação");
+    }
+  }
   const birthdayTodayQuery = trpc.clients.birthdayToday.useQuery();
   const birthdayMonthQuery = trpc.clients.birthdayThisMonth.useQuery();
   const clientAppointmentsQuery = trpc.clients.appointments.useQuery(
@@ -164,6 +183,12 @@ export default function ClientsScreen() {
                   <Text style={styles.birthdayBadgeText}>{birthdayToday.length}</Text>
                 </View>
               )}
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.birthdayBtn, pressed && { opacity: 0.8 }]}
+              onPress={handleExportCsv}
+            >
+              <Text style={{ fontSize: 14 }}>📥</Text>
             </Pressable>
             <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreate}>
               <IconSymbol name="person.badge.plus" size={18} color="#0A0A0A" />

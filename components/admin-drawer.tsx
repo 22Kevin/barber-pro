@@ -41,6 +41,8 @@ const DRAWER_GROUPS: DrawerGroup[] = [
       { label: "Agenda",          icon: "calendar",                    route: "/admin/(tabs)/agenda",            roles: ["super_admin", "barber", "receptionist"] },
       { label: "Clientes",        icon: "person.2.fill",               route: "/admin/(tabs)/clients",           roles: ["super_admin", "barber", "receptionist"] },
       { label: "Lista de Espera", icon: "person.badge.clock",          route: "/admin/(tabs)/waitlist",          roles: ["super_admin", "barber", "receptionist"] },
+      { label: "Avaliações",      icon: "star.bubble.fill",             route: "/admin/(tabs)/reviews",           roles: ["super_admin", "receptionist"] },
+      { label: "Chat WhatsApp",   icon: "message.fill",                route: "/admin/(tabs)/chat",              roles: ["super_admin", "receptionist"] },
     ],
   },
   {
@@ -68,6 +70,12 @@ const DRAWER_GROUPS: DrawerGroup[] = [
       { label: "Comissões",         icon: "chart.bar.doc.horizontal",    route: "/admin/(tabs)/commissions",       roles: ["super_admin"] },
       { label: "Minhas Comissões",  icon: "person.text.rectangle",       route: "/admin/(tabs)/my-commissions",    roles: ["barber"] },
       { label: "Relatórios",        icon: "chart.line.uptrend.xyaxis",   route: "/admin/(tabs)/reports",           roles: ["super_admin"] },
+    ],
+  },
+  {
+    label: "PÁGINA DO CLIENTE",
+    items: [
+      { label: "Página do Cliente", icon: "globe",                        route: "/admin/(tabs)/pagina-cliente",    roles: ["super_admin"] },
     ],
   },
   {

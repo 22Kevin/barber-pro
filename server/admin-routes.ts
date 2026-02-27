@@ -121,6 +121,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/financeiro", icon: "💰", label: "Financeiro", id: "financeiro" },
         { href: "/admin/relatorios", icon: "📊", label: "Relatórios", id: "relatorios" },
         { href: "/admin/comissoes", icon: "🤝", label: "Comissões", id: "comissoes" },
+        { href: "/admin/minhas-comissoes", icon: "💵", label: "Minhas Comissões", id: "minhas-comissoes" },
       ],
     },
     {
@@ -244,7 +245,23 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       .sidebar { transform: translateX(-100%); }
       .main { margin-left: 0; }
     }
+    /* Tema claro */
+    html[data-theme="light"] {
+      --bg: #F5F5F0;
+      --surface: #FFFFFF;
+      --surface2: #F0EEE8;
+      --border: #E5E3DC;
+      --text: #1A1A1A;
+      --muted: #6B6B65;
+    }
   </style>
+  <script>
+    (function() {
+      var t = localStorage.getItem('bp_theme') || 'dark';
+      var isDark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    })();
+  </script>
 </head>
 <body>
   <aside class="sidebar">
@@ -3427,12 +3444,50 @@ export function registerAdminRoutes(app: Express): void {
             </form>
           </div>
         </div>
+       </div>
+      <!-- Tema Visual -->
+      <div class="card" style="margin-top:24px;">
+        <div class="card-header"><span class="card-title">🎨 Tema Visual</span></div>
+        <div class="card-body" style="padding:20px;">
+          <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Escolha o tema visual do painel administrativo. A preferência é salva no navegador.</p>
+          <div style="display:flex;gap:12px;">
+            <button onclick="setTheme('light')" id="theme-light" class="btn btn-ghost" style="flex:1;padding:12px;border:2px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;">
+              <span style="font-size:24px;">☀️</span>
+              <span style="font-size:12px;font-weight:600;">Claro</span>
+            </button>
+            <button onclick="setTheme('dark')" id="theme-dark" class="btn btn-ghost" style="flex:1;padding:12px;border:2px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;">
+              <span style="font-size:24px;">🌙</span>
+              <span style="font-size:12px;font-weight:600;">Escuro</span>
+            </button>
+            <button onclick="setTheme('system')" id="theme-system" class="btn btn-ghost" style="flex:1;padding:12px;border:2px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;">
+              <span style="font-size:24px;">⚙️</span>
+              <span style="font-size:12px;font-weight:600;">Sistema</span>
+            </button>
+          </div>
+          <script>
+            (function() {
+              var saved = localStorage.getItem('bp_theme') || 'dark';
+              function applyTheme(t) {
+                var isDark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+                ['light','dark','system'].forEach(function(k) {
+                  var btn = document.getElementById('theme-' + k);
+                  if (btn) btn.style.borderColor = k === t ? 'var(--gold)' : 'var(--border)';
+                });
+              }
+              window.setTheme = function(t) {
+                localStorage.setItem('bp_theme', t);
+                applyTheme(t);
+              };
+              applyTheme(saved);
+            })();
+          </script>
+        </div>
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Meu Perfil", "meu-perfil", body, barber?.name, _tp));
   });
-
   app.post("/admin/meu-perfil", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const { name, email, phone, specialties } = req.body;
@@ -3797,6 +3852,55 @@ export function registerAdminRoutes(app: Express): void {
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
+  });
+
+  // ─── Minhas Comissões (role barber) ────────────────────────────────────────
+  app.get("/admin/minhas-comissoes", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number; role: string };
+    const barber = await db.getBarberById(session.barberId);
+    const { start, end } = monthRange();
+    const allSummary = await db.getCommissionSummary(start, end);
+    const myData = allSummary.find((s) => s.barberId === session.barberId);
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+    const body = `
+      <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="metric-card">
+          <div class="metric-label">ATENDIMENTOS NO MÊS</div>
+          <div class="metric-value">${myData?.entriesCount ?? 0}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">FATURAMENTO BRUTO</div>
+          <div class="metric-value">${fmtCurrency(myData?.totalGross ?? 0)}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">COMISSÃO A RECEBER</div>
+          <div class="metric-value" style="color:var(--warning);">${fmtCurrency(myData?.totalCommission ?? 0)}</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🤝 Minhas Comissões</span>
+          <span style="color:var(--muted);font-size:12px;">${fmtDate(start)} a ${fmtDate(end)}</span>
+          ${myData ? `<span class="badge badge-gold">${myData.commissionRate}% comissão</span>` : ""}
+        </div>
+        <table>
+          <thead><tr><th>Data</th><th>Descrição</th><th>Bruto</th><th>Comissão</th></tr></thead>
+          <tbody>
+            ${!myData || myData.entries.length === 0
+              ? `<tr><td colspan="4" class="empty">Nenhuma comissão registrada neste mês.</td></tr>`
+              : myData.entries.map((e: any) => `
+                <tr>
+                  <td>${e.date ? new Date(e.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : "—"}</td>
+                  <td>${esc(e.description ?? "Atendimento")}</td>
+                  <td>${fmtCurrency(parseFloat(e.grossValue))}</td>
+                  <td style="color:var(--warning);">${fmtCurrency(parseFloat(e.commissionValue))}</td>
+                </tr>
+              `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+    res.send(adminLayout("Minhas Comissões", "minhas-comissoes", body, barber?.name, _tp));
   });
 
 }

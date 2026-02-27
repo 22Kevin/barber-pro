@@ -853,21 +853,39 @@ export async function getReviewsByClient(clientId: number) {
   if (!db) return [];
   return db.select().from(reviews).where(eq(reviews.clientId, clientId)).orderBy(desc(reviews.createdAt));
 }
-export async function getRecentReviews(limit = 5) {
+export async function getRecentReviews(limit = 5, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  const result = await db
-    .select({
-      id: reviews.id,
-      rating: reviews.rating,
-      comment: reviews.comment,
-      createdAt: reviews.createdAt,
-      clientId: reviews.clientId,
-      serviceId: reviews.serviceId,
-    })
-    .from(reviews)
-    .orderBy(desc(reviews.createdAt))
-    .limit(limit);
+  // Se tenantId fornecido, filtra via join com services
+  let result;
+  if (tenantId != null) {
+    result = await db
+      .select({
+        id: reviews.id,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        createdAt: reviews.createdAt,
+        clientId: reviews.clientId,
+        serviceId: reviews.serviceId,
+      })
+      .from(reviews)
+      .innerJoin(services, and(eq(reviews.serviceId, services.id), eq(services.tenantId, tenantId)))
+      .orderBy(desc(reviews.createdAt))
+      .limit(limit);
+  } else {
+    result = await db
+      .select({
+        id: reviews.id,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        createdAt: reviews.createdAt,
+        clientId: reviews.clientId,
+        serviceId: reviews.serviceId,
+      })
+      .from(reviews)
+      .orderBy(desc(reviews.createdAt))
+      .limit(limit);
+  }
   // Enriquecer com nome do cliente e serviço
   const clientIds = [...new Set(result.map(r => r.clientId))];
   const serviceIds = [...new Set(result.map(r => r.serviceId))];

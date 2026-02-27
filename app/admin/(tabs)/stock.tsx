@@ -16,6 +16,8 @@ import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
+import { exportCsv } from "@/hooks/use-csv-export";
+import { useBarberAuth } from "@/lib/auth-context";
 
 type MovementType = "in" | "out" | "adjustment";
 
@@ -37,7 +39,25 @@ function today() {
 
 export default function StockScreen() {
   const colors = useColors();
+  const { barber } = useBarberAuth();
+  const tenantId = barber?.tenantId ?? undefined;
   const utils = trpc.useUtils();
+
+  const exportStockQuery = trpc.export.estoqueCsv.useQuery(
+    { tenantId },
+    { enabled: false }
+  );
+
+  async function handleExportCsv() {
+    try {
+      const result = await exportStockQuery.refetch();
+      if (result.data) {
+        await exportCsv(result.data, "estoque.csv");
+      }
+    } catch (e: any) {
+      Alert.alert("Erro ao exportar", e?.message ?? "Falha na exportação");
+    }
+  }
 
   const [filterType, setFilterType] = useState<"all" | "sale" | "internal">("all");
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -92,7 +112,17 @@ export default function StockScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
-      <AdminHeader title="Controle de Estoque" />
+      <AdminHeader
+        title="Controle de Estoque"
+        rightElement={
+          <Pressable
+            style={({ pressed }) => [{ padding: 8, borderRadius: 8, backgroundColor: "#1A1A1A", opacity: pressed ? 0.7 : 1 }]}
+            onPress={handleExportCsv}
+          >
+            <Text style={{ fontSize: 14 }}>📥</Text>
+          </Pressable>
+        }
+      />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Alerta de estoque baixo */}

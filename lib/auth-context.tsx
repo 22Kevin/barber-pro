@@ -11,6 +11,7 @@ export interface AuthBarber {
   photoUrl: string | null;
   role: BarberRole;
   specialties: string | null;
+  tenantId?: number | null;
 }
 
 interface AuthContextType {

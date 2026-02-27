@@ -171,6 +171,27 @@ export default function AdminTabsLayout() {
           tabBarItemStyle: { display: "none" },
         }}
       />
+      <Tabs.Screen
+        name="reviews"
+        options={{
+          title: "Avaliações",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: "Chat WhatsApp",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="pagina-cliente"
+        options={{
+          title: "Página do Cliente",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
     </Tabs>
   );
 }
