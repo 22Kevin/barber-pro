@@ -617,7 +617,7 @@ export async function checkSlotAvailability(barberId: number, date: string, star
 }
 
 // ─── Vendas ───────────────────────────────────────────────────────────────────
-export async function getSalesByDateRange(startDate: string, endDate: string, barberId?: number) {
+export async function getSalesByDateRange(startDate: string, endDate: string, barberId?: number, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
   const conditions: ReturnType<typeof eq>[] = [
@@ -625,6 +625,13 @@ export async function getSalesByDateRange(startDate: string, endDate: string, ba
     lte(sales.createdAt, new Date(endDate + "T23:59:59")) as any,
   ];
   if (barberId) conditions.push(eq(sales.barberId, barberId) as any);
+  if (tenantId != null) {
+    // Filtrar via subquery: apenas vendas de barbeiros do tenant
+    const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
+    const barberIds = tenantBarbers.map(b => b.id);
+    if (barberIds.length === 0) return [];
+    conditions.push(sql`${sales.barberId} IN (${sql.join(barberIds.map(id => sql`${id}`), sql`, `)})` as any);
+  }
   return db.select().from(sales).where(and(...conditions)).orderBy(desc(sales.createdAt));
 }
 
@@ -655,12 +662,18 @@ export async function getClientSales(clientId: number) {
 }
 
 // ─── Despesas ─────────────────────────────────────────────────────────────────
-export async function getExpensesByDateRange(startDate: string, endDate: string) {
+export async function getExpensesByDateRange(startDate: string, endDate: string, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(expenses)
-    .where(and(gte(expenses.date, startDate), lte(expenses.date, endDate)))
-    .orderBy(desc(expenses.date));
+  const conditions: any[] = [gte(expenses.date, startDate), lte(expenses.date, endDate)];
+  if (tenantId != null) {
+    // Filtrar via subquery: apenas despesas de barbeiros do tenant
+    const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
+    const barberIds = tenantBarbers.map(b => b.id);
+    if (barberIds.length === 0) return [];
+    conditions.push(sql`(${expenses.barberId} IS NULL OR ${expenses.barberId} IN (${sql.join(barberIds.map(id => sql`${id}`), sql`, `)}))`);
+  }
+  return db.select().from(expenses).where(and(...conditions)).orderBy(desc(expenses.date));
 }
 
 export async function createExpense(data: InsertExpense) {
@@ -778,17 +791,26 @@ export async function upsertShopSettings(data: Partial<typeof shopSettings.$infe
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-export async function getDashboardStats(date: string) {
+export async function getDashboardStats(date: string, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return { appointmentsToday: 0, revenueToday: 0, clientsToday: 0, pendingAppointments: 0 };
-  const todayAppointments = await db.select().from(appointments)
-    .where(and(eq(appointments.date, date), sql`${appointments.status} NOT IN ('cancelled', 'no_show')`) as any);
-  const todaySales = await db.select().from(sales)
-    .where(and(
-      gte(sales.createdAt, new Date(date)) as any,
-      lte(sales.createdAt, new Date(date + "T23:59:59")) as any,
-      eq(sales.paymentStatus, "paid") as any
-    ));
+  // Obter IDs dos barbeiros do tenant para filtrar
+  let barberIds: number[] | null = null;
+  if (tenantId != null) {
+    const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
+    barberIds = tenantBarbers.map(b => b.id);
+    if (barberIds.length === 0) return { appointmentsToday: 0, revenueToday: 0, clientsToday: 0, pendingAppointments: 0 };
+  }
+  const apptConditions: any[] = [eq(appointments.date, date), sql`${appointments.status} NOT IN ('cancelled', 'no_show')`];
+  if (barberIds) apptConditions.push(sql`${appointments.barberId} IN (${sql.join(barberIds.map(id => sql`${id}`), sql`, `)})`);
+  const todayAppointments = await db.select().from(appointments).where(and(...apptConditions));
+  const salesConditions: any[] = [
+    gte(sales.createdAt, new Date(date)) as any,
+    lte(sales.createdAt, new Date(date + "T23:59:59")) as any,
+    eq(sales.paymentStatus, "paid") as any,
+  ];
+  if (barberIds) salesConditions.push(sql`${sales.barberId} IN (${sql.join(barberIds.map(id => sql`${id}`), sql`, `)})`);
+  const todaySales = await db.select().from(sales).where(and(...salesConditions));
   const revenueToday = todaySales.reduce((sum, s) => sum + parseFloat(s.total), 0);
   const uniqueClients = new Set(todayAppointments.map((a: any) => a.clientId)).size;
   const pending = todayAppointments.filter((a: any) => a.status === "scheduled").length;

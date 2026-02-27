@@ -166,6 +166,22 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
 
     /* Empty state */
     .empty { text-align: center; padding: 40px; color: var(--muted); }
+
+    /* Banner de download do app */
+    .app-download-banner { background: linear-gradient(135deg, #1a1a1a 0%, #222 100%); border: 1px solid var(--border); border-radius: 24px; padding: 32px 28px; margin: 0 24px 32px; max-width: 900px; margin-left: auto; margin-right: auto; display: flex; align-items: center; gap: 24px; }
+    .app-download-icon { width: 72px; height: 72px; border-radius: 18px; object-fit: cover; flex-shrink: 0; border: 2px solid var(--primary); }
+    .app-download-icon-placeholder { width: 72px; height: 72px; border-radius: 18px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0; border: 2px solid var(--primary); }
+    .app-download-text { flex: 1; }
+    .app-download-title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+    .app-download-sub { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .app-download-buttons { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+    .app-store-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; font-size: 12px; font-weight: 700; color: var(--text); transition: border-color 0.2s; }
+    .app-store-btn:hover { border-color: var(--primary); color: var(--text); }
+    .app-store-btn span { font-size: 20px; }
+    @media (max-width: 640px) {
+      .app-download-banner { flex-direction: column; text-align: center; }
+      .app-download-buttons { justify-content: center; }
+    }
   </style>
 </head>
 <body>
@@ -326,6 +342,22 @@ async function renderShopPage(slug: string, res: Response) {
     ${teamHtml}
     ${reviewsHtml}
     ${infoHtml}
+
+    <!-- Banner de download do app -->
+    <div class="app-download-banner">
+      ${settings?.logoUrl
+        ? `<img class="app-download-icon" src="${escapeHtml(settings.logoUrl)}" alt="${escapeHtml(settings?.shopName ?? tenant.name)}" />`
+        : `<div class="app-download-icon-placeholder">💈</div>`
+      }
+      <div class="app-download-text">
+        <div class="app-download-title">Agende pelo app da ${escapeHtml(settings?.shopName ?? tenant.name)}</div>
+        <div class="app-download-sub">Baixe o app, cadastre-se e agende seus horários com um toque. Receba lembretes e acompanhe seu histórico.</div>
+        <div class="app-download-buttons">
+          <a href="https://apps.apple.com/br/app/barber-pro" target="_blank" class="app-store-btn"><span>🍎</span> App Store</a>
+          <a href="https://play.google.com/store/apps/barber-pro" target="_blank" class="app-store-btn"><span>🤖</span> Google Play</a>
+        </div>
+      </div>
+    </div>
 
     <div class="footer">
       Powered by <a href="https://barberpro.com.br" target="_blank">Barber Pro</a>
@@ -1698,10 +1730,15 @@ export function registerPublicRoutes(app: Express): void {
     }
 
     // 2º: Tentar resolver por subdomínio (ex: minhababarbearia.barberpro.com.br)
+    // Só aplica se for domínio de produção (barberpro.com.br), não em dev/proxy
+    if (isSystemDomain) return next(); // não aplica subdomínio em dev/proxy
     if (parts.length < 3) return next(); // não é subdomínio
     const slug = parts[0];
     // Ignora slugs de sistema
     if (["www", "api", "app", "admin", "superadmin"].includes(slug)) return next();
+    // Só aplica se for subdomínio de barberpro.com.br
+    const isBarberProSubdomain = host.endsWith(".barberpro.com.br");
+    if (!isBarberProSubdomain) return next();
 
     if (req.path === "/" || req.path === "") {
       await renderShopPage(slug, res);

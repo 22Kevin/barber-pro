@@ -897,3 +897,15 @@
 - [x] Aba SEO na seção Página do Cliente: título, meta descrição e imagem Open Graph
 - [x] Campos seoTitle, seoDescription, seoImage na tabela shopSettings
 - [x] Injetar meta tags Open Graph na página pública quando configurados
+
+## Melhorias v8.0 — Correções Críticas e Novas Funcionalidades
+
+- [x] Corrigir isolamento de dados por tenant: cada barbearia vê apenas seus próprios dados no admin web
+- [x] Máscara de telefone em todos os campos de telefone/WhatsApp do sistema web
+- [x] Campos CEP, Estado e Cidade com busca automática ViaCEP no cadastro da landing page
+- [x] Controle de acesso por plano: badge de plano (Solo/Equipe/Estúdio) na sidebar do admin
+- [x] Atualizar seção de planos na landing page com a nova estrutura Solo/Equipe/Estúdio
+- [x] Etapa de pagamento no fluxo "Começar Grátis": cartão, Pix, boleto
+- [x] Banner de download do app na página pública com links App Store e Google Play
+- [x] CTA de download do app na página pública
+- [x] Vinculação do cliente ao slug da barbearia ao baixar o app via link público

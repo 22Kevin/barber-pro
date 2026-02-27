@@ -1,0 +1,40 @@
+{
+  "query": "SELECT id, slug, name, status FROM tenants LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT id, slug, name, status FROM tenants LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "slug": "teste-barbearia",
+      "name": "Teste Barbearia",
+      "status": "trial"
+    },
+    {
+      "id": "2",
+      "slug": "barbearia-nivea",
+      "name": "Barbearia Nivea",
+      "status": "trial"
+    },
+    {
+      "id": "30001",
+      "slug": "barbearia-kevin",
+      "name": "Barbearia Kevin",
+      "status": "trial"
+    },
+    {
+      "id": "60001",
+      "slug": "barbearia-teste-landing",
+      "name": "Barbearia Teste Landing",
+      "status": "trial"
+    },
+    {
+      "id": "60002",
+      "slug": "barbearia-gold-test",
+      "name": "Barbearia Gold Test",
+      "status": "trial"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tslug\tname\tstatus\n1\tteste-barbearia\tTeste Barbearia\ttrial\n2\tbarbearia-nivea\tBarbearia Nivea\ttrial\n30001\tbarbearia-kevin\tBarbearia Kevin\ttrial\n60001\tbarbearia-teste-landing\tBarbearia Teste Landing\ttrial\n60002\tbarbearia-gold-test\tBarbearia Gold Test\ttrial\n",
+  "stderr": "",
+  "execution_time_ms": 358
+}

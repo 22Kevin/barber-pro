@@ -89,7 +89,13 @@ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 // ─── Layout base do painel ────────────────────────────────────────────────────
-function adminLayout(title: string, activePage: string, body: string, barberName = ""): string {
+function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = ""): string {
+  const planBadge: Record<string, { label: string; color: string; bg: string }> = {
+    solo: { label: "Solo", color: "#9BA1A6", bg: "rgba(155,161,166,0.12)" },
+    team: { label: "Equipe", color: "#c9a84c", bg: "rgba(201,168,76,0.12)" },
+    studio: { label: "Estúdio", color: "#4ADE80", bg: "rgba(74,222,128,0.12)" },
+  };
+  const badge = tenantPlan ? planBadge[tenantPlan] : null;
   const navGroups = [
     {
       label: "OPERACIONAL",
@@ -261,6 +267,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     </nav>
     <div class="sidebar-footer">
       ${barberName ? `<div class="sidebar-user">👤 ${esc(barberName)}</div>` : ""}
+      ${badge ? `<div style="display:inline-flex;align-items:center;gap:6px;background:${badge.bg};border:1px solid ${badge.color}33;border-radius:6px;padding:4px 10px;margin-bottom:10px;font-size:11px;font-weight:700;color:${badge.color};letter-spacing:0.5px">★ Plano ${badge.label}</div>` : ""}
       <a href="/admin/logout" class="sidebar-logout">Sair da conta</a>
     </div>
   </aside>
@@ -326,9 +333,10 @@ async function renderDashboard(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
   const dateStr = today();
-  const stats = await db.getDashboardStats(dateStr);
-  const appointments = await db.getAllAppointmentsByDate(dateStr);
-  const barbers = await db.getAllBarbers();
+  const tenantId = barber?.tenantId ?? null;
+  const stats = await db.getDashboardStats(dateStr, tenantId);
+  const appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
+  const barbers = await db.getAllBarbers(tenantId);
 
   // Buscar slug para o card de link de agendamento
   const dashTenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
@@ -438,16 +446,17 @@ async function renderDashboard(req: Request, res: Response) {
     </div>
   `;
 
-  res.send(adminLayout("Dashboard", "dashboard", body, barber?.name));
+  res.send(adminLayout("Dashboard", "dashboard", body, barber?.name, dashTenant?.plan ?? ""));
 }
 
 // ─── Agenda ───────────────────────────────────────────────────────────────────
 async function renderAgenda(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
+  const tenantId = barber?.tenantId ?? null;
   const dateStr = (req.query.date as string) || today();
-  const appointments = await db.getAllAppointmentsByDate(dateStr);
-  const barbers = await db.getAllBarbers();
+  const appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
+  const barbers = await db.getAllBarbers(tenantId);
 
   const barberMap: Record<number, string> = Object.fromEntries(barbers.map((b) => [b.id, b.name]));
   const clientIds = [...new Set(appointments.map((a: any) => a.clientId))];
@@ -531,15 +540,17 @@ async function renderAgenda(req: Request, res: Response) {
     </div>
   `;
 
-  res.send(adminLayout(`Agenda — ${fmtDate(dateStr)}`, "agenda", body, barber?.name));
+  const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout(`Agenda — ${fmtDate(dateStr)}`, "agenda", body, barber?.name, _tp));
 }
 
 // ─── Clientes ─────────────────────────────────────────────────────────────────
 async function renderClientes(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
+  const tenantId = barber?.tenantId ?? null;
   const search = ((req.query.q as string) || "").toLowerCase();
-  const allClients = await db.getAllClients();
+  const allClients = await db.getAllClients(tenantId);
   const filtered = search
     ? allClients.filter((c: any) => c.name.toLowerCase().includes(search) || (c.phone ?? "").includes(search))
     : allClients;
@@ -581,14 +592,16 @@ async function renderClientes(req: Request, res: Response) {
     </div>
   `;
 
-  res.send(adminLayout("Clientes", "clientes", body, barber?.name));
+  const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Clientes", "clientes", body, barber?.name, _tp));
 }
 
 // ─── Serviços ─────────────────────────────────────────────────────────────────
 async function renderServicos(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
-  const services = await db.getAllServicesWithMedia(false);
+  const tenantId = barber?.tenantId ?? null;
+  const services = await db.getAllServicesWithMedia(false, tenantId);
   const saved = req.query.saved === "1";
   const deleted = req.query.deleted === "1";
   const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
@@ -674,13 +687,15 @@ async function renderServicos(req: Request, res: Response) {
       <div class="card-body">${tableHtml}</div>
     </div>
   `;
-  res.send(adminLayout("Serviços", "servicos", body, barber?.name));
+  const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Serviços", "servicos", body, barber?.name, _tp));
 }
 
 async function renderProdutos(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
-  const products = await db.getAllProductsWithMedia(false);
+  const tenantId = barber?.tenantId ?? null;
+  const products = await db.getAllProductsWithMedia(false, tenantId);
   const saved = req.query.saved === "1";
   const deleted = req.query.deleted === "1";
   const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
@@ -783,16 +798,18 @@ async function renderProdutos(req: Request, res: Response) {
       <div class="card-body">${tableHtml}</div>
     </div>
   `;
-  res.send(adminLayout("Produtos", "produtos", body, barber?.name));
+  const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Produtos", "produtos", body, barber?.name, _tp));
 }
 
 // ─── Financeiro ───────────────────────────────────────────────────────────────
 async function renderFinanceiro(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
+  const tenantId = barber?.tenantId ?? null;
   const { start, end } = monthRange();
-  const salesData = await db.getSalesByDateRange(start, end);
-  const expenses = await db.getExpensesByDateRange(start, end);
+  const salesData = await db.getSalesByDateRange(start, end, undefined, tenantId);
+  const expenses = await db.getExpensesByDateRange(start, end, tenantId);
 
   const totalRevenue = salesData
     .filter((s: any) => s.paymentStatus === "paid")
@@ -865,7 +882,8 @@ async function renderFinanceiro(req: Request, res: Response) {
     </div>
   `;
 
-  res.send(adminLayout("Financeiro", "financeiro", body, barber?.name));
+  const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Financeiro", "financeiro", body, barber?.name, _tp));
 }
 
 // ─── Configurações ────────────────────────────────────────────
@@ -895,7 +913,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
   }
 
   // Buscar equipe e horários de trabalho
-  const allBarbers = await db.getAllBarbersIncludingInactive();
+  const allBarbers = await db.getAllBarbersIncludingInactive(barber?.tenantId);
   const workingHoursMap: Record<number, any[]> = {};
   for (const b of allBarbers) {
     workingHoursMap[b.id] = await db.getWorkingHours(b.id);
@@ -1207,7 +1225,8 @@ async function renderConfiguracoes(req: Request, res: Response) {
     ${tabContent[activeTab] ?? tabDados}
   `;
 
-  res.send(adminLayout("Configurações", "configuracoes", body, barber?.name));
+  const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Configurações", "configuracoes", body, barber?.name, _tp));
 }
 
 // ─── Registro das rotas ───────────────────────────────────────────────────────
@@ -1215,9 +1234,10 @@ async function renderConfiguracoes(req: Request, res: Response) {
 async function renderNovoAgendamento(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
-  const clients = await db.getAllClients();
-  const services = await db.getAllServices(true);
-  const barbers = await db.getAllBarbers();
+  const tenantId = barber?.tenantId ?? null;
+  const clients = await db.getAllClients(tenantId);
+  const services = await db.getAllServices(true, tenantId);
+  const barbers = await db.getAllBarbers(tenantId);
   const error = req.query.error as string | undefined;
   const preDate = (req.query.date as string) || today();
 
@@ -1274,7 +1294,8 @@ async function renderNovoAgendamento(req: Request, res: Response) {
       }
     </script>
   `;
-  res.send(adminLayout("Novo Agendamento", "agenda", body, barber?.name));
+  const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Novo Agendamento", "agenda", body, barber?.name, _tp));
 }
 
 // ─── Relatórios ───────────────────────────────────────────────────────────────
@@ -1290,9 +1311,10 @@ async function renderRelatorios(req: Request, res: Response) {
   const startStr = startDate.toISOString().slice(0, 10);
   const endStr = endDate.toISOString().slice(0, 10);
   // Buscar dados
-  const allSales = await db.getSalesByDateRange(startStr, endStr);
-  const allExpenses = await db.getExpensesByDateRange(startStr, endStr);
-  const allBarbers = await db.getAllBarbers();
+  const tenantId = barber?.tenantId ?? null;
+  const allSales = await db.getSalesByDateRange(startStr, endStr, undefined, tenantId);
+  const allExpenses = await db.getExpensesByDateRange(startStr, endStr, tenantId);
+  const allBarbers = await db.getAllBarbers(tenantId);
   // Calcular faturamento total e despesas
   const totalRevenue = allSales.reduce((s: number, sale: any) => s + parseFloat(sale.total ?? "0"), 0);
   const totalExpenses = allExpenses.reduce((s: number, e: any) => s + parseFloat(e.amount ?? "0"), 0);
@@ -1496,7 +1518,8 @@ async function renderRelatorios(req: Request, res: Response) {
       <div class="card-body">${pieSvg}</div>
     </div>
   `;
-  res.send(adminLayout("Relatórios", "relatorios", body, barber?.name));
+  const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Relatórios", "relatorios", body, barber?.name, _tp));
 }
 
 // ──// ─── Página do Cliente ───────────────────────────────────────────
@@ -1848,7 +1871,8 @@ async function renderPaginaCliente(req: Request, res: Response) {
     ${tabContent[activeTab] ?? tabUrlQr}
   `;
 
-  res.send(adminLayout("Página do Cliente", "pagina-cliente", body, barber?.name));
+  const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Página do Cliente", "pagina-cliente", body, barber?.name, _tp));
 }
 
 // ─── Detalhe do Cliente ────────────────────────────────────────────
@@ -1939,7 +1963,8 @@ async function renderClienteDetalhe(req: Request, res: Response) {
       </div>
     </div>
   `;
-  res.send(adminLayout(`Cliente: ${(client as any).name}`, "clientes", body, barber?.name));
+  const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout(`Cliente: ${(client as any).name}`, "clientes", body, barber?.name, _tp));
 }
 
 export function registerAdminRoutes(app: Express): void {
@@ -2509,7 +2534,8 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
     `;
-    res.send(adminLayout("Fidelidade", "fidelidade", body, barber?.name));
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Fidelidade", "fidelidade", body, barber?.name, _tp));
   });
 
   app.post("/admin/fidelidade/config", requireAdminAuth, async (req: Request, res: Response) => {
@@ -2628,7 +2654,8 @@ export function registerAdminRoutes(app: Express): void {
         </table>
       </div>
     `;
-    res.send(adminLayout("Cupons", "cupons", body, barber?.name));
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Cupons", "cupons", body, barber?.name, _tp));
   });
 
   app.post("/admin/cupons", requireAdminAuth, async (req: Request, res: Response) => {
@@ -2721,7 +2748,8 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
     `;
-    res.send(adminLayout("Avaliações", "avaliacoes", body, barber?.name));
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Avaliações", "avaliacoes", body, barber?.name, _tp));
   });
 
   // ─── Comissões ────────────────────────────────────────────────────────────
@@ -2792,11 +2820,14 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
     `;
-    res.send(adminLayout("Comissões", "comissoes", body, barber?.name));
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Comissões", "comissoes", body, barber?.name, _tp));
   });
 
   app.post("/admin/comissoes/config", requireAdminAuth, async (req: Request, res: Response) => {
-    const barbers = await db.getAllBarbers();
+    const session2 = (req as any).adminSession;
+    const barber2 = await db.getBarberById(session2.barberId);
+    const barbers = await db.getAllBarbers(barber2?.tenantId);
     for (const b of barbers) {
       const rate = req.body[`rate_${b.id}`];
       if (rate !== undefined) {
@@ -2811,10 +2842,11 @@ export function registerAdminRoutes(app: Express): void {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const dateParam = (req.query.date as string) || today();
+    const tenantId = barber?.tenantId ?? null;
     const entries = await db.listWaitlistByDate(dateParam);
-    const allClients = await db.getAllClients();
-    const allBarbers = await db.getAllBarbers();
-    const allServices = await db.getAllServices();
+    const allClients = await db.getAllClients(tenantId);
+    const allBarbers = await db.getAllBarbers(tenantId);
+    const allServices = await db.getAllServices(true, tenantId);
     const saved = req.query.saved === "1";
     const removed = req.query.removed === "1";
     const body = `
@@ -2898,7 +2930,8 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
     `;
-    res.send(adminLayout("Lista de Espera", "lista-espera", body, barber?.name));
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Lista de Espera", "lista-espera", body, barber?.name, _tp));
   });
 
   app.post("/admin/lista-espera", requireAdminAuth, async (req: Request, res: Response) => {
@@ -2923,10 +2956,11 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/recorrencias", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
     const allRecurring = await db.getAllRecurringAppointments();
-    const allClients = await db.getAllClients();
-    const allBarbers = await db.getAllBarbers();
-    const allServices = await db.getAllServices();
+    const allClients = await db.getAllClients(tenantId);
+    const allBarbers = await db.getAllBarbers(tenantId);
+    const allServices = await db.getAllServices(true, tenantId);
     const cancelled = req.query.cancelled === "1";
     const created = req.query.created === "1";
     const body = `
@@ -3025,7 +3059,8 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
     `;
-    res.send(adminLayout("Recorrências", "recorrencias", body, barber?.name));
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Recorrências", "recorrencias", body, barber?.name, _tp));
   });
 
   app.post("/admin/recorrencias", requireAdminAuth, async (req: Request, res: Response) => {
@@ -3139,7 +3174,8 @@ export function registerAdminRoutes(app: Express): void {
         }
       </script>
     `;
-    res.send(adminLayout("Estoque", "estoque", body, barber?.name));
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Estoque", "estoque", body, barber?.name, _tp));
   });
 
   app.post("/admin/estoque/movimentacao", requireAdminAuth, async (req: Request, res: Response) => {
@@ -3159,8 +3195,9 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/retorno-automatico", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
     const configs = await db.listReturnMessageConfigs();
-    const allServices = await db.getAllServices();
+    const allServices = await db.getAllServices(true, tenantId);
     const saved = req.query.saved === "1";
     const deleted = req.query.deleted === "1";
     // Mapear configs com nome do serviço
@@ -3238,7 +3275,8 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
     `;
-    res.send(adminLayout("Retorno Automático", "retorno-automatico", body, barber?.name));
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Retorno Automático", "retorno-automatico", body, barber?.name, _tp));
   });
 
   app.post("/admin/retorno-automatico", requireAdminAuth, async (req: Request, res: Response) => {
@@ -3318,7 +3356,8 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       ` : ""}
     `;
-    res.send(adminLayout("Conversão de Promoções", "conversao-promocoes", body, barber?.name));
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Conversão de Promoções", "conversao-promocoes", body, barber?.name, _tp));
   });
 
   // ─── Meu Perfil ──────────────────────────────────────────────────────────────
@@ -3390,7 +3429,8 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
     `;
-    res.send(adminLayout("Meu Perfil", "meu-perfil", body, barber?.name));
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Meu Perfil", "meu-perfil", body, barber?.name, _tp));
   });
 
   app.post("/admin/meu-perfil", requireAdminAuth, async (req: Request, res: Response) => {
@@ -3463,7 +3503,8 @@ export function registerAdminRoutes(app: Express): void {
         ${clientRows || '<div style="padding:40px;text-align:center;color:var(--muted)">Nenhum cliente cadastrado.</div>'}
       </div>
     `;
-    res.send(adminLayout("Chat WhatsApp", "chat", body, barber?.name));
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout("Chat WhatsApp", "chat", body, barber?.name, _tp));
   });
 
   app.get("/admin/chat/:clientId", requireAdminAuth, async (req: Request, res: Response) => {
@@ -3520,7 +3561,8 @@ export function registerAdminRoutes(app: Express): void {
       </form>
       <script>const h=document.getElementById('chatHistory');if(h)h.scrollTop=h.scrollHeight;</script>
     `;
-    res.send(adminLayout(`Chat — ${client.name}`, "chat", body, barber?.name));
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  res.send(adminLayout(`Chat — ${client.name}`, "chat", body, barber?.name, _tp));
   });
 
   app.post("/admin/chat/:clientId", requireAdminAuth, async (req: Request, res: Response) => {
@@ -3548,7 +3590,9 @@ export function registerAdminRoutes(app: Express): void {
 
   // ─── Exportação CSV ───────────────────────────────────────────────────────────
   app.get("/admin/export/clientes.csv", requireAdminAuth, async (req: Request, res: Response) => {
-    const allClients = await db.getAllClients();
+    const sessionExp = (req as any).adminSession;
+    const barberExp = await db.getBarberById(sessionExp.barberId);
+    const allClients = await db.getAllClients(barberExp?.tenantId);
     const rows = [
       ["ID", "Nome", "Telefone", "Email", "Data Nasc.", "Pontos", "Ativo", "Cadastrado em"],
       ...allClients.map((c: any) => [
@@ -3564,6 +3608,8 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   app.get("/admin/export/financeiro.csv", requireAdminAuth, async (req: Request, res: Response) => {
+    const sessionCsv = (req as any).adminSession;
+    const barberCsv = await db.getBarberById(sessionCsv.barberId);
     const period = (req.query.period as string) || "30";
     const days = parseInt(period) || 30;
     const endDate = new Date();
@@ -3571,8 +3617,8 @@ export function registerAdminRoutes(app: Express): void {
     startDate.setDate(startDate.getDate() - days + 1);
     const startStr = startDate.toISOString().slice(0, 10);
     const endStr = endDate.toISOString().slice(0, 10);
-    const sales = await db.getSalesByDateRange(startStr, endStr);
-    const expenses = await db.getExpensesByDateRange(startStr, endStr);
+    const sales = await db.getSalesByDateRange(startStr, endStr, undefined, barberCsv?.tenantId);
+    const expenses = await db.getExpensesByDateRange(startStr, endStr, barberCsv?.tenantId);
     const rows = [
       ["Data", "Tipo", "Descrição", "Valor", "Forma de Pagamento", "Status"],
       ...sales.map((s: any) => [
@@ -3590,7 +3636,9 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   app.get("/admin/export/estoque.csv", requireAdminAuth, async (req: Request, res: Response) => {
-    const products = await db.getAllProducts();
+    const sessionEst = (req as any).adminSession;
+    const barberEst = await db.getBarberById(sessionEst.barberId);
+    const products = await db.getAllProducts(false, barberEst?.tenantId ?? undefined);
     const rows = [
       ["ID", "Nome", "Tipo", "Preço", "Estoque Atual", "Alerta Mínimo", "Ativo"],
       ...products.map((p: any) => [
@@ -3617,8 +3665,8 @@ export function registerAdminRoutes(app: Express): void {
       startDate.setDate(startDate.getDate() - days + 1);
       const startStr = startDate.toISOString().slice(0, 10);
       const endStr = endDate.toISOString().slice(0, 10);
-      const allSales = await db.getSalesByDateRange(startStr, endStr);
-      const allExpenses = await db.getExpensesByDateRange(startStr, endStr);
+      const allSales = await db.getSalesByDateRange(startStr, endStr, undefined, barber?.tenantId);
+      const allExpenses = await db.getExpensesByDateRange(startStr, endStr, barber?.tenantId);
       const allBarbers = await db.getAllBarbers(barber?.tenantId);
       const totalRevenue = allSales.reduce((s: number, sale: any) => s + parseFloat(sale.total ?? "0"), 0);
       const totalExpenses = allExpenses.reduce((s: number, e: any) => s + parseFloat(e.amount ?? "0"), 0);
