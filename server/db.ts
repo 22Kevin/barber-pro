@@ -1646,7 +1646,38 @@ export async function markAppointmentReviewEmailSent(id: number) {
   await db.update(appointments).set({ reminderSent: true }).where(eq(appointments.id, id));
 }
 
-// ─── WhatsApp Chat ────────────────────────────────────────────────────────────
+// ─── WhatsApp Lembretes ────────────────────────────────────────────────────
+/** Busca agendamentos futuros (até 26h) que ainda não receberam lembrete */
+export async function getUpcomingAppointmentsForReminder() {
+  const db = await getDb();
+  if (!db) return [];
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const tomorrowStr = new Date(now.getTime() + 26 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const rows = await db.select().from(appointments)
+    .where(
+      and(
+        gte(appointments.date, todayStr),
+        lte(appointments.date, tomorrowStr),
+        inArray(appointments.status, ["scheduled", "confirmed"])
+      )
+    );
+  return rows;
+}
+
+export async function markWhatsAppReminder24hSent(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(appointments).set({ whatsappReminder24hSent: true }).where(eq(appointments.id, id));
+}
+
+export async function markWhatsAppReminder1hSent(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(appointments).set({ whatsappReminder1hSent: true }).where(eq(appointments.id, id));
+}
+
+// ─── WhatsApp Chat ─────────────────────────────────────────────────────
 export async function getChatClients(tenantId: number) {
   const db = await getDb();
   if (!db) return [];

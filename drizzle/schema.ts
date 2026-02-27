@@ -172,6 +172,8 @@ export const appointments = mysqlTable("appointments", {
   cancelReason: text("cancelReason"), // Motivo do cancelamento (preenchido pelo barbeiro)
   reminderSent: boolean("reminderSent").default(false).notNull(),
   whatsappConfirmationSent: boolean("whatsappConfirmationSent").default(false).notNull(),
+  whatsappReminder24hSent: boolean("whatsappReminder24hSent").default(false).notNull(),
+  whatsappReminder1hSent: boolean("whatsappReminder1hSent").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -298,6 +300,9 @@ export const shopSettings = mysqlTable("shop_settings", {
   customDomain: varchar("customDomain", { length: 255 }),  // domínio personalizado da página pública
   ga4MeasurementId: varchar("ga4MeasurementId", { length: 50 }),  // Google Analytics 4 Measurement ID
   facebookPixelId: varchar("facebookPixelId", { length: 50 }),   // Facebook Pixel ID
+  seoTitle: varchar("seoTitle", { length: 100 }),                 // Título SEO da página pública
+  seoDescription: varchar("seoDescription", { length: 300 }),     // Meta descrição SEO
+  seoImageUrl: text("seoImageUrl"),                               // Imagem Open Graph (OG)
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 // ─── Tokens de Recuperação de Senha ────────────────────────────────────────

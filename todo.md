@@ -886,3 +886,14 @@
 - [x] Middleware de domínio customizado: resolver campo customDomain no servidor para servir página pública pelo domínio próprio da barbearia
 - [x] Aba Preview: botão "Recarregar preview" e timestamp de última atualização visual
 - [x] Aba URL: botões de compartilhamento no Instagram, Facebook e mensagem pronta para Stories/WhatsApp
+
+## Melhorias v7.3 — Perfil do Cliente, Lembretes WhatsApp e SEO
+
+- [x] Página /pub/:slug/perfil: editar nome, telefone, e-mail do cliente logado
+- [x] Link "Meu Perfil" no cabeçalho da página pública quando logado
+- [x] Endpoint POST /pub-api/perfil para salvar alterações do perfil do cliente
+- [x] Job de lembretes WhatsApp: enviar link wa.me 24h antes do agendamento
+- [x] Job de lembretes WhatsApp: enviar link wa.me 1h antes do agendamento
+- [x] Aba SEO na seção Página do Cliente: título, meta descrição e imagem Open Graph
+- [x] Campos seoTitle, seoDescription, seoImage na tabela shopSettings
+- [x] Injetar meta tags Open Graph na página pública quando configurados

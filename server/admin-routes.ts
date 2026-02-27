@@ -1763,11 +1763,67 @@ async function renderPaginaCliente(req: Request, res: Response) {
     </div>
   `;
 
+  // ─── Aba: SEO ─────────────────────────────────────────────────────
+  const tabSeo = `
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header"><div class="card-title">🔍 SEO & Compartilhamento</div></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Configure como sua página aparece nos resultados do Google e quando compartilhada no WhatsApp, Facebook e Instagram. Estes dados são injetados automaticamente como meta tags na página pública.</p>
+        <form method="POST" action="/admin/pagina-cliente/seo">
+          <div class="form-group">
+            <label class="form-label">🏷️ Título da Página <span style="color:var(--muted);font-weight:400">(até 60 caracteres)</span></label>
+            <input class="form-input" type="text" name="seoTitle" value="${esc(settings?.seoTitle ?? "")}" placeholder="Ex: Barbearia do João — Cortes modernos em São Paulo" maxlength="100" />
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">Aparece na aba do navegador e nos resultados de busca do Google. Se vazio, usa o nome da barbearia.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">📝 Meta Descrição <span style="color:var(--muted);font-weight:400">(até 160 caracteres)</span></label>
+            <textarea class="form-input" name="seoDescription" rows="3" placeholder="Ex: Agende seu corte online! Barbearia especializada em cortes modernos, barba e bigode. Atendimento rápido e sem espera." maxlength="300" style="resize:vertical">${esc(settings?.seoDescription ?? "")}</textarea>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">Exibida nos resultados do Google abaixo do título. Impacta diretamente a taxa de cliques.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">🖼️ Imagem Open Graph <span style="color:var(--muted);font-weight:400">(URL da imagem, 1200×630px ideal)</span></label>
+            <input class="form-input" type="url" name="seoImageUrl" value="${esc(settings?.seoImageUrl ?? "")}" placeholder="https://exemplo.com/imagem-barbearia.jpg" />
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">Imagem exibida quando o link é compartilhado no WhatsApp, Facebook e Instagram. Recomendado: 1200×630px. Se vazio, usa o banner ou logo da barbearia.</div>
+          </div>
+          ${settings?.seoImageUrl ? `
+          <div style="margin-bottom:20px">
+            <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">PRÉVIA DO COMPARTILHAMENTO</div>
+            <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;max-width:400px">
+              <img src="${esc(settings.seoImageUrl)}" alt="OG Image" style="width:100%;height:200px;object-fit:cover;display:block" onerror="this.style.display='none'" />
+              <div style="padding:12px;background:var(--surface)">
+                <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase">${esc(publicUrl || "sua-url.com")}</div>
+                <div style="font-size:14px;font-weight:700;color:var(--foreground);margin-bottom:4px">${esc(settings.seoTitle || settings.shopName || "Barbearia")}</div>
+                <div style="font-size:12px;color:var(--muted)">${esc(settings.seoDescription || "Agende seu horário online.")}</div>
+              </div>
+            </div>
+          </div>` : ""}
+          <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar SEO</button>
+        </form>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">ℹ️ Dicas de SEO</div></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:var(--surface2);border-radius:8px;padding:12px">
+            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">🔍 Google</div>
+            <div style="font-size:12px;color:var(--muted)">Use palavras-chave como "barbearia", "corte de cabelo" e o nome da sua cidade no título e descrição para aparecer nas buscas locais.</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:12px">
+            <div style="font-size:12px;font-weight:700;color:#25D366;margin-bottom:6px">📱 WhatsApp</div>
+            <div style="font-size:12px;color:var(--muted)">Quando você compartilha o link no WhatsApp, a imagem Open Graph é exibida automaticamente como prévia. Use uma foto atraente da barbearia.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
   const tabs = [
     { id: 'url', label: '🔗 URL & QR Code' },
     { id: 'visual', label: '🎨 Visual' },
     { id: 'dominio', label: '🌐 Domínio' },
     { id: 'rastreamento', label: '📊 Rastreamento' },
+    { id: 'seo', label: '🔍 SEO' },
     { id: 'preview', label: '👁️ Preview' },
   ];
 
@@ -1776,6 +1832,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
     visual: tabVisual,
     dominio: tabDominio,
     rastreamento: tabRastreamento,
+    seo: tabSeo,
     preview: tabPreview,
   };
 
@@ -2278,7 +2335,24 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
-  // ─── CRUD Serviços ────────────────────────────────────────────────────────
+   // POST /admin/pagina-cliente/seo — Salvar configurações de SEO
+  app.post("/admin/pagina-cliente/seo", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const { seoTitle, seoDescription, seoImageUrl } = req.body ?? {};
+      await db.upsertShopSettings({
+        seoTitle: seoTitle?.trim() || null,
+        seoDescription: seoDescription?.trim() || null,
+        seoImageUrl: seoImageUrl?.trim() || null,
+      }, barber?.tenantId);
+      res.redirect("/admin/pagina-cliente?tab=seo&seosaved=1");
+    } catch (e: any) {
+      res.redirect("/admin/pagina-cliente?tab=seo");
+    }
+  });
+
+  // ─── CRUD Serviços ─────────────────────────────────────────────────────
   app.post("/admin/servicos", requireAdminAuth, async (req: Request, res: Response) => {
     const { name, description, price, durationMinutes, isActive } = req.body;
     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;

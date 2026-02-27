@@ -66,8 +66,17 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${escapeHtml(shopName)}</title>
-  <meta name="description" content="Agende seu horário em ${escapeHtml(shopName)} de forma rápida e fácil." />
+  <title>${escapeHtml(settings?.seoTitle || shopName)}</title>
+  <meta name="description" content="${escapeHtml(settings?.seoDescription || `Agende seu horário em ${shopName} de forma rápida e fácil.`)}" />
+  <!-- Open Graph / WhatsApp / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="${escapeHtml(settings?.seoTitle || shopName)}" />
+  <meta property="og:description" content="${escapeHtml(settings?.seoDescription || `Agende seu horário em ${shopName} de forma rápida e fácil.`)}" />
+  ${settings?.seoImageUrl ? `<meta property="og:image" content="${escapeHtml(settings.seoImageUrl)}" /><meta property="og:image:width" content="1200" /><meta property="og:image:height" content="630" />` : (settings?.bannerUrl ? `<meta property="og:image" content="${escapeHtml(settings.bannerUrl)}" />` : (settings?.logoUrl ? `<meta property="og:image" content="${escapeHtml(settings.logoUrl)}" />` : ""))}
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${escapeHtml(settings?.seoTitle || shopName)}" />
+  <meta name="twitter:description" content="${escapeHtml(settings?.seoDescription || `Agende seu horário em ${shopName} de forma rápida e fácil.`)}" />
   ${extraHead}
   ${trackingScripts}
   <style>
@@ -761,6 +770,89 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
 }
 
 // ─── Página de perfilAvaliação Pós-Atendimento ────────────────────────────────────
+// ─── Página de Perfil do Cliente ─────────────────────────────────────────────
+async function renderPerfilPage(slug: string, res: Response, req: Request) {
+  const tenant = await db.getTenantBySlug(slug);
+  if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
+  const settings = await db.getShopSettingsByTenantId(tenant.id);
+  const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
+
+  // Verificar sessão do cliente
+  const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+  let loggedClient: { id: number; name: string; email: string; phone?: string } | null = null;
+  if (clientSessionRaw) {
+    try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+  }
+  if (!loggedClient) {
+    res.redirect(`/pub/${slug}/login?redirect=perfil`);
+    return;
+  }
+
+  // Buscar dados atuais do cliente no banco
+  const clientData = await db.getClientById(loggedClient.id);
+  if (!clientData) { res.redirect(`/pub/${slug}/login`); return; }
+
+  const saved = req.query.saved === "1";
+  const error = req.query.error ? decodeURIComponent(req.query.error as string) : null;
+
+  const body = `
+    <div style="max-width:480px;margin:0 auto;padding:32px 24px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:32px">
+        <a href="/pub/${slug}" style="color:var(--muted);font-size:20px">&#8592;</a>
+        <div>
+          <div style="font-size:18px;font-weight:800">Meu Perfil</div>
+          <div style="font-size:12px;color:var(--muted)">${escapeHtml(settings?.shopName ?? tenant.name)}</div>
+        </div>
+      </div>
+
+      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:#4ADE80;padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">&#10003; Perfil atualizado com sucesso!</div>` : ""}
+      ${error ? `<div style="background:#EF444422;border:1px solid #EF444444;color:#F87171;padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">&#10007; ${escapeHtml(error)}</div>` : ""}
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px">
+        <div style="text-align:center;margin-bottom:28px">
+          <div style="width:80px;height:80px;border-radius:50%;background:var(--surface2);border:3px solid var(--primary);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 12px">&#128100;</div>
+          <div style="font-size:16px;font-weight:800">${escapeHtml(clientData.name)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Cliente desde ${new Date((clientData as any).createdAt ?? Date.now()).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div>
+        </div>
+
+        <form method="POST" action="/pub-api/perfil">
+          <input type="hidden" name="slug" value="${escapeHtml(slug)}" />
+          <div style="margin-bottom:16px">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">NOME COMPLETO</label>
+            <input type="text" name="name" value="${escapeHtml(clientData.name)}" required
+              style="width:100%;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none" />
+          </div>
+          <div style="margin-bottom:16px">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">TELEFONE / WHATSAPP</label>
+            <input type="tel" name="phone" value="${escapeHtml(clientData.phone ?? "")}" placeholder="(11) 99999-9999"
+              style="width:100%;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none" />
+          </div>
+          <div style="margin-bottom:24px">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">E-MAIL</label>
+            <input type="email" name="email" value="${escapeHtml(clientData.email ?? "")}" placeholder="seu@email.com"
+              style="width:100%;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none" />
+          </div>
+          <button type="submit"
+            style="width:100%;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:800;border:none;border-radius:14px;cursor:pointer">
+            Salvar Alteracoes
+          </button>
+        </form>
+
+        <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+          <a href="/pub/${slug}/meus-agendamentos" style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;color:var(--text);font-size:14px;font-weight:600">
+            <span>&#128197; Meus Agendamentos</span>
+            <span style="color:var(--muted)">&#8250;</span>
+          </a>
+          <a href="/pub/${slug}/logout" style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;color:#F87171;font-size:14px;font-weight:600;border-top:1px solid var(--border)">
+            <span>&#128682; Sair da conta</span>
+            <span style="color:var(--muted)">&#8250;</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+  res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
+}
 async function renderReviewPage(slug: string, appointmentIdStr: string, res: Response, req: Request) {
   const appointmentId = parseInt(appointmentIdStr);
   if (isNaN(appointmentId)) { res.status(400).send("ID de agendamento inválido."); return; }
@@ -1010,7 +1102,10 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
             <div style="font-size:12px;color:var(--muted)">${escapeHtml(loggedClient.name)}</div>
           </div>
         </div>
-        <a href="/pub/${slug}/agendar" style="background:var(--primary);color:#0A0A0A;font-size:13px;font-weight:800;padding:10px 16px;border-radius:10px">+ Novo</a>
+        <div style="display:flex;gap:8px">
+          <a href="/pub/${slug}/perfil" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:700;padding:10px 14px;border-radius:10px">&#128100; Perfil</a>
+          <a href="/pub/${slug}/agendar" style="background:var(--primary);color:#0A0A0A;font-size:13px;font-weight:800;padding:10px 16px;border-radius:10px">+ Novo</a>
+        </div>
       </div>
 
       <div style="font-size:14px;font-weight:800;margin-bottom:16px;color:var(--muted);letter-spacing:1px">PRÓXIMOS</div>
@@ -1312,6 +1407,39 @@ export function registerPublicRoutes(app: Express): void {
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ─── Perfil do Cliente ─────────────────────────────────────────────────────
+  // GET /pub/:slug/perfil — Página de perfil do cliente
+  app.get("/pub/:slug/perfil", async (req: Request, res: Response) => {
+    await renderPerfilPage(req.params.slug, res, req);
+  });
+
+  // POST /pub-api/perfil — Salvar alterações do perfil do cliente
+  app.post("/pub-api/perfil", async (req: Request, res: Response) => {
+    try {
+      const { slug, name, phone, email } = req.body;
+      if (!slug || !name) { res.redirect(`/pub/${slug}/perfil?error=${encodeURIComponent("Nome é obrigatório")}`); return; }
+      const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+      if (!clientSessionRaw) { res.redirect(`/pub/${slug}/login?redirect=perfil`); return; }
+      let loggedClient: { id: number; name: string; email: string } | null = null;
+      try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+      if (!loggedClient) { res.redirect(`/pub/${slug}/login?redirect=perfil`); return; }
+      // Atualizar dados do cliente no banco
+      await db.updateClient(loggedClient.id, {
+        name: name.trim(),
+        phone: phone?.trim() || null,
+        email: email?.trim() || null,
+      });
+      // Atualizar cookie de sessão com o novo nome
+      const updatedSession = { ...loggedClient, name: name.trim(), email: email?.trim() || loggedClient.email };
+      const sessionValue = Buffer.from(JSON.stringify(updatedSession)).toString("base64");
+      res.cookie(`client_session_${slug}`, sessionValue, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+      res.redirect(`/pub/${slug}/perfil?saved=1`);
+    } catch (e: any) {
+      const { slug } = req.body;
+      res.redirect(`/pub/${slug ?? ""}/perfil?error=${encodeURIComponent(e.message)}`);
     }
   });
 

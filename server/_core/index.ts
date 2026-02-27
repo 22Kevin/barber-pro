@@ -12,6 +12,7 @@ import { registerAdminRoutes } from "../admin-routes";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { startReviewEmailJob } from "../review-job";
+import { startWhatsAppReminderJob } from "../whatsapp-reminder-job";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -232,6 +233,8 @@ async function startServer() {
     console.log(`[api] server listening on port ${port}`);
     // Iniciar job de e-mail de avaliação pós-atendimento
     startReviewEmailJob();
+    // Iniciar job de lembretes WhatsApp (24h e 1h antes do agendamento)
+    startWhatsAppReminderJob();
   });
 }
 
