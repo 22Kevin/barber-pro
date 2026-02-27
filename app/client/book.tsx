@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Alert, Linking, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Dimensions, Linking, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { scheduleAppointmentReminder, notifyBarberNewAppointment, scheduleReviewNotification } from "@/lib/use-notifications";
 import { DiscountSheet, type AppliedDiscount } from "@/components/discount-sheet";
 import { AppointmentShareCard } from "@/components/appointment-share-card";
+import ConfettiCannon from "react-native-confetti-cannon";
 
 type Step = "service" | "barber" | "date" | "time" | "confirm";
 
@@ -95,6 +96,7 @@ export default function BookScreen() {
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [pendingApptDateTime, setPendingApptDateTime] = useState<Date | null>(null);
   const [showShareCard, setShowShareCard] = useState(false);
+  const confettiRef = useRef<any>(null);
   // Agendamento recorrente
   const [enableRecurring, setEnableRecurring] = useState(false);
   const [recurringInterval, setRecurringInterval] = useState<1 | 2 | 4>(1); // semanas
@@ -431,10 +433,22 @@ export default function BookScreen() {
   // Tela de sucesso com card de compartilhamento
   if (showShareCard && selectedService && selectedBarber && selectedDate && selectedSlot) {
     const dateStr = selectedDate.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+    const screenWidth = Dimensions.get("window").width;
     return (
       <ScreenContainer containerClassName="bg-black">
+        {/* Confete — dispara automaticamente ao montar */}
+        <ConfettiCannon
+          ref={confettiRef}
+          count={120}
+          origin={{ x: screenWidth / 2, y: -20 }}
+          autoStart
+          fadeOut
+          fallSpeed={2800}
+          explosionSpeed={400}
+          colors={["#EAB308", "#FBBF24", "#fff", "#F59E0B", "#D97706", "#FEF3C7"]}
+        />
         <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 40, paddingTop: 20, alignItems: "center" }}>
-          <Text style={{ fontSize: 52, marginBottom: 12 }}>✅</Text>
+          <Text style={{ fontSize: 52, marginBottom: 12 }}>🎉</Text>
           <Text style={{ color: "#fff", fontWeight: "800", fontSize: 22, textAlign: "center", marginBottom: 6 }}>Agendamento confirmado!</Text>
           <Text style={{ color: "#9CA3AF", fontSize: 14, textAlign: "center", marginBottom: 32 }}>Pagamento será realizado na barbearia</Text>
           <AppointmentShareCard
@@ -443,7 +457,8 @@ export default function BookScreen() {
             barberName={selectedBarber.name}
             date={dateStr}
             time={selectedSlot.startTime}
-            primaryColor="#EAB308"
+            clientPhotoUrl={client?.photoUrl ?? undefined}
+            clientName={client?.name}
           />
           <View style={{ width: "100%", gap: 12, marginTop: 32 }}>
             <TouchableOpacity

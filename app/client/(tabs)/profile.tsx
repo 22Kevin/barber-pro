@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Animated,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 import { applyPhoneMask, stripMask } from "@/hooks/use-mask";
 import { ScreenContainer } from "@/components/screen-container";
 import { DatePickerModal } from "@/components/date-picker-modal";
@@ -357,12 +359,77 @@ function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) 
   );
 }
 
+// ─── Utilitário: converte URI local em base64 ────────────────────────────────
+async function uriToBase64(uri: string): Promise<string> {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      // Remove o prefixo "data:image/...;base64,"
+      resolve(result.split(",")[1] ?? result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 // ─── Tela principal ───────────────────────────────────────────────────────────
 export default function ClientProfile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { client, isAuthenticated, logout, updateClient } = useClientAuth();
   const [tab, setTab] = useState<ProfileTab>("points");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const uploadPhotoMutation = trpc.clientAuth.uploadPhoto.useMutation({
+    onSuccess: (data) => {
+      updateClient({ photoUrl: data.url });
+      Alert.alert("Foto atualizada!", "Sua foto de perfil foi salva com sucesso.");
+    },
+    onError: (err: any) => Alert.alert("Erro", err.message ?? "Não foi possível salvar a foto."),
+    onSettled: () => setUploadingPhoto(false),
+  });
+
+  async function handlePickProfilePhoto() {
+    Alert.alert(
+      "Foto de perfil",
+      "Escolha de onde deseja selecionar a foto",
+      [
+        {
+          text: "Câmera",
+          onPress: async () => {
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== "granted") {
+              Alert.alert("Permissão necessária", "Precisamos de acesso à câmera.");
+              return;
+            }
+            const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+            if (!result.canceled && client) {
+              setUploadingPhoto(true);
+              const uri = result.assets[0].uri;
+              const base64 = await uriToBase64(uri);
+              uploadPhotoMutation.mutate({ clientId: client.id, fileBase64: base64, mimeType: result.assets[0].mimeType ?? "image/jpeg" });
+            }
+          },
+        },
+        {
+          text: "Galeria",
+          onPress: async () => {
+            const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+            if (!result.canceled && client) {
+              setUploadingPhoto(true);
+              const uri = result.assets[0].uri;
+              const base64 = await uriToBase64(uri);
+              uploadPhotoMutation.mutate({ clientId: client.id, fileBase64: base64, mimeType: result.assets[0].mimeType ?? "image/jpeg" });
+            }
+          },
+        },
+        { text: "Cancelar", style: "cancel" },
+      ]
+    );
+  }
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -400,12 +467,21 @@ export default function ClientProfile() {
 
         {/* ── Header do perfil ────────────────────────────────────────────── */}
         <View style={[styles.profileHeader, { paddingTop: insets.top + 14 }]}>
-          {/* Avatar */}
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitials}>
-              {client.name?.charAt(0).toUpperCase() ?? "?"}
-            </Text>
-          </View>
+          {/* Avatar com botão de editar foto */}
+          <TouchableOpacity onPress={handlePickProfilePhoto} style={styles.avatarWrapper} activeOpacity={0.8}>
+            {client.photoUrl ? (
+              <Image source={{ uri: client.photoUrl }} style={styles.avatarPhoto} />
+            ) : (
+              <View style={styles.avatarCircle}>
+                <Text style={styles.avatarInitials}>
+                  {client.name?.charAt(0).toUpperCase() ?? "?"}
+                </Text>
+              </View>
+            )}
+            <View style={styles.avatarEditBadge}>
+              <Text style={{ fontSize: 10 }}>{uploadingPhoto ? "⏳" : "📷"}</Text>
+            </View>
+          </TouchableOpacity>
 
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -511,6 +587,11 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 14,
   },
+  avatarWrapper: {
+    position: "relative",
+    width: 52,
+    height: 52,
+  },
   avatarCircle: {
     width: 52,
     height: 52,
@@ -520,6 +601,26 @@ const styles = StyleSheet.create({
     borderColor: "#EAB308",
     alignItems: "center",
     justifyContent: "center",
+  },
+  avatarPhoto: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: "#EAB308",
+  },
+  avatarEditBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    backgroundColor: "#111827",
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#374151",
   },
   avatarInitials: {
     color: "#EAB308",

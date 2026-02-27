@@ -555,6 +555,16 @@ export const appRouter = router({
         await db.updateClient(clientId, data);
         return { success: true };
       }),
+    uploadPhoto: publicProcedure
+      .input(z.object({ clientId: z.number(), fileBase64: z.string(), mimeType: z.string() }))
+      .mutation(async ({ input }) => {
+        const ext = input.mimeType.split("/")[1] || "jpg";
+        const key = `barber-pro/clients/photo-${input.clientId}-${randomSuffix()}.${ext}`;
+        const buffer = Buffer.from(input.fileBase64, "base64");
+        const { url } = await storagePut(key, buffer, input.mimeType);
+        await db.updateClient(input.clientId, { photoUrl: url });
+        return { url };
+      }),
     changePassword: publicProcedure
       .input(z.object({ clientId: z.number(), currentPassword: z.string(), newPassword: z.string().min(6) }))
       .mutation(async ({ input }) => {

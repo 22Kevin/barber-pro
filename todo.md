@@ -978,3 +978,11 @@
 - [x] Configurar domínio no Resend para envio de e-mails para qualquer destinatário (pendente: verificar domínio próprio em resend.com/domains; domínio de teste @resend.dev já configurado)
 - [x] Aprimorar aba Marketplace no painel admin: upload de foto de capa, campo de descrição, preview do card em tempo real, busca de coordenadas por endereço (Nominatim)
 - [x] Melhorar card de Instagram Stories no app: design mais elaborado com proporção 9:16, instruções de uso e haptic feedback
+
+## Melhorias no Card de Instagram Stories v9.3
+
+- [x] Efeito de confete animado na tela de confirmação de agendamento (react-native-confetti-cannon, 120 partículas douradas)
+- [x] Seletor de temas visuais para o card: Dark Gold, Midnight Blue, Forest Green, Royal Purple, Crimson Red
+- [x] Foto de perfil do cliente no card de compartilhamento (campo photoUrl no perfil do cliente)
+- [x] Upload/câmera para foto de perfil na tela de perfil do cliente (expo-image-picker + upload S3)
+- [x] Exibir foto de perfil no card de compartilhamento quando disponível
