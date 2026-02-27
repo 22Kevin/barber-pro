@@ -1762,7 +1762,7 @@ export async function getMarketplaceTenants(search?: string) {
     descricao: tenants.descricao,
     latitude: tenants.latitude,
     longitude: tenants.longitude,
-  }).from(tenants).where(and(eq(tenants.visivelMarketplace, true), eq(tenants.status, "active"))).orderBy(tenants.name);
+  }).from(tenants).where(and(eq(tenants.visivelMarketplace, true), inArray(tenants.status, ["active", "trial"]))).orderBy(tenants.name);
   if (search) {
     const q = search.toLowerCase();
     return results.filter((t) =>

@@ -142,11 +142,12 @@ export async function sendBookingConfirmationEmail(data: BookingEmailData): Prom
     return;
   }
 
-  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+  const rawFrom = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+  const from = rawFrom && rawFrom.includes('<') ? rawFrom : `"${data.shopName}" <${rawFrom}>`;
 
   try {
     await transporter.sendMail({
-      from: `"${data.shopName}" <${from}>`,
+      from,
       to: data.clientEmail,
       subject: `✅ Agendamento confirmado — ${data.shopName}`,
       html: bookingEmailHtml(data),
@@ -258,11 +259,12 @@ export async function sendBarberNotificationEmail(data: BarberNotificationEmailD
     return;
   }
 
-  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+  const rawFrom2 = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+  const from2 = rawFrom2 && rawFrom2.includes('<') ? rawFrom2 : `"Barber Pro" <${rawFrom2}>`;
 
   try {
     await transporter.sendMail({
-      from: `"Barber Pro" <${from}>`,
+      from: from2,
       to: data.barberEmail,
       subject: `📅 Novo agendamento: ${data.clientName} — ${fmtDate(data.date)} às ${fmtTime(data.startTime)}`,
       html: barberNotificationHtml(data),
@@ -293,7 +295,8 @@ export async function sendReviewRequestEmail(opts: {
   if (!opts.clientEmail) return;
 
   const reviewUrl = `${opts.baseUrl}/pub/${opts.shopSlug}/avaliar/${opts.appointmentId}`;
-  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+  const rawFrom3 = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+  const from3 = rawFrom3 && rawFrom3.includes('<') ? rawFrom3 : `"${opts.shopName}" <${rawFrom3}>`;
 
   const starsHtml = [1, 2, 3, 4, 5]
     .map(
@@ -346,7 +349,7 @@ export async function sendReviewRequestEmail(opts: {
 
   try {
     await transporter.sendMail({
-      from: `"${opts.shopName}" <${from}>`,
+      from: from3,
       to: opts.clientEmail,
       subject: `⭐ Como foi seu atendimento em ${opts.shopName}?`,
       html,
@@ -368,7 +371,8 @@ export async function sendPasswordResetEmail(opts: {
     console.log("[email] SMTP não configurado — e-mail de recuperação não enviado.");
     return;
   }
-  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+  const rawFrom4 = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+  const from4 = rawFrom4 && rawFrom4.includes('<') ? rawFrom4 : `"Barber Pro" <${rawFrom4}>`;
   const resetUrl = `${opts.baseUrl}/admin/reset-password?email=${encodeURIComponent(opts.toEmail)}&token=${opts.token}`;
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -410,7 +414,7 @@ export async function sendPasswordResetEmail(opts: {
 </html>`;
   try {
     await transporter.sendMail({
-      from: `"Barber Pro" <${from}>`,
+      from: from4,
       to: opts.toEmail,
       subject: "🔑 Recuperação de senha — Barber Pro",
       html,

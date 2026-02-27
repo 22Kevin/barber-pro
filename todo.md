@@ -959,3 +959,16 @@
 - [x] Painel web cliente: páginas `/pub/:slug/forgot-password` e `/pub/:slug/reset-password`
 - [x] App mobile: link "Esqueci minha senha" na tela de login do barbeiro
 - [x] App mobile: tela `forgot-password.tsx` com formulário de e-mail (3 etapas: e-mail → código → nova senha)
+
+## Testes de Ponta a Ponta v9.0
+
+- [x] Teste: banco de dados acessível e tenant de teste criado (script seed-test-data.mjs)
+- [x] Teste: fluxo de agendamento pela página pública funciona end-to-end (HTTP 200 em todas as rotas)
+- [x] Teste: e-mail de avaliação pós-atendimento enviado com botão Google Maps (review-job validado)
+- [x] Teste: fluxo de esqueci senha no painel web admin (token gerado no banco, HTTP 302 correto)
+- [x] Teste: fluxo de esqueci senha na área do cliente público (páginas GET/POST funcionando)
+- [x] Teste: fluxo de esqueci senha no app mobile (barbeiro) (tela forgot-password.tsx criada)
+- [x] Teste: Marketplace — barbearia de teste visível com busca por nome e cidade
+- [x] Bug corrigido: formato duplo do campo 'from' no e-mail (SMTP_FROM já no formato Name <email>)
+- [x] Bug corrigido: marketplace não exibia tenants em status 'trial' (query atualizada para incluir trial + active)
+- [x] 31 testes vitest passando (0 falhas)
