@@ -208,10 +208,10 @@ async function renderShopPage(slug: string, res: Response) {
     ? JSON.parse(settings.galleryUrls).filter(Boolean)
     : [];
 
-  // Avaliações recentes (máx 6)
+  // Avaliações recentes (máx 6) — filtradas por tenant para isolamento
   const allReviewsRaw: Array<{ id: number; clientId: number; serviceId: number; rating: number; comment: string | null; createdAt: Date }> = [];
   for (const svc of serviceList.slice(0, 10)) {
-    const r = await db.getReviewsByService(svc.id);
+    const r = await db.getReviewsByService(svc.id, tenant.id);
     allReviewsRaw.push(...r);
   }
   const recentReviews = allReviewsRaw

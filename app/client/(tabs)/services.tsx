@@ -84,11 +84,11 @@ function ServiceCard({ service, onPress }: { service: any; onPress: () => void }
 }
 
 // ─── Detalhe do serviço ───────────────────────────────────────────────────────
-function ServiceDetail({ service, onClose, onBook }: { service: any; onClose: () => void; onBook: () => void }) {
+function ServiceDetail({ service, onClose, onBook, tenantId }: { service: any; onClose: () => void; onBook: () => void; tenantId?: number }) {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useTabBarHeight();
   const mediaQuery = trpc.services.media.list.useQuery({ serviceId: service.id });
-  const reviewsQuery = trpc.reviews.byService.useQuery({ serviceId: service.id });
+  const reviewsQuery = trpc.reviews.byService.useQuery({ serviceId: service.id, tenantId: tenantId ?? null });
   const [expandDesc, setExpandDesc] = useState(false);
   const [selectedImg, setSelectedImg] = useState<string | null>(null);
   const images = mediaQuery.data?.filter((m: any) => m.type === "image") ?? [];
@@ -214,7 +214,9 @@ export default function ClientServices() {
   const [selectedService, setSelectedService] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
-  const servicesQuery = trpc.services.listWithMediaAndRatings.useQuery({ activeOnly: true });
+  const settingsQuery = trpc.settings.get.useQuery();
+  const tenantId = (settingsQuery.data as any)?.tenantId ?? undefined;
+  const servicesQuery = trpc.services.listWithMediaAndRatings.useQuery({ activeOnly: true, tenantId });
   const categoriesQuery = trpc.categories.list.useQuery({ type: "service" });
   const services = servicesQuery.data ?? [];
   const categories = categoriesQuery.data ?? [];
@@ -241,6 +243,7 @@ export default function ClientServices() {
             router.push({ pathname: "/client/book" as any, params: { serviceId: selectedService.id } });
             setSelectedService(null);
           }}
+          tenantId={tenantId}
         />
       </ScreenContainer>
     );

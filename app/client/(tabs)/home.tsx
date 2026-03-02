@@ -259,7 +259,8 @@ export default function ClientHome() {
 
   const settingsQuery = trpc.settings.get.useQuery();
   const openStatusQuery = trpc.settings.openStatus.useQuery(undefined, { refetchInterval: 60_000 });
-  const recentReviewsQuery = trpc.reviews.recent.useQuery({ limit: 5 });
+  const shopTenantId = (settingsQuery.data as any)?.tenantId ?? undefined;
+  const recentReviewsQuery = trpc.reviews.recent.useQuery({ limit: 5, tenantId: shopTenantId });
   const nextAppointmentQuery = trpc.appointments.nextByClient.useQuery(
     { clientId: client?.id ?? 0 },
     { enabled: isAuthenticated && !!client?.id, refetchInterval: 120_000 }

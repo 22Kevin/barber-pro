@@ -655,11 +655,11 @@ export const appRouter = router({
       .input(z.object({ limit: z.number().optional(), tenantId: z.number().optional() }))
       .query(({ input }) => db.getRecentReviews(input.limit ?? 5, input.tenantId)),
     byService: publicProcedure
-      .input(z.object({ serviceId: z.number() }))
-      .query(({ input }) => db.getReviewsByService(input.serviceId)),
+      .input(z.object({ serviceId: z.number(), tenantId: z.number().optional().nullable() }))
+      .query(({ input }) => db.getReviewsByService(input.serviceId, input.tenantId)),
     byClient: publicProcedure
-      .input(z.object({ clientId: z.number() }))
-      .query(({ input }) => db.getReviewsByClient(input.clientId)),
+      .input(z.object({ clientId: z.number(), tenantId: z.number().optional().nullable() }))
+      .query(({ input }) => db.getReviewsByClient(input.clientId, input.tenantId)),
     create: publicProcedure
       .input(z.object({ clientId: z.number(), serviceId: z.number(), appointmentId: z.number().optional(), rating: z.number().min(1).max(5), comment: z.string().optional() }))
       .mutation(({ input }) => db.createReview(input)),

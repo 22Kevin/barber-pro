@@ -843,14 +843,32 @@ export async function updateClientAccount(id: number, data: Partial<typeof clien
 }
 
 // ─── Avaliações ───────────────────────────────────────────────────────────────
-export async function getReviewsByService(serviceId: number) {
+export async function getReviewsByService(serviceId: number, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  // Se tenantId fornecido, garante que o serviço pertence ao tenant correto
+  if (tenantId != null) {
+    return db
+      .select({ id: reviews.id, clientId: reviews.clientId, serviceId: reviews.serviceId, appointmentId: reviews.appointmentId, rating: reviews.rating, comment: reviews.comment, createdAt: reviews.createdAt })
+      .from(reviews)
+      .innerJoin(services, and(eq(reviews.serviceId, services.id), eq(services.tenantId, tenantId)))
+      .where(eq(reviews.serviceId, serviceId))
+      .orderBy(desc(reviews.createdAt));
+  }
   return db.select().from(reviews).where(eq(reviews.serviceId, serviceId)).orderBy(desc(reviews.createdAt));
 }
-export async function getReviewsByClient(clientId: number) {
+export async function getReviewsByClient(clientId: number, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  // Se tenantId fornecido, filtra apenas avaliações de serviços deste tenant
+  if (tenantId != null) {
+    return db
+      .select({ id: reviews.id, clientId: reviews.clientId, serviceId: reviews.serviceId, appointmentId: reviews.appointmentId, rating: reviews.rating, comment: reviews.comment, createdAt: reviews.createdAt })
+      .from(reviews)
+      .innerJoin(services, and(eq(reviews.serviceId, services.id), eq(services.tenantId, tenantId)))
+      .where(eq(reviews.clientId, clientId))
+      .orderBy(desc(reviews.createdAt));
+  }
   return db.select().from(reviews).where(eq(reviews.clientId, clientId)).orderBy(desc(reviews.createdAt));
 }
 export async function getRecentReviews(limit = 5, tenantId?: number | null) {

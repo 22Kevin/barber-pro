@@ -3572,7 +3572,8 @@ export function registerAdminRoutes(app: Express): void {
   // ─── Avaliações ─────────────────────────────────────────────────────────────
   app.get("/admin/avaliacoes", requireAdminAuth, async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
-    const recentReviews = await db.getRecentReviews(100);
+    const tenantId = barber?.tenantId ?? null;
+    const recentReviews = await db.getRecentReviews(100, tenantId);
     const avgRating = recentReviews.length > 0
       ? (recentReviews.reduce((s, r) => s + r.rating, 0) / recentReviews.length).toFixed(1)
       : "0.0";

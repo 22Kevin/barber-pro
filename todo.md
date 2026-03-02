@@ -1046,7 +1046,7 @@
 - [x] [APP] Tela 'Minhas Comissões' já existia, confirmado
 
 ### Avaliações
-- [ ] [APP+SITE] Garantir isolamento por barbearia (avaliações da barbearia X não aparecem para Y) — pendente para próxima versão
+- [x] [APP+SITE] Garantir isolamento por barbearia (avaliações da barbearia X não aparecem para Y) — via JOIN com services por tenantId
 
 ### Chat WhatsApp
 - [x] [SITE] Adicionar campo de seleção de cliente
@@ -1058,3 +1058,12 @@
 
 ### Configurações
 - [x] [SITE] Tela 'Configurações' já existia em /admin/configuracoes, confirmado
+
+## Isolamento de Avaliações por Barbearia v10.1
+
+- [ ] Adicionar campo tenantId na tabela reviews (migração do banco)
+- [ ] Filtrar avaliações por tenantId nas queries do db.ts (getReviewsByService, getReviewsByClient, getAllReviews)
+- [ ] Filtrar avaliações por tenantId nas rotas tRPC (reviews.byService, reviews.byClient)
+- [ ] Garantir que a criação de avaliação salva o tenantId correto
+- [ ] Verificar isolamento no site (painel admin)
+- [ ] Verificar isolamento no app (tela de detalhes do serviço)
