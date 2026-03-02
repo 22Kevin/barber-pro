@@ -986,3 +986,75 @@
 - [x] Foto de perfil do cliente no card de compartilhamento (campo photoUrl no perfil do cliente)
 - [x] Upload/câmera para foto de perfil na tela de perfil do cliente (expo-image-picker + upload S3)
 - [x] Exibir foto de perfil no card de compartilhamento quando disponível
+
+## Observações Painel Administrativo v10 — Paridade App ↔ Site
+
+### Agenda
+- [x] [SITE] Exibir calendário igual ao do aplicativo
+- [x] [SITE] Adicionar botão 'Novo' para criar agendamento
+- [x] [SITE] Adicionar filtro por funcionário
+- [x] [SITE] Adicionar filtro por nome e telefone do cliente
+
+### Clientes
+- [x] [SITE] Adicionar botão 'Novo' para cadastrar cliente
+- [x] [SITE] Adicionar botão 'Aniversariantes' para ver aniversariantes do dia
+- [x] [SITE] Adicionar botão 'Editar' para alterar informações do cliente
+- [x] [SITE] Adicionar botão 'Excluir' para remover cliente
+
+### Recorrências
+- [x] [APP] Adicionar botão 'Nova Recorrência'
+
+### Serviços
+- [x] [APP] Opção de 'Desativar' serviço (já existia via Switch no modal, confirmado)
+- [x] [SITE] Adicionar upload de foto/vídeo no formulário de cadastro e edição
+- [x] [APP] Campo 'Status' (ativo/inativo) no formulário de edição (já existia, confirmado)
+- [x] [SITE] Adicionar filtro por nome de serviço
+- [x] [APP+SITE] Upload de foto/vídeo disponível no formulário de cadastro (implementado no site)
+
+### Produtos
+- [x] [APP] Opção de 'Desativar' produto (já existia via Switch no modal, confirmado)
+- [x] [SITE] Adicionar upload de foto/vídeo no formulário de cadastro e edição
+- [x] [APP] Campo 'Status' (ativo/inativo) no formulário de edição (já existia, confirmado)
+- [x] [SITE] Adicionar filtro por nome de produto
+- [x] [APP+SITE] Upload de foto/vídeo disponível no formulário de cadastro (implementado no site)
+
+### Estoque
+- [x] [SITE] Adicionar botão de histórico de movimentações dos produtos
+- [x] [SITE] Adicionar abas 'Todos', 'Venda', 'Uso Interno'
+- [x] [SITE+APP] Garantir isolamento por barbearia (produtos da barbearia X não aparecem para Y)
+
+### Fidelidade
+- [x] [SITE] Reintegrar aba 'Cupões' dentro da página Fidelidade (aba Cupões integrada)
+
+### Promoções
+- [x] [SITE] Criar tela 'Promoções' no site com todas as funcionalidades do app
+- [x] [APP+SITE] Adicionar opção de selecionar cliente individual para envio de promoção
+
+### Retorno Automático
+- [x] [APP] Seletor horizontal de serviços dentro do modal (equivalente mobile ao dropdown do site)
+
+### Financeiro
+- [x] [SITE] Adicionar botão 'Despesa' para cadastrar nova despesa
+- [x] [SITE] Adicionar botão 'Venda' para cadastrar nova venda manualmente
+- [x] [SITE] Adicionar abas 'Resumo', 'Receitas' e 'Despesas'
+
+### Comissões
+- [x] [APP+SITE] Adicionar filtro de data para selecionar período
+- [x] [APP+SITE] Adicionar campo de seleção de funcionário para ver resumo individual
+
+### Minhas Comissões
+- [x] [APP] Tela 'Minhas Comissões' já existia, confirmado
+
+### Avaliações
+- [ ] [APP+SITE] Garantir isolamento por barbearia (avaliações da barbearia X não aparecem para Y) — pendente para próxima versão
+
+### Chat WhatsApp
+- [x] [SITE] Adicionar campo de seleção de cliente
+- [x] [SITE] Adicionar filtro por nome ou telefone do cliente
+- [x] [SITE] Adicionar registro/histórico das conversas iniciadas
+
+### Meu Perfil
+- [x] [SITE] Tela 'Meu Perfil' já existia em /admin/meu-perfil, confirmado
+
+### Configurações
+- [x] [SITE] Tela 'Configurações' já existia em /admin/configuracoes, confirmado

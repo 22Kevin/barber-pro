@@ -234,6 +234,40 @@ export default function ReturnMessagesScreen() {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            {/* Seletor de serviço */}
+            <Text style={dyn.label}>Serviço</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {services.map((s) => (
+                  <Pressable
+                    key={s.id}
+                    style={({ pressed }) => ({
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      backgroundColor: editing?.serviceId === s.id ? colors.primary : colors.surface,
+                      borderColor: editing?.serviceId === s.id ? colors.primary : colors.border,
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                    onPress={() => {
+                      const existing = getConfig(s.id);
+                      setEditing((e) => e ? {
+                        ...e,
+                        serviceId: s.id,
+                        serviceName: s.name,
+                        delayDays: existing?.delayDays ?? e.delayDays,
+                        messageTemplate: existing?.messageTemplate ?? e.messageTemplate,
+                        isActive: existing?.isActive ?? e.isActive,
+                      } : e);
+                    }}
+                  >
+                    <Text style={{ color: editing?.serviceId === s.id ? "#fff" : colors.foreground, fontWeight: "600", fontSize: 13 }}>{s.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+
             {/* Dias de delay */}
             <Text style={dyn.label}>Enviar após quantos dias?</Text>
             <View style={styles.daysRow}>

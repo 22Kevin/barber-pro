@@ -41,6 +41,7 @@ export default function CommissionsScreen() {
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
   const [selectedYear] = useState(now.getFullYear());
+  const [selectedBarberId, setSelectedBarberId] = useState<number | null>(null);
 
   const startDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
   const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
@@ -57,8 +58,9 @@ export default function CommissionsScreen() {
     onError: (err) => Alert.alert("Erro", err.message),
   });
 
-  const summary = summaryQuery.data ?? [];
+  const allSummary = summaryQuery.data ?? [];
   const configs = configsQuery.data ?? [];
+  const summary = selectedBarberId ? allSummary.filter((b) => b.barberId === selectedBarberId) : allSummary;
 
   const totalGross = summary.reduce((s, b) => s + b.totalGross, 0);
   const totalCommission = summary.reduce((s, b) => s + b.totalCommission, 0);
@@ -166,26 +168,51 @@ export default function CommissionsScreen() {
       {tab === "summary" && (
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           {/* Seletor de mês */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-            {months.map((m) => (
-              <Pressable
-                key={m}
-                style={({ pressed }) => [
-                  styles.monthBtn,
-                  {
-                    backgroundColor: selectedMonth === m ? colors.primary : colors.surface,
-                    borderColor: selectedMonth === m ? colors.primary : colors.border,
-                    opacity: pressed ? 0.7 : 1,
-                  },
-                ]}
-                onPress={() => setSelectedMonth(m)}
-              >
-                <Text style={{ color: selectedMonth === m ? "#fff" : colors.foreground, fontWeight: "700", fontSize: 13 }}>
-                  {MONTH_NAMES[m]}
-                </Text>
-              </Pressable>
-            ))}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+            <View style={{ flexDirection: "row", gap: 6 }}>
+              {months.map((m) => (
+                <Pressable
+                  key={m}
+                  style={({ pressed }) => [
+                    styles.monthBtn,
+                    {
+                      backgroundColor: selectedMonth === m ? colors.primary : colors.surface,
+                      borderColor: selectedMonth === m ? colors.primary : colors.border,
+                      opacity: pressed ? 0.7 : 1,
+                    },
+                  ]}
+                  onPress={() => setSelectedMonth(m)}
+                >
+                  <Text style={{ color: selectedMonth === m ? "#fff" : colors.foreground, fontWeight: "700", fontSize: 13 }}>
+                    {MONTH_NAMES[m]}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </ScrollView>
+
+          {/* Seletor de funcionário */}
+          {allSummary.length > 1 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+              <View style={{ flexDirection: "row", gap: 6 }}>
+                <Pressable
+                  style={({ pressed }) => [styles.monthBtn, { backgroundColor: selectedBarberId === null ? colors.primary : colors.surface, borderColor: selectedBarberId === null ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  onPress={() => setSelectedBarberId(null)}
+                >
+                  <Text style={{ color: selectedBarberId === null ? "#fff" : colors.foreground, fontWeight: "700", fontSize: 13 }}>Todos</Text>
+                </Pressable>
+                {allSummary.map((b) => (
+                  <Pressable
+                    key={b.barberId}
+                    style={({ pressed }) => [styles.monthBtn, { backgroundColor: selectedBarberId === b.barberId ? colors.primary : colors.surface, borderColor: selectedBarberId === b.barberId ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                    onPress={() => setSelectedBarberId(b.barberId)}
+                  >
+                    <Text style={{ color: selectedBarberId === b.barberId ? "#fff" : colors.foreground, fontWeight: "700", fontSize: 13 }}>{b.barberName}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+          )}
 
           {/* Cards de totais */}
           <View style={styles.totalsRow}>

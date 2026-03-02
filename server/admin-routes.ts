@@ -131,6 +131,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/cupons", icon: "🏷️", label: "Cupons", id: "cupons" },
         { href: "/admin/avaliacoes", icon: "💬", label: "Avaliações", id: "avaliacoes" },
         { href: "/admin/retorno-automatico", icon: "📨", label: "Retorno Automático", id: "retorno-automatico" },
+        { href: "/admin/promocoes", icon: "📣", label: "Promoções", id: "promocoes" },
         { href: "/admin/conversao-promocoes", icon: "📈", label: "Conversão de Promoções", id: "conversao-promocoes" },
         { href: "/admin/chat", icon: "💬", label: "Chat WhatsApp", id: "chat" },
       ],
@@ -472,21 +473,37 @@ async function renderAgenda(req: Request, res: Response) {
   const barber = await db.getBarberById(session.barberId);
   const tenantId = barber?.tenantId ?? null;
   const dateStr = (req.query.date as string) || today();
-  const appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
+  const filterBarberId = req.query.barberId ? parseInt(req.query.barberId as string) : null;
+  const filterSearch = ((req.query.q as string) || "").toLowerCase().trim();
+  const allAppointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
   const barbers = await db.getAllBarbers(tenantId);
 
+  // Carregar todos os clientes e serviços do dia
   const barberMap: Record<number, string> = Object.fromEntries(barbers.map((b) => [b.id, b.name]));
-  const clientIds = [...new Set(appointments.map((a: any) => a.clientId))];
-  const clientMap: Record<number, string> = {};
+  const clientIds = [...new Set(allAppointments.map((a: any) => a.clientId))];
+  const clientMap: Record<number, any> = {};
   for (const cid of clientIds) {
     const c = await db.getClientById(cid);
-    if (c) clientMap[cid] = c.name;
+    if (c) clientMap[cid] = c;
   }
-  const serviceIds = [...new Set(appointments.map((a: any) => a.serviceId))];
+  const serviceIds = [...new Set(allAppointments.map((a: any) => a.serviceId))];
   const serviceMap: Record<number, string> = {};
   for (const sid of serviceIds) {
     const s = await db.getServiceById(sid);
     if (s) serviceMap[sid] = s.name;
+  }
+
+  // Aplicar filtros
+  let appointments = allAppointments;
+  if (filterBarberId) appointments = appointments.filter((a: any) => a.barberId === filterBarberId);
+  if (filterSearch) {
+    appointments = appointments.filter((a: any) => {
+      const client = clientMap[a.clientId];
+      const name = (client?.name ?? "").toLowerCase();
+      const phone = (client?.phone ?? "").replace(/\D/g, "");
+      const searchDigits = filterSearch.replace(/\D/g, "");
+      return name.includes(filterSearch) || (searchDigits && phone.includes(searchDigits));
+    });
   }
 
   const statusBadge = (status: string) => {
@@ -501,26 +518,79 @@ async function renderAgenda(req: Request, res: Response) {
   const nextDate = new Date(dateStr + "T12:00:00");
   nextDate.setDate(nextDate.getDate() + 1);
 
-  const body = `
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">
-      <a href="/admin/agenda?date=${prevDate.toISOString().split("T")[0]}" class="btn btn-ghost">← Anterior</a>
-      <input type="date" value="${dateStr}" onchange="location.href='/admin/agenda?date='+this.value"
-        style="padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
-      <a href="/admin/agenda?date=${nextDate.toISOString().split("T")[0]}" class="btn btn-ghost">Próximo →</a>
-      <span style="color:var(--muted);font-size:13px">${appointments.length} agendamento(s)</span>
-    </div>
+  // Calendário mini: semana atual
+  const selDate = new Date(dateStr + "T12:00:00");
+  const dayOfWeek = selDate.getDay(); // 0=Dom
+  const weekStart = new Date(selDate);
+  weekStart.setDate(selDate.getDate() - dayOfWeek);
+  const weekDays: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    weekDays.push(d.toISOString().split("T")[0]);
+  }
+  const dayLabels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const todayStr = today();
 
+  const calendarHtml = `
+    <div style="display:flex;gap:4px;margin-bottom:20px;background:var(--surface);border-radius:14px;padding:10px;border:1px solid var(--border);overflow-x:auto">
+      ${weekDays.map((d, i) => {
+        const isSelected = d === dateStr;
+        const isToday = d === todayStr;
+        const dayNum = new Date(d + "T12:00:00").getDate();
+        return `<a href="/admin/agenda?date=${d}${filterBarberId ? "&barberId=" + filterBarberId : ""}${filterSearch ? "&q=" + encodeURIComponent(filterSearch) : ""}" style="flex:1;min-width:44px;text-align:center;padding:8px 4px;border-radius:10px;text-decoration:none;background:${isSelected ? "var(--primary)" : "transparent"};border:${isToday && !isSelected ? "1px solid var(--primary)" : "1px solid transparent"};transition:background 0.15s">
+          <div style="font-size:11px;color:${isSelected ? "#fff" : "var(--muted)"};font-weight:500">${dayLabels[i]}</div>
+          <div style="font-size:16px;font-weight:700;color:${isSelected ? "#fff" : "var(--foreground)"};margin-top:2px">${dayNum}</div>
+        </a>`;
+      }).join("")}
+    </div>`;
+
+  // Filtros
+  const filtersHtml = `
+    <form method="GET" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;align-items:center">
+      <input type="hidden" name="date" value="${dateStr}" />
+      <select name="barberId" onchange="this.form.submit()" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;min-width:160px">
+        <option value="">Todos os profissionais</option>
+        ${barbers.map((b: any) => `<option value="${b.id}"${filterBarberId === b.id ? " selected" : ""}>${esc(b.name)}</option>`).join("")}
+      </select>
+      <div style="display:flex;flex:1;min-width:200px;gap:8px">
+        <input type="text" name="q" value="${esc(filterSearch)}" placeholder="Buscar por nome ou telefone..."
+          style="flex:1;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px" />
+        <button type="submit" class="btn btn-primary" style="padding:8px 16px;font-size:13px">Buscar</button>
+        ${filterSearch || filterBarberId ? `<a href="/admin/agenda?date=${dateStr}" class="btn btn-ghost" style="padding:8px 12px;font-size:13px">✕</a>` : ""}
+      </div>
+      <a href="/admin/agenda/novo?date=${dateStr}" class="btn btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap">+ Novo Agendamento</a>
+    </form>`;
+
+  // Navegação de dias
+  const navHtml = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <a href="/admin/agenda?date=${prevDate.toISOString().split("T")[0]}${filterBarberId ? "&barberId=" + filterBarberId : ""}" class="btn btn-ghost" style="padding:8px 14px">← Anterior</a>
+      <input type="date" value="${dateStr}" onchange="location.href='/admin/agenda?date='+this.value+'${filterBarberId ? "&barberId=" + filterBarberId : ""}'"
+        style="padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+      <a href="/admin/agenda?date=${nextDate.toISOString().split("T")[0]}${filterBarberId ? "&barberId=" + filterBarberId : ""}" class="btn btn-ghost" style="padding:8px 14px">Próximo →</a>
+      <a href="/admin/agenda?date=${todayStr}" class="btn btn-ghost" style="padding:8px 14px;font-size:13px">Hoje</a>
+      <span style="color:var(--muted);font-size:13px;margin-left:auto">${appointments.length} agendamento(s)${filterSearch || filterBarberId ? " (filtrado)" : ""}</span>
+    </div>`;
+
+  const body = `
+    ${calendarHtml}
+    ${navHtml}
+    ${filtersHtml}
     <div class="card">
       <div class="card-body">
         ${appointments.length === 0
-          ? `<div class="empty">Nenhum agendamento para ${fmtDate(dateStr)}.</div>`
+          ? `<div class="empty">Nenhum agendamento para ${fmtDate(dateStr)}${filterSearch || filterBarberId ? " com os filtros aplicados" : ""}.</div>`
           : `<table>
               <thead><tr><th>Horário</th><th>Cliente</th><th>Serviço</th><th>Barbeiro</th><th>Status</th><th>Ações</th></tr></thead>
               <tbody>
                 ${appointments.map((a: any) => `
                   <tr id="row-${a.id}">
                     <td><strong>${a.startTime?.substring(0, 5) ?? "—"}</strong> – ${a.endTime?.substring(0, 5) ?? "—"}</td>
-                    <td>${esc(clientMap[a.clientId] ?? "—")}</td>
+                    <td>
+                      <div style="font-weight:600">${esc(clientMap[a.clientId]?.name ?? "—")}</div>
+                      ${clientMap[a.clientId]?.phone ? `<div style="font-size:11px;color:var(--muted)">${esc(clientMap[a.clientId].phone)}</div>` : ""}
+                    </td>
                     <td>${esc(serviceMap[a.serviceId] ?? "—")}</td>
                     <td>${esc(barberMap[a.barberId] ?? "—")}</td>
                     <td id="status-${a.id}">${statusBadge(a.status)}</td>
@@ -567,46 +637,189 @@ async function renderClientes(req: Request, res: Response) {
   const barber = await db.getBarberById(session.barberId);
   const tenantId = barber?.tenantId ?? null;
   const search = ((req.query.q as string) || "").toLowerCase();
+  const filterBirthday = req.query.aniversariantes === "1";
+  const filterStatus = (req.query.status as string) || "all";
+  const saved = req.query.saved === "1";
+  const deleted = req.query.deleted === "1";
   const allClients = await db.getAllClients(tenantId);
-  const filtered = search
-    ? allClients.filter((c: any) => c.name.toLowerCase().includes(search) || (c.phone ?? "").includes(search))
-    : allClients;
+
+  // Filtrar aniversariantes do mês
+  const currentMonth = new Date().getMonth() + 1;
+  const todayDay = new Date().getDate();
+
+  let filtered = allClients;
+  if (filterBirthday) {
+    filtered = filtered.filter((c: any) => {
+      if (!c.birthDate) return false;
+      const parts = c.birthDate.split("-");
+      return parseInt(parts[1], 10) === currentMonth;
+    }).sort((a: any, b: any) => {
+      const dayA = parseInt(a.birthDate.split("-")[2], 10);
+      const dayB = parseInt(b.birthDate.split("-")[2], 10);
+      return dayA - dayB;
+    });
+  }
+  if (filterStatus === "active") filtered = filtered.filter((c: any) => c.isActive !== false);
+  if (filterStatus === "inactive") filtered = filtered.filter((c: any) => c.isActive === false);
+  if (search) filtered = filtered.filter((c: any) => c.name.toLowerCase().includes(search) || (c.phone ?? "").includes(search));
+
+  // Contar aniversariantes do mês e do dia
+  const birthdayMonth = allClients.filter((c: any) => {
+    if (!c.birthDate) return false;
+    return parseInt(c.birthDate.split("-")[1], 10) === currentMonth;
+  });
+  const birthdayToday = birthdayMonth.filter((c: any) => parseInt(c.birthDate.split("-")[2], 10) === todayDay);
 
   const body = `
-    <div style="margin-bottom:20px">
-      <form method="GET" style="display:flex;gap:12px">
+    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Cliente salvo com sucesso!</div>` : ""}
+    ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Cliente excluído com sucesso!</div>` : ""}
+
+    ${birthdayToday.length > 0 ? `
+    <div style="background:linear-gradient(135deg,#C9A84C22,#C9A84C11);border:1px solid #C9A84C44;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
+      <span style="font-size:24px">🎂</span>
+      <div>
+        <div style="font-weight:700;color:#C9A84C;font-size:14px">Aniversariantes de hoje!</div>
+        <div style="font-size:13px;color:var(--foreground);margin-top:2px">${birthdayToday.map((c: any) => esc(c.name)).join(", ")}</div>
+      </div>
+    </div>` : ""}
+
+    <!-- Barra de ações -->
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;align-items:center">
+      <form method="GET" style="display:flex;flex:1;min-width:200px;gap:8px">
         <input type="text" name="q" value="${esc(search)}" placeholder="Buscar por nome ou telefone..."
-          style="flex:1;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
-        <button type="submit" class="btn btn-primary">Buscar</button>
-        ${search ? `<a href="/admin/clientes" class="btn btn-ghost">Limpar</a>` : ""}
+          style="flex:1;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px" />
+        <button type="submit" class="btn btn-primary" style="padding:8px 16px;font-size:13px">Buscar</button>
+        ${search ? `<a href="/admin/clientes" class="btn btn-ghost" style="padding:8px 12px;font-size:13px">✕</a>` : ""}
       </form>
+      <select onchange="location.href='/admin/clientes?status='+this.value+'${search ? '&q=' + encodeURIComponent(search) : ''}'"
+        style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px">
+        <option value="all" ${filterStatus === 'all' ? 'selected' : ''}>Todos os status</option>
+        <option value="active" ${filterStatus === 'active' ? 'selected' : ''}>Ativos</option>
+        <option value="inactive" ${filterStatus === 'inactive' ? 'selected' : ''}>Inativos</option>
+      </select>
+      <a href="/admin/clientes?aniversariantes=1" class="btn ${filterBirthday ? 'btn-primary' : 'btn-ghost'}" style="padding:8px 14px;font-size:13px">
+        🎂 Aniversariantes (${birthdayMonth.length})
+      </a>
+      <a href="/admin/export/clientes.csv" class="btn btn-ghost" style="padding:8px 12px;font-size:13px">↓ CSV</a>
+      <button onclick="document.getElementById('newClientModal').style.display='flex'" class="btn btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap">+ Novo Cliente</button>
     </div>
 
     <div class="card">
       <div class="card-header">
-        <div class="card-title">👥 Clientes (${filtered.length})</div>
-        <a href="/admin/export/clientes.csv" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a>
+        <div class="card-title">👥 ${filterBirthday ? `Aniversariantes de ${new Date().toLocaleString('pt-BR', {month:'long'})}` : 'Clientes'} (${filtered.length})</div>
       </div>
       <div class="card-body">
         ${filtered.length === 0
-          ? `<div class="empty">Nenhum cliente encontrado.</div>`
+          ? `<div class="empty">${filterBirthday ? 'Nenhum aniversariante este mês.' : 'Nenhum cliente encontrado.'}</div>`
           : `<table>
-              <thead><tr><th>Nome</th><th>Telefone</th><th>Email</th><th>Pontos</th><th>Cadastro</th></tr></thead>
+              <thead><tr><th>Nome</th><th>Telefone</th><th>Email</th><th>${filterBirthday ? 'Aniversário' : 'Pontos'}</th><th>Status</th><th>Ações</th></tr></thead>
               <tbody>
-                ${filtered.slice(0, 100).map((c: any) => `
-                  <tr>
-                    <td><a href="/admin/clientes/${c.id}" style="color:var(--gold);text-decoration:none;font-weight:700">${esc(c.name)}</a></td>
-                    <td>${esc(c.phone ?? "—")}</td>
-                    <td style="color:var(--muted)">${esc(c.email ?? "—")}</td>
-                    <td><span class="badge badge-gold">${c.loyaltyPoints ?? 0} pts</span></td>
-                    <td style="color:var(--muted);font-size:12px">${c.createdAt ? new Date(c.createdAt).toLocaleDateString("pt-BR") : "—"}</td>
-                  </tr>
-                `).join("")}
+                ${filtered.slice(0, 200).map((c: any) => {
+                  const isToday = c.birthDate && parseInt(c.birthDate.split('-')[2], 10) === todayDay && parseInt(c.birthDate.split('-')[1], 10) === currentMonth;
+                  const bdFormatted = c.birthDate ? new Date(c.birthDate + 'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) : '—';
+                  return `
+                  <tr style="${isToday ? 'background:rgba(201,168,76,0.08)' : ''}">
+                    <td>
+                      <a href="/admin/clientes/${c.id}" style="color:var(--gold);text-decoration:none;font-weight:700">${esc(c.name)}</a>
+                      ${isToday ? '<span style="font-size:14px;margin-left:6px">🎂</span>' : ''}
+                    </td>
+                    <td>${esc(c.phone ?? '—')}</td>
+                    <td style="color:var(--muted);font-size:12px">${esc(c.email ?? '—')}</td>
+                    <td>${filterBirthday ? `<strong style="color:#C9A84C">${bdFormatted}</strong>` : `<span class="badge badge-gold">${c.loyaltyPoints ?? c.totalPoints ?? 0} pts</span>`}</td>
+                    <td>${c.isActive !== false ? '<span class="badge badge-success">Ativo</span>' : '<span class="badge badge-muted">Inativo</span>'}</td>
+                    <td style="white-space:nowrap">
+                      <a href="/admin/clientes/${c.id}" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">👁 Ver</a>
+                      <button onclick="openEditClient(${c.id},'${esc(c.name).replace(/'/g,"\\'")}',' ${esc(c.phone ?? '')}','${esc(c.email ?? '')}','${c.birthDate ?? ''}','${esc(c.notes ?? '')}')" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">✏️ Editar</button>
+                      <form method="POST" action="/admin/clientes/${c.id}/excluir" style="display:inline" onsubmit="return confirm('Excluir ${esc(c.name).replace(/'/g,"\\'")}'? Esta ação não pode ser desfeita.')">
+                        <button type="submit" class="btn" style="font-size:11px;padding:4px 10px;background:#EF444422;color:#F87171;border:none">🗑 Excluir</button>
+                      </form>
+                    </td>
+                  </tr>`;
+                }).join("")}
               </tbody>
             </table>`
         }
       </div>
     </div>
+
+    <!-- Modal Novo Cliente -->
+    <div id="newClientModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:16px;padding:28px;width:480px;max-width:90vw;max-height:90vh;overflow-y:auto">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">➕ Novo Cliente</h2>
+        <form method="POST" action="/admin/clientes/novo">
+          <div class="form-group">
+            <label class="form-label">Nome *</label>
+            <input type="text" name="name" class="form-input" required placeholder="Nome completo" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Telefone *</label>
+            <input type="text" name="phone" class="form-input" required placeholder="(11) 99999-9999" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">E-mail</label>
+            <input type="email" name="email" class="form-input" placeholder="email@exemplo.com" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Data de Nascimento</label>
+            <input type="date" name="birthDate" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Observações</label>
+            <textarea name="notes" class="form-input" rows="2" placeholder="Preferências, alergias..."></textarea>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:20px">
+            <button type="button" onclick="document.getElementById('newClientModal').style.display='none'" class="btn" style="flex:1">Cancelar</button>
+            <button type="submit" class="btn btn-primary" style="flex:1">Criar Cliente</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal Editar Cliente -->
+    <div id="editClientModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:16px;padding:28px;width:480px;max-width:90vw;max-height:90vh;overflow-y:auto">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">✏️ Editar Cliente</h2>
+        <form method="POST" id="editClientForm" action="">
+          <input type="hidden" name="_method" value="PUT" />
+          <div class="form-group">
+            <label class="form-label">Nome *</label>
+            <input type="text" name="name" id="editName" class="form-input" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Telefone *</label>
+            <input type="text" name="phone" id="editPhone" class="form-input" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">E-mail</label>
+            <input type="email" name="email" id="editEmail" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Data de Nascimento</label>
+            <input type="date" name="birthDate" id="editBirthDate" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Observações</label>
+            <textarea name="notes" id="editNotes" class="form-input" rows="2"></textarea>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:20px">
+            <button type="button" onclick="document.getElementById('editClientModal').style.display='none'" class="btn" style="flex:1">Cancelar</button>
+            <button type="submit" class="btn btn-primary" style="flex:1">Salvar Alterações</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      function openEditClient(id, name, phone, email, birthDate, notes) {
+        document.getElementById('editClientForm').action = '/admin/clientes/' + id + '/editar';
+        document.getElementById('editName').value = name.trim();
+        document.getElementById('editPhone').value = phone.trim();
+        document.getElementById('editEmail').value = email.trim();
+        document.getElementById('editBirthDate').value = birthDate.trim();
+        document.getElementById('editNotes').value = notes.trim();
+        document.getElementById('editClientModal').style.display = 'flex';
+      }
+    </script>
   `;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
@@ -656,6 +869,40 @@ async function renderServicos(req: Request, res: Response) {
             <label class="form-label">Descrição</label>
             <textarea class="form-input" name="description" rows="3" style="resize:vertical">${esc(editService?.description ?? "")}</textarea>
           </div>
+          <!-- Upload de mídia -->
+          <div class="form-group" style="margin-top:8px">
+            <label class="form-label">🖼️ Foto / Vídeo <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+            <input type="file" id="svc-media-file" accept="image/*,video/*" style="display:none" onchange="svcPreviewMedia(this)" />
+            <div style="display:flex;align-items:center;gap:12px">
+              <button type="button" onclick="document.getElementById('svc-media-file').click()" class="btn" style="padding:10px 18px;background:var(--surface2);color:var(--text)">📎 Selecionar arquivo</button>
+              <span id="svc-media-name" style="color:var(--muted);font-size:13px">Nenhum arquivo selecionado</span>
+            </div>
+            <div id="svc-media-preview" style="margin-top:10px;display:none">
+              <img id="svc-media-img" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover" />
+              <video id="svc-media-vid" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);display:none" controls></video>
+            </div>
+            <input type="hidden" name="mediaBase64" id="svc-media-b64" />
+            <input type="hidden" name="mediaMime" id="svc-media-mime" />
+            <script>
+              function svcPreviewMedia(input) {
+                const file = input.files[0]; if (!file) return;
+                document.getElementById('svc-media-name').textContent = file.name;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                  const data = e.target.result;
+                  document.getElementById('svc-media-b64').value = data.split(',')[1];
+                  document.getElementById('svc-media-mime').value = file.type;
+                  const isVideo = file.type.startsWith('video/');
+                  const img = document.getElementById('svc-media-img');
+                  const vid = document.getElementById('svc-media-vid');
+                  document.getElementById('svc-media-preview').style.display = 'block';
+                  if (isVideo) { img.style.display='none'; vid.style.display='block'; vid.src = data; }
+                  else { vid.style.display='none'; img.style.display='block'; img.src = data; }
+                };
+                reader.readAsDataURL(file);
+              }
+            </script>
+          </div>
           <div style="display:flex;gap:12px;margin-top:8px">
             <button type="submit" class="btn btn-primary" style="padding:12px 28px">${editService ? "Salvar Alterações" : "Criar Serviço"}</button>
             ${editService ? `<a href="/admin/servicos" class="btn" style="padding:12px 20px;background:var(--surface2);color:var(--text)">Cancelar</a>` : ""}
@@ -700,8 +947,11 @@ async function renderServicos(req: Request, res: Response) {
     ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Serviço excluído com sucesso!</div>` : ""}
     ${formHtml}
     <div class="card">
-      <div class="card-header"><div class="card-title">✂️ Serviços Cadastrados (${services.length})</div></div>
-      <div class="card-body">${tableHtml}</div>
+      <div class="card-header" style="gap:12px">
+        <div class="card-title">✂️ Serviços Cadastrados (${services.length})</div>
+        <input type="text" id="svc-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('svc-search').value.toLowerCase();document.querySelectorAll('#svc-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;min-width:200px" />
+      </div>
+      <div class="card-body"><div id="svc-table">${tableHtml}</div></div>
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
@@ -761,6 +1011,40 @@ async function renderProdutos(req: Request, res: Response) {
             <label class="form-label">Descrição</label>
             <textarea class="form-input" name="description" rows="3" style="resize:vertical">${esc(editProduct?.description ?? "")}</textarea>
           </div>
+          <!-- Upload de mídia -->
+          <div class="form-group" style="margin-top:8px">
+            <label class="form-label">🖼️ Foto / Vídeo <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+            <input type="file" id="prd-media-file" accept="image/*,video/*" style="display:none" onchange="prdPreviewMedia(this)" />
+            <div style="display:flex;align-items:center;gap:12px">
+              <button type="button" onclick="document.getElementById('prd-media-file').click()" class="btn" style="padding:10px 18px;background:var(--surface2);color:var(--text)">📎 Selecionar arquivo</button>
+              <span id="prd-media-name" style="color:var(--muted);font-size:13px">Nenhum arquivo selecionado</span>
+            </div>
+            <div id="prd-media-preview" style="margin-top:10px;display:none">
+              <img id="prd-media-img" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover" />
+              <video id="prd-media-vid" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);display:none" controls></video>
+            </div>
+            <input type="hidden" name="mediaBase64" id="prd-media-b64" />
+            <input type="hidden" name="mediaMime" id="prd-media-mime" />
+            <script>
+              function prdPreviewMedia(input) {
+                const file = input.files[0]; if (!file) return;
+                document.getElementById('prd-media-name').textContent = file.name;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                  const data = e.target.result;
+                  document.getElementById('prd-media-b64').value = data.split(',')[1];
+                  document.getElementById('prd-media-mime').value = file.type;
+                  const isVideo = file.type.startsWith('video/');
+                  const img = document.getElementById('prd-media-img');
+                  const vid = document.getElementById('prd-media-vid');
+                  document.getElementById('prd-media-preview').style.display = 'block';
+                  if (isVideo) { img.style.display='none'; vid.style.display='block'; vid.src = data; }
+                  else { vid.style.display='none'; img.style.display='block'; img.src = data; }
+                };
+                reader.readAsDataURL(file);
+              }
+            </script>
+          </div>
           <div style="display:flex;gap:12px;margin-top:8px">
             <button type="submit" class="btn btn-primary" style="padding:12px 28px">${editProduct ? "Salvar Alterações" : "Criar Produto"}</button>
             ${editProduct ? `<a href="/admin/produtos" class="btn" style="padding:12px 20px;background:var(--surface2);color:var(--text)">Cancelar</a>` : ""}
@@ -811,8 +1095,11 @@ async function renderProdutos(req: Request, res: Response) {
     ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Produto excluído com sucesso!</div>` : ""}
     ${formHtml}
     <div class="card">
-      <div class="card-header"><div class="card-title">📦 Produtos Cadastrados (${products.length})</div></div>
-      <div class="card-body">${tableHtml}</div>
+      <div class="card-header" style="gap:12px">
+        <div class="card-title">📦 Produtos Cadastrados (${products.length})</div>
+        <input type="text" id="prod-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('prod-search').value.toLowerCase();document.querySelectorAll('#prod-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;min-width:200px" />
+      </div>
+      <div class="card-body"><div id="prod-table">${tableHtml}</div></div>
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
@@ -824,9 +1111,30 @@ async function renderFinanceiro(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
   const tenantId = barber?.tenantId ?? null;
-  const { start, end } = monthRange();
+  const activeTab = (req.query.tab as string) || "resumo";
+  const saved = req.query.saved === "1";
+  const deleted = req.query.deleted === "1";
+
+  // Filtro de período
+  const period = (req.query.period as string) || "month";
+  let start: string, end: string;
+  const now = new Date();
+  if (period === "week") {
+    const d = new Date(now); d.setDate(d.getDate() - 6);
+    start = d.toISOString().slice(0, 10); end = now.toISOString().slice(0, 10);
+  } else if (period === "90") {
+    const d = new Date(now); d.setDate(d.getDate() - 89);
+    start = d.toISOString().slice(0, 10); end = now.toISOString().slice(0, 10);
+  } else if (period === "custom") {
+    start = (req.query.start as string) || monthRange().start;
+    end = (req.query.end as string) || monthRange().end;
+  } else {
+    const r = monthRange(); start = r.start; end = r.end;
+  }
+
   const salesData = await db.getSalesByDateRange(start, end, undefined, tenantId);
   const expenses = await db.getExpensesByDateRange(start, end, tenantId);
+  const allBarbers = await db.getAllBarbers(tenantId);
 
   const totalRevenue = salesData
     .filter((s: any) => s.paymentStatus === "paid")
@@ -834,7 +1142,7 @@ async function renderFinanceiro(req: Request, res: Response) {
   const totalExpenses = expenses.reduce((sum: number, e: any) => sum + parseFloat(e.amount), 0);
   const profit = totalRevenue - totalExpenses;
 
-  // Agrupamento por dia para o gráfico de barras simples
+  // Gráfico de barras por dia
   const revenueByDay: Record<string, number> = {};
   for (const s of salesData.filter((s: any) => s.paymentStatus === "paid")) {
     const day = new Date(s.createdAt).toISOString().split("T")[0];
@@ -842,15 +1150,22 @@ async function renderFinanceiro(req: Request, res: Response) {
   }
   const maxRevDay = Math.max(...Object.values(revenueByDay), 1);
 
-  const body = `
+  const periodOptions = [
+    { v: "month", l: "Este mês" }, { v: "week", l: "Últimos 7 dias" }, { v: "90", l: "Últimos 90 dias" },
+  ].map(o => `<option value="${o.v}" ${period === o.v ? "selected" : ""}>${o.l}</option>`).join("");
+
+  const pmLabels: Record<string, string> = { cash: "Dinheiro", credit_card: "Cartão Crédito", debit_card: "Cartão Débito", pix: "Pix", mercado_pago: "Mercado Pago", other: "Outro" };
+
+  // Aba Resumo
+  const tabResumo = `
     <div class="metrics-grid">
       <div class="metric-card">
-        <div class="metric-label">Receita do Mês</div>
+        <div class="metric-label">Receita</div>
         <div class="metric-value" style="color:var(--success)">${fmtCurrency(totalRevenue)}</div>
         <div class="metric-sub">${salesData.filter((s: any) => s.paymentStatus === "paid").length} vendas pagas</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Despesas do Mês</div>
+        <div class="metric-label">Despesas</div>
         <div class="metric-value" style="color:var(--error)">${fmtCurrency(totalExpenses)}</div>
         <div class="metric-sub">${expenses.length} lançamentos</div>
       </div>
@@ -860,36 +1175,76 @@ async function renderFinanceiro(req: Request, res: Response) {
         <div class="metric-sub">receita − despesas</div>
       </div>
     </div>
-
     ${Object.keys(revenueByDay).length > 0 ? `
     <div class="card" style="margin-bottom:24px">
       <div class="card-header"><div class="card-title">📊 Receita por Dia</div></div>
       <div class="card-body" style="padding:20px">
         <div style="display:flex;align-items:flex-end;gap:4px;height:120px">
           ${Object.entries(revenueByDay).sort(([a], [b]) => a.localeCompare(b)).map(([day, val]) => `
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-              <div style="width:100%;background:var(--gold);border-radius:4px 4px 0 0;height:${Math.round((val / maxRevDay) * 100)}px;min-height:4px" title="${fmtCurrency(val)}"></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" title="${day}: ${fmtCurrency(val)}">
+              <div style="width:100%;background:var(--gold);border-radius:4px 4px 0 0;height:${Math.round((val / maxRevDay) * 100)}px;min-height:4px"></div>
               <div style="font-size:9px;color:var(--muted);writing-mode:vertical-rl;transform:rotate(180deg)">${day.split("-")[2]}</div>
             </div>
           `).join("")}
         </div>
       </div>
     </div>` : ""}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">👤 Por Barbeiro</div></div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>Barbeiro</th><th style="text-align:right">Receita</th><th style="text-align:right">Vendas</th></tr></thead>
+            <tbody>
+              ${allBarbers.map((b: any) => {
+                const bSales = salesData.filter((s: any) => s.barberId === b.id && s.paymentStatus === "paid");
+                const bRev = bSales.reduce((sum: number, s: any) => sum + parseFloat(s.total), 0);
+                return `<tr><td>${esc(b.name)}</td><td style="text-align:right;color:#C9A84C;font-weight:700">${fmtCurrency(bRev)}</td><td style="text-align:right;color:var(--muted)">${bSales.length}</td></tr>`;
+              }).join("") || '<tr><td colspan="3" class="empty">Sem dados</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">💳 Formas de Pagamento</div></div>
+        <div class="card-body">
+          <table>
+            <thead><tr><th>Método</th><th style="text-align:right">Total</th></tr></thead>
+            <tbody>
+              ${(() => {
+                const pm: Record<string, number> = {};
+                salesData.filter((s: any) => s.paymentStatus === "paid").forEach((s: any) => { pm[s.paymentMethod ?? "other"] = (pm[s.paymentMethod ?? "other"] ?? 0) + parseFloat(s.total); });
+                const entries = Object.entries(pm).sort((a, b) => b[1] - a[1]);
+                return entries.length ? entries.map(([k, v]) => `<tr><td>${pmLabels[k] ?? k}</td><td style="text-align:right;font-weight:700">${fmtCurrency(v)}</td></tr>`).join("") : '<tr><td colspan="2" class="empty">Sem dados</td></tr>';
+              })()}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
 
+  // Aba Receitas
+  const tabReceitas = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button onclick="document.getElementById('newSaleModal').style.display='flex'" class="btn btn-primary">+ Nova Venda</button>
+    </div>
     <div class="card">
-      <div class="card-header"><div class="card-title">🧾 Últimas Vendas</div></div>
+      <div class="card-header"><div class="card-title">🧧 Vendas (${salesData.length})</div></div>
       <div class="card-body">
         ${salesData.length === 0
-          ? `<div class="empty">Nenhuma venda registrada este mês.</div>`
+          ? `<div class="empty">Nenhuma venda no período.</div>`
           : `<table>
-              <thead><tr><th>Data</th><th>Total</th><th>Pagamento</th><th>Status</th></tr></thead>
+              <thead><tr><th>Data</th><th>Cliente</th><th>Barbeiro</th><th>Total</th><th>Pagamento</th><th>Status</th></tr></thead>
               <tbody>
-                ${salesData.slice(0, 50).map((s: any) => `
+                ${salesData.slice(0, 100).map((s: any) => `
                   <tr>
-                    <td>${new Date(s.createdAt).toLocaleDateString("pt-BR")}</td>
-                    <td style="color:var(--gold);font-weight:700">${fmtCurrency(s.total)}</td>
-                    <td style="color:var(--muted)">${s.paymentMethod ?? "—"}</td>
-                    <td>${s.paymentStatus === "paid" ? `<span class="badge badge-success">Pago</span>` : `<span class="badge badge-warning">Pendente</span>`}</td>
+                    <td style="font-size:12px">${new Date(s.createdAt).toLocaleDateString("pt-BR")}</td>
+                    <td style="font-size:12px">${esc(s.clientName ?? s.clientId ?? "—")}</td>
+                    <td style="font-size:12px;color:var(--muted)">${esc(allBarbers.find((b: any) => b.id === s.barberId)?.name ?? "—")}</td>
+                    <td style="color:#C9A84C;font-weight:700">${fmtCurrency(s.total)}</td>
+                    <td style="font-size:12px;color:var(--muted)">${pmLabels[s.paymentMethod ?? ""] ?? (s.paymentMethod ?? "—")}</td>
+                    <td>${s.paymentStatus === "paid" ? '<span class="badge badge-success">Pago</span>' : s.paymentStatus === "pending" ? '<span class="badge badge-warning">Pendente</span>' : `<span class="badge badge-muted">${s.paymentStatus}</span>`}</td>
                   </tr>
                 `).join("")}
               </tbody>
@@ -897,6 +1252,164 @@ async function renderFinanceiro(req: Request, res: Response) {
         }
       </div>
     </div>
+
+    <!-- Modal Nova Venda -->
+    <div id="newSaleModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:16px;padding:28px;width:460px;max-width:90vw;max-height:90vh;overflow-y:auto">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">🧧 Nova Venda</h2>
+        <form method="POST" action="/admin/financeiro/venda">
+          <div class="form-group">
+            <label class="form-label">Barbeiro *</label>
+            <select name="barberId" class="form-input" required>
+              <option value="">Selecione...</option>
+              ${allBarbers.map((b: any) => `<option value="${b.id}">${esc(b.name)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Descrição do Serviço *</label>
+            <input type="text" name="description" class="form-input" required placeholder="Ex: Corte + Barba" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label class="form-label">Valor (R$) *</label>
+              <input type="number" name="total" class="form-input" step="0.01" min="0.01" required placeholder="0,00" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Forma de Pagamento *</label>
+              <select name="paymentMethod" class="form-input" required>
+                <option value="cash">Dinheiro</option>
+                <option value="pix">Pix</option>
+                <option value="credit_card">Cartão Crédito</option>
+                <option value="debit_card">Cartão Débito</option>
+                <option value="other">Outro</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select name="paymentStatus" class="form-input">
+              <option value="paid">Pago</option>
+              <option value="pending">Pendente</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:20px">
+            <button type="button" onclick="document.getElementById('newSaleModal').style.display='none'" class="btn" style="flex:1">Cancelar</button>
+            <button type="submit" class="btn btn-primary" style="flex:1">Registrar Venda</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  // Aba Despesas
+  const tabDespesas = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button onclick="document.getElementById('newExpenseModal').style.display='flex'" class="btn btn-primary">+ Nova Despesa</button>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">💸 Despesas (${expenses.length})</div></div>
+      <div class="card-body">
+        ${expenses.length === 0
+          ? `<div class="empty">Nenhuma despesa no período.</div>`
+          : `<table>
+              <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Ações</th></tr></thead>
+              <tbody>
+                ${expenses.slice(0, 100).map((e: any) => `
+                  <tr>
+                    <td style="font-size:12px">${e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+                    <td style="font-weight:600">${esc(e.description)}</td>
+                    <td><span class="badge badge-muted" style="font-size:11px">${esc(e.category)}</span></td>
+                    <td style="color:var(--error);font-weight:700">${fmtCurrency(e.amount)}</td>
+                    <td>
+                      <form method="POST" action="/admin/financeiro/despesa/${e.id}/excluir" style="display:inline" onsubmit="return confirm('Excluir esta despesa?')">
+                        <button type="submit" class="btn" style="font-size:11px;padding:4px 10px;background:#EF444422;color:#F87171;border:none">🗑</button>
+                      </form>
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>`
+        }
+      </div>
+    </div>
+
+    <!-- Modal Nova Despesa -->
+    <div id="newExpenseModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:16px;padding:28px;width:460px;max-width:90vw;max-height:90vh;overflow-y:auto">
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">💸 Nova Despesa</h2>
+        <form method="POST" action="/admin/financeiro/despesa">
+          <div class="form-group">
+            <label class="form-label">Descrição *</label>
+            <input type="text" name="description" class="form-input" required placeholder="Ex: Aluguel, produto, equipamento..." />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label class="form-label">Categoria *</label>
+              <select name="category" class="form-input" required>
+                <option value="Aluguel">Aluguel</option>
+                <option value="Produto">Produto</option>
+                <option value="Equipamento">Equipamento</option>
+                <option value="Salário">Salário</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Utilidades">Utilidades</option>
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Valor (R$) *</label>
+              <input type="number" name="amount" class="form-input" step="0.01" min="0.01" required placeholder="0,00" />
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label class="form-label">Data *</label>
+              <input type="date" name="date" class="form-input" value="${today()}" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Forma de Pagamento</label>
+              <select name="paymentMethod" class="form-input">
+                <option value="cash">Dinheiro</option>
+                <option value="pix">Pix</option>
+                <option value="credit_card">Cartão</option>
+                <option value="other">Outro</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:20px">
+            <button type="button" onclick="document.getElementById('newExpenseModal').style.display='none'" class="btn" style="flex:1">Cancelar</button>
+            <button type="submit" class="btn btn-primary" style="flex:1">Registrar Despesa</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  const tabs = [
+    { id: "resumo", label: "📊 Resumo" },
+    { id: "receitas", label: "🧧 Receitas" },
+    { id: "despesas", label: "💸 Despesas" },
+  ];
+  const tabNav = `
+    <div style="display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:0">
+      ${tabs.map(t => `
+        <a href="/admin/financeiro?tab=${t.id}&period=${period}" style="padding:10px 20px;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px 8px 0 0;border:1px solid ${activeTab === t.id ? 'var(--border)' : 'transparent'};border-bottom:${activeTab === t.id ? '1px solid var(--surface)' : '1px solid var(--border)'};background:${activeTab === t.id ? 'var(--surface)' : 'transparent'};color:${activeTab === t.id ? '#C9A84C' : 'var(--muted)'};margin-bottom:-1px">${t.label}</a>
+      `).join("")}
+    </div>
+  `;
+
+  const body = `
+    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Lançamento salvo com sucesso!</div>` : ""}
+    ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Lançamento excluído!</div>` : ""}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <h2 style="font-size:20px;font-weight:700;margin:0">💰 Financeiro</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select onchange="location.href='/admin/financeiro?tab=${activeTab}&period='+this.value"
+          style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">${periodOptions}</select>
+        <a href="/admin/export/financeiro.csv?period=${period}" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ CSV</a>
+      </div>
+    </div>
+    ${tabNav}
+    ${activeTab === "resumo" ? tabResumo : activeTab === "receitas" ? tabReceitas : tabDespesas}
   `;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
@@ -2428,8 +2941,108 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin", requireAdminAuth, (req, res) => renderDashboard(req, res));
   app.get("/admin/agenda", requireAdminAuth, (req, res) => renderAgenda(req, res));
   app.get("/admin/clientes", requireAdminAuth, (req, res) => renderClientes(req, res));
+
+  // POST /admin/clientes/novo — Criar novo cliente
+  app.post("/admin/clientes/novo", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const { name, phone, email, birthDate, notes } = req.body ?? {};
+      if (!name || !phone) { res.redirect("/admin/clientes?error=Preencha+nome+e+telefone"); return; }
+      await db.createClient({
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email?.trim() || undefined,
+        birthDate: birthDate?.trim() || undefined,
+        notes: notes?.trim() || undefined,
+        tenantId: barber?.tenantId ?? undefined,
+      } as any);
+      res.redirect("/admin/clientes?saved=1");
+    } catch (e: any) {
+      res.redirect(`/admin/clientes?error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // POST /admin/clientes/:id/editar — Editar cliente
+  app.post("/admin/clientes/:id/editar", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { name, phone, email, birthDate, notes } = req.body ?? {};
+      if (!name || !phone) { res.redirect(`/admin/clientes?error=Preencha+nome+e+telefone`); return; }
+      await db.updateClient(id, {
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email?.trim() || undefined,
+        birthDate: birthDate?.trim() || undefined,
+        notes: notes?.trim() || undefined,
+      } as any);
+      res.redirect("/admin/clientes?saved=1");
+    } catch (e: any) {
+      res.redirect(`/admin/clientes?error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // POST /admin/clientes/:id/excluir — Excluir cliente (soft delete)
+  app.post("/admin/clientes/:id/excluir", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      await db.updateClient(id, { isActive: false } as any);
+      res.redirect("/admin/clientes?deleted=1");
+    } catch (e: any) {
+      res.redirect(`/admin/clientes?error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
   app.get("/admin/servicos", requireAdminAuth, (req, res) => renderServicos(req, res));
   app.get("/admin/financeiro", requireAdminAuth, (req, res) => renderFinanceiro(req, res));
+
+  // POST /admin/financeiro/despesa — Criar despesa
+  app.post("/admin/financeiro/despesa", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const { description, category, amount, date, paymentMethod } = req.body ?? {};
+      if (!description || !category || !amount || !date) { res.redirect("/admin/financeiro?tab=despesas&error=Preencha+todos+os+campos"); return; }
+      await db.createExpense({
+        description: description.trim(),
+        category: category.trim(),
+        amount: parseFloat(amount).toFixed(2),
+        date: date.trim(),
+        paymentMethod: paymentMethod || undefined,
+        barberId: session.barberId,
+      } as any);
+      res.redirect("/admin/financeiro?tab=despesas&saved=1");
+    } catch (e: any) {
+      res.redirect(`/admin/financeiro?tab=despesas&error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // POST /admin/financeiro/despesa/:id/excluir — Excluir despesa
+  app.post("/admin/financeiro/despesa/:id/excluir", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      await db.deleteExpense(id);
+      res.redirect("/admin/financeiro?tab=despesas&deleted=1");
+    } catch (e: any) {
+      res.redirect(`/admin/financeiro?tab=despesas&error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // POST /admin/financeiro/venda — Criar venda manual
+  app.post("/admin/financeiro/venda", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const { barberId, description, total, paymentMethod, paymentStatus } = req.body ?? {};
+      if (!barberId || !description || !total || !paymentMethod) { res.redirect("/admin/financeiro?tab=receitas&error=Preencha+todos+os+campos"); return; }
+      const val = parseFloat(total).toFixed(2);
+      await db.createSale(
+        { barberId: parseInt(barberId), subtotal: val, discount: "0", total: val, paymentMethod, paymentStatus: paymentStatus || "paid", notes: description.trim() } as any,
+        [{ itemType: "service", itemId: 0, itemName: description.trim(), quantity: 1, unitPrice: val, total: val }]
+      );
+      res.redirect("/admin/financeiro?tab=receitas&saved=1");
+    } catch (e: any) {
+      res.redirect(`/admin/financeiro?tab=receitas&error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
   app.get("/admin/configuracoes", requireAdminAuth, (req, res) => renderConfiguracoes(req, res));
   app.get("/admin/relatorios", requireAdminAuth, (req, res) => renderRelatorios(req, res));
   app.get("/admin/pagina-cliente", requireAdminAuth, (req, res) => renderPaginaCliente(req, res));
@@ -2533,12 +3146,27 @@ export function registerAdminRoutes(app: Express): void {
 
   // ─── CRUD Serviços ──────────────────────────────────────────────────
   app.post("/admin/servicos", requireAdminAuth, async (req: Request, res: Response) => {
-    const { name, description, price, durationMinutes, isActive } = req.body;
+    const { name, description, price, durationMinutes, isActive, mediaBase64, mediaMime } = req.body;
     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+    let serviceId: number;
     if (editId) {
       await db.updateService(editId, { name, description, price, durationMinutes: parseInt(durationMinutes), isActive: isActive === "true" });
+      serviceId = editId;
     } else {
-      await db.createService({ name, description, price, durationMinutes: parseInt(durationMinutes), isActive: isActive === "true" });
+      const newService = await db.createService({ name, description, price, durationMinutes: parseInt(durationMinutes), isActive: isActive === "true" });
+      serviceId = (newService as any).insertId ?? (newService as any).id ?? 0;
+    }
+    // Processar upload de mídia
+    if (mediaBase64 && mediaMime && serviceId) {
+      try {
+        const { storagePut } = await import("./storage");
+        const buffer = Buffer.from(mediaBase64, "base64");
+        const ext = mediaMime.startsWith("video/") ? "mp4" : "jpg";
+        const key = `services/${serviceId}/media-${Date.now()}.${ext}`;
+        const { url } = await storagePut(key, buffer, mediaMime);
+        const type = mediaMime.startsWith("video/") ? "video" : "image";
+        await db.addMediaFile({ entityType: "service", entityId: serviceId, url, type });
+      } catch (e) { console.error("Erro ao salvar mídia do serviço:", e); }
     }
     res.redirect("/admin/servicos?saved=1");
   });
@@ -2556,12 +3184,27 @@ export function registerAdminRoutes(app: Express): void {
   // ─── CRUD Produtos ────────────────────────────────────────────────────────
   app.get("/admin/produtos", requireAdminAuth, (req, res) => renderProdutos(req, res));
   app.post("/admin/produtos", requireAdminAuth, async (req: Request, res: Response) => {
-    const { name, description, price, productType, stockQuantity, minStockAlert, isActive } = req.body;
+    const { name, description, price, productType, stockQuantity, minStockAlert, isActive, mediaBase64, mediaMime } = req.body;
     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+    let productId: number;
     if (editId) {
       await db.updateProduct(editId, { name, description, price, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true" });
+      productId = editId;
     } else {
-      await db.createProduct({ name, description, price, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true" });
+      const newProduct = await db.createProduct({ name, description, price, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true" });
+      productId = (newProduct as any).insertId ?? (newProduct as any).id ?? 0;
+    }
+    // Processar upload de mídia
+    if (mediaBase64 && mediaMime && productId) {
+      try {
+        const { storagePut } = await import("./storage");
+        const buffer = Buffer.from(mediaBase64, "base64");
+        const ext = mediaMime.startsWith("video/") ? "mp4" : "jpg";
+        const key = `products/${productId}/media-${Date.now()}.${ext}`;
+        const { url } = await storagePut(key, buffer, mediaMime);
+        const type = mediaMime.startsWith("video/") ? "video" : "image";
+        await db.addMediaFile({ entityType: "product", entityId: productId, url, type });
+      } catch (e) { console.error("Erro ao salvar mídia do produto:", e); }
     }
     res.redirect("/admin/produtos?saved=1");
   });
@@ -2581,9 +3224,11 @@ export function registerAdminRoutes(app: Express): void {
   // ─── Fidelidade ────────────────────────────────────────────────────────────
   app.get("/admin/fidelidade", requireAdminAuth, async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
-    const [config, rewards] = await Promise.all([
+    const activeTab = (req.query.tab as string) || "programa";
+    const [config, rewards, allCoupons] = await Promise.all([
       db.getLoyaltyConfig(),
       db.getLoyaltyRewards(),
+      db.getAllCoupons(),
     ]);
     const saved = req.query.saved === "1";
     const rewardTypes: Record<string, string> = {
@@ -2592,101 +3237,192 @@ export function registerAdminRoutes(app: Express): void {
       discount_fixed: "Desconto Fixo R$",
       free_product: "Produto Grátis",
     };
-    const body = `
-      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE80;border-radius:10px;padding:12px 18px;margin-bottom:20px;color:#4ADE80;font-size:13px;">Configurações salvas com sucesso.</div>` : ""}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
 
-        <!-- Configuração do Programa -->
-        <div>
-          <div class="card">
-            <div class="card-header"><span class="card-title">⭐ Programa de Pontos</span></div>
-            <div class="card-body" style="padding:20px;">
-              <form method="POST" action="/admin/fidelidade/config">
-                <div class="form-group">
-                  <label class="form-label">STATUS DO PROGRAMA</label>
-                  <select name="isActive" class="form-input">
-                    <option value="true" ${config?.isActive ? "selected" : ""}>Ativo</option>
-                    <option value="false" ${!config?.isActive ? "selected" : ""}>Inativo</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">PONTOS POR SERVIÇO CONCLUÍDO</label>
-                  <input type="number" name="pointsPerService" class="form-input" value="${config?.pointsPerService ?? 10}" min="0" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">PONTOS POR R$ 1,00 GASTO</label>
-                  <input type="number" name="pointsPerReal" class="form-input" value="${config?.pointsPerReal ?? '1'}" min="0" step="0.1" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label">EXPIRAÇÃO DOS PONTOS (MESES, 0 = nunca)</label>
-                  <input type="number" name="pointsExpireMonths" class="form-input" value="${config?.pointsExpireMonths ?? 12}" min="0" />
-                </div>
-                <button type="submit" class="btn btn-primary" style="width:100%;">Salvar Configurações</button>
-              </form>
+    const tabs = [
+      { id: "programa", label: "⭐ Programa" },
+      { id: "recompensas", label: "🎁 Recompensas" },
+      { id: "cupons", label: "🏷️ Cupões" },
+    ];
+    const tabNav = `<div style="display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border)">
+      ${tabs.map(t => `<a href="/admin/fidelidade?tab=${t.id}" style="padding:10px 18px;font-size:13px;font-weight:600;text-decoration:none;border-radius:8px 8px 0 0;border:1px solid ${activeTab === t.id ? 'var(--border)' : 'transparent'};border-bottom:${activeTab === t.id ? '1px solid var(--surface)' : '1px solid var(--border)'};background:${activeTab === t.id ? 'var(--surface)' : 'transparent'};color:${activeTab === t.id ? '#C9A84C' : 'var(--muted)'};margin-bottom:-1px">${t.label}</a>`).join("")}
+    </div>`;
+
+    const tabPrograma = `
+      <div class="card">
+        <div class="card-header"><span class="card-title">⭐ Programa de Pontos</span></div>
+        <div class="card-body" style="padding:20px">
+          <form method="POST" action="/admin/fidelidade/config">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div class="form-group">
+                <label class="form-label">STATUS DO PROGRAMA</label>
+                <select name="isActive" class="form-input">
+                  <option value="true" ${config?.isActive ? "selected" : ""}>Ativo</option>
+                  <option value="false" ${!config?.isActive ? "selected" : ""}>Inativo</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">PONTOS POR SERVIÇO CONCLUÍDO</label>
+                <input type="number" name="pointsPerService" class="form-input" value="${config?.pointsPerService ?? 10}" min="0" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">PONTOS POR R$ 1,00 GASTO</label>
+                <input type="number" name="pointsPerReal" class="form-input" value="${config?.pointsPerReal ?? '1'}" min="0" step="0.1" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">EXPIRAÇÃO DOS PONTOS (MESES, 0 = nunca)</label>
+                <input type="number" name="pointsExpireMonths" class="form-input" value="${config?.pointsExpireMonths ?? 12}" min="0" />
+              </div>
             </div>
-          </div>
+            <button type="submit" class="btn btn-primary">Salvar Configurações</button>
+          </form>
         </div>
+      </div>`;
 
-        <!-- Recompensas -->
-        <div>
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">🎁 Recompensas</span>
-              <button onclick="document.getElementById('new-reward-form').style.display='block';this.style.display='none';" class="btn btn-primary" style="font-size:12px;padding:6px 14px;">+ Nova</button>
+    const tabRecompensas = `
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🎁 Recompensas</span>
+          <button onclick="document.getElementById('new-reward-form').style.display='block';this.style.display='none'" class="btn btn-primary" style="font-size:12px;padding:6px 14px">+ Nova</button>
+        </div>
+        <div id="new-reward-form" style="display:none;padding:16px;border-bottom:1px solid var(--border)">
+          <form method="POST" action="/admin/fidelidade/recompensa">
+            <div class="form-group">
+              <label class="form-label">NOME DA RECOMPENSA</label>
+              <input type="text" name="name" class="form-input" placeholder="Ex: Corte Grátis" required />
             </div>
-            <div id="new-reward-form" style="display:none;padding:16px;border-bottom:1px solid var(--border);">
-              <form method="POST" action="/admin/fidelidade/recompensa">
-                <div class="form-group">
-                  <label class="form-label">NOME DA RECOMPENSA</label>
-                  <input type="text" name="name" class="form-input" placeholder="Ex: Corte Grátis" required />
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                  <div class="form-group">
-                    <label class="form-label">TIPO</label>
-                    <select name="rewardType" class="form-input">
-                      <option value="free_service">Serviço Grátis</option>
-                      <option value="discount_percent">Desconto %</option>
-                      <option value="discount_fixed">Desconto R$</option>
-                      <option value="free_product">Produto Grátis</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">PONTOS NECESSÁRIOS</label>
-                    <input type="number" name="pointsRequired" class="form-input" placeholder="100" min="1" required />
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">VALOR (para desconto/produto)</label>
-                  <input type="text" name="rewardValue" class="form-input" placeholder="Ex: 20 (para 20% ou R$20)" />
-                </div>
-                <div style="display:flex;gap:8px;">
-                  <button type="submit" class="btn btn-primary" style="flex:1;">Salvar</button>
-                  <button type="button" onclick="document.getElementById('new-reward-form').style.display='none';document.querySelector('.btn.btn-primary').style.display='';" class="btn btn-ghost">Cancelar</button>
-                </div>
-              </form>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group">
+                <label class="form-label">TIPO</label>
+                <select name="rewardType" class="form-input">
+                  <option value="free_service">Serviço Grátis</option>
+                  <option value="discount_percent">Desconto %</option>
+                  <option value="discount_fixed">Desconto R$</option>
+                  <option value="free_product">Produto Grátis</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">PONTOS NECESSÁRIOS</label>
+                <input type="number" name="pointsRequired" class="form-input" placeholder="100" min="1" required />
+              </div>
             </div>
-            <table>
-              <thead><tr><th>Recompensa</th><th>Tipo</th><th>Pontos</th><th></th></tr></thead>
-              <tbody>
-                ${rewards.length === 0 ? `<tr><td colspan="4" class="empty">Nenhuma recompensa cadastrada.</td></tr>` : rewards.map((r) => `
-                  <tr>
-                    <td><strong>${esc(r.name)}</strong>${r.description ? `<br><span style="color:var(--muted);font-size:11px;">${esc(r.description)}</span>` : ""}</td>
-                    <td><span class="badge badge-gold">${rewardTypes[r.rewardType] ?? r.rewardType}</span></td>
-                    <td><strong>${r.pointsRequired}</strong> pts</td>
-                    <td>
-                      <form method="POST" action="/admin/fidelidade/recompensa/toggle" style="display:inline;">
-                        <input type="hidden" name="id" value="${r.id}" />
-                        <input type="hidden" name="isActive" value="${r.isActive ? 'false' : 'true'}" />
-                        <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;">${r.isActive ? "Desativar" : "Ativar"}</button>
-                      </form>
-                    </td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
-          </div>
+            <div class="form-group">
+              <label class="form-label">VALOR (para desconto/produto)</label>
+              <input type="text" name="rewardValue" class="form-input" placeholder="Ex: 20 (para 20% ou R$20)" />
+            </div>
+            <div style="display:flex;gap:8px">
+              <button type="submit" class="btn btn-primary" style="flex:1">Salvar</button>
+              <button type="button" onclick="document.getElementById('new-reward-form').style.display='none'" class="btn btn-ghost">Cancelar</button>
+            </div>
+          </form>
+        </div>
+        <table>
+          <thead><tr><th>Recompensa</th><th>Tipo</th><th>Pontos</th><th></th></tr></thead>
+          <tbody>
+            ${rewards.length === 0 ? `<tr><td colspan="4" class="empty">Nenhuma recompensa cadastrada.</td></tr>` : rewards.map((r) => `
+              <tr>
+                <td><strong>${esc(r.name)}</strong>${r.description ? `<br><span style="color:var(--muted);font-size:11px">${esc(r.description)}</span>` : ""}</td>
+                <td><span class="badge badge-gold">${rewardTypes[r.rewardType] ?? r.rewardType}</span></td>
+                <td><strong>${r.pointsRequired}</strong> pts</td>
+                <td>
+                  <form method="POST" action="/admin/fidelidade/recompensa/toggle" style="display:inline">
+                    <input type="hidden" name="id" value="${r.id}" />
+                    <input type="hidden" name="isActive" value="${r.isActive ? 'false' : 'true'}" />
+                    <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px">${r.isActive ? "Desativar" : "Ativar"}</button>
+                  </form>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>`;
+
+    const tabCupons = `
+      <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+        <button onclick="document.getElementById('new-coupon-form').style.display='block';this.style.display='none'" class="btn btn-primary">🏷️ Novo Cupão</button>
+      </div>
+      <div id="new-coupon-form" style="display:none" class="card" style="margin-bottom:20px">
+        <div class="card-header"><span class="card-title">Novo Cupão</span></div>
+        <div class="card-body" style="padding:20px">
+          <form method="POST" action="/admin/cupons">
+            <input type="hidden" name="_redirect" value="/admin/fidelidade?tab=cupons&saved=1" />
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+              <div class="form-group">
+                <label class="form-label">CÓDIGO *</label>
+                <input type="text" name="code" class="form-input" placeholder="EX: PROMO10" required style="text-transform:uppercase" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">TIPO DE DESCONTO *</label>
+                <select name="discountType" class="form-input">
+                  <option value="percent">Percentual (%)</option>
+                  <option value="fixed">Valor Fixo (R$)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">VALOR DO DESCONTO *</label>
+                <input type="number" name="discountValue" class="form-input" placeholder="10" min="0" step="0.01" required />
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+              <div class="form-group">
+                <label class="form-label">PEDIDO MÍNIMO (R$)</label>
+                <input type="number" name="minOrderValue" class="form-input" placeholder="0" min="0" step="0.01" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">MÁX. USOS (0 = ilimitado)</label>
+                <input type="number" name="maxUses" class="form-input" placeholder="0" min="0" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">DESCRIÇÃO</label>
+                <input type="text" name="description" class="form-input" placeholder="Descrição opcional" />
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div class="form-group">
+                <label class="form-label">VÁLIDO DE</label>
+                <input type="date" name="validFrom" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">VÁLIDO ATÉ</label>
+                <input type="date" name="validUntil" class="form-input" />
+              </div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button type="submit" class="btn btn-primary">Criar Cupão</button>
+              <button type="button" onclick="document.getElementById('new-coupon-form').style.display='none'" class="btn btn-ghost">Cancelar</button>
+            </div>
+          </form>
         </div>
       </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">🏷️ Todos os Cupões</span><span style="color:var(--muted);font-size:12px">${allCoupons.length} cupões</span></div>
+        <table>
+          <thead><tr><th>Código</th><th>Desconto</th><th>Usos</th><th>Validade</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            ${allCoupons.length === 0 ? `<tr><td colspan="6" class="empty">Nenhum cupão cadastrado.</td></tr>` : allCoupons.map((c) => `
+              <tr>
+                <td><strong style="color:var(--gold);font-family:monospace">${esc(c.code)}</strong>${c.description ? `<br><span style="color:var(--muted);font-size:11px">${esc(c.description)}</span>` : ""}</td>
+                <td>${c.discountType === "percent" ? `${c.discountValue}%` : `R$ ${fmt(parseFloat(c.discountValue as any))}`}</td>
+                <td>${c.usedCount ?? 0}${c.maxUses ? ` / ${c.maxUses}` : " / ∞"}</td>
+                <td style="font-size:12px">${c.validFrom ? fmtDate(c.validFrom as any) : "—"} ${c.validUntil ? `até ${fmtDate(c.validUntil as any)}` : ""}</td>
+                <td><span class="badge ${c.isActive ? 'badge-success' : 'badge-muted'}">${c.isActive ? "Ativo" : "Inativo"}</span></td>
+                <td>
+                  <form method="POST" action="/admin/cupons/toggle" style="display:inline">
+                    <input type="hidden" name="id" value="${c.id}" />
+                    <input type="hidden" name="isActive" value="${c.isActive ? 'false' : 'true'}" />
+                    <input type="hidden" name="_redirect" value="/admin/fidelidade?tab=cupons" />
+                    <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px">${c.isActive ? "Desativar" : "Ativar"}</button>
+                  </form>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>`;
+
+    const body = `
+      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Salvo com sucesso!</div>` : ""}
+      ${tabNav}
+      ${activeTab === "programa" ? tabPrograma : activeTab === "recompensas" ? tabRecompensas : tabCupons}
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Fidelidade", "fidelidade", body, barber?.name, _tp));
@@ -2909,63 +3645,105 @@ export function registerAdminRoutes(app: Express): void {
   // ─── Comissões ────────────────────────────────────────────────────────────
   app.get("/admin/comissoes", requireAdminAuth, async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
-    const configs = await db.listCommissionConfigs(); // retorna barbeiros com commissionRate embutido
-    const { start, end } = monthRange();
-    const summary = await db.getCommissionSummary(start, end);
+    const tenantId = barber?.tenantId ?? null;
+    const configs = await db.listCommissionConfigs();
+    const allBarbers = await db.getAllBarbers(tenantId);
     const saved = req.query.saved === "1";
-    const totalCommission = summary.reduce((s, b) => s + b.totalCommission, 0);
-    const totalGross = summary.reduce((s, b) => s + b.totalGross, 0);
+
+    // Filtros de período e funcionário
+    const period = (req.query.period as string) || "month";
+    const filterBarberId = req.query.barberId ? parseInt(req.query.barberId as string) : null;
+    let start: string, end: string;
+    const now = new Date();
+    if (period === "week") {
+      const d = new Date(now); d.setDate(d.getDate() - 6);
+      start = d.toISOString().slice(0, 10); end = now.toISOString().slice(0, 10);
+    } else if (period === "90") {
+      const d = new Date(now); d.setDate(d.getDate() - 89);
+      start = d.toISOString().slice(0, 10); end = now.toISOString().slice(0, 10);
+    } else if (period === "custom") {
+      start = (req.query.start as string) || monthRange().start;
+      end = (req.query.end as string) || monthRange().end;
+    } else {
+      const r = monthRange(); start = r.start; end = r.end;
+    }
+
+    const summaryAll = await db.getCommissionSummary(start, end);
+    const summary = filterBarberId ? summaryAll.filter((s: any) => s.barberId === filterBarberId) : summaryAll;
+    const totalCommission = summary.reduce((s: number, b: any) => s + b.totalCommission, 0);
+    const totalGross = summary.reduce((s: number, b: any) => s + b.totalGross, 0);
+
+    const periodOptions = [
+      { v: "month", l: "Este mês" }, { v: "week", l: "Últimos 7 dias" }, { v: "90", l: "Últimos 90 dias" },
+    ].map(o => `<option value="${o.v}" ${period === o.v ? "selected" : ""}>${o.l}</option>`).join("");
+
+    const barberOptions = [`<option value="">Todos os funcionários</option>`,
+      ...allBarbers.map((b: any) => `<option value="${b.id}" ${filterBarberId === b.id ? "selected" : ""}>${esc(b.name)}</option>`)].join("");
+
     const body = `
-      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE80;border-radius:10px;padding:12px 18px;margin-bottom:20px;color:#4ADE80;font-size:13px;">Comissões atualizadas.</div>` : ""}
-      <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr);">
+      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Comissões atualizadas.</div>` : ""}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <h2 style="font-size:20px;font-weight:700;margin:0">🤝 Comissões</h2>
+        <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select name="period" onchange="this.form.submit()"
+            style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">${periodOptions}</select>
+          <select name="barberId" onchange="this.form.submit()"
+            style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">${barberOptions}</select>
+        </form>
+      </div>
+      <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)">
         <div class="metric-card">
-          <div class="metric-label">FATURAMENTO BRUTO (MES)</div>
+          <div class="metric-label">FATURAMENTO BRUTO</div>
           <div class="metric-value">${fmtCurrency(totalGross)}</div>
+          <div class="metric-sub">${fmtDate(start)} a ${fmtDate(end)}</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">TOTAL DE COMISSÕES</div>
-          <div class="metric-value" style="color:var(--warning);">${fmtCurrency(totalCommission)}</div>
+          <div class="metric-value" style="color:var(--warning)">${fmtCurrency(totalCommission)}</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">LÍQUIDO DA BARBEARIA</div>
-          <div class="metric-value" style="color:var(--success);">${fmtCurrency(totalGross - totalCommission)}</div>
+          <div class="metric-value" style="color:var(--success)">${fmtCurrency(totalGross - totalCommission)}</div>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:300px 1fr;gap:24px;">
+      <div style="display:grid;grid-template-columns:300px 1fr;gap:24px">
         <!-- Configurar taxas -->
         <div class="card">
           <div class="card-header"><span class="card-title">⚙️ Taxas de Comissão</span></div>
-          <div class="card-body" style="padding:16px;">
+          <div class="card-body" style="padding:16px">
             <form method="POST" action="/admin/comissoes/config">
-              ${configs.map((b) => `
-                  <div class="form-group">
-                    <label class="form-label">${esc(b.name).toUpperCase()}</label>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                      <input type="number" name="rate_${b.id}" class="form-input" value="${b.commissionRate}" min="0" max="100" step="1" style="width:80px;" />
-                      <span style="color:var(--muted);font-size:13px;">%</span>
-                    </div>
+              ${configs.map((b: any) => `
+                <div class="form-group">
+                  <label class="form-label">${esc(b.name).toUpperCase()}</label>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <input type="number" name="rate_${b.id}" class="form-input" value="${b.commissionRate}" min="0" max="100" step="1" style="width:80px" />
+                    <span style="color:var(--muted);font-size:13px">%</span>
                   </div>
-                `).join("")}
-              ${configs.length === 0 ? `<p style="color:var(--muted);font-size:13px;">Nenhum barbeiro cadastrado.</p>` : ""}
-              <button type="submit" class="btn btn-primary" style="width:100%;">Salvar Taxas</button>
+                </div>
+              `).join("")}
+              ${configs.length === 0 ? `<p style="color:var(--muted);font-size:13px">Nenhum barbeiro cadastrado.</p>` : ""}
+              <button type="submit" class="btn btn-primary" style="width:100%">Salvar Taxas</button>
             </form>
           </div>
         </div>
 
         <!-- Resumo por barbeiro -->
         <div class="card">
-          <div class="card-header"><span class="card-title">🤝 Resumo do Mês</span><span style="color:var(--muted);font-size:12px;">${fmtDate(start)} a ${fmtDate(end)}</span></div>
+          <div class="card-header">
+            <span class="card-title">🤝 Resumo por Funcionário</span>
+            <span style="color:var(--muted);font-size:12px">${fmtDate(start)} a ${fmtDate(end)}</span>
+          </div>
           <table>
             <thead><tr><th>Barbeiro</th><th>Taxa</th><th>Faturamento</th><th>Comissão</th><th>Líquido</th><th>Atend.</th></tr></thead>
             <tbody>
-              ${summary.length === 0 ? `<tr><td colspan="6" class="empty">Nenhum dado de comissão no mês.</td></tr>` : summary.map((s) => `
+              ${summary.length === 0 ? `<tr><td colspan="6" class="empty">Nenhum dado no período.</td></tr>` : summary.map((s: any) => `
                 <tr>
                   <td><strong>${esc(s.barberName)}</strong></td>
                   <td><span class="badge badge-gold">${s.commissionRate}%</span></td>
                   <td>${fmtCurrency(s.totalGross)}</td>
-                  <td style="color:var(--warning);">${fmtCurrency(s.totalCommission)}</td>
-                  <td style="color:var(--success);">${fmtCurrency(s.totalNet)}</td>
+                  <td style="color:var(--warning)">${fmtCurrency(s.totalCommission)}</td>
+                  <td style="color:var(--success)">${fmtCurrency(s.totalNet)}</td>
                   <td>${s.entriesCount}</td>
                 </tr>
               `).join("")}
@@ -3250,49 +4028,117 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/estoque", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
-    const products = await db.getStockProducts();
+    const tenantId = barber?.tenantId ?? null;
+    const activeTab = (req.query.tab as string) || "todos";
     const saved = req.query.saved === "1";
-    const lowStock = products.filter(p => p.isLowStock);
-    const body = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-        <div>
-          <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Controle de Estoque</h1>
-          <p style="color:var(--muted);font-size:14px;margin-top:4px;">Movimentações e alertas de estoque dos produtos</p>
-        </div>
-        <a href="/admin/export/estoque.csv" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a>
-      </div>
-      ${saved ? `<div class="alert alert-success">Movimentação registrada com sucesso.</div>` : ""}
-      ${lowStock.length > 0 ? `
-        <div class="alert" style="background:rgba(239,68,68,0.1);border:1px solid var(--error);color:var(--error);border-radius:8px;padding:12px 16px;margin-bottom:20px;">
-          ⚠️ <strong>${lowStock.length} produto(s) com estoque baixo:</strong> ${lowStock.map(p => esc(p.name)).join(", ")}
-        </div>
-      ` : ""}
+    const searchProd = ((req.query.q as string) || "").toLowerCase();
+
+    // Buscar todos os produtos (incluindo inativos para histórico)
+    const allProducts = await db.getStockProducts();
+    // Filtrar por tipo e busca
+    let filteredProducts = allProducts;
+    if (activeTab === "venda") filteredProducts = allProducts.filter((p: any) => p.productType === "sale");
+    if (activeTab === "interno") filteredProducts = allProducts.filter((p: any) => p.productType === "internal");
+    if (searchProd) filteredProducts = filteredProducts.filter((p: any) => p.name.toLowerCase().includes(searchProd));
+
+    const lowStock = allProducts.filter((p: any) => p.isLowStock);
+
+    // Buscar histórico recente de movimentações (todos os produtos)
+    const recentMovements: any[] = [];
+    for (const p of allProducts.slice(0, 20)) {
+      const moves = await db.getStockMovements(p.id);
+      moves.slice(0, 5).forEach((m: any) => recentMovements.push({ ...m, productName: p.name }));
+    }
+    recentMovements.sort((a, b) => new Date(b.createdAt ?? b.date).getTime() - new Date(a.createdAt ?? a.date).getTime());
+
+    const typeLabels: Record<string, string> = { in: "Entrada", out: "Saída", adjustment: "Ajuste" };
+    const typeColors: Record<string, string> = { in: "var(--success)", out: "var(--error)", adjustment: "#C9A84C" };
+
+    const tabs = [
+      { id: "todos", label: "📦 Todos" },
+      { id: "venda", label: "💰 Venda" },
+      { id: "interno", label: "🔧 Uso Interno" },
+      { id: "historico", label: "📊 Histórico" },
+    ];
+    const tabNav = `<div style="display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border)">
+      ${tabs.map(t => `<a href="/admin/estoque?tab=${t.id}" style="padding:10px 18px;font-size:13px;font-weight:600;text-decoration:none;border-radius:8px 8px 0 0;border:1px solid ${activeTab === t.id ? 'var(--border)' : 'transparent'};border-bottom:${activeTab === t.id ? '1px solid var(--surface)' : '1px solid var(--border)'};background:${activeTab === t.id ? 'var(--surface)' : 'transparent'};color:${activeTab === t.id ? '#C9A84C' : 'var(--muted)'};margin-bottom:-1px">${t.label}</a>`).join("")}
+    </div>`;
+
+    const prodTable = `
+      <form method="GET" style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="hidden" name="tab" value="${activeTab}" />
+        <input type="text" name="q" value="${esc(searchProd)}" placeholder="Buscar produto..."
+          style="flex:1;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px" />
+        <button type="submit" class="btn btn-primary" style="padding:8px 16px">Buscar</button>
+        ${searchProd ? `<a href="/admin/estoque?tab=${activeTab}" class="btn btn-ghost" style="padding:8px 12px">✕</a>` : ""}
+      </form>
       <div class="card">
         <table>
-          <thead><tr><th>Produto</th><th>Estoque Atual</th><th>Alerta Mínimo</th><th>Status</th><th>Preço</th><th>Registrar Movimentação</th></tr></thead>
+          <thead><tr><th>Produto</th><th>Tipo</th><th>Estoque</th><th>Alerta</th><th>Status</th><th>Preço</th><th>Ações</th></tr></thead>
           <tbody>
-            ${products.length === 0 ? `<tr><td colspan="6" class="empty">Nenhum produto cadastrado.</td></tr>` : products.map(p => `
+            ${filteredProducts.length === 0 ? `<tr><td colspan="7" class="empty">Nenhum produto encontrado.</td></tr>` : filteredProducts.map((p: any) => `
               <tr>
                 <td><strong>${esc(p.name)}</strong></td>
-                <td style="font-size:18px;font-weight:700;color:${p.isLowStock ? "var(--error)" : "var(--success)"};">${p.stockQuantity}</td>
-                <td style="color:var(--muted);">${p.minStockAlert}</td>
-                <td>${p.isLowStock ? `<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error);">Estoque Baixo</span>` : `<span class="badge badge-success">OK</span>`}</td>
+                <td><span class="badge ${p.productType === 'sale' ? 'badge-gold' : 'badge-muted'}">${p.productType === 'sale' ? 'Venda' : 'Uso Interno'}</span></td>
+                <td style="font-size:18px;font-weight:700;color:${p.isLowStock ? 'var(--error)' : 'var(--success)'}">${p.stockQuantity}</td>
+                <td style="color:var(--muted)">${p.minStockAlert}</td>
+                <td>${p.isLowStock ? '<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error)">Baixo</span>' : '<span class="badge badge-success">OK</span>'}</td>
                 <td>${fmtCurrency(p.price)}</td>
-                <td>
-                  <button onclick="openStockModal(${p.id}, '${esc(p.name)}', ${p.stockQuantity})" class="btn btn-sm btn-primary">+ Movimentação</button>
+                <td style="white-space:nowrap">
+                  <button onclick="openStockModal(${p.id}, '${esc(p.name).replace(/'/g, "\\'")}'  , ${p.stockQuantity})" class="btn btn-primary" style="font-size:12px;padding:4px 12px">+ Mov.</button>
+                  <a href="/admin/estoque/${p.id}/historico" class="btn btn-ghost" style="font-size:12px;padding:4px 10px">📊</a>
                 </td>
               </tr>
             `).join("")}
           </tbody>
         </table>
+      </div>`;
+
+    const histTable = `
+      <div class="card">
+        <div class="card-header"><div class="card-title">📊 Últimas Movimentações</div></div>
+        <div class="card-body">
+          ${recentMovements.length === 0 ? '<div class="empty">Nenhuma movimentação registrada.</div>' : `
+          <table>
+            <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtd</th><th>Motivo</th></tr></thead>
+            <tbody>
+              ${recentMovements.slice(0, 50).map((m: any) => `
+                <tr>
+                  <td style="font-size:12px">${m.date ? new Date(m.date + 'T12:00:00').toLocaleDateString('pt-BR') : (m.createdAt ? new Date(m.createdAt).toLocaleDateString('pt-BR') : '—')}</td>
+                  <td style="font-weight:600">${esc(m.productName ?? '—')}</td>
+                  <td><span class="badge" style="background:${typeColors[m.type] ?? 'var(--muted)'}22;color:${typeColors[m.type] ?? 'var(--muted)'}">${typeLabels[m.type] ?? m.type}</span></td>
+                  <td style="font-weight:700;color:${m.type === 'in' ? 'var(--success)' : 'var(--error)'}">${m.type === 'in' ? '+' : '-'}${Math.abs(m.quantity)}</td>
+                  <td style="color:var(--muted);font-size:12px">${esc(m.reason ?? '—')}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>`}
+        </div>
+      </div>`;
+
+    const body = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <div>
+          <h1 style="font-size:24px;font-weight:700;color:var(--foreground)">Controle de Estoque</h1>
+          <p style="color:var(--muted);font-size:14px;margin-top:4px">Movimentações e alertas de estoque dos produtos</p>
+        </div>
+        <a href="/admin/export/estoque.csv" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a>
       </div>
+      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Movimentação registrada!</div>` : ""}
+      ${lowStock.length > 0 ? `
+        <div style="background:rgba(239,68,68,0.1);border:1px solid var(--error);color:var(--error);border-radius:8px;padding:12px 16px;margin-bottom:20px">
+          ⚠️ <strong>${lowStock.length} produto(s) com estoque baixo:</strong> ${lowStock.map((p: any) => esc(p.name)).join(", ")}
+        </div>` : ""}
+      ${tabNav}
+      ${activeTab === "historico" ? histTable : prodTable}
       <!-- Modal Movimentação -->
-      <div id="stockModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
-        <div style="background:var(--surface);border-radius:12px;padding:28px;width:400px;max-width:90vw;">
-          <h2 style="font-size:18px;font-weight:700;margin-bottom:4px;">Registrar Movimentação</h2>
-          <p id="stockModalProd" style="color:var(--muted);font-size:13px;margin-bottom:20px;"></p>
+      <div id="stockModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+        <div style="background:var(--surface);border-radius:12px;padding:28px;width:400px;max-width:90vw">
+          <h2 style="font-size:18px;font-weight:700;margin-bottom:4px">Registrar Movimentação</h2>
+          <p id="stockModalProd" style="color:var(--muted);font-size:13px;margin-bottom:20px"></p>
           <form method="POST" action="/admin/estoque/movimentacao">
             <input type="hidden" name="productId" id="stockProductId" />
+            <input type="hidden" name="tab" value="${activeTab}" />
             <div class="form-group">
               <label class="form-label">Tipo</label>
               <select name="type" class="form-input" required>
@@ -3313,9 +4159,9 @@ export function registerAdminRoutes(app: Express): void {
               <label class="form-label">Data</label>
               <input type="date" name="date" class="form-input" value="${today()}" required />
             </div>
-            <div style="display:flex;gap:12px;margin-top:20px;">
-              <button type="button" onclick="document.getElementById('stockModal').style.display='none'" class="btn" style="flex:1;">Cancelar</button>
-              <button type="submit" class="btn btn-primary" style="flex:1;">Registrar</button>
+            <div style="display:flex;gap:12px;margin-top:20px">
+              <button type="button" onclick="document.getElementById('stockModal').style.display='none'" class="btn" style="flex:1">Cancelar</button>
+              <button type="submit" class="btn btn-primary" style="flex:1">Registrar</button>
             </div>
           </form>
         </div>
@@ -3451,7 +4297,95 @@ export function registerAdminRoutes(app: Express): void {
     res.redirect("/admin/retorno-automatico?deleted=1");
   });
 
-  // ─── Conversão de Promoções ──────────────────────────────────────────────────
+  // ─  // ─── Promoções (envio segmentado) ───────────────────────────────────────
+  app.get("/admin/promocoes", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    const allClients = await db.getAllClients(tenantId);
+    const activeClients = allClients.filter((c: any) => c.isActive);
+    const promotionList = await db.listPromotions();
+    const sent = req.query.sent === "1";
+    const AUDIENCE_OPTIONS = [
+      { value: "all", label: "Todos os clientes ativos", icon: "👥" },
+      { value: "inactive_30", label: "Inativos há 30 dias", icon: "⏳" },
+      { value: "inactive_60", label: "Inativos há 60 dias", icon: "⏰" },
+      { value: "birthday_month", label: "Aniversariantes do mês", icon: "🎂" },
+    ];
+    const body = `
+      ${sent ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Promoção enviada com sucesso!</div>` : ""}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+        <!-- Formulário de envio -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">📣 Nova Promoção</div></div>
+          <div class="card-body" style="padding:20px">
+            <form method="POST" action="/admin/promocoes">
+              <div class="form-group">
+                <label class="form-label">Título *</label>
+                <input class="form-input" type="text" name="title" placeholder="Ex: Desconto de segunda-feira" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Mensagem *</label>
+                <textarea class="form-input" name="message" rows="4" placeholder="Escreva a mensagem da promoção..." required style="resize:vertical"></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Público-alvo</label>
+                <select class="form-input" name="targetAudience" id="audience-select" onchange="toggleClientSelect()">
+                  ${AUDIENCE_OPTIONS.map(o => `<option value="${o.value}">${o.icon} ${o.label}</option>`).join("")}
+                  <option value="individual">👤 Cliente específico</option>
+                </select>
+              </div>
+              <div id="client-select-group" style="display:none" class="form-group">
+                <label class="form-label">Selecionar Cliente</label>
+                <select class="form-input" name="clientId">
+                  <option value="">-- Selecione um cliente --</option>
+                  ${activeClients.map((c: any) => `<option value="${c.id}">${esc(c.name)}${c.phone ? " — " + esc(c.phone) : ""}</option>`).join("")}
+                </select>
+              </div>
+              <script>function toggleClientSelect(){const v=document.getElementById('audience-select').value;document.getElementById('client-select-group').style.display=v==='individual'?'block':'none';}</script>
+              <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;margin-top:8px">🚀 Enviar Promoção</button>
+            </form>
+          </div>
+        </div>
+        <!-- Histórico -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">📜 Histórico de Promoções</div></div>
+          <div class="card-body">
+            ${promotionList.length === 0
+              ? `<div style="text-align:center;padding:40px;color:var(--muted)">Nenhuma promoção enviada ainda.</div>`
+              : `<table class="table"><thead><tr><th>Título</th><th>Público</th><th>Destinatários</th><th>Data</th></tr></thead><tbody>
+                ${promotionList.map((p: any) => `<tr>
+                  <td><strong>${esc(p.title)}</strong><br><small style="color:var(--muted)">${esc((p.message ?? "").substring(0, 60))}${(p.message ?? "").length > 60 ? "..." : ""}</small></td>
+                  <td>${AUDIENCE_OPTIONS.find(o => o.value === p.targetAudience)?.label ?? p.targetAudience}</td>
+                  <td style="text-align:center;font-weight:700">${p.recipientCount ?? 0}</td>
+                  <td style="color:var(--muted);font-size:12px">${p.sentAt ? new Date(p.sentAt).toLocaleDateString("pt-BR") : "—"}</td>
+                </tr>`).join("")}
+              </tbody></table>`
+            }
+          </div>
+        </div>
+      </div>
+    `;
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+    res.send(adminLayout("Promoções", "promocoes", body, barber?.name, _tp));
+  });
+
+  app.post("/admin/promocoes", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const { title, message, targetAudience, clientId } = req.body;
+    if (!title || !message) { res.redirect("/admin/promocoes?error=1"); return; }
+    const audience = targetAudience as "all" | "inactive_30" | "inactive_60" | "birthday_month";
+    let recipientCount = 1;
+    if (targetAudience !== "individual") {
+      recipientCount = await db.getPromotionRecipientCount(audience);
+      await db.createPromotion({ title, message, targetAudience: audience, createdBy: session.barberId, recipientCount });
+    } else {
+      await db.createPromotion({ title, message, targetAudience: "all", createdBy: session.barberId, recipientCount: 1 });
+    }
+    res.redirect("/admin/promocoes?sent=1");
+  });
+
+  // ─── Conversão de Promoções ──────────────────────────────────────────
   app.get("/admin/conversao-promocoes", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
@@ -3663,36 +4597,54 @@ export function registerAdminRoutes(app: Express): void {
     const session = (req as any).adminSession as { barberId: number; role: string };
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? 1;
-    const chatClients = await db.getChatClients(tenantId);
+    const searchQ = ((req.query.q as string) || "").toLowerCase().trim();
+    const allChatClients = await db.getChatClients(tenantId);
     // Ordenar: clientes com mensagens primeiro, depois por nome
-    chatClients.sort((a: any, b: any) => {
+    allChatClients.sort((a: any, b: any) => {
       if (a.lastMessage && !b.lastMessage) return -1;
       if (!a.lastMessage && b.lastMessage) return 1;
       if (a.lastMessage && b.lastMessage) return new Date(b.lastMessage.sentAt).getTime() - new Date(a.lastMessage.sentAt).getTime();
       return a.name.localeCompare(b.name);
     });
+    // Filtrar por nome ou telefone
+    const chatClients = searchQ
+      ? allChatClients.filter((c: any) => c.name.toLowerCase().includes(searchQ) || (c.phone ?? "").replace(/\D/g, "").includes(searchQ.replace(/\D/g, "")))
+      : allChatClients;
+
     const clientRows = chatClients.map((c: any) => {
-      const lastMsg = c.lastMessage ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px">${esc(c.lastMessage.message)}</div>` : `<div style="font-size:11px;color:var(--muted);margin-top:2px">Nenhuma mensagem ainda</div>`;
-      const badge = c.messageCount > 0 ? `<span style="background:#C9A84C;color:#000;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px">${c.messageCount}</span>` : "";
+      const lastMsg = c.lastMessage
+        ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">${esc(c.lastMessage.message)}</div>`
+        : `<div style="font-size:11px;color:var(--muted);margin-top:2px">Nenhuma mensagem ainda</div>`;
+      const badge = c.messageCount > 0 ? `<span style="background:#C9A84C;color:#000;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:6px">${c.messageCount}</span>` : "";
+      const timeStr = c.lastMessage ? `<span style="font-size:10px;color:var(--muted)">${new Date(c.lastMessage.sentAt).toLocaleDateString('pt-BR')}</span>` : "";
       return `<a href="/admin/chat/${c.id}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background 0.15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='transparent'">
-        <div style="width:42px;height:42px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#000;flex-shrink:0">${esc(c.name.charAt(0).toUpperCase())}</div>
+        <div style="width:44px;height:44px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#000;flex-shrink:0">${esc(c.name.charAt(0).toUpperCase())}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-weight:600;font-size:14px">${esc(c.name)}</span>
-            ${badge}
+            <span style="font-weight:600;font-size:14px">${esc(c.name)}${badge}</span>
+            ${timeStr}
           </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px">${esc(c.phone ?? '')}</div>
           ${lastMsg}
         </div>
         <span style="font-size:18px;color:var(--muted)">›</span>
       </a>`;
     }).join("");
+
     const body = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <h2 style="font-size:20px;font-weight:700;margin:0">💬 Chat WhatsApp</h2>
-        <span style="font-size:12px;color:var(--muted)">${chatClients.length} cliente(s)</span>
+        <span style="font-size:12px;color:var(--muted)">${allChatClients.length} cliente(s)</span>
       </div>
+      <form method="GET" style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="text" name="q" value="${esc(searchQ)}" placeholder="Buscar por nome ou telefone..."
+          style="flex:1;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+        <button type="submit" class="btn btn-primary" style="padding:10px 18px">Buscar</button>
+        ${searchQ ? `<a href="/admin/chat" class="btn btn-ghost" style="padding:10px 14px">✕</a>` : ""}
+      </form>
+      ${searchQ ? `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${chatClients.length} resultado(s) para "${esc(searchQ)}"</div>` : ""}
       <div class="card" style="padding:0;overflow:hidden">
-        ${clientRows || '<div style="padding:40px;text-align:center;color:var(--muted)">Nenhum cliente cadastrado.</div>'}
+        ${clientRows || `<div style="padding:40px;text-align:center;color:var(--muted)">${searchQ ? 'Nenhum cliente encontrado para esta busca.' : 'Nenhum cliente cadastrado.'}</div>`}
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
