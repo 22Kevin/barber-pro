@@ -194,18 +194,18 @@ export default function ProductsScreen() {
                   </View>
                 </View>
                 {/* Upload de Fotos e Vídeos */}
-                {savedProductId ? (
+                {(savedProductId || editing) ? (
                   <Field label="Fotos e Vídeos">
                     <MediaUploader
                       entityType="product"
-                      entityId={savedProductId}
+                      entityId={(savedProductId ?? editing!.id)}
                       maxItems={8}
                     />
                   </Field>
                 ) : (
                   <View style={styles.mediaHint}>
                     <IconSymbol name="photo.on.rectangle" size={16} color="#888880" />
-                    <Text style={styles.mediaHintText}>Salve o produto primeiro para adicionar fotos e vídeos</Text>
+                    <Text style={styles.mediaHintText}>Crie o produto para adicionar fotos e vídeos</Text>
                   </View>
                 )}
 

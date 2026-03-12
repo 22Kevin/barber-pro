@@ -1065,5 +1065,142 @@
 - [ ] Filtrar avaliações por tenantId nas queries do db.ts (getReviewsByService, getReviewsByClient, getAllReviews)
 - [ ] Filtrar avaliações por tenantId nas rotas tRPC (reviews.byService, reviews.byClient)
 - [ ] Garantir que a criação de avaliação salva o tenantId correto
-- [ ] Verificar isolamento no site (painel admin)
-- [ ] Verificar isolamento no app (tela de detalhes do serviço)
+- [x] Verificar isolamento no site (painel admin) — já implementado via JOIN com tenantId
+- [x] Verificar isolamento no app (tela de detalhes do serviço) — já implementado via tenantId
+
+## Correções Painel Administrativo v10.2
+
+### Agenda (site)
+- [ ] Campo Cliente com filtro de texto (combobox) no formulário de Novo Agendamento
+- [ ] Corrigir botões de Ações (credentials no fetch)
+
+### Chat WhatsApp
+- [x] Remover tela Chat WhatsApp do menu (site e app)
+- [x] Adicionar botão WhatsApp na página Clientes (site) — já existia
+
+### Serviços (app)
+- [ ] Upload de foto/vídeo imediato após criar serviço (sem precisar fechar e reabrir modal)
+
+### Produtos (app)
+- [ ] Upload de foto/vídeo imediato após criar produto (sem precisar fechar e reabrir modal)
+
+### Estoque (site)
+- [x] Criar rota /admin/estoque/:id/historico para o botão Histórico funcionar
+
+### Recorrências
+- [ ] [APP+SITE] Combobox com filtro de texto para Cliente, Barbeiro e Serviço
+- [ ] [APP+SITE] Horário Fim calculado automaticamente pela duração do serviço (somente leitura)
+
+### Fidelidade (site)
+- [x] Remover página Cupons do menu lateral (já está dentro de Fidelidade)
+- [x] Corrigir "Cupões" para "Cupons" na aba da tela Fidelidade
+
+### Financeiro (site)
+- [ ] Verificar/adicionar botões Despesa e Venda para cadastro
+
+### Minhas Comissões (app)
+- [ ] Criar tela Minhas Comissões igual ao site
+
+### Retorno Automático (app)
+- [ ] Reestruturar com campo de seleção de serviço com filtro de texto (igual ao site)
+
+### Promoções (app)
+- [ ] Adicionar opção de enviar para cliente específico com campo de busca
+
+### Migração do banco
+- [ ] Adicionar coluna tenantId na tabela reviews
+- [ ] Atualizar queries de reviews para usar tenantId diretamente (sem JOIN)
+
+## Funcionalidades Sugeridas pelo Gemini (Backlog Futuro)
+
+### Inteligência de Cadeira — Clientes Sumidos
+- [ ] Função `getInactiveClients(tenantId)` no db.ts: cruza último agendamento concluído com `return_message_configs.delayDays`
+- [ ] Tela "Clientes em Risco" no painel admin (web + app): lista clientes que passaram do prazo esperado de retorno
+- [ ] Botão "Recuperar via WhatsApp" na lista de clientes sumidos (abre wa.me com mensagem pré-configurada)
+- [ ] Job semanal (toda segunda-feira às 9h): notificação push ao admin com total de clientes sumidos
+- [ ] Relatório de conversão: quantos clientes sumidos agendaram após a mensagem de retorno
+
+### QR Code de Mesa — Checkout por Aproximação
+- [ ] Gerar QR Code fixo por barbeiro/balcão (vinculado ao slug da barbearia)
+- [ ] Ao ler o QR Code, cliente cai na tela de pagamento com valor do último serviço pré-preenchido
+- [ ] Integração com Mercado Pago (Pix/Cartão) a partir do QR Code
+- [ ] Baixa automática na agenda e cálculo de comissão após pagamento via QR Code
+
+### Galeria Antes e Depois — Portfólio Dinâmico
+- [ ] No app admin: opção de tirar 2 fotos (antes/depois) ao concluir agendamento
+- [ ] Fotos vinculadas ao `appointmentId` e ao `clientId`
+- [ ] Galeria de antes/depois visível na Página Pública do cliente (prova social)
+- [ ] Compartilhamento do antes/depois no Instagram com marca d'água do Barber Pro
+
+### Módulo de Assinaturas para Clientes (Clube VIP)
+- [ ] Novas tabelas: `membership_plans` (id, tenantId, name, price, description, isActive)
+- [ ] Nova tabela: `membership_items` (id, planId, itemType service/product, itemId, quantity)
+- [ ] Nova tabela: `client_memberships` (id, clientId, planId, startDate, nextRenewal, status)
+- [ ] Painel admin: aba "Assinaturas" para criar planos (Bronze/Prata/Ouro) com serviços e produtos inclusos
+- [ ] Página pública `/pub/:slug`: seção "Clube de Assinatura" com cards dos planos
+- [ ] Fluxo: cliente escolhe plano → paga → calendário multi-seleção para agendar todas as datas do mês
+- [ ] Sistema gera agendamentos vinculados a `recurring_appointment_id` após pagamento
+- [ ] Produtos inclusos no plano geram "Venda Pendente de Entrega" (valor R$ 0,00) no dashboard
+- [ ] Card de alerta no Dashboard admin: "⭐ Novo Assinante VIP — Plano X — N horários reservados"
+- [ ] Ícone de coroa nos agendamentos de assinantes na agenda
+- [ ] Abatimento de estoque ao marcar produto como "Entregue" no card de alerta
+- [ ] Integração com recorrência do Mercado Pago para cobrança automática mensal
+
+### Simplificação da Página do Cliente (Setup Express — Wizard 3 Passos)
+- [ ] Substituir abas atuais (URL, Visual, Domínio, SEO, Rastreamento, Preview) por wizard guiado
+- [ ] Passo 1 — Identidade Digital: campo de slug + botão "Copiar Link para o Instagram" + preview em tempo real
+- [ ] Passo 2 — Estilo e Marca: upload de logo + 3 temas prontos (Classic Wood, Modern Dark, Minimalist) + seletor de cor
+- [ ] Passo 3 — Visibilidade: toggle "Aparecer na busca global do Barber Pro?" (Marketplace)
+- [ ] Renomear termos técnicos: "SEO" → "Como apareço no Google", "Rastreamento" → "Estatísticas de Visitas", "Marketplace" → "Vitrine de Descoberta"
+- [ ] Preview lateral sempre visível atualizando em tempo real enquanto o barbeiro edita
+- [ ] Modal de boas-vindas (onboarding) na primeira vez que o barbeiro acessa a Página do Cliente
+- [ ] Campo `onboardingCompleted` na tabela `barbers` ou `tenants` para controlar exibição do modal
+- [ ] E-mail automático de parabéns ao barbeiro ao concluir a configuração da página
+
+### Melhorias na Landing Page (Copywriting e Conversão)
+- [ ] Headline: "Transforme sua barbearia em uma empresa de elite (enquanto você foca na tesoura)"
+- [ ] Barra de urgência no topo: "🔥 OFERTA DE LANÇAMENTO: As primeiras 20 barbearias garantem mensalidade fixa vitalícia e selo de Membro Fundador"
+- [ ] Selo "VALOR CONGELADO PARA SEMPRE" nos cards de planos
+- [ ] FAQ estratégico com 3 perguntas: "O sistema se paga sozinho?", "O que ganho sendo Membro Fundador?", "Consigo migrar meus dados?"
+- [ ] Botão flutuante de WhatsApp com mensagem pré-definida de contato
+- [ ] Frase na tabela comparativa: "O WhatsApp é para conversar, o Barber Pro é para lucrar"
+- [ ] CTA final: "Pronto para elevar o nível da sua cadeira?"
+- [ ] Aviso "Cartão de crédito não é necessário para o teste"
+- [ ] E-mail automático de boas-vindas ao barbeiro quando pagamento é aprovado via Webhook
+
+## Integração com Redes Sociais (Backlog Futuro)
+
+### Instagram — Geração de Conteúdo Automático
+- [ ] Gerador de card "Antes e Depois" para compartilhar no Instagram (vinculado ao agendamento concluído)
+- [ ] Gerador de card "Novo Horário Disponível" para o barbeiro postar quando tiver cancellation
+- [ ] Gerador de card "Promoção do Dia" com identidade visual da barbearia para Stories
+- [ ] Gerador de card "Aniversariante do Dia" para o barbeiro parabenizar o cliente nas redes
+- [ ] Botão "Compartilhar no Instagram" em todas as telas de card gerado (expo-sharing)
+- [ ] Marca d'água do Barber Pro em todos os cards compartilhados (opcional, configurável)
+
+### Link na Bio — Integração com Linktree/Beacons
+- [ ] Página `/pub/:slug` otimizada como "link na bio" do Instagram
+- [ ] Botão de agendamento em destaque no topo da página pública
+- [ ] Seção de serviços com fotos e preços (catálogo visual para redes sociais)
+- [ ] Seção de avaliações dos clientes (prova social)
+- [ ] Botão de WhatsApp direto na página pública
+
+### Google Meu Negócio
+- [ ] Integração com Google Business Profile API para sincronizar horários de funcionamento
+- [ ] Botão "Agendar pelo Google" (Google Reserve) na ficha do Google Maps
+- [ ] Sincronização automática de serviços e preços com o Google Meu Negócio
+
+### Compartilhamento Inteligente de Agendamentos
+- [ ] Card de confirmação de agendamento otimizado para Stories (já existe — melhorar)
+- [ ] Opção de o cliente compartilhar seu agendamento nas redes sociais com link de indicação
+- [ ] Programa de indicação: cliente que indica ganha pontos de fidelidade extras
+- [ ] Link de indicação único por cliente para rastrear novos clientes vindos de redes sociais
+
+### TikTok / Reels
+- [ ] Gerador de template de vídeo curto (15s) mostrando o "antes e depois" do corte
+- [ ] Exportação de vídeo com música de fundo e marca d'água para TikTok/Reels
+
+### Notificações de Engajamento
+- [ ] Notificação push ao barbeiro quando cliente compartilha agendamento nas redes sociais
+- [ ] Notificação push ao barbeiro quando novo cliente chega via link de indicação
+- [ ] Relatório mensal de clientes adquiridos via redes sociais vs. outros canais

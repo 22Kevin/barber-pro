@@ -238,18 +238,18 @@ export default function ServicesScreen() {
                 </Field>
 
                 {/* Upload de Fotos e Vídeos */}
-                {savedServiceId ? (
+                {(savedServiceId || editing) ? (
                   <Field label="Fotos e Vídeos">
                     <MediaUploader
                       entityType="service"
-                      entityId={savedServiceId}
+                      entityId={(savedServiceId ?? editing!.id)}
                       maxItems={8}
                     />
                   </Field>
                 ) : (
                   <View style={styles.mediaHint}>
                     <IconSymbol name="photo.on.rectangle" size={16} color="#888880" />
-                    <Text style={styles.mediaHintText}>Salve o serviço primeiro para adicionar fotos e vídeos</Text>
+                    <Text style={styles.mediaHintText}>Crie o serviço para adicionar fotos e vídeos</Text>
                   </View>
                 )}
 

@@ -128,12 +128,10 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       label: "MARKETING",
       items: [
         { href: "/admin/fidelidade", icon: "⭐", label: "Fidelidade", id: "fidelidade" },
-        { href: "/admin/cupons", icon: "🏷️", label: "Cupons", id: "cupons" },
-        { href: "/admin/avaliacoes", icon: "💬", label: "Avaliações", id: "avaliacoes" },
+        { href: "/admin/avaliacoes", icon: "⭐", label: "Avaliações", id: "avaliacoes" },
         { href: "/admin/retorno-automatico", icon: "📨", label: "Retorno Automático", id: "retorno-automatico" },
         { href: "/admin/promocoes", icon: "📣", label: "Promoções", id: "promocoes" },
         { href: "/admin/conversao-promocoes", icon: "📈", label: "Conversão de Promoções", id: "conversao-promocoes" },
-        { href: "/admin/chat", icon: "💬", label: "Chat WhatsApp", id: "chat" },
       ],
     },
     {
@@ -613,6 +611,7 @@ async function renderAgenda(req: Request, res: Response) {
                   const r = await fetch("/admin-api/appointment-status", {
                     method: "POST",
                     headers: {"Content-Type":"application/json"},
+                    credentials: "include",
                     body: JSON.stringify({id, status})
                   });
                   if (!r.ok) { const e = await r.json(); alert("Erro: " + e.error); return; }
@@ -728,8 +727,9 @@ async function renderClientes(req: Request, res: Response) {
                     <td>${filterBirthday ? `<strong style="color:#C9A84C">${bdFormatted}</strong>` : `<span class="badge badge-gold">${c.loyaltyPoints ?? c.totalPoints ?? 0} pts</span>`}</td>
                     <td>${c.isActive !== false ? '<span class="badge badge-success">Ativo</span>' : '<span class="badge badge-muted">Inativo</span>'}</td>
                     <td style="white-space:nowrap">
-                      <a href="/admin/clientes/${c.id}" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">👁 Ver</a>
-                      <button onclick="openEditClient(${c.id},'${esc(c.name).replace(/'/g,"\\'")}',' ${esc(c.phone ?? '')}','${esc(c.email ?? '')}','${c.birthDate ?? ''}','${esc(c.notes ?? '')}')" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">✏️ Editar</button>
+                       <a href="/admin/clientes/${c.id}" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">👁 Ver</a>
+                      ${c.phone ? `<a href="https://wa.me/${(c.phone).replace(/\D/g,'')}" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px;color:#25D366">💬 WhatsApp</a>` : ''}
+                      <button onclick="openEditClient(${c.id},'${esc(c.name).replace(/'/g,"\\'")}',' ${esc(c.phone ?? '')}','${esc(c.email ?? '')}','${c.birthDate ?? ''}','${esc(c.notes ?? '')}'" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">✏️ Editar</button>
                       <form method="POST" action="/admin/clientes/${c.id}/excluir" style="display:inline" onsubmit="return confirm('Excluir ${esc(c.name).replace(/'/g,"\\'")}'? Esta ação não pode ser desfeita.')">
                         <button type="submit" class="btn" style="font-size:11px;padding:4px 10px;background:#EF444422;color:#F87171;border:none">🗑 Excluir</button>
                       </form>
@@ -1777,10 +1777,33 @@ async function renderNovoAgendamento(req: Request, res: Response) {
       <form method="POST" action="/admin/agenda/novo">
         <div class="form-group">
           <label class="form-label">CLIENTE *</label>
-          <select name="clientId" class="form-input" required>
-            <option value="">Selecione o cliente</option>
-            ${clients.map((c: any) => `<option value="${c.id}">${esc(c.name)}${c.phone ? " — " + esc(c.phone) : ""}</option>`).join("")}
-          </select>
+          <div style="position:relative">
+            <input type="text" id="clientSearch" class="form-input" placeholder="Buscar cliente por nome ou telefone..." autocomplete="off"
+              oninput="filterClients(this.value)" onfocus="showClientList()" onblur="setTimeout(hideClientList,200)"
+              style="padding-right:36px" />
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none">🔍</span>
+            <input type="hidden" name="clientId" id="clientId" required />
+            <div id="clientDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-height:220px;overflow-y:auto;z-index:100;box-shadow:0 4px 16px #0004;margin-top:4px">
+              ${clients.map((c: any) => `<div class="client-opt" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="selectClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--gold-dim)'" onmouseout="this.style.background=''"><strong>${esc(c.name)}</strong>${c.phone ? `<span style='color:var(--muted);margin-left:8px'>${esc(c.phone)}</span>` : ''}</div>`).join("")}
+            </div>
+          </div>
+          <script>
+            function showClientList(){document.getElementById('clientDropdown').style.display='block';}
+            function hideClientList(){document.getElementById('clientDropdown').style.display='none';}
+            function filterClients(q){
+              q=q.toLowerCase();
+              document.querySelectorAll('.client-opt').forEach(el=>{
+                const n=el.dataset.name.toLowerCase(),p=(el.dataset.phone||'').toLowerCase();
+                el.style.display=(n.includes(q)||p.includes(q))?'':'none';
+              });
+              document.getElementById('clientDropdown').style.display='block';
+            }
+            function selectClient(el){
+              document.getElementById('clientSearch').value=el.dataset.name+(el.dataset.phone?' — '+el.dataset.phone:'');
+              document.getElementById('clientId').value=el.dataset.id;
+              hideClientList();
+            }
+          </script>
         </div>
         <div class="form-group">
           <label class="form-label">SERVIÇO *</label>
@@ -3241,7 +3264,7 @@ export function registerAdminRoutes(app: Express): void {
     const tabs = [
       { id: "programa", label: "⭐ Programa" },
       { id: "recompensas", label: "🎁 Recompensas" },
-      { id: "cupons", label: "🏷️ Cupões" },
+      { id: "cupons", label: "🏷️ Cupons" },
     ];
     const tabNav = `<div style="display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border)">
       ${tabs.map(t => `<a href="/admin/fidelidade?tab=${t.id}" style="padding:10px 18px;font-size:13px;font-weight:600;text-decoration:none;border-radius:8px 8px 0 0;border:1px solid ${activeTab === t.id ? 'var(--border)' : 'transparent'};border-bottom:${activeTab === t.id ? '1px solid var(--surface)' : '1px solid var(--border)'};background:${activeTab === t.id ? 'var(--surface)' : 'transparent'};color:${activeTab === t.id ? '#C9A84C' : 'var(--muted)'};margin-bottom:-1px">${t.label}</a>`).join("")}
@@ -3394,7 +3417,7 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title">🏷️ Todos os Cupões</span><span style="color:var(--muted);font-size:12px">${allCoupons.length} cupões</span></div>
+        <div class="card-header"><span class="card-title">🏷️ Todos os Cupons</span><span style="color:var(--muted);font-size:12px">${allCoupons.length} cupons</span></div>
         <table>
           <thead><tr><th>Código</th><th>Desconto</th><th>Usos</th><th>Validade</th><th>Status</th><th></th></tr></thead>
           <tbody>
@@ -3520,7 +3543,7 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title">🏷️ Todos os Cupões</span><span style="color:var(--muted);font-size:12px;">${allCoupons.length} cupões</span></div>
+        <div class="card-header"><span class="card-title">🏷️ Todos os Cupons</span><span style="color:var(--muted);font-size:12px;">${allCoupons.length} cupons</span></div>
         <table>
           <thead><tr><th>Código</th><th>Desconto</th><th>Usos</th><th>Validade</th><th>Status</th><th></th></tr></thead>
           <tbody>
@@ -4192,7 +4215,64 @@ export function registerAdminRoutes(app: Express): void {
     res.redirect("/admin/estoque?saved=1");
   });
 
-  // ─── Retorno Automático ──────────────────────────────────────────────────────
+    // ─── Histórico de Estoque ─────────────────────────────────────────────
+  app.get("/admin/estoque/:id/historico", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    const productId = parseInt(req.params.id);
+    if (isNaN(productId)) { res.redirect("/admin/estoque"); return; }
+
+    // Buscar produto
+    const products = await db.getAllProductsWithMedia(false, tenantId);
+    const product = products.find(p => p.id === productId);
+    if (!product) { res.redirect("/admin/estoque"); return; }
+
+    // Buscar movimentações
+    const movements = await db.getStockMovements(productId);
+
+    const typeLabel: Record<string, string> = {
+      in: "<span style='color:var(--success);font-weight:600'>Entrada</span>",
+      out: "<span style='color:var(--error);font-weight:600'>Saída</span>",
+      adjustment: "<span style='color:var(--warning);font-weight:600'>Ajuste</span>",
+    };
+
+    const rows = movements.length === 0
+      ? `<tr><td colspan="5" class="empty">Nenhuma movimentação registrada.</td></tr>`
+      : movements.map(m => `
+        <tr>
+          <td>${new Date(m.createdAt ?? m.date).toLocaleDateString("pt-BR")}</td>
+          <td>${typeLabel[m.type] ?? m.type}</td>
+          <td style="font-weight:700">${m.quantity > 0 ? "+" : ""}${m.quantity}</td>
+          <td>${esc(m.reason ?? "—")}</td>
+          <td style="color:var(--muted);font-size:12px">${esc((m as any).barberName ?? "—")}</td>
+        </tr>
+      `).join("");
+
+    const body = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <a href="/admin/estoque" class="btn btn-ghost" style="padding:8px 14px;font-size:13px">← Voltar</a>
+        <div>
+          <h1 style="font-size:22px;font-weight:700">📊 Histórico — ${esc(product.name)}</h1>
+          <p style="color:var(--muted);font-size:13px;margin-top:2px">Estoque atual: <strong style="color:var(--gold)">${product.stockQuantity ?? 0} unid.</strong></p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📆 Movimentações (últimas 50)</span>
+          <span style="color:var(--muted);font-size:12px">${movements.length} registro(s)</span>
+        </div>
+        <table>
+          <thead><tr><th>Data</th><th>Tipo</th><th>Qtd</th><th>Motivo</th><th>Responsável</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+    res.send(adminLayout(`Histórico — ${esc(product.name)}`, "estoque", body, barber?.name, _tp));
+  });
+
+  // ─── Retorno Automático ─────────────────────────────────────────────
   app.get("/admin/retorno-automatico", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
