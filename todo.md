@@ -1071,8 +1071,8 @@
 ## Correções Painel Administrativo v10.2
 
 ### Agenda (site)
-- [ ] Campo Cliente com filtro de texto (combobox) no formulário de Novo Agendamento
-- [ ] Corrigir botões de Ações (credentials no fetch)
+- [x] Campo Cliente com filtro de texto (combobox) no formulário de Novo Agendamento — já implementado
+- [x] Corrigir botões de Ações (credentials no fetch) — já implementado + adicionado isolamento tenantId
 
 ### Chat WhatsApp
 - [x] Remover tela Chat WhatsApp do menu (site e app)
@@ -1096,7 +1096,7 @@
 - [x] Corrigir "Cupões" para "Cupons" na aba da tela Fidelidade
 
 ### Financeiro (site)
-- [ ] Verificar/adicionar botões Despesa e Venda para cadastro
+- [x] Verificar/adicionar botões Despesa e Venda para cadastro — já implementados com modais
 
 ### Minhas Comissões (app)
 - [ ] Criar tela Minhas Comissões igual ao site

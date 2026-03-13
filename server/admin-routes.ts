@@ -2948,11 +2948,23 @@ export function registerAdminRoutes(app: Express): void {
   // API REST: atualizar status de agendamento
   app.post("/admin-api/appointment-status", requireAdminAuth, async (req: Request, res: Response) => {
     try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const tenantId = barber?.tenantId ?? null;
       const { id, status } = req.body as { id: number; status: string };
       const validStatuses = ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"];
       if (!id || !validStatuses.includes(status)) {
         res.status(400).json({ error: "Parâmetros inválidos" });
         return;
+      }
+      // Verificar se o agendamento pertence ao tenant correto
+      if (tenantId != null) {
+        const appt = await db.getAppointmentById(id);
+        const apptBarber = appt ? await db.getBarberById(appt.barberId) : null;
+        if (!apptBarber || apptBarber.tenantId !== tenantId) {
+          res.status(403).json({ error: "Acesso negado" });
+          return;
+        }
       }
       await db.updateAppointmentStatus(id, status);
       res.json({ ok: true });
