@@ -51,7 +51,11 @@ export default function ProductsScreen() {
   const utils = trpc.useUtils();
   const productsQuery = trpc.products.list.useQuery({ activeOnly: false, tenantId });
   const createMutation = trpc.products.create.useMutation({
-    onSuccess: () => { utils.products.list.invalidate(); closeModal(); },
+    onSuccess: (newId) => {
+      utils.products.list.invalidate();
+      // Não fecha o modal: atualiza o ID para mostrar o MediaUploader imediatamente
+      setSavedProductId(newId as any);
+    },
     onError: (e) => Alert.alert("Erro", e.message),
   });
   const updateMutation = trpc.products.update.useMutation({
@@ -84,9 +88,7 @@ export default function ProductsScreen() {
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data });
     } else {
-      createMutation.mutate(data, {
-        onSuccess: (newId) => { setSavedProductId(newId as any); }
-      });
+      createMutation.mutate(data);
     }
   }
 
@@ -196,6 +198,12 @@ export default function ProductsScreen() {
                 {/* Upload de Fotos e Vídeos */}
                 {(savedProductId || editing) ? (
                   <Field label="Fotos e Vídeos">
+                    {savedProductId && !editing && (
+                      <View style={styles.createdBanner}>
+                        <IconSymbol name="checkmark.circle.fill" size={16} color="#22C55E" />
+                        <Text style={styles.createdBannerText}>Produto criado! Adicione fotos e vídeos abaixo.</Text>
+                      </View>
+                    )}
                     <MediaUploader
                       entityType="product"
                       entityId={(savedProductId ?? editing!.id)}
@@ -205,7 +213,7 @@ export default function ProductsScreen() {
                 ) : (
                   <View style={styles.mediaHint}>
                     <IconSymbol name="photo.on.rectangle" size={16} color="#888880" />
-                    <Text style={styles.mediaHintText}>Crie o produto para adicionar fotos e vídeos</Text>
+                    <Text style={styles.mediaHintText}>Salve o produto para adicionar fotos e vídeos</Text>
                   </View>
                 )}
 
@@ -281,4 +289,6 @@ const styles = StyleSheet.create({
   saveBtnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "800", letterSpacing: 1 },
   mediaHint: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#1A1A1A", borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: "#2A2A2A", borderStyle: "dashed" },
   mediaHintText: { flex: 1, fontSize: 12, color: "#888880", lineHeight: 17 },
+  createdBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#22C55E18", borderRadius: 8, padding: 10, marginBottom: 10, borderWidth: 1, borderColor: "#22C55E44" },
+  createdBannerText: { flex: 1, fontSize: 12, color: "#22C55E", fontWeight: "600", lineHeight: 17 },
 });

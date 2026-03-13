@@ -1079,10 +1079,10 @@
 - [x] Adicionar botão WhatsApp na página Clientes (site) — já existia
 
 ### Serviços (app)
-- [ ] Upload de foto/vídeo imediato após criar serviço (sem precisar fechar e reabrir modal)
+- [x] Upload de foto/vídeo imediato após criar serviço (sem precisar fechar e reabrir modal)
 
 ### Produtos (app)
-- [ ] Upload de foto/vídeo imediato após criar produto (sem precisar fechar e reabrir modal)
+- [x] Upload de foto/vídeo imediato após criar produto (sem precisar fechar e reabrir modal)
 
 ### Estoque (site)
 - [x] Criar rota /admin/estoque/:id/historico para o botão Histórico funcionar
