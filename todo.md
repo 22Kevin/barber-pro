@@ -1088,8 +1088,8 @@
 - [x] Criar rota /admin/estoque/:id/historico para o botão Histórico funcionar
 
 ### Recorrências
-- [ ] [APP+SITE] Combobox com filtro de texto para Cliente, Barbeiro e Serviço
-- [ ] [APP+SITE] Horário Fim calculado automaticamente pela duração do serviço (somente leitura)
+- [x] [APP+SITE] Combobox com filtro de texto para Cliente, Barbeiro e Serviço
+- [x] [APP+SITE] Horário Fim calculado automaticamente pela duração do serviço (somente leitura)
 
 ### Fidelidade (site)
 - [x] Remover página Cupons do menu lateral (já está dentro de Fidelidade)

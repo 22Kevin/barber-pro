@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -49,6 +49,150 @@ const EMPTY_FORM: NewRecurring = {
   notes: "",
 };
 
+/** Calcula horário fim somando minutos ao horário início (formato HH:MM) */
+function addMinutes(time: string, minutes: number): string {
+  const [h, m] = time.split(":").map(Number);
+  const total = h * 60 + m + minutes;
+  const hh = Math.floor(total / 60) % 24;
+  const mm = total % 60;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+/** Combobox de busca reutilizável */
+function SearchCombobox({
+  label,
+  placeholder,
+  items,
+  selectedId,
+  onSelect,
+  colors,
+}: {
+  label: string;
+  placeholder: string;
+  items: { id: number; label: string }[];
+  selectedId: number | null;
+  onSelect: (id: number, item: { id: number; label: string }) => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const selectedItem = items.find((i) => i.id === selectedId);
+  const filtered = useMemo(
+    () =>
+      query.trim() === ""
+        ? items.slice(0, 30)
+        : items.filter((i) => i.label.toLowerCase().includes(query.toLowerCase())).slice(0, 20),
+    [items, query]
+  );
+
+  function handleSelect(item: { id: number; label: string }) {
+    onSelect(item.id, item);
+    setQuery("");
+    setOpen(false);
+  }
+
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
+        {label}
+      </Text>
+      <Pressable
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: colors.surface,
+          borderWidth: 1.5,
+          borderColor: selectedId ? colors.primary : colors.border,
+          borderRadius: 10,
+          paddingHorizontal: 12,
+          paddingVertical: 12,
+          gap: 8,
+        }}
+        onPress={() => setOpen(true)}
+      >
+        <IconSymbol name="magnifyingglass" size={16} color={colors.muted} />
+        <Text style={{ flex: 1, fontSize: 14, color: selectedId ? colors.foreground : colors.muted }}>
+          {selectedItem ? selectedItem.label : placeholder}
+        </Text>
+        {selectedId && (
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              onSelect(0, { id: 0, label: "" });
+              setQuery("");
+            }}
+            style={{ padding: 2 }}
+          >
+            <IconSymbol name="xmark.circle.fill" size={16} color={colors.muted} />
+          </Pressable>
+        )}
+        <IconSymbol name="chevron.right" size={14} color={colors.muted} />
+      </Pressable>
+
+      {/* Dropdown modal */}
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }} onPress={() => setOpen(false)}>
+          <View
+            style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              backgroundColor: colors.background,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              maxHeight: "60%",
+              padding: 16,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 8 }}>
+              <IconSymbol name="magnifyingglass" size={16} color={colors.muted} />
+              <TextInput
+                style={{ flex: 1, fontSize: 15, color: colors.foreground }}
+                placeholder={`Buscar ${label.toLowerCase()}...`}
+                placeholderTextColor={colors.muted}
+                value={query}
+                onChangeText={setQuery}
+                autoFocus
+              />
+              {query.length > 0 && (
+                <Pressable onPress={() => setQuery("")}>
+                  <IconSymbol name="xmark.circle.fill" size={18} color={colors.muted} />
+                </Pressable>
+              )}
+            </View>
+            <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 8 }} />
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => String(item.id)}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <Pressable
+                  style={({ pressed }) => ({
+                    paddingVertical: 13,
+                    paddingHorizontal: 8,
+                    borderRadius: 8,
+                    backgroundColor: item.id === selectedId ? colors.primary + "22" : pressed ? colors.surface : "transparent",
+                  })}
+                  onPress={() => handleSelect(item)}
+                >
+                  <Text style={{ fontSize: 15, color: item.id === selectedId ? colors.primary : colors.foreground, fontWeight: item.id === selectedId ? "700" : "400" }}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              )}
+              ListEmptyComponent={
+                <Text style={{ color: colors.muted, textAlign: "center", paddingVertical: 20 }}>Nenhum resultado</Text>
+              }
+            />
+          </View>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
 export default function RecurringScreen() {
   const colors = useColors();
   const { barber } = useBarberAuth();
@@ -74,6 +218,39 @@ export default function RecurringScreen() {
     },
     onError: (err) => Alert.alert("Erro", err.message),
   });
+
+  const clients = useMemo(
+    () => (clientsQuery.data ?? []).map((c) => ({ id: c.id, label: c.name + (c.phone ? ` · ${c.phone}` : "") })),
+    [clientsQuery.data]
+  );
+  const barbers = useMemo(
+    () => (barbersQuery.data ?? []).map((b) => ({ id: b.id, label: b.name })),
+    [barbersQuery.data]
+  );
+  const services = useMemo(
+    () => (servicesQuery.data ?? []).map((s) => ({ id: s.id, label: s.name, duration: s.durationMinutes })),
+    [servicesQuery.data]
+  );
+
+  function handleSelectService(id: number, item: { id: number; label: string; duration?: number }) {
+    if (id === 0) {
+      setForm((f) => ({ ...f, serviceId: null }));
+      return;
+    }
+    const svc = (servicesQuery.data ?? []).find((s) => s.id === id);
+    const duration = svc?.durationMinutes ?? 60;
+    const newEndTime = addMinutes(form.startTime, duration);
+    setForm((f) => ({ ...f, serviceId: id, endTime: newEndTime }));
+  }
+
+  function handleStartTimeChange(t: string) {
+    setForm((f) => {
+      const svc = (servicesQuery.data ?? []).find((s) => s.id === f.serviceId);
+      const duration = svc?.durationMinutes ?? 60;
+      const newEndTime = f.serviceId ? addMinutes(t, duration) : f.endTime;
+      return { ...f, startTime: t, endTime: newEndTime };
+    });
+  }
 
   function handleCancel(id: number, clientName: string) {
     Alert.alert(
@@ -105,12 +282,9 @@ export default function RecurringScreen() {
   }
 
   const data = listQuery.data ?? [];
-  const clients = clientsQuery.data ?? [];
-  const barbers = barbersQuery.data ?? [];
-  const services = servicesQuery.data ?? [];
 
   const dyn = {
-    label: { fontSize: 13, fontWeight: "600" as const, color: colors.muted, marginBottom: 6, marginTop: 14 },
+    label: { fontSize: 13, fontWeight: "600" as const, color: colors.muted, marginBottom: 6, marginTop: 14, textTransform: "uppercase" as const, letterSpacing: 0.5 },
     input: {
       backgroundColor: colors.surface,
       borderWidth: 1,
@@ -233,45 +407,44 @@ export default function RecurringScreen() {
             </Pressable>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
-            {/* Cliente */}
-            <Text style={dyn.label}>CLIENTE *</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                {clients.map((c) => (
-                  <Pressable key={c.id} style={dyn.selectChip(form.clientId === c.id)} onPress={() => setForm(f => ({ ...f, clientId: c.id }))}>
-                    <Text style={dyn.selectChipText(form.clientId === c.id)}>{c.name}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </ScrollView>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
 
-            {/* Barbeiro */}
-            <Text style={dyn.label}>BARBEIRO *</Text>
-            <View style={dyn.selectRow}>
-              {barbers.map((b) => (
-                <Pressable key={b.id} style={dyn.selectChip(form.barberId === b.id)} onPress={() => setForm(f => ({ ...f, barberId: b.id }))}>
-                  <Text style={dyn.selectChipText(form.barberId === b.id)}>{b.name}</Text>
-                </Pressable>
-              ))}
-            </View>
+            {/* Cliente — combobox com busca */}
+            <SearchCombobox
+              label="Cliente *"
+              placeholder="Buscar cliente por nome ou telefone..."
+              items={clients}
+              selectedId={form.clientId}
+              onSelect={(id) => setForm((f) => ({ ...f, clientId: id === 0 ? null : id }))}
+              colors={colors}
+            />
 
-            {/* Serviço */}
-            <Text style={dyn.label}>SERVIÇO *</Text>
-            <View style={dyn.selectRow}>
-              {services.map((s) => (
-                <Pressable key={s.id} style={dyn.selectChip(form.serviceId === s.id)} onPress={() => setForm(f => ({ ...f, serviceId: s.id }))}>
-                  <Text style={dyn.selectChipText(form.serviceId === s.id)}>{s.name}</Text>
-                </Pressable>
-              ))}
-            </View>
+            {/* Barbeiro — combobox com busca */}
+            <SearchCombobox
+              label="Barbeiro *"
+              placeholder="Buscar barbeiro..."
+              items={barbers}
+              selectedId={form.barberId}
+              onSelect={(id) => setForm((f) => ({ ...f, barberId: id === 0 ? null : id }))}
+              colors={colors}
+            />
+
+            {/* Serviço — combobox com busca + calcula horário fim automaticamente */}
+            <SearchCombobox
+              label="Serviço *"
+              placeholder="Buscar serviço..."
+              items={services}
+              selectedId={form.serviceId}
+              onSelect={handleSelectService}
+              colors={colors}
+            />
 
             {/* Data de início */}
             <Text style={dyn.label}>DATA DE INÍCIO *</Text>
             <TextInput
               style={dyn.input}
               value={form.startDate}
-              onChangeText={(t) => setForm(f => ({ ...f, startDate: t }))}
+              onChangeText={(t) => setForm((f) => ({ ...f, startDate: t }))}
               placeholder="AAAA-MM-DD"
               placeholderTextColor={colors.muted}
             />
@@ -280,19 +453,32 @@ export default function RecurringScreen() {
             <View style={{ flexDirection: "row", gap: 12 }}>
               <View style={{ flex: 1 }}>
                 <Text style={dyn.label}>INÍCIO</Text>
-                <TextInput style={dyn.input} value={form.startTime} onChangeText={(t) => setForm(f => ({ ...f, startTime: t }))} placeholder="09:00" placeholderTextColor={colors.muted} />
+                <TextInput
+                  style={dyn.input}
+                  value={form.startTime}
+                  onChangeText={handleStartTimeChange}
+                  placeholder="09:00"
+                  placeholderTextColor={colors.muted}
+                />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={dyn.label}>FIM</Text>
-                <TextInput style={dyn.input} value={form.endTime} onChangeText={(t) => setForm(f => ({ ...f, endTime: t }))} placeholder="10:00" placeholderTextColor={colors.muted} />
+                <Text style={dyn.label}>FIM (automático)</Text>
+                <View style={[dyn.input, { backgroundColor: colors.surface, opacity: 0.7 }]}>
+                  <Text style={{ color: colors.foreground, fontSize: 14 }}>{form.endTime}</Text>
+                </View>
               </View>
             </View>
+            {form.serviceId && (
+              <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4, marginBottom: 4 }}>
+                ⏱ Horário fim calculado automaticamente pela duração do serviço
+              </Text>
+            )}
 
             {/* Frequência */}
             <Text style={dyn.label}>FREQUÊNCIA</Text>
             <View style={dyn.selectRow}>
               {[1, 2, 3, 4].map((w) => (
-                <Pressable key={w} style={dyn.selectChip(form.intervalWeeks === w)} onPress={() => setForm(f => ({ ...f, intervalWeeks: w }))}>
+                <Pressable key={w} style={dyn.selectChip(form.intervalWeeks === w)} onPress={() => setForm((f) => ({ ...f, intervalWeeks: w }))}>
                   <Text style={dyn.selectChipText(form.intervalWeeks === w)}>{INTERVAL_LABELS[w]}</Text>
                 </Pressable>
               ))}
@@ -300,9 +486,9 @@ export default function RecurringScreen() {
 
             {/* Ocorrências */}
             <Text style={dyn.label}>NÚMERO DE OCORRÊNCIAS</Text>
-            <View style={{ flexDirection: "row", gap: 8 }}>
+            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
               {[2, 4, 6, 8, 12, 24].map((n) => (
-                <Pressable key={n} style={dyn.selectChip(form.occurrences === n)} onPress={() => setForm(f => ({ ...f, occurrences: n }))}>
+                <Pressable key={n} style={dyn.selectChip(form.occurrences === n)} onPress={() => setForm((f) => ({ ...f, occurrences: n }))}>
                   <Text style={dyn.selectChipText(form.occurrences === n)}>{n}x</Text>
                 </Pressable>
               ))}
@@ -313,7 +499,7 @@ export default function RecurringScreen() {
             <TextInput
               style={[dyn.input, { minHeight: 80, textAlignVertical: "top" }]}
               value={form.notes}
-              onChangeText={(t) => setForm(f => ({ ...f, notes: t }))}
+              onChangeText={(t) => setForm((f) => ({ ...f, notes: t }))}
               multiline
               placeholder="Observações opcionais..."
               placeholderTextColor={colors.muted}

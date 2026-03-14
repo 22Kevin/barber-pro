@@ -3967,28 +3967,35 @@ export function registerAdminRoutes(app: Express): void {
       </div>
       <!-- Modal Nova Recorrência -->
       <div id="newRecModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
-        <div style="background:var(--surface);border-radius:12px;padding:28px;width:480px;max-width:90vw;max-height:90vh;overflow-y:auto;">
+        <div style="background:var(--surface);border-radius:12px;padding:28px;width:520px;max-width:90vw;max-height:90vh;overflow-y:auto;">
           <h2 style="font-size:18px;font-weight:700;margin-bottom:20px;">Nova Recorrência</h2>
           <form method="POST" action="/admin/recorrencias">
             <div class="form-group">
               <label class="form-label">Cliente *</label>
-              <select name="clientId" class="form-input" required>
-                <option value="">Selecione o cliente</option>
-                ${allClients.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("")}
+              <input type="text" id="recClientSearch" placeholder="Buscar cliente por nome ou telefone..." class="form-input" autocomplete="off"
+                oninput="filterRecSelect('recClientSel','recClientSearch')" style="margin-bottom:6px" />
+              <select name="clientId" id="recClientSel" class="form-input" required size="4" style="height:auto">
+                <option value="">-- selecione --</option>
+                ${allClients.map(c => `<option value="${c.id}" data-label="${esc(c.name.toLowerCase())} ${(c.phone ?? '').toLowerCase()}">${esc(c.name)}${c.phone ? ' · ' + esc(c.phone) : ''}</option>`).join("")}
               </select>
             </div>
             <div class="form-group">
               <label class="form-label">Barbeiro *</label>
-              <select name="barberId" class="form-input" required>
-                <option value="">Selecione o barbeiro</option>
-                ${allBarbers.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join("")}
+              <input type="text" id="recBarberSearch" placeholder="Buscar barbeiro..." class="form-input" autocomplete="off"
+                oninput="filterRecSelect('recBarberSel','recBarberSearch')" style="margin-bottom:6px" />
+              <select name="barberId" id="recBarberSel" class="form-input" required size="3" style="height:auto">
+                <option value="">-- selecione --</option>
+                ${allBarbers.map(b => `<option value="${b.id}" data-label="${esc(b.name.toLowerCase())}">${esc(b.name)}</option>`).join("")}
               </select>
             </div>
             <div class="form-group">
               <label class="form-label">Serviço *</label>
-              <select name="serviceId" class="form-input" required>
-                <option value="">Selecione o serviço</option>
-                ${allServices.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}
+              <input type="text" id="recServiceSearch" placeholder="Buscar serviço..." class="form-input" autocomplete="off"
+                oninput="filterRecSelect('recServiceSel','recServiceSearch')" style="margin-bottom:6px" />
+              <select name="serviceId" id="recServiceSel" class="form-input" required size="4" style="height:auto"
+                onchange="calcRecEndTime()">
+                <option value="">-- selecione --</option>
+                ${allServices.map(s => `<option value="${s.id}" data-duration="${(s as any).durationMinutes ?? 60}" data-label="${esc(s.name.toLowerCase())}">${esc(s.name)}</option>`).join("")}
               </select>
             </div>
             <div class="form-group">
@@ -3998,21 +4005,21 @@ export function registerAdminRoutes(app: Express): void {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
               <div class="form-group">
                 <label class="form-label">Horário Início *</label>
-                <input type="time" name="startTime" class="form-input" required />
+                <input type="time" name="startTime" id="recStartTime" class="form-input" required onchange="calcRecEndTime()" />
               </div>
               <div class="form-group">
-                <label class="form-label">Horário Fim *</label>
-                <input type="time" name="endTime" class="form-input" required />
+                <label class="form-label">Horário Fim <span style="font-size:11px;color:var(--muted)">(automático)</span></label>
+                <input type="time" name="endTime" id="recEndTime" class="form-input" required readonly style="opacity:0.7;cursor:default" />
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
               <div class="form-group">
                 <label class="form-label">Intervalo (semanas)</label>
-                <input type="number" name="intervalWeeks" value="4" min="1" max="12" class="form-input" />
+                <input type="number" name="intervalWeeks" value="2" min="1" max="12" class="form-input" />
               </div>
               <div class="form-group">
                 <label class="form-label">Nº de Ocorrências</label>
-                <input type="number" name="occurrences" value="6" min="1" max="52" class="form-input" />
+                <input type="number" name="occurrences" value="4" min="1" max="52" class="form-input" />
               </div>
             </div>
             <div class="form-group">
@@ -4026,6 +4033,29 @@ export function registerAdminRoutes(app: Express): void {
           </form>
         </div>
       </div>
+      <script>
+        function filterRecSelect(selId, inputId) {
+          const q = document.getElementById(inputId).value.toLowerCase();
+          const sel = document.getElementById(selId);
+          Array.from(sel.options).forEach(opt => {
+            if (!opt.value) return;
+            opt.style.display = (opt.dataset.label || '').includes(q) ? '' : 'none';
+          });
+        }
+        function calcRecEndTime() {
+          const sel = document.getElementById('recServiceSel');
+          const startInput = document.getElementById('recStartTime');
+          const endInput = document.getElementById('recEndTime');
+          const opt = sel.options[sel.selectedIndex];
+          if (!opt || !opt.value || !startInput.value) return;
+          const duration = parseInt(opt.dataset.duration || '60');
+          const [h, m] = startInput.value.split(':').map(Number);
+          const total = h * 60 + m + duration;
+          const hh = String(Math.floor(total / 60) % 24).padStart(2, '0');
+          const mm = String(total % 60).padStart(2, '0');
+          endInput.value = hh + ':' + mm;
+        }
+      </script>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Recorrências", "recorrencias", body, barber?.name, _tp));
