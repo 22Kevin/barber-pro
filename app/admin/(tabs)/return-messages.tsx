@@ -30,6 +30,7 @@ export default function ReturnMessagesScreen() {
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
   const [modalVisible, setModalVisible] = useState(false);
+  const [serviceSearch, setServiceSearch] = useState("");
   const [editing, setEditing] = useState<{
     serviceId: number;
     serviceName: string;
@@ -69,6 +70,7 @@ export default function ReturnMessagesScreen() {
         `Olá {nome}! Faz {dias} dias desde o seu último {servico}. Que tal agendar um horário? 😊`,
       isActive: existing?.isActive ?? true,
     });
+    setServiceSearch(serviceName);
     setModalVisible(true);
   }
 
@@ -234,20 +236,28 @@ export default function ReturnMessagesScreen() {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-            {/* Seletor de serviço */}
+            {/* Seletor de serviço com busca */}
             <Text style={dyn.label}>Serviço</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                {services.map((s) => (
+            <TextInput
+              style={[dyn.input, { marginBottom: 6 }]}
+              value={serviceSearch}
+              onChangeText={setServiceSearch}
+              placeholder="Buscar serviço..."
+              placeholderTextColor={colors.muted}
+              autoCorrect={false}
+            />
+            <View style={[styles.serviceList, { borderColor: colors.border, backgroundColor: colors.background }]}>
+              {services
+                .filter((s) => s.name.toLowerCase().includes(serviceSearch.toLowerCase()))
+                .map((s) => (
                   <Pressable
                     key={s.id}
                     style={({ pressed }) => ({
                       paddingHorizontal: 14,
-                      paddingVertical: 8,
-                      borderRadius: 10,
-                      borderWidth: 1,
-                      backgroundColor: editing?.serviceId === s.id ? colors.primary : colors.surface,
-                      borderColor: editing?.serviceId === s.id ? colors.primary : colors.border,
+                      paddingVertical: 10,
+                      backgroundColor: editing?.serviceId === s.id ? colors.primary + "22" : "transparent",
+                      borderLeftWidth: 3,
+                      borderLeftColor: editing?.serviceId === s.id ? colors.primary : "transparent",
                       opacity: pressed ? 0.7 : 1,
                     })}
                     onPress={() => {
@@ -260,13 +270,20 @@ export default function ReturnMessagesScreen() {
                         messageTemplate: existing?.messageTemplate ?? e.messageTemplate,
                         isActive: existing?.isActive ?? e.isActive,
                       } : e);
+                      setServiceSearch(s.name);
                     }}
                   >
-                    <Text style={{ color: editing?.serviceId === s.id ? "#fff" : colors.foreground, fontWeight: "600", fontSize: 13 }}>{s.name}</Text>
+                    <Text style={{
+                      color: editing?.serviceId === s.id ? colors.primary : colors.foreground,
+                      fontWeight: editing?.serviceId === s.id ? "700" : "500",
+                      fontSize: 14,
+                    }}>
+                      {s.name}
+                      {getConfig(s.id) ? " ✓" : ""}
+                    </Text>
                   </Pressable>
                 ))}
-              </View>
-            </ScrollView>
+            </View>
 
             {/* Dias de delay */}
             <Text style={dyn.label}>Enviar após quantos dias?</Text>
@@ -369,4 +386,5 @@ const styles = StyleSheet.create({
   dayBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5 },
   placeholderRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 10 },
   switchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  serviceList: { borderWidth: 1, borderRadius: 10, marginBottom: 16, maxHeight: 180, overflow: "hidden" },
 });

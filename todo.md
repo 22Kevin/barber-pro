@@ -1099,10 +1099,10 @@
 - [x] Verificar/adicionar botões Despesa e Venda para cadastro — já implementados com modais
 
 ### Minhas Comissões (app)
-- [ ] Criar tela Minhas Comissões igual ao site
+- [x] Criar tela Minhas Comissões igual ao site — já implementada com seletor de mês, cards de resumo e lista detalhada
 
 ### Retorno Automático (app)
-- [ ] Reestruturar com campo de seleção de serviço com filtro de texto (igual ao site)
+- [x] Reestruturar com campo de seleção de serviço com filtro de texto (igual ao site)
 
 ### Promoções (app)
 - [ ] Adicionar opção de enviar para cliente específico com campo de busca
