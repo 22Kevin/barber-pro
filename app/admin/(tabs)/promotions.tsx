@@ -18,13 +18,14 @@ import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { useBarberAuth } from "@/lib/auth-context";
 
-type TargetAudience = "all" | "inactive_30" | "inactive_60" | "birthday_month";
+type TargetAudience = "all" | "inactive_30" | "inactive_60" | "birthday_month" | "specific_client";
 
 const AUDIENCE_OPTIONS: { value: TargetAudience; label: string; description: string; icon: string }[] = [
   { value: "all", label: "Todos os clientes", description: "Envia para toda a base de clientes ativos", icon: "person.3.fill" },
   { value: "inactive_30", label: "Inativos há 30 dias", description: "Clientes sem agendamento nos últimos 30 dias", icon: "clock.badge.exclamationmark" },
   { value: "inactive_60", label: "Inativos há 60 dias", description: "Clientes sem agendamento nos últimos 60 dias", icon: "clock.badge.xmark" },
   { value: "birthday_month", label: "Aniversariantes do mês", description: "Clientes que fazem aniversário este mês", icon: "gift.fill" },
+  { value: "specific_client", label: "Cliente específico", description: "Escolha um cliente específico para receber a mensagem", icon: "person.crop.circle.badge.checkmark" },
 ];
 
 function fmtDate(dateStr: string | Date | null | undefined) {
@@ -40,8 +41,15 @@ export default function PromotionsScreen() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [audience, setAudience] = useState<TargetAudience>("all");
+  const [clientSearch, setClientSearch] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [selectedClientName, setSelectedClientName] = useState("");
 
   const listQuery = trpc.promotions.list.useQuery();
+  const clientsQuery = trpc.clients.list.useQuery(
+    undefined,
+    { enabled: audience === "specific_client" }
+  );
   const sendMutation = trpc.promotions.send.useMutation({
     onSuccess: (data) => {
       Alert.alert(
@@ -54,6 +62,9 @@ export default function PromotionsScreen() {
       setTitle("");
       setMessage("");
       setAudience("all");
+      setClientSearch("");
+      setSelectedClientId(null);
+      setSelectedClientName("");
     },
     onError: (err) => Alert.alert("Erro", err.message),
   });
@@ -61,10 +72,15 @@ export default function PromotionsScreen() {
   function handleSend() {
     if (!title.trim()) { Alert.alert("Atenção", "Informe um título."); return; }
     if (!message.trim()) { Alert.alert("Atenção", "Informe a mensagem."); return; }
+    if (audience === "specific_client" && !selectedClientId) {
+      Alert.alert("Atenção", "Selecione um cliente para enviar a mensagem.");
+      return;
+    }
     const selectedAudience = AUDIENCE_OPTIONS.find((a) => a.value === audience);
+    const targetLabel = audience === "specific_client" ? selectedClientName : selectedAudience?.label;
     Alert.alert(
       "Confirmar envio",
-      `Enviar "${title}" para: ${selectedAudience?.label}?`,
+      `Enviar "${title}" para: ${targetLabel}?`,
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -74,6 +90,7 @@ export default function PromotionsScreen() {
               title: title.trim(),
               message: message.trim(),
               targetAudience: audience,
+              specificClientId: audience === "specific_client" ? selectedClientId : null,
               createdBy: barber?.id ?? 1,
             }),
         },
@@ -233,6 +250,56 @@ export default function PromotionsScreen() {
               </Pressable>
             ))}
 
+            {/* Campo de busca de cliente específico */}
+            {audience === "specific_client" && (
+              <View style={{ marginTop: 12, marginBottom: 4 }}>
+                <Text style={[dyn.label, { marginBottom: 6 }]}>Buscar cliente</Text>
+                <TextInput
+                  style={dyn.input}
+                  value={clientSearch}
+                  onChangeText={setClientSearch}
+                  placeholder="Digite o nome ou telefone..."
+                  placeholderTextColor={colors.muted}
+                  returnKeyType="search"
+                />
+                {selectedClientId ? (
+                  <View style={[styles.selectedClientBadge, { backgroundColor: colors.primary + "15", borderColor: colors.primary }]}>
+                    <IconSymbol name="person.crop.circle.fill" size={16} color={colors.primary} />
+                    <Text style={{ flex: 1, fontSize: 13, fontWeight: "700", color: colors.primary }}>{selectedClientName}</Text>
+                    <Pressable onPress={() => { setSelectedClientId(null); setSelectedClientName(""); setClientSearch(""); }}>
+                      <IconSymbol name="xmark.circle.fill" size={18} color={colors.muted} />
+                    </Pressable>
+                  </View>
+                ) : clientSearch.trim().length > 0 ? (
+                  <View style={[styles.clientDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    {clientsQuery.isLoading ? (
+                      <ActivityIndicator color={colors.primary} style={{ padding: 12 }} />
+                    ) : (
+                      (clientsQuery.data ?? []).filter((c: any) =>
+                        c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                        (c.phone ?? "").includes(clientSearch)
+                      ).slice(0, 8).map((c: any) => (
+                        <Pressable
+                          key={c.id}
+                          style={({ pressed }) => [styles.clientOption, { opacity: pressed ? 0.7 : 1 }]}
+                          onPress={() => { setSelectedClientId(c.id); setSelectedClientName(c.name); setClientSearch(""); }}
+                        >
+                          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>{c.name}</Text>
+                          {c.phone ? <Text style={{ fontSize: 12, color: colors.muted }}>{c.phone}</Text> : null}
+                        </Pressable>
+                      ))
+                    )}
+                    {!clientsQuery.isLoading && (clientsQuery.data ?? []).filter((c: any) =>
+                      c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+                      (c.phone ?? "").includes(clientSearch)
+                    ).length === 0 && (
+                      <Text style={{ padding: 12, color: colors.muted, fontSize: 13 }}>Nenhum cliente encontrado.</Text>
+                    )}
+                  </View>
+                ) : null}
+              </View>
+            )}
+
             <Pressable
               style={({ pressed }) => [dyn.sendBtn, { opacity: pressed || sendMutation.isPending ? 0.7 : 1 }]}
               onPress={handleSend}
@@ -271,4 +338,25 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
   closeBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   audienceIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  selectedClientBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    marginTop: 4,
+  },
+  clientDropdown: {
+    borderWidth: 1,
+    borderRadius: 10,
+    marginTop: 4,
+    overflow: "hidden",
+  },
+  clientOption: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e5e7eb",
+  },
 });

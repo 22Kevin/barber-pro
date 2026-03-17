@@ -155,6 +155,13 @@
       "when": 1772150325773,
       "tag": "0021_chief_professor_monster",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1773624619916,
+      "tag": "0022_redundant_scrambler",
+      "breakpoints": true
     }
   ]
 }

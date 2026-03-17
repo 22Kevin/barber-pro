@@ -1217,12 +1217,23 @@ export const appRouter = router({
       .input(z.object({
         title: z.string().min(1),
         message: z.string().min(1),
-        targetAudience: z.enum(["all", "inactive_30", "inactive_60", "birthday_month"]),
+        targetAudience: z.enum(["all", "inactive_30", "inactive_60", "birthday_month", "specific_client"]),
+        specificClientId: z.number().optional().nullable(),
         createdBy: z.number(),
       }))
       .mutation(async ({ input }) => {
-        const count = await db.getPromotionRecipientCount(input.targetAudience);
-        return db.createPromotion({ ...input, recipientCount: count });
+        const recipientCount = await db.getPromotionRecipientCount(
+          input.targetAudience,
+          input.specificClientId ?? undefined
+        );
+        return db.createPromotion({
+          title: input.title,
+          message: input.message,
+          targetAudience: input.targetAudience,
+          specificClientId: input.specificClientId ?? null,
+          createdBy: input.createdBy,
+          recipientCount,
+        });
       }),
   }),
 

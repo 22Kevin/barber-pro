@@ -1105,7 +1105,7 @@
 - [x] Reestruturar com campo de seleção de serviço com filtro de texto (igual ao site)
 
 ### Promoções (app)
-- [ ] Adicionar opção de enviar para cliente específico com campo de busca
+- [x] Adicionar opção de enviar para cliente específico com campo de busca
 
 ### Migração do banco
 - [ ] Adicionar coluna tenantId na tabela reviews

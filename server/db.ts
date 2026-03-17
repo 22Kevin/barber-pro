@@ -1087,7 +1087,8 @@ export async function listPromotions() {
 }
 
 export async function getPromotionRecipientCount(
-  targetAudience: "all" | "inactive_30" | "inactive_60" | "birthday_month"
+  targetAudience: "all" | "inactive_30" | "inactive_60" | "birthday_month" | "specific_client",
+  specificClientId?: number
 ): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
@@ -1119,13 +1120,17 @@ export async function getPromotionRecipientCount(
       .where(and(eq(clients.isActive, true), like(clients.birthDate as any, `%-${monthStr}-%`)));
     return row?.count ?? 0;
   }
+  if (targetAudience === "specific_client") {
+    return specificClientId ? 1 : 0;
+  }
   return 0;
 }
 
 export async function createPromotion(input: {
   title: string;
   message: string;
-  targetAudience: "all" | "inactive_30" | "inactive_60" | "birthday_month";
+  targetAudience: "all" | "inactive_30" | "inactive_60" | "birthday_month" | "specific_client";
+  specificClientId?: number | null;
   createdBy: number;
   recipientCount: number;
 }) {

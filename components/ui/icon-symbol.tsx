@@ -113,6 +113,8 @@ const MAPPING = {
   "sun.max.fill": "wb-sunny",
   "moon.fill": "dark-mode",
   "person.badge.checkmark": "how-to-reg",
+  "person.crop.circle.badge.checkmark": "how-to-reg",
+  "person.crop.circle.fill": "account-circle",
 
   // Intervalo de almoço
   "fork.knife": "restaurant",
