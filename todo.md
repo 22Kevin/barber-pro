@@ -1107,6 +1107,11 @@
 ### Promoções (app)
 - [x] Adicionar opção de enviar para cliente específico com campo de busca
 
+### Promoções (site)
+- [x] Substituir select simples por campo de busca com dropdown filtrável para cliente específico
+- [x] Corrigir POST para salvar targetAudience como "specific_client" (em vez de "all")
+- [x] Corrigir histórico para exibir "👤 Cliente específico" na coluna Público
+
 ### Migração do banco
 - [ ] Adicionar coluna tenantId na tabela reviews
 - [ ] Atualizar queries de reviews para usar tenantId diretamente (sem JOIN)

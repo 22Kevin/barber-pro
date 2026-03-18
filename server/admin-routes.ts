@@ -4459,13 +4459,59 @@ export function registerAdminRoutes(app: Express): void {
                 </select>
               </div>
               <div id="client-select-group" style="display:none" class="form-group">
-                <label class="form-label">Selecionar Cliente</label>
-                <select class="form-input" name="clientId">
-                  <option value="">-- Selecione um cliente --</option>
-                  ${activeClients.map((c: any) => `<option value="${c.id}">${esc(c.name)}${c.phone ? " — " + esc(c.phone) : ""}</option>`).join("")}
-                </select>
+                <label class="form-label">Buscar cliente</label>
+                <input type="text" id="client-search-input" class="form-input" placeholder="Digite o nome ou telefone..." oninput="filterClients()" autocomplete="off" style="margin-bottom:8px">
+                <input type="hidden" name="clientId" id="client-id-hidden">
+                <div id="client-selected-badge" style="display:none;background:var(--primary-10,rgba(10,126,164,0.1));border:1.5px solid var(--primary,#0a7ea4);border-radius:10px;padding:10px 14px;margin-bottom:8px;display:none;align-items:center;gap:10px">
+                  <span style="font-size:18px">👤</span>
+                  <span id="client-selected-name" style="flex:1;font-weight:700;color:var(--primary,#0a7ea4);font-size:14px"></span>
+                  <button type="button" onclick="clearClientSelection()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted)">✕</button>
+                </div>
+                <div id="client-dropdown" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;display:none;max-height:220px;overflow-y:auto">
+                  ${activeClients.map((c: any) => `<div class="client-option" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? "")}" onclick="selectClient(this)" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''"><strong style="font-size:14px">${esc(c.name)}</strong>${c.phone ? `<br><small style="color:var(--muted)">${esc(c.phone)}</small>` : ""}</div>`).join("")}
+                  <div id="client-no-results" style="display:none;padding:12px;color:var(--muted);font-size:13px;text-align:center">Nenhum cliente encontrado.</div>
+                </div>
               </div>
-              <script>function toggleClientSelect(){const v=document.getElementById('audience-select').value;document.getElementById('client-select-group').style.display=v==='individual'?'block':'none';}</script>
+              <script>
+                function toggleClientSelect(){
+                  const v=document.getElementById('audience-select').value;
+                  const grp=document.getElementById('client-select-group');
+                  grp.style.display=v==='individual'?'block':'none';
+                  if(v!=='individual'){clearClientSelection();}
+                }
+                function filterClients(){
+                  const q=document.getElementById('client-search-input').value.toLowerCase().trim();
+                  const dropdown=document.getElementById('client-dropdown');
+                  const opts=dropdown.querySelectorAll('.client-option');
+                  let visible=0;
+                  opts.forEach(o=>{
+                    const name=o.getAttribute('data-name').toLowerCase();
+                    const phone=o.getAttribute('data-phone').toLowerCase();
+                    const show=q===''||name.includes(q)||phone.includes(q);
+                    o.style.display=show?'block':'none';
+                    if(show)visible++;
+                  });
+                  document.getElementById('client-no-results').style.display=visible===0?'block':'none';
+                  dropdown.style.display=q.length>0?'block':'none';
+                }
+                function selectClient(el){
+                  const id=el.getAttribute('data-id');
+                  const name=el.getAttribute('data-name');
+                  document.getElementById('client-id-hidden').value=id;
+                  document.getElementById('client-selected-name').textContent=name;
+                  const badge=document.getElementById('client-selected-badge');
+                  badge.style.display='flex';
+                  document.getElementById('client-dropdown').style.display='none';
+                  document.getElementById('client-search-input').value='';
+                }
+                function clearClientSelection(){
+                  document.getElementById('client-id-hidden').value='';
+                  document.getElementById('client-selected-name').textContent='';
+                  document.getElementById('client-selected-badge').style.display='none';
+                  document.getElementById('client-search-input').value='';
+                  document.getElementById('client-dropdown').style.display='none';
+                }
+              </script>
               <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;margin-top:8px">🚀 Enviar Promoção</button>
             </form>
           </div>
@@ -4479,7 +4525,7 @@ export function registerAdminRoutes(app: Express): void {
               : `<table class="table"><thead><tr><th>Título</th><th>Público</th><th>Destinatários</th><th>Data</th></tr></thead><tbody>
                 ${promotionList.map((p: any) => `<tr>
                   <td><strong>${esc(p.title)}</strong><br><small style="color:var(--muted)">${esc((p.message ?? "").substring(0, 60))}${(p.message ?? "").length > 60 ? "..." : ""}</small></td>
-                  <td>${AUDIENCE_OPTIONS.find(o => o.value === p.targetAudience)?.label ?? p.targetAudience}</td>
+                  <td>${p.targetAudience === 'specific_client' ? '👤 Cliente específico' : (AUDIENCE_OPTIONS.find(o => o.value === p.targetAudience)?.label ?? p.targetAudience)}</td>
                   <td style="text-align:center;font-weight:700">${p.recipientCount ?? 0}</td>
                   <td style="color:var(--muted);font-size:12px">${p.sentAt ? new Date(p.sentAt).toLocaleDateString("pt-BR") : "—"}</td>
                 </tr>`).join("")}
@@ -4497,13 +4543,14 @@ export function registerAdminRoutes(app: Express): void {
     const session = (req as any).adminSession;
     const { title, message, targetAudience, clientId } = req.body;
     if (!title || !message) { res.redirect("/admin/promocoes?error=1"); return; }
-    const audience = targetAudience as "all" | "inactive_30" | "inactive_60" | "birthday_month";
     let recipientCount = 1;
-    if (targetAudience !== "individual") {
+    if (targetAudience === "individual" || targetAudience === "specific_client") {
+      if (!clientId) { res.redirect("/admin/promocoes?error=1"); return; }
+      await db.createPromotion({ title, message, targetAudience: "specific_client", createdBy: session.barberId, recipientCount: 1, specificClientId: Number(clientId) });
+    } else {
+      const audience = targetAudience as "all" | "inactive_30" | "inactive_60" | "birthday_month";
       recipientCount = await db.getPromotionRecipientCount(audience);
       await db.createPromotion({ title, message, targetAudience: audience, createdBy: session.barberId, recipientCount });
-    } else {
-      await db.createPromotion({ title, message, targetAudience: "all", createdBy: session.barberId, recipientCount: 1 });
     }
     res.redirect("/admin/promocoes?sent=1");
   });
