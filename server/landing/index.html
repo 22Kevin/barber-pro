@@ -427,6 +427,7 @@
       <span class="nav-logo-text">BARBER <span>PRO</span></span>
     </a>
     <ul class="nav-links">
+      <li><a href="#beneficios">Benefícios</a></li>
       <li><a href="#como-funciona">Como funciona</a></li>
       <li><a href="#funcionalidades">Funcionalidades</a></li>
       <li><a href="#planos">Planos</a></li>
@@ -446,24 +447,24 @@
     <div class="hero-bg-image"></div>
     <div class="hero-bg-overlay"></div>
     <div class="hero-bg-glow"></div>
-    <div class="container">
+    <div class="container" style="display:flex;align-items:center;justify-content:space-between;gap:40px">
       <div class="hero-inner">
         <div class="hero-badge">
           <div class="hero-badge-dot"></div>
-          Sistema completo para barbearias
+          🏆 Membros Fundadores em Franca — Vagas limitadas
         </div>
         <h1 class="hero-title">
-          Sua barbearia<br/>no próximo<br/><span class="gold-text">nível.</span>
+          Coloque ordem na<br/>sua barbearia e<br/><span class="gold-text">recupere seu tempo.</span>
         </h1>
-        <p class="hero-sub">Agendamento online, controle financeiro, programa de fidelidade, notificações automáticas e muito mais — tudo em um único sistema pensado para barbeiros.</p>
+        <p class="hero-sub">O <strong>BARBER PRÓ</strong> é o sistema completo que automatiza seus agendamentos, garante seu faturamento com assinaturas e organiza seu estoque. Tudo em um só lugar.</p>
         <div class="hero-actions">
-          <a href="#" class="btn-primary" onclick="openModal('Equipe', 'R$89'); return false;">Começar grátis por 14 dias</a>
+          <a href="#" class="btn-primary" onclick="openModal('Equipe', 'R$89'); return false;">✦ TESTAR 14 DIAS GRÁTIS</a>
           <a href="#funcionalidades" class="btn-secondary">Ver funcionalidades</a>
         </div>
         <div class="hero-stats">
           <div>
-            <div class="hero-stat-value">500+</div>
-            <div class="hero-stat-label">Barbearias ativas</div>
+            <div class="hero-stat-value">20</div>
+            <div class="hero-stat-label">Vagas de fundador</div>
           </div>
           <div class="hero-stat-divider"></div>
           <div>
@@ -476,6 +477,10 @@
             <div class="hero-stat-label">Agendamentos online</div>
           </div>
         </div>
+      </div>
+      <!-- Mestre Pro -->
+      <div class="hero-mascot" style="position:relative;z-index:2;flex-shrink:0">
+        <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/OpMXHkWYVHVSJKTF.png" alt="Mestre Pro" style="width:420px;max-width:40vw;border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 60px rgba(201,168,76,0.12);" />
       </div>
     </div>
   </section>
@@ -504,6 +509,56 @@
       <div class="marquee-item"><span>✦</span> Comissões por Barbeiro</div>
     </div>
   </div>
+
+  <!-- SEÇÃO BENEFÍCIOS -->
+  <section id="beneficios" class="section" style="background:var(--black-2)">
+    <div class="container">
+      <div style="text-align:center;margin-bottom:60px">
+        <div class="section-label">Por que o Barber Pró?</div>
+        <h2 class="section-title">Transforme funcionalidades<br/>em <span class="gold-text">lucro e tranquilidade</span></h2>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:24px">
+        <div style="background:var(--black-3);border:1px solid rgba(201,168,76,0.15);border-radius:20px;padding:36px;display:flex;gap:20px;align-items:flex-start;transition:border-color 0.3s" onmouseover="this.style.borderColor='rgba(201,168,76,0.4)'" onmouseout="this.style.borderColor='rgba(201,168,76,0.15)'">
+          <div style="font-size:40px;flex-shrink:0">📅</div>
+          <div>
+            <h3 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:10px">Agenda Inteligente</h3>
+            <p style="font-size:15px;color:var(--gray-light);line-height:1.7">Chega de conflitos de horário. Seu cliente agenda sozinho 24h por dia e você só se preocupa em entregar o corte perfeito.</p>
+          </div>
+        </div>
+        <div style="background:var(--black-3);border:1px solid rgba(201,168,76,0.15);border-radius:20px;padding:36px;display:flex;gap:20px;align-items:flex-start;transition:border-color 0.3s" onmouseover="this.style.borderColor='rgba(201,168,76,0.4)'" onmouseout="this.style.borderColor='rgba(201,168,76,0.15)'">
+          <div style="font-size:40px;flex-shrink:0">💳</div>
+          <div>
+            <h3 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:10px">Clube de Assinatura</h3>
+            <p style="font-size:15px;color:var(--gray-light);line-height:1.7">Comece o mês com dinheiro no bolso. Fidelize seus melhores clientes com planos mensais e garanta faturamento recorrente.</p>
+          </div>
+        </div>
+        <div style="background:var(--black-3);border:1px solid rgba(201,168,76,0.15);border-radius:20px;padding:36px;display:flex;gap:20px;align-items:flex-start;transition:border-color 0.3s" onmouseover="this.style.borderColor='rgba(201,168,76,0.4)'" onmouseout="this.style.borderColor='rgba(201,168,76,0.15)'">
+          <div style="font-size:40px;flex-shrink:0">📊</div>
+          <div>
+            <h3 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:10px">Controle Total</h3>
+            <p style="font-size:15px;color:var(--gray-light);line-height:1.7">Saiba exatamente o que entra e sai. Do estoque de pomadas à comissão dos barbeiros, tenha a gestão financeira na palma da mão.</p>
+          </div>
+        </div>
+        <div style="background:linear-gradient(135deg,rgba(201,168,76,0.12),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.35);border-radius:20px;padding:36px;display:flex;gap:20px;align-items:flex-start;transition:border-color 0.3s" onmouseover="this.style.borderColor='rgba(201,168,76,0.6)'" onmouseout="this.style.borderColor='rgba(201,168,76,0.35)'">
+          <div style="font-size:40px;flex-shrink:0">🌟</div>
+          <div>
+            <h3 style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;margin-bottom:10px">Sua Barbearia, Suas Regras</h3>
+            <p style="font-size:15px;color:var(--gray-light);line-height:1.7">Esqueça os aplicativos onde você é apenas mais um na lista. Com o <strong style="color:var(--gold-light)">BARBER PRÓ</strong>, você ganha uma <strong>página de agendamento personalizada</strong> com a sua marca, suas fotos e seu estilo. É o link profissional que falta na sua bio do Instagram para converter seguidores em clientes fiéis.</p>
+          </div>
+        </div>
+      </div>
+      <!-- Mestre Pro ao lado dos benefícios -->
+      <div style="display:flex;align-items:center;gap:48px;margin-top:60px;background:var(--black-3);border:1px solid rgba(201,168,76,0.15);border-radius:24px;padding:48px;overflow:hidden">
+        <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/OpMXHkWYVHVSJKTF.png" alt="Mestre Pro usando o Barber Pró" style="width:300px;flex-shrink:0;border-radius:12px;box-shadow:0 16px 60px rgba(0,0,0,0.5)" />
+        <div>
+          <div class="section-label" style="margin-bottom:16px">Fácil de usar</div>
+          <h3 style="font-family:'Playfair Display',serif;font-size:clamp(24px,3vw,36px);font-weight:700;line-height:1.2;margin-bottom:16px">No celular, tablet<br/>ou <span class="gold-text">computador.</span></h3>
+          <p style="font-size:16px;color:var(--gray-light);line-height:1.7;margin-bottom:28px">Junte-se aos Membros Fundadores em Franca que estão modernizando seus negócios. O Barber Pró foi feito para funcionar perfeitamente em qualquer dispositivo — sem treinamento, sem complicação.</p>
+          <a href="#" class="btn-primary" onclick="openModal('Equipe', 'R$89'); return false;">Quero ser Membro Fundador &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <section id="como-funciona" class="section">
     <div class="container">
@@ -911,10 +966,14 @@
   <section id="cta">
     <div class="container" style="position:relative;z-index:2;text-align:center">
       <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/KtacAshnHHXcsNrg.png" alt="Barber Pro" class="cta-logo" />
-      <h2 class="cta-title">Pronto para elevar<br/><span class="gold-text">sua barbearia?</span></h2>
-      <p class="cta-sub">Junte-se a centenas de barbeiros que já transformaram sua gestão com o Barber Pro.</p>
-      <a href="#" class="btn-primary" style="font-size:18px;padding:20px 48px;display:inline-flex" onclick="openModal('Equipe', 'R$89'); return false;">Começar grátis por 14 dias</a>
-      <p class="cta-note">Sem cartão de crédito &middot; Cancele quando quiser &middot; Suporte incluso</p>
+      <h2 class="cta-title">Pronto para evoluir<br/><span class="gold-text">sua barbearia?</span></h2>
+      <p class="cta-sub">Comece seu teste gratuito hoje. Sem letras miúdas, sem complicações.</p>
+      <a href="#" class="btn-primary" style="font-size:18px;padding:20px 48px;display:inline-flex" onclick="openModal('Equipe', 'R$89'); return false;">🏆 QUERO SER UM MEMBRO FUNDADOR (14 DIAS GRÁTIS)</a>
+      <p class="cta-note">Sem cartão de crédito &middot; Cancele quando quiser &middot; Suporte incluído</p>
+      <!-- Mestre Pro no rodapé -->
+      <div style="margin-top:48px;display:inline-block;position:relative">
+        <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/OpMXHkWYVHVSJKTF.png" alt="Mestre Pro" style="width:280px;border-radius:12px;opacity:0.9;box-shadow:0 16px 60px rgba(0,0,0,0.5),0 0 40px rgba(201,168,76,0.15)" />
+      </div>
     </div>
   </section>
 

@@ -1163,6 +1163,12 @@
 - [ ] E-mail automático de parabéns ao barbeiro ao concluir a configuração da página
 
 ### Melhorias na Landing Page (Copywriting e Conversão)
+- [x] Headline: "Coloque ordem na sua barbearia e recupere seu tempo"
+- [x] Subtítulo atualizado com foco em benefícios (agendamentos, assinaturas, estoque)
+- [x] Seção de Benefícios com 4 cards: Agenda Inteligente, Clube de Assinatura, Controle Total, Página Exclusiva
+- [x] Personagem "Mestre Pro" integrado na seção Hero e Benefícios
+- [x] Seção de Prova Social com texto de Membros Fundadores em Franca
+- [x] Rodapé com CTA "QUERO SER UM MEMBRO FUNDADOR (14 DIAS GRÁTIS)"
 - [ ] Headline: "Transforme sua barbearia em uma empresa de elite (enquanto você foca na tesoura)"
 - [ ] Barra de urgência no topo: "🔥 OFERTA DE LANÇAMENTO: As primeiras 20 barbearias garantem mensalidade fixa vitalícia e selo de Membro Fundador"
 - [ ] Selo "VALOR CONGELADO PARA SEMPRE" nos cards de planos
