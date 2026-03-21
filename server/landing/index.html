@@ -67,10 +67,56 @@
     .compare-table td.compare-partial { color: #888; }
     .compare-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
     .compare-table tbody tr:hover td.compare-barberpro { background: rgba(201,168,76,0.1); }
-    /* Botões de ação mobile na nav */
+    /* MENU HAMBURGUER */
+    .nav-hamburger {
+      display: none; flex-direction: column; justify-content: center; gap: 5px;
+      width: 40px; height: 40px; background: none; border: none; cursor: pointer;
+      padding: 4px; border-radius: 8px; transition: background 0.2s;
+    }
+    .nav-hamburger:hover { background: rgba(255,255,255,0.06); }
+    .nav-hamburger span {
+      display: block; height: 2px; background: var(--white);
+      border-radius: 2px; transition: all 0.3s;
+      transform-origin: center;
+    }
+    .nav-hamburger span:nth-child(1) { width: 24px; }
+    .nav-hamburger span:nth-child(2) { width: 18px; }
+    .nav-hamburger span:nth-child(3) { width: 24px; }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); width: 24px; }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); width: 24px; }
+    /* Menu mobile drawer */
+    .nav-mobile-drawer {
+      display: none; position: fixed; top: 72px; left: 0; right: 0; z-index: 999;
+      background: rgba(10,10,10,0.98); backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(201,168,76,0.2);
+      padding: 16px 24px 24px;
+      flex-direction: column; gap: 4px;
+      transform: translateY(-10px); opacity: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .nav-mobile-drawer.open {
+      transform: translateY(0); opacity: 1; pointer-events: all;
+    }
+    .nav-mobile-drawer a {
+      display: block; padding: 14px 16px; font-size: 16px; font-weight: 500;
+      color: var(--gray-light); text-decoration: none; border-radius: 10px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .nav-mobile-drawer a:hover { background: rgba(255,255,255,0.05); color: var(--white); }
+    .nav-mobile-drawer .drawer-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 8px 0; }
+    .nav-mobile-drawer .drawer-cta {
+      background: linear-gradient(135deg, var(--gold-light), var(--gold));
+      color: var(--black) !important; font-weight: 700 !important;
+      text-align: center; margin-top: 8px;
+    }
+    .nav-mobile-drawer .drawer-login {
+      border: 1px solid rgba(201,168,76,0.4); color: var(--gold) !important;
+      text-align: center; font-weight: 600 !important;
+    }
+    /* Botões de ação mobile na nav (mantidos para compatibilidade) */
     .nav-mobile-actions { display: none; align-items: center; gap: 10px; }
-    .nav-mobile-actions .nav-login { padding: 7px 14px; font-size: 13px; }
-    .nav-mobile-actions .nav-cta { padding: 8px 14px; font-size: 13px; }
 
     /* HERO — imagem de fundo */
     #hero {
@@ -418,26 +464,69 @@
       .footer-top { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 768px) {
-      .section { padding: 72px 0; }
-      .steps-grid { grid-template-columns: 1fr; }
-      .pricing-grid { grid-template-columns: 1fr; }
-      .pricing-card.featured { transform: none; }
-      .testimonials-grid { grid-template-columns: 1fr; }
+      .section { padding: 64px 0; }
+      /* Nav: esconder links, mostrar hamburguer */
       .nav-links { display: none; }
-      .nav-mobile-actions { display: flex; }
-      .hero-title { font-size: clamp(36px, 10vw, 56px); }
-      .modal-box { padding: 32px 24px; }
+      .nav-hamburger { display: flex; }
+      .nav-mobile-drawer { display: flex; }
+      /* Hero: empilhar verticalmente */
+      #hero .container { flex-direction: column !important; align-items: flex-start !important; gap: 32px !important; padding-top: 24px; padding-bottom: 48px; }
+      .hero-inner { max-width: 100% !important; }
+      .hero-mascot { display: none !important; }
+      .hero-title { font-size: clamp(34px, 9vw, 52px) !important; }
+      .hero-sub { font-size: 16px !important; }
+      .hero-actions { flex-direction: column !important; }
+      .hero-actions a { text-align: center !important; justify-content: center !important; }
+      .hero-stats { gap: 20px !important; flex-wrap: wrap; }
+      /* Beneficios: 1 coluna */
+      #beneficios > .container > div[style*="grid"] { grid-template-columns: 1fr !important; }
+      /* Steps: 1 coluna */
+      .steps-grid { grid-template-columns: 1fr; }
+      /* Features: 2 colunas */
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      /* Planos: 1 coluna */
+      .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
+      .pricing-card.featured { transform: none; }
+      /* Depoimentos: 1 coluna */
+      .testimonials-grid { grid-template-columns: 1fr; }
+      /* Tabela de comparação: scroll horizontal */
+      .compare-table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      /* Footer: 1 coluna */
+      .footer-top { grid-template-columns: 1fr !important; gap: 32px; }
+      .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+      /* Modal */
+      .modal-box { padding: 28px 20px; margin: 12px; }
       .form-row { grid-template-columns: 1fr; }
+      /* Demo */
+      .demo-inner { grid-template-columns: 1fr !important; }
+      /* Section title */
+      .section-title { font-size: clamp(28px, 7vw, 40px); }
+      .section-sub { font-size: 16px; }
+      /* CTA */
+      .cta-title { font-size: clamp(28px, 8vw, 48px); }
+      .cta-sub { font-size: 16px; }
+      /* WhatsApp flutuante: menor em mobile */
+      .whatsapp-float { width: 50px; height: 50px; bottom: 20px; right: 20px; }
+      .whatsapp-float svg { width: 24px; height: 24px; }
     }
     @media (max-width: 480px) {
       .features-grid { grid-template-columns: 1fr; }
-      .hero-stats { flex-wrap: wrap; gap: 24px; }
+      .hero-stats { flex-wrap: wrap; gap: 16px; }
+      .hero-stat-divider { display: none; }
+      .container { padding: 0 16px; }
+      .section { padding: 56px 0; }
+      .step-card { padding: 32px 24px; }
+      .pricing-grid { max-width: 100%; }
+      .pricing-card { padding: 32px 24px; }
+      .testimonial-card { padding: 24px; }
+      .modal-box { padding: 24px 16px; }
+      .cta-logo { width: 80px; height: 80px; }
     }
   </style>
 </head>
 <body>
 
-  <nav>
+  <nav id="main-nav">
     <a href="#" class="nav-logo">
       <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/KtacAshnHHXcsNrg.png" alt="Barber Pro" />
       <span class="nav-logo-text">BARBER <span>PRO</span></span>
@@ -451,12 +540,22 @@
       <li><a href="#" class="nav-cta" onclick="openModal('Equipe', 'R$89'); return false;">Começar grátis</a></li>
       <li><a href="#" class="nav-login" onclick="openLoginModal(); return false;">Entrar</a></li>
     </ul>
-    <!-- Botões mobile visíveis em telas pequenas -->
-    <div class="nav-mobile-actions">
-      <a href="#" class="nav-login" onclick="openLoginModal(); return false;">Entrar</a>
-      <a href="#" class="nav-cta" onclick="openModal('Equipe', 'R$89'); return false;">Começar</a>
-    </div>
+    <!-- Botão hamburguer (mobile) -->
+    <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu" onclick="toggleMobileMenu()">
+      <span></span><span></span><span></span>
+    </button>
   </nav>
+  <!-- Drawer mobile -->
+  <div class="nav-mobile-drawer" id="nav-mobile-drawer">
+    <a href="#beneficios" onclick="closeMobileMenu()">Benefícios</a>
+    <a href="#como-funciona" onclick="closeMobileMenu()">Como funciona</a>
+    <a href="#funcionalidades" onclick="closeMobileMenu()">Funcionalidades</a>
+    <a href="#planos" onclick="closeMobileMenu()">Planos</a>
+    <a href="#faq" onclick="closeMobileMenu()">FAQ</a>
+    <div class="drawer-divider"></div>
+    <a href="#" class="drawer-login" onclick="closeMobileMenu(); openLoginModal(); return false;">Entrar</a>
+    <a href="#" class="drawer-cta" onclick="closeMobileMenu(); openModal('Equipe', 'R$89'); return false;">✦ TESTAR 14 DIAS GRÁTIS</a>
+  </div>
 
   <!-- HERO com imagem de fundo -->
   <section id="hero">
@@ -894,7 +993,7 @@
       <div class="section-label">POR QUE BARBER PRO</div>
       <h2 class="section-title">Chega de improvisar<br/><span class="gold-text">com ferramentas erradas</span></h2>
       <p class="section-sub" style="max-width:560px;margin:0 auto 48px">Veja como o Barber Pro se compara com as alternativas que a maioria dos barbeiros usa hoje.</p>
-      <div style="overflow-x:auto">
+      <div class="compare-table-wrapper" style="overflow-x:auto">
         <table class="compare-table">
           <thead>
             <tr>
@@ -1241,6 +1340,39 @@
     window.addEventListener("scroll", function() {
       var nav = document.querySelector("nav");
       nav.style.boxShadow = window.scrollY > 20 ? "0 4px 40px rgba(0,0,0,0.6)" : "none";
+    });
+
+    // --- Menu Hamburguer ---
+    function toggleMobileMenu() {
+      var hamburger = document.getElementById('nav-hamburger');
+      var drawer = document.getElementById('nav-mobile-drawer');
+      var isOpen = drawer.classList.contains('open');
+      if (isOpen) {
+        drawer.classList.remove('open');
+        hamburger.classList.remove('open');
+        document.body.style.overflow = '';
+      } else {
+        drawer.classList.add('open');
+        hamburger.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+    function closeMobileMenu() {
+      var hamburger = document.getElementById('nav-hamburger');
+      var drawer = document.getElementById('nav-mobile-drawer');
+      drawer.classList.remove('open');
+      hamburger.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    // Fechar drawer ao clicar fora
+    document.addEventListener('click', function(e) {
+      var drawer = document.getElementById('nav-mobile-drawer');
+      var hamburger = document.getElementById('nav-hamburger');
+      if (drawer && drawer.classList.contains('open')) {
+        if (!drawer.contains(e.target) && !hamburger.contains(e.target)) {
+          closeMobileMenu();
+        }
+      }
     });
 
     // --- Scroll animations ---
