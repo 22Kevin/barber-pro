@@ -330,6 +330,7 @@ export const clientAccounts = mysqlTable("client_accounts", {
 // ─── Avaliações de Serviços ───────────────────────────────────────────────────
 export const reviews = mysqlTable("reviews", {
   id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId").notNull().default(0), // isolamento multi-tenant
   clientId: int("clientId").notNull(),
   serviceId: int("serviceId").notNull(),
   appointmentId: int("appointmentId"),

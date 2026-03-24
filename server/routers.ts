@@ -535,7 +535,7 @@ export const appRouter = router({
         const clientId = await db.createClient({ name: input.name, email: input.email, phone: input.phone, birthDate: input.birthDate, isActive: true });
         await db.createClientAccount({ clientId, email: input.email, passwordHash });
         const client = await db.getClientById(clientId);
-        return { id: clientId, name: input.name, email: input.email, phone: input.phone, totalPoints: 0, client };
+        return { id: clientId, tenantId: client?.tenantId ?? null, name: input.name, email: input.email, phone: input.phone, totalPoints: 0, client };
       }),
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string().min(1) }))
@@ -546,7 +546,7 @@ export const appRouter = router({
         if (!valid) throw new Error("Credenciais inválidas");
         const client = await db.getClientById(account.clientId);
         if (!client) throw new Error("Cliente não encontrado");
-        return { id: client.id, name: client.name, email: client.email, phone: client.phone, totalPoints: client.totalPoints, birthDate: client.birthDate, photoUrl: client.photoUrl };
+        return { id: client.id, tenantId: client.tenantId, name: client.name, email: client.email, phone: client.phone, totalPoints: client.totalPoints, birthDate: client.birthDate, photoUrl: client.photoUrl };
       }),
     updateProfile: publicProcedure
       .input(z.object({ clientId: z.number(), name: z.string().min(2).optional(), phone: z.string().optional(), birthDate: z.string().optional().nullable(), notes: z.string().optional().nullable() }))
@@ -633,7 +633,7 @@ export const appRouter = router({
         if (input.photoUrl && !client.photoUrl) {
           await db.updateClient(client.id, { photoUrl: input.photoUrl });
         }
-        return { id: client.id, name: client.name, email: client.email, phone: client.phone ?? "", totalPoints: client.totalPoints, birthDate: client.birthDate, photoUrl: input.photoUrl ?? client.photoUrl };
+        return { id: client.id, tenantId: client.tenantId, name: client.name, email: client.email, phone: client.phone ?? "", totalPoints: client.totalPoints, birthDate: client.birthDate, photoUrl: input.photoUrl ?? client.photoUrl };
       }),
     getBirthdayCoupon: publicProcedure
       .input(z.object({ birthDate: z.string() }))
@@ -661,7 +661,7 @@ export const appRouter = router({
       .input(z.object({ clientId: z.number(), tenantId: z.number().optional().nullable() }))
       .query(({ input }) => db.getReviewsByClient(input.clientId, input.tenantId)),
     create: publicProcedure
-      .input(z.object({ clientId: z.number(), serviceId: z.number(), appointmentId: z.number().optional(), rating: z.number().min(1).max(5), comment: z.string().optional() }))
+      .input(z.object({ tenantId: z.number(), clientId: z.number(), serviceId: z.number(), appointmentId: z.number().optional(), rating: z.number().min(1).max(5), comment: z.string().optional() }))
       .mutation(({ input }) => db.createReview(input)),
   }),
 

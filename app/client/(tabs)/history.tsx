@@ -74,6 +74,7 @@ function ReviewModal({ appointment, onClose }: { appointment: any; onClose: () =
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => createReview.mutate({
+              tenantId: client.tenantId ?? 0,
               clientId: client.id,
               serviceId: appointment.serviceId,
               appointmentId: appointment.id,

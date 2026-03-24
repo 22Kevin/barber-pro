@@ -641,6 +641,7 @@ export default function ClientHome() {
                 onPress={() => {
                   if (!client || !pendingReviewAppt) return;
                   createReviewMutation.mutate({
+                    tenantId: client.tenantId ?? 0,
                     clientId: client.id,
                     serviceId: pendingReviewAppt.serviceId,
                     appointmentId: pendingReviewAppt.id,

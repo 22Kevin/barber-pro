@@ -846,64 +846,34 @@ export async function updateClientAccount(id: number, data: Partial<typeof clien
 export async function getReviewsByService(serviceId: number, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  // Se tenantId fornecido, garante que o serviço pertence ao tenant correto
-  if (tenantId != null) {
-    return db
-      .select({ id: reviews.id, clientId: reviews.clientId, serviceId: reviews.serviceId, appointmentId: reviews.appointmentId, rating: reviews.rating, comment: reviews.comment, createdAt: reviews.createdAt })
-      .from(reviews)
-      .innerJoin(services, and(eq(reviews.serviceId, services.id), eq(services.tenantId, tenantId)))
-      .where(eq(reviews.serviceId, serviceId))
-      .orderBy(desc(reviews.createdAt));
-  }
-  return db.select().from(reviews).where(eq(reviews.serviceId, serviceId)).orderBy(desc(reviews.createdAt));
+  const conditions = [eq(reviews.serviceId, serviceId)];
+  if (tenantId != null) conditions.push(eq(reviews.tenantId, tenantId));
+  return db.select().from(reviews).where(and(...conditions)).orderBy(desc(reviews.createdAt));
 }
 export async function getReviewsByClient(clientId: number, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  // Se tenantId fornecido, filtra apenas avaliações de serviços deste tenant
-  if (tenantId != null) {
-    return db
-      .select({ id: reviews.id, clientId: reviews.clientId, serviceId: reviews.serviceId, appointmentId: reviews.appointmentId, rating: reviews.rating, comment: reviews.comment, createdAt: reviews.createdAt })
-      .from(reviews)
-      .innerJoin(services, and(eq(reviews.serviceId, services.id), eq(services.tenantId, tenantId)))
-      .where(eq(reviews.clientId, clientId))
-      .orderBy(desc(reviews.createdAt));
-  }
-  return db.select().from(reviews).where(eq(reviews.clientId, clientId)).orderBy(desc(reviews.createdAt));
+  const conditions = [eq(reviews.clientId, clientId)];
+  if (tenantId != null) conditions.push(eq(reviews.tenantId, tenantId));
+  return db.select().from(reviews).where(and(...conditions)).orderBy(desc(reviews.createdAt));
 }
 export async function getRecentReviews(limit = 5, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  // Se tenantId fornecido, filtra via join com services
-  let result;
-  if (tenantId != null) {
-    result = await db
-      .select({
-        id: reviews.id,
-        rating: reviews.rating,
-        comment: reviews.comment,
-        createdAt: reviews.createdAt,
-        clientId: reviews.clientId,
-        serviceId: reviews.serviceId,
-      })
-      .from(reviews)
-      .innerJoin(services, and(eq(reviews.serviceId, services.id), eq(services.tenantId, tenantId)))
-      .orderBy(desc(reviews.createdAt))
-      .limit(limit);
-  } else {
-    result = await db
-      .select({
-        id: reviews.id,
-        rating: reviews.rating,
-        comment: reviews.comment,
-        createdAt: reviews.createdAt,
-        clientId: reviews.clientId,
-        serviceId: reviews.serviceId,
-      })
-      .from(reviews)
-      .orderBy(desc(reviews.createdAt))
-      .limit(limit);
-  }
+  const conditions = tenantId != null ? [eq(reviews.tenantId, tenantId)] : [];
+  const result = await db
+    .select({
+      id: reviews.id,
+      rating: reviews.rating,
+      comment: reviews.comment,
+      createdAt: reviews.createdAt,
+      clientId: reviews.clientId,
+      serviceId: reviews.serviceId,
+    })
+    .from(reviews)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(reviews.createdAt))
+    .limit(limit);
   // Enriquecer com nome do cliente e serviço
   const clientIds = [...new Set(result.map(r => r.clientId))];
   const serviceIds = [...new Set(result.map(r => r.serviceId))];
@@ -920,7 +890,7 @@ export async function getRecentReviews(limit = 5, tenantId?: number | null) {
   }));
 }
 
-export async function createReview(data: { clientId: number; serviceId: number; appointmentId?: number; rating: number; comment?: string }) {
+export async function createReview(data: { tenantId: number; clientId: number; serviceId: number; appointmentId?: number; rating: number; comment?: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(reviews).values(data);

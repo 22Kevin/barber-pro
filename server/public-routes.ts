@@ -1649,7 +1649,19 @@ export function registerPublicRoutes(app: Express): void {
       const existing = await db.getReviewByAppointmentId(parseInt(appointmentId));
       if (existing) { res.status(400).json({ error: "Este agendamento já foi avaliado" }); return; }
 
+      // Obter tenantId via slug (se fornecido) ou via barbeiro do agendamento
+      let reviewTenantId = 0;
+      if (slug) {
+        const tenant = await db.getTenantBySlug(slug);
+        if (tenant) reviewTenantId = tenant.id;
+      }
+      if (!reviewTenantId) {
+        const barber = await db.getBarberById(appt.barberId);
+        if (barber?.tenantId) reviewTenantId = barber.tenantId;
+      }
+
       await db.createReview({
+        tenantId: reviewTenantId,
         clientId: appt.clientId,
         serviceId: appt.serviceId,
         appointmentId: parseInt(appointmentId),

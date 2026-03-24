@@ -1061,10 +1061,10 @@
 
 ## Isolamento de Avaliações por Barbearia v10.1
 
-- [ ] Adicionar campo tenantId na tabela reviews (migração do banco)
-- [ ] Filtrar avaliações por tenantId nas queries do db.ts (getReviewsByService, getReviewsByClient, getAllReviews)
-- [ ] Filtrar avaliações por tenantId nas rotas tRPC (reviews.byService, reviews.byClient)
-- [ ] Garantir que a criação de avaliação salva o tenantId correto
+- [x] Adicionar campo tenantId na tabela reviews (migração do banco)
+- [x] Filtrar avaliações por tenantId nas queries do db.ts (getReviewsByService, getReviewsByClient, getAllReviews)
+- [x] Filtrar avaliações por tenantId nas rotas tRPC (reviews.byService, reviews.byClient)
+- [x] Garantir que a criação de avaliação salva o tenantId correto
 - [x] Verificar isolamento no site (painel admin) — já implementado via JOIN com tenantId
 - [x] Verificar isolamento no app (tela de detalhes do serviço) — já implementado via tenantId
 
@@ -1113,8 +1113,8 @@
 - [x] Corrigir histórico para exibir "👤 Cliente específico" na coluna Público
 
 ### Migração do banco
-- [ ] Adicionar coluna tenantId na tabela reviews
-- [ ] Atualizar queries de reviews para usar tenantId diretamente (sem JOIN)
+- [x] Adicionar coluna tenantId na tabela reviews
+- [x] Atualizar queries de reviews para usar tenantId diretamente (sem JOIN)
 
 ## Funcionalidades Sugeridas pelo Gemini (Backlog Futuro)
 
