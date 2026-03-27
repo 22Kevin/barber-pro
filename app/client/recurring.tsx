@@ -15,6 +15,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useClientAuth } from "@/lib/client-auth-context";
 
 const INTERVAL_OPTIONS = [
   { label: "Toda semana", weeks: 1 },
@@ -42,6 +43,8 @@ export default function RecurringScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const utils = trpc.useUtils();
+  const { client } = useClientAuth();
+  const tenantId = client?.tenantId ?? undefined;
 
   const [clientId, setClientId] = useState<number | null>(null);
   const [step, setStep] = useState<"list" | "create">("list");
@@ -58,8 +61,8 @@ export default function RecurringScreen() {
     });
   }, []);
 
-  const barbersQuery = trpc.barbers.list.useQuery();
-  const servicesQuery = trpc.services.list.useQuery({ activeOnly: true });
+  const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
+  const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
   const recurringQuery = trpc.recurring.listByClient.useQuery(
     { clientId: clientId ?? 0 },
     { enabled: !!clientId }

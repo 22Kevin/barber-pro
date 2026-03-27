@@ -146,7 +146,7 @@ export const appRouter = router({
   }),
 
   barbers: router({
-    list: publicProcedure.query(() => db.getAllBarbers()),
+    list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getAllBarbers(input?.tenantId)),
     listAll: publicProcedure.query(() => db.getAllBarbersIncludingInactive()),
     reactivate: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.reactivateBarber(input.id)),
     create: publicProcedure

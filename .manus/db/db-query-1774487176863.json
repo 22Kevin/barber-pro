@@ -1,0 +1,100 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'products' AND TABLE_SCHEMA = DATABASE() ORDER BY ORDINAL_POSITION;\nSELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'appointments' AND TABLE_SCHEMA = DATABASE() ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'products' AND TABLE_SCHEMA = DATABASE() ORDER BY ORDINAL_POSITION;\nSELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'appointments' AND TABLE_SCHEMA = DATABASE() ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "categoryId"
+    },
+    {
+      "COLUMN_NAME": "name"
+    },
+    {
+      "COLUMN_NAME": "description"
+    },
+    {
+      "COLUMN_NAME": "price"
+    },
+    {
+      "COLUMN_NAME": "stock"
+    },
+    {
+      "COLUMN_NAME": "isActive"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "productType"
+    },
+    {
+      "COLUMN_NAME": "stockQuantity"
+    },
+    {
+      "COLUMN_NAME": "minStockAlert"
+    },
+    {
+      "COLUMN_NAME": "tenantId"
+    },
+    {
+      "COLUMN_NAME": "COLUMN_NAME"
+    },
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "clientId"
+    },
+    {
+      "COLUMN_NAME": "barberId"
+    },
+    {
+      "COLUMN_NAME": "serviceId"
+    },
+    {
+      "COLUMN_NAME": "date"
+    },
+    {
+      "COLUMN_NAME": "startTime"
+    },
+    {
+      "COLUMN_NAME": "endTime"
+    },
+    {
+      "COLUMN_NAME": "status"
+    },
+    {
+      "COLUMN_NAME": "notes"
+    },
+    {
+      "COLUMN_NAME": "reminderSent"
+    },
+    {
+      "COLUMN_NAME": "whatsappConfirmationSent"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "cancelReason"
+    },
+    {
+      "COLUMN_NAME": "whatsappReminder24hSent"
+    },
+    {
+      "COLUMN_NAME": "whatsappReminder1hSent"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\ncategoryId\nname\ndescription\nprice\nstock\nisActive\ncreatedAt\nupdatedAt\nproductType\nstockQuantity\nminStockAlert\ntenantId\nCOLUMN_NAME\nid\nclientId\nbarberId\nserviceId\ndate\nstartTime\nendTime\nstatus\nnotes\nreminderSent\nwhatsappConfirmationSent\ncreatedAt\nupdatedAt\ncancelReason\nwhatsappReminder24hSent\nwhatsappReminder1hSent\n",
+  "stderr": "",
+  "execution_time_ms": 391
+}

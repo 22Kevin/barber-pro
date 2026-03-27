@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { useClientAuth } from "@/lib/client-auth-context";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = (SCREEN_W - 20 * 2 - 12) / 2; // 2 colunas com gap de 12
@@ -190,7 +191,9 @@ export default function ClientShop() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
 
-  const productsQuery = trpc.products.listWithMedia.useQuery({ activeOnly: true });
+  const { client } = useClientAuth();
+  const tenantId = client?.tenantId ?? undefined;
+  const productsQuery = trpc.products.listWithMedia.useQuery({ activeOnly: true, tenantId });
   const categoriesQuery = trpc.categories.list.useQuery({ type: "product" });
   const products = productsQuery.data ?? [];
   const categories = categoriesQuery.data ?? [];

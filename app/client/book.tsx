@@ -102,8 +102,9 @@ export default function BookScreen() {
   const [recurringInterval, setRecurringInterval] = useState<1 | 2 | 4>(1); // semanas
   const [recurringOccurrences, setRecurringOccurrences] = useState(4);
 
-  const servicesQuery = trpc.services.list.useQuery({ activeOnly: true });
-  const barbersQuery = trpc.barbers.list.useQuery();
+  const tenantId = client?.tenantId ?? undefined;
+  const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
+  const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
   const slotsQuery = trpc.slots.available.useQuery(
     { barberId: selectedBarber?.id ?? 0, date: selectedDate ? formatDate(selectedDate) : "", durationMinutes: selectedService?.durationMinutes ?? 30 },
     { enabled: !!selectedBarber && !!selectedDate && !!selectedService }

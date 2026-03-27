@@ -359,15 +359,14 @@
 - [x] Validação em tempo real do código de cupom digitado manualmente
 - [x] Ao resgatar recompensa de pontos, deduzir pontos do cliente automaticamente ao confirmar
 
-## Redesign Home v3.2
-
-- [ ] Remover botão "Compartilhar Agendamento" do book.tsx após confirmação
-- [ ] Remover seção "Acesso Rápido" da Home do cliente
-- [ ] Atualizar rota services.list e products.list para incluir a primeira foto de cada item
-- [ ] Substituir emojis por logos reais do Instagram e Google Maps na seção "Nos encontre"
-- [ ] Converter seção "Produtos" para scroll horizontal (igual aos Serviços)
-- [ ] Exibir fotos reais dos serviços e produtos nos cards da Home
-- [ ] Melhorar visual geral da Home (hierarquia, espaçamento, tipografia)
+### Redesign Home v3.2
+- [x] Remover botão "Compartilhar Agendamento" do book.tsx após confirmação
+- [x] Remover seção "Acesso Rápido" da Home do cliente
+- [x] Atualizar rota services.list e products.list para incluir a primeira foto de cada item
+- [x] Substituir emojis por logos reais do Instagram e Google Maps na seção "Nos encontre"
+- [x] Converter seção "Produtos" para scroll horizontal (igual aos Serviços)
+- [x] Exibir fotos reais dos serviços e produtos nos cards da Home
+- [x] Melhorar visual geral da Home (hierarquia, espaçamento, tipografia)
 
 ## Redesign Home do Cliente v3.2
 
@@ -422,11 +421,11 @@
 
 ## Novas Funcionalidades v3.5
 
-### Comissões para o Barbeiro
-- [ ] Aba "Minhas Comissões" no app do barbeiro (tab ou tela acessível pelo perfil)
-- [ ] Seletor de mês para visualizar comissões do período
-- [ ] Cards: total bruto, comissão a receber, atendimentos realizados
-- [ ] Lista de atendimentos com valor individual de comissão
+## Novas Funcionalidades v3.5
+- [x] Aba "Minhas Comissões" no app do barbeiro (tab ou tela acessível pelo perfil)
+- [x] Seletor de mês para visualizar comissões do período
+- [x] Cards: total bruto, comissão a receber, atendimentos realizados
+- [x] Lista de atendimentos com valor individual de comissão
 
 ### Agendamento Recorrente
 - [ ] Tabela `recurring_appointments` no banco (clientId, barberId, serviceId, startDate, intervalWeeks, endDate, isActive)
@@ -446,11 +445,11 @@
 - [ ] Tabela `stock_movements` (productId, type: in/out/adjustment, quantity, reason, barberId, date)
 - [ ] Baixa automática de estoque ao registrar venda de produto (tipo "sale")
 - [ ] Baixa manual de estoque para produtos de uso interno (barbeiro registra o consumo)
-- [ ] Tela admin: "Estoque" — lista de produtos com quantidade atual, badge de alerta mínimo
-- [ ] Tela admin: registrar entrada de estoque (compra de produtos)
-- [ ] Tela admin: histórico de movimentações por produto
-- [ ] Tela admin: relatório de consumo médio mensal por produto (média dos últimos 3 meses)
-- [ ] Tela admin: previsão de ruptura (quantos dias até acabar com base no consumo médio)
+- [x] Tela admin: "Estoque" — lista de produtos com quantidade atual, badge de alerta mínimo
+- [x] Tela admin: registrar entrada de estoque (compra de produtos)
+- [x] Tela admin: histórico de movimentações por produto
+- [x] Tela admin: relatório de consumo médio mensal por produto (média dos últimos 3 meses)
+- [x] Tela admin: previsão de ruptura (quantos dias até acabar com base no consumo médio)
 - [ ] Notificação push para admin quando produto atingir estoque mínimo
 
 ## Funcionalidades v3.5 — Concluídas
@@ -478,16 +477,15 @@
 
 ## Bug v3.5.3
 
-- [ ] Corrigir erro de login: "Failed query: select from barbers" — coluna inexistente no banco (schema desatualizado)
+- [x] Corrigir erro de login: "Failed query: select from barbers" — coluna inexistente no banco (schema desatualizado — erro era ETIMEDOUT temporário, banco sincronizado)
 
 ## Reorganização Menu Admin v3.6
-
-- [ ] Criar tela "Barbearia" com: nome, CNPJ, endereço, telefone, WhatsApp, Instagram, logo, galeria, chave Pix, token Mercado Pago, equipe (barbeiros), horários de funcionamento
-- [ ] Criar tela "Meu Perfil" independente (nome, foto, e-mail, alterar senha)
-- [ ] Simplificar settings.tsx para conter apenas preferências do sistema (tema, notificações)
-- [ ] Refatorar admin-drawer.tsx com grupos rotulados: OPERAÇÃO, CATÁLOGO, MARKETING, FINANCEIRO, SISTEMA
-- [ ] Aplicar hierarquia de acesso por role no drawer: super_admin vê tudo, barber vê apenas Agenda/Clientes/Minhas Comissões, receptionist vê Agenda/Clientes/Serviços/Produtos
-- [ ] Registrar novas telas (barbearia, my-profile) no _layout.tsx com tabBarItemStyle display none
+- [x] Criar tela "Barbearia" com: nome, CNPJ, endereço, telefone, WhatsApp, Instagram, logo, galeria, chave Pix, token Mercado Pago, equipe (barbeiros), horários de funcionamento
+- [x] Criar tela "Meu Perfil" independente (nome, foto, e-mail, alterar senha)
+- [x] Simplificar settings.tsx para conter apenas preferências do sistema (tema, notificações)
+- [x] Refatorar admin-drawer.tsx com grupos rotulados: OPERAÇÃO, CATÁLOGO, MARKETING, FINANCEIRO, SISTEMA
+- [x] Aplicar hierarquia de acesso por role no drawer: super_admin vê tudo, barber vê apenas Agenda/Clientes/Minhas Comissões, receptionist vê Agenda/Clientes/Serviços/Produtos
+- [x] Registrar novas telas (barbearia, my-profile) no _layout.tsx com tabBarItemStyle display nonee
 
 ## Reorganização Menu Admin v3.6
 
@@ -641,9 +639,9 @@
 - [x] Endpoint onboarding.register: aceitar campo `plan` vindo da tela de seleção
 - [x] Isolamento por tenantId: getAllBarbers, getAllBarbersIncludingInactive filtrar por tenantId quando presente
 - [x] Isolamento por tenantId: getAllClients filtrar por tenantId quando presente
-- [ ] Isolamento por tenantId: getAllServices, getAllServicesWithMedia, getAllServicesWithMediaAndRatings filtrar por tenantId
-- [ ] Isolamento por tenantId: getAllProducts, getAllProductsWithMedia filtrar por tenantId
-- [ ] Isolamento por tenantId: getAllAppointmentsByDate, getAppointmentsByDate filtrar por tenantId via barbeiro
+- [x] Isolamento por tenantId: `getAllServices`, `getAllServicesWithMedia`, `getAllServicesWithMediaAndRatings`
+- [x] Isolamento por tenantId: `getAllProducts`, `getAllProductsWithMedia`
+- [x] Isolamento por tenantId: `getAllAppointmentsByDate`, `getAppointmentsByDate` via barbeiro
 - [x] Isolamento por tenantId: getShopSettings filtrar por tenantId quando presente
 
 ## Fase 2 Web — Backoffice Super-Admin (v6.2)
@@ -1215,3 +1213,73 @@
 - [ ] Notificação push ao barbeiro quando cliente compartilha agendamento nas redes sociais
 - [ ] Notificação push ao barbeiro quando novo cliente chega via link de indicação
 - [ ] Relatório mensal de clientes adquiridos via redes sociais vs. outros canais
+
+## Jornada do Cliente — Cenário 1: Fidelização via Link Direto
+
+> Fluxo: Cliente clica no link exclusivo da barbearia (ex: barberpro.app/nome-da-barbearia) e acessa a Página de Boas-Vindas personalizada. Preços ocultos antes do login para converter curiosidade em cadastro.
+
+### Página de Boas-Vindas (Pré-Login)
+- [ ] Exibir logo, galeria de fotos, endereço e lista de serviços da barbearia sem exigir login
+- [ ] Ocultar preços dos serviços para usuários não autenticados (exibir: "Faça login para ver valores")
+- [ ] Botão de CTA principal: "VER PREÇOS E AGENDAR" — abre fluxo de login
+- [ ] Design Clean e Dark com sotaques em dourado (visual premium, foco em conversão)
+
+### Login Social com Consentimento LGPD
+- [ ] Fluxo de Google Login na página pública (`/pub/:slug`) funcionando no browser mobile
+- [ ] Checkbox de consentimento LGPD: "Autorizo o compartilhamento do meu contato com esta barbearia para suporte e agendamentos"
+- [ ] Armazenar consentimento com `clientId`, `tenantId`, `timestamp` e versão dos termos na tabela `client_consents`
+- [ ] Migração de banco: criar tabela `client_consents` (id, clientId, tenantId, consentedAt, termsVersion)
+- [ ] Bloquear acesso à área logada se consentimento não foi dado
+
+### Área Logada — Experiência Desbloqueada
+- [ ] Após login, exibir preços dos serviços na página pública
+- [ ] Exibir agenda de horários disponíveis para agendamento
+- [ ] Exibir seção de produtos da barbearia
+- [ ] Exibir avaliações de clientes
+- [ ] Exibir planos de assinatura (Clube VIP) se disponíveis
+- [ ] Campo `preferredTenantId` no perfil do cliente para registrar a barbearia favorita
+- [ ] Ao fazer login em uma barbearia, definir automaticamente como `preferredTenantId` do cliente
+- [ ] App e site priorizam a barbearia favorita na tela inicial após login
+
+---
+
+## Jornada do Cliente — Cenário 2: Descoberta por Geolocalização
+
+> Fluxo: Cliente abre o app Barber Pro sem um link específico. O sistema usa GPS para listar barbearias parceiras próximas. Ao fazer login em uma unidade, os dados do cliente são enviados em tempo real para o painel "Clientes em Órbita" do barbeiro.
+
+### Infraestrutura de Geolocalização
+- [ ] Campos `latitude` e `longitude` na tabela `tenants` (schema + migração)
+- [ ] Endpoint tRPC: `tenants.nearby` — recebe lat/lng do cliente e retorna barbearias ordenadas por distância (fórmula de Haversine)
+- [ ] Tela de descoberta no app: solicitar permissão de GPS e listar barbearias próximas com nome, distância e foto
+- [ ] Card de barbearia na lista: logo, nome, distância, avaliação média e número de avaliações
+- [ ] Ao clicar em uma barbearia da lista, abrir a mesma Página de Boas-Vindas do Cenário 1
+
+### Captura de Lead — "Clientes em Órbita"
+- [ ] Ao fazer login em uma barbearia (qualquer cenário), registrar o evento na tabela `orbit_leads` (id, clientId, tenantId, loginAt, converted: boolean)
+- [ ] Migração de banco: criar tabela `orbit_leads` (id, clientId, tenantId, loginAt, convertedAt nullable, source: "link" | "geo")
+- [ ] Marcar `converted = true` e preencher `convertedAt` quando o cliente realizar um agendamento
+- [ ] Enviar notificação push em tempo real para o barbeiro quando um novo cliente faz login na unidade dele
+- [ ] Notificação push: "👤 Novo cliente em órbita: [Nome] acabou de acessar sua barbearia"
+
+### Painel "Clientes em Órbita" (Admin App)
+- [ ] Nova tela "Clientes em Órbita" no painel admin do app (acessível pelo drawer)
+- [ ] Lista de clientes que fizeram login mas ainda não agendaram (leads não convertidos)
+- [ ] Card de lead: foto/avatar, nome, WhatsApp, data/hora do acesso, origem (Link ou Geo), badge "Novo" se acessou nas últimas 24h
+- [ ] Botão "Contatar via WhatsApp" em cada card (abre wa.me com mensagem pré-definida)
+- [ ] Mensagem pré-definida: "Olá [Nome]! Vi que você visitou nossa barbearia no Barber Pro. Posso te ajudar a agendar um horário? 😊"
+- [ ] Contador no topo: "X em órbita hoje" e "Y convertidos esta semana"
+- [ ] Filtros: Hoje / Esta semana / Este mês
+- [ ] Badge no ícone do menu "Clientes em Órbita" com contagem de leads novos (últimas 24h)
+
+### Painel "Clientes em Órbita" (Admin Web)
+- [ ] Seção "Clientes em Órbita" no painel admin web com a mesma lista e filtros
+- [ ] Gráfico de linha: leads por dia vs. conversões por dia (últimos 30 dias)
+- [ ] Taxa de conversão exibida em destaque: "X% dos visitantes agendaram"
+
+### Regras de Negócio — Fidelização (Anti-iFood)
+- [ ] Uma vez que o cliente define uma barbearia como favorita (`preferredTenantId`), o app exibe essa barbearia em destaque na tela inicial
+- [ ] Busca por geolocalização ainda funciona, mas com aviso: "Você já tem uma barbearia favorita. Deseja explorar outras unidades?"
+- [ ] Para trocar de barbearia favorita: opção clara no perfil do cliente ("Trocar barbearia favorita") ou logout da unidade atual
+- [ ] Ao trocar de barbearia favorita, o consentimento LGPD deve ser reapresentado para a nova barbearia
+- [ ] Histórico de agendamentos e pontos de fidelidade são mantidos por barbearia (não transferidos)
+
