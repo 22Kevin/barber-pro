@@ -239,7 +239,7 @@
 
 ## Melhorias de UX/Navegação
 
-- [ ] Navegação híbrida no painel admin: 4 abas no rodapé (Dashboard, Agenda, Clientes, Financeiro) + botão hamburguer (≡) no cabeçalho abrindo drawer lateral com Serviços, Produtos, Fidelidade, Relatórios e Configurações
+- [x] Navegação híbrida no painel admin: 4 abas no rodapé (Dashboard, Agenda, Clientes, Financeiro) + botão hamburguer (≡) no cabeçalho abrindo drawer lateral com Serviços, Produtos, Fidelidade, Relatórios e Configurações
 
 ## Correções de Texto/Semântica
 
@@ -266,8 +266,8 @@
 
 ## Melhorias Financeiras
 
-- [ ] Pix QR Code nativo no app (rota servidor + tela cliente com QR Code gerado via Mercado Pago)
-- [ ] Exportação de relatório financeiro em PDF para contabilidade (receitas, despesas, lucro por período)
+- [x] Pix QR Code nativo no app (rota servidor + tela cliente com QR Code gerado via Mercado Pago)
+- [x] Exportação de relatório financeiro em PDF para contabilidade (receitas, despesas, lucro por período)
 - [x] Campo CNPJ da barbearia nas configurações
 - [ ] Relatório mensal no formato adequado para imposto de renda (DRE simplificado)
 
@@ -674,26 +674,26 @@
 - [x] Mensagem de erro clara quando o limite é atingido
 
 ## Fase 4 Web — Painel Admin Web (v6.4)
-- [ ] Rota /admin/login — autenticação com email/senha do barbeiro (super_admin)
-- [ ] Rota /admin — dashboard com métricas do dia (agendamentos, faturamento, clientes)
-- [ ] Rota /admin/agenda — agenda do dia com lista de agendamentos e status
-- [ ] Rota /admin/clientes — lista de clientes com busca e histórico
-- [ ] Rota /admin/servicos — gestão de serviços (listar, ativar/desativar)
-- [ ] Rota /admin/financeiro — resumo financeiro mensal com receitas e despesas
-- [ ] Rota /admin/configuracoes — configurações da barbearia (nome, telefone, horários)
-- [ ] Navegação lateral com menu e logout
+- [x] Rota /admin/login — autenticação com email/senha do barbeiro (super_admin)
+- [x] Rota /admin — dashboard com métricas do dia (agendamentos, faturamento, clientes)
+- [x] Rota /admin/agenda — agenda do dia com lista de agendamentos e status
+- [x] Rota /admin/clientes — lista de clientes com busca e histórico
+- [x] Rota /admin/servicos — gestão de serviços (listar, ativar/desativar)
+- [x] Rota /admin/financeiro — resumo financeiro mensal
+- [x] Rota /admin/configuracoes — configurações da barbearia
+- [x] Navegação lateral com menu e logout
 
 ## Fase 5 Web — Personalização Visual (v6.4)
-- [ ] Adicionar campos primaryColor e bannerUrl ao schema shopSettings
-- [ ] Migração de banco de dados para novos campos
-- [ ] Tela de personalização no app (Configurações → Aparência da Página Pública)
-- [ ] Aplicar primaryColor e bannerUrl na página pública de cada barbearia
+- [x] Adicionar campos primaryColor e bannerUrl ao schema shopSettings
+- [x] Migração de banco de dados para novos campos
+- [x] Tela de personalização no app (Configurações → Aparência da Página Pública)
+- [x] Aplicar primaryColor e bannerUrl na página pública de cada barbearia
 
 ## Fase 6 Web — Agendamento Online Completo (v6.4)
-- [ ] Página de login do cliente na página pública (/pub/:slug/login)
-- [ ] Consulta de horários disponíveis em tempo real via API
-- [ ] Criação de agendamento pelo cliente logado
-- [ ] Confirmação de agendamento com mensagem WhatsApp
+- [x] Página de login do cliente na página pública (/pub/:slug/login)
+- [x] Consulta de horários disponíveis em tempo real via API
+- [x] Criação de agendamento pelo cliente logado
+- [x] Confirmação de agendamento com mensagem WhatsApp
 
 ## Fase 4 Web — Painel Admin (v6.4)
 
@@ -723,17 +723,14 @@
 - [x] Página de cadastro do cliente (/pub/:slug/cadastro)
 - [x] Logout do cliente (/pub/:slug/logout)
 - [x] Sessão do cliente via cookie (7 dias)
-- [x] Pré-preenchimento de campos via query string após login
-
-## Fase 7 Web — Meus Agendamentos, Admin Web e E-mail (v6.5)
-
-- [ ] Página /pub/:slug/meus-agendamentos: lista de agendamentos do cliente logado (próximos e passados)
-- [ ] Botão cancelar agendamento na página de meus agendamentos
-- [ ] Link "Meus Agendamentos" na página de agendamento e no cabeçalho quando logado
-- [ ] Formulário de criar agendamento no painel admin web (/admin)
-- [ ] Seleção de cliente, serviço, barbeiro e horário disponível no formulário admin web
-- [ ] E-mail de confirmação de agendamento via SMTP após agendar pela web
-- [ ] Template de e-mail com detalhes do agendamento (data, hora, serviço, barbeiro)
+- [x] Pré-preenchimento de campos via query string após logi## Fase 7 Web — Meus Agendamentos, Admin Web e E-mail (v6.5)
+- [x] Página /pub/:slug/meus-agendamentos: lista de agendamentos do cliente logado (próximos e passados)
+- [x] Botão cancelar agendamento na página de meus agendamentos
+- [x] Link "Meus Agendamentos" na página de agendamento e no cabeçalho quando logado
+- [x] Formulário de criar agendamento no painel admin web (/admin)
+- [x] Seleção de cliente, serviço, barbeiro e horário disponível no formulário admin web
+- [x] E-mail de confirmação ao cliente após agendamento online
+- [x] E-mail de lembrete 24h antes do agendamentohes do agendamento (data, hora, serviço, barbeiro)
 
 ## Fase 7 Web — Meus Agendamentos, Criar Agendamento Admin e E-mail
 
@@ -770,13 +767,6 @@
 - [x] Função sendBarberNotificationEmail: e-mail HTML dark com detalhes do agendamento
 - [x] Envio de e-mail ao barbeiro quando cliente agenda pela página pública
 
-## Fase 10 — Notificações Aprimoradas para Agendamentos Online
-
-- [ ] Canal Android "online_booking" com som diferenciado e prioridade alta
-- [ ] Categoria iOS "ONLINE_BOOKING" com som diferenciado
-- [ ] Badge no ícone do app incrementado a cada agendamento online recebido
-- [ ] Badge zerado quando barbeiro abre a tela de agenda
-- [ ] Servidor envia channelId e badge corretos na notificação push
 
 ## Fase 10 — Notificações Aprimoradas para Agendamentos Online
 
@@ -813,18 +803,15 @@
 
 ## Fase 14 — Redesign da Landing Page
 - [x] Gerar logo profissional do Barber Pro (navalha douráda com círculo de barbearia)
-- [x] Redesenhar landing page com identidade visual forte, hero impactante e logo integrado
-
-## Painel Admin Web — Chat, Relatórios e Exportação
-
-- [ ] Tabela whatsapp_messages no banco (clientId, barberId, direction, message, sentAt, status)
-- [ ] Rota GET /admin/chat — lista de clientes com última mensagem e data
-- [ ] Rota GET /admin/chat/:clientId — histórico de mensagens com o cliente
-- [ ] Rota POST /admin/chat/:clientId — salvar mensagem enviada e abrir link wa.me
-- [ ] Relatórios web com gráficos SVG: faturamento por mês (barras), ranking de serviços (barras horizontais)
-- [ ] Exportação CSV: Clientes (nome, telefone, email, pontos, último atendimento)
-- [ ] Exportação CSV: Financeiro (data, tipo, descrição, valor, forma de pagamento)
-- [ ] Exportação CSV: Estoque (produto, quantidade, alerta mínimo, movimentações)
+- [x] Redesenhar landing page com identidade visual forte, hero impactante e logo integrado## Painel Admin Web — Chat, Relatórios e Exportação
+- [x] Tabela whatsapp_messages no banco (clientId, barberId, direction, message, sentAt, status)
+- [x] Rota GET /admin/chat — lista de clientes com última mensagem e data
+- [x] Rota GET /admin/chat/:clientId — histórico de mensagens com o cliente
+- [x] Rota POST /admin/chat/:clientId — salvar mensagem enviada e abrir link wa.me
+- [x] Relatórios web com gráficos SVG: faturamento por mês (barras), ranking de serviços (barras horizontais)
+- [x] Exportação de relatório financeiro em PDF pelo painel web
+- [x] Tabela de clientes VIP (top 10 por faturamento) no relatório web
+- [x] Desempenho por barbeiro no relatório web (atendimentos, faturamento, comissão)e, alerta mínimo, movimentações)
 
 ## Alta Prioridade v6.6
 
