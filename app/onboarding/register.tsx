@@ -98,6 +98,8 @@ export default function OnboardingRegisterScreen() {
   });
 
   const [loadingCep, setLoadingCep] = useState(false);
+  const planLabel = selectedPlan === "team" ? "Equipe" : selectedPlan === "studio" ? "Estúdio" : "Solo";
+  const planPrice = selectedPlan === "team" ? "R$89" : selectedPlan === "studio" ? "R$149" : "R$49";
 
   const registerMutation = trpc.onboarding.register.useMutation({
     onSuccess: async (data) => {
@@ -108,6 +110,7 @@ export default function OnboardingRegisterScreen() {
         params: {
           slug: step1.shopName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
           shopName: step1.shopName,
+          plan: selectedPlan,
         },
       });
     },
@@ -253,7 +256,12 @@ export default function OnboardingRegisterScreen() {
         <View style={styles.header}>
           <Image source={require("@/assets/images/icon.png")} style={styles.logo} resizeMode="contain" />
           <Text style={styles.brandName}>BARBER PRO</Text>
-          <Text style={styles.stepLabel}>Etapa {currentStep} de 4</Text>
+          <View style={styles.planBadgeRow}>
+            <Text style={styles.stepLabel}>Etapa {currentStep} de 4</Text>
+            <View style={styles.planBadge}>
+              <Text style={styles.planBadgeText}>Plano {planLabel} · {planPrice}/mês</Text>
+            </View>
+          </View>
         </View>
 
         {/* Barra de progresso */}
@@ -511,7 +519,10 @@ const styles = StyleSheet.create({
   header: { alignItems: "center", paddingTop: 16, paddingBottom: 8 },
   logo: { width: 52, height: 52, borderRadius: 12, marginBottom: 6 },
   brandName: { fontSize: 20, fontWeight: "800", color: "#C9A84C", letterSpacing: 3 },
-  stepLabel: { fontSize: 12, color: "#888880", marginTop: 2, letterSpacing: 1 },
+  stepLabel: { fontSize: 12, color: "#888880", letterSpacing: 1 },
+  planBadgeRow: { alignItems: "center", gap: 6, marginTop: 2 },
+  planBadge: { backgroundColor: "#1A1500", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: "#C9A84C44" },
+  planBadgeText: { fontSize: 11, fontWeight: "700", color: "#C9A84C", letterSpacing: 0.5 },
 
   progressTrack: { height: 4, backgroundColor: "#1E1E1E", marginHorizontal: 24, borderRadius: 2 },
   progressFill: { height: 4, backgroundColor: "#C9A84C", borderRadius: 2 },

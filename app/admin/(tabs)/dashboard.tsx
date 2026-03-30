@@ -90,6 +90,18 @@ export default function DashboardScreen() {
 
   const getBarberName = (id: number) => barbers.find(b => b.id === id)?.name ?? "—";
 
+  // Banner de trial
+  const tenantQuery = trpc.onboarding.getById.useQuery(
+    { id: tenantId! },
+    { enabled: !!tenantId, staleTime: 5 * 60 * 1000 }
+  );
+  const tenant = tenantQuery.data;
+  const trialDaysLeft = tenant?.trialEndsAt
+    ? Math.max(0, Math.ceil((new Date(tenant.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+  const showTrialBanner = tenant?.status === "trial" && trialDaysLeft !== null && trialDaysLeft <= 14;
+  const planLabel = tenant?.plan === "team" ? "Equipe" : tenant?.plan === "studio" ? "Estúdio" : "Solo";
+
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader title="Dashboard" />
@@ -97,6 +109,18 @@ export default function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
+        {/* Banner de trial */}
+        {showTrialBanner && (
+          <View style={[styles.trialBanner, trialDaysLeft! <= 3 && styles.trialBannerUrgent]}>
+            <Text style={styles.trialBannerIcon}>{trialDaysLeft! <= 3 ? "⚠️" : "⏳"}</Text>
+            <Text style={[styles.trialBannerText, trialDaysLeft! <= 3 && styles.trialBannerTextUrgent]}>
+              {trialDaysLeft === 0
+                ? `Seu trial do plano ${planLabel} expira hoje!`
+                : `Trial do plano ${planLabel}: ${trialDaysLeft} dia${trialDaysLeft !== 1 ? "s" : ""} restante${trialDaysLeft !== 1 ? "s" : ""}`}
+            </Text>
+          </View>
+        )}
+
         {/* Saudação */}
         <View style={styles.greetingRow}>
           <Text style={dyn.greeting}>Olá, {barber?.name?.split(" ")[0]} 👋</Text>
@@ -241,4 +265,9 @@ const styles = StyleSheet.create({
   aptRow:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   statusBadge:  { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   statusText:   { fontSize: 11, fontWeight: "600" },
+  trialBanner:  { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 16, marginTop: 12, marginBottom: 4, backgroundColor: "#1A1500", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: "#C9A84C44" },
+  trialBannerUrgent: { backgroundColor: "#1A0000", borderColor: "#F8717144" },
+  trialBannerIcon:  { fontSize: 14 },
+  trialBannerText:  { flex: 1, fontSize: 13, color: "#C9A84C", fontWeight: "600" },
+  trialBannerTextUrgent: { color: "#F87171" },
 });

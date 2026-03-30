@@ -630,8 +630,8 @@
 - [x] Wizard de cadastro da barbearia: Etapa 2 — Endereço (CEP com auto-preenchimento, número, complemento)
 - [x] Wizard de cadastro da barbearia: Etapa 3 — Horários de funcionamento (dias e horários)
 - [x] Wizard de cadastro da barbearia: Etapa 4 — Conta do administrador (nome, email, senha)
-- [ ] Tela de seleção de plano (Solo R$49, Equipe R$89, Estúdio R$149)
-- [ ] Integrar fluxo completo: tela inicial → selecionar plano → wizard → dashboard
+- [x] Tela de seleção de plano (Solo R$49, Equipe R$89, Estúdio R$149)
+- [x] Integrar fluxo completo: tela inicial → selecionar plano → wizard → dashboard
 
 ## Fase 1 SaaS — Continuação (v6.1)
 - [x] Botão "Cadastrar minha barbearia" na tela inicial (index.tsx)
@@ -1270,3 +1270,14 @@
 - [ ] Ao trocar de barbearia favorita, o consentimento LGPD deve ser reapresentado para a nova barbearia
 - [ ] Histórico de agendamentos e pontos de fidelidade são mantidos por barbearia (não transferidos)
 
+
+## Tela de Seleção de Planos (v6.0 — implementação)
+
+- [x] Tela `plan-selection.tsx` com 3 cards: Solo (R$49), Equipe (R$89), Estúdio (R$149)
+- [x] Design premium dark/dourado com card do plano "Equipe" em destaque (recomendado)
+- [x] Cada card lista os benefícios do plano (limite de barbeiros, funcionalidades)
+- [x] Rota tRPC `onboarding.selectPlan` salva o plano escolhido no tenant
+- [x] Campo `planType` na tabela `tenants` (schema + migração se necessário)
+- [x] Fluxo: registro → seleção de plano → wizard de configuração → dashboard
+- [x] Botão "Começar grátis por 14 dias" em todos os planos (trial)
+- [x] Registrar tela no `_layout.tsx` do admin (oculta do tab bar)

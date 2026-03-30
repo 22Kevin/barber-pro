@@ -57,9 +57,13 @@ function CheckItem({ label, delay }: { label: string; delay: number }) {
 // ─── Tela principal ───────────────────────────────────────────────────────────
 export default function WelcomeScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ slug?: string; shopName?: string }>();
+  const params = useLocalSearchParams<{ slug?: string; shopName?: string; plan?: string }>();
   const slug = params.slug ?? "";
   const shopName = params.shopName ?? "sua barbearia";
+  const plan = (params.plan as "solo" | "team" | "studio") ?? "solo";
+  const planLabel = plan === "team" ? "Equipe" : plan === "studio" ? "Estúdio" : "Solo";
+  const planPrice = plan === "team" ? "R$89" : plan === "studio" ? "R$149" : "R$49";
+  const planDesc = plan === "team" ? "Até 5 barbeiros" : plan === "studio" ? "Barbeiros ilimitados" : "1 barbeiro";
 
   // Animações de entrada
   const logoScale = useSharedValue(0);
@@ -142,6 +146,22 @@ export default function WelcomeScreen() {
           <Text style={styles.subtitle}>
             Bem-vindo ao Barber Pro, {shopName}. Tudo está pronto para você começar.
           </Text>
+        </Animated.View>
+
+        {/* Card do plano contratado */}
+        <Animated.View style={[styles.planCard, cardStyle]}>
+          <View style={styles.planCardLeft}>
+            <Text style={styles.planCardLabel}>SEU PLANO</Text>
+            <Text style={styles.planCardName}>{planLabel}</Text>
+            <Text style={styles.planCardDesc}>{planDesc}</Text>
+          </View>
+          <View style={styles.planCardRight}>
+            <View style={styles.trialBadge}>
+              <Text style={styles.trialBadgeText}>14 dias grátis</Text>
+            </View>
+            <Text style={styles.planCardPrice}>{planPrice}/mês</Text>
+            <Text style={styles.trialHint}>após o trial</Text>
+          </View>
         </Animated.View>
 
         {/* Card de checklist */}
@@ -375,4 +395,26 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     flex: 1,
   },
+  // Card do plano
+  planCard: {
+    width: "100%",
+    backgroundColor: "#0D1000",
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: `${GOLD}55`,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  planCardLeft: { gap: 4 },
+  planCardLabel: { fontSize: 10, fontWeight: "700", color: `${GOLD}88`, letterSpacing: 1.5 },
+  planCardName: { fontSize: 22, fontWeight: "900", color: GOLD },
+  planCardDesc: { fontSize: 12, color: MUTED },
+  planCardRight: { alignItems: "flex-end", gap: 4 },
+  trialBadge: { backgroundColor: GOLD, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  trialBadgeText: { fontSize: 11, fontWeight: "800", color: "#0A0A0A", letterSpacing: 0.5 },
+  planCardPrice: { fontSize: 18, fontWeight: "800", color: GOLD },
+  trialHint: { fontSize: 11, color: MUTED },
 });
