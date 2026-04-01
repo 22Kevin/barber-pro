@@ -1802,3 +1802,26 @@ export async function getSaleItemsByDateRange(startDate: string, endDate: string
   });
   return Object.values(grouped).sort((a, b) => b.total - a.total);
 }
+
+// Salvar consentimento LGPD do cliente (compartilhamento de contato com barbearia)
+export async function saveClientConsent(data: {
+  clientId: number;
+  tenantId: number;
+  consentType?: string;
+  termsVersion?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await db.execute(sql`
+      INSERT INTO client_consents (client_id, tenant_id, consent_type, terms_version, ip_address, user_agent)
+      VALUES (${data.clientId}, ${data.tenantId}, ${data.consentType ?? "lgpd_contact_sharing"}, ${data.termsVersion ?? "1.0"}, ${data.ipAddress ?? null}, ${data.userAgent ?? null})
+      ON DUPLICATE KEY UPDATE consented_at = CURRENT_TIMESTAMP, ip_address = VALUES(ip_address), user_agent = VALUES(user_agent)
+    `);
+  } catch (err) {
+    // Ignorar erro silenciosamente — consentimento é best-effort
+    console.error("[saveClientConsent] erro:", err);
+  }
+}

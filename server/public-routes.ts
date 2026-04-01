@@ -167,6 +167,24 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
     /* Empty state */
     .empty { text-align: center; padding: 40px; color: var(--muted); }
 
+    /* Preço bloqueado */
+    .price-locked { font-size: 13px; font-weight: 700; color: var(--muted); background: var(--surface2); border: 1px dashed var(--border); border-radius: 8px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 5px; transition: color 0.2s, border-color 0.2s; }
+    .price-locked:hover { color: var(--primary); border-color: var(--primary); }
+
+    /* Banner CTA de desbloqueio */
+    .cta-unlock-banner { background: linear-gradient(135deg, #1a1200 0%, #1a1a00 50%, #0f0f0f 100%); border: 1px solid var(--primary); border-radius: 20px; padding: 24px 28px; margin: 0 24px 8px; max-width: 900px; margin-left: auto; margin-right: auto; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .cta-unlock-content { display: flex; align-items: center; gap: 16px; }
+    .cta-unlock-icon { font-size: 32px; flex-shrink: 0; }
+    .cta-unlock-title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+    .cta-unlock-sub { font-size: 13px; color: var(--muted); line-height: 1.4; }
+    .cta-unlock-btn { background: var(--primary); color: #0A0A0A; font-size: 14px; font-weight: 800; padding: 12px 24px; border-radius: 50px; white-space: nowrap; letter-spacing: 0.3px; flex-shrink: 0; }
+    .cta-unlock-btn:hover { opacity: 0.9; }
+    @media (max-width: 640px) {
+      .cta-unlock-banner { flex-direction: column; text-align: center; }
+      .cta-unlock-content { flex-direction: column; }
+      .cta-unlock-btn { width: 100%; text-align: center; padding: 14px; }
+    }
+
     /* Banner de download do app */
     .app-download-banner { background: linear-gradient(135deg, #1a1a1a 0%, #222 100%); border: 1px solid var(--border); border-radius: 24px; padding: 32px 28px; margin: 0 24px 32px; max-width: 900px; margin-left: auto; margin-right: auto; display: flex; align-items: center; gap: 24px; }
     .app-download-icon { width: 72px; height: 72px; border-radius: 18px; object-fit: cover; flex-shrink: 0; border: 2px solid var(--primary); }
@@ -191,7 +209,7 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
 }
 
 // ─── Página principal da barbearia ───────────────────────────────────────────
-async function renderShopPage(slug: string, res: Response) {
+async function renderShopPage(slug: string, res: Response, req?: Request) {
   const tenant = await db.getTenantBySlug(slug);
   if (!tenant) {
     res.status(404).send(`<!DOCTYPE html><html><body style="background:#0A0A0A;color:#F0EEE8;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center"><div><h1 style="font-size:48px;margin-bottom:8px">404</h1><p style="color:#888">Barbearia não encontrada.</p><p style="margin-top:16px"><a href="https://barberpro.com.br" style="color:#C9A84C">Barber Pro</a></p></div></body></html>`);
@@ -202,6 +220,14 @@ async function renderShopPage(slug: string, res: Response) {
   const barberList = await db.getAllBarbers(tenant.id);
   const serviceList = await db.getAllServicesWithMediaAndRatings(true, tenant.id);
   const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
+
+  // Verificar se o cliente está logado via cookie de sessão
+  const clientSessionRaw = req?.cookies?.[`client_session_${slug}`] ?? req?.cookies?.["client_session"];
+  let loggedClient: { id: number; name: string; email: string } | null = null;
+  if (clientSessionRaw) {
+    try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+  }
+  const isLoggedIn = !!loggedClient;
 
   // Galeria
   const galleryUrls: string[] = settings?.galleryUrls
@@ -243,7 +269,10 @@ async function renderShopPage(slug: string, res: Response) {
           ${s.description ? `<div class="service-desc">${escapeHtml(s.description)}</div>` : ""}
           ${s.avgRating ? `<div class="service-rating">${stars(s.avgRating)} ${s.avgRating} (${s.reviewCount})</div>` : ""}
           <div class="service-meta">
-            <span class="service-price">${formatPrice(s.price)}</span>
+            ${isLoggedIn
+              ? `<span class="service-price">${formatPrice(s.price)}</span>`
+              : `<a href="/pub/${slug}/login?redirect=agendar" class="price-locked">🔒 Faça login para ver</a>`
+            }
             <span class="service-duration">${formatDuration(s.durationMinutes)}</span>
           </div>
         </div>
@@ -313,6 +342,19 @@ async function renderShopPage(slug: string, res: Response) {
   `;
 
   const agendamentoUrl = `/pub/${slug}/agendar`;
+  // Banner de CTA para visitantes não logados
+  const ctaUnlockBanner = !isLoggedIn ? `
+    <div class="cta-unlock-banner">
+      <div class="cta-unlock-content">
+        <div class="cta-unlock-icon">🔓</div>
+        <div>
+          <div class="cta-unlock-title">Desbloqueie preços e horários</div>
+          <div class="cta-unlock-sub">Faça login para ver valores, agenda e agendar seu horário</div>
+        </div>
+      </div>
+      <a href="/pub/${slug}/login?redirect=agendar" class="cta-unlock-btn">VER PREÇOS E AGENDAR</a>
+    </div>
+  ` : "";
   const bannerUrl = (settings as any)?.bannerUrl;
   const bannerStyle = bannerUrl
     ? `style="background-image:url('${escapeHtml(bannerUrl)}');background-size:cover;background-position:center"`
@@ -331,6 +373,8 @@ async function renderShopPage(slug: string, res: Response) {
         <a href="${agendamentoUrl}" class="hero-cta">Agendar Horário</a>
       </div>
     </div>
+
+    ${ctaUnlockBanner}
 
     <!-- Serviços -->
     <div class="section">
@@ -752,6 +796,12 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
             <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">TELEFONE</label>
             <input type="tel" id="phone-input" required placeholder="(11) 99999-9999" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
           </div>` : ""}
+          ${!isLogin ? `<div style="margin-bottom:20px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px">
+            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+              <input type="checkbox" id="lgpd-consent" required style="margin-top:2px;width:16px;height:16px;accent-color:var(--primary);flex-shrink:0" />
+              <span style="font-size:12px;color:var(--muted);line-height:1.5">Autorizo o compartilhamento do meu contato com esta barbearia para suporte e agendamentos, conforme a <a href="https://barberpro.com.br/privacidade" target="_blank" style="color:var(--primary)">Pol&iacute;tica de Privacidade</a>.</span>
+            </label>
+          </div>` : ""}
           <button type="submit" id="submit-btn" style="width:100%;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:800;padding:16px;border-radius:14px;border:none;cursor:pointer">
             ${isLogin ? "Entrar" : "Criar Conta"}
           </button>
@@ -776,12 +826,21 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
         btn.disabled = true;
         btn.textContent = 'Aguarde...';
         errEl.style.display = 'none';
+        ${!isLogin ? `
+        var consentEl = document.getElementById('lgpd-consent');
+        if (!consentEl.checked) {
+          errEl.textContent = 'Voc\u00ea precisa aceitar os termos para continuar.';
+          errEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Criar Conta';
+          return;
+        }` : ""}
         var body = {
           email: document.getElementById('email-input').value,
           password: document.getElementById('password-input').value,
           slug: '${slug}'
         };
-        ${!isLogin ? `body.name = document.getElementById('name-input').value; body.phone = document.getElementById('phone-input').value;` : ""}
+        ${!isLogin ? `body.name = document.getElementById('name-input').value; body.phone = document.getElementById('phone-input').value; body.lgpdConsent = true;` : ""}
         try {
           var r = await fetch('/pub-api/${isLogin ? "login" : "register"}', {
             method: 'POST',
@@ -1180,7 +1239,7 @@ export function registerPublicRoutes(app: Express): void {
   app.use(cookieParser());
   // Rota de desenvolvimento: /pub/:slug
   app.get("/pub/:slug", async (req: Request, res: Response) => {
-    await renderShopPage(req.params.slug, res);
+    await renderShopPage(req.params.slug, res, req);
   });
 
   app.get("/pub/:slug/agendar", async (req: Request, res: Response) => {
@@ -1229,7 +1288,7 @@ export function registerPublicRoutes(app: Express): void {
   // POST /pub-api/register  { name, email, password, phone, slug }
   app.post("/pub-api/register", async (req: Request, res: Response) => {
     try {
-      const { name, email, password, phone, slug } = req.body;
+      const { name, email, password, phone, slug, lgpdConsent } = req.body;
       if (!name || !email || !password || !phone) { res.status(400).json({ error: "Todos os campos são obrigatórios" }); return; }
       if (password.length < 6) { res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres" }); return; }
       const existing = await db.getClientAccountByEmail(email);
@@ -1237,9 +1296,19 @@ export function registerPublicRoutes(app: Express): void {
       let bcrypt: any;
       try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
       const passwordHash = bcrypt ? await bcrypt.hash(password, 10) : password;
-      const clientId = await db.createClient({ name, email, phone, isActive: true });
+      // Obter tenantId via slug para associar o cliente à barbearia correta
+      const tenantForReg = slug ? await db.getTenantBySlug(slug) : null;
+      const clientId = await db.createClient({ name, email, phone, isActive: true, tenantId: tenantForReg?.id ?? null } as any);
       await db.createClientAccount({ clientId, email, passwordHash });
-      const client = await db.getClientById(clientId);
+      // Salvar consentimento LGPD se fornecido
+      if (lgpdConsent && tenantForReg) {
+        await db.saveClientConsent({
+          clientId,
+          tenantId: tenantForReg.id,
+          ipAddress: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? undefined,
+          userAgent: req.headers["user-agent"]?.substring(0, 500) ?? undefined,
+        });
+      }
       const sessionData = Buffer.from(JSON.stringify({ id: clientId, name, email })).toString("base64");
       res.cookie(`client_session_${slug}`, sessionData, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
       res.cookie("client_session", sessionData, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });

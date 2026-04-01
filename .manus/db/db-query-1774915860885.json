@@ -1,0 +1,9 @@
+{
+  "query": "\nCREATE TABLE IF NOT EXISTS client_consents (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  client_id INT NOT NULL,\n  tenant_id INT NOT NULL,\n  consent_type VARCHAR(50) NOT NULL DEFAULT 'lgpd_contact_sharing',\n  terms_version VARCHAR(20) NOT NULL DEFAULT '1.0',\n  consented_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  ip_address VARCHAR(45),\n  user_agent VARCHAR(500),\n  INDEX idx_client_consents_client (client_id),\n  INDEX idx_client_consents_tenant (tenant_id),\n  UNIQUE KEY unique_client_tenant_consent (client_id, tenant_id, consent_type)\n);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute \nCREATE TABLE IF NOT EXISTS client_consents (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  client_id INT NOT NULL,\n  tenant_id INT NOT NULL,\n  consent_type VARCHAR(50) NOT NULL DEFAULT 'lgpd_contact_sharing',\n  terms_version VARCHAR(20) NOT NULL DEFAULT '1.0',\n  consented_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  ip_address VARCHAR(45),\n  user_agent VARCHAR(500),\n  INDEX idx_client_consents_client (client_id),\n  INDEX idx_client_consents_tenant (tenant_id),\n  UNIQUE KEY unique_client_tenant_consent (client_id, tenant_id, consent_type)\n);\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 860
+}

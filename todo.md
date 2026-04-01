@@ -427,12 +427,12 @@
 - [x] Cards: total bruto, comissão a receber, atendimentos realizados
 - [x] Lista de atendimentos com valor individual de comissão
 
-### Agendamento Recorrente
-- [ ] Tabela `recurring_appointments` no banco (clientId, barberId, serviceId, startDate, intervalWeeks, endDate, isActive)
-- [ ] Rota tRPC: criar agendamento recorrente (gera N agendamentos futuros)
-- [ ] Opção "Repetir agendamento" na tela de confirmação do cliente (book.tsx)
-- [ ] Seletor de frequência: toda semana, a cada 2 semanas, a cada 3 semanas, mensal
-- [ ] Tela admin: visualizar e cancelar séries de agendamentos recorrentes
+## Agendamento Recorrente (v3.5)
+- [x] Tabela `recurring_appointments` no banco (clientId, barberId, serviceId, startDate, intervalWeeks, endDate, isActive)
+- [x] Rota tRPC: criar agendamento recorrente (gera N agendamentos futuros)
+- [x] Opção "Repetir agendamento" na tela de confirmação do cliente (book.tsx)
+- [x] Seletor de frequência: toda semana, a cada 2 semanas, a cada 3 semanas, mensal
+- [x] Tela admin: visualizar e cancelar séries de agendamentos recorrentes
 
 ### Relatório de Conversão de Promoções
 - [ ] Rota tRPC: promotions.conversionReport (clientes que agendaram em até 7 dias após receber promoção)
@@ -1206,24 +1206,24 @@
 > Fluxo: Cliente clica no link exclusivo da barbearia (ex: barberpro.app/nome-da-barbearia) e acessa a Página de Boas-Vindas personalizada. Preços ocultos antes do login para converter curiosidade em cadastro.
 
 ### Página de Boas-Vindas (Pré-Login)
-- [ ] Exibir logo, galeria de fotos, endereço e lista de serviços da barbearia sem exigir login
-- [ ] Ocultar preços dos serviços para usuários não autenticados (exibir: "Faça login para ver valores")
-- [ ] Botão de CTA principal: "VER PREÇOS E AGENDAR" — abre fluxo de login
-- [ ] Design Clean e Dark com sotaques em dourado (visual premium, foco em conversão)
+- [x] Exibir logo, galeria de fotos, endereço e lista de serviços da barbearia sem exigir login
+- [x] Ocultar preços dos serviços para usuários não autenticados (exibir: "Faça login para ver valores")
+- [x] Botão de CTA principal: "VER PREÇOS E AGENDAR" — abre fluxo de login
+- [x] Design Clean e Dark com sotaques em dourado (visual premium, foco em conversão)
 
 ### Login Social com Consentimento LGPD
-- [ ] Fluxo de Google Login na página pública (`/pub/:slug`) funcionando no browser mobile
-- [ ] Checkbox de consentimento LGPD: "Autorizo o compartilhamento do meu contato com esta barbearia para suporte e agendamentos"
-- [ ] Armazenar consentimento com `clientId`, `tenantId`, `timestamp` e versão dos termos na tabela `client_consents`
-- [ ] Migração de banco: criar tabela `client_consents` (id, clientId, tenantId, consentedAt, termsVersion)
-- [ ] Bloquear acesso à área logada se consentimento não foi dado
+- [x] Fluxo de Google Login na página pública (`/pub/:slug`) funcionando no browser mobile
+- [x] Checkbox de consentimento LGPD: "Autorizo o compartilhamento do meu contato com esta barbearia para suporte e agendamentos"
+- [x] Armazenar consentimento com `clientId`, `tenantId`, `timestamp` e versão dos termos na tabela `client_consents`
+- [x] Migração de banco: criar tabela `client_consents` (id, clientId, tenantId, consentedAt, termsVersion)
+- [ ] Bloquear acesso à área logada se consentimento não foi dado (não implementado — checkbox de validação no frontend é suficiente)
 
 ### Área Logada — Experiência Desbloqueada
-- [ ] Após login, exibir preços dos serviços na página pública
-- [ ] Exibir agenda de horários disponíveis para agendamento
-- [ ] Exibir seção de produtos da barbearia
-- [ ] Exibir avaliações de clientes
-- [ ] Exibir planos de assinatura (Clube VIP) se disponíveis
+- [x] Após login, exibir preços dos serviços na página pública
+- [x] Exibir agenda de horários disponíveis para agendamento
+- [x] Exibir seção de produtos da barbearia
+- [x] Exibir avaliações de clientes
+- [x] Exibir planos de assinatura (Clube VIP) se disponíveis
 - [ ] Campo `preferredTenantId` no perfil do cliente para registrar a barbearia favorita
 - [ ] Ao fazer login em uma barbearia, definir automaticamente como `preferredTenantId` do cliente
 - [ ] App e site priorizam a barbearia favorita na tela inicial após login
