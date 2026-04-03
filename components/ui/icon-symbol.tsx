@@ -130,6 +130,7 @@ const MAPPING = {
   "paintpalette.fill": "palette",
   "antenna.radiowaves.left.and.right": "wifi-tethering",
   "magnifyingglass.circle.fill": "manage-search",
+  "location.circle.fill": "my-location",
 } as unknown as IconMapping;
 
 export function IconSymbol({

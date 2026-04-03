@@ -484,3 +484,16 @@ export const whatsappMessages = mysqlTable("whatsapp_messages", {
 
 export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
 export type InsertWhatsappMessage = typeof whatsappMessages.$inferInsert;
+
+// ─── Orbit Leads — Clientes em Órbita ────────────────────────────────────────
+export const orbitLeads = mysqlTable("orbit_leads", {
+  id: int("id").primaryKey().autoincrement(),
+  clientId: int("clientId").notNull(),
+  tenantId: int("tenantId").notNull(),
+  loginAt: timestamp("loginAt").defaultNow().notNull(),
+  convertedAt: timestamp("convertedAt"),
+  source: mysqlEnum("source", ["link", "geo"]).notNull().default("link"),
+});
+
+export type OrbitLead = typeof orbitLeads.$inferSelect;
+export type InsertOrbitLead = typeof orbitLeads.$inferInsert;

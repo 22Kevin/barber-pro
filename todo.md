@@ -1292,3 +1292,21 @@
 - [x] Exibir barbearia favorita na tela de perfil do cliente no app
 - [x] Tela inicial do cliente prioriza a barbearia favorita (nome e logo no header) — badge "MINHA BARBEARIA" + nome e logo da barbearia favorita no header
 - [x] Opção "Trocar barbearia" no perfil do cliente com confirmação
+
+## Cenário 2 — Implementação (sprint atual)
+
+- [x] Tabela `orbit_leads` no schema.ts (id, clientId, tenantId, loginAt, convertedAt, source)
+- [x] Migração de banco: criar tabela orbit_leads
+- [x] Funções db.ts: insertOrbitLead, markOrbitConverted, listOrbitLeads, getOrbitStats
+- [x] Rota tRPC `onboarding.nearby` — Haversine, retorna barbearias por distância
+- [x] Rota tRPC `orbit.registerLogin` — registra lead ao fazer login
+- [x] Rota tRPC `orbit.markConverted` — marca convertedAt ao agendar
+- [x] Rota tRPC `orbit.list` — lista leads com filtros (hoje/semana/mês)
+- [x] Rota tRPC `orbit.stats` — contadores e taxa de conversão
+- [x] Chamar orbit.registerLogin no login do cliente (pub-api/login e OAuth callback)
+- [x] Chamar orbit.markConverted ao criar agendamento
+- [x] Nova aba "Explorar" no cliente com GPS e lista de barbearias próximas
+- [x] Tela admin `orbit.tsx` — lista, filtros, contadores, botão WhatsApp
+- [x] Badge no drawer admin com contagem de leads novos (últimas 24h)
+- [x] Notificação push ao barbeiro quando novo lead é registrado
+- [x] Seção "Clientes em Órbita" no painel admin web com gráfico e taxa de conversão

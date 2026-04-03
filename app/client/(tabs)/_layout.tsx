@@ -52,6 +52,13 @@ export default function ClientTabsLayout() {
           }}
         />
         <Tabs.Screen
+          name="explore"
+          options={{
+            title: "Explorar",
+            tabBarIcon: ({ focused }) => <TabIcon emoji="🗺️" focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
           name="history"
           options={{
             title: "Agenda",

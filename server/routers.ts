@@ -1526,6 +1526,62 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return db.getTenantById(input.id);
       }),
+    nearby: publicProcedure
+      .input(z.object({ lat: z.number(), lng: z.number(), radiusKm: z.number().optional() }))
+      .query(async ({ input }) => {
+        return db.getNearbyTenants(input.lat, input.lng, input.radiusKm ?? 50);
+      }),
+  }),
+  orbit: router({
+    registerLogin: publicProcedure
+      .input(z.object({
+        clientId: z.number(),
+        tenantId: z.number(),
+        source: z.enum(["link", "geo"]).default("link"),
+      }))
+      .mutation(async ({ input }) => {
+        await db.upsertOrbitLead(input.clientId, input.tenantId, input.source);
+        const barbersList = await db.getAllBarbers(input.tenantId);
+        const client = await db.getClientById(input.clientId);
+        const clientName = client?.name ?? "Novo cliente";
+        for (const barber of barbersList) {
+          if (barber.pushToken) {
+            await db.sendExpoPushNotification(
+              barber.pushToken,
+              "\uD83D\uDC64 Novo cliente em \u00f3rbita",
+              `${clientName} acabou de acessar sua barbearia`,
+              { type: "orbit_lead", clientId: input.clientId, tenantId: input.tenantId },
+              { channelId: "orbit" }
+            );
+          }
+        }
+        return { ok: true };
+      }),
+    markConverted: publicProcedure
+      .input(z.object({ clientId: z.number(), tenantId: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.markOrbitLeadConverted(input.clientId, input.tenantId);
+        return { ok: true };
+      }),
+    list: publicProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        filter: z.enum(["today", "week", "month"]).default("week"),
+        converted: z.boolean().optional(),
+      }))
+      .query(async ({ input }) => {
+        return db.listOrbitLeads(input.tenantId, input.filter, input.converted);
+      }),
+    stats: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getOrbitStats(input.tenantId);
+      }),
+    dailyChart: publicProcedure
+      .input(z.object({ tenantId: z.number(), days: z.number().optional() }))
+      .query(async ({ input }) => {
+        return db.getOrbitDailyChart(input.tenantId, input.days ?? 30);
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;

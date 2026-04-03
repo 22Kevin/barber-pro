@@ -42,6 +42,7 @@ const DRAWER_GROUPS: DrawerGroup[] = [
       { label: "Clientes",        icon: "person.2.fill",               route: "/admin/(tabs)/clients",           roles: ["super_admin", "barber", "receptionist"] },
       { label: "Lista de Espera", icon: "person.badge.clock",          route: "/admin/(tabs)/waitlist",          roles: ["super_admin", "barber", "receptionist"] },
       { label: "Avaliações",      icon: "star.bubble.fill",             route: "/admin/(tabs)/reviews",           roles: ["super_admin", "receptionist"] },
+      { label: "Clientes em Órbita", icon: "location.circle.fill",         route: "/admin/(tabs)/orbit",             roles: ["super_admin", "receptionist"] },
     ],
   },
   {

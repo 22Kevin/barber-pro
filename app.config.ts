@@ -55,6 +55,12 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    [
+      "expo-location",
+      {
+        "locationWhenInUsePermission": "Permitir que o Barber Pro acesse sua localização para encontrar barbearias próximas."
+      }
+    ],
     ["expo-audio", { microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone." }],
     ["expo-video", { supportsBackgroundPlayback: true, supportsPictureInPicture: true }],
     [

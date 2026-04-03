@@ -30,6 +30,7 @@ import {
   stockMovements,
   tenants,
   whatsappMessages,
+  orbitLeads,
   type WhatsappMessage,
   type InsertWhatsappMessage,
   type Tenant,
@@ -1824,4 +1825,168 @@ export async function saveClientConsent(data: {
     // Ignorar erro silenciosamente — consentimento é best-effort
     console.error("[saveClientConsent] erro:", err);
   }
+}
+
+// ─── Orbit Leads — Clientes em Órbita ────────────────────────────────────────
+
+/** Registra ou atualiza o lead quando o cliente faz login em uma barbearia. */
+export async function upsertOrbitLead(clientId: number, tenantId: number, source: "link" | "geo"): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  try {
+    // Verificar se já existe um lead não convertido para este par cliente/tenant
+    const existing = await db
+      .select({ id: orbitLeads.id })
+      .from(orbitLeads)
+      .where(and(eq(orbitLeads.clientId, clientId), eq(orbitLeads.tenantId, tenantId)))
+      .limit(1);
+    if (existing.length === 0) {
+      await db.insert(orbitLeads).values({ clientId, tenantId, source, loginAt: new Date() });
+    }
+    // Se já existe, não atualiza (preserva o loginAt original)
+  } catch (err) {
+    console.error("[orbitLead] upsertOrbitLead error:", err);
+  }
+}
+
+/** Marca um lead como convertido (cliente agendou). */
+export async function markOrbitLeadConverted(clientId: number, tenantId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  try {
+    await db
+      .update(orbitLeads)
+      .set({ convertedAt: new Date() })
+      .where(and(eq(orbitLeads.clientId, clientId), eq(orbitLeads.tenantId, tenantId)));
+  } catch (err) {
+    console.error("[orbitLead] markOrbitLeadConverted error:", err);
+  }
+}
+
+/** Lista leads de uma barbearia com filtro de período e status. */
+export async function listOrbitLeads(
+  tenantId: number,
+  filter: "today" | "week" | "month" = "week",
+  converted?: boolean
+) {
+  const db = await getDb();
+  if (!db) return [];
+  const now = new Date();
+  const from = new Date(now);
+  if (filter === "today") {
+    from.setHours(0, 0, 0, 0);
+  } else if (filter === "week") {
+    from.setDate(now.getDate() - 7);
+  } else {
+    from.setDate(now.getDate() - 30);
+  }
+  const conditions = [eq(orbitLeads.tenantId, tenantId), gte(orbitLeads.loginAt, from)];
+  if (converted === true) conditions.push(sql`${orbitLeads.convertedAt} IS NOT NULL`);
+  if (converted === false) conditions.push(sql`${orbitLeads.convertedAt} IS NULL`);
+
+  const rows = await db
+    .select({
+      id: orbitLeads.id,
+      clientId: orbitLeads.clientId,
+      loginAt: orbitLeads.loginAt,
+      convertedAt: orbitLeads.convertedAt,
+      source: orbitLeads.source,
+      clientName: clients.name,
+      clientPhone: clients.phone,
+      clientAvatarUrl: clients.photoUrl,
+    })
+    .from(orbitLeads)
+    .leftJoin(clients, eq(clients.id, orbitLeads.clientId))
+    .where(and(...conditions))
+    .orderBy(desc(orbitLeads.loginAt));
+  return rows;
+}
+
+/** Retorna estatísticas de órbita para uma barbearia. */
+export async function getOrbitStats(tenantId: number) {
+  const db = await getDb();
+  if (!db) return { todayCount: 0, weekConverted: 0, conversionRate: 0, newLast24h: 0 };
+  const now = new Date();
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7);
+  const last24h = new Date(now); last24h.setHours(now.getHours() - 24);
+
+  const [todayRows, weekRows, newRows] = await Promise.all([
+    db.select({ c: count() }).from(orbitLeads)
+      .where(and(eq(orbitLeads.tenantId, tenantId), gte(orbitLeads.loginAt, todayStart))),
+    db.select({ c: count(), converted: orbitLeads.convertedAt }).from(orbitLeads)
+      .where(and(eq(orbitLeads.tenantId, tenantId), gte(orbitLeads.loginAt, weekAgo))),
+    db.select({ c: count() }).from(orbitLeads)
+      .where(and(eq(orbitLeads.tenantId, tenantId), gte(orbitLeads.loginAt, last24h))),
+  ]);
+
+  const todayCount = Number(todayRows[0]?.c ?? 0);
+  const newLast24h = Number(newRows[0]?.c ?? 0);
+  const weekTotal = weekRows.length;
+  const weekConverted = weekRows.filter((r) => r.converted != null).length;
+  const conversionRate = weekTotal > 0 ? Math.round((weekConverted / weekTotal) * 100) : 0;
+
+  return { todayCount, weekConverted, conversionRate, newLast24h };
+}
+
+/** Retorna dados diários de leads e conversões para o gráfico (últimos N dias). */
+export async function getOrbitDailyChart(tenantId: number, days = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  const from = new Date(); from.setDate(from.getDate() - days);
+  const rows = await db
+    .select({
+      loginAt: orbitLeads.loginAt,
+      convertedAt: orbitLeads.convertedAt,
+    })
+    .from(orbitLeads)
+    .where(and(eq(orbitLeads.tenantId, tenantId), gte(orbitLeads.loginAt, from)));
+
+  // Agrupa por dia
+  const map: Record<string, { date: string; leads: number; conversions: number }> = {};
+  for (const row of rows) {
+    const d = row.loginAt.toISOString().slice(0, 10);
+    if (!map[d]) map[d] = { date: d, leads: 0, conversions: 0 };
+    map[d].leads++;
+    if (row.convertedAt) map[d].conversions++;
+  }
+  return Object.values(map).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Retorna barbearias próximas ordenadas por distância (Haversine). */
+export async function getNearbyTenants(lat: number, lng: number, radiusKm = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  // Fórmula de Haversine via SQL
+  const rows = await db.execute(sql`
+    SELECT
+      t.id, t.name, t.slug, t.address, t.city, t.state, t.latitude, t.longitude,
+      ss.logoUrl, ss.shopName,
+      (
+        6371 * ACOS(
+          COS(RADIANS(${lat})) * COS(RADIANS(t.latitude)) *
+          COS(RADIANS(t.longitude) - RADIANS(${lng})) +
+          SIN(RADIANS(${lat})) * SIN(RADIANS(t.latitude))
+        )
+      ) AS distanceKm
+    FROM tenants t
+    LEFT JOIN shop_settings ss ON ss.tenantId = t.id
+    WHERE t.latitude IS NOT NULL AND t.longitude IS NOT NULL
+      AND t.status IN ('active', 'trial')
+    HAVING distanceKm <= ${radiusKm}
+    ORDER BY distanceKm ASC
+    LIMIT 30
+  `);
+  return ((rows[0] as unknown) as any[]).map((r: any) => ({
+    id: Number(r.id),
+    name: String(r.shopName || r.name),
+    slug: String(r.slug),
+    address: r.address ? String(r.address) : null,
+    city: r.city ? String(r.city) : null,
+    state: r.state ? String(r.state) : null,
+    latitude: Number(r.latitude),
+    longitude: Number(r.longitude),
+    logoUrl: r.logoUrl ? String(r.logoUrl) : null,
+    distanceKm: Math.round(Number(r.distanceKm) * 10) / 10,
+  }));
 }
