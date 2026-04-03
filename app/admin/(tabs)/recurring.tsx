@@ -58,6 +58,124 @@ function addMinutes(time: string, minutes: number): string {
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
+/** Seletor de horário visual — rolagem de horas e minutos */
+function InlineTimePicker({
+  value,
+  onChange,
+  colors,
+  label,
+  disabled = false,
+}: {
+  value: string;
+  onChange: (time: string) => void;
+  colors: ReturnType<typeof useColors>;
+  label: string;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [h, m] = value.split(":").map(Number);
+  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const minutes = Array.from({ length: 12 }, (_, i) => i * 5); // 0,5,10,...,55
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, letterSpacing: 0.8, textTransform: "uppercase" as const, marginBottom: 6 }}>{label}</Text>
+      <TouchableOpacity
+        onPress={() => !disabled && setOpen(!open)}
+        activeOpacity={disabled ? 1 : 0.7}
+        style={[{
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: open ? "#C9A84C" : colors.border,
+          borderRadius: 12,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          opacity: disabled ? 0.5 : 1,
+        }]}
+      >
+        <Text style={{ fontSize: 16, fontWeight: "700", color: disabled ? colors.muted : colors.foreground }}>{value}</Text>
+        <IconSymbol name={open ? "chevron.up" : "chevron.down"} size={12} color={disabled ? colors.muted : "#C9A84C"} />
+      </TouchableOpacity>
+      {open && !disabled && (
+        <View style={[{
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: "#C9A84C",
+          borderRadius: 12,
+          marginTop: 6,
+          flexDirection: "row",
+          overflow: "hidden",
+        }]}>
+          {/* Horas */}
+          <ScrollView style={{ flex: 1, maxHeight: 180 }} showsVerticalScrollIndicator={false}>
+            {hours.map((hr) => (
+              <TouchableOpacity
+                key={hr}
+                onPress={() => {
+                  const newTime = `${String(hr).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+                  onChange(newTime);
+                }}
+                style={[{
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  backgroundColor: hr === h ? "#C9A84C" : "transparent",
+                }]}
+              >
+                <Text style={[{
+                  fontSize: 14,
+                  fontWeight: hr === h ? "800" : "500",
+                  color: hr === h ? "#0A0A0A" : colors.foreground,
+                  textAlign: "center",
+                }]}>{String(hr).padStart(2, "0")}h</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <View style={{ width: 1, backgroundColor: colors.border }} />
+          {/* Minutos */}
+          <ScrollView style={{ flex: 1, maxHeight: 180 }} showsVerticalScrollIndicator={false}>
+            {minutes.map((min) => (
+              <TouchableOpacity
+                key={min}
+                onPress={() => {
+                  const newTime = `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+                  onChange(newTime);
+                  setOpen(false);
+                }}
+                style={[{
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  backgroundColor: min === m ? "#C9A84C" : "transparent",
+                }]}
+              >
+                <Text style={[{
+                  fontSize: 14,
+                  fontWeight: min === m ? "800" : "500",
+                  color: min === m ? "#0A0A0A" : colors.foreground,
+                  textAlign: "center",
+                }]}>{String(min).padStart(2, "0")}min</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** Gera lista de datas futuras para pré-visualização */
+function generateDates(startDate: string, intervalWeeks: number, occurrences: number): string[] {
+  const dates: string[] = [];
+  const d = new Date(startDate + "T12:00:00");
+  for (let i = 0; i < occurrences; i++) {
+    dates.push(d.toISOString().slice(0, 10));
+    d.setDate(d.getDate() + intervalWeeks * 7);
+  }
+  return dates;
+}
+
 /** Calendário inline — sem dependências externas, visual dark/dourado */
 function InlineDatePicker({
   value,
@@ -532,6 +650,7 @@ export default function RecurringScreen() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<NewRecurring>(EMPTY_FORM);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [searchFilter, setSearchFilter] = useState("");
 
   const listQuery = trpc.recurring.listAll.useQuery();
   const clientsQuery = trpc.clients.list.useQuery();
@@ -613,7 +732,17 @@ export default function RecurringScreen() {
     });
   }
 
-  const data = listQuery.data ?? [];
+  const allData = listQuery.data ?? [];
+  const data = searchFilter.trim()
+    ? allData.filter((item: any) => {
+        const q = searchFilter.toLowerCase();
+        return (
+          ((item as any).clientName ?? "").toLowerCase().includes(q) ||
+          ((item as any).serviceName ?? "").toLowerCase().includes(q) ||
+          ((item as any).barberName ?? "").toLowerCase().includes(q)
+        );
+      })
+    : allData;
 
   const dyn = {
     label: {
@@ -665,10 +794,10 @@ export default function RecurringScreen() {
         }
       />
 
-      {/* ── Lista de recorrências ── */}
+      {/* ── Lista de assinaturas ── */}
       {listQuery.isLoading ? (
         <ActivityIndicator color="#C9A84C" style={{ marginTop: 60 }} />
-      ) : !showForm && data.length === 0 ? (
+      ) : !showForm && allData.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={[styles.emptyIcon, { backgroundColor: "#C9A84C15" }]}>
             <IconSymbol name="calendar.badge.clock" size={40} color="#C9A84C" />
@@ -689,6 +818,41 @@ export default function RecurringScreen() {
           data={data}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={{ padding: 16, gap: 10 }}
+          ListHeaderComponent={
+            allData.length > 3 ? (
+              <View style={[{
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                paddingHorizontal: 12,
+                marginBottom: 6,
+              }]}>
+                <IconSymbol name="magnifyingglass" size={16} color={colors.muted} />
+                <TextInput
+                  style={[{
+                    flex: 1,
+                    paddingVertical: 12,
+                    paddingHorizontal: 8,
+                    color: colors.foreground,
+                    fontSize: 14,
+                    ...(Platform.OS === "web" ? { outlineStyle: "none" } as any : {}),
+                  }]}
+                  placeholder="Buscar por cliente, serviço ou barbeiro..."
+                  placeholderTextColor={colors.muted}
+                  value={searchFilter}
+                  onChangeText={setSearchFilter}
+                />
+                {searchFilter.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchFilter("")} activeOpacity={0.7}>
+                    <IconSymbol name="xmark" size={14} color={colors.muted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : null
+          }
           renderItem={({ item }) => {
             const intervalLabel = INTERVAL_LABELS[item.intervalWeeks] ?? `A cada ${item.intervalWeeks} semanas`;
             const startFormatted = item.startDate
@@ -807,22 +971,19 @@ export default function RecurringScreen() {
             />
 
             <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={dyn.label}>HORÁRIO INÍCIO</Text>
-                <TextInput
-                  style={[dyn.input, { ...(Platform.OS === "web" ? { outlineStyle: "none" } as any : {}) }]}
-                  value={form.startTime}
-                  onChangeText={handleStartTimeChange}
-                  placeholder="09:00"
-                  placeholderTextColor={colors.muted}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={dyn.label}>HORÁRIO FIM</Text>
-                <View style={[dyn.input, { opacity: 0.6, justifyContent: "center" }]}>
-                  <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: "500" }}>{form.endTime}</Text>
-                </View>
-              </View>
+              <InlineTimePicker
+                label="HORÁRIO INÍCIO"
+                value={form.startTime}
+                onChange={handleStartTimeChange}
+                colors={colors}
+              />
+              <InlineTimePicker
+                label="HORÁRIO FIM"
+                value={form.endTime}
+                onChange={() => {}}
+                colors={colors}
+                disabled={true}
+              />
             </View>
             {form.serviceId && (
               <Text style={{ fontSize: 11, color: "#C9A84C", marginTop: 6 }}>
@@ -919,6 +1080,20 @@ export default function RecurringScreen() {
                     <Text style={[styles.confirmRowValue, { color: colors.foreground }]}>{form.notes}</Text>
                   </View>
                 ) : null}
+                {/* Pré-visualização das datas */}
+                <View style={[styles.confirmDivider, { backgroundColor: colors.border, marginTop: 4 }]} />
+                <Text style={[styles.confirmRowLabel, { color: colors.muted, marginBottom: 6, marginTop: 4 }]}>DATAS GERADAS</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                  {generateDates(form.startDate, form.intervalWeeks, form.occurrences).map((d, i) => {
+                    const dt = new Date(d + "T12:00:00");
+                    const label = dt.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
+                    return (
+                      <View key={i} style={{ backgroundColor: "#C9A84C18", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: "#C9A84C" }}>{label}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
                 <View style={[styles.confirmDivider, { backgroundColor: colors.border, marginTop: 8 }]} />
                 <View style={styles.confirmActions}>
                   <TouchableOpacity

@@ -1318,3 +1318,14 @@
 - [x] Seletor de data visual (calendário inline) no formulário de Assinaturas
 - [x] Aplicar SearchCombobox nos selects nativos de outros formulários (já usavam componentes customizados)
 - [x] Card de confirmação antes de salvar a assinatura
+
+## Paridade App ↔ Painel Web Admin
+
+- [x] Análise completa de diferenças entre app e painel web admin
+- [x] Sincronizar funcionalidades do app no painel web (Assinaturas, Órbita, etc.)
+
+## Melhorias Assinaturas v2
+
+- [x] Seletor de horário visual (tipo rolagem/relógio) no formulário de Assinaturas (app + web)
+- [x] Pré-visualização das datas geradas no card de confirmação (app + web)
+- [x] Filtro/busca por cliente na lista de Assinaturas ativas (app + web)

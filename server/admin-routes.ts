@@ -104,7 +104,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/agenda", icon: "📅", label: "Agenda", id: "agenda" },
         { href: "/admin/clientes", icon: "👥", label: "Clientes", id: "clientes" },
         { href: "/admin/lista-espera", icon: "⏳", label: "Lista de Espera", id: "lista-espera" },
-        { href: "/admin/recorrencias", icon: "🔄", label: "Recorrências", id: "recorrencias" },
+        { href: "/admin/assinaturas", icon: "🔄", label: "Assinaturas", id: "assinaturas" },
+        { href: "/admin/orbita", icon: "📡", label: "Clientes em Órbita", id: "orbita" },
       ],
     },
     {
@@ -3920,8 +3921,8 @@ export function registerAdminRoutes(app: Express): void {
     res.redirect(`/admin/lista-espera?date=${date || today()}&removed=1`);
   });
 
-  // ─── Recorrências ────────────────────────────────────────────────────────────
-  app.get("/admin/recorrencias", requireAdminAuth, async (req: Request, res: Response) => {
+  // ─── Assinaturas ────────────────────────────────────────────────────────────
+  app.get("/admin/assinaturas", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -3931,21 +3932,43 @@ export function registerAdminRoutes(app: Express): void {
     const allServices = await db.getAllServices(true, tenantId);
     const cancelled = req.query.cancelled === "1";
     const created = req.query.created === "1";
+    const searchQ = ((req.query.q as string) || "").toLowerCase();
+    const filtered = searchQ
+      ? allRecurring.filter((r: any) =>
+          (r.clientName || "").toLowerCase().includes(searchQ) ||
+          (r.serviceName || "").toLowerCase().includes(searchQ) ||
+          (r.barberName || "").toLowerCase().includes(searchQ))
+      : allRecurring;
     const body = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
         <div>
-          <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Agendamentos Recorrentes</h1>
+          <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Assinaturas</h1>
           <p style="color:var(--muted);font-size:14px;margin-top:4px;">Clientes com agendamentos periódicos configurados</p>
         </div>
-        <button onclick="document.getElementById('newRecModal').style.display='flex'" class="btn btn-primary">+ Nova Recorrência</button>
+        <button onclick="document.getElementById('newRecModal').style.display='flex'" class="btn btn-primary">+ Nova Assinatura</button>
       </div>
-      ${cancelled ? `<div class="alert alert-success">Recorrência cancelada com sucesso.</div>` : ""}
-      ${created ? `<div class="alert alert-success">Recorrência criada! Agendamentos gerados automaticamente.</div>` : ""}
+      ${cancelled ? '<div class="alert alert-success">Assinatura cancelada com sucesso.</div>' : ""}
+      ${created ? '<div class="alert alert-success">Assinatura criada! Agendamentos gerados automaticamente.</div>' : ""}
+
+      ${allRecurring.length > 3 ? `
+      <div style="margin-bottom:16px;">
+        <form method="GET" action="/admin/assinaturas" style="display:flex;gap:8px;align-items:center;">
+          <div style="flex:1;position:relative;">
+            <input type="text" name="q" value="${esc(searchQ)}" placeholder="Buscar por cliente, serviço ou barbeiro..."
+              class="form-input" style="padding-left:36px;" />
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);">&#128269;</span>
+          </div>
+          <button type="submit" class="btn btn-primary" style="padding:8px 16px;">Buscar</button>
+          ${searchQ ? '<a href="/admin/assinaturas" class="btn" style="padding:8px 16px;">Limpar</a>' : ""}
+        </form>
+      </div>
+      ` : ""}
+
       <div class="card">
         <table>
           <thead><tr><th>Cliente</th><th>Barbeiro</th><th>Serviço</th><th>Início</th><th>Horário</th><th>Intervalo</th><th>Ocorrências</th><th>Ações</th></tr></thead>
           <tbody>
-            ${allRecurring.length === 0 ? `<tr><td colspan="8" class="empty">Nenhuma recorrência ativa.</td></tr>` : allRecurring.map(r => `
+            ${filtered.length === 0 ? '<tr><td colspan="8" class="empty">Nenhuma assinatura encontrada.</td></tr>' : filtered.map((r: any) => `
               <tr>
                 <td><strong>${esc(r.clientName)}</strong></td>
                 <td>${esc(r.barberName)}</td>
@@ -3955,9 +3978,9 @@ export function registerAdminRoutes(app: Express): void {
                 <td>A cada ${r.intervalWeeks} semana(s)</td>
                 <td>${r.occurrences}x</td>
                 <td>
-                  <form method="POST" action="/admin/recorrencias/cancelar" style="display:inline;">
+                  <form method="POST" action="/admin/assinaturas/cancelar" style="display:inline;">
                     <input type="hidden" name="id" value="${r.id}" />
-                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="return confirm('Cancelar esta recorrência?')">Cancelar</button>
+                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="return confirm('Cancelar esta assinatura?')">Cancelar</button>
                   </form>
                 </td>
               </tr>
@@ -3965,106 +3988,195 @@ export function registerAdminRoutes(app: Express): void {
           </tbody>
         </table>
       </div>
-      <!-- Modal Nova Recorrência -->
+
+      <!-- Modal Nova Assinatura -->
       <div id="newRecModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
-        <div style="background:var(--surface);border-radius:12px;padding:28px;width:520px;max-width:90vw;max-height:90vh;overflow-y:auto;">
-          <h2 style="font-size:18px;font-weight:700;margin-bottom:20px;">Nova Recorrência</h2>
-          <form method="POST" action="/admin/recorrencias">
+        <div style="background:var(--surface);border-radius:16px;padding:28px;width:560px;max-width:90vw;max-height:90vh;overflow-y:auto;border:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h2 style="font-size:18px;font-weight:700;color:var(--foreground);">Nova Assinatura</h2>
+            <button onclick="document.getElementById('newRecModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">&#10005;</button>
+          </div>
+          <form method="POST" action="/admin/assinaturas" id="recForm">
             <div class="form-group">
               <label class="form-label">Cliente *</label>
-              <input type="text" id="recClientSearch" placeholder="Buscar cliente por nome ou telefone..." class="form-input" autocomplete="off"
-                oninput="filterRecSelect('recClientSel','recClientSearch')" style="margin-bottom:6px" />
-              <select name="clientId" id="recClientSel" class="form-input" required size="4" style="height:auto">
-                <option value="">-- selecione --</option>
-                ${allClients.map(c => `<option value="${c.id}" data-label="${esc(c.name.toLowerCase())} ${(c.phone ?? '').toLowerCase()}">${esc(c.name)}${c.phone ? ' · ' + esc(c.phone) : ''}</option>`).join("")}
-              </select>
+              <div class="custom-select-wrapper" id="csw-client">
+                <input type="hidden" name="clientId" id="cs-client-val" required />
+                <div class="cs-trigger" onclick="toggleCS('csw-client')">
+                  <span class="cs-label" id="cs-client-label">Selecione um cliente...</span>
+                  <span class="cs-arrow">&#9662;</span>
+                </div>
+                <div class="cs-dropdown" style="display:none;">
+                  <input type="text" class="cs-search" placeholder="Buscar cliente..." oninput="filterCS('csw-client', this.value)" />
+                  <div class="cs-options">
+                    ${allClients.map(c => '<div class="cs-option" data-value="' + c.id + '" data-search="' + esc(c.name.toLowerCase()) + ' ' + (c.phone ?? '').toLowerCase() + '" data-wrapper="csw-client" data-val-id="cs-client-val" data-lbl-id="cs-client-label" onclick="selectCS(this,this.dataset.wrapper,this.dataset.valId,this.dataset.lblId)">' + esc(c.name) + (c.phone ? ' <span style="color:var(--muted);font-size:12px;">&#183; ' + esc(c.phone) + '</span>' : '') + '</div>').join("")}
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">Barbeiro *</label>
-              <input type="text" id="recBarberSearch" placeholder="Buscar barbeiro..." class="form-input" autocomplete="off"
-                oninput="filterRecSelect('recBarberSel','recBarberSearch')" style="margin-bottom:6px" />
-              <select name="barberId" id="recBarberSel" class="form-input" required size="3" style="height:auto">
-                <option value="">-- selecione --</option>
-                ${allBarbers.map(b => `<option value="${b.id}" data-label="${esc(b.name.toLowerCase())}">${esc(b.name)}</option>`).join("")}
-              </select>
+              <div class="custom-select-wrapper" id="csw-barber">
+                <input type="hidden" name="barberId" id="cs-barber-val" required />
+                <div class="cs-trigger" onclick="toggleCS('csw-barber')">
+                  <span class="cs-label" id="cs-barber-label">Selecione um barbeiro...</span>
+                  <span class="cs-arrow">&#9662;</span>
+                </div>
+                <div class="cs-dropdown" style="display:none;">
+                  <input type="text" class="cs-search" placeholder="Buscar barbeiro..." oninput="filterCS('csw-barber', this.value)" />
+                  <div class="cs-options">
+                    ${allBarbers.map(b => '<div class="cs-option" data-value="' + b.id + '" data-search="' + esc(b.name.toLowerCase()) + '" data-wrapper="csw-barber" data-val-id="cs-barber-val" data-lbl-id="cs-barber-label" onclick="selectCS(this,this.dataset.wrapper,this.dataset.valId,this.dataset.lblId)">' + esc(b.name) + '</div>').join("")}
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">Serviço *</label>
-              <input type="text" id="recServiceSearch" placeholder="Buscar serviço..." class="form-input" autocomplete="off"
-                oninput="filterRecSelect('recServiceSel','recServiceSearch')" style="margin-bottom:6px" />
-              <select name="serviceId" id="recServiceSel" class="form-input" required size="4" style="height:auto"
-                onchange="calcRecEndTime()">
-                <option value="">-- selecione --</option>
-                ${allServices.map(s => `<option value="${s.id}" data-duration="${(s as any).durationMinutes ?? 60}" data-label="${esc(s.name.toLowerCase())}">${esc(s.name)}</option>`).join("")}
-              </select>
+              <div class="custom-select-wrapper" id="csw-service">
+                <input type="hidden" name="serviceId" id="cs-service-val" required />
+                <div class="cs-trigger" onclick="toggleCS('csw-service')">
+                  <span class="cs-label" id="cs-service-label">Selecione um serviço...</span>
+                  <span class="cs-arrow">&#9662;</span>
+                </div>
+                <div class="cs-dropdown" style="display:none;">
+                  <input type="text" class="cs-search" placeholder="Buscar serviço..." oninput="filterCS('csw-service', this.value)" />
+                  <div class="cs-options">
+                    ${allServices.map(s => '<div class="cs-option" data-value="' + s.id + '" data-search="' + esc(s.name.toLowerCase()) + '" data-duration="' + ((s as any).durationMinutes ?? 60) + '" onclick="selectCSService(this,' + ((s as any).durationMinutes ?? 60) + ')">' + esc(s.name) + ' <span style="color:var(--muted);font-size:12px;">&#183; ' + ((s as any).durationMinutes ?? 60) + 'min</span></div>').join("")}
+                  </div>
+                </div>
+              </div>
             </div>
+
             <div class="form-group">
               <label class="form-label">Data de Início *</label>
-              <input type="date" name="startDate" class="form-input" required />
+              <input type="hidden" name="startDate" id="recStartDate" required />
+              <div id="calendarWidget" style="background:var(--background);border:1px solid var(--border);border-radius:12px;overflow:hidden;"></div>
             </div>
+
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
               <div class="form-group">
                 <label class="form-label">Horário Início *</label>
-                <input type="time" name="startTime" id="recStartTime" class="form-input" required onchange="calcRecEndTime()" />
+                <div class="time-picker-wrapper" id="tp-start">
+                  <div class="tp-trigger" onclick="toggleTP('tp-start')">
+                    <span id="tp-start-label">09:00</span>
+                    <span class="cs-arrow">&#9662;</span>
+                  </div>
+                  <input type="hidden" name="startTime" id="recStartTime" value="09:00" required />
+                  <div class="tp-dropdown" style="display:none;">
+                    <div class="tp-columns">
+                      <div class="tp-col" id="tp-start-hours"></div>
+                      <div class="tp-col" id="tp-start-mins"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Horário Fim <span style="font-size:11px;color:var(--muted)">(automático)</span></label>
-                <input type="time" name="endTime" id="recEndTime" class="form-input" required readonly style="opacity:0.7;cursor:default" />
+                <div class="tp-trigger" style="opacity:0.5;cursor:default;">
+                  <span id="tp-end-label">10:00</span>
+                </div>
+                <input type="hidden" name="endTime" id="recEndTime" value="10:00" required />
               </div>
             </div>
+
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
               <div class="form-group">
                 <label class="form-label">Intervalo (semanas)</label>
-                <input type="number" name="intervalWeeks" value="2" min="1" max="12" class="form-input" />
+                <input type="number" name="intervalWeeks" id="recIntervalWeeks" value="2" min="1" max="12" class="form-input" onchange="updatePreview()" />
               </div>
               <div class="form-group">
                 <label class="form-label">Nº de Ocorrências</label>
-                <input type="number" name="occurrences" value="4" min="1" max="52" class="form-input" />
+                <input type="number" name="occurrences" id="recOccurrences" value="4" min="1" max="52" class="form-input" onchange="updatePreview()" />
               </div>
             </div>
+
+            <div id="datesPreview" style="display:none;margin-bottom:16px;">
+              <label class="form-label" style="margin-bottom:8px;">Datas que serão geradas</label>
+              <div id="datesPreviewList" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+            </div>
+
             <div class="form-group">
               <label class="form-label">Observações</label>
               <input type="text" name="notes" class="form-input" placeholder="Opcional" />
             </div>
             <div style="display:flex;gap:12px;margin-top:20px;">
               <button type="button" onclick="document.getElementById('newRecModal').style.display='none'" class="btn" style="flex:1;">Cancelar</button>
-              <button type="submit" class="btn btn-primary" style="flex:1;">Criar Recorrência</button>
+              <button type="submit" class="btn btn-primary" style="flex:1;">Criar Assinatura</button>
             </div>
           </form>
         </div>
       </div>
+
+      <style>
+        .custom-select-wrapper{position:relative}
+        .cs-trigger{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .2s}
+        .cs-trigger:hover,.cs-trigger.active{border-color:var(--primary)}
+        .cs-arrow{color:var(--primary);font-size:12px}
+        .cs-label{color:var(--muted);font-size:14px}
+        .cs-label.selected{color:var(--foreground);font-weight:600}
+        .cs-dropdown{position:absolute;top:100%;left:0;right:0;z-index:10;background:var(--surface);border:1px solid var(--primary);border-radius:10px;margin-top:4px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+        .cs-search{width:100%;padding:10px 14px;border:none;border-bottom:1px solid var(--border);background:var(--background);color:var(--foreground);font-size:14px;outline:none}
+        .cs-options{max-height:180px;overflow-y:auto}
+        .cs-option{padding:10px 14px;cursor:pointer;font-size:14px;color:var(--foreground);transition:background .15s}
+        .cs-option:hover{background:var(--primary);color:#0A0A0A}
+        .cs-option.hidden{display:none}
+        .cs-option.selected{background:rgba(201,168,76,.15);font-weight:600;border-left:3px solid var(--primary)}
+        .time-picker-wrapper{position:relative}
+        .tp-trigger{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--foreground);font-weight:600;font-size:16px}
+        .tp-trigger:hover{border-color:var(--primary)}
+        .tp-dropdown{position:absolute;top:100%;left:0;right:0;z-index:10;background:var(--surface);border:1px solid var(--primary);border-radius:10px;margin-top:4px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+        .tp-columns{display:flex}
+        .tp-col{flex:1;max-height:180px;overflow-y:auto}
+        .tp-col+.tp-col{border-left:1px solid var(--border)}
+        .tp-item{padding:8px 14px;cursor:pointer;font-size:14px;text-align:center;color:var(--foreground);transition:background .15s}
+        .tp-item:hover{background:var(--primary);color:#0A0A0A}
+        .tp-item.active{background:var(--primary);color:#0A0A0A;font-weight:700}
+        #calendarWidget .cal-nav{display:flex;justify-content:space-between;align-items:center;padding:12px}
+        #calendarWidget .cal-nav button{background:rgba(201,168,76,.1);border:none;color:var(--primary);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:14px}
+        #calendarWidget .cal-nav button:hover{background:rgba(201,168,76,.25)}
+        #calendarWidget .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+        #calendarWidget .cal-day-header{text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:6px 0}
+        #calendarWidget .cal-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;border-radius:8px;margin:1px;transition:all .15s;color:var(--foreground)}
+        #calendarWidget .cal-cell:hover:not(.disabled):not(.selected){background:rgba(201,168,76,.15)}
+        #calendarWidget .cal-cell.selected{background:var(--primary);color:#0A0A0A;font-weight:800}
+        #calendarWidget .cal-cell.today{border:1px solid var(--primary);color:var(--primary)}
+        #calendarWidget .cal-cell.disabled{opacity:.3;cursor:default}
+        #calendarWidget .cal-selected-row{display:flex;align-items:center;gap:6px;padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--primary);font-weight:600}
+      </style>
+
       <script>
-        function filterRecSelect(selId, inputId) {
-          const q = document.getElementById(inputId).value.toLowerCase();
-          const sel = document.getElementById(selId);
-          Array.from(sel.options).forEach(opt => {
-            if (!opt.value) return;
-            opt.style.display = (opt.dataset.label || '').includes(q) ? '' : 'none';
-          });
-        }
-        function calcRecEndTime() {
-          const sel = document.getElementById('recServiceSel');
-          const startInput = document.getElementById('recStartTime');
-          const endInput = document.getElementById('recEndTime');
-          const opt = sel.options[sel.selectedIndex];
-          if (!opt || !opt.value || !startInput.value) return;
-          const duration = parseInt(opt.dataset.duration || '60');
-          const [h, m] = startInput.value.split(':').map(Number);
-          const total = h * 60 + m + duration;
-          const hh = String(Math.floor(total / 60) % 24).padStart(2, '0');
-          const mm = String(total % 60).padStart(2, '0');
-          endInput.value = hh + ':' + mm;
-        }
+        function toggleCS(wId){var w=document.getElementById(wId),dd=w.querySelector('.cs-dropdown'),tr=w.querySelector('.cs-trigger'),isOpen=dd.style.display!=='none';document.querySelectorAll('.cs-dropdown').forEach(function(d){d.style.display='none'});document.querySelectorAll('.cs-trigger').forEach(function(t){t.classList.remove('active')});if(!isOpen){dd.style.display='block';tr.classList.add('active');var s=w.querySelector('.cs-search');if(s)s.focus()}}
+        function filterCS(wId,q){document.getElementById(wId).querySelectorAll('.cs-option').forEach(function(o){o.classList.toggle('hidden',!(o.dataset.search||'').includes(q.toLowerCase()))})}
+        function selectCS(el,wId,valId,lblId){var v=el.dataset.value;document.getElementById(valId).value=v;var lbl=document.getElementById(lblId);lbl.textContent=el.textContent.trim();lbl.classList.add('selected');document.getElementById(wId).querySelectorAll('.cs-option').forEach(function(o){o.classList.toggle('selected',o.dataset.value===v)});document.getElementById(wId).querySelector('.cs-dropdown').style.display='none';document.getElementById(wId).querySelector('.cs-trigger').classList.remove('active');updatePreview()}
+        function selectCSService(el,dur){selectCS(el,'csw-service','cs-service-val','cs-service-label');window._serviceDuration=dur;calcEndTime()}
+        document.addEventListener('click',function(e){if(!e.target.closest('.custom-select-wrapper')&&!e.target.closest('.time-picker-wrapper')){document.querySelectorAll('.cs-dropdown,.tp-dropdown').forEach(function(d){d.style.display='none'});document.querySelectorAll('.cs-trigger').forEach(function(t){t.classList.remove('active')})}});
+
+        window._serviceDuration=60;window._startH=9;window._startM=0;
+        function buildTimePicker(){var hC=document.getElementById('tp-start-hours'),mC=document.getElementById('tp-start-mins');hC.innerHTML='';mC.innerHTML='';for(var h=0;h<24;h++){var el=document.createElement('div');el.className='tp-item'+(h===window._startH?' active':'');el.textContent=String(h).padStart(2,'0')+'h';el.onclick=(function(hh){return function(){window._startH=hh;updateStartTime();buildTimePicker()}})(h);hC.appendChild(el)}for(var m=0;m<60;m+=5){var el2=document.createElement('div');el2.className='tp-item'+(m===window._startM?' active':'');el2.textContent=String(m).padStart(2,'0')+'min';el2.onclick=(function(mm){return function(){window._startM=mm;updateStartTime();buildTimePicker();toggleTP('tp-start')}})(m);mC.appendChild(el2)}}
+        function updateStartTime(){var t=String(window._startH).padStart(2,'0')+':'+String(window._startM).padStart(2,'0');document.getElementById('recStartTime').value=t;document.getElementById('tp-start-label').textContent=t;calcEndTime()}
+        function calcEndTime(){var total=window._startH*60+window._startM+(window._serviceDuration||60);var hh=String(Math.floor(total/60)%24).padStart(2,'0');var mm=String(total%60).padStart(2,'0');var endT=hh+':'+mm;document.getElementById('recEndTime').value=endT;document.getElementById('tp-end-label').textContent=endT}
+        function toggleTP(id){var w=document.getElementById(id),dd=w.querySelector('.tp-dropdown');dd.style.display=dd.style.display==='none'?'block':'none'}
+        buildTimePicker();
+
+        var MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+        var WDAYS=['D','S','T','Q','Q','S','S'];
+        var calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calSelected='';
+        function renderCalendar(){var today=new Date().toISOString().slice(0,10);var firstDay=new Date(calYear,calMonth,1).getDay();var daysInMonth=new Date(calYear,calMonth+1,0).getDate();var html='<div class="cal-nav"><button onclick="calPrev()">&#9664;</button><span style="font-weight:700;color:var(--foreground);">'+MONTHS[calMonth]+' '+calYear+'</span><button onclick="calNext()">&#9654;</button></div><div class="cal-grid">';WDAYS.forEach(function(d){html+='<div class="cal-day-header">'+d+'</div>'});for(var i=0;i<firstDay;i++)html+='<div class="cal-cell"></div>';for(var d=1;d<=daysInMonth;d++){var mm=String(calMonth+1).padStart(2,'0');var dd=String(d).padStart(2,'0');var ds=calYear+'-'+mm+'-'+dd;var isPast=ds<today;var isToday=ds===today;var isSel=ds===calSelected;var cls='cal-cell';if(isSel)cls+=' selected';else if(isToday)cls+=' today';if(isPast)cls+=' disabled';html+='<div class="'+cls+'" onclick="'+(isPast?'':"calSelect('"+ds+"')")+'">'+d+'</div>'}html+='</div>';if(calSelected){var dt=new Date(calSelected+'T12:00:00');var fmt=dt.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});html+='<div class="cal-selected-row">&#128197; '+fmt+'</div>'}document.getElementById('calendarWidget').innerHTML=html}
+        function calPrev(){if(calMonth===0){calMonth=11;calYear--}else calMonth--;renderCalendar()}
+        function calNext(){if(calMonth===11){calMonth=0;calYear++}else calMonth++;renderCalendar()}
+        function calSelect(d){calSelected=d;document.getElementById('recStartDate').value=d;renderCalendar();updatePreview()}
+        renderCalendar();
+
+        function updatePreview(){var sd=document.getElementById('recStartDate').value;var iv=parseInt(document.getElementById('recIntervalWeeks').value)||2;var oc=parseInt(document.getElementById('recOccurrences').value)||4;var pv=document.getElementById('datesPreview');var pl=document.getElementById('datesPreviewList');if(!sd){pv.style.display='none';return}pv.style.display='block';var dates=[];var d=new Date(sd+'T12:00:00');for(var i=0;i<oc;i++){dates.push(new Date(d));d.setDate(d.getDate()+iv*7)}pl.innerHTML=dates.map(function(dt){var label=dt.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});return '<span style="background:rgba(201,168,76,.12);color:var(--primary);padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;">'+label+'</span>'}).join('')}
       </script>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Recorrências", "recorrencias", body, barber?.name, _tp));
+    res.send(adminLayout("Assinaturas", "assinaturas", body, barber?.name, _tp));
   });
 
-  app.post("/admin/recorrencias", requireAdminAuth, async (req: Request, res: Response) => {
+    app.post("/admin/assinaturas", requireAdminAuth, async (req: Request, res: Response) => {
     const { clientId, barberId, serviceId, startDate, startTime, endTime, intervalWeeks, occurrences, notes } = req.body;
     if (!clientId || !barberId || !serviceId || !startDate || !startTime || !endTime) {
-      res.redirect("/admin/recorrencias?error=Preencha+todos+os+campos+obrigatórios"); return;
+      res.redirect("/admin/assinaturas?error=Preencha+todos+os+campos+obrigatórios"); return;
     }
     try {
       await db.createRecurringAppointments({
@@ -4078,16 +4190,16 @@ export function registerAdminRoutes(app: Express): void {
         occurrences: parseInt(occurrences) || 6,
         notes: notes || undefined,
       });
-      res.redirect("/admin/recorrencias?created=1");
+      res.redirect("/admin/assinaturas?created=1");
     } catch (e: any) {
-      res.redirect(`/admin/recorrencias?error=${encodeURIComponent(e.message)}`);
+      res.redirect(`/admin/assinaturas?error=${encodeURIComponent(e.message)}`);
     }
   });
 
-  app.post("/admin/recorrencias/cancelar", requireAdminAuth, async (req: Request, res: Response) => {
+  app.post("/admin/assinaturas/cancelar", requireAdminAuth, async (req: Request, res: Response) => {
     const { id } = req.body;
     if (id) await db.cancelRecurring(parseInt(id));
-    res.redirect("/admin/recorrencias?cancelled=1");
+    res.redirect("/admin/assinaturas?cancelled=1");
   });
 
   // ─── Estoque ─────────────────────────────────────────────────────────────────
@@ -5215,6 +5327,149 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     res.send(adminLayout("Minhas Comissões", "minhas-comissoes", body, barber?.name, _tp));
+  });
+
+
+  // ─── Clientes em Órbita ──────────────────────────────────────────────────────
+  app.get("/admin/orbita", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    if (!tenantId) { res.redirect("/admin"); return; }
+
+    const filter = (req.query.filter as string) || "week";
+    const status = req.query.status as string || "all";
+    const converted = status === "converted" ? true : status === "pending" ? false : undefined;
+
+    const [leads, stats, chartData] = await Promise.all([
+      db.listOrbitLeads(tenantId, filter as any, converted),
+      db.getOrbitStats(tenantId),
+      db.getOrbitDailyChart(tenantId, 30),
+    ]);
+
+    const body = `
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">EM ÓRBITA HOJE</div>
+          <div class="metric-value" style="color:var(--gold)">${stats.todayCount}</div>
+          <div class="metric-sub">clientes acessaram sua barbearia</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">CONVERTIDOS (7 DIAS)</div>
+          <div class="metric-value" style="color:var(--success)">${stats.weekConverted}</div>
+          <div class="metric-sub">agendaram após visitar</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">TAXA DE CONVERSÃO</div>
+          <div class="metric-value" style="color:var(--warning)">${stats.conversionRate}%</div>
+          <div class="metric-sub">visitantes → clientes</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">NOVOS (24H)</div>
+          <div class="metric-value">${stats.newLast24h}</div>
+          <div class="metric-sub">leads nas últimas 24 horas</div>
+        </div>
+      </div>
+
+      <!-- Gráfico -->
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-header"><span class="card-title">Leads vs Conversões (30 dias)</span></div>
+        <div class="card-body" style="padding:20px;">
+          <canvas id="orbitChart" height="200"></canvas>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+        <a href="/admin/orbita?filter=today&status=${status}" class="btn ${filter === "today" ? "btn-primary" : ""}" style="font-size:12px;">Hoje</a>
+        <a href="/admin/orbita?filter=week&status=${status}" class="btn ${filter === "week" ? "btn-primary" : ""}" style="font-size:12px;">7 dias</a>
+        <a href="/admin/orbita?filter=month&status=${status}" class="btn ${filter === "month" ? "btn-primary" : ""}" style="font-size:12px;">30 dias</a>
+        <span style="width:1px;background:var(--border);margin:0 4px;"></span>
+        <a href="/admin/orbita?filter=${filter}&status=all" class="btn ${status === "all" ? "btn-primary" : ""}" style="font-size:12px;">Todos</a>
+        <a href="/admin/orbita?filter=${filter}&status=pending" class="btn ${status === "pending" ? "btn-primary" : ""}" style="font-size:12px;">Pendentes</a>
+        <a href="/admin/orbita?filter=${filter}&status=converted" class="btn ${status === "converted" ? "btn-primary" : ""}" style="font-size:12px;">Convertidos</a>
+      </div>
+
+      <!-- Tabela -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Clientes em Órbita (${leads.length})</span>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Telefone</th>
+                <th>Acesso em</th>
+                <th>Fonte</th>
+                <th>Status</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${leads.length === 0 ? '<tr><td colspan="6" class="empty">Nenhum lead encontrado neste período.</td></tr>' : leads.map((l: any) => `
+                <tr>
+                  <td style="font-weight:600;">${esc(l.clientName || "Sem nome")}</td>
+                  <td>${esc(l.clientPhone || "—")}</td>
+                  <td>${l.loginAt ? new Date(l.loginAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                  <td><span class="badge ${l.source === "geo" ? "badge-gold" : "badge-muted"}">${l.source === "geo" ? "📍 GPS" : "🔗 Link"}</span></td>
+                  <td>${l.convertedAt ? '<span class="badge badge-success">Convertido</span>' : '<span class="badge badge-warning">Pendente</span>'}</td>
+                  <td>${l.clientPhone ? `<a href="https://wa.me/55${(l.clientPhone || "").replace(/\\D/g, "")}?text=${encodeURIComponent("Olá " + (l.clientName || "") + "! Vi que você acessou nossa barbearia. Que tal agendar um horário?")}" target="_blank" class="btn btn-sm" style="background:#25D366;color:#fff;border:none;font-size:11px;">WhatsApp</a>` : "—"}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+      <script>
+        const chartData = ${JSON.stringify(chartData)};
+        const ctx = document.getElementById('orbitChart');
+        if (ctx && chartData.length > 0) {
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: chartData.map(d => {
+                const [y,m,dd] = d.date.split('-');
+                return dd + '/' + m;
+              }),
+              datasets: [
+                {
+                  label: 'Leads',
+                  data: chartData.map(d => d.leads),
+                  borderColor: '#C9A84C',
+                  backgroundColor: '#C9A84C22',
+                  fill: true,
+                  tension: 0.3,
+                },
+                {
+                  label: 'Conversões',
+                  data: chartData.map(d => d.conversions),
+                  borderColor: '#4ADE80',
+                  backgroundColor: '#4ADE8022',
+                  fill: true,
+                  tension: 0.3,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: { labels: { color: '#F0EEE8', font: { size: 12 } } },
+              },
+              scales: {
+                x: { ticks: { color: '#888880', font: { size: 10 } }, grid: { color: '#2A2A2A' } },
+                y: { ticks: { color: '#888880', stepSize: 1 }, grid: { color: '#2A2A2A' }, beginAtZero: true },
+              },
+            },
+          });
+        }
+      </script>
+    `;
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+    res.send(adminLayout("Clientes em Órbita", "orbita", body, barber?.name, _tp));
   });
 
 }
