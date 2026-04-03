@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Dimensions,
   FlatList,
@@ -17,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { useClientAuth } from "@/lib/client-auth-context";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -213,9 +215,20 @@ export default function ClientServices() {
   const [search, setSearch] = useState("");
   const [selectedService, setSelectedService] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [explorerBannerDismissed, setExplorerBannerDismissed] = useState(false);
 
+  const { client, isAuthenticated } = useClientAuth();
   const settingsQuery = trpc.settings.get.useQuery();
   const tenantId = (settingsQuery.data as any)?.tenantId ?? undefined;
+  // Barbearia favorita do cliente
+  const preferredTenantId = isAuthenticated ? (client?.preferredTenantId ?? null) : null;
+  const preferredTenantQuery = trpc.clientAuth.getPreferredTenant.useQuery(
+    { tenantId: preferredTenantId },
+    { enabled: !!preferredTenantId }
+  );
+  const preferredTenantName = (preferredTenantQuery.data as any)?.name ?? null;
+  // Mostrar banner apenas quando o tenantId atual é diferente da barbearia favorita
+  const isExploringOtherShop = !!preferredTenantId && !!tenantId && preferredTenantId !== tenantId;
   const servicesQuery = trpc.services.listWithMediaAndRatings.useQuery({ activeOnly: true, tenantId });
   const categoriesQuery = trpc.categories.list.useQuery({ type: "service" });
   const services = servicesQuery.data ?? [];
@@ -257,9 +270,39 @@ export default function ClientServices() {
         <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
           <Text style={styles.headerTitle}>Nossos Serviços</Text>
           <Text style={styles.headerSubtitle}>Escolha e agende com um toque</Text>
-        </View>
-
-        {/* ── Busca ──────────────────────────────────────────────────────────── */}
+        </View>        {/* ── Banner: explorando outra barbearia ────────────────────────────────────── */}
+        {isExploringOtherShop && !explorerBannerDismissed && (
+          <View style={{
+            backgroundColor: "#1a1200",
+            borderRadius: 10,
+            marginHorizontal: 16,
+            marginBottom: 8,
+            padding: 12,
+            borderWidth: 1,
+            borderColor: "#C9A84C",
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: 10,
+          }}>
+            <Text style={{ fontSize: 18, lineHeight: 22 }}>⭐</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: "#EAB308", fontSize: 13, fontWeight: "700", marginBottom: 2 }}>
+                Você já tem uma barbearia favorita!
+              </Text>
+              <Text style={{ color: "#9CA3AF", fontSize: 12, lineHeight: 17 }}>
+                Sua barbearia favorita é <Text style={{ color: "#C9A84C", fontWeight: "600" }}>{preferredTenantName}</Text>. Deseja explorar outras unidades?
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setExplorerBannerDismissed(true)}
+              style={{ padding: 4 }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: "#6B7280", fontSize: 16, lineHeight: 18 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {/* ── Busca ──────────────────────────────────────────────────────────────────── */}
         <View style={styles.searchWrapper}>
           <TextInput
             value={search}

@@ -508,6 +508,11 @@ export const appRouter = router({
 
   settings: router({
     get: publicProcedure.query(() => db.getShopSettings()),
+    getByTenant: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }) => {
+        return db.getShopSettings(input.tenantId);
+      }),
     openStatus: publicProcedure.query(() => db.getShopOpenStatus()),
     update: publicProcedure
       .input(z.object({ shopName: z.string().optional(), address: z.string().optional().nullable(), phone: z.string().optional().nullable(), whatsapp: z.string().optional().nullable(), mercadoPagoAccessToken: z.string().optional().nullable(), mercadoPagoPublicKey: z.string().optional().nullable(), whatsappMessageTemplate: z.string().optional().nullable(), reminderMessageTemplate: z.string().optional().nullable(), instagram: z.string().optional().nullable(), cnpj: z.string().optional().nullable(), googleMapsUrl: z.string().optional().nullable(), pixKey: z.string().optional().nullable(), galleryUrls: z.string().optional().nullable(), cep: z.string().optional().nullable(), addressNumber: z.string().optional().nullable(), addressComplement: z.string().optional().nullable(), logoUrl: z.string().optional().nullable(), primaryColor: z.string().optional().nullable(), bannerUrl: z.string().optional().nullable(), customDomain: z.string().optional().nullable(), ga4MeasurementId: z.string().optional().nullable(), facebookPixelId: z.string().optional().nullable(), seoTitle: z.string().optional().nullable(), seoDescription: z.string().optional().nullable(), seoImageUrl: z.string().optional().nullable() }))
@@ -661,6 +666,22 @@ export const appRouter = router({
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) return null;
         return { id: tenant.id, name: tenant.name, slug: tenant.slug, logoUrl: tenant.logoUrl ?? null };
+      }),
+    saveConsent: publicProcedure
+      .input(z.object({
+        clientId: z.number(),
+        tenantId: z.number(),
+        consentType: z.string().optional(),
+        termsVersion: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.saveClientConsent({
+          clientId: input.clientId,
+          tenantId: input.tenantId,
+          consentType: input.consentType ?? "lgpd_contact_sharing",
+          termsVersion: input.termsVersion ?? "1.0",
+        });
+        return { success: true };
       }),
   }),
 

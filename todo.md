@@ -1264,11 +1264,11 @@
 - [ ] Taxa de conversão exibida em destaque: "X% dos visitantes agendaram"
 
 ### Regras de Negócio — Fidelização (Anti-iFood)
-- [ ] Uma vez que o cliente define uma barbearia como favorita (`preferredTenantId`), o app exibe essa barbearia em destaque na tela inicial
-- [ ] Busca por geolocalização ainda funciona, mas com aviso: "Você já tem uma barbearia favorita. Deseja explorar outras unidades?"
-- [ ] Para trocar de barbearia favorita: opção clara no perfil do cliente ("Trocar barbearia favorita") ou logout da unidade atual
-- [ ] Ao trocar de barbearia favorita, o consentimento LGPD deve ser reapresentado para a nova barbearia
-- [ ] Histórico de agendamentos e pontos de fidelidade são mantidos por barbearia (não transferidos)
+- [x] Uma vez que o cliente define uma barbearia como favorita (`preferredTenantId`), o app exibe essa barbearia em destaque na tela inicial
+- [x] Banner de aviso nas telas Serviços e Loja: "Você já tem uma barbearia favorita. Deseja explorar outras unidades?" (dismissível)
+- [x] Para trocar de barbearia favorita: opção clara no perfil do cliente ("Trocar barbearia favorita") ou logout da unidade atual
+- [x] Ao trocar de barbearia favorita, o consentimento LGPD deve ser reapresentado para a nova barbearia — modal com checkbox de consentimento antes da troca
+- [x] Histórico de agendamentos e pontos de fidelidade são mantidos por barbearia (não transferidos) — informado no modal LGPD
 
 
 ## Tela de Seleção de Planos (v6.0 — implementação)
@@ -1290,5 +1290,5 @@
 - [x] Definir barbearia favorita automaticamente no login via Google OAuth (callback)
 - [x] Definir barbearia favorita automaticamente no cadastro (/pub-api/register)
 - [x] Exibir barbearia favorita na tela de perfil do cliente no app
-- [ ] Tela inicial do cliente prioriza a barbearia favorita (nome e logo no header)
+- [x] Tela inicial do cliente prioriza a barbearia favorita (nome e logo no header) — badge "MINHA BARBEARIA" + nome e logo da barbearia favorita no header
 - [x] Opção "Trocar barbearia" no perfil do cliente com confirmação

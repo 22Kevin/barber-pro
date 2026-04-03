@@ -4,6 +4,7 @@ import {
   Alert,
   Animated,
   Image,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -221,6 +222,8 @@ function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [themeOption, setThemeOption] = useState<ThemeOption>("system");
   const [reminderHours, setReminderHours] = useState<1 | 2 | 24>(1);
+  const [showLgpdModal, setShowLgpdModal] = useState(false);
+  const [lgpdConsent, setLgpdConsent] = useState(false);
   const { setColorScheme } = useThemeContext();
   const utils = trpc.useUtils();
 
@@ -233,24 +236,25 @@ function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) 
     onSuccess: () => {
       utils.clientAuth.getPreferredTenant.invalidate();
       onUpdate({ preferredTenantId: null });
+      setShowLgpdModal(false);
+      setLgpdConsent(false);
       Alert.alert("Barbearia removida", "Sua barbearia favorita foi removida. Faça login em uma barbearia para defini-la novamente.");
     },
     onError: (err: any) => Alert.alert("Erro", err.message),
   });
 
   function handleRemovePreferredTenant() {
-    Alert.alert(
-      "Trocar de barbearia",
-      "Ao remover sua barbearia favorita, você poderá acessar outra barbearia pelo link dela. Deseja continuar?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Remover",
-          style: "destructive",
-          onPress: () => setPreferredTenantMutation.mutate({ clientId: client.id, tenantId: null }),
-        },
-      ]
-    );
+    // Abre o modal LGPD antes de confirmar a troca
+    setLgpdConsent(false);
+    setShowLgpdModal(true);
+  }
+
+  function confirmLgpdAndRemove() {
+    if (!lgpdConsent) {
+      Alert.alert("Atenção", "Você precisa aceitar os termos para continuar.");
+      return;
+    }
+    setPreferredTenantMutation.mutate({ clientId: client.id, tenantId: null });
   }
 
   useEffect(() => {
@@ -284,6 +288,57 @@ function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) 
   });
 
   return (
+    <>
+    {/* ── Modal LGPD ───────────────────────────────────────────────────────────── */}
+    <Modal visible={showLgpdModal} transparent animationType="fade" onRequestClose={() => setShowLgpdModal(false)}>
+      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 20 }}>
+        <View style={{ backgroundColor: "#111827", borderRadius: 16, padding: 24, width: "100%", maxWidth: 380, borderWidth: 1, borderColor: "#374151" }}>
+          <Text style={{ color: "#EAB308", fontSize: 16, fontWeight: "800", marginBottom: 8, letterSpacing: 0.5 }}>Trocar de Barbearia</Text>
+          <Text style={{ color: "#D1D5DB", fontSize: 14, lineHeight: 20, marginBottom: 16 }}>
+            Ao trocar de barbearia favorita, seus dados (nome, telefone e e-mail) serão compartilhados com a nova barbearia conforme a LGPD.
+            {"\n\n"}Seu histórico de agendamentos e pontos de fidelidade permanecem vinculados à barbearia atual e não serão transferidos.
+          </Text>
+          {/* Checkbox de consentimento */}
+          <TouchableOpacity
+            onPress={() => setLgpdConsent(!lgpdConsent)}
+            style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 20 }}
+            activeOpacity={0.8}
+          >
+            <View style={{
+              width: 20, height: 20, borderRadius: 4,
+              borderWidth: 2, borderColor: lgpdConsent ? "#C9A84C" : "#4B5563",
+              backgroundColor: lgpdConsent ? "#C9A84C" : "transparent",
+              alignItems: "center", justifyContent: "center", marginTop: 1, flexShrink: 0,
+            }}>
+              {lgpdConsent && <Text style={{ color: "#000", fontSize: 12, fontWeight: "800", lineHeight: 14 }}>✓</Text>}
+            </View>
+            <Text style={{ color: "#9CA3AF", fontSize: 13, lineHeight: 18, flex: 1 }}>
+              Entendo e autorizo o compartilhamento dos meus dados com a nova barbearia, conforme a Lei Geral de Proteção de Dados (LGPD).
+            </Text>
+          </TouchableOpacity>
+          {/* Botões */}
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <TouchableOpacity
+              onPress={() => setShowLgpdModal(false)}
+              style={{ flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: "#374151", alignItems: "center" }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ color: "#9CA3AF", fontSize: 14, fontWeight: "600" }}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={confirmLgpdAndRemove}
+              style={{ flex: 2, paddingVertical: 12, borderRadius: 10, backgroundColor: lgpdConsent ? "#7F1D1D" : "#1F2937", alignItems: "center" }}
+              activeOpacity={0.8}
+              disabled={setPreferredTenantMutation.isPending}
+            >
+              <Text style={{ color: lgpdConsent ? "#FCA5A5" : "#6B7280", fontSize: 14, fontWeight: "700" }}>
+                {setPreferredTenantMutation.isPending ? "Removendo..." : "Confirmar Troca"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: tabBarHeight + 24 }}>
       {/* Aparência */}
       <Text style={styles.sectionTitle}>Aparência</Text>
@@ -433,10 +488,10 @@ function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) 
         onCancel={() => setShowDatePicker(false)}
       />
     </ScrollView>
+    </>
   );
 }
-
-// ─── Utilitário: converte URI local em base64 ────────────────────────────────
+// ─── Utilitário: converte URI local em base64 ────────────────────────────────────────────
 async function uriToBase64(uri: string): Promise<string> {
   const response = await fetch(uri);
   const blob = await response.blob();

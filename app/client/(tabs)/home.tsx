@@ -260,6 +260,16 @@ export default function ClientHome() {
   const settingsQuery = trpc.settings.get.useQuery();
   const openStatusQuery = trpc.settings.openStatus.useQuery(undefined, { refetchInterval: 60_000 });
   const shopTenantId = (settingsQuery.data as any)?.tenantId ?? undefined;
+  // ── Barbearia favorita do cliente ──────────────────────────────────────────
+  const preferredTenantId = isAuthenticated ? (client?.preferredTenantId ?? null) : null;
+  const preferredTenantQuery = trpc.clientAuth.getPreferredTenant.useQuery(
+    { tenantId: preferredTenantId },
+    { enabled: !!preferredTenantId }
+  );
+  const preferredSettingsQuery = trpc.settings.getByTenant.useQuery(
+    { tenantId: preferredTenantId ?? 0 },
+    { enabled: !!preferredTenantId }
+  );
   const recentReviewsQuery = trpc.reviews.recent.useQuery({ limit: 5, tenantId: shopTenantId });
   const nextAppointmentQuery = trpc.appointments.nextByClient.useQuery(
     { clientId: client?.id ?? 0 },
@@ -311,8 +321,16 @@ export default function ClientHome() {
   }
 
   const settings = settingsQuery.data as any;
-  const shopName = settings?.shopName ?? "Barber Pro";
-  const shopLogoUrl = settings?.logoUrl ?? null;
+  // Quando o cliente tem barbearia favorita, usa os dados dela no header
+  const preferredTenant = preferredTenantQuery.data as any;
+  const preferredSettings = preferredSettingsQuery.data as any;
+  const hasPreferred = !!preferredTenantId && !!preferredTenant;
+  const shopName = hasPreferred
+    ? (preferredTenant?.name ?? preferredSettings?.shopName ?? "Barber Pro")
+    : (settings?.shopName ?? "Barber Pro");
+  const shopLogoUrl = hasPreferred
+    ? (preferredTenant?.logoUrl ?? preferredSettings?.logoUrl ?? null)
+    : (settings?.logoUrl ?? null);
   const shopInstagram = settings?.instagram ?? null;
   const shopWhatsapp = settings?.whatsapp ?? null;
   const shopGoogleMapsUrl = settings?.googleMapsUrl ?? null;
@@ -406,6 +424,12 @@ export default function ClientHome() {
 
           {/* Nome + saudação + status */}
           <View style={styles.headerInfo}>
+            {/* Badge "MINHA BARBEARIA" quando o cliente tem barbearia favorita */}
+            {hasPreferred && (
+              <View style={styles.myShopBadge}>
+                <Text style={styles.myShopBadgeText}>⭐ MINHA BARBEARIA</Text>
+              </View>
+            )}
             <Text style={styles.shopName} numberOfLines={1}>{shopName.toUpperCase()}</Text>
             <Text style={styles.greeting}>
               {isAuthenticated ? `Olá, ${client?.name.split(" ")[0]}! 👋` : "Bem-vindo!"}
@@ -700,6 +724,22 @@ const styles = StyleSheet.create({
   headerInfo: {
     flex: 1,
     gap: 2,
+  },
+  myShopBadge: {
+    backgroundColor: "#1a1200",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "#C9A84C",
+    alignSelf: "flex-start",
+    marginBottom: 2,
+  },
+  myShopBadgeText: {
+    color: "#C9A84C",
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.8,
   },
   shopName: {
     color: "#EAB308",

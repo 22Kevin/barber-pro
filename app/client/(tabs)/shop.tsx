@@ -183,16 +183,26 @@ function ProductDetail({ product, onClose }: { product: any; onClose: () => void
   );
 }
 
-// ─── Tela principal ───────────────────────────────────────────────────────────
+// ─── Tela principal ────────────────────────────────────────────────────────────────────────────────────────
 export default function ClientShop() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useTabBarHeight();
   const [search, setSearch] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [explorerBannerDismissed, setExplorerBannerDismissed] = useState(false);
 
-  const { client } = useClientAuth();
+  const { client, isAuthenticated } = useClientAuth();
   const tenantId = client?.tenantId ?? undefined;
+  // Barbearia favorita do cliente
+  const preferredTenantId = isAuthenticated ? (client?.preferredTenantId ?? null) : null;
+  const preferredTenantQuery = trpc.clientAuth.getPreferredTenant.useQuery(
+    { tenantId: preferredTenantId },
+    { enabled: !!preferredTenantId }
+  );
+  const preferredTenantName = (preferredTenantQuery.data as any)?.name ?? null;
+  // Mostrar banner quando o tenantId atual é diferente da barbearia favorita
+  const isExploringOtherShop = !!preferredTenantId && !!tenantId && preferredTenantId !== tenantId;
   const productsQuery = trpc.products.listWithMedia.useQuery({ activeOnly: true, tenantId });
   const categoriesQuery = trpc.categories.list.useQuery({ type: "product" });
   const products = productsQuery.data ?? [];
@@ -228,7 +238,39 @@ export default function ClientShop() {
           <Text style={styles.headerSubtitle}>Produtos selecionados para você</Text>
         </View>
 
-        {/* ── Busca ──────────────────────────────────────────────────────────── */}
+        {/* ── Banner: explorando outra barbearia ────────────────────────────────────── */}
+        {isExploringOtherShop && !explorerBannerDismissed && (
+          <View style={{
+            backgroundColor: "#1a1200",
+            borderRadius: 10,
+            marginHorizontal: 16,
+            marginBottom: 8,
+            padding: 12,
+            borderWidth: 1,
+            borderColor: "#C9A84C",
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: 10,
+          }}>
+            <Text style={{ fontSize: 18, lineHeight: 22 }}>⭐</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: "#EAB308", fontSize: 13, fontWeight: "700", marginBottom: 2 }}>
+                Você já tem uma barbearia favorita!
+              </Text>
+              <Text style={{ color: "#9CA3AF", fontSize: 12, lineHeight: 17 }}>
+                Sua barbearia favorita é <Text style={{ color: "#C9A84C", fontWeight: "600" }}>{preferredTenantName}</Text>. Deseja explorar outras unidades?
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setExplorerBannerDismissed(true)}
+              style={{ padding: 4 }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: "#6B7280", fontSize: 16, lineHeight: 18 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {/* ── Busca ──────────────────────────────────────────────────────────────────── */}
         <View style={styles.searchWrapper}>
           <TextInput
             value={search}
