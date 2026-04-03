@@ -58,6 +58,194 @@ function addMinutes(time: string, minutes: number): string {
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
+/** Calendário inline — sem dependências externas, visual dark/dourado */
+function InlineDatePicker({
+  value,
+  onChange,
+  colors,
+}: {
+  value: string;
+  onChange: (date: string) => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(() => {
+    const d = value ? new Date(value + "T12:00:00") : today;
+    return d.getFullYear();
+  });
+  const [viewMonth, setViewMonth] = useState(() => {
+    const d = value ? new Date(value + "T12:00:00") : today;
+    return d.getMonth();
+  });
+
+  const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const DAYS = ["D","S","T","Q","Q","S","S"];
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array(firstDay).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  // pad to full rows
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const selectedDate = value ? new Date(value + "T12:00:00") : null;
+  const todayStr = today.toISOString().slice(0, 10);
+
+  function prevMonth() {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
+    else setViewMonth((m) => m - 1);
+  }
+  function nextMonth() {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
+    else setViewMonth((m) => m + 1);
+  }
+  function selectDay(day: number) {
+    const mm = String(viewMonth + 1).padStart(2, "0");
+    const dd = String(day).padStart(2, "0");
+    onChange(`${viewYear}-${mm}-${dd}`);
+  }
+
+  return (
+    <View style={[calStyles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      {/* Nav */}
+      <View style={calStyles.nav}>
+        <TouchableOpacity onPress={prevMonth} style={calStyles.navBtn} activeOpacity={0.7}>
+          <IconSymbol name="chevron.left" size={16} color="#C9A84C" />
+        </TouchableOpacity>
+        <Text style={[calStyles.monthLabel, { color: colors.foreground }]}>
+          {MONTHS[viewMonth]} {viewYear}
+        </Text>
+        <TouchableOpacity onPress={nextMonth} style={calStyles.navBtn} activeOpacity={0.7}>
+          <IconSymbol name="chevron.right" size={16} color="#C9A84C" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Dias da semana */}
+      <View style={calStyles.weekRow}>
+        {DAYS.map((d, i) => (
+          <Text key={i} style={[calStyles.weekDay, { color: colors.muted }]}>{d}</Text>
+        ))}
+      </View>
+
+      {/* Grade */}
+      {Array.from({ length: cells.length / 7 }, (_, row) => (
+        <View key={row} style={calStyles.weekRow}>
+          {cells.slice(row * 7, row * 7 + 7).map((day, col) => {
+            if (!day) return <View key={col} style={calStyles.cell} />;
+            const mm = String(viewMonth + 1).padStart(2, "0");
+            const dd = String(day).padStart(2, "0");
+            const dateStr = `${viewYear}-${mm}-${dd}`;
+            const isSelected = selectedDate &&
+              selectedDate.getFullYear() === viewYear &&
+              selectedDate.getMonth() === viewMonth &&
+              selectedDate.getDate() === day;
+            const isToday = dateStr === todayStr;
+            const isPast = dateStr < todayStr;
+            return (
+              <TouchableOpacity
+                key={col}
+                style={[
+                  calStyles.cell,
+                  isSelected && calStyles.cellSelected,
+                  isToday && !isSelected && calStyles.cellToday,
+                ]}
+                onPress={() => !isPast && selectDay(day)}
+                activeOpacity={isPast ? 1 : 0.7}
+                disabled={isPast}
+              >
+                <Text style={[
+                  calStyles.cellText,
+                  { color: isPast ? colors.muted + "55" : isSelected ? "#0A0A0A" : isToday ? "#C9A84C" : colors.foreground },
+                  isSelected && { fontWeight: "800" },
+                ]}>
+                  {day}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ))}
+
+      {/* Data selecionada */}
+      {value && (
+        <View style={[calStyles.selectedRow, { borderTopColor: colors.border }]}>
+          <IconSymbol name="calendar" size={13} color="#C9A84C" />
+          <Text style={{ fontSize: 12, color: "#C9A84C", fontWeight: "600" }}>
+            {selectedDate?.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const calStyles = StyleSheet.create({
+  container: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginBottom: 4,
+  },
+  nav: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  navBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: "#C9A84C18",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  monthLabel: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  weekRow: {
+    flexDirection: "row",
+  },
+  weekDay: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 11,
+    fontWeight: "700",
+    paddingVertical: 6,
+  },
+  cell: {
+    flex: 1,
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    margin: 1,
+    borderRadius: 8,
+  },
+  cellSelected: {
+    backgroundColor: "#C9A84C",
+  },
+  cellToday: {
+    borderWidth: 1,
+    borderColor: "#C9A84C",
+  },
+  cellText: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  selectedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+  },
+});
+
 /** Combobox de busca com dropdown customizado — funciona em iOS, Android e Web */
 function SearchCombobox({
   label,
@@ -343,6 +531,7 @@ export default function RecurringScreen() {
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<NewRecurring>(EMPTY_FORM);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const listQuery = trpc.recurring.listAll.useQuery();
   const clientsQuery = trpc.clients.list.useQuery();
@@ -391,11 +580,11 @@ export default function RecurringScreen() {
 
   function handleCancel(id: number, clientName: string) {
     Alert.alert(
-      "Cancelar Recorrência",
-      `Cancelar a série de agendamentos recorrentes de ${clientName}? Os agendamentos já criados não serão removidos.`,
+      "Cancelar Assinatura",
+      `Cancelar a assinatura de agendamentos de ${clientName}? Os agendamentos já criados não serão removidos.`,
       [
         { text: "Não", style: "cancel" },
-        { text: "Cancelar Série", style: "destructive", onPress: () => cancelMutation.mutate({ id }) },
+        { text: "Cancelar Assinatura", style: "destructive", onPress: () => cancelMutation.mutate({ id }) },
       ]
     );
   }
@@ -405,10 +594,16 @@ export default function RecurringScreen() {
     if (!form.barberId) { Alert.alert("Atenção", "Selecione um barbeiro."); return; }
     if (!form.serviceId) { Alert.alert("Atenção", "Selecione um serviço."); return; }
     if (!form.startDate) { Alert.alert("Atenção", "Informe a data de início."); return; }
+    // Mostrar card de confirmação antes de salvar
+    setShowConfirm(true);
+  }
+
+  function confirmCreate() {
+    setShowConfirm(false);
     createMutation.mutate({
-      clientId: form.clientId,
-      barberId: form.barberId,
-      serviceId: form.serviceId,
+      clientId: form.clientId!,
+      barberId: form.barberId!,
+      serviceId: form.serviceId!,
       startDate: form.startDate,
       startTime: form.startTime,
       endTime: form.endTime,
@@ -458,7 +653,7 @@ export default function RecurringScreen() {
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
-        title="Agendamentos Recorrentes"
+        title="Assinaturas"
         rightElement={
           <Pressable
             style={({ pressed }) => [styles.newBtn, { backgroundColor: "#C9A84C", opacity: pressed ? 0.8 : 1 }]}
@@ -478,15 +673,15 @@ export default function RecurringScreen() {
           <View style={[styles.emptyIcon, { backgroundColor: "#C9A84C15" }]}>
             <IconSymbol name="calendar.badge.clock" size={40} color="#C9A84C" />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Nenhuma recorrência ativa</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Nenhuma assinatura ativa</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-            Toque em "Nova" para criar uma série de agendamentos recorrentes.
+            Toque em "Nova" para criar uma assinatura de agendamentos recorrentes.
           </Text>
           <Pressable
             style={({ pressed }) => [styles.emptyBtn, { opacity: pressed ? 0.8 : 1 }]}
             onPress={() => { setForm(EMPTY_FORM); setShowForm(true); }}
           >
-            <Text style={styles.emptyBtnText}>+ Nova Recorrência</Text>
+            <Text style={styles.emptyBtnText}>+ Nova Assinatura</Text>
           </Pressable>
         </View>
       ) : !showForm ? (
@@ -556,8 +751,8 @@ export default function RecurringScreen() {
           {/* Cabeçalho do formulário */}
           <View style={styles.formHeader}>
             <View>
-              <Text style={[styles.formTitle, { color: colors.foreground }]}>Nova Recorrência</Text>
-              <Text style={{ fontSize: 13, color: colors.muted, marginTop: 2 }}>Preencha os campos abaixo</Text>
+              <Text style={[styles.formTitle, { color: colors.foreground }]}>Nova Assinatura</Text>
+              <Text style={{ fontSize: 13, color: colors.muted, marginTop: 2 }}>Configure os detalhes da assinatura</Text>
             </View>
             <TouchableOpacity
               style={[styles.formCloseBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -605,12 +800,10 @@ export default function RecurringScreen() {
           {/* Data e horários */}
           <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 12 }]}>
             <Text style={dyn.label}>DATA DE INÍCIO *</Text>
-            <TextInput
-              style={[dyn.input, { ...(Platform.OS === "web" ? { outlineStyle: "none" } as any : {}) }]}
+            <InlineDatePicker
               value={form.startDate}
-              onChangeText={(t) => setForm((f) => ({ ...f, startDate: t }))}
-              placeholder="AAAA-MM-DD"
-              placeholderTextColor={colors.muted}
+              onChange={(d) => setForm((f) => ({ ...f, startDate: d }))}
+              colors={colors}
             />
 
             <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
@@ -682,22 +875,94 @@ export default function RecurringScreen() {
             />
           </View>
 
+          {/* Card de confirmação */}
+          {showConfirm && (() => {
+            const clientLabel = clients.find((c) => c.id === form.clientId)?.label ?? "";
+            const barberLabel = barbers.find((b) => b.id === form.barberId)?.label ?? "";
+            const serviceLabel = services.find((s) => s.id === form.serviceId)?.label ?? "";
+            const freqLabel = { 1: "Toda semana", 2: "A cada 2 semanas", 3: "A cada 3 semanas", 4: "Mensal" }[form.intervalWeeks] ?? "";
+            const dateFormatted = form.startDate
+              ? new Date(form.startDate + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
+              : "";
+            return (
+              <View style={[styles.confirmCard, { backgroundColor: colors.surface, borderColor: "#C9A84C" }]}>
+                <View style={styles.confirmHeader}>
+                  <View style={styles.confirmIconBox}>
+                    <IconSymbol name="checkmark.circle.fill" size={22} color="#C9A84C" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.confirmTitle, { color: colors.foreground }]}>Confirmar Assinatura</Text>
+                    <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Revise os dados antes de criar</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setShowConfirm(false)} activeOpacity={0.7}>
+                    <IconSymbol name="xmark" size={16} color={colors.muted} />
+                  </TouchableOpacity>
+                </View>
+                <View style={[styles.confirmDivider, { backgroundColor: colors.border }]} />
+                {([
+                  ["Cliente", clientLabel.split(" · ")[0]],
+                  ["Barbeiro", barberLabel],
+                  ["Serviço", serviceLabel],
+                  ["Início", dateFormatted],
+                  ["Horário", `${form.startTime} – ${form.endTime}`],
+                  ["Frequência", freqLabel],
+                  ["Ocorrências", `${form.occurrences} agendamentos`],
+                ] as [string, string][]).map(([label, value]) => (
+                  <View key={label} style={styles.confirmRow}>
+                    <Text style={[styles.confirmRowLabel, { color: colors.muted }]}>{label}</Text>
+                    <Text style={[styles.confirmRowValue, { color: colors.foreground }]} numberOfLines={2}>{value}</Text>
+                  </View>
+                ))}
+                {form.notes ? (
+                  <View style={styles.confirmRow}>
+                    <Text style={[styles.confirmRowLabel, { color: colors.muted }]}>Obs.</Text>
+                    <Text style={[styles.confirmRowValue, { color: colors.foreground }]}>{form.notes}</Text>
+                  </View>
+                ) : null}
+                <View style={[styles.confirmDivider, { backgroundColor: colors.border, marginTop: 8 }]} />
+                <View style={styles.confirmActions}>
+                  <TouchableOpacity
+                    style={[styles.confirmCancelBtn, { borderColor: colors.border }]}
+                    onPress={() => setShowConfirm(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ color: colors.muted, fontWeight: "600", fontSize: 14 }}>Editar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.confirmSaveBtn, { opacity: createMutation.isPending ? 0.7 : 1 }]}
+                    onPress={confirmCreate}
+                    disabled={createMutation.isPending}
+                    activeOpacity={0.85}
+                  >
+                    {createMutation.isPending ? (
+                      <ActivityIndicator color="#0A0A0A" size="small" />
+                    ) : (
+                      <Text style={{ color: "#0A0A0A", fontWeight: "800", fontSize: 14 }}>Confirmar e Criar</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })()}
+
           {/* Botão criar */}
-          <TouchableOpacity
-            style={[styles.saveBtn, { opacity: createMutation.isPending ? 0.7 : 1 }]}
-            onPress={handleCreate}
-            disabled={createMutation.isPending}
-            activeOpacity={0.85}
-          >
-            {createMutation.isPending ? (
-              <ActivityIndicator color="#0A0A0A" />
-            ) : (
-              <>
-                <IconSymbol name="checkmark.circle.fill" size={18} color="#0A0A0A" />
-                <Text style={styles.saveBtnText}>Criar Recorrência</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          {!showConfirm && (
+            <TouchableOpacity
+              style={[styles.saveBtn, { opacity: createMutation.isPending ? 0.7 : 1 }]}
+              onPress={handleCreate}
+              disabled={createMutation.isPending}
+              activeOpacity={0.85}
+            >
+              {createMutation.isPending ? (
+                <ActivityIndicator color="#0A0A0A" />
+              ) : (
+                <>
+                  <IconSymbol name="checkmark.circle.fill" size={18} color="#0A0A0A" />
+                  <Text style={styles.saveBtnText}>Criar Assinatura</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </ScrollView>
       )}
     </ScreenContainer>
@@ -742,4 +1007,56 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   saveBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 16 },
+  confirmCard: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 16,
+    marginTop: 16,
+  },
+  confirmHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  confirmIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "#C9A84C18",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmTitle: { fontSize: 16, fontWeight: "800" },
+  confirmDivider: { height: 1, marginBottom: 8 },
+  confirmRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    paddingVertical: 7,
+    gap: 12,
+  },
+  confirmRowLabel: { fontSize: 12, fontWeight: "600", textTransform: "uppercase" as const, letterSpacing: 0.5, flex: 0.45 },
+  confirmRowValue: { fontSize: 13, fontWeight: "600", flex: 0.55, textAlign: "right" as const },
+  confirmActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+  },
+  confirmCancelBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  confirmSaveBtn: {
+    flex: 2,
+    backgroundColor: "#C9A84C",
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

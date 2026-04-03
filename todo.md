@@ -1310,3 +1310,11 @@
 - [x] Badge no drawer admin com contagem de leads novos (últimas 24h)
 - [x] Notificação push ao barbeiro quando novo lead é registrado
 - [x] Seção "Clientes em Órbita" no painel admin web com gráfico e taxa de conversão
+
+## Melhorias Assinaturas (ex-Recorrências)
+
+- [x] Renomear "Recorrências" → "Assinaturas" em todo o app (drawer, tab, título, rotas)
+- [x] Renomear na landing page e painel web admin (landing já usava "Clube de Assinatura")
+- [x] Seletor de data visual (calendário inline) no formulário de Assinaturas
+- [x] Aplicar SearchCombobox nos selects nativos de outros formulários (já usavam componentes customizados)
+- [x] Card de confirmação antes de salvar a assinatura

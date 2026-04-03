@@ -71,7 +71,7 @@ export default function RecurringScreen() {
   const createMutation = trpc.recurring.create.useMutation({
     onSuccess: (result) => {
       Alert.alert(
-        "Recorrência criada! 🔄",
+        "Assinatura criada! 🔄",
         `${result.createdCount} agendamentos foram criados com sucesso.`,
         [{ text: "OK", onPress: () => { setStep("list"); utils.recurring.listByClient.invalidate(); } }]
       );
@@ -85,7 +85,7 @@ export default function RecurringScreen() {
 
   function handleCreate() {
     if (!clientId || !selectedBarber || !selectedService || !selectedDate || !selectedTime) {
-      Alert.alert("Campos obrigatórios", "Preencha todos os campos para criar a recorrência.");
+      Alert.alert("Campos obrigatórios", "Preencha todos os campos para criar a assinatura.");
       return;
     }
     const service = servicesQuery.data?.find((s: any) => s.id === selectedService.id);
@@ -119,7 +119,7 @@ export default function RecurringScreen() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
             <Text style={styles.backText}>← Voltar</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Recorrências</Text>
+          <Text style={styles.headerTitle}>Assinaturas</Text>
           <TouchableOpacity onPress={() => setStep("create")} style={styles.addBtn} activeOpacity={0.8}>
             <Text style={styles.addBtnText}>+ Nova</Text>
           </TouchableOpacity>
@@ -132,12 +132,12 @@ export default function RecurringScreen() {
             <View style={styles.emptyIcon}>
               <Text style={{ fontSize: 40 }}>🔄</Text>
             </View>
-            <Text style={styles.emptyTitle}>Nenhuma recorrência ativa</Text>
+            <Text style={styles.emptyTitle}>Nenhuma assinatura ativa</Text>
             <Text style={styles.emptySubtitle}>
-              Crie uma recorrência para agendar automaticamente o mesmo serviço a cada semana ou mês.
+              Crie uma assinatura para agendar automaticamente o mesmo serviço a cada semana ou mês.
             </Text>
             <TouchableOpacity onPress={() => setStep("create")} style={styles.createBtn} activeOpacity={0.85}>
-              <Text style={styles.createBtnText}>Criar Recorrência</Text>
+              <Text style={styles.createBtnText}>Criar Assinatura</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -160,7 +160,7 @@ export default function RecurringScreen() {
                     <TouchableOpacity
                       activeOpacity={0.7}
                       onPress={() => Alert.alert(
-                        "Cancelar recorrência",
+                        "Cancelar assinatura",
                         "Deseja cancelar esta série? Os agendamentos já criados não serão removidos.",
                         [
                           { text: "Não", style: "cancel" },
@@ -222,7 +222,7 @@ export default function RecurringScreen() {
         <TouchableOpacity onPress={() => setStep("list")} style={styles.backBtn} activeOpacity={0.7}>
           <Text style={styles.backText}>← Voltar</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nova Recorrência</Text>
+        <Text style={styles.headerTitle}>Nova Assinatura</Text>
         <View style={{ width: 60 }} />
       </View>
 
@@ -384,7 +384,7 @@ export default function RecurringScreen() {
           {createMutation.isPending ? (
             <ActivityIndicator color="#000" />
           ) : (
-            <Text style={styles.createBtnText}>Criar Recorrência</Text>
+            <Text style={styles.createBtnText}>Criar Assinatura</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

@@ -146,7 +146,7 @@ export default function AdminTabsLayout() {
       <Tabs.Screen
         name="recurring"
         options={{
-          title: "Recorrências",
+          title: "Assinaturas",
           tabBarItemStyle: { display: "none" },
         }}
       />
