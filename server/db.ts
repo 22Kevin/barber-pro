@@ -1990,3 +1990,109 @@ export async function getNearbyTenants(lat: number, lng: number, radiusKm = 50) 
     distanceKm: Math.round(Number(r.distanceKm) * 10) / 10,
   }));
 }
+
+// ─── Assinaturas — Cancelamento com motivo ──────────────────────────────────
+export async function cancelRecurringWithReason(id: number, reason?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(recurringAppointments).set({
+    isActive: false,
+    cancelledAt: new Date(),
+    cancelReason: reason ?? null,
+  }).where(eq(recurringAppointments.id, id));
+}
+
+// ─── Assinaturas — Listar encerradas ────────────────────────────────────────
+export async function getCancelledRecurringAppointments() {
+  const db = await getDb();
+  if (!db) return [];
+  const list = await db.select().from(recurringAppointments)
+    .where(eq(recurringAppointments.isActive, false))
+    .orderBy(desc(recurringAppointments.createdAt));
+  const clientList = await db.select().from(clients);
+  const barberList = await db.select().from(barbers);
+  const svcList = await db.select().from(services);
+  return list.map((r) => ({
+    ...r,
+    clientName: clientList.find((c) => c.id === r.clientId)?.name ?? "—",
+    barberName: barberList.find((b) => b.id === r.barberId)?.name ?? "—",
+    serviceName: svcList.find((s) => s.id === r.serviceId)?.name ?? "—",
+  }));
+}
+
+// ─── Assinaturas — Estatísticas / Dashboard ─────────────────────────────────
+export async function getSubscriptionStats() {
+  const db = await getDb();
+  if (!db) return { totalActive: 0, totalCancelled: 0, cancelRate: 0, estimatedMRR: 0 };
+
+  const allRec = await db.select().from(recurringAppointments);
+  const active = allRec.filter((r) => r.isActive);
+  const cancelled = allRec.filter((r) => !r.isActive);
+
+  // Calcular MRR estimado: para cada assinatura ativa, buscar preço do serviço
+  const svcList = await db.select().from(services);
+  let totalMonthlyRevenue = 0;
+  for (const rec of active) {
+    const svc = svcList.find((s) => s.id === rec.serviceId);
+    if (svc) {
+      // Converter intervalo em semanas para frequência mensal
+      const monthlyFreq = 4.33 / rec.intervalWeeks;
+      totalMonthlyRevenue += Number(svc.price) * monthlyFreq;
+    }
+  }
+
+  const total = allRec.length;
+  const cancelRate = total > 0 ? (cancelled.length / total) * 100 : 0;
+
+  return {
+    totalActive: active.length,
+    totalCancelled: cancelled.length,
+    cancelRate: Math.round(cancelRate * 10) / 10,
+    estimatedMRR: Math.round(totalMonthlyRevenue * 100) / 100,
+  };
+}
+
+// ─── Assinaturas — Próximas ocorrências (para reminder job) ─────────────────
+export async function getUpcomingSubscriptionReminders(daysAhead: number = 3) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const active = await db.select().from(recurringAppointments)
+    .where(eq(recurringAppointments.isActive, true));
+
+  const now = new Date();
+  const targetDate = new Date(now);
+  targetDate.setDate(targetDate.getDate() + daysAhead);
+  const targetStr = targetDate.toISOString().split("T")[0];
+
+  const reminders: Array<{
+    recurringId: number;
+    clientId: number;
+    barberId: number;
+    serviceId: number;
+    nextDate: string;
+    startTime: string;
+  }> = [];
+
+  for (const rec of active) {
+    // Calcular todas as datas futuras e verificar se alguma cai no targetDate
+    for (let i = 0; i < rec.occurrences; i++) {
+      const date = new Date(rec.startDate + "T12:00:00");
+      date.setDate(date.getDate() + i * rec.intervalWeeks * 7);
+      const dateStr = date.toISOString().split("T")[0];
+      if (dateStr === targetStr) {
+        reminders.push({
+          recurringId: rec.id,
+          clientId: rec.clientId,
+          barberId: rec.barberId,
+          serviceId: rec.serviceId,
+          nextDate: dateStr,
+          startTime: rec.startTime,
+        });
+        break;
+      }
+    }
+  }
+
+  return reminders;
+}

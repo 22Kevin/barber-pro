@@ -1235,33 +1235,33 @@
 > Fluxo: Cliente abre o app Barber Pro sem um link específico. O sistema usa GPS para listar barbearias parceiras próximas. Ao fazer login em uma unidade, os dados do cliente são enviados em tempo real para o painel "Clientes em Órbita" do barbeiro.
 
 ### Infraestrutura de Geolocalização
-- [ ] Campos `latitude` e `longitude` na tabela `tenants` (schema + migração)
-- [ ] Endpoint tRPC: `tenants.nearby` — recebe lat/lng do cliente e retorna barbearias ordenadas por distância (fórmula de Haversine)
-- [ ] Tela de descoberta no app: solicitar permissão de GPS e listar barbearias próximas com nome, distância e foto
-- [ ] Card de barbearia na lista: logo, nome, distância, avaliação média e número de avaliações
-- [ ] Ao clicar em uma barbearia da lista, abrir a mesma Página de Boas-Vindas do Cenário 1
+- [x] Campos `latitude` e `longitude` na tabela `tenants` (schema + migração) — já existiam no schema
+- [x] Endpoint tRPC: `onboarding.nearby` — recebe lat/lng do cliente e retorna barbearias ordenadas por distância (fórmula de Haversine)
+- [x] Tela de descoberta no app: solicitar permissão de GPS e listar barbearias próximas com nome, distância e foto (explore.tsx)
+- [x] Card de barbearia na lista: logo, nome, distância, avaliação média e número de avaliações
+- [x] Ao clicar em uma barbearia da lista, abrir a mesma Página de Boas-Vindas do Cenário 1
 
 ### Captura de Lead — "Clientes em Órbita"
-- [ ] Ao fazer login em uma barbearia (qualquer cenário), registrar o evento na tabela `orbit_leads` (id, clientId, tenantId, loginAt, converted: boolean)
-- [ ] Migração de banco: criar tabela `orbit_leads` (id, clientId, tenantId, loginAt, convertedAt nullable, source: "link" | "geo")
-- [ ] Marcar `converted = true` e preencher `convertedAt` quando o cliente realizar um agendamento
-- [ ] Enviar notificação push em tempo real para o barbeiro quando um novo cliente faz login na unidade dele
-- [ ] Notificação push: "👤 Novo cliente em órbita: [Nome] acabou de acessar sua barbearia"
+- [x] Ao fazer login em uma barbearia (qualquer cenário), registrar o evento na tabela `orbit_leads`
+- [x] Migração de banco: criar tabela `orbit_leads` (id, clientId, tenantId, loginAt, convertedAt nullable, source: "link" | "geo")
+- [x] Marcar `converted = true` e preencher `convertedAt` quando o cliente realizar um agendamento
+- [x] Enviar notificação push em tempo real para o barbeiro quando um novo cliente faz login na unidade dele
+- [x] Notificação push: "👤 Novo cliente em órbita: [Nome] acabou de acessar sua barbearia"
 
 ### Painel "Clientes em Órbita" (Admin App)
-- [ ] Nova tela "Clientes em Órbita" no painel admin do app (acessível pelo drawer)
-- [ ] Lista de clientes que fizeram login mas ainda não agendaram (leads não convertidos)
-- [ ] Card de lead: foto/avatar, nome, WhatsApp, data/hora do acesso, origem (Link ou Geo), badge "Novo" se acessou nas últimas 24h
-- [ ] Botão "Contatar via WhatsApp" em cada card (abre wa.me com mensagem pré-definida)
-- [ ] Mensagem pré-definida: "Olá [Nome]! Vi que você visitou nossa barbearia no Barber Pro. Posso te ajudar a agendar um horário? 😊"
-- [ ] Contador no topo: "X em órbita hoje" e "Y convertidos esta semana"
-- [ ] Filtros: Hoje / Esta semana / Este mês
-- [ ] Badge no ícone do menu "Clientes em Órbita" com contagem de leads novos (últimas 24h)
+- [x] Nova tela "Clientes em Órbita" no painel admin do app (acessível pelo drawer)
+- [x] Lista de clientes que fizeram login mas ainda não agendaram (leads não convertidos)
+- [x] Card de lead: foto/avatar, nome, WhatsApp, data/hora do acesso, origem (Link ou Geo), badge "Novo" se acessou nas últimas 24h
+- [x] Botão "Contatar via WhatsApp" em cada card (abre wa.me com mensagem pré-definida)
+- [x] Mensagem pré-definida: "Olá [Nome]! Vi que você visitou nossa barbearia no Barber Pro. Posso te ajudar a agendar um horário?"
+- [x] Contador no topo: "X em órbita hoje" e "Y convertidos esta semana"
+- [x] Filtros: Hoje / Esta semana / Este mês
+- [x] Badge no ícone do menu "Clientes em Órbita" com contagem de leads novos (últimas 24h)
 
 ### Painel "Clientes em Órbita" (Admin Web)
-- [ ] Seção "Clientes em Órbita" no painel admin web com a mesma lista e filtros
-- [ ] Gráfico de linha: leads por dia vs. conversões por dia (últimos 30 dias)
-- [ ] Taxa de conversão exibida em destaque: "X% dos visitantes agendaram"
+- [x] Seção "Clientes em Órbita" no painel admin web com a mesma lista e filtros
+- [x] Gráfico de linha: leads por dia vs. conversões por dia (últimos 30 dias)
+- [x] Taxa de conversão exibida em destaque: "X% dos visitantes agendaram"
 
 ### Regras de Negócio — Fidelização (Anti-iFood)
 - [x] Uma vez que o cliente define uma barbearia como favorita (`preferredTenantId`), o app exibe essa barbearia em destaque na tela inicial
@@ -1329,3 +1329,15 @@
 - [x] Seletor de horário visual (tipo rolagem/relógio) no formulário de Assinaturas (app + web)
 - [x] Pré-visualização das datas geradas no card de confirmação (app + web)
 - [x] Filtro/busca por cliente na lista de Assinaturas ativas (app + web)
+
+## Melhorias Assinaturas v3
+
+- [ ] Notificação de renovação: push/WhatsApp ao cliente 3 dias antes da próxima ocorrência
+- [ ] Histórico de assinaturas encerradas: aba "Encerradas" na lista (app + web)
+- [ ] Dashboard de assinaturas: cards de métricas (total ativas, MRR estimado, taxa de cancelamento)
+- [ ] Paridade app + web em todas as melhorias v3
+
+## Jornada do Cliente — Mapeamento
+
+- [ ] Mapear passo a passo a jornada do cliente para agendamento
+- [ ] Avaliar aba dedicada na landing page para demonstrar a experiência do cliente

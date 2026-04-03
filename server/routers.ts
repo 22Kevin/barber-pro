@@ -1364,6 +1364,17 @@ export const appRouter = router({
     listAll: publicProcedure.query(async () => {
       return db.getAllRecurringAppointments();
     }),
+    listCancelled: publicProcedure.query(async () => {
+      return db.getCancelledRecurringAppointments();
+    }),
+    cancelWithReason: publicProcedure
+      .input(z.object({ id: z.number(), reason: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        return db.cancelRecurringWithReason(input.id, input.reason);
+      }),
+    stats: publicProcedure.query(async () => {
+      return db.getSubscriptionStats();
+    }),
   }),
 
   promotionConversion: router({

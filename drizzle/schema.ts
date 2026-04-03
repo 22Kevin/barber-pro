@@ -414,6 +414,8 @@ export const recurringAppointments = mysqlTable("recurring_appointments", {
   occurrences: int("occurrences").notNull().default(6),
   isActive: boolean("isActive").default(true).notNull(),
   notes: text("notes"),
+  cancelledAt: timestamp("cancelledAt"),
+  cancelReason: varchar("cancelReason", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

@@ -13,6 +13,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { startReviewEmailJob } from "../review-job";
 import { startWhatsAppReminderJob } from "../whatsapp-reminder-job";
+import { startSubscriptionReminderJob } from "../subscription-reminder-job";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -235,6 +236,8 @@ async function startServer() {
     startReviewEmailJob();
     // Iniciar job de lembretes WhatsApp (24h e 1h antes do agendamento)
     startWhatsAppReminderJob();
+    // Iniciar job de lembretes de assinatura (3 dias antes)
+    startSubscriptionReminderJob();
   });
 }
 

@@ -651,14 +651,26 @@ export default function RecurringScreen() {
   const [form, setForm] = useState<NewRecurring>(EMPTY_FORM);
   const [showConfirm, setShowConfirm] = useState(false);
   const [searchFilter, setSearchFilter] = useState("");
+  const [activeTab, setActiveTab] = useState<"active" | "cancelled">("active");
+  const [cancelReasonInput, setCancelReasonInput] = useState("");
+  const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
+  const [cancelTargetName, setCancelTargetName] = useState("");
 
   const listQuery = trpc.recurring.listAll.useQuery();
+  const cancelledQuery = trpc.recurring.listCancelled.useQuery();
+  const statsQuery = trpc.recurring.stats.useQuery();
   const clientsQuery = trpc.clients.list.useQuery();
   const barbersQuery = trpc.barbers.list.useQuery();
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
 
-  const cancelMutation = trpc.recurring.cancel.useMutation({
-    onSuccess: () => utils.recurring.listAll.invalidate(),
+  const cancelMutation = trpc.recurring.cancelWithReason.useMutation({
+    onSuccess: () => {
+      utils.recurring.listAll.invalidate();
+      utils.recurring.listCancelled.invalidate();
+      utils.recurring.stats.invalidate();
+      setCancelTargetId(null);
+      setCancelReasonInput("");
+    },
   });
   const createMutation = trpc.recurring.create.useMutation({
     onSuccess: () => {
@@ -698,14 +710,14 @@ export default function RecurringScreen() {
   }
 
   function handleCancel(id: number, clientName: string) {
-    Alert.alert(
-      "Cancelar Assinatura",
-      `Cancelar a assinatura de agendamentos de ${clientName}? Os agendamentos já criados não serão removidos.`,
-      [
-        { text: "Não", style: "cancel" },
-        { text: "Cancelar Assinatura", style: "destructive", onPress: () => cancelMutation.mutate({ id }) },
-      ]
-    );
+    setCancelTargetId(id);
+    setCancelTargetName(clientName);
+    setCancelReasonInput("");
+  }
+
+  function confirmCancel() {
+    if (!cancelTargetId) return;
+    cancelMutation.mutate({ id: cancelTargetId, reason: cancelReasonInput.trim() || undefined });
   }
 
   function handleCreate() {
@@ -794,10 +806,85 @@ export default function RecurringScreen() {
         }
       />
 
+      {/* ── Modal de cancelamento com motivo ── */}
+      {cancelTargetId !== null && (
+        <View style={[{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.7)", zIndex: 100, justifyContent: "center", alignItems: "center", padding: 24 }]}>
+          <View style={[{ backgroundColor: colors.surface, borderRadius: 20, borderWidth: 1, borderColor: colors.border, padding: 20, width: "100%", maxWidth: 400 }]}>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.foreground, marginBottom: 4 }}>Cancelar Assinatura</Text>
+            <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16 }}>Cancelar a assinatura de {cancelTargetName}? Os agendamentos já criados não serão removidos.</Text>
+            <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted, textTransform: "uppercase" as const, letterSpacing: 0.8, marginBottom: 6 }}>MOTIVO (OPCIONAL)</Text>
+            <TextInput
+              style={[{ backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 13, color: colors.foreground, fontSize: 14, minHeight: 60, textAlignVertical: "top" as const, ...(Platform.OS === "web" ? { outlineStyle: "none" } as any : {}) }]}
+              value={cancelReasonInput}
+              onChangeText={setCancelReasonInput}
+              placeholder="Ex: Cliente solicitou cancelamento, mudou de horário..."
+              placeholderTextColor={colors.muted}
+              multiline
+            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <TouchableOpacity
+                style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: 13, alignItems: "center" }}
+                onPress={() => { setCancelTargetId(null); setCancelReasonInput(""); }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: colors.muted, fontWeight: "600", fontSize: 14 }}>Voltar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 2, backgroundColor: colors.error, borderRadius: 12, paddingVertical: 13, alignItems: "center", opacity: cancelMutation.isPending ? 0.7 : 1 }}
+                onPress={confirmCancel}
+                disabled={cancelMutation.isPending}
+                activeOpacity={0.85}
+              >
+                {cancelMutation.isPending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ color: "#fff", fontWeight: "800", fontSize: 14 }}>Cancelar Assinatura</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* ── Dashboard de métricas ── */}
+      {!showForm && (
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 }}>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            {[
+              { label: "Ativas", value: statsQuery.data?.totalActive ?? 0, color: "#C9A84C" },
+              { label: "MRR", value: `R$ ${(statsQuery.data?.estimatedMRR ?? 0).toFixed(0)}`, color: "#22C55E" },
+              { label: "Canceladas", value: statsQuery.data?.totalCancelled ?? 0, color: colors.error },
+              { label: "Churn", value: `${statsQuery.data?.cancelRate ?? 0}%`, color: "#F59E0B" },
+            ].map((m, i) => (
+              <View key={i} style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 12, alignItems: "center" }}>
+                <Text style={{ fontSize: 18, fontWeight: "900", color: m.color }}>{m.value}</Text>
+                <Text style={{ fontSize: 10, fontWeight: "600", color: colors.muted, textTransform: "uppercase" as const, letterSpacing: 0.5, marginTop: 2 }}>{m.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Tabs: Ativas / Encerradas */}
+          <View style={{ flexDirection: "row", gap: 0, marginTop: 12, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
+            {(["active", "cancelled"] as const).map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                style={{ flex: 1, paddingVertical: 10, alignItems: "center", backgroundColor: activeTab === tab ? "#C9A84C" : "transparent" }}
+                onPress={() => setActiveTab(tab)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "700", color: activeTab === tab ? "#0A0A0A" : colors.muted }}>
+                  {tab === "active" ? `Ativas (${statsQuery.data?.totalActive ?? 0})` : `Encerradas (${statsQuery.data?.totalCancelled ?? 0})`}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* ── Lista de assinaturas ── */}
       {listQuery.isLoading ? (
         <ActivityIndicator color="#C9A84C" style={{ marginTop: 60 }} />
-      ) : !showForm && allData.length === 0 ? (
+      ) : !showForm && activeTab === "active" && allData.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={[styles.emptyIcon, { backgroundColor: "#C9A84C15" }]}>
             <IconSymbol name="calendar.badge.clock" size={40} color="#C9A84C" />
@@ -813,7 +900,66 @@ export default function RecurringScreen() {
             <Text style={styles.emptyBtnText}>+ Nova Assinatura</Text>
           </Pressable>
         </View>
-      ) : !showForm ? (
+      ) : !showForm && activeTab === "cancelled" ? (
+        /* ── Lista de encerradas ── */
+        <FlatList
+          data={cancelledQuery.data ?? []}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={{ padding: 16, gap: 10 }}
+          ListEmptyComponent={
+            <View style={{ alignItems: "center", paddingTop: 40 }}>
+              <Text style={{ fontSize: 15, color: colors.muted }}>Nenhuma assinatura encerrada</Text>
+            </View>
+          }
+          renderItem={({ item }) => {
+            const intervalLabel = INTERVAL_LABELS[item.intervalWeeks] ?? `A cada ${item.intervalWeeks} semanas`;
+            const cancelDate = item.cancelledAt
+              ? new Date(item.cancelledAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
+              : "—";
+            return (
+              <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, opacity: 0.75 }]}>
+                <View style={styles.cardHeader}>
+                  <View style={[styles.iconBox, { backgroundColor: `${colors.error}22` }]}>
+                    <IconSymbol name="xmark.circle.fill" size={20} color={colors.error} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.clientName, { color: colors.foreground }]} numberOfLines={1}>
+                      {(item as any).clientName ?? "Cliente"}
+                    </Text>
+                    <Text style={[styles.serviceName, { color: colors.muted }]} numberOfLines={1}>
+                      {(item as any).serviceName ?? "Serviço"} · {(item as any).barberName ?? "Barbeiro"}
+                    </Text>
+                  </View>
+                  <View style={{ backgroundColor: `${colors.error}22`, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: colors.error }}>CANCELADA</Text>
+                  </View>
+                </View>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View style={styles.infoRow}>
+                  <View style={styles.infoItem}>
+                    <Text style={[styles.infoLabel, { color: colors.muted }]}>Frequência</Text>
+                    <Text style={[styles.infoValue, { color: colors.foreground }]}>{intervalLabel}</Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Text style={[styles.infoLabel, { color: colors.muted }]}>Cancelada em</Text>
+                    <Text style={[styles.infoValue, { color: colors.error }]}>{cancelDate}</Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Text style={[styles.infoLabel, { color: colors.muted }]}>Ocorrências</Text>
+                    <Text style={[styles.infoValue, { color: colors.foreground }]}>{item.occurrences}x</Text>
+                  </View>
+                </View>
+                {item.cancelReason ? (
+                  <View style={{ backgroundColor: `${colors.error}10`, borderRadius: 10, padding: 10, marginTop: 4 }}>
+                    <Text style={{ fontSize: 11, fontWeight: "600", color: colors.muted, textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 2 }}>Motivo</Text>
+                    <Text style={{ fontSize: 13, color: colors.foreground }}>{item.cancelReason}</Text>
+                  </View>
+                ) : null}
+              </View>
+            );
+          }}
+        />
+      ) : !showForm && activeTab === "active" ? (
         <FlatList
           data={data}
           keyExtractor={(item) => String(item.id)}

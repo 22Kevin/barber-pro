@@ -3927,11 +3927,14 @@ export function registerAdminRoutes(app: Express): void {
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
     const allRecurring = await db.getAllRecurringAppointments();
+    const cancelledList = await db.getCancelledRecurringAppointments();
+    const stats = await db.getSubscriptionStats();
     const allClients = await db.getAllClients(tenantId);
     const allBarbers = await db.getAllBarbers(tenantId);
     const allServices = await db.getAllServices(true, tenantId);
-    const cancelled = req.query.cancelled === "1";
+    const cancelledMsg = req.query.cancelled === "1";
     const created = req.query.created === "1";
+    const viewTab = (req.query.tab as string) || "active";
     const searchQ = ((req.query.q as string) || "").toLowerCase();
     const filtered = searchQ
       ? allRecurring.filter((r: any) =>
@@ -3939,6 +3942,12 @@ export function registerAdminRoutes(app: Express): void {
           (r.serviceName || "").toLowerCase().includes(searchQ) ||
           (r.barberName || "").toLowerCase().includes(searchQ))
       : allRecurring;
+    const filteredCancelled = searchQ
+      ? cancelledList.filter((r: any) =>
+          (r.clientName || "").toLowerCase().includes(searchQ) ||
+          (r.serviceName || "").toLowerCase().includes(searchQ) ||
+          (r.barberName || "").toLowerCase().includes(searchQ))
+      : cancelledList;
     const body = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
         <div>
@@ -3947,23 +3956,78 @@ export function registerAdminRoutes(app: Express): void {
         </div>
         <button onclick="document.getElementById('newRecModal').style.display='flex'" class="btn btn-primary">+ Nova Assinatura</button>
       </div>
-      ${cancelled ? '<div class="alert alert-success">Assinatura cancelada com sucesso.</div>' : ""}
+      ${cancelledMsg ? '<div class="alert alert-success">Assinatura cancelada com sucesso.</div>' : ""}
       ${created ? '<div class="alert alert-success">Assinatura criada! Agendamentos gerados automaticamente.</div>' : ""}
 
-      ${allRecurring.length > 3 ? `
+      <!-- Dashboard de métricas -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;">
+          <div style="font-size:24px;font-weight:900;color:var(--primary);">${stats.totalActive}</div>
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Ativas</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;">
+          <div style="font-size:24px;font-weight:900;color:#22C55E;">R$ ${stats.estimatedMRR.toFixed(0)}</div>
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">MRR</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;">
+          <div style="font-size:24px;font-weight:900;color:var(--error);">${stats.totalCancelled}</div>
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Canceladas</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;">
+          <div style="font-size:24px;font-weight:900;color:#F59E0B;">${stats.cancelRate}%</div>
+          <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Churn</div>
+        </div>
+      </div>
+
+      <!-- Tabs: Ativas / Encerradas -->
+      <div style="display:flex;gap:0;margin-bottom:16px;background:var(--surface);border-radius:12px;border:1px solid var(--border);overflow:hidden;">
+        <a href="/admin/assinaturas?tab=active${searchQ ? '&q=' + encodeURIComponent(searchQ) : ''}" style="flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;text-decoration:none;transition:all .2s;${viewTab === 'active' ? 'background:var(--primary);color:#0A0A0A;' : 'color:var(--muted);'}">
+          Ativas (${stats.totalActive})
+        </a>
+        <a href="/admin/assinaturas?tab=cancelled${searchQ ? '&q=' + encodeURIComponent(searchQ) : ''}" style="flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;text-decoration:none;transition:all .2s;${viewTab === 'cancelled' ? 'background:var(--primary);color:#0A0A0A;' : 'color:var(--muted);'}">
+          Encerradas (${stats.totalCancelled})
+        </a>
+      </div>
+
+      ${(viewTab === 'active' ? allRecurring : cancelledList).length > 3 ? `
       <div style="margin-bottom:16px;">
         <form method="GET" action="/admin/assinaturas" style="display:flex;gap:8px;align-items:center;">
+          <input type="hidden" name="tab" value="${esc(viewTab)}" />
           <div style="flex:1;position:relative;">
             <input type="text" name="q" value="${esc(searchQ)}" placeholder="Buscar por cliente, serviço ou barbeiro..."
               class="form-input" style="padding-left:36px;" />
             <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);">&#128269;</span>
           </div>
           <button type="submit" class="btn btn-primary" style="padding:8px 16px;">Buscar</button>
-          ${searchQ ? '<a href="/admin/assinaturas" class="btn" style="padding:8px 16px;">Limpar</a>' : ""}
+          ${searchQ ? '<a href="/admin/assinaturas?tab=' + esc(viewTab) + '" class="btn" style="padding:8px 16px;">Limpar</a>' : ""}
         </form>
       </div>
       ` : ""}
 
+      ${viewTab === 'cancelled' ? `
+      <!-- Lista de encerradas -->
+      <div class="card">
+        <table>
+          <thead><tr><th>Cliente</th><th>Barbeiro</th><th>Serviço</th><th>Intervalo</th><th>Ocorrências</th><th>Cancelada em</th><th>Motivo</th></tr></thead>
+          <tbody>
+            ${filteredCancelled.length === 0 ? '<tr><td colspan="7" class="empty">Nenhuma assinatura encerrada.</td></tr>' : filteredCancelled.map((r: any) => {
+              const cancelDate = r.cancelledAt ? new Date(r.cancelledAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+              return `
+              <tr>
+                <td><strong>${esc(r.clientName)}</strong></td>
+                <td>${esc(r.barberName)}</td>
+                <td>${esc(r.serviceName)}</td>
+                <td>A cada ${r.intervalWeeks} semana(s)</td>
+                <td>${r.occurrences}x</td>
+                <td style="color:var(--error);font-weight:600;">${cancelDate}</td>
+                <td style="max-width:200px;">${r.cancelReason ? esc(r.cancelReason) : '<span style="color:var(--muted);">—</span>'}</td>
+              </tr>
+            `}).join("")}
+          </tbody>
+        </table>
+      </div>
+      ` : `
+      <!-- Lista de ativas -->
       <div class="card">
         <table>
           <thead><tr><th>Cliente</th><th>Barbeiro</th><th>Serviço</th><th>Início</th><th>Horário</th><th>Intervalo</th><th>Ocorrências</th><th>Ações</th></tr></thead>
@@ -3978,15 +4042,32 @@ export function registerAdminRoutes(app: Express): void {
                 <td>A cada ${r.intervalWeeks} semana(s)</td>
                 <td>${r.occurrences}x</td>
                 <td>
-                  <form method="POST" action="/admin/assinaturas/cancelar" style="display:inline;">
-                    <input type="hidden" name="id" value="${r.id}" />
-                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="return confirm('Cancelar esta assinatura?')">Cancelar</button>
-                  </form>
+                  <button class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="openCancelModal(${r.id}, '${esc(r.clientName).replace(/'/g, "\\'")}')">Cancelar</button>
                 </td>
               </tr>
             `).join("")}
           </tbody>
         </table>
+      </div>
+      `}
+
+      <!-- Modal de Cancelamento com Motivo -->
+      <div id="cancelModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+        <div style="background:var(--surface);border-radius:16px;padding:28px;width:480px;max-width:90vw;border:1px solid var(--border);">
+          <h2 style="font-size:18px;font-weight:800;color:var(--foreground);margin-bottom:4px;">Cancelar Assinatura</h2>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Cancelar a assinatura de <strong id="cancelClientName" style="color:var(--foreground);"></strong>? Os agendamentos já criados não serão removidos.</p>
+          <form method="POST" action="/admin/assinaturas/cancelar" id="cancelForm">
+            <input type="hidden" name="id" id="cancelId" />
+            <div class="form-group">
+              <label class="form-label" style="text-transform:uppercase;letter-spacing:0.8px;font-size:11px;">Motivo (opcional)</label>
+              <textarea name="reason" class="form-input" rows="3" placeholder="Ex: Cliente solicitou cancelamento, mudou de horário..." style="resize:vertical;"></textarea>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:16px;">
+              <button type="button" onclick="document.getElementById('cancelModal').style.display='none'" class="btn" style="flex:1;">Voltar</button>
+              <button type="submit" class="btn" style="flex:2;background:var(--error);color:#fff;border:none;font-weight:700;">Cancelar Assinatura</button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <!-- Modal Nova Assinatura -->
@@ -4167,6 +4248,9 @@ export function registerAdminRoutes(app: Express): void {
         renderCalendar();
 
         function updatePreview(){var sd=document.getElementById('recStartDate').value;var iv=parseInt(document.getElementById('recIntervalWeeks').value)||2;var oc=parseInt(document.getElementById('recOccurrences').value)||4;var pv=document.getElementById('datesPreview');var pl=document.getElementById('datesPreviewList');if(!sd){pv.style.display='none';return}pv.style.display='block';var dates=[];var d=new Date(sd+'T12:00:00');for(var i=0;i<oc;i++){dates.push(new Date(d));d.setDate(d.getDate()+iv*7)}pl.innerHTML=dates.map(function(dt){var label=dt.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});return '<span style="background:rgba(201,168,76,.12);color:var(--primary);padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;">'+label+'</span>'}).join('')}
+
+        function openCancelModal(id,name){document.getElementById('cancelId').value=id;document.getElementById('cancelClientName').textContent=name;document.getElementById('cancelModal').style.display='flex'}
+        document.addEventListener('click',function(e){if(e.target.id==='cancelModal')document.getElementById('cancelModal').style.display='none'});
       </script>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
@@ -4197,8 +4281,8 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   app.post("/admin/assinaturas/cancelar", requireAdminAuth, async (req: Request, res: Response) => {
-    const { id } = req.body;
-    if (id) await db.cancelRecurring(parseInt(id));
+    const { id, reason } = req.body;
+    if (id) await db.cancelRecurringWithReason(parseInt(id), reason || undefined);
     res.redirect("/admin/assinaturas?cancelled=1");
   });
 
