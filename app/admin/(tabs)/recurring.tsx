@@ -1,14 +1,15 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
@@ -49,7 +50,6 @@ const EMPTY_FORM: NewRecurring = {
   notes: "",
 };
 
-/** Calcula horário fim somando minutos ao horário início (formato HH:MM) */
 function addMinutes(time: string, minutes: number): string {
   const [h, m] = time.split(":").map(Number);
   const total = h * 60 + m + minutes;
@@ -58,7 +58,7 @@ function addMinutes(time: string, minutes: number): string {
   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
-/** Combobox de busca reutilizável */
+/** Combobox de busca com dropdown customizado — funciona em iOS, Android e Web */
 function SearchCombobox({
   label,
   placeholder,
@@ -76,15 +76,22 @@ function SearchCombobox({
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   const selectedItem = items.find((i) => i.id === selectedId);
   const filtered = useMemo(
     () =>
       query.trim() === ""
-        ? items.slice(0, 30)
+        ? items.slice(0, 40)
         : items.filter((i) => i.label.toLowerCase().includes(query.toLowerCase())).slice(0, 20),
     [items, query]
   );
+
+  useEffect(() => {
+    if (open && inputRef.current) {
+      setTimeout(() => inputRef.current?.focus(), 80);
+    }
+  }, [open]);
 
   function handleSelect(item: { id: number; label: string }) {
     onSelect(item.id, item);
@@ -92,106 +99,241 @@ function SearchCombobox({
     setOpen(false);
   }
 
+  function handleClear(e: any) {
+    if (e?.stopPropagation) e.stopPropagation();
+    onSelect(0, { id: 0, label: "" });
+    setQuery("");
+    setOpen(false);
+  }
+
+  const isSelected = !!selectedId && selectedId > 0;
+
   return (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={{ fontSize: 13, fontWeight: "600", color: colors.muted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>
-        {label}
-      </Text>
+    <View style={{ marginBottom: 16 }}>
+      {/* Label */}
+      <Text style={[comboStyles.label, { color: colors.muted }]}>{label}</Text>
+
+      {/* Trigger */}
       <Pressable
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: colors.surface,
-          borderWidth: 1.5,
-          borderColor: selectedId ? colors.primary : colors.border,
-          borderRadius: 10,
-          paddingHorizontal: 12,
-          paddingVertical: 12,
-          gap: 8,
-        }}
-        onPress={() => setOpen(true)}
+        style={[
+          comboStyles.trigger,
+          {
+            backgroundColor: colors.surface,
+            borderColor: isSelected ? "#C9A84C" : open ? "#C9A84C55" : colors.border,
+            borderWidth: isSelected || open ? 1.5 : 1,
+          },
+        ]}
+        onPress={() => setOpen((v) => !v)}
       >
-        <IconSymbol name="magnifyingglass" size={16} color={colors.muted} />
-        <Text style={{ flex: 1, fontSize: 14, color: selectedId ? colors.foreground : colors.muted }}>
+        <View style={[comboStyles.triggerIconBox, { backgroundColor: isSelected ? "#C9A84C22" : colors.border + "44" }]}>
+          <IconSymbol name="magnifyingglass" size={15} color={isSelected ? "#C9A84C" : colors.muted} />
+        </View>
+        <Text
+          style={[
+            comboStyles.triggerText,
+            { color: isSelected ? colors.foreground : colors.muted },
+          ]}
+          numberOfLines={1}
+        >
           {selectedItem ? selectedItem.label : placeholder}
         </Text>
-        {selectedId && (
-          <Pressable
-            onPress={(e) => {
-              e.stopPropagation();
-              onSelect(0, { id: 0, label: "" });
-              setQuery("");
-            }}
-            style={{ padding: 2 }}
-          >
-            <IconSymbol name="xmark.circle.fill" size={16} color={colors.muted} />
-          </Pressable>
-        )}
-        <IconSymbol name="chevron.right" size={14} color={colors.muted} />
+        {isSelected ? (
+          <TouchableOpacity onPress={handleClear} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <View style={[comboStyles.clearBtn, { backgroundColor: colors.border }]}>
+              <IconSymbol name="xmark" size={10} color={colors.muted} />
+            </View>
+          </TouchableOpacity>
+        ) : null}
+        <IconSymbol
+          name={open ? "chevron.up" : "chevron.down"}
+          size={14}
+          color={colors.muted}
+        />
       </Pressable>
 
-      {/* Dropdown modal */}
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }} onPress={() => setOpen(false)}>
-          <View
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: 0,
-              right: 0,
+      {/* Dropdown inline (funciona em web e nativo) */}
+      {open && (
+        <View
+          style={[
+            comboStyles.dropdown,
+            {
               backgroundColor: colors.background,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              maxHeight: "60%",
-              padding: 16,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 8 }}>
-              <IconSymbol name="magnifyingglass" size={16} color={colors.muted} />
-              <TextInput
-                style={{ flex: 1, fontSize: 15, color: colors.foreground }}
-                placeholder={`Buscar ${label.toLowerCase()}...`}
-                placeholderTextColor={colors.muted}
-                value={query}
-                onChangeText={setQuery}
-                autoFocus
-              />
-              {query.length > 0 && (
-                <Pressable onPress={() => setQuery("")}>
-                  <IconSymbol name="xmark.circle.fill" size={18} color={colors.muted} />
-                </Pressable>
-              )}
-            </View>
-            <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 8 }} />
-            <FlatList
-              data={filtered}
-              keyExtractor={(item) => String(item.id)}
-              keyboardShouldPersistTaps="handled"
-              renderItem={({ item }) => (
-                <Pressable
-                  style={({ pressed }) => ({
-                    paddingVertical: 13,
-                    paddingHorizontal: 8,
-                    borderRadius: 8,
-                    backgroundColor: item.id === selectedId ? colors.primary + "22" : pressed ? colors.surface : "transparent",
-                  })}
-                  onPress={() => handleSelect(item)}
-                >
-                  <Text style={{ fontSize: 15, color: item.id === selectedId ? colors.primary : colors.foreground, fontWeight: item.id === selectedId ? "700" : "400" }}>
-                    {item.label}
-                  </Text>
-                </Pressable>
-              )}
-              ListEmptyComponent={
-                <Text style={{ color: colors.muted, textAlign: "center", paddingVertical: 20 }}>Nenhum resultado</Text>
-              }
+              borderColor: "#C9A84C33",
+              shadowColor: "#000",
+            },
+          ]}
+        >
+          {/* Busca */}
+          <View style={[comboStyles.searchRow, { borderBottomColor: colors.border }]}>
+            <IconSymbol name="magnifyingglass" size={15} color={colors.muted} />
+            <TextInput
+              ref={inputRef}
+              style={[comboStyles.searchInput, { color: colors.foreground }]}
+              placeholder={`Buscar ${label.replace(" *", "").toLowerCase()}...`}
+              placeholderTextColor={colors.muted}
+              value={query}
+              onChangeText={setQuery}
+              autoCorrect={false}
+              autoCapitalize="none"
             />
+            {query.length > 0 && (
+              <TouchableOpacity onPress={() => setQuery("")}>
+                <IconSymbol name="xmark.circle.fill" size={16} color={colors.muted} />
+              </TouchableOpacity>
+            )}
           </View>
-        </Pressable>
-      </Modal>
+
+          {/* Lista */}
+          <ScrollView
+            style={{ maxHeight: 220 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {filtered.length === 0 ? (
+              <View style={comboStyles.emptyRow}>
+                <Text style={{ color: colors.muted, fontSize: 13 }}>Nenhum resultado encontrado</Text>
+              </View>
+            ) : (
+              filtered.map((item) => {
+                const active = item.id === selectedId;
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      comboStyles.option,
+                      { borderBottomColor: colors.border + "55" },
+                      active && { backgroundColor: "#C9A84C15" },
+                    ]}
+                    onPress={() => handleSelect(item)}
+                    activeOpacity={0.7}
+                  >
+                    {active && (
+                      <View style={comboStyles.activeIndicator} />
+                    )}
+                    <Text
+                      style={[
+                        comboStyles.optionText,
+                        { color: active ? "#C9A84C" : colors.foreground },
+                        active && { fontWeight: "700" },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {item.label}
+                    </Text>
+                    {active && (
+                      <IconSymbol name="checkmark" size={14} color="#C9A84C" />
+                    )}
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </ScrollView>
+
+          {/* Fechar */}
+          <TouchableOpacity
+            style={[comboStyles.closeRow, { borderTopColor: colors.border }]}
+            onPress={() => { setOpen(false); setQuery(""); }}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 13, color: colors.muted, fontWeight: "600" }}>Fechar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
+
+const comboStyles = StyleSheet.create({
+  label: {
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  trigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 13,
+    gap: 10,
+  },
+  triggerIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  triggerText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  clearBtn: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dropdown: {
+    marginTop: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+    ...(Platform.OS === "web"
+      ? { boxShadow: "0 8px 32px rgba(0,0,0,0.4)" } as any
+      : {
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.3,
+          shadowRadius: 16,
+          elevation: 12,
+        }),
+  },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+    borderBottomWidth: 1,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+    ...(Platform.OS === "web" ? { outlineStyle: "none" } as any : {}),
+  },
+  emptyRow: {
+    paddingVertical: 24,
+    alignItems: "center",
+  },
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    gap: 10,
+  },
+  activeIndicator: {
+    width: 3,
+    height: 20,
+    borderRadius: 2,
+    backgroundColor: "#C9A84C",
+  },
+  optionText: {
+    flex: 1,
+    fontSize: 14,
+  },
+  closeRow: {
+    alignItems: "center",
+    paddingVertical: 12,
+    borderTopWidth: 1,
+  },
+});
 
 export default function RecurringScreen() {
   const colors = useColors();
@@ -199,7 +341,7 @@ export default function RecurringScreen() {
   const tenantId = barber?.tenantId ?? undefined;
   const utils = trpc.useUtils();
 
-  const [modalVisible, setModalVisible] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<NewRecurring>(EMPTY_FORM);
 
   const listQuery = trpc.recurring.listAll.useQuery();
@@ -213,7 +355,7 @@ export default function RecurringScreen() {
   const createMutation = trpc.recurring.create.useMutation({
     onSuccess: () => {
       utils.recurring.listAll.invalidate();
-      setModalVisible(false);
+      setShowForm(false);
       setForm(EMPTY_FORM);
     },
     onError: (err) => Alert.alert("Erro", err.message),
@@ -232,23 +374,18 @@ export default function RecurringScreen() {
     [servicesQuery.data]
   );
 
-  function handleSelectService(id: number, item: { id: number; label: string; duration?: number }) {
-    if (id === 0) {
-      setForm((f) => ({ ...f, serviceId: null }));
-      return;
-    }
+  function handleSelectService(id: number) {
+    if (id === 0) { setForm((f) => ({ ...f, serviceId: null })); return; }
     const svc = (servicesQuery.data ?? []).find((s) => s.id === id);
     const duration = svc?.durationMinutes ?? 60;
-    const newEndTime = addMinutes(form.startTime, duration);
-    setForm((f) => ({ ...f, serviceId: id, endTime: newEndTime }));
+    setForm((f) => ({ ...f, serviceId: id, endTime: addMinutes(f.startTime, duration) }));
   }
 
   function handleStartTimeChange(t: string) {
     setForm((f) => {
       const svc = (servicesQuery.data ?? []).find((s) => s.id === f.serviceId);
       const duration = svc?.durationMinutes ?? 60;
-      const newEndTime = f.serviceId ? addMinutes(t, duration) : f.endTime;
-      return { ...f, startTime: t, endTime: newEndTime };
+      return { ...f, startTime: t, endTime: f.serviceId ? addMinutes(t, duration) : f.endTime };
     });
   }
 
@@ -284,29 +421,37 @@ export default function RecurringScreen() {
   const data = listQuery.data ?? [];
 
   const dyn = {
-    label: { fontSize: 13, fontWeight: "600" as const, color: colors.muted, marginBottom: 6, marginTop: 14, textTransform: "uppercase" as const, letterSpacing: 0.5 },
+    label: {
+      fontSize: 11,
+      fontWeight: "700" as const,
+      color: colors.muted,
+      marginBottom: 8,
+      marginTop: 16,
+      textTransform: "uppercase" as const,
+      letterSpacing: 0.8,
+    },
     input: {
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 10,
-      padding: 12,
+      borderRadius: 12,
+      padding: 13,
       color: colors.foreground,
       fontSize: 14,
+      fontWeight: "500" as const,
     },
-    selectRow: { flexDirection: "row" as const, flexWrap: "wrap" as const, gap: 8 },
-    selectChip: (selected: boolean) => ({
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+    chip: (selected: boolean) => ({
+      paddingHorizontal: 14,
+      paddingVertical: 9,
       borderRadius: 10,
       borderWidth: 1.5,
-      backgroundColor: selected ? colors.primary : colors.surface,
-      borderColor: selected ? colors.primary : colors.border,
+      backgroundColor: selected ? "#C9A84C" : colors.surface,
+      borderColor: selected ? "#C9A84C" : colors.border,
     }),
-    selectChipText: (selected: boolean) => ({
+    chipText: (selected: boolean) => ({
       fontSize: 13,
       fontWeight: "600" as const,
-      color: selected ? "#fff" : colors.foreground,
+      color: selected ? "#0A0A0A" : colors.foreground,
     }),
   };
 
@@ -316,32 +461,35 @@ export default function RecurringScreen() {
         title="Agendamentos Recorrentes"
         rightElement={
           <Pressable
-            style={({ pressed }) => [styles.newBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
-            onPress={() => { setForm(EMPTY_FORM); setModalVisible(true); }}
+            style={({ pressed }) => [styles.newBtn, { backgroundColor: "#C9A84C", opacity: pressed ? 0.8 : 1 }]}
+            onPress={() => { setForm(EMPTY_FORM); setShowForm(true); }}
           >
-            <IconSymbol name="plus" size={16} color="#fff" />
+            <IconSymbol name="plus" size={16} color="#0A0A0A" />
             <Text style={styles.newBtnText}>Nova</Text>
           </Pressable>
         }
       />
 
+      {/* ── Lista de recorrências ── */}
       {listQuery.isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 60 }} />
-      ) : data.length === 0 ? (
+        <ActivityIndicator color="#C9A84C" style={{ marginTop: 60 }} />
+      ) : !showForm && data.length === 0 ? (
         <View style={styles.emptyState}>
-          <IconSymbol name="calendar.badge.clock" size={48} color={colors.muted} />
+          <View style={[styles.emptyIcon, { backgroundColor: "#C9A84C15" }]}>
+            <IconSymbol name="calendar.badge.clock" size={40} color="#C9A84C" />
+          </View>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Nenhuma recorrência ativa</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
             Toque em "Nova" para criar uma série de agendamentos recorrentes.
           </Text>
           <Pressable
-            style={({ pressed }) => [styles.emptyBtn, { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 }]}
-            onPress={() => { setForm(EMPTY_FORM); setModalVisible(true); }}
+            style={({ pressed }) => [styles.emptyBtn, { opacity: pressed ? 0.8 : 1 }]}
+            onPress={() => { setForm(EMPTY_FORM); setShowForm(true); }}
           >
             <Text style={styles.emptyBtnText}>+ Nova Recorrência</Text>
           </Pressable>
         </View>
-      ) : (
+      ) : !showForm ? (
         <FlatList
           data={data}
           keyExtractor={(item) => String(item.id)}
@@ -354,8 +502,8 @@ export default function RecurringScreen() {
             return (
               <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={styles.cardHeader}>
-                  <View style={[styles.iconBox, { backgroundColor: colors.primary + "22" }]}>
-                    <IconSymbol name="arrow.clockwise" size={20} color={colors.primary} />
+                  <View style={[styles.iconBox, { backgroundColor: "#C9A84C22" }]}>
+                    <IconSymbol name="arrow.clockwise" size={20} color="#C9A84C" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.clientName, { color: colors.foreground }]} numberOfLines={1}>
@@ -395,66 +543,81 @@ export default function RecurringScreen() {
             );
           }}
         />
-      )}
+      ) : null}
 
-      {/* Modal Nova Recorrência */}
-      <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setModalVisible(false)}>
-        <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-          <View style={styles.modalHeader}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Nova Recorrência</Text>
-            <Pressable onPress={() => setModalVisible(false)} style={({ pressed }) => [styles.closeBtn, { opacity: pressed ? 0.7 : 1 }]}>
-              <IconSymbol name="xmark" size={20} color={colors.muted} />
-            </Pressable>
+      {/* ── Formulário inline (substitui modal — funciona em web e nativo) ── */}
+      {showForm && (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Cabeçalho do formulário */}
+          <View style={styles.formHeader}>
+            <View>
+              <Text style={[styles.formTitle, { color: colors.foreground }]}>Nova Recorrência</Text>
+              <Text style={{ fontSize: 13, color: colors.muted, marginTop: 2 }}>Preencha os campos abaixo</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.formCloseBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => { setShowForm(false); setForm(EMPTY_FORM); }}
+              activeOpacity={0.7}
+            >
+              <IconSymbol name="xmark" size={16} color={colors.muted} />
+            </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+          <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
 
-            {/* Cliente — combobox com busca */}
+            {/* Cliente */}
             <SearchCombobox
               label="Cliente *"
-              placeholder="Buscar cliente por nome ou telefone..."
+              placeholder="Selecionar cliente..."
               items={clients}
               selectedId={form.clientId}
               onSelect={(id) => setForm((f) => ({ ...f, clientId: id === 0 ? null : id }))}
               colors={colors}
             />
 
-            {/* Barbeiro — combobox com busca */}
+            {/* Barbeiro */}
             <SearchCombobox
               label="Barbeiro *"
-              placeholder="Buscar barbeiro..."
+              placeholder="Selecionar barbeiro..."
               items={barbers}
               selectedId={form.barberId}
               onSelect={(id) => setForm((f) => ({ ...f, barberId: id === 0 ? null : id }))}
               colors={colors}
             />
 
-            {/* Serviço — combobox com busca + calcula horário fim automaticamente */}
+            {/* Serviço */}
             <SearchCombobox
               label="Serviço *"
-              placeholder="Buscar serviço..."
+              placeholder="Selecionar serviço..."
               items={services}
               selectedId={form.serviceId}
-              onSelect={handleSelectService}
+              onSelect={(id, _item) => handleSelectService(id)}
               colors={colors}
             />
 
-            {/* Data de início */}
+          </View>
+
+          {/* Data e horários */}
+          <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 12 }]}>
             <Text style={dyn.label}>DATA DE INÍCIO *</Text>
             <TextInput
-              style={dyn.input}
+              style={[dyn.input, { ...(Platform.OS === "web" ? { outlineStyle: "none" } as any : {}) }]}
               value={form.startDate}
               onChangeText={(t) => setForm((f) => ({ ...f, startDate: t }))}
               placeholder="AAAA-MM-DD"
               placeholderTextColor={colors.muted}
             />
 
-            {/* Horários */}
-            <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
               <View style={{ flex: 1 }}>
-                <Text style={dyn.label}>INÍCIO</Text>
+                <Text style={dyn.label}>HORÁRIO INÍCIO</Text>
                 <TextInput
-                  style={dyn.input}
+                  style={[dyn.input, { ...(Platform.OS === "web" ? { outlineStyle: "none" } as any : {}) }]}
                   value={form.startTime}
                   onChangeText={handleStartTimeChange}
                   placeholder="09:00"
@@ -462,75 +625,97 @@ export default function RecurringScreen() {
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={dyn.label}>FIM (automático)</Text>
-                <View style={[dyn.input, { backgroundColor: colors.surface, opacity: 0.7 }]}>
-                  <Text style={{ color: colors.foreground, fontSize: 14 }}>{form.endTime}</Text>
+                <Text style={dyn.label}>HORÁRIO FIM</Text>
+                <View style={[dyn.input, { opacity: 0.6, justifyContent: "center" }]}>
+                  <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: "500" }}>{form.endTime}</Text>
                 </View>
               </View>
             </View>
             {form.serviceId && (
-              <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4, marginBottom: 4 }}>
-                ⏱ Horário fim calculado automaticamente pela duração do serviço
+              <Text style={{ fontSize: 11, color: "#C9A84C", marginTop: 6 }}>
+                ⏱ Calculado automaticamente pela duração do serviço
               </Text>
             )}
+          </View>
 
-            {/* Frequência */}
+          {/* Frequência */}
+          <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 12 }]}>
             <Text style={dyn.label}>FREQUÊNCIA</Text>
-            <View style={dyn.selectRow}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {[1, 2, 3, 4].map((w) => (
-                <Pressable key={w} style={dyn.selectChip(form.intervalWeeks === w)} onPress={() => setForm((f) => ({ ...f, intervalWeeks: w }))}>
-                  <Text style={dyn.selectChipText(form.intervalWeeks === w)}>{INTERVAL_LABELS[w]}</Text>
-                </Pressable>
+                <TouchableOpacity
+                  key={w}
+                  style={dyn.chip(form.intervalWeeks === w)}
+                  onPress={() => setForm((f) => ({ ...f, intervalWeeks: w }))}
+                  activeOpacity={0.8}
+                >
+                  <Text style={dyn.chipText(form.intervalWeeks === w)}>{INTERVAL_LABELS[w]}</Text>
+                </TouchableOpacity>
               ))}
             </View>
 
-            {/* Ocorrências */}
-            <Text style={dyn.label}>NÚMERO DE OCORRÊNCIAS</Text>
-            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            <Text style={[dyn.label, { marginTop: 16 }]}>NÚMERO DE OCORRÊNCIAS</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {[2, 4, 6, 8, 12, 24].map((n) => (
-                <Pressable key={n} style={dyn.selectChip(form.occurrences === n)} onPress={() => setForm((f) => ({ ...f, occurrences: n }))}>
-                  <Text style={dyn.selectChipText(form.occurrences === n)}>{n}x</Text>
-                </Pressable>
+                <TouchableOpacity
+                  key={n}
+                  style={dyn.chip(form.occurrences === n)}
+                  onPress={() => setForm((f) => ({ ...f, occurrences: n }))}
+                  activeOpacity={0.8}
+                >
+                  <Text style={dyn.chipText(form.occurrences === n)}>{n}x</Text>
+                </TouchableOpacity>
               ))}
             </View>
+          </View>
 
-            {/* Observações */}
+          {/* Observações */}
+          <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 12 }]}>
             <Text style={dyn.label}>OBSERVAÇÕES</Text>
             <TextInput
-              style={[dyn.input, { minHeight: 80, textAlignVertical: "top" }]}
+              style={[dyn.input, { minHeight: 80, textAlignVertical: "top", ...(Platform.OS === "web" ? { outlineStyle: "none" } as any : {}) }]}
               value={form.notes}
               onChangeText={(t) => setForm((f) => ({ ...f, notes: t }))}
               multiline
               placeholder="Observações opcionais..."
               placeholderTextColor={colors.muted}
             />
+          </View>
 
-            <Pressable
-              style={({ pressed }) => [styles.saveBtn, { backgroundColor: colors.primary, opacity: pressed || createMutation.isPending ? 0.7 : 1 }]}
-              onPress={handleCreate}
-              disabled={createMutation.isPending}
-            >
-              {createMutation.isPending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
+          {/* Botão criar */}
+          <TouchableOpacity
+            style={[styles.saveBtn, { opacity: createMutation.isPending ? 0.7 : 1 }]}
+            onPress={handleCreate}
+            disabled={createMutation.isPending}
+            activeOpacity={0.85}
+          >
+            {createMutation.isPending ? (
+              <ActivityIndicator color="#0A0A0A" />
+            ) : (
+              <>
+                <IconSymbol name="checkmark.circle.fill" size={18} color="#0A0A0A" />
                 <Text style={styles.saveBtnText}>Criar Recorrência</Text>
-              )}
-            </Pressable>
-          </ScrollView>
-        </View>
-      </Modal>
+              </>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      )}
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 40 },
+  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14, paddingHorizontal: 40 },
+  emptyIcon: { width: 80, height: 80, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   emptyTitle: { fontSize: 18, fontWeight: "700", textAlign: "center" },
   emptySubtitle: { fontSize: 14, textAlign: "center", lineHeight: 20 },
-  emptyBtn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
-  emptyBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  newBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10 },
-  newBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  emptyBtn: {
+    marginTop: 8, paddingHorizontal: 24, paddingVertical: 13, borderRadius: 12,
+    backgroundColor: "#C9A84C",
+  },
+  emptyBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 15 },
+  newBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
+  newBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 13 },
   card: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
   cardHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
   iconBox: { width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center" },
@@ -542,10 +727,19 @@ const styles = StyleSheet.create({
   infoItem: { flex: 1, minWidth: 80 },
   infoLabel: { fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
   infoValue: { fontSize: 13, fontWeight: "600" },
-  modalContainer: { flex: 1, padding: 20 },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: "700" },
-  closeBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  saveBtn: { borderRadius: 14, padding: 16, alignItems: "center", marginTop: 20 },
-  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  formHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
+  formTitle: { fontSize: 22, fontWeight: "800" },
+  formCloseBtn: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center", borderWidth: 1 },
+  formCard: { borderRadius: 16, borderWidth: 1, padding: 16 },
+  saveBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#C9A84C",
+    borderRadius: 14,
+    padding: 16,
+    marginTop: 16,
+  },
+  saveBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 16 },
 });
