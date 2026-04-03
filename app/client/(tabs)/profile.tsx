@@ -222,6 +222,36 @@ function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) 
   const [themeOption, setThemeOption] = useState<ThemeOption>("system");
   const [reminderHours, setReminderHours] = useState<1 | 2 | 24>(1);
   const { setColorScheme } = useThemeContext();
+  const utils = trpc.useUtils();
+
+  // Barbearia favorita
+  const preferredTenantQuery = trpc.clientAuth.getPreferredTenant.useQuery(
+    { tenantId: client.preferredTenantId ?? null },
+    { enabled: !!client.preferredTenantId }
+  );
+  const setPreferredTenantMutation = trpc.clientAuth.setPreferredTenant.useMutation({
+    onSuccess: () => {
+      utils.clientAuth.getPreferredTenant.invalidate();
+      onUpdate({ preferredTenantId: null });
+      Alert.alert("Barbearia removida", "Sua barbearia favorita foi removida. Faça login em uma barbearia para defini-la novamente.");
+    },
+    onError: (err: any) => Alert.alert("Erro", err.message),
+  });
+
+  function handleRemovePreferredTenant() {
+    Alert.alert(
+      "Trocar de barbearia",
+      "Ao remover sua barbearia favorita, você poderá acessar outra barbearia pelo link dela. Deseja continuar?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Remover",
+          style: "destructive",
+          onPress: () => setPreferredTenantMutation.mutate({ clientId: client.id, tenantId: null }),
+        },
+      ]
+    );
+  }
 
   useEffect(() => {
     AsyncStorage.getItem("@theme_preference").then((saved) => {
@@ -273,6 +303,53 @@ function SettingsTab({ client, onUpdate }: { client: any; onUpdate: (data: any) 
           );
         })}
       </View>
+
+      {/* Minha Barbearia */}
+      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Minha Barbearia</Text>
+      {client.preferredTenantId ? (
+        <View style={{
+          backgroundColor: "#1a1a2e",
+          borderRadius: 12,
+          padding: 14,
+          borderWidth: 1,
+          borderColor: "#C9A84C",
+          marginBottom: 8,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#C9A84C", fontSize: 11, fontWeight: "600", marginBottom: 2, letterSpacing: 0.5 }}>BARBEARIA FAVORITA</Text>
+            {preferredTenantQuery.isLoading ? (
+              <Text style={{ color: "#9CA3AF", fontSize: 14 }}>Carregando...</Text>
+            ) : (
+              <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>
+                {preferredTenantQuery.data?.name ?? "Barbearia"}
+              </Text>
+            )}
+          </View>
+          <TouchableOpacity
+            onPress={handleRemovePreferredTenant}
+            style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#2D1B1B", borderRadius: 8, borderWidth: 1, borderColor: "#7F1D1D" }}
+            activeOpacity={0.8}
+            disabled={setPreferredTenantMutation.isPending}
+          >
+            <Text style={{ color: "#F87171", fontSize: 12, fontWeight: "600" }}>Trocar</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={{
+          backgroundColor: "#111827",
+          borderRadius: 12,
+          padding: 14,
+          borderWidth: 1,
+          borderColor: "#374151",
+          marginBottom: 8,
+        }}>
+          <Text style={{ color: "#9CA3AF", fontSize: 13 }}>Nenhuma barbearia favorita definida.</Text>
+          <Text style={{ color: "#6B7280", fontSize: 12, marginTop: 4 }}>Acesse o link de uma barbearia e faça login para defini-la como favorita.</Text>
+        </View>
+      )}
 
       {/* Notificações */}
       <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Lembrete de agendamento</Text>

@@ -169,6 +169,13 @@
       "when": 1774100346446,
       "tag": "0023_many_lethal_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1775175094080,
+      "tag": "0024_broad_zuras",
+      "breakpoints": true
     }
   ]
 }

@@ -71,6 +71,7 @@ export const barbers = mysqlTable("barbers", {
 export const clients = mysqlTable("clients", {
   id: int("id").autoincrement().primaryKey(),
   tenantId: int("tenantId"), // null = instalação single-tenant (legado)
+  preferredTenantId: int("preferredTenantId"), // barbearia favorita do cliente
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 20 }).notNull(),

@@ -7,6 +7,7 @@ const CLIENT_STORAGE_KEY = "@barber_pro_client_session";
 export type ClientUser = {
   id: number;
   tenantId?: number | null;
+  preferredTenantId?: number | null;
   name: string;
   email: string;
   phone: string;

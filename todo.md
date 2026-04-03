@@ -1281,3 +1281,14 @@
 - [x] Fluxo: registro → seleção de plano → wizard de configuração → dashboard
 - [x] Botão "Começar grátis por 14 dias" em todos os planos (trial)
 - [x] Registrar tela no `_layout.tsx` do admin (oculta do tab bar)
+
+## Barbearia Favorita — preferredTenantId (Cenário 1)
+
+- [x] Adicionar coluna `preferredTenantId` na tabela `clients` (schema + migração)
+- [x] Função `setPreferredTenant(clientId, tenantId)` no db.ts
+- [x] Definir barbearia favorita automaticamente no login via email/senha (pub-api/login)
+- [x] Definir barbearia favorita automaticamente no login via Google OAuth (callback)
+- [x] Definir barbearia favorita automaticamente no cadastro (/pub-api/register)
+- [x] Exibir barbearia favorita na tela de perfil do cliente no app
+- [ ] Tela inicial do cliente prioriza a barbearia favorita (nome e logo no header)
+- [x] Opção "Trocar barbearia" no perfil do cliente com confirmação

@@ -535,7 +535,7 @@ export const appRouter = router({
         const clientId = await db.createClient({ name: input.name, email: input.email, phone: input.phone, birthDate: input.birthDate, isActive: true });
         await db.createClientAccount({ clientId, email: input.email, passwordHash });
         const client = await db.getClientById(clientId);
-        return { id: clientId, tenantId: client?.tenantId ?? null, name: input.name, email: input.email, phone: input.phone, totalPoints: 0, client };
+        return { id: clientId, tenantId: client?.tenantId ?? null, preferredTenantId: client?.preferredTenantId ?? null, name: input.name, email: input.email, phone: input.phone, totalPoints: 0, client };
       }),
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string().min(1) }))
@@ -546,7 +546,7 @@ export const appRouter = router({
         if (!valid) throw new Error("Credenciais inválidas");
         const client = await db.getClientById(account.clientId);
         if (!client) throw new Error("Cliente não encontrado");
-        return { id: client.id, tenantId: client.tenantId, name: client.name, email: client.email, phone: client.phone, totalPoints: client.totalPoints, birthDate: client.birthDate, photoUrl: client.photoUrl };
+        return { id: client.id, tenantId: client.tenantId, preferredTenantId: client.preferredTenantId ?? null, name: client.name, email: client.email, phone: client.phone, totalPoints: client.totalPoints, birthDate: client.birthDate, photoUrl: client.photoUrl };
       }),
     updateProfile: publicProcedure
       .input(z.object({ clientId: z.number(), name: z.string().min(2).optional(), phone: z.string().optional(), birthDate: z.string().optional().nullable(), notes: z.string().optional().nullable() }))
@@ -633,7 +633,7 @@ export const appRouter = router({
         if (input.photoUrl && !client.photoUrl) {
           await db.updateClient(client.id, { photoUrl: input.photoUrl });
         }
-        return { id: client.id, tenantId: client.tenantId, name: client.name, email: client.email, phone: client.phone ?? "", totalPoints: client.totalPoints, birthDate: client.birthDate, photoUrl: input.photoUrl ?? client.photoUrl };
+        return { id: client.id, tenantId: client.tenantId, preferredTenantId: client.preferredTenantId ?? null, name: client.name, email: client.email, phone: client.phone ?? "", totalPoints: client.totalPoints, birthDate: client.birthDate, photoUrl: input.photoUrl ?? client.photoUrl };
       }),
     getBirthdayCoupon: publicProcedure
       .input(z.object({ birthDate: z.string() }))
@@ -643,10 +643,24 @@ export const appRouter = router({
         const birthMonth = parseInt(input.birthDate.split("-")[1], 10);
         const currentMonth = new Date().getMonth() + 1;
         if (birthMonth !== currentMonth) return null;
-        // Busca cupom de aniversário ativo (código começa com ANIV)
+        // Busca cupão de aniversário ativo (código começa com ANIV)
         const allCoupons = await db.getAllCoupons();
         const birthdayCoupon = allCoupons.find((c: any) => c.isActive && c.code.startsWith("ANIV"));
         return birthdayCoupon ?? null;
+      }),
+    setPreferredTenant: publicProcedure
+      .input(z.object({ clientId: z.number(), tenantId: z.number().nullable() }))
+      .mutation(async ({ input }) => {
+        await db.updateClient(input.clientId, { preferredTenantId: input.tenantId });
+        return { success: true };
+      }),
+    getPreferredTenant: publicProcedure
+      .input(z.object({ tenantId: z.number().nullable().optional() }))
+      .query(async ({ input }) => {
+        if (!input.tenantId) return null;
+        const tenant = await db.getTenantById(input.tenantId);
+        if (!tenant) return null;
+        return { id: tenant.id, name: tenant.name, slug: tenant.slug, logoUrl: tenant.logoUrl ?? null };
       }),
   }),
 
