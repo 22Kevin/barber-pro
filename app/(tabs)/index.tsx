@@ -104,19 +104,7 @@ export default function HomeScreen() {
             <IconSymbol name="chevron.right" size={20} color="#0A0A0A" />
           </Pressable>
 
-          <Pressable
-            style={({ pressed }) => [styles.optionCard, styles.clientCard, pressed && { opacity: 0.75, transform: [{ scale: 0.98 }] }]}
-            onPress={() => router.push("/client" as any)}
-          >
-            <View style={[styles.optionIconBox, { backgroundColor: "#F5F5F022" }]}>
-              <IconSymbol name="person.fill" size={28} color="#F5F5F0" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.optionTitle, { color: "#F5F5F0" }]}>Área do Cliente</Text>
-              <Text style={[styles.optionSubtitle, { color: "#888880" }]}>Agendamentos, serviços e loja</Text>
-            </View>
-            <IconSymbol name="chevron.right" size={20} color="#888880" />
-          </Pressable>
+          {/* Área do Cliente removida da v1 — clientes agendam pela página web da barbearia */}
         </Animated.View>
 
         {/* ── Rodapé ───────────────────────────────────────────────────────── */}
@@ -161,7 +149,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  clientCard: { backgroundColor: "#141414", borderColor: "#2A2A2A" },
   registerCard: { backgroundColor: "#0A0A0A", borderColor: "#C9A84C44", borderWidth: 1.5 },
   optionIconBox: { width: 52, height: 52, borderRadius: 14, backgroundColor: "#0A0A0A22", justifyContent: "center", alignItems: "center" },
   optionTitle: { fontSize: 16, fontWeight: "700", color: "#0A0A0A", marginBottom: 2 },

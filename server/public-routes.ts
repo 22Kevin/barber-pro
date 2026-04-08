@@ -152,6 +152,19 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
     .info-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
     .info-value { font-size: 15px; font-weight: 600; }
 
+    /* Como Funciona */
+    .how-it-works { background: var(--surface); border-radius: 24px; margin: 0 24px 8px; padding: 40px 32px; max-width: 852px; }
+    .steps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; }
+    .step-card { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 24px 16px; text-align: center; position: relative; }
+    .step-number { width: 32px; height: 32px; border-radius: 50%; font-size: 14px; font-weight: 900; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+    .step-icon { font-size: 28px; margin-bottom: 10px; }
+    .step-title { font-size: 14px; font-weight: 800; margin-bottom: 6px; }
+    .step-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    @media (max-width: 640px) {
+      .how-it-works { margin: 0 16px 8px; padding: 28px 20px; }
+      .steps-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    }
+
     /* Footer */
     .footer { text-align: center; padding: 32px 24px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); margin-top: 32px; }
     .footer a { color: var(--primary); }
@@ -269,10 +282,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
           ${s.description ? `<div class="service-desc">${escapeHtml(s.description)}</div>` : ""}
           ${s.avgRating ? `<div class="service-rating">${stars(s.avgRating)} ${s.avgRating} (${s.reviewCount})</div>` : ""}
           <div class="service-meta">
-            ${isLoggedIn
-              ? `<span class="service-price">${formatPrice(s.price)}</span>`
-              : `<a href="/pub/${slug}/login?redirect=agendar" class="price-locked">🔒 Faça login para ver</a>`
-            }
+            <span class="service-price">${formatPrice(s.price)}</span>
             <span class="service-duration">${formatDuration(s.durationMinutes)}</span>
           </div>
         </div>
@@ -342,19 +352,40 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   `;
 
   const agendamentoUrl = `/pub/${slug}/agendar`;
-  // Banner de CTA para visitantes não logados
-  const ctaUnlockBanner = !isLoggedIn ? `
-    <div class="cta-unlock-banner">
-      <div class="cta-unlock-content">
-        <div class="cta-unlock-icon">🔓</div>
-        <div>
-          <div class="cta-unlock-title">Desbloqueie preços e horários</div>
-          <div class="cta-unlock-sub">Faça login para ver valores, agenda e agendar seu horário</div>
+  // Seção Como Funciona
+  const howItWorksHtml = `
+    <div class="section how-it-works">
+      <div class="section-title">Como Funciona</div>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">1</div>
+          <div class="step-icon">✂️</div>
+          <div class="step-title">Escolha o Serviço</div>
+          <div class="step-desc">Selecione o corte ou tratamento que deseja.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">2</div>
+          <div class="step-icon">💈</div>
+          <div class="step-title">Escolha o Barbeiro</div>
+          <div class="step-desc">Selecione seu profissional favorito.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">3</div>
+          <div class="step-icon">📅</div>
+          <div class="step-title">Escolha o Horário</div>
+          <div class="step-desc">Veja os horários disponíveis e escolha o melhor para você.</div>
+        </div>
+        <div class="step-card">
+          <div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">4</div>
+          <div class="step-icon">✅</div>
+          <div class="step-title">Confirme</div>
+          <div class="step-desc">Confirme o agendamento e receba lembretes automáticos.</div>
         </div>
       </div>
-      <a href="/pub/${slug}/login?redirect=agendar" class="cta-unlock-btn">VER PREÇOS E AGENDAR</a>
     </div>
-  ` : "";
+  `;
+  // Banner de CTA para visitantes não logados
+  const ctaUnlockBanner = "";  // Preços agora visíveis para todos
   const bannerUrl = (settings as any)?.bannerUrl;
   const bannerStyle = bannerUrl
     ? `style="background-image:url('${escapeHtml(bannerUrl)}');background-size:cover;background-position:center"`
@@ -374,7 +405,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       </div>
     </div>
 
-    ${ctaUnlockBanner}
+    ${howItWorksHtml}
 
     <!-- Serviços -->
     <div class="section">
@@ -386,22 +417,6 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     ${teamHtml}
     ${reviewsHtml}
     ${infoHtml}
-
-    <!-- Banner de download do app -->
-    <div class="app-download-banner">
-      ${settings?.logoUrl
-        ? `<img class="app-download-icon" src="${escapeHtml(settings.logoUrl)}" alt="${escapeHtml(settings?.shopName ?? tenant.name)}" />`
-        : `<div class="app-download-icon-placeholder">💈</div>`
-      }
-      <div class="app-download-text">
-        <div class="app-download-title">Agende pelo app da ${escapeHtml(settings?.shopName ?? tenant.name)}</div>
-        <div class="app-download-sub">Baixe o app, cadastre-se e agende seus horários com um toque. Receba lembretes e acompanhe seu histórico.</div>
-        <div class="app-download-buttons">
-          <a href="https://apps.apple.com/br/app/barber-pro" target="_blank" class="app-store-btn"><span>🍎</span> App Store</a>
-          <a href="https://play.google.com/store/apps/barber-pro" target="_blank" class="app-store-btn"><span>🤖</span> Google Play</a>
-        </div>
-      </div>
-    </div>
 
     <div class="footer">
       Powered by <a href="https://barberpro.com.br" target="_blank">Barber Pro</a>
@@ -792,9 +807,13 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
             <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">SENHA</label>
             <input type="password" id="password-input" required placeholder="${isLogin ? "Sua senha" : "Mínimo 6 caracteres"}" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
           </div>
-          ${!isLogin ? `<div style="margin-bottom:24px">
+          ${!isLogin ? `<div style="margin-bottom:16px">
             <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">TELEFONE</label>
             <input type="tel" id="phone-input" required placeholder="(11) 99999-9999" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+          </div>` : ""}
+          ${!isLogin ? `<div style="margin-bottom:24px">
+            <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">DATA DE NASCIMENTO <span style="color:var(--muted);font-weight:400">(opcional — usamos para enviar um cupom no seu aniversário 🎂)</span></label>
+            <input type="date" id="birth-date-input" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
           </div>` : ""}
           ${!isLogin ? `<div style="margin-bottom:20px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px">
             <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
@@ -840,7 +859,7 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
           password: document.getElementById('password-input').value,
           slug: '${slug}'
         };
-        ${!isLogin ? `body.name = document.getElementById('name-input').value; body.phone = document.getElementById('phone-input').value; body.lgpdConsent = true;` : ""}
+        ${!isLogin ? `body.name = document.getElementById('name-input').value; body.phone = document.getElementById('phone-input').value; body.lgpdConsent = true; var bdEl = document.getElementById('birth-date-input'); if (bdEl && bdEl.value) body.birthDate = bdEl.value;` : ""}
         try {
           var r = await fetch('/pub-api/${isLogin ? "login" : "register"}', {
             method: 'POST',
@@ -1288,7 +1307,7 @@ export function registerPublicRoutes(app: Express): void {
   // POST /pub-api/register  { name, email, password, phone, slug }
   app.post("/pub-api/register", async (req: Request, res: Response) => {
     try {
-      const { name, email, password, phone, slug, lgpdConsent } = req.body;
+      const { name, email, password, phone, slug, lgpdConsent, birthDate } = req.body;
       if (!name || !email || !password || !phone) { res.status(400).json({ error: "Todos os campos são obrigatórios" }); return; }
       if (password.length < 6) { res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres" }); return; }
       const existing = await db.getClientAccountByEmail(email);
@@ -1298,7 +1317,7 @@ export function registerPublicRoutes(app: Express): void {
       const passwordHash = bcrypt ? await bcrypt.hash(password, 10) : password;
       // Obter tenantId via slug para associar o cliente à barbearia correta
       const tenantForReg = slug ? await db.getTenantBySlug(slug) : null;
-      const clientId = await db.createClient({ name, email, phone, isActive: true, tenantId: tenantForReg?.id ?? null } as any);
+      const clientId = await db.createClient({ name, email, phone, isActive: true, tenantId: tenantForReg?.id ?? null, birthDate: birthDate ?? null } as any);
       await db.createClientAccount({ clientId, email, passwordHash });
       // Salvar consentimento LGPD se fornecido
       if (lgpdConsent && tenantForReg) {

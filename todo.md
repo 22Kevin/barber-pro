@@ -1332,12 +1332,35 @@
 
 ## Melhorias Assinaturas v3
 
-- [ ] Notificação de renovação: push/WhatsApp ao cliente 3 dias antes da próxima ocorrência
-- [ ] Histórico de assinaturas encerradas: aba "Encerradas" na lista (app + web)
-- [ ] Dashboard de assinaturas: cards de métricas (total ativas, MRR estimado, taxa de cancelamento)
-- [ ] Paridade app + web em todas as melhorias v3
+- [x] Notificação de renovação: job de lembrete 3 dias antes (subscription-reminder-job.ts) — estrutura implementada
+- [x] Histórico de assinaturas encerradas: aba "Encerradas" na lista (app + web) com data de cancelamento e motivo
+- [x] Dashboard de assinaturas: cards de métricas (Ativas, MRR estimado, Canceladas, Churn) no app + web
+- [x] Modal de cancelamento com campo de motivo (textarea) substituindo confirm/Alert nativo (app + web)
+- [x] Paridade app + web em todas as melhorias v3
 
 ## Jornada do Cliente — Mapeamento
 
-- [ ] Mapear passo a passo a jornada do cliente para agendamento
-- [ ] Avaliar aba dedicada na landing page para demonstrar a experiência do cliente
+- [x] Mapear passo a passo a jornada do cliente para agendamento
+- [x] Avaliar aba dedicada na landing page para demonstrar a experiência do cliente
+
+- [x] Mapear jornada completa do cliente: descoberta → cadastro → agendamento → confirmação → pós-atendimento
+- [x] Documentar pontos de fricção e oportunidades de melhoria na jornada
+- [x] Criar diagrama visual da jornada do cliente
+
+## Versão de Lançamento Simplificada
+
+### Tela "Minha Página" no admin (reestruturação)
+- [x] Remover abas técnicas (URL/QR, Domínio, SEO, Rastreamento) da tela pagina-cliente.tsx
+- [x] Bloco 1 — Compartilhar: link da página + botões Copiar, WhatsApp, Baixar QR Code
+- [x] Bloco 2 — Aparência: logo, cor primária (paleta + hex), banner/capa, galeria (unificado de Barbearia + Settings)
+- [x] Bloco 3 — Avançado: domínio personalizado, SEO e rastreamento (recolhido por padrão)
+- [x] Remover botão "Aparência da Página Pública" de Settings (agora está em Minha Página)
+
+### Landing page pública (melhorias)
+- [x] Seção "Como Funciona" com 4 passos visuais logo após o hero
+- [x] Preços visíveis para visitantes não logados (login só exigido ao confirmar)
+- [x] Data de nascimento no formulário de cadastro web (opcional, com mensagem de cupom de aniversário)
+
+### App mobile — foco no admin
+- [x] Ocultar botão "Área do Cliente" da tela inicial do app
+- [x] App fica dedicado à administração (admin/login como ponto de entrada)

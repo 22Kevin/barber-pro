@@ -1,0 +1,73 @@
+graph TD
+    subgraph DESCOBERTA["🔍 DESCOBERTA"]
+        A1["Link WhatsApp / Instagram"]
+        A2["Google Maps"]
+        A3["App instalado"]
+        A4["Indicação"]
+    end
+
+    subgraph WEB["🌐 PÁGINA PÚBLICA WEB"]
+        B1["Landing Page<br/>Hero + Serviços + Galeria + Equipe"]
+        B2["Login / Cadastro<br/>E-mail + Google OAuth"]
+        B3["Agendamento<br/>Serviço → Barbeiro → Data → Horário"]
+        B4["Confirmação<br/>Pagamento MP / Pix / Na hora"]
+        B5["Meus Agendamentos<br/>Histórico + Cancelamento"]
+        B6["Avaliação<br/>Estrelas + Comentário"]
+    end
+
+    subgraph APP["📱 APLICATIVO MOBILE"]
+        C1["Boas-vindas<br/>Login / Cadastro / Explorar"]
+        C2["Home<br/>Status + Próximo agendamento + CTA"]
+        C3["Booking Wizard<br/>5 passos visuais com cards"]
+        C4["Confirmação<br/>Confetti + Lembrete + Pagamento"]
+        C5["Agenda<br/>Histórico completo"]
+        C6["Perfil<br/>Pontos + Cupons + Tema"]
+        C7["Serviços<br/>Catálogo visual"]
+        C8["Loja<br/>Produtos"]
+        C9["Explorar<br/>GPS nearby"]
+    end
+
+    subgraph POS["📬 PÓS-ATENDIMENTO"]
+        D1["WhatsApp 24h + 1h antes"]
+        D2["Push notification"]
+        D3["E-mail de lembrete"]
+        D4["Avaliação solicitada"]
+        D5["Pontos creditados"]
+    end
+
+    A1 --> B1
+    A2 --> B1
+    A4 --> B1
+    A3 --> C1
+    A4 --> C1
+
+    B1 -->|"Agendar Horário"| B2
+    B2 -->|"Logado"| B3
+    B3 -->|"Confirmar"| B4
+    B4 --> B5
+    B5 --> B6
+
+    C1 -->|"Login/Cadastro"| C2
+    C1 -->|"Explorar sem conta"| C2
+    C2 -->|"Agendar agora"| C3
+    C3 -->|"Confirmar"| C4
+    C4 --> C5
+    C2 --> C7
+    C2 --> C8
+    C2 --> C9
+
+    B4 --> D1
+    B4 --> D3
+    C4 --> D1
+    C4 --> D2
+    C4 --> D3
+
+    D1 --> D4
+    D2 --> D4
+    D3 --> D4
+    D4 --> D5
+
+    style DESCOBERTA fill:#1a1a2e,stroke:#C9A84C,color:#F0EEE8
+    style WEB fill:#0d1b2a,stroke:#3B82F6,color:#F0EEE8
+    style APP fill:#0a1a0a,stroke:#22C55E,color:#F0EEE8
+    style POS fill:#1c0e00,stroke:#F59E0B,color:#F0EEE8

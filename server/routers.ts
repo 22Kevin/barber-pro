@@ -508,6 +508,16 @@ export const appRouter = router({
 
   settings: router({
     get: publicProcedure.query(() => db.getShopSettings()),
+    generateQr: publicProcedure
+      .input(z.object({ url: z.string() }))
+      .query(async ({ input }) => {
+        try {
+          const qrDataUrl = await QRCode.toDataURL(input.url, { width: 300, margin: 2, color: { dark: "#000000", light: "#FFFFFF" } });
+          return { qrDataUrl };
+        } catch {
+          return { qrDataUrl: "" };
+        }
+      }),
     getByTenant: publicProcedure
       .input(z.object({ tenantId: z.number() }))
       .query(async ({ input }) => {
