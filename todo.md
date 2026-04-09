@@ -1407,3 +1407,8 @@
 - [x] BUG: Cadastros (clientes, produtos, serviços, barbeiros, cupons, recompensas, promoções, configurações) não salvavam com tenantId — mutations corrigidas
 - [x] SEGURANÇA: settings.update agora recebe e passa tenantId para upsertShopSettings
 - [x] SEGURANÇA: barbearia.tsx e pagina-cliente.tsx passam tenantId em todas as mutations de update
+
+## Varredura de Formatação de Preço
+- [x] Varrer todos os .toFixed() no projeto para identificar usos sem conversão Number()
+- [x] Corrigir svc.price?.toFixed(2) → Number(svc.price ?? 0).toFixed(2) em subscription-plans.tsx
+- [x] Confirmar que todos os outros usos de .toFixed() já são seguros (parseFloat ou cálculo JS)
