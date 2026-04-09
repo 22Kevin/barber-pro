@@ -1412,3 +1412,6 @@
 - [x] Varrer todos os .toFixed() no projeto para identificar usos sem conversão Number()
 - [x] Corrigir svc.price?.toFixed(2) → Number(svc.price ?? 0).toFixed(2) em subscription-plans.tsx
 - [x] Confirmar que todos os outros usos de .toFixed() já são seguros (parseFloat ou cálculo JS)
+
+## Bug — Cadastro de Novo Plano (Assinaturas)
+- [x] Investigar e corrigir falha ao cadastrar novo plano em Assinaturas — tabelas não existiam no banco (migração executada), colunas erradas (duration → durationMinutes, salePrice → price), queries reescritas com selectRaw para evitar problema de parametrização do Drizzle
