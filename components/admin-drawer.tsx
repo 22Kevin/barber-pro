@@ -51,7 +51,7 @@ const DRAWER_GROUPS: DrawerGroup[] = [
       { label: "Serviços",        icon: "scissors",                    route: "/admin/(tabs)/services",          roles: ["super_admin", "receptionist"] },
       { label: "Produtos",        icon: "cube.box.fill",               route: "/admin/(tabs)/products",          roles: ["super_admin", "receptionist"] },
       { label: "Estoque",         icon: "tray.full.fill",              route: "/admin/(tabs)/stock",             roles: ["super_admin"] },
-      { label: "Assinaturas",       icon: "arrow.clockwise",             route: "/admin/(tabs)/recurring",         roles: ["super_admin", "receptionist"] },
+      { label: "Assinaturas",       icon: "arrow.clockwise",             route: "/admin/subscription-plans",      roles: ["super_admin", "receptionist"] },
     ],
   },
   {

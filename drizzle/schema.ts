@@ -228,6 +228,7 @@ export const expenses = mysqlTable("expenses", {
 // ─── Configuração de Fidelidade ───────────────────────────────────────────────
 export const loyaltyConfig = mysqlTable("loyalty_config", {
   id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId"), // null = single-tenant legado
   isActive: boolean("isActive").default(false).notNull(),
   pointsPerService: int("pointsPerService").default(10).notNull(),
   pointsPerReal: decimal("pointsPerReal", { precision: 5, scale: 2 }).default("1").notNull(),
@@ -238,6 +239,7 @@ export const loyaltyConfig = mysqlTable("loyalty_config", {
 // ─── Recompensas de Fidelidade ────────────────────────────────────────────────
 export const loyaltyRewards = mysqlTable("loyalty_rewards", {
   id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId"), // null = single-tenant legado
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   pointsRequired: int("pointsRequired").notNull(),
@@ -263,6 +265,7 @@ export const clientPoints = mysqlTable("client_points", {
 // ─── Cupons de Desconto ───────────────────────────────────────────────────────
 export const coupons = mysqlTable("coupons", {
   id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId"), // null = single-tenant legado
   code: varchar("code", { length: 50 }).notNull().unique(),
   description: varchar("description", { length: 255 }),
   discountType: mysqlEnum("discountType", ["percent", "fixed"]).notNull(),
@@ -355,6 +358,7 @@ export const returnMessageConfigs = mysqlTable("return_message_configs", {
 // ─── Promoções e Notícias ─────────────────────────────────────────────────────
 export const promotions = mysqlTable("promotions", {
   id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId"), // null = single-tenant legado
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
   targetAudience: mysqlEnum("targetAudience", ["all", "inactive_30", "inactive_60", "birthday_month", "specific_client"]).notNull().default("all"),

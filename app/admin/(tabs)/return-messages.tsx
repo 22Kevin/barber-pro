@@ -40,7 +40,7 @@ export default function ReturnMessagesScreen() {
   } | null>(null);
 
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: false, tenantId });
-  const configsQuery = trpc.returnMessages.list.useQuery();
+  const configsQuery = trpc.returnMessages.list.useQuery({ tenantId });
   const upsertMutation = trpc.returnMessages.upsert.useMutation({
     onSuccess: () => {
       configsQuery.refetch();

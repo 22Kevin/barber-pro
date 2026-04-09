@@ -39,6 +39,7 @@ const ROLES = [
 export default function BarbeariaScreen() {
   const tabBarHeight = useTabBarHeight();
   const { barber } = useBarberAuth();
+  const tenantId = barber?.tenantId ?? undefined;
   const [activeTab, setActiveTab] = useState<BarbeariaTab>("dados");
   const [showBarberModal, setShowBarberModal] = useState(false);
   const [editingBarber, setEditingBarber] = useState<any>(null);
@@ -152,7 +153,7 @@ export default function BarbeariaScreen() {
   const [timePickerTarget, setTimePickerTarget] = useState<{ dayOfWeek: number; field: "start" | "end" | "lunchStart" | "lunchEnd"; existing: any } | null>(null);
 
   const utils = trpc.useUtils();
-  const settingsQuery = trpc.settings.get.useQuery();
+  const settingsQuery = trpc.settings.get.useQuery({ tenantId });
   useEffect(() => {
     if (settingsQuery.data && !dataLoaded) {
       const d = settingsQuery.data as any;
@@ -200,8 +201,8 @@ export default function BarbeariaScreen() {
   }
 
   const [showInactiveBarbers, setShowInactiveBarbers] = useState(false);
-  const barbersQuery = trpc.barbers.list.useQuery();
-  const allBarbersQuery = trpc.barbers.listAll.useQuery(undefined, { enabled: showInactiveBarbers });
+  const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
+  const allBarbersQuery = trpc.barbers.listAll.useQuery({ tenantId }, { enabled: showInactiveBarbers });
   const workingHoursQuery = trpc.barbers.workingHours.get.useQuery(
     { barberId: selectedBarberId ?? 0 },
     { enabled: !!selectedBarberId }

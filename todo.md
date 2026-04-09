@@ -1392,3 +1392,11 @@
 - [x] Web pública: fluxo de assinatura do cliente (selecionar plano → escolher serviços/produtos → definir horários → pagamento)
 - [x] Web pública: aviso de renovação automática para cartão de crédito
 - [x] Web pública: lembrete de vencimento para pix/dinheiro/débito
+
+## Bug — Cadastro de Nova Barbearia
+- [ ] Investigar e corrigir erro no fluxo "Cadastrar Nova Barbearia" (onboarding/register.tsx)
+
+## Bugs Críticos — Rodada 3
+- [x] SEGURANÇA: Isolamento de dados por tenant — cada barbearia só vê seus próprios dados (clientes, funcionários, agendamentos, etc.)
+- [x] UX: Remover botão "Nova" da aba Assinaturas (fluxo antigo de assinatura recorrente por serviço)
+- [x] UX: Aba Assinaturas deve mostrar lista de Planos criados com opções Editar/Excluir/Ativar-Inativar

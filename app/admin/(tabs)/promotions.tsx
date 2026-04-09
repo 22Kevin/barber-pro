@@ -37,6 +37,7 @@ function fmtDate(dateStr: string | Date | null | undefined) {
 export default function PromotionsScreen() {
   const colors = useColors();
   const { barber } = useBarberAuth();
+  const tenantId = barber?.tenantId ?? undefined;
   const [modalVisible, setModalVisible] = useState(false);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -45,9 +46,9 @@ export default function PromotionsScreen() {
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [selectedClientName, setSelectedClientName] = useState("");
 
-  const listQuery = trpc.promotions.list.useQuery();
+  const listQuery = trpc.promotions.list.useQuery({ tenantId });
   const clientsQuery = trpc.clients.list.useQuery(
-    undefined,
+    { tenantId },
     { enabled: audience === "specific_client" }
   );
   const sendMutation = trpc.promotions.send.useMutation({

@@ -19,6 +19,7 @@ import { trpc } from "@/lib/trpc";
 import { AdminHeader } from "@/components/admin-header";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { useBarberAuth } from "@/lib/auth-context";
 
 type LoyaltyTab = "config" | "rewards" | "coupons";
 
@@ -31,6 +32,8 @@ const REWARD_TYPES = [
 
 export default function LoyaltyScreen() {
   const tabBarHeight = useTabBarHeight();
+  const { barber } = useBarberAuth();
+  const tenantId = barber?.tenantId ?? undefined;
   const [activeTab, setActiveTab] = useState<LoyaltyTab>("config");
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [showCouponModal, setShowCouponModal] = useState(false);
@@ -60,7 +63,7 @@ export default function LoyaltyScreen() {
 
   const utils = trpc.useUtils();
 
-  const configQuery = trpc.loyalty.getConfig.useQuery();
+  const configQuery = trpc.loyalty.getConfig.useQuery({ tenantId });
 
   // Populate form when config loads
   if (configQuery.data && !configLoaded) {
@@ -72,8 +75,8 @@ export default function LoyaltyScreen() {
     setConfigLoaded(true);
   }
 
-  const rewardsQuery = trpc.loyalty.rewards.list.useQuery();
-  const couponsQuery = trpc.coupons.list.useQuery();
+  const rewardsQuery = trpc.loyalty.rewards.list.useQuery({ tenantId });
+  const couponsQuery = trpc.coupons.list.useQuery({ tenantId });
 
   const updateConfigMutation = trpc.loyalty.updateConfig.useMutation({
     onSuccess: () => { utils.loyalty.getConfig.invalidate(); Alert.alert("Sucesso", "Configurações salvas!"); },

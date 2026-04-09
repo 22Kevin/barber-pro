@@ -157,7 +157,7 @@ export default function PaginaClienteScreen() {
   const utils = trpc.useUtils();
 
   // Queries
-  const settingsQuery = trpc.settings.get.useQuery();
+  const settingsQuery = trpc.settings.get.useQuery({ tenantId });
   const tenantQuery = trpc.onboarding.getById.useQuery(
     { id: tenantId ?? 0 },
     { enabled: !!tenantId }

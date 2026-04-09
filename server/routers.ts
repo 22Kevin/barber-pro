@@ -148,7 +148,7 @@ export const appRouter = router({
 
   barbers: router({
     list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getAllBarbers(input?.tenantId)),
-    listAll: publicProcedure.query(() => db.getAllBarbersIncludingInactive()),
+    listAll: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getAllBarbersIncludingInactive(input?.tenantId)),
     reactivate: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.reactivateBarber(input.id)),
     create: publicProcedure
       .input(z.object({ name: z.string().min(2), email: z.string().email().optional(), phone: z.string().optional(), password: z.string().min(6), role: z.enum(["super_admin", "barber", "receptionist"]).default("barber"), specialties: z.string().optional(), tenantId: z.number().optional().nullable() }))
@@ -197,7 +197,7 @@ export const appRouter = router({
   }),
 
   clients: router({
-    list: publicProcedure.query(() => db.getAllClients()),
+    list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getAllClients(input?.tenantId)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getClientById(input.id)),
     create: publicProcedure
       .input(z.object({ name: z.string().min(2), phone: z.string().min(8), email: z.string().email().optional().nullable(), birthDate: z.string().optional().nullable(), notes: z.string().optional().nullable() }))
@@ -207,8 +207,8 @@ export const appRouter = router({
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateClient(id, data); }),
     appointments: publicProcedure.input(z.object({ clientId: z.number() })).query(({ input }) => db.getClientAppointments(input.clientId)),
     sales: publicProcedure.input(z.object({ clientId: z.number() })).query(({ input }) => db.getClientSales(input.clientId)),
-    birthdayToday: publicProcedure.query(async () => {
-      const allClients = await db.getAllClients();
+    birthdayToday: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      const allClients = await db.getAllClients(input?.tenantId);
       const today = new Date();
       const todayMonth = today.getMonth() + 1;
       const todayDay = today.getDate();
@@ -218,8 +218,8 @@ export const appRouter = router({
         return parseInt(parts[1], 10) === todayMonth && parseInt(parts[2], 10) === todayDay;
       });
     }),
-    birthdayThisMonth: publicProcedure.query(async () => {
-      const allClients = await db.getAllClients();
+    birthdayThisMonth: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      const allClients = await db.getAllClients(input?.tenantId);
       const currentMonth = new Date().getMonth() + 1;
       return allClients.filter((c: any) => {
         if (!c.birthDate) return false;
@@ -443,7 +443,7 @@ export const appRouter = router({
   }),
 
   coupons: router({
-    list: publicProcedure.query(() => db.getAllCoupons()),
+    list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getAllCoupons(input?.tenantId)),
     validate: publicProcedure
       .input(z.object({ code: z.string(), orderValue: z.number() }))
       .query(async ({ input }) => {
@@ -489,12 +489,12 @@ export const appRouter = router({
       }),
   }),
   loyalty: router({
-    getConfig: publicProcedure.query(() => db.getLoyaltyConfig()),
+    getConfig: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getLoyaltyConfig(input?.tenantId)),
     updateConfig: publicProcedure
       .input(z.object({ isActive: z.boolean(), pointsPerService: z.number().min(0), pointsPerReal: z.string(), pointsExpireMonths: z.number().min(0) }))
       .mutation(({ input }) => db.upsertLoyaltyConfig(input)),
     rewards: router({
-      list: publicProcedure.query(() => db.getLoyaltyRewards()),
+      list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getLoyaltyRewards(input?.tenantId)),
       create: publicProcedure
         .input(z.object({ name: z.string().min(1), description: z.string().optional(), pointsRequired: z.number().min(1), rewardType: z.enum(["free_service", "discount_percent", "discount_fixed", "free_product"]), rewardValue: z.string().optional() }))
         .mutation(({ input }) => db.createLoyaltyReward(input)),
@@ -508,7 +508,7 @@ export const appRouter = router({
   }),
 
   settings: router({
-    get: publicProcedure.query(() => db.getShopSettings()),
+    get: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getShopSettings(input?.tenantId)),
     generateQr: publicProcedure
       .input(z.object({ url: z.string() }))
       .query(async ({ input }) => {
@@ -1234,8 +1234,8 @@ export const appRouter = router({
 
   // ─── Mensagens de Retorno Automáticas ────────────────────────────────────────
   returnMessages: router({
-    list: publicProcedure.query(async () => {
-      return db.listReturnMessageConfigs();
+    list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      return db.listReturnMessageConfigs(input?.tenantId);
     }),
     upsert: publicProcedure
       .input(z.object({
@@ -1256,8 +1256,8 @@ export const appRouter = router({
 
   // ─── Promoções e Notícias ─────────────────────────────────────────────────────
   promotions: router({
-    list: publicProcedure.query(async () => {
-      return db.listPromotions();
+    list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      return db.listPromotions(input?.tenantId);
     }),
     send: publicProcedure
       .input(z.object({
@@ -1319,8 +1319,8 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return db.getCommissionConfig(input.barberId);
       }),
-    listConfigs: publicProcedure.query(async () => {
-      return db.listCommissionConfigs();
+    listConfigs: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      return db.listCommissionConfigs(input?.tenantId);
     }),
     saveConfig: publicProcedure
       .input(z.object({
@@ -1372,19 +1372,19 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         return db.cancelRecurring(input.id);
       }),
-    listAll: publicProcedure.query(async () => {
-      return db.getAllRecurringAppointments();
+    listAll: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      return db.getAllRecurringAppointments(input?.tenantId);
     }),
-    listCancelled: publicProcedure.query(async () => {
-      return db.getCancelledRecurringAppointments();
+    listCancelled: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      return db.getCancelledRecurringAppointments(input?.tenantId);
     }),
     cancelWithReason: publicProcedure
       .input(z.object({ id: z.number(), reason: z.string().optional() }))
       .mutation(async ({ input }) => {
         return db.cancelRecurringWithReason(input.id, input.reason);
       }),
-    stats: publicProcedure.query(async () => {
-      return db.getSubscriptionStats();
+    stats: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      return db.getSubscriptionStats(input?.tenantId);
     }),
   }),
 
@@ -1395,8 +1395,8 @@ export const appRouter = router({
   }),
 
   stock: router({
-    list: publicProcedure.query(async () => {
-      return db.getStockProducts();
+    list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      return db.getStockProducts(input?.tenantId);
     }),
     addMovement: publicProcedure
       .input(z.object({
@@ -1420,8 +1420,8 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return db.getStockConsumptionAverage(input.productId);
       }),
-    lowStock: publicProcedure.query(async () => {
-      return db.getLowStockProducts();
+    lowStock: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      return db.getLowStockProducts(input?.tenantId);
     }),
   }),
   // ─── Onboarding SaaS (criação de novo tenant) ─────────────────────────────

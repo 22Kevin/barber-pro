@@ -84,7 +84,7 @@ export default function ClientsScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const utils = trpc.useUtils();
-  const clientsQuery = trpc.clients.list.useQuery();
+  const clientsQuery = trpc.clients.list.useQuery({ tenantId });
   const exportQuery = trpc.export.clientsCsv.useQuery(
     { tenantId },
     { enabled: false }
@@ -100,8 +100,8 @@ export default function ClientsScreen() {
       Alert.alert("Erro ao exportar", e?.message ?? "Falha na exportação");
     }
   }
-  const birthdayTodayQuery = trpc.clients.birthdayToday.useQuery();
-  const birthdayMonthQuery = trpc.clients.birthdayThisMonth.useQuery();
+  const birthdayTodayQuery = trpc.clients.birthdayToday.useQuery({ tenantId });
+  const birthdayMonthQuery = trpc.clients.birthdayThisMonth.useQuery({ tenantId });
   const clientAppointmentsQuery = trpc.clients.appointments.useQuery(
     { clientId: selectedClient?.id ?? 0 },
     { enabled: !!selectedClient }

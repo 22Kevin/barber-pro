@@ -658,11 +658,11 @@ export default function RecurringScreen() {
   const [cancelTargetId, setCancelTargetId] = useState<number | null>(null);
   const [cancelTargetName, setCancelTargetName] = useState("");
 
-  const listQuery = trpc.recurring.listAll.useQuery();
-  const cancelledQuery = trpc.recurring.listCancelled.useQuery();
-  const statsQuery = trpc.recurring.stats.useQuery();
-  const clientsQuery = trpc.clients.list.useQuery();
-  const barbersQuery = trpc.barbers.list.useQuery();
+  const listQuery = trpc.recurring.listAll.useQuery({ tenantId });
+  const cancelledQuery = trpc.recurring.listCancelled.useQuery({ tenantId });
+  const statsQuery = trpc.recurring.stats.useQuery({ tenantId });
+  const clientsQuery = trpc.clients.list.useQuery({ tenantId });
+  const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
 
   const cancelMutation = trpc.recurring.cancelWithReason.useMutation({

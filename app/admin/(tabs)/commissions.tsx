@@ -16,6 +16,7 @@ import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
+import { useBarberAuth } from "@/lib/auth-context";
 
 function getMonthRange() {
   const now = new Date();
@@ -33,6 +34,8 @@ const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Se
 
 export default function CommissionsScreen() {
   const colors = useColors();
+  const { barber } = useBarberAuth();
+  const tenantId = barber?.tenantId ?? undefined;
   const [tab, setTab] = useState<"summary" | "config">("summary");
   const [configModalVisible, setConfigModalVisible] = useState(false);
   const [editingBarber, setEditingBarber] = useState<{ id: number; name: string; rate: number } | null>(null);
@@ -48,7 +51,7 @@ export default function CommissionsScreen() {
   const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${lastDay}`;
 
   const summaryQuery = trpc.commissions.summary.useQuery({ startDate, endDate });
-  const configsQuery = trpc.commissions.listConfigs.useQuery();
+  const configsQuery = trpc.commissions.listConfigs.useQuery({ tenantId });
   const saveConfigMutation = trpc.commissions.saveConfig.useMutation({
     onSuccess: () => {
       configsQuery.refetch();

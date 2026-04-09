@@ -67,7 +67,7 @@ export default function StockScreen() {
   const [movQty, setMovQty] = useState("1");
   const [movReason, setMovReason] = useState("");
 
-  const stockQuery = trpc.stock.list.useQuery();
+  const stockQuery = trpc.stock.list.useQuery({ tenantId });
   const movementsQuery = trpc.stock.movements.useQuery(
     { productId: selectedProduct?.id ?? 0 },
     { enabled: !!selectedProduct && showHistoryModal }

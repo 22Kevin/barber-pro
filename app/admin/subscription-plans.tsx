@@ -472,7 +472,7 @@ export default function SubscriptionPlansScreen() {
 
   return (
     <ScreenContainer>
-      <AdminHeader title="Planos de Assinatura" />
+      <AdminHeader title="Assinaturas" />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
 
         {/* Dashboard de métricas */}

@@ -697,9 +697,12 @@ export async function deleteExpense(id: number) {
 }
 
 // ─── Cupons ───────────────────────────────────────────────────────────────────
-export async function getAllCoupons() {
+export async function getAllCoupons(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  if (tenantId != null) {
+    return db.select().from(coupons).where(eq(coupons.tenantId, tenantId)).orderBy(desc(coupons.createdAt));
+  }
   return db.select().from(coupons).orderBy(desc(coupons.createdAt));
 }
 
@@ -724,9 +727,13 @@ export async function updateCoupon(id: number, data: Partial<typeof coupons.$inf
 }
 
 // ─── Fidelidade ───────────────────────────────────────────────────────────────
-export async function getLoyaltyConfig() {
+export async function getLoyaltyConfig(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return null;
+  if (tenantId != null) {
+    const result = await db.select().from(loyaltyConfig).where(eq(loyaltyConfig.tenantId, tenantId)).limit(1);
+    return result.length > 0 ? result[0] : null;
+  }
   const result = await db.select().from(loyaltyConfig).limit(1);
   return result.length > 0 ? result[0] : null;
 }
@@ -742,9 +749,12 @@ export async function upsertLoyaltyConfig(data: { isActive: boolean; pointsPerSe
   }
 }
 
-export async function getLoyaltyRewards() {
+export async function getLoyaltyRewards(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  if (tenantId != null) {
+    return db.select().from(loyaltyRewards).where(and(eq(loyaltyRewards.isActive, true), eq(loyaltyRewards.tenantId, tenantId))).orderBy(loyaltyRewards.pointsRequired);
+  }
   return db.select().from(loyaltyRewards).where(eq(loyaltyRewards.isActive, true)).orderBy(loyaltyRewards.pointsRequired);
 }
 
@@ -1015,9 +1025,16 @@ export async function getAllServicesWithMediaAndRatings(activeOnly = false, tena
 
 // ─── Mensagens de Retorno Automáticas ────────────────────────────────────────
 
-export async function listReturnMessageConfigs() {
+export async function listReturnMessageConfigs(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  if (tenantId != null) {
+    // Filter by services belonging to this tenant
+    const tenantServices = await db.select({ id: services.id }).from(services).where(eq(services.tenantId, tenantId));
+    const serviceIds = tenantServices.map((s) => s.id);
+    if (serviceIds.length === 0) return [];
+    return db.select().from(returnMessageConfigs).where(inArray(returnMessageConfigs.serviceId, serviceIds)).orderBy(returnMessageConfigs.serviceId);
+  }
   return db.select().from(returnMessageConfigs).orderBy(returnMessageConfigs.serviceId);
 }
 
@@ -1051,9 +1068,12 @@ export async function deleteReturnMessageConfig(serviceId: number) {
 
 // ─── Promoções e Notícias ─────────────────────────────────────────────────────
 
-export async function listPromotions() {
+export async function listPromotions(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  if (tenantId != null) {
+    return db.select().from(promotions).where(eq(promotions.tenantId, tenantId)).orderBy(desc(promotions.createdAt));
+  }
   return db.select().from(promotions).orderBy(desc(promotions.createdAt));
 }
 
@@ -1193,11 +1213,14 @@ export async function getCommissionConfig(barberId: number) {
   return config ?? null;
 }
 
-export async function listCommissionConfigs() {
+export async function listCommissionConfigs(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
   const configs = await db.select().from(commissionConfigs);
-  const barberList = await db.select().from(barbers).where(eq(barbers.isActive, true));
+  const barberConditions = tenantId != null
+    ? and(eq(barbers.isActive, true), eq(barbers.tenantId, tenantId))
+    : eq(barbers.isActive, true);
+  const barberList = await db.select().from(barbers).where(barberConditions);
   return barberList.map((b) => ({
     ...b,
     commissionRate: parseFloat(configs.find((c) => c.barberId === b.id)?.defaultRate ?? "50"),
@@ -1379,10 +1402,18 @@ export async function cancelRecurring(id: number) {
   await db.update(recurringAppointments).set({ isActive: false }).where(eq(recurringAppointments.id, id));
 }
 
-export async function getAllRecurringAppointments() {
+export async function getAllRecurringAppointments(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  const list = await db.select().from(recurringAppointments).where(eq(recurringAppointments.isActive, true));
+  let list;
+  if (tenantId != null) {
+    const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
+    const barberIds = tenantBarbers.map((b) => b.id);
+    if (barberIds.length === 0) return [];
+    list = await db.select().from(recurringAppointments).where(and(eq(recurringAppointments.isActive, true), inArray(recurringAppointments.barberId, barberIds)));
+  } else {
+    list = await db.select().from(recurringAppointments).where(eq(recurringAppointments.isActive, true));
+  }
   const clientList = await db.select().from(clients);
   const barberList = await db.select().from(barbers);
   const svcList = await db.select().from(services);
@@ -1420,10 +1451,13 @@ export async function getPromotionConversionReport() {
 }
 
 // ─── Controle de Estoque ──────────────────────────────────────────────────────
-export async function getStockProducts() {
+export async function getStockProducts(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  const prods = await db.select().from(products).where(eq(products.isActive, true)).orderBy(products.name);
+  const conditions = tenantId != null
+    ? and(eq(products.isActive, true), eq(products.tenantId, tenantId))
+    : eq(products.isActive, true);
+  const prods = await db.select().from(products).where(conditions).orderBy(products.name);
   return prods.map((p) => ({
     ...p,
     price: parseFloat(p.price as any),
@@ -1500,10 +1534,13 @@ export async function getStockConsumptionAverage(productId: number) {
   return { avgMonthly, daysUntilEmpty };
 }
 
-export async function getLowStockProducts() {
+export async function getLowStockProducts(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  const prods = await db.select().from(products).where(eq(products.isActive, true));
+  const conditions = tenantId != null
+    ? and(eq(products.isActive, true), eq(products.tenantId, tenantId))
+    : eq(products.isActive, true);
+  const prods = await db.select().from(products).where(conditions);
   return prods.filter((p) => (p.stockQuantity ?? 0) <= (p.minStockAlert ?? 5));
 }
 
@@ -2003,12 +2040,22 @@ export async function cancelRecurringWithReason(id: number, reason?: string) {
 }
 
 // ─── Assinaturas — Listar encerradas ────────────────────────────────────────
-export async function getCancelledRecurringAppointments() {
+export async function getCancelledRecurringAppointments(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  const list = await db.select().from(recurringAppointments)
-    .where(eq(recurringAppointments.isActive, false))
-    .orderBy(desc(recurringAppointments.createdAt));
+  let list;
+  if (tenantId != null) {
+    const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
+    const barberIds = tenantBarbers.map((b) => b.id);
+    if (barberIds.length === 0) return [];
+    list = await db.select().from(recurringAppointments)
+      .where(and(eq(recurringAppointments.isActive, false), inArray(recurringAppointments.barberId, barberIds)))
+      .orderBy(desc(recurringAppointments.createdAt));
+  } else {
+    list = await db.select().from(recurringAppointments)
+      .where(eq(recurringAppointments.isActive, false))
+      .orderBy(desc(recurringAppointments.createdAt));
+  }
   const clientList = await db.select().from(clients);
   const barberList = await db.select().from(barbers);
   const svcList = await db.select().from(services);
@@ -2021,11 +2068,19 @@ export async function getCancelledRecurringAppointments() {
 }
 
 // ─── Assinaturas — Estatísticas / Dashboard ─────────────────────────────────
-export async function getSubscriptionStats() {
+export async function getSubscriptionStats(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return { totalActive: 0, totalCancelled: 0, cancelRate: 0, estimatedMRR: 0 };
 
-  const allRec = await db.select().from(recurringAppointments);
+  let allRec;
+  if (tenantId != null) {
+    const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
+    const barberIds = tenantBarbers.map((b) => b.id);
+    if (barberIds.length === 0) return { totalActive: 0, totalCancelled: 0, cancelRate: 0, estimatedMRR: 0 };
+    allRec = await db.select().from(recurringAppointments).where(inArray(recurringAppointments.barberId, barberIds));
+  } else {
+    allRec = await db.select().from(recurringAppointments);
+  }
   const active = allRec.filter((r) => r.isActive);
   const cancelled = allRec.filter((r) => !r.isActive);
 

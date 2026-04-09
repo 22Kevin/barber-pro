@@ -50,7 +50,7 @@ export default function DashboardScreen() {
   const tenantId = barber?.tenantId ?? undefined;
   const statsQuery = trpc.dashboard.stats.useQuery({ date: today });
   const appointmentsQuery = trpc.appointments.allByDate.useQuery({ date: today, tenantId });
-  const barbersQuery = trpc.barbers.list.useQuery();
+  const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
   const pendingPaymentsQuery = trpc.payments.pendingList.useQuery();
 
   const utils = trpc.useUtils();
