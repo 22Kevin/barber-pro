@@ -39,11 +39,41 @@ function addMinutes(t: string, mins: number) {
   const m = (total % 60).toString().padStart(2, "0");
   return `${h}:${m}`;
 }
-function generateTimeSlots(start: string, end: string, step = 30) {
+function generateTimeSlots(
+  start: string,
+  end: string,
+  step = 30,
+  lunchStart?: string | null,
+  lunchEnd?: string | null,
+  dateStr?: string,
+) {
   const slots: string[] = [];
   let current = start;
+
+  // Calcular o minuto atual no fuso de Brasília (UTC-3)
+  const nowBrasilia = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const todayBrasilia = nowBrasilia.toISOString().split("T")[0];
+  const isToday = dateStr === todayBrasilia;
+  const currentMinute = isToday
+    ? nowBrasilia.getUTCHours() * 60 + nowBrasilia.getUTCMinutes() + 5 // margem de 5 min
+    : 0;
+
+  const lunchStartMin = lunchStart ? toMinutes(lunchStart) : null;
+  const lunchEndMin = lunchEnd ? toMinutes(lunchEnd) : null;
+
   while (current < end) {
-    slots.push(current);
+    const slotMin = toMinutes(current);
+    // Filtrar horários passados
+    const isPast = isToday && slotMin < currentMinute;
+    // Filtrar intervalo de almoço
+    const isLunch =
+      lunchStartMin !== null &&
+      lunchEndMin !== null &&
+      slotMin >= lunchStartMin &&
+      slotMin < lunchEndMin;
+    if (!isPast && !isLunch) {
+      slots.push(current);
+    }
     current = addMinutes(current, step);
   }
   return slots;
@@ -107,6 +137,16 @@ export default function PlanBookingScreen() {
   const workingHoursQuery = trpc.barbers.workingHours.get.useQuery(
     { barberId: selectedBarberId ?? 0 },
     { enabled: !!selectedBarberId }
+  );
+
+  // Calcular intervalo de datas dos slots para buscar agendamentos existentes
+  const slotDates = useMemo(() => slots.map((s) => s.date).filter(Boolean).sort(), [slots]);
+  const rangeStart = slotDates[0] ?? formatDate(new Date());
+  const rangeEnd = slotDates[slotDates.length - 1] ?? formatDate(new Date());
+
+  const bookedAppointmentsQuery = trpc.appointments.byDateRange.useQuery(
+    { barberId: selectedBarberId ?? 0, startDate: rangeStart, endDate: rangeEnd },
+    { enabled: !!selectedBarberId && step === "schedule" }
   );
 
   const createMutation = trpc.subscriptionPlans.createSubscription.useMutation({
@@ -200,7 +240,25 @@ export default function PlanBookingScreen() {
     const wh = (workingHoursQuery.data ?? []) as any[];
     const day = wh.find((d: any) => d.dayOfWeek === dayOfWeek);
     if (!day?.isWorking) return [];
-    return generateTimeSlots(day.startTime ?? "08:00", day.endTime ?? "20:00");
+
+    // Gerar slots com filtros de almoço e horários passados
+    const allSlots = generateTimeSlots(
+      day.startTime ?? "08:00",
+      day.endTime ?? "20:00",
+      30,
+      day.lunchStart ?? null,
+      day.lunchEnd ?? null,
+      dateStr,
+    );
+
+    // Filtrar horários já agendados para o barbeiro nesta data
+    const booked = new Set(
+      (bookedAppointmentsQuery.data ?? [])
+        .filter((a: any) => a.date === dateStr && a.status !== "cancelled" && a.status !== "no_show")
+        .map((a: any) => a.startTime)
+    );
+
+    return allSlots.filter((t) => !booked.has(t));
   };
 
   // ─── STEP: Plano + Cliente ────────────────────────────────────────────────
@@ -513,9 +571,16 @@ export default function PlanBookingScreen() {
 
               {/* Horários */}
               <Text style={{ color: colors.muted, fontSize: 12, marginTop: 10, marginBottom: 6 }}>Horário</Text>
+              {getTimeSlots(slot.date).length === 0 ? (
+                <Text style={{ color: colors.muted, fontSize: 13, fontStyle: "italic", marginTop: 4 }}>
+                  {workingHoursQuery.isLoading
+                    ? "Carregando horários..."
+                    : "Nenhum horário disponível nesta data. Selecione outro dia."}
+                </Text>
+              ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: "row", gap: 8, paddingBottom: 4 }}>
-                  {(getTimeSlots(slot.date).length > 0 ? getTimeSlots(slot.date) : generateTimeSlots("08:00", "20:00")).map((t) => (
+                  {getTimeSlots(slot.date).map((t) => (
                     <Pressable
                       key={t}
                       style={[
@@ -530,6 +595,7 @@ export default function PlanBookingScreen() {
                   ))}
                 </View>
               </ScrollView>
+              )}
             </View>
           ))}
 

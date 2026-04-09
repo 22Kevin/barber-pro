@@ -43,6 +43,13 @@ async function mutateSql(query: ReturnType<typeof sql>): Promise<{ insertId: num
   return result[0] as any;
 }
 
+/** INSERT/UPDATE/DELETE com string raw (para evitar problemas de serialização do Drizzle com JSON/arrays) */
+async function mutateRaw(queryStr: string): Promise<{ insertId: number; affectedRows: number }> {
+  const db = await getConn();
+  const result = await db.execute(queryStr as any);
+  return result[0] as any;
+}
+
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export const subscriptionPlanRouter = router({
@@ -333,26 +340,38 @@ export const subscriptionPlanRouter = router({
       `);
       const subscriptionId = subHeader.insertId;
 
+      // Helper para calcular endTime (startTime + 30 min)
+      function addMinutes30(t: string): string {
+        const [h, m] = t.split(":").map(Number);
+        const total = h * 60 + m + 30;
+        return `${Math.floor(total / 60).toString().padStart(2, "0")}:${(total % 60).toString().padStart(2, "0")}:00`;
+      }
+
       const appointmentIds: number[] = [];
+      // serviceId: usar o primeiro serviço selecionado, ou 0 se nenhum
+      const primaryServiceId = input.selectedServiceIds[0] ?? 0;
+
       for (let i = 0; i < input.appointments.length; i++) {
         const appt = input.appointments[i];
         const apptBarberId = appt.barberId ?? input.barberId ?? null;
-        const svcJson = JSON.stringify(input.selectedServiceIds);
+        const dateEsc = String(appt.date).replace(/'/g, "''");
+        // Garantir formato HH:MM:SS para o campo TIME do MySQL
+        const timeRaw = String(appt.time).replace(/'/g, "''");
+        const startTimeEsc = timeRaw.includes(":") && timeRaw.split(":").length === 2
+          ? timeRaw + ":00"
+          : timeRaw;
+        const endTimeEsc = addMinutes30(appt.time);
+        const barberIdStr = apptBarberId !== null ? String(Number(apptBarberId)) : 'NULL';
 
-        const apptHeader = await mutateSql(sql`
-          INSERT INTO appointments (tenantId, clientId, barberId, date, time, status, serviceIds, source)
-          VALUES (
-            ${input.tenantId}, ${input.clientId}, ${apptBarberId},
-            ${appt.date}, ${appt.time}, 'confirmed', ${svcJson}, 'subscription'
-          )
-        `);
+        const apptHeader = await mutateRaw(
+          `INSERT INTO appointments (clientId, barberId, serviceId, date, startTime, endTime, status) VALUES (${input.clientId}, ${barberIdStr}, ${primaryServiceId}, '${dateEsc}', '${startTimeEsc}', '${endTimeEsc}', 'confirmed')`
+        );
         const appointmentId = apptHeader.insertId;
         appointmentIds.push(appointmentId);
 
-        await mutateSql(sql`
-          INSERT INTO subscription_appointments (subscriptionId, appointmentId, tenantId, recurrenceIndex)
-          VALUES (${subscriptionId}, ${appointmentId}, ${input.tenantId}, ${i + 1})
-        `);
+        await mutateRaw(
+          `INSERT INTO subscription_appointments (subscriptionId, appointmentId, tenantId, recurrenceIndex) VALUES (${subscriptionId}, ${appointmentId}, ${input.tenantId}, ${i + 1})`
+        );
       }
 
       return { ok: true, id: subscriptionId, appointmentIds };

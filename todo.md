@@ -1415,3 +1415,11 @@
 
 ## Bug — Cadastro de Novo Plano (Assinaturas)
 - [x] Investigar e corrigir falha ao cadastrar novo plano em Assinaturas — tabelas não existiam no banco (migração executada), colunas erradas (duration → durationMinutes, salePrice → price), queries reescritas com selectRaw para evitar problema de parametrização do Drizzle
+
+## Bugs — Rodada 5
+- [x] BUG: Erro no INSERT de appointments ao confirmar assinatura — serviceIds sendo passado como array em vez de JSON string
+- [x] FEATURE: Filtro de slots na tela de agendamento (plan-booking.tsx e agenda.tsx): horários já ocupados, horário de almoço, dias/horários de não funcionamento, e horários passados quando dia for hoje
+## Bugs — Rodada 6
+- [x] BUG CRÍTICO: INSERT appointments em createSubscription usava colunas erradas (time→startTime, serviceIds→serviceId, removidos tenantId e source que não existem na tabela real) — corrigido com mutateRaw e colunas corretas
+- [x] FEATURE: Filtro completo de slots em plan-booking.tsx: horários passados (fuso Brasília UTC-3), horário de almoço (lunchStart/lunchEnd), horários já agendados (appointments.byDateRange) — função generateTimeSlots reescrita igual ao agenda.tsx
+- [x] UX: Mensagem de estado vazio quando não há horários disponíveis na data selecionada em plan-booking.tsx
