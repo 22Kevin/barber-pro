@@ -1432,3 +1432,11 @@
 - [x] Onboarding: corrigir fluxo de cadastro de nova barbearia (tela welcome adicionada ao Stack, campos obrigatórios do AuthBarber preenchidos, slug correto passado como parâmetro)
 - [x] Planos de assinatura: validação exige ao menos 1 serviço selecionado (com indicador visual * e hint explicativo)
 - [x] Assinaturas: duração dinâmica dos appointments usando durationMinutes do serviço selecionado (fallback 30 min)
+
+## Rodada 7 — Soma de durações de serviços
+- [x] Seleção múltipla de serviços no agendamento do cliente (book.tsx)
+- [x] Cálculo de totalDuration como soma de durationMinutes de todos os serviços selecionados
+- [x] Cálculo de totalPrice como soma dos preços de todos os serviços selecionados
+- [x] Resumo da seleção com botão Continuar na tela de serviços
+- [x] Tela de confirmação exibe lista de serviços e duração total
+- [x] Query de slots usa totalDuration para filtrar horários disponíveis

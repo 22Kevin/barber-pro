@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Dimensions, Linking, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
@@ -84,7 +84,9 @@ export default function BookScreen() {
   const { client, isAuthenticated } = useClientAuth();
 
   const [step, setStep] = useState<Step>("service");
-  const [selectedService, setSelectedService] = useState<any>(null);
+  const [selectedServices, setSelectedServices] = useState<any[]>([]);
+  // Serviço principal (primeiro selecionado) — compat com APIs que esperam serviceId único
+  const selectedService = selectedServices[0] ?? null;
   const [selectedBarber, setSelectedBarber] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<{ startTime: string; endTime: string } | null>(null);
@@ -105,13 +107,24 @@ export default function BookScreen() {
   const tenantId = client?.tenantId ?? undefined;
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
   const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
-  const slotsQuery = trpc.slots.available.useQuery(
-    { barberId: selectedBarber?.id ?? 0, date: selectedDate ? formatDate(selectedDate) : "", durationMinutes: selectedService?.durationMinutes ?? 30 },
-    { enabled: !!selectedBarber && !!selectedDate && !!selectedService }
+
+  // Calcular duração total e preço total somando todos os serviços selecionados
+  const totalDuration = useMemo(
+    () => selectedServices.reduce((sum, s) => sum + (s.durationMinutes ?? 30), 0),
+    [selectedServices]
+  );
+  const totalPrice = useMemo(
+    () => selectedServices.reduce((sum, s) => sum + parseFloat(s.price ?? "0"), 0),
+    [selectedServices]
   );
 
-  // Verificar cupons/recompensas disponíveis para o banner proativo
-  const orderValue = selectedService ? parseFloat(selectedService.price) : 0;
+  const slotsQuery = trpc.slots.available.useQuery(
+    { barberId: selectedBarber?.id ?? 0, date: selectedDate ? formatDate(selectedDate) : "", durationMinutes: totalDuration > 0 ? totalDuration : 30 },
+    { enabled: !!selectedBarber && !!selectedDate && selectedServices.length > 0 }
+  );
+
+  // Verificar cupões/recompensas disponíveis para o banner proativo
+  const orderValue = totalPrice;
   const availableDiscountsQuery = trpc.coupons.getAvailableForClient.useQuery(
     { clientId: client?.id ?? null, orderValue },
     { enabled: !!selectedService && isAuthenticated }
@@ -145,12 +158,12 @@ export default function BookScreen() {
   useEffect(() => {
     if (params.serviceId && servicesQuery.data) {
       const svc = servicesQuery.data.find((s: any) => String(s.id) === params.serviceId);
-      if (svc) { setSelectedService(svc); setStep("barber"); }
+      if (svc) { setSelectedServices([svc]); setStep("barber"); }
     }
   }, [params.serviceId, servicesQuery.data]);
 
   // Calcular valor final com desconto
-  const basePrice = selectedService ? parseFloat(selectedService.price) : 0;
+  const basePrice = totalPrice;
   const discountAmount = appliedDiscount?.discountAmount ?? 0;
   const finalPrice = Math.max(0, basePrice - discountAmount);
 
@@ -162,12 +175,12 @@ export default function BookScreen() {
       ]);
       return;
     }
-    if (!client || !selectedService || !selectedBarber || !selectedDate || !selectedSlot) return;
+    if (!client || selectedServices.length === 0 || !selectedBarber || !selectedDate || !selectedSlot) return;
     createAppointment.mutate(
       {
         clientId: client.id,
         barberId: selectedBarber.id,
-        serviceId: selectedService.id,
+        serviceId: selectedService!.id, // serviço principal
         date: formatDate(selectedDate),
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
@@ -565,21 +578,58 @@ export default function BookScreen() {
         {/* STEP 1: Serviço */}
         {step === "service" && (
           <View>
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 20, marginBottom: 16 }}>Escolha o serviço</Text>
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 20, marginBottom: 4 }}>Escolha os serviços</Text>
+            <Text style={{ color: "#9CA3AF", fontSize: 13, marginBottom: 16 }}>Selecione um ou mais serviços para o agendamento</Text>
             {servicesQuery.isLoading ? <Text style={{ color: "#9CA3AF" }}>Carregando...</Text> : null}
-            {(servicesQuery.data ?? []).map((svc: any) => (
-              <TouchableOpacity
-                key={svc.id}
-                onPress={() => { setSelectedService(svc); setAppliedDiscount(null); setStep("barber"); }}
-                style={{ backgroundColor: "#111827", borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: selectedService?.id === svc.id ? "#EAB308" : "#1F2937", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: "#fff", fontWeight: "600", fontSize: 16 }}>{svc.name}</Text>
-                  <Text style={{ color: "#9CA3AF", fontSize: 13, marginTop: 2 }}>⏱ {svc.durationMinutes} min</Text>
+            {(servicesQuery.data ?? []).map((svc: any) => {
+              const isSelected = selectedServices.some((s) => s.id === svc.id);
+              return (
+                <TouchableOpacity
+                  key={svc.id}
+                  onPress={() => {
+                    setSelectedServices((prev) => {
+                      const exists = prev.some((s) => s.id === svc.id);
+                      return exists ? prev.filter((s) => s.id !== svc.id) : [...prev, svc];
+                    });
+                    setAppliedDiscount(null);
+                  }}
+                  style={{ backgroundColor: isSelected ? "#1A1200" : "#111827", borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: 1.5, borderColor: isSelected ? "#EAB308" : "#1F2937", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: isSelected ? "#EAB308" : "#fff", fontWeight: "600", fontSize: 16 }}>{svc.name}</Text>
+                    <Text style={{ color: "#9CA3AF", fontSize: 13, marginTop: 2 }}>⏱ {svc.durationMinutes} min</Text>
+                  </View>
+                  <View style={{ alignItems: "flex-end", gap: 4 }}>
+                    <Text style={{ color: "#EAB308", fontWeight: "700", fontSize: 16 }}>R$ {parseFloat(svc.price).toFixed(2)}</Text>
+                    {isSelected && <Text style={{ color: "#EAB308", fontSize: 11, fontWeight: "700" }}>✓ Selecionado</Text>}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+            {/* Resumo e botão Continuar */}
+            {selectedServices.length > 0 && (
+              <View style={{ marginTop: 8 }}>
+                <View style={{ backgroundColor: "#1A1200", borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "#EAB308" }}>
+                  <Text style={{ color: "#EAB308", fontWeight: "700", fontSize: 14, marginBottom: 6 }}>Resumo da seleção</Text>
+                  {selectedServices.map((s) => (
+                    <View key={s.id} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2 }}>
+                      <Text style={{ color: "#fff", fontSize: 13 }}>{s.name}</Text>
+                      <Text style={{ color: "#9CA3AF", fontSize: 13 }}>{s.durationMinutes} min</Text>
+                    </View>
+                  ))}
+                  <View style={{ borderTopWidth: 1, borderTopColor: "#374151", marginTop: 8, paddingTop: 8, flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={{ color: "#EAB308", fontWeight: "700", fontSize: 14 }}>Total</Text>
+                    <Text style={{ color: "#EAB308", fontWeight: "700", fontSize: 14 }}>{totalDuration} min · R$ {totalPrice.toFixed(2)}</Text>
+                  </View>
                 </View>
-                <Text style={{ color: "#EAB308", fontWeight: "700", fontSize: 16 }}>R$ {parseFloat(svc.price).toFixed(2)}</Text>
-              </TouchableOpacity>
-            ))}
+                <TouchableOpacity
+                  onPress={() => setStep("barber")}
+                  style={{ backgroundColor: "#EAB308", borderRadius: 14, paddingVertical: 16, alignItems: "center" }}
+                >
+                  <Text style={{ color: "#000", fontWeight: "700", fontSize: 16 }}>Continuar →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
 
@@ -669,21 +719,30 @@ export default function BookScreen() {
         )}
 
         {/* STEP 5: Confirmação */}
-        {step === "confirm" && selectedService && selectedBarber && selectedDate && selectedSlot && (
+        {step === "confirm" && selectedServices.length > 0 && selectedBarber && selectedDate && selectedSlot && (
           <View>
             <Text style={{ color: "#fff", fontWeight: "700", fontSize: 20, marginBottom: 20 }}>Confirmar agendamento</Text>
             <View style={{ backgroundColor: "#111827", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#1F2937", gap: 14 }}>
+              {/* Lista de serviços selecionados */}
+              <View>
+                <Text style={{ color: "#9CA3AF", fontSize: 14, marginBottom: 6 }}>Serviço{selectedServices.length > 1 ? "s" : ""}</Text>
+                {selectedServices.map((s, i) => (
+                  <View key={s.id} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: i < selectedServices.length - 1 ? 4 : 0 }}>
+                    <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }}>{s.name}</Text>
+                    <Text style={{ color: "#9CA3AF", fontSize: 13 }}>{s.durationMinutes} min</Text>
+                  </View>
+                ))}
+              </View>
               {[
-                { label: "Serviço", value: selectedService.name },
                 { label: "Barbeiro", value: selectedBarber.name },
                 { label: "Data", value: selectedDate.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) },
                 { label: "Horário", value: `${selectedSlot.startTime} — ${selectedSlot.endTime}` },
-                { label: "Duração", value: `${selectedService.durationMinutes} minutos` },
+                { label: "Duração total", value: `${totalDuration} minutos` },
                 ...(appliedDiscount ? [
                   { label: "Subtotal", value: `R$ ${basePrice.toFixed(2).replace(".", ",")}` },
                   { label: "Desconto", value: `− R$ ${discountAmount.toFixed(2).replace(".", ",")}` },
                 ] : []),
-                { label: "Valor", value: `R$ ${finalPrice.toFixed(2).replace(".", ",")}` },
+                { label: "Valor total", value: `R$ ${finalPrice.toFixed(2).replace(".", ",")}` },
               ].map((item) => (
                 <View key={item.label} style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <Text style={{ color: "#9CA3AF", fontSize: 14 }}>{item.label}</Text>
