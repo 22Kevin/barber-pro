@@ -331,7 +331,7 @@ export default function SubscriptionPlansScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: "500" }}>{svc.name}</Text>
-                  <Text style={{ color: colors.muted, fontSize: 12 }}>R$ {svc.price?.toFixed(2)} {svc.duration ? `· ${svc.duration} min` : ""}</Text>
+                  <Text style={{ color: colors.muted, fontSize: 12 }}>R$ {Number(svc.price ?? 0).toFixed(2)} {svc.duration ? `· ${svc.duration} min` : ""}</Text>
                 </View>
               </TouchableOpacity>
             ))
