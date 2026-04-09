@@ -1440,3 +1440,9 @@
 - [x] Resumo da seleção com botão Continuar na tela de serviços
 - [x] Tela de confirmação exibe lista de serviços e duração total
 - [x] Query de slots usa totalDuration para filtrar horários disponíveis
+
+## Rodada 8 — Múltiplos serviços admin + histórico + validação servidor
+- [x] Seleção múltipla de serviços no agendamento admin (agenda.tsx)
+- [x] Soma de durações no agendamento admin
+- [x] Exibir todos os serviços no histórico do cliente (history.tsx)
+- [x] Validação de conflito de horário no servidor usando endTime calculado

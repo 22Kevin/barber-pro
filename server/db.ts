@@ -551,7 +551,27 @@ export async function getAllAppointmentsByDate(date: string, tenantId?: number |
 export async function getClientAppointments(clientId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(appointments)
+  return db
+    .select({
+      id: appointments.id,
+      clientId: appointments.clientId,
+      barberId: appointments.barberId,
+      serviceId: appointments.serviceId,
+      date: appointments.date,
+      startTime: appointments.startTime,
+      endTime: appointments.endTime,
+      status: appointments.status,
+      notes: appointments.notes,
+      cancelReason: appointments.cancelReason,
+      createdAt: appointments.createdAt,
+      serviceName: services.name,
+      price: services.price,
+      serviceDuration: services.durationMinutes,
+      barberName: barbers.name,
+    })
+    .from(appointments)
+    .leftJoin(services, eq(appointments.serviceId, services.id))
+    .leftJoin(barbers, eq(appointments.barberId, barbers.id))
     .where(eq(appointments.clientId, clientId))
     .orderBy(desc(appointments.date), desc(appointments.startTime));
 }

@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useMemo } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
@@ -120,7 +121,9 @@ export default function AgendaScreen() {
   const [clientSearch, setClientSearch] = useState("");
   const [selectedClient, setSelectedClient] = useState<any>(null);
   const [selectedBarber, setSelectedBarber] = useState<any>(barber);
-  const [selectedService, setSelectedService] = useState<any>(null);
+  const [selectedServices, setSelectedServices] = useState<any[]>([]);
+  // Serviço principal (compat com APIs que esperam serviceId único)
+  const selectedService = selectedServices[0] ?? null;
   const [selectedTime, setSelectedTime] = useState("");
   const [notes, setNotes] = useState("");
   const [showClientPicker, setShowClientPicker] = useState(false);
@@ -157,13 +160,14 @@ export default function AgendaScreen() {
       utils.dashboard.stats.invalidate();
 
       // Agenda notificação push 1 hora antes (se o cliente tiver o app instalado)
-      if (selectedService && selectedTime) {
+      if (selectedServices.length > 0 && selectedTime) {
         const [hours, minutes] = selectedTime.split(":").map(Number);
         const appointmentDateTime = new Date(selectedDate);
         appointmentDateTime.setHours(hours, minutes, 0, 0);
+        const serviceNames = selectedServices.map((s) => s.name).join(" + ");
         scheduleAppointmentReminder(
           typeof apptId === "number" ? apptId : Number(apptId),
-          selectedService.name,
+          serviceNames,
           barber?.name ?? "Barbeiro",
           appointmentDateTime
         ).catch(() => null);
@@ -207,20 +211,30 @@ export default function AgendaScreen() {
     cancelAppointmentReminder(cancelApptId).catch(() => null);
   }
 
+  // Calcular duração total e preço total somando todos os serviços selecionados
+  const totalDuration = useMemo(
+    () => selectedServices.reduce((sum, s) => sum + (s.durationMinutes ?? 30), 0),
+    [selectedServices]
+  );
+  const totalServicePrice = useMemo(
+    () => selectedServices.reduce((sum, s) => sum + parseFloat(s.price ?? "0"), 0),
+    [selectedServices]
+  );
+
   function closeNewModal() {
     setShowNewModal(false);
-    setSelectedClient(null); setSelectedService(null); setSelectedTime(""); setNotes(""); setClientSearch("");
+    setSelectedClient(null); setSelectedServices([]); setSelectedTime(""); setNotes(""); setClientSearch("");
   }
 
   function handleCreateAppointment() {
     if (!selectedClient) { Alert.alert("Atenção", "Selecione um cliente."); return; }
-    if (!selectedService) { Alert.alert("Atenção", "Selecione um serviço."); return; }
+    if (selectedServices.length === 0) { Alert.alert("Atenção", "Selecione ao menos um serviço."); return; }
     if (!selectedTime) { Alert.alert("Atenção", "Selecione um horário."); return; }
-    const endTime = addMinutes(selectedTime, selectedService.durationMinutes);
+    const endTime = addMinutes(selectedTime, totalDuration);
     createMutation.mutate({
       clientId: selectedClient.id,
       barberId: barber?.id ?? 0,
-      serviceId: selectedService.id,
+      serviceId: selectedService!.id, // serviço principal
       date: dateStr,
       startTime: selectedTime,
       endTime,
@@ -506,23 +520,44 @@ export default function AgendaScreen() {
                   <IconSymbol name="chevron.right" size={16} color="#888880" />
                 </Pressable>
 
-                <Text style={styles.fieldLabel}>Serviço *</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                <Text style={styles.fieldLabel}>Serviço{selectedServices.length > 1 ? "s" : ""} * <Text style={{ color: "#888880", fontWeight: "400", fontSize: 12 }}>(selecione um ou mais)</Text></Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: selectedServices.length > 0 ? 8 : 14 }}>
                   <View style={{ flexDirection: "row", gap: 8 }}>
-                    {(servicesQuery.data ?? []).map(s => (
-                      <Pressable
-                        key={s.id}
-                        style={[styles.serviceChip, selectedService?.id === s.id && styles.serviceChipActive]}
-                        onPress={() => setSelectedService(s)}
-                      >
-                        <Text style={[styles.serviceChipText, selectedService?.id === s.id && styles.serviceChipTextActive]}>{s.name}</Text>
-                        <Text style={[styles.serviceChipPrice, selectedService?.id === s.id && { color: "#C9A84C" }]}>
-                          R$ {parseFloat(s.price).toFixed(2).replace(".", ",")}
-                        </Text>
-                      </Pressable>
-                    ))}
+                    {(servicesQuery.data ?? []).map(s => {
+                      const isChipSelected = selectedServices.some((sv) => sv.id === s.id);
+                      return (
+                        <Pressable
+                          key={s.id}
+                          style={[styles.serviceChip, isChipSelected && styles.serviceChipActive]}
+                          onPress={() => setSelectedServices((prev) => {
+                            const exists = prev.some((sv) => sv.id === s.id);
+                            return exists ? prev.filter((sv) => sv.id !== s.id) : [...prev, s];
+                          })}
+                        >
+                          <Text style={[styles.serviceChipText, isChipSelected && styles.serviceChipTextActive]}>{s.name}</Text>
+                          <Text style={[styles.serviceChipPrice, isChipSelected && { color: "#C9A84C" }]}>
+                            R$ {parseFloat(s.price).toFixed(2).replace(".", ",")}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
                   </View>
                 </ScrollView>
+                {/* Resumo dos serviços selecionados */}
+                {selectedServices.length > 0 && (
+                  <View style={{ backgroundColor: "#1A1500", borderRadius: 8, padding: 10, marginBottom: 14, borderWidth: 1, borderColor: "#C9A84C" }}>
+                    {selectedServices.map((s, i) => (
+                      <View key={s.id} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: i < selectedServices.length - 1 ? 3 : 0 }}>
+                        <Text style={{ color: "#fff", fontSize: 13 }}>{s.name}</Text>
+                        <Text style={{ color: "#888880", fontSize: 12 }}>{s.durationMinutes} min</Text>
+                      </View>
+                    ))}
+                    <View style={{ borderTopWidth: 1, borderTopColor: "#3A3000", marginTop: 6, paddingTop: 6, flexDirection: "row", justifyContent: "space-between" }}>
+                      <Text style={{ color: "#C9A84C", fontWeight: "700", fontSize: 13 }}>Total</Text>
+                      <Text style={{ color: "#C9A84C", fontWeight: "700", fontSize: 13 }}>{totalDuration} min · R$ {totalServicePrice.toFixed(2).replace(".", ",")}</Text>
+                    </View>
+                  </View>
+                )}
 
                 <Text style={styles.fieldLabel}>Horário *</Text>
                 {!workingDay?.isWorking ? (
