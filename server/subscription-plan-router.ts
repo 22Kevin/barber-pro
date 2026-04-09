@@ -340,16 +340,31 @@ export const subscriptionPlanRouter = router({
       `);
       const subscriptionId = subHeader.insertId;
 
-      // Helper para calcular endTime (startTime + 30 min)
-      function addMinutes30(t: string): string {
+      // Helper para calcular endTime (startTime + duração em minutos)
+      function addMinutes(t: string, minutes: number): string {
         const [h, m] = t.split(":").map(Number);
-        const total = h * 60 + m + 30;
-        return `${Math.floor(total / 60).toString().padStart(2, "0")}:${(total % 60).toString().padStart(2, "0")}:00`;
+        const total = h * 60 + m + minutes;
+        return `${Math.floor(total / 60).toString().padStart(2, "00")}:${(total % 60).toString().padStart(2, "00")}:00`;
       }
 
       const appointmentIds: number[] = [];
       // serviceId: usar o primeiro serviço selecionado, ou 0 se nenhum
       const primaryServiceId = input.selectedServiceIds[0] ?? 0;
+
+      // Buscar a duração do serviço primário para calcular endTime corretamente
+      let serviceDurationMinutes = 30; // padrão: 30 min
+      if (primaryServiceId > 0) {
+        try {
+          const svcRows = await selectRaw(
+            `SELECT durationMinutes FROM services WHERE id = ${primaryServiceId} LIMIT 1`
+          ) as { durationMinutes: number }[];
+          if (svcRows.length > 0 && svcRows[0].durationMinutes > 0) {
+            serviceDurationMinutes = svcRows[0].durationMinutes;
+          }
+        } catch {
+          // manter padrão de 30 min se a query falhar
+        }
+      }
 
       for (let i = 0; i < input.appointments.length; i++) {
         const appt = input.appointments[i];
@@ -360,7 +375,7 @@ export const subscriptionPlanRouter = router({
         const startTimeEsc = timeRaw.includes(":") && timeRaw.split(":").length === 2
           ? timeRaw + ":00"
           : timeRaw;
-        const endTimeEsc = addMinutes30(appt.time);
+        const endTimeEsc = addMinutes(appt.time, serviceDurationMinutes);
         const barberIdStr = apptBarberId !== null ? String(Number(apptBarberId)) : 'NULL';
 
         const apptHeader = await mutateRaw(

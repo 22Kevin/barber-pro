@@ -1423,3 +1423,12 @@
 - [x] BUG CRÍTICO: INSERT appointments em createSubscription usava colunas erradas (time→startTime, serviceIds→serviceId, removidos tenantId e source que não existem na tabela real) — corrigido com mutateRaw e colunas corretas
 - [x] FEATURE: Filtro completo de slots em plan-booking.tsx: horários passados (fuso Brasília UTC-3), horário de almoço (lunchStart/lunchEnd), horários já agendados (appointments.byDateRange) — função generateTimeSlots reescrita igual ao agenda.tsx
 - [x] UX: Mensagem de estado vazio quando não há horários disponíveis na data selecionada em plan-booking.tsx
+## Melhorias — Rodada 7
+- [ ] Corrigir fluxo de onboarding/cadastro de nova barbearia (onboarding/register.tsx)
+- [ ] Validação no formulário de novo plano: exigir ao menos 1 serviço selecionado
+- [ ] Duração dinâmica dos slots em plan-booking.tsx: usar durationMinutes do serviço selecionado para calcular endTime
+
+## Melhorias — Rodada 7
+- [x] Onboarding: corrigir fluxo de cadastro de nova barbearia (tela welcome adicionada ao Stack, campos obrigatórios do AuthBarber preenchidos, slug correto passado como parâmetro)
+- [x] Planos de assinatura: validação exige ao menos 1 serviço selecionado (com indicador visual * e hint explicativo)
+- [x] Assinaturas: duração dinâmica dos appointments usando durationMinutes do serviço selecionado (fallback 30 min)

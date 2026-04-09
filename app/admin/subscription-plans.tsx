@@ -220,8 +220,8 @@ export default function SubscriptionPlansScreen() {
       Alert.alert("Atenção", "Informe o nome do plano.");
       return;
     }
-    if (form.selectedServiceIds.length === 0 && form.selectedProductIds.length === 0) {
-      Alert.alert("Atenção", "Selecione ao menos um serviço ou produto.");
+    if (form.selectedServiceIds.length === 0) {
+      Alert.alert("Atenção", "Selecione ao menos um serviço para o plano. Serviços são obrigatórios para criar um plano de assinatura.");
       return;
     }
     const price = parseFloat(form.price.replace(",", "."));
@@ -313,8 +313,11 @@ export default function SubscriptionPlansScreen() {
           </View>
 
           {/* Serviços */}
-          <Text style={[styles.label, { color: colors.foreground }]}>Serviços disponíveis no plano</Text>
-          <Text style={[styles.hint, { color: colors.muted }]}>Selecione quais serviços fazem parte deste plano</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
+            <Text style={[styles.label, { color: colors.foreground, marginBottom: 0 }]}>Serviços disponíveis no plano</Text>
+            <Text style={{ color: colors.error, fontSize: 13, fontWeight: "700" }}>*</Text>
+          </View>
+          <Text style={[styles.hint, { color: colors.muted }]}>Obrigatório — selecione ao menos 1 serviço para o plano</Text>
           {services.length === 0 ? (
             <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 12 }}>Nenhum serviço cadastrado.</Text>
           ) : (

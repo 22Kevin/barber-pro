@@ -104,12 +104,22 @@ export default function OnboardingRegisterScreen() {
 
   const registerMutation = trpc.onboarding.register.useMutation({
     onSuccess: async (data) => {
-      await login(data.admin as any);
+      // Salvar sessão com todos os campos obrigatórios do AuthBarber
+      await login({
+        id: data.admin.id,
+        name: data.admin.name,
+        email: data.admin.email,
+        role: data.admin.role,
+        tenantId: data.admin.tenantId,
+        phone: null,
+        photoUrl: null,
+        specialties: null,
+      });
       // Navega para a tela de boas-vindas com o slug e nome da barbearia
       router.replace({
         pathname: "/onboarding/welcome" as any,
         params: {
-          slug: step1.shopName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
+          slug: data.tenantSlug,
           shopName: step1.shopName,
           plan: selectedPlan,
         },
