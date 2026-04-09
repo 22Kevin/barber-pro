@@ -13,6 +13,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
@@ -99,6 +100,7 @@ function generateTimeSlots(
 
 export default function AgendaScreen() {
   const { barber } = useBarberAuth();
+  const router = useRouter();
 
   // Zera o badge do ícone do app ao abrir a tela de agenda
   useEffect(() => {
@@ -313,13 +315,22 @@ export default function AgendaScreen() {
       <AdminHeader
         title="Agenda"
         rightElement={
-          <Pressable
-            style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]}
-            onPress={() => setShowNewModal(true)}
-          >
-            <IconSymbol name="plus" size={20} color="#0A0A0A" />
-            <Text style={styles.addBtnText}>Novo</Text>
-          </Pressable>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Pressable
+              style={({ pressed }) => [styles.addBtn, { backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#C9A84C" }, pressed && { opacity: 0.8 }]}
+              onPress={() => router.push("/admin/plan-booking" as any)}
+            >
+              <IconSymbol name="star.fill" size={14} color="#C9A84C" />
+              <Text style={[styles.addBtnText, { color: "#C9A84C" }]}>Plano</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]}
+              onPress={() => setShowNewModal(true)}
+            >
+              <IconSymbol name="plus" size={20} color="#0A0A0A" />
+              <Text style={styles.addBtnText}>Novo</Text>
+            </Pressable>
+          </View>
         }
       />
       <ScrollView showsVerticalScrollIndicator={false}>

@@ -13,6 +13,7 @@
 import type { Express, Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import * as db from "./db";
+import { sql } from "drizzle-orm";
 import { sendBookingConfirmationEmail, sendBarberNotificationEmail, sendPasswordResetEmail } from "./email";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 
@@ -164,6 +165,38 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
       .how-it-works { margin: 0 16px 8px; padding: 28px 20px; }
       .steps-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
     }
+
+    /* Planos de Assinatura */
+    .plans-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+    .plan-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px 22px; position: relative; transition: border-color 0.2s, transform 0.2s; display: flex; flex-direction: column; }
+    .plan-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+    .plan-popular { border-color: var(--primary); }
+    .plan-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; color: #0A0A0A; white-space: nowrap; }
+    .plan-name { font-size: 20px; font-weight: 900; margin-bottom: 8px; }
+    .plan-price { margin-bottom: 8px; }
+    .plan-currency { font-size: 16px; font-weight: 700; vertical-align: top; margin-top: 6px; display: inline-block; }
+    .plan-value { font-size: 42px; font-weight: 900; line-height: 1; }
+    .plan-period { font-size: 14px; color: var(--muted); }
+    .plan-desc { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+    .plan-features { list-style: none; margin-bottom: 24px; flex: 1; }
+    .plan-features li { font-size: 13px; color: var(--muted); padding: 5px 0; border-bottom: 1px solid var(--border); }
+    .plan-features li:last-child { border-bottom: none; }
+    .plan-cta-btn { width: 100%; padding: 13px; border-radius: 12px; font-size: 14px; font-weight: 800; letter-spacing: 0.5px; cursor: pointer; transition: opacity 0.2s; }
+    .plan-cta-btn:hover { opacity: 0.85; }
+    @media (max-width: 640px) { .plans-grid { grid-template-columns: 1fr; } }
+
+    /* Modal de Assinatura */
+    .plan-modal-overlay { display: none; position: fixed; inset: 0; background: #00000088; z-index: 200; align-items: flex-end; justify-content: center; }
+    .plan-modal-overlay.open { display: flex; }
+    .plan-modal { background: var(--surface); border-radius: 24px 24px 0 0; padding: 28px 24px 40px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+    .plan-modal-title { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
+    .plan-modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .plan-modal-section { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 10px; }
+    .plan-service-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; cursor: pointer; }
+    .plan-service-item.selected { border-color: var(--primary); }
+    .plan-service-check { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .plan-service-item.selected .plan-service-check { background: var(--primary); border-color: var(--primary); color: #0A0A0A; }
+    .plan-modal-confirm { width: 100%; padding: 14px; border-radius: 14px; font-size: 15px; font-weight: 800; margin-top: 20px; cursor: pointer; }
 
     /* Footer */
     .footer { text-align: center; padding: 32px 24px; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border); margin-top: 32px; }
@@ -352,6 +385,132 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   `;
 
   const agendamentoUrl = `/pub/${slug}/agendar`;
+
+  // ── Seção: Planos de Assinatura ────────────────────────────────────────────
+  let subscriptionPlansHtml = "";
+  let planServicesData: Record<number, any[]> = {};
+  try {
+    const dbConn = await db.getDb();
+    if (dbConn) {
+      const tenantIdVal = tenant.id;
+      const plansResult = await dbConn.execute(
+        sql`SELECT * FROM subscription_plans WHERE tenantId = ${tenantIdVal} AND isActive = 1 ORDER BY price ASC`
+      ) as any;
+      const plans = Array.isArray(plansResult) ? plansResult[0] : plansResult?.rows ?? [];
+      if (plans && plans.length > 0) {
+        // Buscar serviços de cada plano
+        for (const plan of plans) {
+          const planIdVal = plan.id;
+          const svcsResult = await dbConn.execute(
+            sql`SELECT sps.serviceId, s.name as serviceName, s.price as servicePrice
+             FROM subscription_plan_services sps
+             JOIN services s ON s.id = sps.serviceId
+             WHERE sps.planId = ${planIdVal}`
+          ) as any;
+          const svcs = Array.isArray(svcsResult) ? svcsResult[0] : svcsResult?.rows ?? [];
+          planServicesData[plan.id] = svcs ?? [];
+        }
+        const planCards = (plans as any[]).map((plan: any, idx: number) => {
+          const isPopular = idx === Math.floor(plans.length / 2) && plans.length > 1;
+          const svcs = planServicesData[plan.id] ?? [];
+          const svcList = svcs.map((s: any) => `<li>✓ ${escapeHtml(s.serviceName)}</li>`).join("");
+          const servicesJson = escapeHtml(JSON.stringify(svcs.map((s: any) => ({ id: s.serviceId, name: s.serviceName, price: s.servicePrice }))));
+          return `
+            <div class="plan-card${isPopular ? " plan-popular" : ""}">
+              ${isPopular ? `<div class="plan-badge" style="background:${primaryColor}">MAIS POPULAR</div>` : ""}
+              <div class="plan-name">${escapeHtml(plan.name)}</div>
+              <div class="plan-price"><span class="plan-currency">R$</span> <span class="plan-value">${Number(plan.price).toFixed(2).replace(".", ",")}</span><span class="plan-period">/mês</span></div>
+              ${plan.description ? `<div class="plan-desc">${escapeHtml(plan.description)}</div>` : ""}
+              <ul class="plan-features">
+                <li>✓ ${plan.recurrences} agendamento${plan.recurrences !== 1 ? "s" : ""} por mês</li>
+                ${svcList}
+                <li>✓ Cancele quando quiser</li>
+              </ul>
+              <button class="plan-cta-btn"
+                style="background:${isPopular ? primaryColor : "transparent"};color:${isPopular ? "#0A0A0A" : primaryColor};border:2px solid ${primaryColor}"
+                onclick="openPlanModal(${plan.id}, '${escapeHtml(plan.name)}', ${plan.price}, ${plan.maxServices}, ${plan.maxProducts}, ${plan.recurrences}, '${servicesJson}')">
+                ASSINAR PLANO
+              </button>
+            </div>
+          `;
+        }).join("");
+        subscriptionPlansHtml = `
+          <div class="section">
+            <div class="section-title">Planos e Assinaturas</div>
+            <p style="color:var(--muted);font-size:14px;margin-bottom:24px">Assine um plano e garanta seus horários todo mês.</p>
+            <div class="plans-grid">${planCards}</div>
+          </div>
+          <!-- Modal de Assinatura -->
+          <div class="plan-modal-overlay" id="planModalOverlay" onclick="if(event.target===this)closePlanModal()">
+            <div class="plan-modal">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <div>
+                  <div class="plan-modal-title" id="planModalTitle"></div>
+                  <div class="plan-modal-sub" id="planModalSub"></div>
+                </div>
+                <button onclick="closePlanModal()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">×</button>
+              </div>
+              <div id="planModalServices"></div>
+              <button class="plan-modal-confirm" id="planModalConfirm"
+                style="background:${primaryColor};color:#0A0A0A;border:none"
+                onclick="confirmPlanSubscription()">
+                Continuar para Agendamento
+              </button>
+            </div>
+          </div>
+          <script>
+            var _planData = {};
+            function openPlanModal(planId, name, price, maxSvc, maxPrd, recurrences, servicesJson) {
+              _planData = { planId, name, price, maxSvc, maxPrd, recurrences, selectedServices: [] };
+              try { _planData.services = JSON.parse(servicesJson.replace(/&quot;/g,'"').replace(/&#39;/g,"'")); } catch(e) { _planData.services = []; }
+              document.getElementById('planModalTitle').textContent = name;
+              document.getElementById('planModalSub').textContent = 'R$ ' + price.toFixed(2).replace('.',',') + '/mês · ' + recurrences + ' agendamento' + (recurrences !== 1 ? 's' : '') + ' por mês';
+              var svcHtml = '';
+              if (_planData.services.length > 0) {
+                svcHtml += '<div class="plan-modal-section">Escolha ' + (maxSvc >= 999 ? 'todos os' : maxSvc) + ' serviço' + (maxSvc !== 1 ? 's' : '') + ' do plano:</div>';
+                _planData.services.forEach(function(s) {
+                  svcHtml += '<div class="plan-service-item" id="svc_' + s.id + '" onclick="togglePlanService(' + s.id + ')">' +
+                    '<div class="plan-service-check" id="svcCheck_' + s.id + '"></div>' +
+                    '<div style="flex:1"><div style="font-size:14px;font-weight:600">' + s.name + '</div>' +
+                    '<div style="font-size:12px;color:var(--muted)">R$ ' + Number(s.price).toFixed(2).replace('.',',') + '</div></div></div>';
+                });
+              }
+              document.getElementById('planModalServices').innerHTML = svcHtml;
+              document.getElementById('planModalOverlay').classList.add('open');
+            }
+            function closePlanModal() {
+              document.getElementById('planModalOverlay').classList.remove('open');
+            }
+            function togglePlanService(id) {
+              var idx = _planData.selectedServices.indexOf(id);
+              if (idx >= 0) {
+                _planData.selectedServices.splice(idx, 1);
+                document.getElementById('svc_' + id).classList.remove('selected');
+                document.getElementById('svcCheck_' + id).textContent = '';
+              } else {
+                if (_planData.maxSvc < 999 && _planData.selectedServices.length >= _planData.maxSvc) {
+                  alert('Você pode escolher no máximo ' + _planData.maxSvc + ' serviço' + (_planData.maxSvc !== 1 ? 's' : '') + '.');
+                  return;
+                }
+                _planData.selectedServices.push(id);
+                document.getElementById('svc_' + id).classList.add('selected');
+                document.getElementById('svcCheck_' + id).textContent = '✓';
+              }
+            }
+            function confirmPlanSubscription() {
+              if (_planData.services.length > 0 && _planData.selectedServices.length === 0) {
+                alert('Selecione pelo menos um serviço para continuar.');
+                return;
+              }
+              var url = '/pub/${slug}/agendar?planId=' + _planData.planId + '&selectedServices=' + _planData.selectedServices.join(',');
+              window.location.href = url;
+            }
+          <\/script>
+        `;
+      }
+    }
+  } catch (e) { /* planos opcionais */ }
+
   // Seção Como Funciona
   const howItWorksHtml = `
     <div class="section how-it-works">
@@ -413,6 +572,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       <div class="services-grid">${servicesHtml}</div>
     </div>
 
+    ${subscriptionPlansHtml}
     ${galleryHtml}
     ${teamHtml}
     ${reviewsHtml}
@@ -805,11 +965,14 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
           </div>
           <div style="margin-bottom:${!isLogin ? "16" : "24"}px">
             <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">SENHA</label>
-            <input type="password" id="password-input" required placeholder="${isLogin ? "Sua senha" : "Mínimo 6 caracteres"}" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+            <div style="position:relative">
+              <input type="password" id="password-input" required placeholder="${isLogin ? "Sua senha" : "Mínimo 6 caracteres"}" style="width:100%;padding:12px 44px 12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
+              <button type="button" id="toggle-password" onclick="(function(){var i=document.getElementById('password-input');var b=document.getElementById('toggle-password');if(i.type==='password'){i.type='text';b.innerHTML='&#128065;&#65038;'}else{i.type='password';b.innerHTML='&#128065;'}})()" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:4px;line-height:1">&#128065;</button>
+            </div>
           </div>
           ${!isLogin ? `<div style="margin-bottom:16px">
             <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">TELEFONE</label>
-            <input type="tel" id="phone-input" required placeholder="(11) 99999-9999" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+            <input type="tel" id="phone-input" required placeholder="(11) 99999-9999" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" oninput="(function(e){var d=e.target.value.replace(/\\D/g,'').slice(0,11);if(d.length<=2)e.target.value=d.length?'('+d:'';else if(d.length<=6)e.target.value='('+d.slice(0,2)+') '+d.slice(2);else if(d.length<=10)e.target.value='('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);else e.target.value='('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7)})(event)" />
           </div>` : ""}
           ${!isLogin ? `<div style="margin-bottom:24px">
             <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">DATA DE NASCIMENTO <span style="color:var(--muted);font-weight:400">(opcional — usamos para enviar um cupom no seu aniversário 🎂)</span></label>
@@ -1545,11 +1708,17 @@ export function registerPublicRoutes(app: Express): void {
                 <input type="hidden" name="step" value="newPassword" />
                 <div style="margin-bottom:16px">
                   <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">NOVA SENHA</label>
-                  <input type="password" name="newPassword" required minlength="6" placeholder="Mínimo 6 caracteres" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+                  <div style="position:relative">
+                    <input type="password" id="new-password-input" name="newPassword" required minlength="6" placeholder="Mínimo 6 caracteres" style="width:100%;padding:12px 44px 12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
+                    <button type="button" onclick="(function(){var i=document.getElementById('new-password-input');var b=this;if(i.type==='password'){i.type='text';b.innerHTML='&#128065;&#65038;'}else{i.type='password';b.innerHTML='&#128065;'}}).call(this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:4px;line-height:1">&#128065;</button>
+                  </div>
                 </div>
                 <div style="margin-bottom:20px">
                   <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">CONFIRMAR SENHA</label>
-                  <input type="password" name="confirmPassword" required minlength="6" placeholder="Repita a senha" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+                  <div style="position:relative">
+                    <input type="password" id="confirm-password-input" name="confirmPassword" required minlength="6" placeholder="Repita a senha" style="width:100%;padding:12px 44px 12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
+                    <button type="button" onclick="(function(){var i=document.getElementById('confirm-password-input');var b=this;if(i.type==='password'){i.type='text';b.innerHTML='&#128065;&#65038;'}else{i.type='password';b.innerHTML='&#128065;'}}).call(this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:4px;line-height:1">&#128065;</button>
+                  </div>
                 </div>
                 <button type="submit" style="width:100%;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:800;padding:14px;border-radius:12px;border:none;cursor:pointer">REDEFINIR SENHA</button>
               `}

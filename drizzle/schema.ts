@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   decimal,
   int,
   mysqlEnum,
@@ -499,3 +500,73 @@ export const orbitLeads = mysqlTable("orbit_leads", {
 
 export type OrbitLead = typeof orbitLeads.$inferSelect;
 export type InsertOrbitLead = typeof orbitLeads.$inferInsert;
+
+// ─── Subscription Plans (Planos de Assinatura) ─────────────────────────────────────────────
+export const subscriptionPlans = mysqlTable("subscription_plans", {
+  id: int("id").primaryKey().autoincrement(),
+  tenantId: int("tenantId").notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  recurrences: int("recurrences").notNull().default(4),
+  maxServices: int("maxServices").notNull().default(1),
+  maxProducts: int("maxProducts").notNull().default(0),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  suggestedPrice: decimal("suggestedPrice", { precision: 10, scale: 2 }),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = typeof subscriptionPlans.$inferInsert;
+
+// ─── Subscription Plan Services (Serviços disponíveis no plano) ──────────────────
+export const subscriptionPlanServices = mysqlTable("subscription_plan_services", {
+  id: int("id").primaryKey().autoincrement(),
+  planId: int("planId").notNull(),
+  serviceId: int("serviceId").notNull(),
+  tenantId: int("tenantId").notNull(),
+});
+export type SubscriptionPlanService = typeof subscriptionPlanServices.$inferSelect;
+
+// ─── Subscription Plan Products (Produtos disponíveis no plano) ──────────────────
+export const subscriptionPlanProducts = mysqlTable("subscription_plan_products", {
+  id: int("id").primaryKey().autoincrement(),
+  planId: int("planId").notNull(),
+  productId: int("productId").notNull(),
+  tenantId: int("tenantId").notNull(),
+});
+export type SubscriptionPlanProduct = typeof subscriptionPlanProducts.$inferSelect;
+
+// ─── Client Subscriptions (Assinaturas ativas de clientes) ───────────────────────
+export const clientSubscriptions = mysqlTable("client_subscriptions", {
+  id: int("id").primaryKey().autoincrement(),
+  tenantId: int("tenantId").notNull(),
+  planId: int("planId").notNull(),
+  clientId: int("clientId").notNull(),
+  barberId: int("barberId"),
+  selectedServiceIds: text("selectedServiceIds"),
+  selectedProductIds: text("selectedProductIds"),
+  status: mysqlEnum("status", ["active", "cancelled", "expired"]).notNull().default("active"),
+  paymentMethod: mysqlEnum("paymentMethod", ["credit_card", "pix", "cash", "debit_card"]).notNull().default("cash"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  cycleStart: date("cycleStart").notNull(),
+  cycleEnd: date("cycleEnd").notNull(),
+  usedRecurrences: int("usedRecurrences").notNull().default(0),
+  cancelledAt: timestamp("cancelledAt"),
+  cancelReason: text("cancelReason"),
+  autoRenew: boolean("autoRenew").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+export type ClientSubscription = typeof clientSubscriptions.$inferSelect;
+export type InsertClientSubscription = typeof clientSubscriptions.$inferInsert;
+
+// ─── Subscription Appointments (Agendamentos vinculados a uma assinatura) ────────
+export const subscriptionAppointments = mysqlTable("subscription_appointments", {
+  id: int("id").primaryKey().autoincrement(),
+  subscriptionId: int("subscriptionId").notNull(),
+  appointmentId: int("appointmentId").notNull(),
+  tenantId: int("tenantId").notNull(),
+  recurrenceIndex: int("recurrenceIndex").notNull().default(1),
+});
+export type SubscriptionAppointment = typeof subscriptionAppointments.$inferSelect;

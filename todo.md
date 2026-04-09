@@ -1364,3 +1364,31 @@
 ### App mobile — foco no admin
 - [x] Ocultar botão "Área do Cliente" da tela inicial do app
 - [x] App fica dedicado à administração (admin/login como ponto de entrada)
+
+## Correções e Melhorias — Rodada 2
+
+### Máscaras de campos
+- [x] Máscara de telefone em todos os campos do app (cadastro, perfil, barbearia)
+- [x] Máscara de CNPJ em todos os campos do app
+- [x] Máscara de telefone e CNPJ na página web pública (cadastro, formulários)
+
+### Mostrar/Ocultar Senha
+- [x] Botão olho em todos os campos de senha do app (login, cadastro, troca de senha)
+- [x] Botão olho em todos os campos de senha da web pública (login, cadastro, recuperação)
+
+### Planos de Assinatura — Redesenho Completo
+- [x] Schema: tabela subscription_plans (id, tenantId, name, appointmentsPerMonth, maxServices, maxProducts, price, active)
+- [x] Schema: tabela subscription_plan_services (planId, serviceId)
+- [x] Schema: tabela subscription_plan_products (planId, productId)
+- [x] Schema: tabela client_subscriptions (id, tenantId, clientId, planId, status, paymentMethod, startDate, nextBillingDate, selectedServices, selectedProducts, appointments[])
+- [x] Backend: CRUD de planos (criar, editar, listar, arquivar) — subscription-plan-router.ts
+- [x] Backend: rota para calcular preço sugerido (soma × qtd agendamentos × 0.85)
+- [x] Backend: criar assinatura de cliente com agendamentos em lote
+- [x] Backend: listar assinaturas ativas/encerradas por tenant
+- [x] App admin: tela de criação/edição de Plano (nome, serviços+qtd, produtos+qtd, agendamentos/mês, preço sugerido, preço final) — subscription-plans.tsx
+- [x] App admin: lista de planos na aba Assinaturas com cards visuais
+- [x] App admin: fluxo de assinatura de cliente na Agenda (selecionar cliente → plano → serviços/produtos → horários em lote → pagamento) — plan-booking.tsx
+- [x] Web pública: seção "Planos e Preços" na landing page com cards estilo pricing
+- [x] Web pública: fluxo de assinatura do cliente (selecionar plano → escolher serviços/produtos → definir horários → pagamento)
+- [x] Web pública: aviso de renovação automática para cartão de crédito
+- [x] Web pública: lembrete de vencimento para pix/dinheiro/débito

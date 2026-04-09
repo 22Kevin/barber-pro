@@ -151,6 +151,20 @@ export default function AdminTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="subscription-plans"
+        options={{
+          title: "Planos de Assinatura",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="plan-booking"
+        options={{
+          title: "Assinar Plano",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
         name="promotion-report"
         options={{
           title: "Conversão de Promoções",

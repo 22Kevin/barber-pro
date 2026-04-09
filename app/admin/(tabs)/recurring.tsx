@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -645,6 +646,7 @@ export default function RecurringScreen() {
   const colors = useColors();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
+  const router = useRouter();
   const utils = trpc.useUtils();
 
   const [showForm, setShowForm] = useState(false);
@@ -796,13 +798,22 @@ export default function RecurringScreen() {
       <AdminHeader
         title="Assinaturas"
         rightElement={
-          <Pressable
-            style={({ pressed }) => [styles.newBtn, { backgroundColor: "#C9A84C", opacity: pressed ? 0.8 : 1 }]}
-            onPress={() => { setForm(EMPTY_FORM); setShowForm(true); }}
-          >
-            <IconSymbol name="plus" size={16} color="#0A0A0A" />
-            <Text style={styles.newBtnText}>Nova</Text>
-          </Pressable>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <Pressable
+              style={({ pressed }) => [styles.newBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: "#C9A84C", opacity: pressed ? 0.8 : 1 }]}
+              onPress={() => router.push("/admin/subscription-plans" as any)}
+            >
+              <IconSymbol name="star.fill" size={14} color="#C9A84C" />
+              <Text style={[styles.newBtnText, { color: "#C9A84C" }]}>Planos</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.newBtn, { backgroundColor: "#C9A84C", opacity: pressed ? 0.8 : 1 }]}
+              onPress={() => { setForm(EMPTY_FORM); setShowForm(true); }}
+            >
+              <IconSymbol name="plus" size={16} color="#0A0A0A" />
+              <Text style={styles.newBtnText}>Nova</Text>
+            </Pressable>
+          </View>
         }
       />
 

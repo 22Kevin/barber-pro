@@ -18,7 +18,7 @@ import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
-import {} from "react-native-safe-area-context";
+import MaskInput, { Masks } from "react-native-mask-input";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 
 const ROLES: Record<string, string> = {
@@ -27,14 +27,7 @@ const ROLES: Record<string, string> = {
   receptionist: "Recepcionista",
 };
 
-/** Aplica máscara de telefone: (99) 99999-9999 ou (99) 9999-9999 */
-function applyPhoneMask(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return digits.length ? `(${digits}` : "";
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
+
 
 export default function MyProfileScreen() {
   const tabBarHeight = useTabBarHeight();
@@ -42,7 +35,9 @@ export default function MyProfileScreen() {
   const utils = trpc.useUtils();
 
   const [name, setName] = useState(barber?.name ?? "");
-  const [phone, setPhone] = useState(applyPhoneMask(barber?.phone ?? ""));
+  const [phone, setPhone] = useState(barber?.phone ?? "");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(barber?.photoUrl ?? null);
   const [uploading, setUploading] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -192,14 +187,14 @@ export default function MyProfileScreen() {
             />
 
             <Text style={styles.fieldLabel}>Telefone</Text>
-            <TextInput
+            <MaskInput
+              mask={Masks.BRL_PHONE}
               style={styles.input}
               value={phone}
-              onChangeText={(t) => setPhone(applyPhoneMask(t))}
+              onChangeText={(masked) => setPhone(masked)}
               placeholder="(11) 99999-9999"
               placeholderTextColor="#555"
-              keyboardType="phone-pad"
-              maxLength={15}
+              keyboardType="numeric"
             />
 
             {barber?.email ? (
@@ -228,11 +223,21 @@ export default function MyProfileScreen() {
               <View style={{ marginTop: 16, gap: 14 }}>
                 <View>
                   <Text style={styles.fieldLabel}>Nova Senha</Text>
-                  <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} placeholder="Mínimo 6 caracteres" placeholderTextColor="#555" secureTextEntry autoCapitalize="none" />
+                  <View style={[styles.input, { flexDirection: "row", alignItems: "center", paddingVertical: 0 }]}>
+                    <TextInput style={{ flex: 1, color: "#F5F5F0", fontSize: 15, paddingVertical: 12 }} value={newPassword} onChangeText={setNewPassword} placeholder="Mínimo 6 caracteres" placeholderTextColor="#555" secureTextEntry={!showNewPassword} autoCapitalize="none" />
+                    <Pressable onPress={() => setShowNewPassword((v) => !v)} hitSlop={8} style={{ paddingLeft: 8 }}>
+                      <IconSymbol name={showNewPassword ? "eye.slash.fill" : "eye.fill"} size={18} color="#888" />
+                    </Pressable>
+                  </View>
                 </View>
                 <View>
                   <Text style={styles.fieldLabel}>Confirmar Nova Senha</Text>
-                  <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Repita a nova senha" placeholderTextColor="#555" secureTextEntry autoCapitalize="none" />
+                  <View style={[styles.input, { flexDirection: "row", alignItems: "center", paddingVertical: 0 }]}>
+                    <TextInput style={{ flex: 1, color: "#F5F5F0", fontSize: 15, paddingVertical: 12 }} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Repita a nova senha" placeholderTextColor="#555" secureTextEntry={!showConfirmPassword} autoCapitalize="none" />
+                    <Pressable onPress={() => setShowConfirmPassword((v) => !v)} hitSlop={8} style={{ paddingLeft: 8 }}>
+                      <IconSymbol name={showConfirmPassword ? "eye.slash.fill" : "eye.fill"} size={18} color="#888" />
+                    </Pressable>
+                  </View>
                 </View>
               </View>
             )}

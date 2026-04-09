@@ -887,15 +887,11 @@ export default function BarbeariaScreen() {
                 <IconSymbol name="info.circle.fill" size={16} color="#2196F3" />
                 <Text style={styles.infoText}>Acesse o Painel do Mercado Pago → Configurações → Credenciais para obter suas chaves.</Text>
               </View>
-              {[
-                { label: "Access Token", value: mpAccessToken, setter: setMpAccessToken, placeholder: "APP_USR-...", secure: true },
-                { label: "Public Key", value: mpPublicKey, setter: setMpPublicKey, placeholder: "APP_USR-...", secure: false },
-              ].map(f => (
-                <View key={f.label} style={{ marginBottom: 14 }}>
-                  <Text style={styles.fieldLabel}>{f.label}</Text>
-                  <TextInput style={styles.input} value={f.value} onChangeText={f.setter} placeholder={f.placeholder} placeholderTextColor="#555" secureTextEntry={f.secure} autoCapitalize="none" autoCorrect={false} />
-                </View>
-              ))}
+              <BarberPasswordField label="Access Token" value={mpAccessToken} onChangeText={setMpAccessToken} placeholder="APP_USR-..." />
+              <View style={{ marginBottom: 14 }}>
+                <Text style={styles.fieldLabel}>Public Key</Text>
+                <TextInput style={styles.input} value={mpPublicKey} onChangeText={setMpPublicKey} placeholder="APP_USR-..." placeholderTextColor="#555" autoCapitalize="none" autoCorrect={false} />
+              </View>
             </View>
 
             <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleSaveIntegracoes} disabled={updateSettingsMutation.isPending}>
@@ -928,14 +924,20 @@ export default function BarbeariaScreen() {
                   { label: "Nome *", value: bName, setter: setBName, placeholder: "João Barbeiro", keyboard: "default" as const },
                   { label: "E-mail", value: bEmail, setter: setBEmail, placeholder: "joao@email.com", keyboard: "email-address" as const },
                   { label: "Telefone", value: bPhone, setter: handleBPhoneChange, placeholder: "(11) 99999-9999", keyboard: "phone-pad" as const },
-                  { label: editingBarber ? "Nova Senha (deixe vazio para manter)" : "Senha *", value: bPassword, setter: setBPassword, placeholder: "Mínimo 6 caracteres", keyboard: "default" as const },
                   { label: "Especialidades", value: bSpecialties, setter: setBSpecialties, placeholder: "Corte, Barba, Coloração...", keyboard: "default" as const },
                 ].map(f => (
                   <View key={f.label} style={{ marginBottom: 14 }}>
                     <Text style={styles.fieldLabel}>{f.label}</Text>
-                    <TextInput style={styles.input} value={f.value} onChangeText={f.setter} placeholder={f.placeholder} placeholderTextColor="#555" keyboardType={f.keyboard} secureTextEntry={f.label.includes("Senha")} autoCapitalize={f.keyboard === "email-address" ? "none" : "words"} autoCorrect={false} />
+                    <TextInput style={styles.input} value={f.value} onChangeText={f.setter} placeholder={f.placeholder} placeholderTextColor="#555" keyboardType={f.keyboard} autoCapitalize={f.keyboard === "email-address" ? "none" : "words"} autoCorrect={false} />
                   </View>
                 ))}
+                {/* Campo de senha com mostrar/ocultar */}
+                <BarberPasswordField
+                  label={editingBarber ? "Nova Senha (deixe vazio para manter)" : "Senha *"}
+                  value={bPassword}
+                  onChangeText={setBPassword}
+                  placeholder="Mínimo 6 caracteres"
+                />
                 <Text style={styles.fieldLabel}>Perfil de Acesso</Text>
                 <View style={styles.roleRow}>
                   {ROLES.map(r => (
@@ -1017,3 +1019,26 @@ const styles = StyleSheet.create({
   suggestionItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#2A2A2A" },
   suggestionText: { flex: 1, fontSize: 13, color: "#F5F5F0", lineHeight: 18 },
 });
+
+function BarberPasswordField({ label, value, onChangeText, placeholder }: { label: string; value: string; onChangeText: (v: string) => void; placeholder?: string }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <View style={{ marginBottom: 14 }}>
+      <Text style={{ fontSize: 13, color: "#888880", marginBottom: 6, fontWeight: "500" }}>{label}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14 }}>
+        <TextInput
+          style={{ flex: 1, color: "#F5F5F0", fontSize: 15, paddingVertical: 12 }}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor="#555"
+          secureTextEntry={!visible}
+          autoCorrect={false}
+        />
+        <Pressable onPress={() => setVisible((v) => !v)} hitSlop={8} style={{ paddingLeft: 8 }}>
+          <IconSymbol name={visible ? "eye.slash.fill" : "eye.fill"} size={18} color="#888" />
+        </Pressable>
+      </View>
+    </View>
+  );
+}

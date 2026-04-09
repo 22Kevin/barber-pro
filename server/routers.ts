@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { COOKIE_NAME } from "../shared/const.js";
+import { subscriptionPlanRouter } from "./subscription-plan-router";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { TRPCError } from "@trpc/server";
@@ -1604,5 +1605,7 @@ export const appRouter = router({
         return db.getOrbitDailyChart(input.tenantId, input.days ?? 30);
       }),
   }),
+
+  subscriptionPlans: subscriptionPlanRouter,
 });
 export type AppRouter = typeof appRouter;

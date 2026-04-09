@@ -18,6 +18,7 @@ import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { getExpoPushToken } from "@/lib/use-notifications";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 
 export default function AdminLoginScreen() {
   const { login } = useBarberAuth();
@@ -108,7 +109,7 @@ export default function AdminLoginScreen() {
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeBtn}
                 >
-                  <Text style={styles.eyeText}>{showPassword ? "🙈" : "👁️"}</Text>
+                  <IconSymbol name={showPassword ? "eye.slash.fill" : "eye.fill"} size={20} color={colors.muted} />
                 </Pressable>
               </View>
             </View>

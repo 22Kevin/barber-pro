@@ -13,6 +13,7 @@ import {
   Animated,
   Image,
 } from "react-native";
+import MaskInput, { Masks } from "react-native-mask-input";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
@@ -295,8 +296,34 @@ export default function OnboardingRegisterScreen() {
               <Text style={styles.cardDesc}>Informações básicas que aparecerão para seus clientes.</Text>
 
               <Field label="Nome da Barbearia *" value={step1.shopName} onChangeText={(v) => setStep1((p) => ({ ...p, shopName: v }))} placeholder="Ex: Barbearia do João" />
-              <Field label="Telefone / WhatsApp *" value={step1.phone} onChangeText={(v) => setStep1((p) => ({ ...p, phone: v }))} placeholder="(11) 99999-9999" keyboard="phone-pad" />
-              <Field label="CNPJ" value={step1.cnpj} onChangeText={(v) => setStep1((p) => ({ ...p, cnpj: v }))} placeholder="00.000.000/0001-00 (opcional)" />
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Telefone / WhatsApp *</Text>
+                <MaskInput
+                  mask={Masks.BRL_PHONE}
+                  value={step1.phone}
+                  onChangeText={(masked) => setStep1((p) => ({ ...p, phone: masked }))}
+                  placeholder="(11) 99999-9999"
+                  placeholderTextColor="#555"
+                  keyboardType="numeric"
+                  style={styles.input}
+                  autoCorrect={false}
+                  returnKeyType="next"
+                />
+              </View>
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>CNPJ</Text>
+                <MaskInput
+                  mask={Masks.BRL_CNPJ}
+                  value={step1.cnpj}
+                  onChangeText={(masked) => setStep1((p) => ({ ...p, cnpj: masked }))}
+                  placeholder="00.000.000/0001-00 (opcional)"
+                  placeholderTextColor="#555"
+                  keyboardType="numeric"
+                  style={styles.input}
+                  autoCorrect={false}
+                  returnKeyType="next"
+                />
+              </View>
               <Field label="Instagram" value={step1.instagram} onChangeText={(v) => setStep1((p) => ({ ...p, instagram: v }))} placeholder="@barbearia (opcional)" />
 
               <Pressable
@@ -440,8 +467,8 @@ export default function OnboardingRegisterScreen() {
 
               <Field label="Seu nome *" value={step4.adminName} onChangeText={(v) => setStep4((p) => ({ ...p, adminName: v }))} placeholder="João da Silva" />
               <Field label="E-mail *" value={step4.adminEmail} onChangeText={(v) => setStep4((p) => ({ ...p, adminEmail: v }))} placeholder="joao@barbearia.com" keyboard="email-address" autoCapitalize="none" />
-              <Field label="Senha *" value={step4.adminPassword} onChangeText={(v) => setStep4((p) => ({ ...p, adminPassword: v }))} placeholder="Mínimo 6 caracteres" secure />
-              <Field label="Confirmar senha *" value={step4.adminConfirm} onChangeText={(v) => setStep4((p) => ({ ...p, adminConfirm: v }))} placeholder="Repita a senha" secure />
+              <PasswordField label="Senha *" value={step4.adminPassword} onChangeText={(v) => setStep4((p) => ({ ...p, adminPassword: v }))} placeholder="Mínimo 6 caracteres" />
+              <PasswordField label="Confirmar senha *" value={step4.adminConfirm} onChangeText={(v) => setStep4((p) => ({ ...p, adminConfirm: v }))} placeholder="Repita a senha" />
 
               <View style={styles.termsBox}>
                 <Text style={styles.termsText}>
@@ -476,6 +503,30 @@ export default function OnboardingRegisterScreen() {
 }
 
 // ─── Campo de Formulário ──────────────────────────────────────────────────────
+
+function PasswordField({ label, value, onChangeText, placeholder }: { label: string; value: string; onChangeText: (v: string) => void; placeholder?: string }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <View style={[styles.input, { flexDirection: "row", alignItems: "center", paddingVertical: 0 }]}>
+        <TextInput
+          style={{ flex: 1, color: "#ECEDEE", fontSize: 15, paddingVertical: 12 }}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor="#555"
+          secureTextEntry={!visible}
+          autoCorrect={false}
+          returnKeyType="next"
+        />
+        <Pressable onPress={() => setVisible((v) => !v)} hitSlop={8} style={{ paddingHorizontal: 8 }}>
+          <Text style={{ color: "#888", fontSize: 12 }}>{visible ? "OCULTAR" : "MOSTRAR"}</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
 
 function Field({
   label,
