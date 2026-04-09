@@ -93,9 +93,10 @@ export default function PlanBookingScreen() {
   const [tempDate, setTempDate] = useState<string | null>(null);
 
   // Queries
+  const tenantIdParam = tenantId > 0 ? tenantId : undefined;
   const plansQuery = trpc.subscriptionPlans.listPlans.useQuery({ tenantId });
-  const clientsQuery = trpc.clients.list.useQuery();
-  const barbersQuery = trpc.barbers.list.useQuery();
+  const clientsQuery = trpc.clients.list.useQuery({ tenantId: tenantIdParam });
+  const barbersQuery = trpc.barbers.list.useQuery({ tenantId: tenantIdParam });
   const utils = trpc.useUtils();
 
   const planDetail = useMemo(() => {

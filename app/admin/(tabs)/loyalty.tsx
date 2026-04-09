@@ -118,7 +118,8 @@ export default function LoyaltyScreen() {
       pointsPerService: parseInt(pointsPerService) || 0,
       pointsPerReal: pointsPerReal || "1",
       pointsExpireMonths: parseInt(pointsExpireMonths) || 0,
-    });
+      tenantId,
+    } as any);
   }
 
   function handleCreateReward() {
@@ -131,7 +132,8 @@ export default function LoyaltyScreen() {
       pointsRequired: pts,
       rewardType: rewardType as any,
       rewardValue: rewardValue || undefined,
-    });
+      tenantId,
+    } as any);
   }
 
   function handleCreateCoupon() {
@@ -146,7 +148,8 @@ export default function LoyaltyScreen() {
       minOrderValue: couponMinOrder ? parseFloat(couponMinOrder.replace(",", ".")).toFixed(2) : undefined,
       maxUses: couponMaxUses ? parseInt(couponMaxUses) : undefined,
       validUntil: couponValidUntil || undefined,
-    });
+      tenantId,
+    } as any);
   }
 
   const rewards = rewardsQuery.data ?? [];

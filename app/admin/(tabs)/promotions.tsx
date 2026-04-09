@@ -93,7 +93,8 @@ export default function PromotionsScreen() {
               targetAudience: audience,
               specificClientId: audience === "specific_client" ? selectedClientId : null,
               createdBy: barber?.id ?? 1,
-            }),
+              tenantId,
+            } as any),
         },
       ]
     );

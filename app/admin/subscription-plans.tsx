@@ -70,11 +70,11 @@ export default function SubscriptionPlansScreen() {
     { enabled: tenantId > 0 }
   );
   const servicesQuery = trpc.services.list.useQuery(
-    { tenantId } as any,
+    { activeOnly: false, tenantId },
     { enabled: tenantId > 0 }
   );
   const productsQuery = trpc.products.list.useQuery(
-    { tenantId } as any,
+    { activeOnly: false, tenantId },
     { enabled: tenantId > 0 }
   );
   const statsQuery = trpc.subscriptionPlans.stats.useQuery(

@@ -95,7 +95,7 @@ export default function ServicesScreen() {
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate({ ...data, tenantId } as any);
     }
   }
 

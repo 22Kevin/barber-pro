@@ -140,7 +140,7 @@ export default function ClientsScreen() {
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data });
     } else {
-      createMutation.mutate({ ...data, isActive: true } as any);
+      createMutation.mutate({ ...data, isActive: true, tenantId } as any);
     }
   }
 

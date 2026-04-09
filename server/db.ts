@@ -713,7 +713,7 @@ export async function getCouponByCode(code: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function createCoupon(data: { code: string; description?: string; discountType: "percent" | "fixed"; discountValue: string; minOrderValue?: string; maxUses?: number; validFrom?: string; validUntil?: string }) {
+export async function createCoupon(data: { code: string; description?: string; discountType: "percent" | "fixed"; discountValue: string; minOrderValue?: string; maxUses?: number; validFrom?: string; validUntil?: string; tenantId?: number | null }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(coupons).values({ ...data, code: data.code.toUpperCase() });
@@ -738,10 +738,10 @@ export async function getLoyaltyConfig(tenantId?: number | null) {
   return result.length > 0 ? result[0] : null;
 }
 
-export async function upsertLoyaltyConfig(data: { isActive: boolean; pointsPerService: number; pointsPerReal: string; pointsExpireMonths: number }) {
+export async function upsertLoyaltyConfig(data: { isActive: boolean; pointsPerService: number; pointsPerReal: string; pointsExpireMonths: number; tenantId?: number | null }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const existing = await getLoyaltyConfig();
+  const existing = await getLoyaltyConfig(data.tenantId);
   if (existing) {
     await db.update(loyaltyConfig).set(data).where(eq(loyaltyConfig.id, existing.id));
   } else {
@@ -758,7 +758,7 @@ export async function getLoyaltyRewards(tenantId?: number | null) {
   return db.select().from(loyaltyRewards).where(eq(loyaltyRewards.isActive, true)).orderBy(loyaltyRewards.pointsRequired);
 }
 
-export async function createLoyaltyReward(data: { name: string; description?: string; pointsRequired: number; rewardType: "free_service" | "discount_percent" | "discount_fixed" | "free_product"; rewardValue?: string }) {
+export async function createLoyaltyReward(data: { name: string; description?: string; pointsRequired: number; rewardType: "free_service" | "discount_percent" | "discount_fixed" | "free_product"; rewardValue?: string; tenantId?: number | null }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(loyaltyRewards).values(data);
@@ -1079,13 +1079,15 @@ export async function listPromotions(tenantId?: number | null) {
 
 export async function getPromotionRecipientCount(
   targetAudience: "all" | "inactive_30" | "inactive_60" | "birthday_month" | "specific_client",
-  specificClientId?: number
+  specificClientId?: number,
+  tenantId?: number | null
 ): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
   const now = new Date();
   if (targetAudience === "all") {
-    const [row] = await db.select({ count: count() }).from(clients).where(eq(clients.isActive, true));
+    const conditions = tenantId != null ? and(eq(clients.isActive, true), eq(clients.tenantId, tenantId)) : eq(clients.isActive, true);
+    const [row] = await db.select({ count: count() }).from(clients).where(conditions);
     return row?.count ?? 0;
   }
   if (targetAudience === "inactive_30" || targetAudience === "inactive_60") {
@@ -1124,6 +1126,7 @@ export async function createPromotion(input: {
   specificClientId?: number | null;
   createdBy: number;
   recipientCount: number;
+  tenantId?: number | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

@@ -266,7 +266,8 @@ export default function PaginaClienteScreen() {
       bannerUrl: bannerUrl ?? null,
       logoUrl: logoUrl ?? null,
       galleryUrls: gallery.length > 0 ? JSON.stringify(gallery) : null,
-    });
+      tenantId,
+    } as any);
     Alert.alert("Salvo!", "Aparência atualizada com sucesso.");
   }
 
@@ -278,7 +279,8 @@ export default function PaginaClienteScreen() {
       seoImageUrl: seoImageUrl || null,
       ga4MeasurementId: ga4Id || null,
       facebookPixelId: pixelId || null,
-    });
+      tenantId,
+    } as any);
     Alert.alert("Salvo!", "Configurações avançadas salvas.");
   }
 
@@ -456,7 +458,7 @@ export default function PaginaClienteScreen() {
               value={logoUrl}
               onUpload={(url) => {
                 setLogoUrl(url);
-                updateMutation.mutate({ logoUrl: url });
+                updateMutation.mutate({ logoUrl: url, tenantId } as any);
               }}
               imageType="logo"
               label="Logo"
@@ -500,7 +502,8 @@ export default function PaginaClienteScreen() {
               setGallery(newGallery);
               updateMutation.mutate({
                 galleryUrls: newGallery.length > 0 ? JSON.stringify(newGallery) : null,
-              });
+                tenantId,
+              } as any);
             }}
             maxImages={8}
           />

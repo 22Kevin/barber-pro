@@ -338,7 +338,7 @@ export default function BarbeariaScreen() {
       if (bPassword && bPassword.length >= 6) data.password = bPassword;
       updateBarberMutation.mutate(data);
     } else {
-      createBarberMutation.mutate({ name: bName.trim(), email: bEmail.trim() || undefined, phone: stripMask(bPhone).trim() || undefined, password: bPassword, role: bRole as any, specialties: bSpecialties.trim() || undefined });
+      createBarberMutation.mutate({ name: bName.trim(), email: bEmail.trim() || undefined, phone: stripMask(bPhone).trim() || undefined, password: bPassword, role: bRole as any, specialties: bSpecialties.trim() || undefined, tenantId } as any);
     }
   }
 
@@ -356,6 +356,7 @@ export default function BarbeariaScreen() {
       googleMapsUrl: shopGoogleMapsUrl.trim() || null,
       logoUrl: shopLogoUrl || null,
       galleryUrls: shopGallery.length > 0 ? JSON.stringify(shopGallery) : null,
+      tenantId,
     } as any);
   }
 
@@ -364,6 +365,7 @@ export default function BarbeariaScreen() {
       pixKey: shopPixKey.trim() || null,
       mercadoPagoAccessToken: mpAccessToken.trim() || null,
       mercadoPagoPublicKey: mpPublicKey.trim() || null,
+      tenantId,
     } as any);
   }
 
@@ -460,7 +462,7 @@ export default function BarbeariaScreen() {
                   onUpload={(url) => {
                     setShopLogoUrl(url);
                     // Salva automaticamente o logo no banco após o upload
-                    updateSettingsMutation.mutate({ logoUrl: url } as any);
+                    updateSettingsMutation.mutate({ logoUrl: url, tenantId } as any);
                   }}
                   imageType="logo"
                   label="Logo"
@@ -478,6 +480,7 @@ export default function BarbeariaScreen() {
                     // Salva automaticamente a galeria no banco após mudanças
                     updateSettingsMutation.mutate({
                       galleryUrls: newGallery.length > 0 ? JSON.stringify(newGallery) : null,
+                      tenantId,
                     } as any);
                   }}
                   maxImages={8}

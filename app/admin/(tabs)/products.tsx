@@ -88,7 +88,7 @@ export default function ProductsScreen() {
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate({ ...data, tenantId } as any);
     }
   }
 

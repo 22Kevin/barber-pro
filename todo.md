@@ -1400,3 +1400,10 @@
 - [x] SEGURANÇA: Isolamento de dados por tenant — cada barbearia só vê seus próprios dados (clientes, funcionários, agendamentos, etc.)
 - [x] UX: Remover botão "Nova" da aba Assinaturas (fluxo antigo de assinatura recorrente por serviço)
 - [x] UX: Aba Assinaturas deve mostrar lista de Planos criados com opções Editar/Excluir/Ativar-Inativar
+
+## Bugs Críticos — Rodada 4
+- [x] SEGURANÇA: plan-booking.tsx vazando clientes e barbeiros de outros tenants — corrigido com tenantId nas queries
+- [x] BUG: subscription-plans.tsx — serviços e produtos não apareciam no formulário de novo plano — corrigido
+- [x] BUG: Cadastros (clientes, produtos, serviços, barbeiros, cupons, recompensas, promoções, configurações) não salvavam com tenantId — mutations corrigidas
+- [x] SEGURANÇA: settings.update agora recebe e passa tenantId para upsertShopSettings
+- [x] SEGURANÇA: barbearia.tsx e pagina-cliente.tsx passam tenantId em todas as mutations de update
