@@ -334,7 +334,16 @@ export const appRouter = router({
         return apptId;
       }),
     update: publicProcedure
-      .input(z.object({ id: z.number(), status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).optional(), notes: z.string().optional().nullable(), reminderSent: z.boolean().optional(), whatsappConfirmationSent: z.boolean().optional() }))
+      .input(z.object({
+        id: z.number(),
+        status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).optional(),
+        notes: z.string().optional().nullable(),
+        reminderSent: z.boolean().optional(),
+        whatsappConfirmationSent: z.boolean().optional(),
+        serviceId: z.number().optional(),
+        serviceNames: z.string().optional().nullable(),
+        endTime: z.string().optional(),
+      }))
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateAppointment(id, data as any); }),
     cancelWithReason: publicProcedure
       .input(z.object({ id: z.number(), reason: z.string().optional(), clientPushToken: z.string().optional() }))

@@ -134,6 +134,17 @@ export default function AgendaScreen() {
   const [filterBarberId, setFilterBarberId] = useState<number | null>(null);
   const isManager = barber?.role === "super_admin" || barber?.role === "receptionist";
 
+  // Estado de edição de serviços no modal de detalhes
+  const [editServices, setEditServices] = useState<any[]>([]);
+  const editTotalDuration = useMemo(
+    () => editServices.reduce((sum, s) => sum + (s.durationMinutes ?? 30), 0),
+    [editServices]
+  );
+  const editTotalPrice = useMemo(
+    () => editServices.reduce((sum, s) => sum + parseFloat(s.price ?? "0"), 0),
+    [editServices]
+  );
+
   const dateStr = dateToString(selectedDate);
   const utils = trpc.useUtils();
 
@@ -479,6 +490,9 @@ export default function AgendaScreen() {
                     setShowPaymentModal(true);
                   } else {
                     setSelectedAppointment({ ...apt });
+                    // Inicializa editServices com o serviço atual do agendamento
+                    const currentService = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
+                    setEditServices(currentService ? [currentService] : []);
                     setShowDetailModal(true);
                   }
                 }}
@@ -656,13 +670,18 @@ export default function AgendaScreen() {
             </View>
             {selectedAppointment && (
               <ScrollView>
+                {/* Informações do agendamento */}
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Cliente</Text>
-                  <Text style={styles.detailValue}>{selectedAppointment.client?.name ?? "—"}</Text>
+                  <Text style={styles.detailValue}>
+                    {selectedAppointment.clientName ?? selectedAppointment.client?.name ?? "—"}
+                  </Text>
                 </View>
                 <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Serviço</Text>
-                  <Text style={styles.detailValue}>{selectedAppointment.service?.name ?? "—"}</Text>
+                  <Text style={styles.detailLabel}>Serviço(s)</Text>
+                  <Text style={styles.detailValue}>
+                    {selectedAppointment.serviceNames ?? selectedAppointment.serviceName ?? selectedAppointment.service?.name ?? "—"}
+                  </Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Horário</Text>
@@ -683,8 +702,69 @@ export default function AgendaScreen() {
                   </View>
                 ) : null}
 
-                <Text style={[styles.fieldLabel, { marginTop: 16, marginBottom: 8 }]}>Alterar Status</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {/* Seção de edição de serviços */}
+                {selectedAppointment.status !== "completed" && selectedAppointment.status !== "cancelled" && selectedAppointment.status !== "no_show" && (
+                  <>
+                    <Text style={[styles.fieldLabel, { marginTop: 20, marginBottom: 8 }]}>Editar Serviços</Text>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                      {(servicesQuery.data ?? []).map((svc: any) => {
+                        const isSelected = editServices.some((s) => s.id === svc.id);
+                        return (
+                          <Pressable
+                            key={svc.id}
+                            style={[styles.serviceChip, isSelected && styles.serviceChipActive]}
+                            onPress={() => setEditServices((prev) =>
+                              isSelected ? prev.filter((s) => s.id !== svc.id) : [...prev, svc]
+                            )}
+                          >
+                            <Text style={[styles.serviceChipText, isSelected && styles.serviceChipTextActive]}>
+                              {svc.name}
+                            </Text>
+                            <Text style={[styles.serviceChipText, isSelected && styles.serviceChipTextActive, { fontSize: 11, opacity: 0.8 }]}>
+                              {svc.durationMinutes} min
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                    {editServices.length > 0 && (
+                      <View style={[styles.serviceChip, { backgroundColor: "#1A1A1A", borderColor: "#C9A84C", marginBottom: 12, flexDirection: "row", justifyContent: "space-between" }]}>
+                        <Text style={{ color: "#C9A84C", fontSize: 13, fontWeight: "600" }}>
+                          {editServices.map((s) => s.name).join(" + ")}
+                        </Text>
+                        <Text style={{ color: "#888880", fontSize: 12 }}>
+                          {editTotalDuration} min · R$ {editTotalPrice.toFixed(2)}
+                        </Text>
+                      </View>
+                    )}
+                    <Pressable
+                      style={[styles.saveBtn, { marginBottom: 16, opacity: editServices.length === 0 ? 0.5 : 1 }]}
+                      onPress={() => {
+                        if (editServices.length === 0) {
+                          Alert.alert("Atenção", "Selecione ao menos um serviço.");
+                          return;
+                        }
+                        const newEndTime = addMinutes(selectedAppointment.startTime, editTotalDuration);
+                        const newServiceNames = editServices.length > 1
+                          ? editServices.map((s: any) => s.name).join(" + ")
+                          : null;
+                        updateMutation.mutate({
+                          id: selectedAppointment.id,
+                          serviceId: editServices[0].id,
+                          serviceNames: newServiceNames,
+                          endTime: newEndTime,
+                        });
+                      }}
+                    >
+                      <Text style={styles.saveBtnText}>
+                        {updateMutation.isPending ? "Salvando..." : "Salvar Serviços"}
+                      </Text>
+                    </Pressable>
+                  </>
+                )}
+
+                <Text style={[styles.fieldLabel, { marginTop: 4, marginBottom: 8 }]}>Alterar Status</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                   {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
                     <Pressable
                       key={key}

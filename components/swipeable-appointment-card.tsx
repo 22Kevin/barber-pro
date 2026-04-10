@@ -49,6 +49,20 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
   const resolvedClientPhone = appointment.clientPhone ?? client?.phone;
   // Usa serviceNames (múltiplos serviços concatenados) se disponível, senão serviceName do JOIN
   const resolvedServiceName = appointment.serviceNames ?? appointment.serviceName ?? service?.name ?? "Serviço";
+  // Calcula duração total a partir de startTime e endTime (formato HH:MM ou HH:MM:SS)
+  const durationMinutes = (() => {
+    try {
+      const [sh, sm] = (appointment.startTime ?? "").split(":").map(Number);
+      const [eh, em] = (appointment.endTime ?? "").split(":").map(Number);
+      if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) return null;
+      return (eh * 60 + em) - (sh * 60 + sm);
+    } catch { return null; }
+  })();
+  const durationLabel = durationMinutes != null && durationMinutes > 0
+    ? durationMinutes >= 60
+      ? `${Math.floor(durationMinutes / 60)}h${durationMinutes % 60 > 0 ? String(durationMinutes % 60).padStart(2, "0") : ""}`
+      : `${durationMinutes} min`
+    : null;
   const swipeRef = useRef<Swipeable>(null);
   const status = STATUS_CONFIG[appointment.status] ?? { label: appointment.status, color: "#888880" };
   const nextPositive = getNextPositiveStatus(appointment.status);
@@ -149,7 +163,12 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
         <View style={[styles.aptStatusBar, { backgroundColor: status.color }]} />
         <View style={styles.aptContent}>
           <View style={styles.aptRow}>
-            <Text style={styles.aptTime}>{appointment.startTime} – {appointment.endTime}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text style={styles.aptTime}>{appointment.startTime} – {appointment.endTime}</Text>
+              {durationLabel ? (
+                <Text style={{ fontSize: 12, color: "#888880", fontWeight: "500" }}>⏱ {durationLabel}</Text>
+              ) : null}
+            </View>
             <View style={[styles.statusBadge, { backgroundColor: status.color + "22" }]}>
               <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
             </View>
