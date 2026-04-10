@@ -1,10 +1,10 @@
 /**
  * Tela: Minha Página
  *
- * Configuração simplificada da página pública da barbearia em 3 blocos:
- *   1. Compartilhar — link + QR Code
- *   2. Aparência    — logo, cor, banner, galeria
- *   3. Avançado     — domínio, SEO, rastreamento (recolhido por padrão)
+ * Configuração da página pública da barbearia em 3 blocos:
+ *   1. Compartilhar — link + botões redesenhados + QR Code
+ *   2. Aparência    — cor, estilo de texto, logo, banner, galeria + pré-visualização ao vivo
+ *   3. Configurações extras — SEO simplificado (sem domínio personalizado)
  */
 import React, { useState, useEffect, useRef } from "react";
 import {
@@ -12,6 +12,7 @@ import {
   Alert,
   Image,
   Linking,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -19,6 +20,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
@@ -45,6 +47,50 @@ const PRESET_COLORS = [
   { label: "Laranja", value: "#F97316" },
   { label: "Rosa", value: "#EC4899" },
   { label: "Cinza", value: "#6B7280" },
+];
+
+// ─── Estilos de texto disponíveis ────────────────────────────────────────────
+const FONT_STYLES = [
+  {
+    id: "moderno",
+    label: "Moderno",
+    description: "Limpo e contemporâneo",
+    sample: "Barbearia",
+    fontFamily: Platform.OS === "ios" ? "Helvetica Neue" : "sans-serif",
+    fontWeight: "400" as const,
+  },
+  {
+    id: "bold",
+    label: "Bold",
+    description: "Forte e impactante",
+    sample: "Barbearia",
+    fontFamily: Platform.OS === "ios" ? "Helvetica Neue" : "sans-serif",
+    fontWeight: "900" as const,
+  },
+  {
+    id: "classico",
+    label: "Clássico",
+    description: "Tradicional e elegante",
+    sample: "Barbearia",
+    fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
+    fontWeight: "400" as const,
+  },
+  {
+    id: "elegante",
+    label: "Elegante",
+    description: "Sofisticado e refinado",
+    sample: "Barbearia",
+    fontFamily: Platform.OS === "ios" ? "Palatino" : "serif",
+    fontWeight: "700" as const,
+  },
+  {
+    id: "minimalista",
+    label: "Minimalista",
+    description: "Fino e espaçado",
+    sample: "Barbearia",
+    fontFamily: Platform.OS === "ios" ? "Helvetica Neue" : "sans-serif",
+    fontWeight: "200" as const,
+  },
 ];
 
 // ─── Componente auxiliar: bloco de seção ─────────────────────────────────────
@@ -77,39 +123,10 @@ function SectionBlock({
   );
 }
 
-// ─── Componente auxiliar: linha de URL copiável ───────────────────────────────
-function UrlRow({
+// ─── Componente auxiliar: campo de texto ────────────────────────────────────
+function FieldInput({
   label,
-  url,
-  colors,
-  onCopy,
-}: {
-  label: string;
-  url: string;
-  colors: ReturnType<typeof useColors>;
-  onCopy: () => void;
-}) {
-  return (
-    <View style={{ marginBottom: 12 }}>
-      <Text style={[styles.urlLabel, { color: colors.muted }]}>{label}</Text>
-      <View style={[styles.urlBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
-        <Text style={[styles.urlText, { color: colors.muted }]} numberOfLines={1}>
-          {url}
-        </Text>
-        <Pressable
-          style={({ pressed }) => [styles.urlCopyBtn, pressed && { opacity: 0.6 }]}
-          onPress={onCopy}
-        >
-          <IconSymbol name="doc.on.doc" size={15} color="#C9A84C" />
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-// ─── Componente auxiliar: campo de texto avançado ────────────────────────────
-function AdvancedInput({
-  label,
+  hint,
   value,
   onChangeText,
   placeholder,
@@ -117,6 +134,7 @@ function AdvancedInput({
   colors,
 }: {
   label: string;
+  hint?: string;
   value: string;
   onChangeText: (v: string) => void;
   placeholder?: string;
@@ -124,8 +142,11 @@ function AdvancedInput({
   colors: ReturnType<typeof useColors>;
 }) {
   return (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={[styles.advLabel, { color: colors.muted }]}>{label}</Text>
+    <View style={{ marginBottom: 16 }}>
+      <Text style={[styles.fieldLabel, { color: colors.muted }]}>{label}</Text>
+      {hint ? (
+        <Text style={[styles.fieldHint, { color: colors.muted }]}>{hint}</Text>
+      ) : null}
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -134,17 +155,141 @@ function AdvancedInput({
         multiline={multiline}
         returnKeyType={multiline ? undefined : "done"}
         style={[
-          styles.advInput,
+          styles.fieldInputBox,
           {
             backgroundColor: colors.background,
             borderColor: colors.border,
             color: colors.foreground,
-            minHeight: multiline ? 72 : undefined,
+            minHeight: multiline ? 80 : undefined,
             textAlignVertical: multiline ? "top" : "center",
           },
         ]}
       />
     </View>
+  );
+}
+
+// ─── Pré-visualização ao vivo da página ──────────────────────────────────────
+function PagePreviewModal({
+  visible,
+  onClose,
+  shopName,
+  primaryColor,
+  fontStyleId,
+  logoUrl,
+  bannerUrl,
+  gallery,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  shopName: string;
+  primaryColor: string;
+  fontStyleId: string;
+  logoUrl: string | null;
+  bannerUrl: string | null;
+  gallery: string[];
+}) {
+  const font = FONT_STYLES.find((f) => f.id === fontStyleId) ?? FONT_STYLES[0];
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
+        {/* Header do modal */}
+        <View style={styles.previewHeader}>
+          <Text style={styles.previewHeaderTitle}>Pré-visualização da Página</Text>
+          <TouchableOpacity onPress={onClose} style={styles.previewCloseBtn}>
+            <Text style={styles.previewCloseBtnText}>✕ Fechar</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Banner */}
+          {bannerUrl ? (
+            <Image source={{ uri: bannerUrl }} style={styles.previewBanner} resizeMode="cover" />
+          ) : (
+            <View style={[styles.previewBannerPlaceholder, { backgroundColor: primaryColor + "33" }]}>
+              <Text style={{ color: primaryColor, fontSize: 13 }}>Sem imagem de capa</Text>
+            </View>
+          )}
+
+          {/* Info da barbearia */}
+          <View style={styles.previewInfoArea}>
+            {logoUrl ? (
+              <Image source={{ uri: logoUrl }} style={[styles.previewLogo, { borderColor: primaryColor }]} />
+            ) : (
+              <View style={[styles.previewLogoPlaceholder, { borderColor: primaryColor, backgroundColor: primaryColor + "22" }]}>
+                <Text style={{ fontSize: 28 }}>💈</Text>
+              </View>
+            )}
+            <Text
+              style={[
+                styles.previewShopName,
+                { color: "#fff", fontFamily: font.fontFamily, fontWeight: font.fontWeight },
+              ]}
+            >
+              {shopName || "Nome da Barbearia"}
+            </Text>
+            <View style={[styles.previewBadge, { backgroundColor: primaryColor + "22", borderColor: primaryColor + "55" }]}>
+              <Text style={[styles.previewBadgeText, { color: primaryColor }]}>⭐ 5.0 · Aberto agora</Text>
+            </View>
+          </View>
+
+          {/* Botão de agendar */}
+          <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
+            <View style={[styles.previewBookBtn, { backgroundColor: primaryColor }]}>
+              <Text style={[styles.previewBookBtnText, { fontFamily: font.fontFamily, fontWeight: font.fontWeight }]}>
+                Agendar Agora
+              </Text>
+            </View>
+          </View>
+
+          {/* Serviços (mock) */}
+          <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
+            <Text style={[styles.previewSectionTitle, { color: "#fff", fontFamily: font.fontFamily, fontWeight: font.fontWeight }]}>
+              Serviços
+            </Text>
+            {[
+              { name: "Corte Masculino", price: "R$ 45,00", duration: "30 min" },
+              { name: "Barba", price: "R$ 35,00", duration: "20 min" },
+              { name: "Corte + Barba", price: "R$ 70,00", duration: "50 min" },
+            ].map((svc) => (
+              <View key={svc.name} style={styles.previewServiceCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.previewServiceName, { color: "#fff", fontFamily: font.fontFamily }]}>
+                    {svc.name}
+                  </Text>
+                  <Text style={styles.previewServiceDuration}>⏱ {svc.duration}</Text>
+                </View>
+                <View style={{ alignItems: "flex-end", gap: 6 }}>
+                  <Text style={[styles.previewServicePrice, { color: primaryColor }]}>{svc.price}</Text>
+                  <View style={[styles.previewServiceBtn, { borderColor: primaryColor }]}>
+                    <Text style={[styles.previewServiceBtnText, { color: primaryColor }]}>Agendar</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* Galeria (se tiver fotos) */}
+          {gallery.length > 0 && (
+            <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
+              <Text style={[styles.previewSectionTitle, { color: "#fff", fontFamily: font.fontFamily, fontWeight: font.fontWeight }]}>
+                Galeria
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  {gallery.slice(0, 4).map((img, i) => (
+                    <Image key={i} source={{ uri: img }} style={styles.previewGalleryImg} resizeMode="cover" />
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          )}
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </View>
+    </Modal>
   );
 }
 
@@ -166,30 +311,31 @@ export default function PaginaClienteScreen() {
   const settings = settingsQuery.data;
   const tenant = tenantQuery.data;
   const slug = tenant?.slug ?? "";
+  const shopName = (tenant as any)?.name ?? "";
   const apiBase = getApiBaseUrl();
   const publicUrl = slug ? `${apiBase}/pub/${slug}` : "";
-  const bookingUrl = slug ? `${apiBase}/pub/${slug}/agendar` : "";
 
-  // QR Code
+  // QR Code — aponta para a página principal (não mais para /agendar)
   const qrQuery = trpc.settings.generateQr.useQuery(
-    { url: bookingUrl },
-    { enabled: !!bookingUrl }
+    { url: publicUrl },
+    { enabled: !!publicUrl }
   );
   const qrDataUrl = qrQuery.data?.qrDataUrl ?? "";
 
   // ── Estados: Aparência ──────────────────────────────────────────────────────
   const [primaryColor, setPrimaryColor] = useState("#C9A84C");
   const [customHex, setCustomHex] = useState("");
+  const [fontStyleId, setFontStyleId] = useState("moderno");
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [gallery, setGallery] = useState<string[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
 
-  // ── Estados: Avançado ───────────────────────────────────────────────────────
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [customDomain, setCustomDomain] = useState("");
-  const [seoTitle, setSeoTitle] = useState("");
-  const [seoDescription, setSeoDescription] = useState("");
-  const [seoImageUrl, setSeoImageUrl] = useState("");
+  // ── Estados: Configurações Extras ──────────────────────────────────────────
+  const [showExtras, setShowExtras] = useState(false);
+  const [pageTitle, setPageTitle] = useState("");
+  const [pageDescription, setPageDescription] = useState("");
+  const [ogImageUrl, setOgImageUrl] = useState("");
   const [ga4Id, setGa4Id] = useState("");
   const [pixelId, setPixelId] = useState("");
 
@@ -197,16 +343,16 @@ export default function PaginaClienteScreen() {
   useEffect(() => {
     if (settings) {
       setPrimaryColor((settings as any).primaryColor ?? "#C9A84C");
+      setFontStyleId((settings as any).fontStyle ?? "moderno");
       setBannerUrl((settings as any).bannerUrl ?? null);
       setLogoUrl((settings as any).logoUrl ?? null);
       try {
         const g = (settings as any).galleryUrls ? JSON.parse((settings as any).galleryUrls) : [];
         setGallery(Array.isArray(g) ? g : []);
       } catch { setGallery([]); }
-      setCustomDomain((settings as any).customDomain ?? "");
-      setSeoTitle((settings as any).seoTitle ?? "");
-      setSeoDescription((settings as any).seoDescription ?? "");
-      setSeoImageUrl((settings as any).seoImageUrl ?? "");
+      setPageTitle((settings as any).seoTitle ?? "");
+      setPageDescription((settings as any).seoDescription ?? "");
+      setOgImageUrl((settings as any).seoImageUrl ?? "");
       setGa4Id((settings as any).ga4MeasurementId ?? "");
       setPixelId((settings as any).facebookPixelId ?? "");
     }
@@ -228,16 +374,20 @@ export default function PaginaClienteScreen() {
     Alert.alert("Copiado!", `${label} copiado para a área de transferência.`);
   }
 
-  async function handleShareWhatsApp(url: string) {
-    const msg = `Agende seu horário: ${url}`;
+  async function handleShareWhatsApp() {
+    const msg = `Olá! Agende seu horário na nossa barbearia pelo link abaixo:\n${publicUrl}`;
     Linking.openURL(`https://wa.me/?text=${encodeURIComponent(msg)}`).catch(() =>
       Alert.alert("Erro", "Não foi possível abrir o WhatsApp.")
     );
   }
 
-  async function handleShareLink(url: string) {
+  async function handleShareLink() {
     try {
-      await Share.share({ message: url, url });
+      await Share.share({
+        message: `Agende seu horário: ${publicUrl}`,
+        url: publicUrl,
+        title: "Agendar na Barbearia",
+      });
     } catch {}
   }
 
@@ -245,7 +395,7 @@ export default function PaginaClienteScreen() {
     if (!qrDataUrl) return;
     try {
       const base64 = qrDataUrl.replace(/^data:image\/png;base64,/, "");
-      const fileUri = `${FileSystem.cacheDirectory}qrcode-agendamento.png`;
+      const fileUri = `${FileSystem.cacheDirectory}qrcode-barbearia.png`;
       await FileSystem.writeAsStringAsync(fileUri, base64, {
         encoding: FileSystem.EncodingType.Base64,
       });
@@ -255,7 +405,7 @@ export default function PaginaClienteScreen() {
       } else {
         Alert.alert("QR Code", "Arquivo salvo em: " + fileUri);
       }
-    } catch (e) {
+    } catch {
       Alert.alert("Erro", "Não foi possível baixar o QR Code.");
     }
   }
@@ -263,6 +413,7 @@ export default function PaginaClienteScreen() {
   function handleSaveAppearance() {
     updateMutation.mutate({
       primaryColor: activeColor,
+      fontStyle: fontStyleId,
       bannerUrl: bannerUrl ?? null,
       logoUrl: logoUrl ?? null,
       galleryUrls: gallery.length > 0 ? JSON.stringify(gallery) : null,
@@ -271,17 +422,16 @@ export default function PaginaClienteScreen() {
     Alert.alert("Salvo!", "Aparência atualizada com sucesso.");
   }
 
-  function handleSaveAdvanced() {
+  function handleSaveExtras() {
     updateMutation.mutate({
-      customDomain: customDomain || null,
-      seoTitle: seoTitle || null,
-      seoDescription: seoDescription || null,
-      seoImageUrl: seoImageUrl || null,
+      seoTitle: pageTitle || null,
+      seoDescription: pageDescription || null,
+      seoImageUrl: ogImageUrl || null,
       ga4MeasurementId: ga4Id || null,
       facebookPixelId: pixelId || null,
       tenantId,
     } as any);
-    Alert.alert("Salvo!", "Configurações avançadas salvas.");
+    Alert.alert("Salvo!", "Configurações salvas com sucesso.");
   }
 
   // ── Loading ──────────────────────────────────────────────────────────────────
@@ -300,6 +450,18 @@ export default function PaginaClienteScreen() {
     <ScreenContainer>
       <AdminHeader title="Minha Página" />
 
+      {/* Modal de pré-visualização */}
+      <PagePreviewModal
+        visible={showPreview}
+        onClose={() => setShowPreview(false)}
+        shopName={shopName}
+        primaryColor={activeColor}
+        fontStyleId={fontStyleId}
+        logoUrl={logoUrl}
+        bannerUrl={bannerUrl}
+        gallery={gallery}
+      />
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 16, paddingBottom: tabBarHeight }}
@@ -311,51 +473,68 @@ export default function PaginaClienteScreen() {
         ══════════════════════════════════════════════════════════════════ */}
         <SectionBlock
           icon="🔗"
-          title="Compartilhar"
-          subtitle="Envie o link para seus clientes agendarem online."
+          title="Compartilhar sua Página"
+          subtitle="Envie este link para seus clientes agendarem online."
           colors={colors}
         >
           {publicUrl ? (
-            <>
-              <UrlRow
-                label="Página da barbearia"
-                url={publicUrl}
-                colors={colors}
-                onCopy={() => handleCopy(publicUrl, "Link da página")}
-              />
-              <UrlRow
-                label="Link direto para agendamento"
-                url={bookingUrl}
-                colors={colors}
-                onCopy={() => handleCopy(bookingUrl, "Link de agendamento")}
-              />
-
-              {/* Botões de ação */}
-              <View style={styles.actionsRow}>
+            <View>
+              {/* Link da página */}
+              <Text style={[styles.fieldLabel, { color: colors.muted }]}>Link da sua página</Text>
+              <View style={[styles.urlBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[styles.urlText, { color: colors.muted }]} numberOfLines={1}>
+                  {publicUrl}
+                </Text>
                 <Pressable
-                  style={({ pressed }) => [styles.actionBtn, { borderColor: colors.border, backgroundColor: colors.background }, pressed && { opacity: 0.7 }]}
-                  onPress={() => handleShareWhatsApp(bookingUrl)}
+                  style={({ pressed }) => [styles.urlCopyBtn, pressed && { opacity: 0.6 }]}
+                  onPress={() => handleCopy(publicUrl, "Link da página")}
                 >
-                  <Text style={styles.actionBtnEmoji}>💬</Text>
-                  <Text style={[styles.actionBtnText, { color: colors.foreground }]}>WhatsApp</Text>
+                  <IconSymbol name="doc.on.doc" size={15} color="#C9A84C" />
                 </Pressable>
+              </View>
+
+              {/* Botões de ação redesenhados */}
+              <View style={styles.shareButtonsRow}>
+                {/* WhatsApp */}
                 <Pressable
-                  style={({ pressed }) => [styles.actionBtn, { borderColor: colors.border, backgroundColor: colors.background }, pressed && { opacity: 0.7 }]}
-                  onPress={() => handleShareLink(bookingUrl)}
+                  style={({ pressed }) => [
+                    styles.shareWhatsAppBtn,
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                  ]}
+                  onPress={handleShareWhatsApp}
                 >
-                  <Text style={styles.actionBtnEmoji}>📤</Text>
-                  <Text style={[styles.actionBtnText, { color: colors.foreground }]}>Compartilhar</Text>
+                  <Text style={styles.shareWhatsAppIcon}>💬</Text>
+                  <View>
+                    <Text style={styles.shareWhatsAppTitle}>WhatsApp</Text>
+                    <Text style={styles.shareWhatsAppSub}>Enviar para clientes</Text>
+                  </View>
+                </Pressable>
+
+                {/* Compartilhar */}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.shareGenericBtn,
+                    { borderColor: colors.border, backgroundColor: colors.background },
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+                  ]}
+                  onPress={handleShareLink}
+                >
+                  <Text style={styles.shareGenericIcon}>📤</Text>
+                  <View>
+                    <Text style={[styles.shareGenericTitle, { color: colors.foreground }]}>Compartilhar</Text>
+                    <Text style={[styles.shareGenericSub, { color: colors.muted }]}>Outros apps</Text>
+                  </View>
                 </Pressable>
               </View>
 
               {/* QR Code */}
               <View style={[styles.qrContainer, { borderTopColor: colors.border }]}>
-                <Text style={[styles.qrLabel, { color: colors.muted }]}>QR Code de Agendamento</Text>
+                <Text style={[styles.qrLabel, { color: colors.foreground }]}>QR Code da Barbearia</Text>
                 <Text style={[styles.qrHint, { color: colors.muted }]}>
-                  Imprima e coloque na barbearia para que os clientes agendem pelo celular.
+                  Imprima e coloque na barbearia para que os clientes acessem a página pelo celular.
                 </Text>
                 {qrDataUrl ? (
-                  <View style={{ alignItems: "center", marginTop: 12 }}>
+                  <View style={{ alignItems: "center", marginTop: 16 }}>
                     <View style={styles.qrImageWrapper}>
                       <Image
                         source={{ uri: qrDataUrl }}
@@ -377,7 +556,7 @@ export default function PaginaClienteScreen() {
                   </View>
                 )}
               </View>
-            </>
+            </View>
           ) : (
             <View style={[styles.emptyBox, { borderColor: colors.border }]}>
               <Text style={[styles.emptyText, { color: colors.muted }]}>
@@ -396,6 +575,21 @@ export default function PaginaClienteScreen() {
           subtitle="Personalize o visual da sua página de agendamentos."
           colors={colors}
         >
+          {/* Botão de pré-visualização */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.previewBtn,
+              { borderColor: activeColor, backgroundColor: activeColor + "15" },
+              pressed && { opacity: 0.8 },
+            ]}
+            onPress={() => setShowPreview(true)}
+          >
+            <Text style={styles.previewBtnIcon}>👁</Text>
+            <Text style={[styles.previewBtnText, { color: activeColor }]}>
+              Ver como ficará minha página
+            </Text>
+          </Pressable>
+
           {/* Preview da cor */}
           <View style={[styles.colorPreview, { borderColor: activeColor }]}>
             <View style={[styles.colorPreviewHeader, { backgroundColor: activeColor }]}>
@@ -410,7 +604,7 @@ export default function PaginaClienteScreen() {
           </View>
 
           {/* Paleta de cores */}
-          <Text style={[styles.fieldLabel, { color: colors.muted }]}>Cor Principal</Text>
+          <Text style={[styles.sectionFieldLabel, { color: colors.muted }]}>Cor Principal</Text>
           <View style={styles.colorGrid}>
             {PRESET_COLORS.map((c) => (
               <Pressable
@@ -451,8 +645,63 @@ export default function PaginaClienteScreen() {
             </View>
           </View>
 
+          {/* ── Estilo de Texto ─────────────────────────────────────────── */}
+          <Text style={[styles.sectionFieldLabel, { color: colors.muted, marginTop: 8 }]}>
+            Estilo de Texto
+          </Text>
+          <Text style={[styles.fieldHint, { color: colors.muted, marginBottom: 12 }]}>
+            Escolha como os textos aparecem na sua página.
+          </Text>
+          <View style={{ gap: 10, marginBottom: 16 }}>
+            {FONT_STYLES.map((font) => {
+              const isActive = fontStyleId === font.id;
+              return (
+                <Pressable
+                  key={font.id}
+                  style={({ pressed }) => [
+                    styles.fontStyleCard,
+                    {
+                      backgroundColor: isActive ? activeColor + "18" : colors.background,
+                      borderColor: isActive ? activeColor : colors.border,
+                    },
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => setFontStyleId(font.id)}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.fontStyleSample,
+                        {
+                          color: isActive ? activeColor : colors.foreground,
+                          fontFamily: font.fontFamily,
+                          fontWeight: font.fontWeight,
+                        },
+                      ]}
+                    >
+                      {font.sample}
+                    </Text>
+                    <Text style={[styles.fontStyleDesc, { color: colors.muted }]}>
+                      {font.description}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: "flex-end", gap: 4 }}>
+                    <Text style={[styles.fontStyleName, { color: isActive ? activeColor : colors.muted }]}>
+                      {font.label}
+                    </Text>
+                    {isActive && (
+                      <View style={[styles.fontStyleActiveBadge, { backgroundColor: activeColor }]}>
+                        <Text style={styles.fontStyleActiveBadgeText}>✓ Ativo</Text>
+                      </View>
+                    )}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+
           {/* Logo */}
-          <Text style={[styles.fieldLabel, { color: colors.muted, marginTop: 16 }]}>Logo da Barbearia</Text>
+          <Text style={[styles.sectionFieldLabel, { color: colors.muted }]}>Logo da Barbearia</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>
             <SingleImageUploader
               value={logoUrl}
@@ -470,9 +719,9 @@ export default function PaginaClienteScreen() {
           </View>
 
           {/* Banner */}
-          <Text style={[styles.fieldLabel, { color: colors.muted }]}>Imagem de Capa (Banner)</Text>
+          <Text style={[styles.sectionFieldLabel, { color: colors.muted }]}>Imagem de Capa (Banner)</Text>
           <Text style={[styles.uploadHint, { color: colors.muted, marginBottom: 8 }]}>
-            Exibida no topo da página. Recomendado: 1200×400px.
+            Aparece no topo da sua página. Recomendado: 1200×400px.
           </Text>
           <SingleImageUploader
             value={bannerUrl}
@@ -492,7 +741,7 @@ export default function PaginaClienteScreen() {
           ) : null}
 
           {/* Galeria */}
-          <Text style={[styles.fieldLabel, { color: colors.muted, marginTop: 16 }]}>Galeria de Fotos</Text>
+          <Text style={[styles.sectionFieldLabel, { color: colors.muted, marginTop: 16 }]}>Galeria de Fotos</Text>
           <Text style={[styles.uploadHint, { color: colors.muted, marginBottom: 8 }]}>
             Fotos do ambiente exibidas na página. Pressione e segure para reordenar.
           </Text>
@@ -523,100 +772,105 @@ export default function PaginaClienteScreen() {
         </SectionBlock>
 
         {/* ══════════════════════════════════════════════════════════════════
-            BLOCO 3 — AVANÇADO (recolhido por padrão)
+            BLOCO 3 — CONFIGURAÇÕES EXTRAS (recolhido por padrão)
         ══════════════════════════════════════════════════════════════════ */}
         <View style={[styles.block, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Pressable
             style={({ pressed }) => [styles.advancedToggle, pressed && { opacity: 0.7 }]}
-            onPress={() => setShowAdvanced((v) => !v)}
+            onPress={() => setShowExtras((v) => !v)}
           >
             <View style={styles.blockHeader}>
               <Text style={styles.blockIcon}>⚙️</Text>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.blockTitle, { color: colors.foreground }]}>Avançado</Text>
+                <Text style={[styles.blockTitle, { color: colors.foreground }]}>Configurações Extras</Text>
                 <Text style={[styles.blockSubtitle, { color: colors.muted }]}>
-                  Domínio personalizado, SEO e rastreamento.
+                  Título, descrição, imagem de compartilhamento e rastreamento.
                 </Text>
               </View>
               <IconSymbol
-                name={showAdvanced ? "chevron.up" : "chevron.down"}
+                name={showExtras ? "chevron.up" : "chevron.down"}
                 size={18}
                 color={colors.muted}
               />
             </View>
           </Pressable>
 
-          {showAdvanced && (
+          {showExtras && (
             <View style={{ paddingTop: 8 }}>
-              {/* Domínio */}
-              <Text style={[styles.advSectionTitle, { color: colors.foreground }]}>Domínio Personalizado</Text>
-              <View style={[styles.infoBox, { backgroundColor: `${activeColor}18`, borderColor: `${activeColor}44` }]}>
-                <Text style={[styles.infoText, { color: colors.muted }]}>
-                  Configure um domínio próprio. Ex:{" "}
-                  <Text style={{ fontWeight: "700", color: activeColor }}>agendamentos.suabarbearia.com.br</Text>
-                  {"\n"}Após configurar, aponte o DNS do seu domínio para o servidor do Barber Pro.
-                </Text>
-              </View>
-              <AdvancedInput
-                label="Domínio"
-                value={customDomain}
-                onChangeText={setCustomDomain}
-                placeholder="agendamentos.suabarbearia.com.br"
-                colors={colors}
-              />
 
-              {/* SEO */}
-              <Text style={[styles.advSectionTitle, { color: colors.foreground, marginTop: 8 }]}>SEO / Redes Sociais</Text>
-              <AdvancedInput
+              {/* Aparência no Google e redes sociais */}
+              <Text style={[styles.extrasGroupTitle, { color: colors.foreground }]}>
+                Como aparece no Google e redes sociais
+              </Text>
+              <Text style={[styles.extrasGroupHint, { color: colors.muted }]}>
+                Quando alguém pesquisar sua barbearia no Google ou compartilhar o link, essas informações aparecem.
+              </Text>
+
+              <FieldInput
                 label="Título da Página"
-                value={seoTitle}
-                onChangeText={setSeoTitle}
+                hint="Ex: Barbearia XYZ — Agende seu horário"
+                value={pageTitle}
+                onChangeText={setPageTitle}
                 placeholder="Barbearia XYZ — Agende seu horário"
                 colors={colors}
               />
-              <AdvancedInput
+              <FieldInput
                 label="Descrição"
-                value={seoDescription}
-                onChangeText={setSeoDescription}
+                hint="Texto curto que aparece abaixo do título no Google."
+                value={pageDescription}
+                onChangeText={setPageDescription}
                 placeholder="Agende seu corte de cabelo online. Profissionais experientes."
                 multiline
                 colors={colors}
               />
-              <AdvancedInput
-                label="Imagem para compartilhamento (URL)"
-                value={seoImageUrl}
-                onChangeText={setSeoImageUrl}
+
+              {/* Imagem de compartilhamento */}
+              <FieldInput
+                label="Imagem de Compartilhamento"
+                hint={
+                  "Quando alguém compartilha o link da sua página no WhatsApp ou Instagram, essa imagem aparece como miniatura. Cole aqui o endereço (URL) de uma foto da sua barbearia."
+                }
+                value={ogImageUrl}
+                onChangeText={setOgImageUrl}
                 placeholder="https://..."
                 colors={colors}
               />
 
               {/* Rastreamento */}
-              <Text style={[styles.advSectionTitle, { color: colors.foreground, marginTop: 8 }]}>Rastreamento</Text>
-              <AdvancedInput
-                label="Google Analytics 4 — Measurement ID"
+              <Text style={[styles.extrasGroupTitle, { color: colors.foreground, marginTop: 8 }]}>
+                Rastreamento de Visitas
+              </Text>
+              <Text style={[styles.extrasGroupHint, { color: colors.muted }]}>
+                Ferramentas para acompanhar quantas pessoas visitam sua página. Opcional — só preencha se souber usar.
+              </Text>
+
+              <FieldInput
+                label="Google Analytics (ID de medição)"
+                hint="Começa com G- . Ex: G-XXXXXXXXXX"
                 value={ga4Id}
                 onChangeText={setGa4Id}
                 placeholder="G-XXXXXXXXXX"
                 colors={colors}
               />
-              <AdvancedInput
-                label="Facebook Pixel ID"
+              <FieldInput
+                label="Facebook Pixel (ID)"
+                hint="Número de 15 dígitos do seu Pixel do Facebook."
                 value={pixelId}
                 onChangeText={setPixelId}
                 placeholder="000000000000000"
                 colors={colors}
               />
 
-              {/* Botão salvar avançado */}
+              {/* Botão salvar extras */}
               <Pressable
                 style={({ pressed }) => [styles.saveBtn, { backgroundColor: activeColor }, pressed && { opacity: 0.85 }]}
-                onPress={handleSaveAdvanced}
+                onPress={handleSaveExtras}
                 disabled={updateMutation.isPending}
               >
                 {updateMutation.isPending ? (
                   <ActivityIndicator color="#0A0A0A" size="small" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Salvar Configurações Avançadas</Text>
+                  <Text style={styles.saveBtnText}>Salvar Configurações</Text>
                 )}
               </Pressable>
             </View>
@@ -647,7 +901,9 @@ const styles = StyleSheet.create({
   blockSubtitle: { fontSize: 13, lineHeight: 18 },
 
   // URL
-  urlLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 },
+  fieldLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 },
+  fieldHint: { fontSize: 12, lineHeight: 17, marginBottom: 6 },
+  sectionFieldLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 },
   urlBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -656,39 +912,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 8,
+    marginBottom: 16,
   },
   urlText: { flex: 1, fontSize: 13, fontFamily: Platform.OS === "ios" ? "Courier" : "monospace" },
   urlCopyBtn: { padding: 4 },
 
-  // Ações
-  actionsRow: { flexDirection: "row", gap: 10, marginBottom: 16 },
-  actionBtn: {
+  // Botões de compartilhamento redesenhados
+  shareButtonsRow: { flexDirection: "row", gap: 10, marginBottom: 16 },
+  shareWhatsAppBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 10,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    flex: 1,
-    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: "#075E54",
   },
-  actionBtnEmoji: { fontSize: 16 },
-  actionBtnText: { fontSize: 13, fontWeight: "600" },
+  shareWhatsAppIcon: { fontSize: 22 },
+  shareWhatsAppTitle: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  shareWhatsAppSub: { color: "rgba(255,255,255,0.7)", fontSize: 11, marginTop: 1 },
+  shareGenericBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  shareGenericIcon: { fontSize: 22 },
+  shareGenericTitle: { fontWeight: "700", fontSize: 14 },
+  shareGenericSub: { fontSize: 11, marginTop: 1 },
 
   // QR Code
   qrContainer: { borderTopWidth: 1, paddingTop: 16, marginTop: 4 },
-  qrLabel: { fontSize: 13, fontWeight: "700", marginBottom: 4 },
+  qrLabel: { fontSize: 14, fontWeight: "700", marginBottom: 6 },
   qrHint: { fontSize: 12, lineHeight: 17 },
   qrImageWrapper: {
     backgroundColor: "#fff",
-    padding: 12,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 18,
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   qrImage: { width: 200, height: 200 },
   qrPlaceholder: { height: 200, alignItems: "center", justifyContent: "center" },
@@ -696,15 +966,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginTop: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
+    marginTop: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#C9A84C44",
     backgroundColor: "#C9A84C18",
   },
-  downloadQrText: { fontSize: 13, fontWeight: "600", color: "#C9A84C" },
+  downloadQrText: { fontSize: 13, fontWeight: "700", color: "#C9A84C" },
+
+  // Botão de pré-visualização
+  previewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginBottom: 16,
+    justifyContent: "center",
+  },
+  previewBtnIcon: { fontSize: 18 },
+  previewBtnText: { fontWeight: "700", fontSize: 14 },
 
   // Aparência
   colorPreview: { borderRadius: 12, borderWidth: 2, overflow: "hidden", marginBottom: 16 },
@@ -720,7 +1005,6 @@ const styles = StyleSheet.create({
   colorPreviewBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 13 },
   colorPreviewPrice: { fontSize: 20, fontWeight: "900" },
 
-  fieldLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 },
   colorGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 16 },
   colorChip: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   colorChipActive: { borderWidth: 3, borderColor: "#fff" },
@@ -739,6 +1023,22 @@ const styles = StyleSheet.create({
   hexHash: { fontSize: 15, marginRight: 4 },
   hexInput: { flex: 1, fontSize: 15 },
 
+  // Estilo de texto
+  fontStyleCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    gap: 12,
+  },
+  fontStyleSample: { fontSize: 20, marginBottom: 2 },
+  fontStyleDesc: { fontSize: 12 },
+  fontStyleName: { fontSize: 12, fontWeight: "700" },
+  fontStyleActiveBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  fontStyleActiveBadgeText: { color: "#0A0A0A", fontSize: 11, fontWeight: "800" },
+
   uploadHint: { fontSize: 12, lineHeight: 17 },
   removeBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
   removeBtnText: { color: "#F87171", fontSize: 13 },
@@ -746,21 +1046,96 @@ const styles = StyleSheet.create({
   saveBtn: { borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 16 },
   saveBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 15 },
 
-  // Avançado
+  // Avançado / Extras
   advancedToggle: { marginBottom: 0 },
-  advSectionTitle: { fontSize: 14, fontWeight: "700", marginBottom: 10 },
-  advLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 },
-  advInput: {
+  extrasGroupTitle: { fontSize: 14, fontWeight: "700", marginBottom: 6 },
+  extrasGroupHint: { fontSize: 12, lineHeight: 17, marginBottom: 14 },
+  fieldInputBox: {
     borderRadius: 10,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
   },
-  infoBox: { borderRadius: 10, borderWidth: 1, padding: 12, marginBottom: 14 },
-  infoText: { fontSize: 12, lineHeight: 18 },
 
   // Empty
   emptyBox: { borderRadius: 10, borderWidth: 1, padding: 16, alignItems: "center" },
   emptyText: { fontSize: 13, textAlign: "center", lineHeight: 18 },
+
+  // Preview Modal
+  previewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1F2937",
+  },
+  previewHeaderTitle: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  previewCloseBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#1F2937",
+  },
+  previewCloseBtnText: { color: "#9CA3AF", fontSize: 13, fontWeight: "600" },
+  previewBanner: { width: "100%", height: 160 },
+  previewBannerPlaceholder: {
+    width: "100%",
+    height: 160,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewInfoArea: { paddingHorizontal: 20, paddingTop: 20, alignItems: "center", gap: 10 },
+  previewLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+  },
+  previewLogoPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  previewShopName: { fontSize: 26, textAlign: "center" },
+  previewBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  previewBadgeText: { fontSize: 12, fontWeight: "600" },
+  previewBookBtn: {
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  previewBookBtnText: { color: "#0A0A0A", fontSize: 16 },
+  previewSectionTitle: { fontSize: 18, marginBottom: 12 },
+  previewServiceCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#111827",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#1F2937",
+  },
+  previewServiceName: { fontSize: 15, fontWeight: "600", marginBottom: 3 },
+  previewServiceDuration: { color: "#6B7280", fontSize: 12 },
+  previewServicePrice: { fontSize: 15, fontWeight: "800" },
+  previewServiceBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  previewServiceBtnText: { fontSize: 12, fontWeight: "700" },
+  previewGalleryImg: { width: 120, height: 90, borderRadius: 10 },
 });

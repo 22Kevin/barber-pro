@@ -1501,3 +1501,19 @@
 - [x] Aviso ao cliente no book.tsx quando agendamento fica pending_approval
 - [x] Aviso ao barbeiro no admin quando cria agendamento que ultrapassa fechamento
 - [x] Testes unitários da regra de último slot (7 testes passando)
+
+## Rodada — Melhorias na tela Minha Página
+
+- [x] Remover bloco "Link Direto para Agendamento" (manter apenas link da Página da Barbearia)
+- [x] Redesenhar botões WhatsApp (verde escuro, ícone grande) e Compartilhar (outline elegante)
+- [x] QR Code agora aponta para a página principal (não mais /agendar)
+- [x] Adicionar seleção de 5 estilos de texto (Moderno, Bold, Clássico, Elegante, Minimalista)
+- [x] Botão "Ver como ficará minha página" com pré-visualização ao vivo em modal
+- [x] Pré-visualização mostra: banner, logo, nome, cor, estilo de texto, serviços mock e galeria
+- [x] Remover campo de Domínio Personalizado da seção Avançado
+- [x] Renomear "SEO / Redes Sociais" → "Como aparece no Google e redes sociais" (linguagem simples)
+- [x] Renomear "Avançado" → "Configurações Extras"
+- [x] Adicionar textos explicativos simples para cada campo (sem jargões técnicos)
+- [x] Campo "Imagem para Compartilhamento" com explicação clara do que é e para que serve
+- [x] Adicionar campo fontStyle no banco de dados (shop_settings)
+- [x] Salvar e carregar fontStyle via mutation de settings

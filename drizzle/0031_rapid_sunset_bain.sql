@@ -1,0 +1,1 @@
+ALTER TABLE `shop_settings` ADD `fontStyle` varchar(30) DEFAULT 'moderno';

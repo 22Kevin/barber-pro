@@ -309,6 +309,7 @@ export const shopSettings = mysqlTable("shop_settings", {
   seoTitle: varchar("seoTitle", { length: 100 }),                 // Título SEO da página pública
   seoDescription: varchar("seoDescription", { length: 300 }),     // Meta descrição SEO
   seoImageUrl: text("seoImageUrl"),                               // Imagem Open Graph (OG)
+  fontStyle: varchar("fontStyle", { length: 30 }).default("moderno"), // Estilo de fonte da página pública
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 // ─── Tokens de Recuperação de Senha ────────────────────────────────────────
