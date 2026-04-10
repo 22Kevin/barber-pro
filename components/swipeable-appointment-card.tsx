@@ -47,7 +47,8 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
   // Suporta dados via JOIN (apt.clientName) ou via props legadas (client?.name)
   const resolvedClientName = appointment.clientName ?? client?.name ?? "Cliente não encontrado";
   const resolvedClientPhone = appointment.clientPhone ?? client?.phone;
-  const resolvedServiceName = appointment.serviceName ?? service?.name ?? "Serviço";
+  // Usa serviceNames (múltiplos serviços concatenados) se disponível, senão serviceName do JOIN
+  const resolvedServiceName = appointment.serviceNames ?? appointment.serviceName ?? service?.name ?? "Serviço";
   const swipeRef = useRef<Swipeable>(null);
   const status = STATUS_CONFIG[appointment.status] ?? { label: appointment.status, color: "#888880" };
   const nextPositive = getNextPositiveStatus(appointment.status);

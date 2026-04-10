@@ -231,10 +231,15 @@ export default function AgendaScreen() {
     if (selectedServices.length === 0) { Alert.alert("Atenção", "Selecione ao menos um serviço."); return; }
     if (!selectedTime) { Alert.alert("Atenção", "Selecione um horário."); return; }
     const endTime = addMinutes(selectedTime, totalDuration);
+    // Monta string de nomes de serviços para exibir no card da agenda
+    const serviceNamesStr = selectedServices.length > 1
+      ? selectedServices.map((s: any) => s.name).join(" + ")
+      : undefined;
     createMutation.mutate({
       clientId: selectedClient.id,
       barberId: barber?.id ?? 0,
       serviceId: selectedService!.id, // serviço principal
+      serviceNames: serviceNamesStr,
       date: dateStr,
       startTime: selectedTime,
       endTime,

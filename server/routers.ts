@@ -311,7 +311,7 @@ export const appRouter = router({
       .input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), excludeId: z.number().optional() }))
       .query(({ input }) => db.checkSlotAvailability(input.barberId, input.date, input.startTime, input.endTime, input.excludeId)),
     create: publicProcedure
-      .input(z.object({ clientId: z.number(), barberId: z.number(), serviceId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), notes: z.string().optional().nullable(), status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).default("confirmed") }))
+      .input(z.object({ clientId: z.number(), barberId: z.number(), serviceId: z.number(), serviceNames: z.string().optional().nullable(), date: z.string(), startTime: z.string(), endTime: z.string(), notes: z.string().optional().nullable(), status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).default("confirmed") }))
       .mutation(async ({ input }) => {
         const available = await db.checkSlotAvailability(input.barberId, input.date, input.startTime, input.endTime);
         if (!available) throw new Error("Horário não disponível. Por favor, escolha outro horário.");
@@ -323,7 +323,7 @@ export const appRouter = router({
           const client = await db.getClientById(input.clientId);
           const service = await db.getServiceById(input.serviceId);
           const clientName = client?.name ?? "Cliente";
-          const serviceName = service?.name ?? "Serviço";
+          const serviceName = input.serviceNames ?? service?.name ?? "Serviço";
           await db.sendExpoPushNotification(
             pushToken,
             "📅 Novo agendamento",

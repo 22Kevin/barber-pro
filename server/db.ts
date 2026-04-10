@@ -502,6 +502,7 @@ const appointmentFields = {
   reminderSent: appointments.reminderSent,
   whatsappConfirmationSent: appointments.whatsappConfirmationSent,
   createdAt: appointments.createdAt,
+  serviceNames: appointments.serviceNames, // Nomes concatenados de múltiplos serviços
   serviceName: services.name,
   serviceDuration: services.durationMinutes,
   servicePrice: services.price,

@@ -175,11 +175,16 @@ export default function BookScreen() {
       return;
     }
     if (!client || selectedServices.length === 0 || !selectedBarber || !selectedDate || !selectedSlot) return;
+    // Monta string de nomes de serviços para exibir no card da agenda
+    const serviceNamesStr = selectedServices.length > 1
+      ? selectedServices.map((s: any) => s.name).join(" + ")
+      : undefined;
     createAppointment.mutate(
       {
         clientId: client.id,
         barberId: selectedBarber.id,
         serviceId: selectedService!.id, // serviço principal
+        serviceNames: serviceNamesStr,
         date: formatDate(selectedDate),
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,

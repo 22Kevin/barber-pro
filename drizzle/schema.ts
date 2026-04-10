@@ -164,6 +164,7 @@ export const appointments = mysqlTable("appointments", {
   clientId: int("clientId").notNull(),
   barberId: int("barberId").notNull(),
   serviceId: int("serviceId").notNull(),
+  serviceNames: text("serviceNames"), // Nomes concatenados de todos os serviços (ex: "Corte + Barba")
   date: varchar("date", { length: 10 }).notNull(),
   startTime: time("startTime").notNull(),
   endTime: time("endTime").notNull(),

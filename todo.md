@@ -1456,3 +1456,8 @@
 - [x] Atualizar notificação WhatsApp com lista de serviços e duração total (buildConfirmationMessage, buildReminderMessage, scheduleAppointmentReminder)
 - [x] AppointmentShareCard suporta serviceNames[]
 - [x] SwipeableAppointmentCard envia mensagem pré-preenchida com lista de serviços via WhatsApp
+
+## Melhorias — Rodada 9
+- [x] Exibir múltiplos serviços nos cards da agenda admin (serviceNames concatenado via coluna no banco)
+- [x] serviceNames salvo ao criar agendamento (book.tsx e agenda.tsx)
+- [x] SwipeableAppointmentCard usa serviceNames quando disponível
