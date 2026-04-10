@@ -311,32 +311,68 @@ export const appRouter = router({
       .input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), excludeId: z.number().optional() }))
       .query(({ input }) => db.checkSlotAvailability(input.barberId, input.date, input.startTime, input.endTime, input.excludeId)),
     create: publicProcedure
-      .input(z.object({ clientId: z.number(), barberId: z.number(), serviceId: z.number(), serviceNames: z.string().optional().nullable(), date: z.string(), startTime: z.string(), endTime: z.string(), notes: z.string().optional().nullable(), status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).default("confirmed") }))
+      .input(z.object({ clientId: z.number(), barberId: z.number(), serviceId: z.number(), serviceNames: z.string().optional().nullable(), date: z.string(), startTime: z.string(), endTime: z.string(), notes: z.string().optional().nullable(), status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "pending_approval"]).default("confirmed") }))
       .mutation(async ({ input }) => {
         const available = await db.checkSlotAvailability(input.barberId, input.date, input.startTime, input.endTime);
         if (!available) throw new Error("Horário não disponível. Por favor, escolha outro horário.");
-        // Confirma automaticamente (sem etapa de confirmação manual)
-        const apptId = await db.createAppointment({ ...input, status: "confirmed" } as any);
-        // Notifica o barbeiro via Expo Push (server-side, funciona com app fechado)
+
+        // ── Regra de horário limite ──────────────────────────────────────────────
+        // Verifica se o endTime ultrapassa o horário de fechamento do barbeiro naquele dia
+        const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+        const dayOfWeek = new Date(input.date + "T12:00:00").getDay();
+        const wh = await db.getWorkingHoursForDay(input.barberId, dayOfWeek);
+        let exceedsClosingTime = false;
+        let overtimeMinutes = 0;
+        let closingTime = "";
+        if (wh) {
+          const closeMin = toMin(wh.endTime);
+          const endMin = toMin(input.endTime);
+          if (endMin > closeMin) {
+            exceedsClosingTime = true;
+            overtimeMinutes = endMin - closeMin;
+            closingTime = wh.endTime;
+          }
+        }
+
+        // Se ultrapassa o horário de fechamento, cria como pending_approval
+        const finalStatus = exceedsClosingTime ? "pending_approval" : "confirmed";
+        const apptId = await db.createAppointment({ ...input, status: finalStatus } as any);
+
+        // Notifica o barbeiro via Expo Push
         const pushToken = await db.getBarberPushToken(input.barberId);
         if (pushToken) {
           const client = await db.getClientById(input.clientId);
           const service = await db.getServiceById(input.serviceId);
           const clientName = client?.name ?? "Cliente";
           const serviceName = input.serviceNames ?? service?.name ?? "Serviço";
-          await db.sendExpoPushNotification(
-            pushToken,
-            "📅 Novo agendamento",
-            `${clientName} agendou ${serviceName} para ${input.date} às ${input.startTime}`,
-            { appointmentId: apptId, screen: "agenda" }
-          );
+          if (exceedsClosingTime) {
+            // Notificação especial: precisa de aprovação
+            const endHHMM = input.endTime.substring(0, 5);
+            const closeHHMM = closingTime.substring(0, 5);
+            const extraH = Math.floor(overtimeMinutes / 60);
+            const extraM = overtimeMinutes % 60;
+            const extraStr = extraH > 0 ? `${extraH}h${extraM > 0 ? extraM + "min" : ""}` : `${extraM}min`;
+            await db.sendExpoPushNotification(
+              pushToken,
+              "⚠️ Agendamento aguarda sua aprovação",
+              `${clientName} quer agendar ${serviceName} às ${input.startTime.substring(0, 5)} (término às ${endHHMM}, ${extraStr} após o fechamento às ${closeHHMM}). Abra a agenda para aprovar.`,
+              { appointmentId: apptId, screen: "agenda", type: "pending_approval" }
+            );
+          } else {
+            await db.sendExpoPushNotification(
+              pushToken,
+              "📅 Novo agendamento",
+              `${clientName} agendou ${serviceName} para ${input.date} às ${input.startTime}`,
+              { appointmentId: apptId, screen: "agenda" }
+            );
+          }
         }
-        return apptId;
+        return { apptId, requiresApproval: exceedsClosingTime, overtimeMinutes, closingTime };
       }),
     update: publicProcedure
       .input(z.object({
         id: z.number(),
-        status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"]).optional(),
+        status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "pending_approval"]).optional(),
         notes: z.string().optional().nullable(),
         reminderSent: z.boolean().optional(),
         whatsappConfirmationSent: z.boolean().optional(),
@@ -345,6 +381,34 @@ export const appRouter = router({
         endTime: z.string().optional(),
       }))
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateAppointment(id, data as any); }),
+    approveOvertime: publicProcedure
+      .input(z.object({ id: z.number(), approve: z.boolean(), clientPushToken: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        if (input.approve) {
+          await db.updateAppointment(input.id, { status: "confirmed" } as any);
+          // Notifica o cliente que foi aprovado
+          if (input.clientPushToken) {
+            await db.sendExpoPushNotification(
+              input.clientPushToken,
+              "✅ Agendamento confirmado!",
+              "Seu agendamento foi aprovado pelo barbeiro. Até lá!",
+              { screen: "history" }
+            );
+          }
+        } else {
+          await db.updateAppointment(input.id, { status: "cancelled", cancelReason: "Horário fora do expediente" } as any);
+          // Notifica o cliente que foi recusado
+          if (input.clientPushToken) {
+            await db.sendExpoPushNotification(
+              input.clientPushToken,
+              "❌ Agendamento não aprovado",
+              "O barbeiro não pôde confirmar o horário solicitado. Por favor, escolha outro horário.",
+              { screen: "book" }
+            );
+          }
+        }
+        return { success: true };
+      }),
     cancelWithReason: publicProcedure
       .input(z.object({ id: z.number(), reason: z.string().optional(), clientPushToken: z.string().optional() }))
       .mutation(async ({ input }) => {

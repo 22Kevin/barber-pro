@@ -211,6 +211,13 @@
       "when": 1775821063805,
       "tag": "0029_loving_thunderbolt_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1775824980191,
+      "tag": "0030_chief_gravity",
+      "breakpoints": true
     }
   ]
 }

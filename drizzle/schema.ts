@@ -168,7 +168,7 @@ export const appointments = mysqlTable("appointments", {
   date: varchar("date", { length: 10 }).notNull(),
   startTime: time("startTime").notNull(),
   endTime: time("endTime").notNull(),
-  status: mysqlEnum("status", ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"])
+  status: mysqlEnum("status", ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "pending_approval"])
     .default("scheduled")
     .notNull(),
   notes: text("notes"),

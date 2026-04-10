@@ -213,7 +213,7 @@ export function PaymentStatusModal({
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
             {/* ── VIEW: STATUS ── */}
             {view === "status" && (
-              <>
+              <View>
                 {isLoading ? (
                   <View style={styles.loadingRow}>
                     <ActivityIndicator color="#32BCAD" />
@@ -239,7 +239,7 @@ export function PaymentStatusModal({
                   </View>
                 ) : (
                   /* NÃO PAGO */
-                  <>
+                  <View>
                     <View style={styles.unpaidBanner}>
                       <Text style={styles.unpaidIcon}>⏳</Text>
                       <View>
@@ -290,14 +290,14 @@ export function PaymentStatusModal({
                       </View>
                       <Text style={styles.chevron}>›</Text>
                     </TouchableOpacity>
-                  </>
+                  </View>
                 )}
-              </>
+              </View>
             )}
 
             {/* ── VIEW: ESCOLHER MÉTODO ── */}
             {view === "choose_method" && (
-              <>
+              <View>
                 <TouchableOpacity onPress={() => setView("status")} style={styles.backRow}>
                   <Text style={styles.backText}>← Voltar</Text>
                 </TouchableOpacity>
@@ -315,12 +315,12 @@ export function PaymentStatusModal({
                     {registerPaymentMutation.isPending && <ActivityIndicator color={METHOD_COLORS[method]} size="small" />}
                   </TouchableOpacity>
                 ))}
-              </>
+              </View>
             )}
 
             {/* ── VIEW: PIX QR CODE ── */}
             {view === "pix_qr" && pixData && (
-              <>
+              <View>
                 <TouchableOpacity onPress={() => setView("status")} style={styles.backRow}>
                   <Text style={styles.backText}>← Voltar</Text>
                 </TouchableOpacity>
@@ -383,7 +383,7 @@ export function PaymentStatusModal({
                     <Text style={styles.confirmBtnText}>Cliente pagou ✓</Text>
                   )}
                 </Pressable>
-              </>
+              </View>
             )}
           </ScrollView>
         </View>

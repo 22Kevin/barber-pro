@@ -137,17 +137,34 @@ export default function BookScreen() {
   const createRecurring = trpc.recurring.create.useMutation();
 
   const createAppointment = trpc.appointments.create.useMutation({
-    onSuccess: async (apptId) => {
+    onSuccess: async (result: any) => {
+      const apptId = result?.apptId ?? result;
       const numApptId = typeof apptId === "number" ? apptId : Number(apptId);
-       setPendingApptId(numApptId);
+      setPendingApptId(numApptId);
       if (client && selectedBarber && selectedService && selectedDate && selectedSlot) {
         const [h, m] = selectedSlot.startTime.split(":").map(Number);
         const appointmentDateTime = new Date(selectedDate);
         appointmentDateTime.setHours(h, m, 0, 0);
         setPendingApptDateTime(appointmentDateTime);
         // Agenda notificação de avaliação pós-atendimento
-        scheduleReviewNotification(numApptId, selectedServices.map((s: any) => s.name).join(" + ") || selectedService!.name, selectedBarber!.name, appointmentDateTime).catch(() => null);       // Mostra modal para o cliente escolher a antecedência do lembrete
+        scheduleReviewNotification(numApptId, selectedServices.map((s: any) => s.name).join(" + ") || selectedService!.name, selectedBarber!.name, appointmentDateTime).catch(() => null);
+        // Mostra modal para o cliente escolher a antecêdência do lembrete
         setShowReminderModal(true);
+
+        // Se o agendamento ultrapassa o horário de fechamento, avisa o cliente
+        if (result?.requiresApproval) {
+          const endHHMM = selectedSlot.endTime.substring(0, 5);
+          const closeHHMM = (result.closingTime ?? "").substring(0, 5);
+          const extra = result.overtimeMinutes ?? 0;
+          const extraH = Math.floor(extra / 60);
+          const extraM = extra % 60;
+          const extraStr = extraH > 0 ? `${extraH}h${extraM > 0 ? extraM + "min" : ""}` : `${extraM}min`;
+          Alert.alert(
+            "⏳ Aguardando aprovação",
+            `Seu agendamento termina às ${endHHMM}, ou seja ${extraStr} após o horário de fechamento (${closeHHMM}).\n\nO barbeiro precisa aprovar este horário. Você será notificado assim que ele confirmar.`,
+            [{ text: "Entendido" }]
+          );
+        }
       }
     },
     onError: (err) => Alert.alert("Erro", err.message),

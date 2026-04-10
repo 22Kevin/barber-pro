@@ -29,12 +29,13 @@ const DAYS_PT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  scheduled:   { label: "Agendado",     color: "#C9A84C" },
-  confirmed:   { label: "Confirmado",   color: "#4CAF50" },
-  in_progress: { label: "Em andamento", color: "#2196F3" },
-  completed:   { label: "Concluído",    color: "#888880" },
-  cancelled:   { label: "Cancelado",    color: "#F44336" },
-  no_show:     { label: "Não compareceu", color: "#FF9800" },
+  scheduled:        { label: "Agendado",          color: "#C9A84C" },
+  confirmed:        { label: "Confirmado",        color: "#4CAF50" },
+  in_progress:      { label: "Em andamento",      color: "#2196F3" },
+  completed:        { label: "Concluído",         color: "#888880" },
+  cancelled:        { label: "Cancelado",         color: "#F44336" },
+  no_show:          { label: "Não compareceu",   color: "#FF9800" },
+  pending_approval: { label: "⏳ Aguarda aprovação", color: "#FF6B35" },
 };
 
 function dateToString(d: Date) {
@@ -166,9 +167,11 @@ export default function AgendaScreen() {
   );
 
   const createMutation = trpc.appointments.create.useMutation({
-    onSuccess: async (apptId) => {
+    onSuccess: async (result: any) => {
       utils.appointments.byDate.invalidate();
       utils.dashboard.stats.invalidate();
+
+      const apptId = result?.apptId ?? result;
 
       // Agenda notificação push 1 hora antes (se o cliente tiver o app instalado)
       if (selectedServices.length > 0 && selectedTime) {
@@ -185,7 +188,38 @@ export default function AgendaScreen() {
       }
 
       closeNewModal();
-      Alert.alert("Sucesso", "Agendamento criado! O cliente receberá um lembrete 1 hora antes.");
+
+      if (result?.requiresApproval) {
+        // Agendamento ultrapassa horário de fechamento — informa o barbeiro
+        const endHHMM = addMinutes(selectedTime, totalDuration).substring(0, 5);
+        const closeHHMM = (result.closingTime ?? "").substring(0, 5);
+        const extra = result.overtimeMinutes ?? 0;
+        const extraH = Math.floor(extra / 60);
+        const extraM = extra % 60;
+        const extraStr = extraH > 0 ? `${extraH}h${extraM > 0 ? extraM + "min" : ""}` : `${extraM}min`;
+        Alert.alert(
+          "⚠️ Agendamento aguarda aprovação",
+          `Este agendamento termina às ${endHHMM}, ou seja ${extraStr} após o horário de fechamento (${closeHHMM}).\n\nO agendamento foi criado com status "Aguarda aprovação". Você pode aprovar ou recusar na tela de detalhes.`,
+          [{ text: "Entendido" }]
+        );
+      } else {
+        Alert.alert("Sucesso", "Agendamento criado! O cliente receberá um lembrete 1 hora antes.");
+      }
+    },
+    onError: (e) => Alert.alert("Erro", e.message),
+  });
+
+  const approveMutation = trpc.appointments.approveOvertime.useMutation({
+    onSuccess: (_data: unknown, variables: any) => {
+      utils.appointments.byDate.invalidate();
+      utils.dashboard.stats.invalidate();
+      setShowDetailModal(false);
+      Alert.alert(
+        variables.approve ? "✅ Aprovado" : "❌ Recusado",
+        variables.approve
+          ? "Agendamento confirmado! O cliente será notificado."
+          : "Agendamento cancelado. O cliente será notificado."
+      );
     },
     onError: (e) => Alert.alert("Erro", e.message),
   });
@@ -769,18 +803,50 @@ export default function AgendaScreen() {
                   </View>
                 )}
 
-                <Text style={[styles.fieldLabel, { marginTop: 4, marginBottom: 8 }]}>Alterar Status</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-                  {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                    <Pressable
-                      key={key}
-                      style={[styles.statusChangeBtn, { borderColor: cfg.color }]}
-                      onPress={() => handleStatusChange(selectedAppointment.id, key)}
-                    >
-                      <Text style={[styles.statusChangeBtnText, { color: cfg.color }]}>{cfg.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
+                {/* Seção de aprovação de horário extra */}
+                {selectedAppointment.status === "pending_approval" && (
+                  <View style={{ backgroundColor: "#1A0D00", borderRadius: 12, padding: 16, marginTop: 16, marginBottom: 8, borderWidth: 1, borderColor: "#FF6B35" }}>
+                    <Text style={{ color: "#FF6B35", fontWeight: "700", fontSize: 15, marginBottom: 6 }}>
+                      ⚠️ Agendamento fora do expediente
+                    </Text>
+                    <Text style={{ color: "#F5F5F0", fontSize: 13, lineHeight: 20, marginBottom: 14 }}>
+                      Este agendamento termina às {selectedAppointment.endTime?.substring(0, 5)}, ultrapassando o horário de fechamento. Deseja confirmar mesmo assim?
+                    </Text>
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <Pressable
+                        style={[styles.saveBtn, { flex: 1, backgroundColor: "#4CAF50", marginBottom: 0 }]}
+                        onPress={() => approveMutation.mutate({ id: selectedAppointment.id, approve: true })}
+                        disabled={approveMutation.isPending}
+                      >
+                        <Text style={styles.saveBtnText}>{approveMutation.isPending ? "..." : "✔ Aprovar"}</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[styles.saveBtn, { flex: 1, backgroundColor: "#F44336", marginBottom: 0 }]}
+                        onPress={() => approveMutation.mutate({ id: selectedAppointment.id, approve: false })}
+                        disabled={approveMutation.isPending}
+                      >
+                        <Text style={styles.saveBtnText}>{approveMutation.isPending ? "..." : "✖ Recusar"}</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                )}
+
+                {selectedAppointment.status !== "pending_approval" && (
+                  <View>
+                    <Text style={[styles.fieldLabel, { marginTop: 4, marginBottom: 8 }]}>Alterar Status</Text>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                      {Object.entries(STATUS_CONFIG).filter(([k]) => k !== "pending_approval").map(([key, cfg]) => (
+                        <Pressable
+                          key={key}
+                          style={[styles.statusChangeBtn, { borderColor: cfg.color }]}
+                          onPress={() => handleStatusChange(selectedAppointment.id, key)}
+                        >
+                          <Text style={[styles.statusChangeBtnText, { color: cfg.color }]}>{cfg.label}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                )}
               </ScrollView>
             )}
           </View>

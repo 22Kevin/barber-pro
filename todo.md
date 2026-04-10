@@ -1480,3 +1480,24 @@
 ## Bugs — Rodada 9
 - [x] BUG: selectedSlot não era limpo quando totalDuration mudava (serviços adicionados/removidos) — corrigido com useEffect em book.tsx e agenda.tsx
 - [x] BUG: endTime calculado com duração de apenas 1 serviço ao criar agendamento — causa raiz era o selectedSlot desatualizado
+
+## Rodada 10 — Horário limite e aprovação do barbeiro
+- [ ] BUG: Crash insertBefore no agendamento (fragmento React em renderização condicional em book.tsx)
+- [ ] Regra: último slot disponível = 30 min antes do horário de fechamento da barbearia
+- [ ] Regra: se serviços selecionados ultrapassam o horário de fechamento → agendamento criado com status "pending_approval" aguardando barbeiro
+- [ ] Notificação push ao barbeiro com tempo extra (ex: "Cliente quer agendar às 19:30 com 2h de serviço — você trabalharia até 21:30. Confirmar?")
+- [ ] Ação de confirmar/recusar no modal de detalhes do admin para agendamentos pending_approval
+- [ ] Notificação push ao cliente quando barbeiro confirmar ou recusar o agendamento
+
+## Rodada — Regra de horário limite e aprovação do barbeiro
+
+- [x] Corrigir crash insertBefore no agendamento (fragmentos React no payment-status-modal)
+- [x] Implementar regra: último slot disponível = 30 min antes do fechamento
+- [x] Agendamentos que ultrapassam o fechamento criam status pending_approval
+- [x] Notificação push ao barbeiro informando o tempo extra ao criar agendamento
+- [x] Modal de aprovação no admin (agenda): botões Aprovar/Recusar para pending_approval
+- [x] Notificação push ao cliente quando barbeiro aprova ou recusa
+- [x] Status pending_approval exibido no histórico do cliente (⏳ Aguarda aprovação)
+- [x] Aviso ao cliente no book.tsx quando agendamento fica pending_approval
+- [x] Aviso ao barbeiro no admin quando cria agendamento que ultrapassa fechamento
+- [x] Testes unitários da regra de último slot (7 testes passando)

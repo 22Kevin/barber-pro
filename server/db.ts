@@ -453,6 +453,14 @@ export async function getShopOpenStatus() {
   return { isOpen, opensAt: earliestStart, closesAt: latestEnd, lunchStart, lunchEnd };
 }
 
+export async function getWorkingHoursForDay(barberId: number, dayOfWeek: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(workingHours)
+    .where(and(eq(workingHours.barberId, barberId), eq(workingHours.dayOfWeek, dayOfWeek), eq(workingHours.isWorking, true))).limit(1);
+  return result[0] ?? null;
+}
+
 export async function upsertWorkingHours(barberId: number, dayOfWeek: number, data: { startTime: string; endTime: string; lunchStart?: string | null; lunchEnd?: string | null; isWorking: boolean }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -993,9 +1001,13 @@ export async function getAvailableSlots(barberId: number, date: string, duration
   // Adiciona margem de 5 minutos para não exibir horários que estão prestes a passar
   const minStartMinute = isToday ? currentMinute + 5 : 0;
 
+  // Regra: último slot de início deve ser no máximo 30 min antes do fechamento
+  // Ou seja, o início do slot não pode ultrapassar (endMin - 30)
+  const lastAllowedStart = endMin - 30;
+
   const slots: { startTime: string; endTime: string }[] = [];
   let cursor = startMin;
-  while (cursor + durationMinutes <= endMin) {
+  while (cursor <= lastAllowedStart) {
     const slotEnd = cursor + durationMinutes;
     const conflict = busyIntervals.some(({ s, e }) => cursor < e && slotEnd > s);
     // Ignorar slots que já passaram (apenas para hoje)

@@ -18,12 +18,13 @@ import { trpc } from "@/lib/trpc";
 import { cancelAppointmentReminder } from "@/lib/use-notifications";
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  scheduled:   { label: "Agendado",        color: "#EAB308", bg: "#1F1500" },
-  confirmed:   { label: "Confirmado",       color: "#22C55E", bg: "#052e16" },
-  in_progress: { label: "Em andamento",     color: "#3B82F6", bg: "#0c1a2e" },
-  completed:   { label: "Concluído",        color: "#9CA3AF", bg: "#111827" },
-  cancelled:   { label: "Cancelado",        color: "#EF4444", bg: "#1c0a0a" },
-  no_show:     { label: "Não compareceu",   color: "#F97316", bg: "#1c0e00" },
+  scheduled:        { label: "Agendado",            color: "#EAB308", bg: "#1F1500" },
+  confirmed:        { label: "Confirmado",           color: "#22C55E", bg: "#052e16" },
+  in_progress:      { label: "Em andamento",         color: "#3B82F6", bg: "#0c1a2e" },
+  completed:        { label: "Concluído",            color: "#9CA3AF", bg: "#111827" },
+  cancelled:        { label: "Cancelado",            color: "#EF4444", bg: "#1c0a0a" },
+  no_show:          { label: "Não compareceu",       color: "#F97316", bg: "#1c0e00" },
+  pending_approval: { label: "⏳ Aguarda aprovação", color: "#FF6B35", bg: "#1A0D00" },
 };
 
 // ─── Modal de avaliação ───────────────────────────────────────────────────────
