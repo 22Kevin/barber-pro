@@ -1469,3 +1469,6 @@
 ## Melhorias — Rodada 9
 - [x] Duração total no card da agenda (startTime/endTime diff)
 - [x] Edição de agendamento com seleção múltipla de serviços no modal de detalhes
+
+## Bugs — Rodada 9
+- [x] BUG: Crash na agenda admin — fragmento React (<>) dentro de condicional causa insertBefore error no web

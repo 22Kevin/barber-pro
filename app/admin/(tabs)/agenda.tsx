@@ -704,7 +704,7 @@ export default function AgendaScreen() {
 
                 {/* Seção de edição de serviços */}
                 {selectedAppointment.status !== "completed" && selectedAppointment.status !== "cancelled" && selectedAppointment.status !== "no_show" && (
-                  <>
+                  <View>
                     <Text style={[styles.fieldLabel, { marginTop: 20, marginBottom: 8 }]}>Editar Serviços</Text>
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                       {(servicesQuery.data ?? []).map((svc: any) => {
@@ -760,7 +760,7 @@ export default function AgendaScreen() {
                         {updateMutation.isPending ? "Salvando..." : "Salvar Serviços"}
                       </Text>
                     </Pressable>
-                  </>
+                  </View>
                 )}
 
                 <Text style={[styles.fieldLabel, { marginTop: 4, marginBottom: 8 }]}>Alterar Status</Text>
