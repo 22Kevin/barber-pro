@@ -232,6 +232,12 @@ export default function AgendaScreen() {
     [selectedServices]
   );
 
+  // Limpar o horário selecionado quando a duração total muda (serviços adicionados/removidos)
+  // Evita usar um endTime calculado para duração menor
+  useEffect(() => {
+    setSelectedTime("");
+  }, [totalDuration]);
+
   function closeNewModal() {
     setShowNewModal(false);
     setSelectedClient(null); setSelectedServices([]); setSelectedTime(""); setNotes(""); setClientSearch("");

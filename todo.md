@@ -1472,3 +1472,11 @@
 
 ## Bugs — Rodada 9
 - [x] BUG: Crash na agenda admin — fragmento React (<>) dentro de condicional causa insertBefore error no web
+
+## Bugs — Rodada 10
+- [ ] BUG: endTime calculado com duração de apenas 1 serviço — deve somar todos os serviços selecionados
+- [ ] BUG: Agendamento anterior é cancelado ao criar novo agendamento no mesmo horário (conflito não bloqueado)
+
+## Bugs — Rodada 9
+- [x] BUG: selectedSlot não era limpo quando totalDuration mudava (serviços adicionados/removidos) — corrigido com useEffect em book.tsx e agenda.tsx
+- [x] BUG: endTime calculado com duração de apenas 1 serviço ao criar agendamento — causa raiz era o selectedSlot desatualizado

@@ -161,6 +161,12 @@ export default function BookScreen() {
     }
   }, [params.serviceId, servicesQuery.data]);
 
+  // Limpar o slot selecionado quando os serviços mudam (duração total pode ter mudado)
+  // Isso evita que um slot com endTime calculado para duração menor seja usado
+  useEffect(() => {
+    setSelectedSlot(null);
+  }, [totalDuration]);
+
   // Calcular valor final com desconto
   const basePrice = totalPrice;
   const discountAmount = appliedDiscount?.discountAmount ?? 0;
