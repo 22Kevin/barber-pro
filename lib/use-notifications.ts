@@ -121,9 +121,15 @@ export async function scheduleAppointmentReminder(
   serviceName: string,
   barberName: string,
   appointmentDate: Date,
-  hoursBeforeAppt: number = 1
+  hoursBeforeAppt: number = 1,
+  serviceNames?: string[]
 ): Promise<string | null> {
   if (Platform.OS === "web") return null;
+
+  // Resolve o nome do serviço para a notificação
+  const resolvedServiceName = serviceNames && serviceNames.length > 1
+    ? serviceNames.join(" + ")
+    : serviceName;
 
   // Calcula o horário do lembrete conforme preferência do cliente
   const reminderDate = new Date(appointmentDate.getTime() - hoursBeforeAppt * 60 * 60 * 1000);
@@ -147,7 +153,7 @@ export async function scheduleAppointmentReminder(
       identifier: `appointment-reminder-${appointmentId}`,
       content: {
         title: "✂️ Lembrete de Agendamento — Barber Pro",
-        body: `Seu ${serviceName} com ${barberName} começa em ${hoursLabel}!`,
+        body: `Seu ${resolvedServiceName} com ${barberName} começa em ${hoursLabel}!`,
         data: {
           appointmentId,
           type: "appointment_reminder",

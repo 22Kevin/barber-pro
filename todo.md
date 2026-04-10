@@ -1446,3 +1446,13 @@
 - [x] Soma de durações no agendamento admin
 - [x] Exibir todos os serviços no histórico do cliente (history.tsx)
 - [x] Validação de conflito de horário no servidor usando endTime calculado
+
+## Melhorias — Rodada 8
+- [ ] Exibir múltiplos serviços nos cards da agenda admin (serviceNames na query byDate)
+- [ ] Atualizar notificação WhatsApp com lista de serviços e duração total
+
+## Melhorias — Rodada 8 (concluídas)
+- [x] Exibir múltiplos serviços nos cards da agenda admin (JOIN em services e clients nas queries byDate e allByDate)
+- [x] Atualizar notificação WhatsApp com lista de serviços e duração total (buildConfirmationMessage, buildReminderMessage, scheduleAppointmentReminder)
+- [x] AppointmentShareCard suporta serviceNames[]
+- [x] SwipeableAppointmentCard envia mensagem pré-preenchida com lista de serviços via WhatsApp

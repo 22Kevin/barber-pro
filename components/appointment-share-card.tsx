@@ -99,6 +99,8 @@ const THEMES: Record<CardTheme, ThemeConfig> = {
 interface AppointmentShareCardProps {
   shopName: string;
   serviceName: string;
+  /** Lista de nomes de serviços quando há múltiplos selecionados */
+  serviceNames?: string[];
   barberName: string;
   date: string;
   time: string;
@@ -113,12 +115,17 @@ interface AppointmentShareCardProps {
 export function AppointmentShareCard({
   shopName,
   serviceName,
+  serviceNames,
   barberName,
   date,
   time,
   clientPhotoUrl,
   clientName,
 }: AppointmentShareCardProps) {
+  // Resolve o nome do serviço: lista ou nome único
+  const resolvedServiceName = serviceNames && serviceNames.length > 1
+    ? serviceNames.join(" + ")
+    : serviceName;
   const cardRef = useRef<ViewShot>(null);
   const [selectedTheme, setSelectedTheme] = useState<CardTheme>("dark-gold");
   const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(clientPhotoUrl ?? null);
@@ -339,7 +346,7 @@ export function AppointmentShareCard({
 
           {/* Detalhes do serviço */}
           <View style={[styles.detailsCard, { backgroundColor: theme.surface, borderColor: theme.divider }]}>
-            <DetailItem icon="✂️" label="SERVIÇO" value={serviceName} theme={theme} />
+            <DetailItem icon="✂️" label="SERVIÇO" value={resolvedServiceName} theme={theme} />
             <View style={[styles.detailDivider, { backgroundColor: theme.accent + "20" }]} />
             <DetailItem icon="👤" label="PROFISSIONAL" value={barberName} theme={theme} />
           </View>

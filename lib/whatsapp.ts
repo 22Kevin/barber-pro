@@ -10,6 +10,10 @@ export interface AppointmentInfo {
   clientName: string;
   clientPhone: string;
   serviceName: string;
+  /** Lista de nomes de serviços quando há múltiplos selecionados */
+  serviceNames?: string[];
+  /** Duração total em minutos (soma de todos os serviços) */
+  totalDuration?: number;
   barberName: string;
   date: string;        // YYYY-MM-DD
   startTime: string;   // HH:MM
@@ -37,11 +41,27 @@ function formatPhone(phone: string): string {
   return digits;
 }
 
+/** Monta o bloco de serviços para a mensagem WhatsApp */
+function buildServiceBlock(info: AppointmentInfo): string {
+  const hasMultiple = info.serviceNames && info.serviceNames.length > 1;
+  if (hasMultiple) {
+    const list = info.serviceNames!.map((s, i) => `  ${i + 1}. ${s}`).join("\n");
+    const duration = info.totalDuration ? ` _(${info.totalDuration} min no total)_` : "";
+    return `✂️ *Serviços:*\n${list}${duration}`;
+  }
+  const duration = info.totalDuration ? ` _(${info.totalDuration} min)_` : "";
+  return `✂️ *Serviço:* ${info.serviceName}${duration}`;
+}
+
 export function buildConfirmationMessage(info: AppointmentInfo, template?: string | null): string {
+  const serviceForTemplate = info.serviceNames && info.serviceNames.length > 1
+    ? info.serviceNames.join(" + ")
+    : info.serviceName;
+
   if (template) {
     return template
       .replace("{cliente}", info.clientName)
-      .replace("{servico}", info.serviceName)
+      .replace("{servico}", serviceForTemplate)
       .replace("{barbeiro}", info.barberName)
       .replace("{data}", formatDatePT(info.date))
       .replace("{hora}", info.startTime)
@@ -54,7 +74,7 @@ export function buildConfirmationMessage(info: AppointmentInfo, template?: strin
 
 Seu agendamento foi *confirmado* com sucesso!
 
-✂️ *Serviço:* ${info.serviceName}
+${buildServiceBlock(info)}
 💈 *Barbeiro:* ${info.barberName}
 📅 *Data:* ${formatDatePT(info.date)}
 ⏰ *Horário:* ${info.startTime} às ${info.endTime}
@@ -66,10 +86,14 @@ _${info.shopName ?? "Barber Pro"}_`;
 }
 
 export function buildReminderMessage(info: AppointmentInfo, template?: string | null): string {
+  const serviceForTemplate = info.serviceNames && info.serviceNames.length > 1
+    ? info.serviceNames.join(" + ")
+    : info.serviceName;
+
   if (template) {
     return template
       .replace("{cliente}", info.clientName)
-      .replace("{servico}", info.serviceName)
+      .replace("{servico}", serviceForTemplate)
       .replace("{barbeiro}", info.barberName)
       .replace("{data}", formatDatePT(info.date))
       .replace("{hora}", info.startTime)
@@ -80,7 +104,7 @@ export function buildReminderMessage(info: AppointmentInfo, template?: string | 
 
 Lembrete: você tem um agendamento em *1 hora*!
 
-✂️ *Serviço:* ${info.serviceName}
+${buildServiceBlock(info)}
 💈 *Barbeiro:* ${info.barberName}
 ⏰ *Horário:* ${info.startTime}
 ${info.shopAddress ? `📍 *Endereço:* ${info.shopAddress}` : ""}

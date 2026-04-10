@@ -487,10 +487,36 @@ export async function deleteBlockedSlot(id: number) {
 }
 
 // ─── Agendamentos ─────────────────────────────────────────────────────────────
+// Campos comuns retornados nas queries de agendamento com JOIN
+const appointmentFields = {
+  id: appointments.id,
+  clientId: appointments.clientId,
+  barberId: appointments.barberId,
+  serviceId: appointments.serviceId,
+  date: appointments.date,
+  startTime: appointments.startTime,
+  endTime: appointments.endTime,
+  status: appointments.status,
+  notes: appointments.notes,
+  cancelReason: appointments.cancelReason,
+  reminderSent: appointments.reminderSent,
+  whatsappConfirmationSent: appointments.whatsappConfirmationSent,
+  createdAt: appointments.createdAt,
+  serviceName: services.name,
+  serviceDuration: services.durationMinutes,
+  servicePrice: services.price,
+  clientName: clients.name,
+  clientPhone: clients.phone,
+};
+
 export async function getAppointmentsByDate(barberId: number, date: string) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(appointments)
+  return db
+    .select(appointmentFields)
+    .from(appointments)
+    .leftJoin(services, eq(appointments.serviceId, services.id))
+    .leftJoin(clients, eq(appointments.clientId, clients.id))
     .where(and(eq(appointments.barberId, barberId), eq(appointments.date, date),
       sql`${appointments.status} NOT IN ('cancelled', 'no_show')`))
     .orderBy(appointments.startTime);
@@ -499,7 +525,11 @@ export async function getAppointmentsByDate(barberId: number, date: string) {
 export async function getAppointmentsByDateRange(barberId: number, startDate: string, endDate: string) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(appointments)
+  return db
+    .select(appointmentFields)
+    .from(appointments)
+    .leftJoin(services, eq(appointments.serviceId, services.id))
+    .leftJoin(clients, eq(appointments.clientId, clients.id))
     .where(and(eq(appointments.barberId, barberId),
       gte(appointments.date, startDate), lte(appointments.date, endDate),
       sql`${appointments.status} NOT IN ('cancelled', 'no_show')`))
@@ -508,7 +538,11 @@ export async function getAppointmentsByDateRange(barberId: number, startDate: st
 export async function getAllAppointmentsByDateRange(barberId: number, startDate: string, endDate: string) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(appointments)
+  return db
+    .select(appointmentFields)
+    .from(appointments)
+    .leftJoin(services, eq(appointments.serviceId, services.id))
+    .leftJoin(clients, eq(appointments.clientId, clients.id))
     .where(and(eq(appointments.barberId, barberId),
       gte(appointments.date, startDate), lte(appointments.date, endDate)))
     .orderBy(appointments.date, appointments.startTime);
@@ -520,23 +554,13 @@ export async function getAllAppointmentsByDate(date: string, tenantId?: number |
   if (tenantId != null) {
     // Filtrar via join com barbeiros do tenant
     const rows = await db.select({
-      id: appointments.id,
-      clientId: appointments.clientId,
-      barberId: appointments.barberId,
-      serviceId: appointments.serviceId,
-      date: appointments.date,
-      startTime: appointments.startTime,
-      endTime: appointments.endTime,
-      status: appointments.status,
-      notes: appointments.notes,
-      cancelReason: appointments.cancelReason,
-      reminderSent: appointments.reminderSent,
-      whatsappConfirmationSent: appointments.whatsappConfirmationSent,
-      createdAt: appointments.createdAt,
+      ...appointmentFields,
       updatedAt: appointments.updatedAt,
     })
       .from(appointments)
       .innerJoin(barbers, eq(appointments.barberId, barbers.id))
+      .leftJoin(services, eq(appointments.serviceId, services.id))
+      .leftJoin(clients, eq(appointments.clientId, clients.id))
       .where(and(
         eq(appointments.date, date),
         sql`${appointments.status} NOT IN ('cancelled', 'no_show')`,
@@ -544,7 +568,11 @@ export async function getAllAppointmentsByDate(date: string, tenantId?: number |
       ));
     return rows;
   }
-  return db.select().from(appointments)
+  return db
+    .select({ ...appointmentFields })
+    .from(appointments)
+    .leftJoin(services, eq(appointments.serviceId, services.id))
+    .leftJoin(clients, eq(appointments.clientId, clients.id))
     .where(and(eq(appointments.date, date), sql`${appointments.status} NOT IN ('cancelled', 'no_show')`));
 }
 

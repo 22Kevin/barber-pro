@@ -7,6 +7,7 @@ import {
 import * as Haptics from "expo-haptics";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { cancelReviewNotification } from "@/lib/use-notifications";
+import { buildConfirmationMessage } from "@/lib/whatsapp";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   scheduled:   { label: "Agendado",       color: "#C9A84C" },
@@ -29,8 +30,10 @@ function getNextPositiveStatus(current: string): string | null {
 
 interface Props {
   appointment: any;
-  client: any;
-  service: any;
+  /** @deprecated Use appointment.clientName e appointment.clientPhone diretamente */
+  client?: any;
+  /** @deprecated Use appointment.serviceName diretamente */
+  service?: any;
   onPress: () => void;
   onStatusChange: (id: number, status: string) => void;
   /** Chamado quando o agendamento é concluído via swipe — abre modal de pagamento */
@@ -41,6 +44,10 @@ interface Props {
   onCancelWithReason?: (id: number) => void;
 }
 export function SwipeableAppointmentCard({ appointment, client, service, onPress, onStatusChange, onCompleted, paymentPending, onCancelWithReason }: Props) {
+  // Suporta dados via JOIN (apt.clientName) ou via props legadas (client?.name)
+  const resolvedClientName = appointment.clientName ?? client?.name ?? "Cliente não encontrado";
+  const resolvedClientPhone = appointment.clientPhone ?? client?.phone;
+  const resolvedServiceName = appointment.serviceName ?? service?.name ?? "Serviço";
   const swipeRef = useRef<Swipeable>(null);
   const status = STATUS_CONFIG[appointment.status] ?? { label: appointment.status, color: "#888880" };
   const nextPositive = getNextPositiveStatus(appointment.status);
@@ -74,10 +81,21 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
     onStatusChange(appointment.id, action);
   }
   function handleWhatsApp() {
-    const phone = client?.phone?.replace(/\D/g, "");
+    const phone = resolvedClientPhone?.replace(/\D/g, "");
     if (!phone) return;
     const intlPhone = phone.startsWith("55") ? phone : `55${phone}`;
-    Linking.openURL(`https://wa.me/${intlPhone}`).catch(() => null);
+    // Monta mensagem de confirmação com dados do agendamento
+    const message = buildConfirmationMessage({
+      clientName: resolvedClientName,
+      clientPhone: phone,
+      serviceName: resolvedServiceName,
+      barberName: appointment.barberName ?? "",
+      date: appointment.date ?? "",
+      startTime: appointment.startTime ?? "",
+      endTime: appointment.endTime ?? "",
+    });
+    const encodedMsg = encodeURIComponent(message);
+    Linking.openURL(`https://wa.me/${intlPhone}?text=${encodedMsg}`).catch(() => null);
   }
 
   // Ação direita (positiva) — só mostra se há próximo status positivo
@@ -135,8 +153,8 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
               <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
             </View>
           </View>
-          <Text style={styles.aptClientName}>{client?.name ?? "Cliente não encontrado"}</Text>
-          <Text style={styles.aptServiceName}>{service?.name ?? "Serviço"}</Text>
+          <Text style={styles.aptClientName}>{resolvedClientName}</Text>
+          <Text style={styles.aptServiceName}>{resolvedServiceName}</Text>
           {appointment.notes ? <Text style={styles.aptNotes}>{appointment.notes}</Text> : null}
           <View style={styles.bottomRow}>
             {!isTerminal && (
@@ -144,7 +162,7 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
                 {nextPositive ? `← Cancelar  |  ${STATUS_CONFIG[nextPositive].label} →` : "← Cancelar / Não veio"}
               </Text>
             )}
-            {client?.phone && !isTerminal && (
+            {resolvedClientPhone && !isTerminal && (
               <Pressable
                 onPress={handleWhatsApp}
                 style={({ pressed }) => [styles.whatsappBtn, pressed && { opacity: 0.7 }]}

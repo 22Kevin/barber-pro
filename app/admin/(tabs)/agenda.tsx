@@ -457,40 +457,32 @@ export default function AgendaScreen() {
           </View>
         ) : (
           <GestureHandlerRootView>
-            {appointments.map((apt) => {
-              const client = (clientsQuery.data ?? []).find(c => c.id === apt.clientId);
-              const service = (servicesQuery.data ?? []).find(s => s.id === apt.serviceId);
-              return (
-<SwipeableAppointmentCard
-                  key={apt.id}
-                  appointment={apt}
-                  client={client}
-                  service={service}
-                  onPress={() => {
-                    if (apt.status === "completed") {
-                      // Ao tocar num card concluído, abre o modal de pagamento
-                      const svc = (servicesQuery.data ?? []).find(s => s.id === apt.serviceId);
-                      setPaymentAppointment({
-                        ...apt,
-                        clientName: client?.name,
-                        clientPhone: client?.phone,
-                        serviceName: svc?.name ?? "Serviço",
-                        servicePrice: svc?.price ?? "0",
-                        serviceId: apt.serviceId,
-                      });
-                      setShowPaymentModal(true);
-                    } else {
-                      setSelectedAppointment({ ...apt, client, service });
-                      setShowDetailModal(true);
-                    }
-                  }}
-                  onStatusChange={handleStatusChange}
-                  onCompleted={handleAppointmentCompleted}
-                  onCancelWithReason={handleCancelWithReason}
-                  paymentPending={apt.status === "completed" ? (paymentPendingMap[apt.id] ?? true) : undefined}
-                />
-              );
-            })}
+            {appointments.map((apt) => (
+              <SwipeableAppointmentCard
+                key={apt.id}
+                appointment={apt}
+                onPress={() => {
+                  if (apt.status === "completed") {
+                    setPaymentAppointment({
+                      ...apt,
+                      clientName: apt.clientName,
+                      clientPhone: apt.clientPhone,
+                      serviceName: apt.serviceName ?? "Serviço",
+                      servicePrice: apt.servicePrice ?? "0",
+                      serviceId: apt.serviceId,
+                    });
+                    setShowPaymentModal(true);
+                  } else {
+                    setSelectedAppointment({ ...apt });
+                    setShowDetailModal(true);
+                  }
+                }}
+                onStatusChange={handleStatusChange}
+                onCompleted={handleAppointmentCompleted}
+                onCancelWithReason={handleCancelWithReason}
+                paymentPending={apt.status === "completed" ? (paymentPendingMap[apt.id] ?? true) : undefined}
+              />
+            ))}
           </GestureHandlerRootView>
         )}
 

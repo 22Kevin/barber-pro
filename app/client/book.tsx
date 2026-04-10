@@ -146,8 +146,7 @@ export default function BookScreen() {
         appointmentDateTime.setHours(h, m, 0, 0);
         setPendingApptDateTime(appointmentDateTime);
         // Agenda notificação de avaliação pós-atendimento
-        scheduleReviewNotification(numApptId, selectedService.name, selectedBarber.name, appointmentDateTime).catch(() => null);
-        // Mostra modal para o cliente escolher a antecedência do lembrete
+        scheduleReviewNotification(numApptId, selectedServices.map((s: any) => s.name).join(" + ") || selectedService!.name, selectedBarber!.name, appointmentDateTime).catch(() => null);       // Mostra modal para o cliente escolher a antecedência do lembrete
         setShowReminderModal(true);
       }
     },
@@ -303,8 +302,9 @@ export default function BookScreen() {
       const apptId = pendingApptId!;
       const dt = pendingApptDateTime!;
       const svcName = selectedService!.name;
+      const svcNames = selectedServices.map((s: any) => s.name);
       const bName = selectedBarber!.name;
-      scheduleAppointmentReminder(apptId, svcName, bName, dt, hours).catch(() => null);
+      scheduleAppointmentReminder(apptId, svcName, bName, dt, hours, svcNames).catch(() => null);
       AsyncStorage.setItem("@reminder_hours", String(hours)).catch(() => null);
       setShowReminderModal(false);
     };
@@ -468,6 +468,7 @@ export default function BookScreen() {
           <AppointmentShareCard
             shopName="Barber Pro"
             serviceName={selectedService.name}
+            serviceNames={selectedServices.map((s: any) => s.name)}
             barberName={selectedBarber.name}
             date={dateStr}
             time={selectedSlot.startTime}
