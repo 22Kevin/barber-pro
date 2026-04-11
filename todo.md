@@ -1517,3 +1517,9 @@
 - [x] Campo "Imagem para Compartilhamento" com explicação clara do que é e para que serve
 - [x] Adicionar campo fontStyle no banco de dados (shop_settings)
 - [x] Salvar e carregar fontStyle via mutation de settings
+
+## Rodada — Upload OG Image + fontStyle público + preview tempo real
+
+- [x] Upload direto da Imagem de Compartilhamento (substituir campo de URL por uploader)
+- [x] Aplicar fontStyle na página pública /pub/[slug]
+- [x] Pré-visualização em tempo real (miniatura que atualiza ao mudar cor/estilo)

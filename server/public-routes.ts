@@ -60,6 +60,22 @@ function buildTrackingScripts(settings: any): string {
   return scripts;
 }
 
+// ─── Mapa de fontes por estilo ───────────────────────────────────────────────
+const FONT_STYLE_CSS: Record<string, string> = {
+  moderno:     '"Helvetica Neue", Arial, sans-serif',
+  bold:        '"Helvetica Neue", Arial, sans-serif',
+  classico:    'Georgia, "Times New Roman", serif',
+  elegante:    'Palatino, "Palatino Linotype", Georgia, serif',
+  minimalista: '"Helvetica Neue", Arial, sans-serif',
+};
+const FONT_STYLE_WEIGHT: Record<string, string> = {
+  moderno:     '400',
+  bold:        '900',
+  classico:    '400',
+  elegante:    '700',
+  minimalista: '200',
+};
+
 function publicLayout(shopName: string, primaryColor: string, body: string, extraHead = "", settings?: any): string {
   const trackingScripts = buildTrackingScripts(settings);
   return `<!DOCTYPE html>
@@ -93,6 +109,13 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
       --muted: #888880;
     }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    /* Estilo de texto escolhido pelo barbeiro */
+    :root {
+      --font-styled-family: ${FONT_STYLE_CSS[settings?.fontStyle ?? 'moderno'] ?? FONT_STYLE_CSS.moderno};
+      --font-styled-weight: ${FONT_STYLE_WEIGHT[settings?.fontStyle ?? 'moderno'] ?? '400'};
+    }
+    .font-styled { font-family: var(--font-styled-family); font-weight: var(--font-styled-weight); }
+    .font-styled-title { font-family: var(--font-styled-family); font-weight: var(--font-styled-weight); }
     a { color: var(--primary); text-decoration: none; }
     img { max-width: 100%; display: block; }
 
@@ -102,14 +125,14 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
     .hero-img { position: absolute; inset: 0; object-fit: cover; width: 100%; height: 100%; opacity: 0.5; z-index: 0; }
     .hero-content { position: relative; z-index: 2; }
     .hero-logo { width: 90px; height: 90px; border-radius: 22px; object-fit: cover; border: 3px solid var(--primary); margin: 0 auto 16px; box-shadow: 0 8px 32px #00000066; }
-    .hero-name { font-size: 32px; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .hero-name { font-size: 32px; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 8px; font-family: var(--font-styled-family, inherit); }
     .hero-address { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
-    .hero-cta { display: inline-block; background: var(--primary); color: #0A0A0A; font-size: 16px; font-weight: 800; padding: 14px 36px; border-radius: 50px; letter-spacing: 0.5px; }
+    .hero-cta { display: inline-block; background: var(--primary); color: #0A0A0A; font-size: 16px; font-weight: 800; padding: 14px 36px; border-radius: 50px; letter-spacing: 0.5px; font-family: var(--font-styled-family, inherit); }
     .hero-cta:hover { opacity: 0.9; }
 
     /* Seções */
     .section { padding: 48px 24px; max-width: 900px; margin: 0 auto; }
-    .section-title { font-size: 20px; font-weight: 800; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+    .section-title { font-size: 20px; font-weight: 800; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; font-family: var(--font-styled-family, inherit); }
     .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 
     /* Cards de serviço */

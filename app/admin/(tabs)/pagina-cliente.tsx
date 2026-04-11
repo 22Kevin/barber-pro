@@ -590,16 +590,58 @@ export default function PaginaClienteScreen() {
             </Text>
           </Pressable>
 
-          {/* Preview da cor */}
-          <View style={[styles.colorPreview, { borderColor: activeColor }]}>
-            <View style={[styles.colorPreviewHeader, { backgroundColor: activeColor }]}>
-              <Text style={styles.colorPreviewTitle}>Prévia da cor</Text>
-            </View>
-            <View style={[styles.colorPreviewBody, { backgroundColor: colors.background }]}>
-              <View style={[styles.colorPreviewBtn, { backgroundColor: activeColor }]}>
-                <Text style={styles.colorPreviewBtnText}>Agendar Agora</Text>
+          {/* Miniatura de pré-visualização em tempo real */}
+          <View style={[styles.livePreviewCard, { borderColor: activeColor + "44" }]}>
+            <Text style={[styles.livePreviewLabel, { color: colors.muted }]}>Pré-visualização ao vivo</Text>
+            {/* Hero miniatura */}
+            <View style={[styles.livePreviewHero, { backgroundColor: "#0A0A0A" }]}>
+              {bannerUrl ? (
+                <Image source={{ uri: bannerUrl }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+              ) : null}
+              <View style={[StyleSheet.absoluteFillObject, { backgroundColor: "#00000088" }]} />
+              {logoUrl ? (
+                <Image
+                  source={{ uri: logoUrl }}
+                  style={[styles.livePreviewLogo, { borderColor: activeColor }]}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.livePreviewLogo, { borderColor: activeColor, backgroundColor: activeColor + "33", alignItems: "center", justifyContent: "center" }]}>
+                  <Text style={{ fontSize: 18 }}>✂️</Text>
+                </View>
+              )}
+              <Text
+                style={[
+                  styles.livePreviewShopName,
+                  {
+                    color: "#F0EEE8",
+                    fontFamily: FONT_STYLES.find(f => f.id === fontStyleId)?.fontFamily,
+                    fontWeight: FONT_STYLES.find(f => f.id === fontStyleId)?.fontWeight,
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {shopName || "Sua Barbearia"}
+              </Text>
+              <View style={[styles.livePreviewCta, { backgroundColor: activeColor }]}>
+                <Text
+                  style={[
+                    styles.livePreviewCtaText,
+                    {
+                      fontFamily: FONT_STYLES.find(f => f.id === fontStyleId)?.fontFamily,
+                    },
+                  ]}
+                >
+                  Agendar Horário
+                </Text>
               </View>
-              <Text style={[styles.colorPreviewPrice, { color: activeColor }]}>R$ 45,00</Text>
+            </View>
+            {/* Rodapé com cor e estilo */}
+            <View style={[styles.livePreviewFooter, { backgroundColor: colors.surface }]}>
+              <View style={[styles.livePreviewColorDot, { backgroundColor: activeColor }]} />
+              <Text style={[styles.livePreviewFooterText, { color: colors.muted }]}>
+                {FONT_STYLES.find(f => f.id === fontStyleId)?.label ?? "Moderno"} · {activeColor.toUpperCase()}
+              </Text>
             </View>
           </View>
 
@@ -824,17 +866,46 @@ export default function PaginaClienteScreen() {
                 colors={colors}
               />
 
-              {/* Imagem de compartilhamento */}
-              <FieldInput
-                label="Imagem de Compartilhamento"
-                hint={
-                  "Quando alguém compartilha o link da sua página no WhatsApp ou Instagram, essa imagem aparece como miniatura. Cole aqui o endereço (URL) de uma foto da sua barbearia."
-                }
-                value={ogImageUrl}
-                onChangeText={setOgImageUrl}
-                placeholder="https://..."
-                colors={colors}
-              />
+              {/* Imagem de compartilhamento — uploader direto */}
+              <View style={{ marginBottom: 16 }}>
+                <Text style={[styles.fieldLabel, { color: colors.muted }]}>Imagem de Compartilhamento</Text>
+                <Text style={[styles.fieldHint, { color: colors.muted }]}>
+                  Quando alguém compartilha o link da sua página no WhatsApp ou Instagram, essa imagem aparece como miniatura. Escolha uma foto bonita da sua barbearia.
+                </Text>
+                {ogImageUrl ? (
+                  <View style={{ gap: 10 }}>
+                    <Image
+                      source={{ uri: ogImageUrl }}
+                      style={styles.ogImagePreview}
+                      resizeMode="cover"
+                    />
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <SingleImageUploader
+                        value={null}
+                        onUpload={(url) => setOgImageUrl(url)}
+                        imageType="gallery"
+                        label="Trocar imagem"
+                        size={44}
+                      />
+                      <Pressable
+                        style={({ pressed }) => [styles.removeBtn, pressed && { opacity: 0.7 }]}
+                        onPress={() => setOgImageUrl("")}
+                      >
+                        <IconSymbol name="xmark.circle.fill" size={15} color="#F87171" />
+                        <Text style={styles.removeBtnText}>Remover imagem</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : (
+                  <SingleImageUploader
+                    value={null}
+                    onUpload={(url) => setOgImageUrl(url)}
+                    imageType="gallery"
+                    label="Escolher imagem"
+                    size={100}
+                  />
+                )}
+              </View>
 
               {/* Rastreamento */}
               <Text style={[styles.extrasGroupTitle, { color: colors.foreground, marginTop: 8 }]}>
@@ -1043,6 +1114,67 @@ const styles = StyleSheet.create({
   removeBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
   removeBtnText: { color: "#F87171", fontSize: 13 },
 
+  // Live preview miniatura
+  livePreviewCard: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    overflow: "hidden",
+    marginBottom: 20,
+  },
+  livePreviewLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  livePreviewHero: {
+    height: 160,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    gap: 6,
+  },
+  livePreviewLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 2,
+  },
+  livePreviewShopName: {
+    fontSize: 16,
+    color: "#F0EEE8",
+    textAlign: "center",
+    paddingHorizontal: 16,
+  },
+  livePreviewCta: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  livePreviewCtaText: {
+    color: "#0A0A0A",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  livePreviewFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  livePreviewColorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  livePreviewFooterText: {
+    fontSize: 12,
+  },
+
   saveBtn: { borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 16 },
   saveBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 15 },
 
@@ -1056,6 +1188,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
+  },
+
+  // OG Image preview
+  ogImagePreview: {
+    width: "100%",
+    height: 160,
+    borderRadius: 12,
+    borderWidth: 1,
   },
 
   // Empty
