@@ -190,104 +190,113 @@ function PagePreviewModal({
   gallery: string[];
 }) {
   const font = FONT_STYLES.find((f) => f.id === fontStyleId) ?? FONT_STYLES[0];
+  const dim = primaryColor + "22";
+  const dimBorder = primaryColor + "55";
+
+  const MOCK_SERVICES = [
+    { name: "Corte Masculino", price: "R$ 45,00", duration: "30 min", icon: "✂️" },
+    { name: "Barba Completa", price: "R$ 35,00", duration: "20 min", icon: "🪒" },
+    { name: "Corte + Barba", price: "R$ 70,00", duration: "50 min", icon: "💈" },
+  ];
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
-        {/* Header do modal */}
-        <View style={styles.previewHeader}>
-          <Text style={styles.previewHeaderTitle}>Pré-visualização da Página</Text>
-          <TouchableOpacity onPress={onClose} style={styles.previewCloseBtn}>
-            <Text style={styles.previewCloseBtnText}>✕ Fechar</Text>
-          </TouchableOpacity>
-        </View>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      {/* Fundo escurecido */}
+      <View style={styles.previewOverlay}>
+        {/* Moldura de smartphone */}
+        <View style={styles.previewPhoneFrame}>
+          {/* Notch */}
+          <View style={styles.previewNotch}>
+            <View style={styles.previewNotchDot} />
+          </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Banner */}
-          {bannerUrl ? (
-            <Image source={{ uri: bannerUrl }} style={styles.previewBanner} resizeMode="cover" />
-          ) : (
-            <View style={[styles.previewBannerPlaceholder, { backgroundColor: primaryColor + "33" }]}>
-              <Text style={{ color: primaryColor, fontSize: 13 }}>Sem imagem de capa</Text>
+          {/* Conteúdo da tela */}
+          <ScrollView
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {/* Hero com banner */}
+            <View style={styles.previewHeroWrap}>
+              {bannerUrl ? (
+                <Image source={{ uri: bannerUrl }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+              ) : (
+                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: primaryColor + "33" }]} />
+              )}
+              {/* Gradiente simulado */}
+              <View style={styles.previewHeroGradient} />
+              {/* Logo */}
+              {logoUrl ? (
+                <Image source={{ uri: logoUrl }} style={[styles.previewHeroLogo, { borderColor: primaryColor }]} resizeMode="cover" />
+              ) : (
+                <View style={[styles.previewHeroLogo, { borderColor: primaryColor, backgroundColor: dim, alignItems: "center", justifyContent: "center" }]}>
+                  <Text style={{ fontSize: 22 }}>💈</Text>
+                </View>
+              )}
+              <Text style={[styles.previewHeroName, { fontFamily: font.fontFamily, fontWeight: font.fontWeight }]}>
+                {shopName || "Nome da Barbearia"}
+              </Text>
+              <View style={[styles.previewHeroBadge, { backgroundColor: dim, borderColor: dimBorder }]}>
+                <Text style={[styles.previewHeroBadgeText, { color: primaryColor }]}>⭐ 5.0 · Aberto agora</Text>
+              </View>
             </View>
-          )}
 
-          {/* Info da barbearia */}
-          <View style={styles.previewInfoArea}>
-            {logoUrl ? (
-              <Image source={{ uri: logoUrl }} style={[styles.previewLogo, { borderColor: primaryColor }]} />
-            ) : (
-              <View style={[styles.previewLogoPlaceholder, { borderColor: primaryColor, backgroundColor: primaryColor + "22" }]}>
-                <Text style={{ fontSize: 28 }}>💈</Text>
+            {/* Botão CTA */}
+            <View style={{ paddingHorizontal: 14, marginTop: 12 }}>
+              <View style={[styles.previewCtaBtn, { backgroundColor: primaryColor }]}>
+                <Text style={[styles.previewCtaBtnText, { fontFamily: font.fontFamily }]}>Agendar Agora</Text>
+              </View>
+            </View>
+
+            {/* Serviços */}
+            <View style={{ paddingHorizontal: 14, marginTop: 18 }}>
+              <Text style={[styles.previewSecTitle, { color: "#F0EEE8", fontFamily: font.fontFamily, fontWeight: font.fontWeight }]}>
+                Serviços
+              </Text>
+              {MOCK_SERVICES.map((svc) => (
+                <View key={svc.name} style={styles.previewSvcCard}>
+                  <Text style={{ fontSize: 20 }}>{svc.icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.previewSvcName, { fontFamily: font.fontFamily }]}>{svc.name}</Text>
+                    <Text style={styles.previewSvcDur}>⏱ {svc.duration}</Text>
+                  </View>
+                  <Text style={[styles.previewSvcPrice, { color: primaryColor }]}>{svc.price}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Galeria */}
+            {gallery.length > 0 && (
+              <View style={{ paddingHorizontal: 14, marginTop: 18 }}>
+                <Text style={[styles.previewSecTitle, { color: "#F0EEE8", fontFamily: font.fontFamily, fontWeight: font.fontWeight }]}>
+                  Galeria
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    {gallery.slice(0, 5).map((img, i) => (
+                      <Image key={i} source={{ uri: img }} style={styles.previewGalleryImg} resizeMode="cover" />
+                    ))}
+                  </View>
+                </ScrollView>
               </View>
             )}
-            <Text
-              style={[
-                styles.previewShopName,
-                { color: "#fff", fontFamily: font.fontFamily, fontWeight: font.fontWeight },
-              ]}
-            >
-              {shopName || "Nome da Barbearia"}
-            </Text>
-            <View style={[styles.previewBadge, { backgroundColor: primaryColor + "22", borderColor: primaryColor + "55" }]}>
-              <Text style={[styles.previewBadgeText, { color: primaryColor }]}>⭐ 5.0 · Aberto agora</Text>
-            </View>
-          </View>
 
-          {/* Botão de agendar */}
-          <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
-            <View style={[styles.previewBookBtn, { backgroundColor: primaryColor }]}>
-              <Text style={[styles.previewBookBtnText, { fontFamily: font.fontFamily, fontWeight: font.fontWeight }]}>
-                Agendar Agora
-              </Text>
-            </View>
-          </View>
+            <View style={{ height: 32 }} />
+          </ScrollView>
+        </View>
 
-          {/* Serviços (mock) */}
-          <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
-            <Text style={[styles.previewSectionTitle, { color: "#fff", fontFamily: font.fontFamily, fontWeight: font.fontWeight }]}>
-              Serviços
-            </Text>
-            {[
-              { name: "Corte Masculino", price: "R$ 45,00", duration: "30 min" },
-              { name: "Barba", price: "R$ 35,00", duration: "20 min" },
-              { name: "Corte + Barba", price: "R$ 70,00", duration: "50 min" },
-            ].map((svc) => (
-              <View key={svc.name} style={styles.previewServiceCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.previewServiceName, { color: "#fff", fontFamily: font.fontFamily }]}>
-                    {svc.name}
-                  </Text>
-                  <Text style={styles.previewServiceDuration}>⏱ {svc.duration}</Text>
-                </View>
-                <View style={{ alignItems: "flex-end", gap: 6 }}>
-                  <Text style={[styles.previewServicePrice, { color: primaryColor }]}>{svc.price}</Text>
-                  <View style={[styles.previewServiceBtn, { borderColor: primaryColor }]}>
-                    <Text style={[styles.previewServiceBtnText, { color: primaryColor }]}>Agendar</Text>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
+        {/* Etiqueta de estilo e cor */}
+        <View style={styles.previewMetaRow}>
+          <View style={[styles.previewMetaDot, { backgroundColor: primaryColor }]} />
+          <Text style={styles.previewMetaText}>
+            {font.label} · {primaryColor.toUpperCase()}
+          </Text>
+        </View>
 
-          {/* Galeria (se tiver fotos) */}
-          {gallery.length > 0 && (
-            <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
-              <Text style={[styles.previewSectionTitle, { color: "#fff", fontFamily: font.fontFamily, fontWeight: font.fontWeight }]}>
-                Galeria
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={{ flexDirection: "row", gap: 10 }}>
-                  {gallery.slice(0, 4).map((img, i) => (
-                    <Image key={i} source={{ uri: img }} style={styles.previewGalleryImg} resizeMode="cover" />
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-          )}
-
-          <View style={{ height: 40 }} />
-        </ScrollView>
+        {/* Botão fechar */}
+        <TouchableOpacity style={[styles.previewCloseCircle, { borderColor: primaryColor }]} onPress={onClose}>
+          <Text style={[styles.previewCloseCircleText, { color: primaryColor }]}>✕ Fechar</Text>
+        </TouchableOpacity>
       </View>
     </Modal>
   );
@@ -1202,80 +1211,108 @@ const styles = StyleSheet.create({
   emptyBox: { borderRadius: 10, borderWidth: 1, padding: 16, alignItems: "center" },
   emptyText: { fontSize: 13, textAlign: "center", lineHeight: 18 },
 
-  // Preview Modal
-  previewHeader: {
-    flexDirection: "row",
+  // Preview Modal — redesenhado
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: "#000000CC",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#1F2937",
+    justifyContent: "center",
+    paddingVertical: 24,
   },
-  previewHeaderTitle: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  previewCloseBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#1F2937",
+  previewPhoneFrame: {
+    width: 280,
+    height: 520,
+    backgroundColor: "#0A0A0A",
+    borderRadius: 36,
+    overflow: "hidden",
+    borderWidth: 3,
+    borderColor: "#2A2A2A",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.6,
+    shadowRadius: 24,
+    elevation: 20,
   },
-  previewCloseBtnText: { color: "#9CA3AF", fontSize: 13, fontWeight: "600" },
-  previewBanner: { width: "100%", height: 160 },
-  previewBannerPlaceholder: {
-    width: "100%",
+  previewNotch: {
+    height: 22,
+    backgroundColor: "#0A0A0A",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  previewNotchDot: {
+    width: 60,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#2A2A2A",
+  },
+  previewHeroWrap: {
     height: 160,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-end",
+    paddingBottom: 14,
+    overflow: "hidden",
+    gap: 4,
   },
-  previewInfoArea: { paddingHorizontal: 20, paddingTop: 20, alignItems: "center", gap: 10 },
-  previewLogo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
+  previewHeroGradient: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#00000077",
   },
-  previewLogoPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
-    alignItems: "center",
-    justifyContent: "center",
+  previewHeroLogo: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 2,
   },
-  previewShopName: { fontSize: 26, textAlign: "center" },
-  previewBadge: {
+  previewHeroName: {
+    color: "#F0EEE8",
+    fontSize: 16,
+    textAlign: "center",
     paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
+  },
+  previewHeroBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
     borderWidth: 1,
   },
-  previewBadgeText: { fontSize: 12, fontWeight: "600" },
-  previewBookBtn: {
-    borderRadius: 14,
-    paddingVertical: 16,
+  previewHeroBadgeText: { fontSize: 10, fontWeight: "700" },
+  previewCtaBtn: {
+    borderRadius: 10,
+    paddingVertical: 11,
     alignItems: "center",
   },
-  previewBookBtnText: { color: "#0A0A0A", fontSize: 16 },
-  previewSectionTitle: { fontSize: 18, marginBottom: 12 },
-  previewServiceCard: {
+  previewCtaBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 13 },
+  previewSecTitle: { fontSize: 13, fontWeight: "800", marginBottom: 8 },
+  previewSvcCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#111827",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+    backgroundColor: "#141414",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 7,
+    gap: 8,
     borderWidth: 1,
-    borderColor: "#1F2937",
+    borderColor: "#2A2A2A",
   },
-  previewServiceName: { fontSize: 15, fontWeight: "600", marginBottom: 3 },
-  previewServiceDuration: { color: "#6B7280", fontSize: 12 },
-  previewServicePrice: { fontSize: 15, fontWeight: "800" },
-  previewServiceBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
+  previewSvcName: { color: "#F0EEE8", fontSize: 12, fontWeight: "600", marginBottom: 2 },
+  previewSvcDur: { color: "#888880", fontSize: 10 },
+  previewSvcPrice: { fontSize: 12, fontWeight: "800" },
+  previewGalleryImg: { width: 80, height: 60, borderRadius: 8 },
+  previewMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 14,
   },
-  previewServiceBtnText: { fontSize: 12, fontWeight: "700" },
-  previewGalleryImg: { width: 120, height: 90, borderRadius: 10 },
+  previewMetaDot: { width: 10, height: 10, borderRadius: 5 },
+  previewMetaText: { color: "#9CA3AF", fontSize: 12, fontWeight: "600" },
+  previewCloseCircle: {
+    marginTop: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  previewCloseCircleText: { fontWeight: "700", fontSize: 14 },
 });
