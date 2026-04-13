@@ -513,9 +513,9 @@ export default function PaginaClienteScreen() {
                   onPress={handleShareWhatsApp}
                 >
                   <Text style={styles.shareWhatsAppIcon}>💬</Text>
-                  <View>
-                    <Text style={styles.shareWhatsAppTitle}>WhatsApp</Text>
-                    <Text style={styles.shareWhatsAppSub}>Enviar para clientes</Text>
+                  <View style={styles.shareWhatsAppTextWrap}>
+                    <Text style={styles.shareWhatsAppTitle} numberOfLines={1}>WhatsApp</Text>
+                    <Text style={styles.shareWhatsAppSub} numberOfLines={1}>Enviar para clientes</Text>
                   </View>
                 </Pressable>
 
@@ -529,9 +529,9 @@ export default function PaginaClienteScreen() {
                   onPress={handleShareLink}
                 >
                   <Text style={styles.shareGenericIcon}>📤</Text>
-                  <View>
-                    <Text style={[styles.shareGenericTitle, { color: colors.foreground }]}>Compartilhar</Text>
-                    <Text style={[styles.shareGenericSub, { color: colors.muted }]}>Outros apps</Text>
+                  <View style={styles.shareGenericTextWrap}>
+                    <Text style={[styles.shareGenericTitle, { color: colors.foreground }]} numberOfLines={1}>Compartilhar</Text>
+                    <Text style={[styles.shareGenericSub, { color: colors.muted }]} numberOfLines={1}>Outros apps</Text>
                   </View>
                 </Pressable>
               </View>
@@ -1003,27 +1003,31 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
+    gap: 8,
+    paddingHorizontal: 12,
     paddingVertical: 14,
     borderRadius: 14,
     backgroundColor: "#075E54",
+    overflow: "hidden",
   },
-  shareWhatsAppIcon: { fontSize: 22 },
-  shareWhatsAppTitle: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  shareWhatsAppIcon: { fontSize: 20, flexShrink: 0 },
+  shareWhatsAppTextWrap: { flex: 1, minWidth: 0 },
+  shareWhatsAppTitle: { color: "#fff", fontWeight: "700", fontSize: 13 },
   shareWhatsAppSub: { color: "rgba(255,255,255,0.7)", fontSize: 11, marginTop: 1 },
   shareGenericBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
+    gap: 8,
+    paddingHorizontal: 12,
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1,
+    overflow: "hidden",
   },
-  shareGenericIcon: { fontSize: 22 },
-  shareGenericTitle: { fontWeight: "700", fontSize: 14 },
+  shareGenericIcon: { fontSize: 20, flexShrink: 0 },
+  shareGenericTextWrap: { flex: 1, minWidth: 0 },
+  shareGenericTitle: { fontWeight: "700", fontSize: 13 },
   shareGenericSub: { fontSize: 11, marginTop: 1 },
 
   // QR Code

@@ -149,9 +149,56 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
     .service-duration { font-size: 12px; color: var(--muted); }
     .service-rating { font-size: 12px; color: #FBBF24; margin-top: 6px; }
 
-    /* Galeria */
-    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
-    .gallery-img { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; }
+    /* Galeria — Carrossel */
+    .gallery-carousel { position: relative; overflow: hidden; border-radius: 20px; background: var(--surface2); }
+    .gallery-track { display: flex; transition: transform 0.45s cubic-bezier(.4,0,.2,1); will-change: transform; }
+    .gallery-slide { flex: 0 0 100%; position: relative; }
+    .gallery-slide img { width: 100%; height: 340px; object-fit: cover; display: block; cursor: zoom-in; }
+    @media (max-width: 640px) { .gallery-slide img { height: 220px; } }
+    .gallery-nav { position: absolute; top: 50%; transform: translateY(-50%); background: #00000088; border: 1px solid #ffffff22; color: #fff; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; z-index: 10; transition: background 0.2s; user-select: none; }
+    .gallery-nav:hover { background: #000000cc; }
+    .gallery-prev { left: 12px; }
+    .gallery-next { right: 12px; }
+    .gallery-dots { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10; }
+    .gallery-dot { width: 7px; height: 7px; border-radius: 50%; background: #ffffff55; cursor: pointer; transition: background 0.2s, transform 0.2s; }
+    .gallery-dot.active { background: #fff; transform: scale(1.3); }
+    .gallery-counter { position: absolute; top: 12px; right: 14px; background: #00000088; color: #fff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; z-index: 10; }
+    /* Lightbox */
+    .lightbox-overlay { display: none; position: fixed; inset: 0; background: #000000ee; z-index: 9999; align-items: center; justify-content: center; }
+    .lightbox-overlay.open { display: flex; }
+    .lightbox-img { max-width: 94vw; max-height: 90vh; border-radius: 12px; object-fit: contain; box-shadow: 0 20px 80px #000; }
+    .lightbox-close { position: fixed; top: 20px; right: 24px; color: #fff; font-size: 32px; cursor: pointer; line-height: 1; opacity: 0.8; }
+    .lightbox-close:hover { opacity: 1; }
+    .lightbox-nav { position: fixed; top: 50%; transform: translateY(-50%); background: #ffffff22; border: none; color: #fff; border-radius: 50%; width: 48px; height: 48px; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .lightbox-nav:hover { background: #ffffff44; }
+    .lightbox-lprev { left: 16px; }
+    .lightbox-lnext { right: 16px; }
+
+    /* Painel de Abas */
+    .tabs-section { padding: 0 24px 48px; max-width: 900px; margin: 0 auto; }
+    .tabs-header { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 28px; overflow-x: auto; scrollbar-width: none; }
+    .tabs-header::-webkit-scrollbar { display: none; }
+    .tab-btn { padding: 12px 22px; font-size: 14px; font-weight: 800; color: var(--muted); background: none; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px; cursor: pointer; white-space: nowrap; transition: color 0.2s, border-color 0.2s; letter-spacing: 0.3px; }
+    .tab-btn.active { color: var(--text); border-bottom-color: var(--primary); }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    /* Grid de cards dentro das abas */
+    .tab-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    @media (max-width: 480px) { .tab-cards-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+    .tab-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: border-color 0.2s, transform 0.15s; cursor: pointer; }
+    .tab-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+    .tab-card-thumb { width: 100%; height: 160px; object-fit: cover; background: var(--surface2); }
+    .tab-card-thumb-placeholder { width: 100%; height: 160px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 36px; }
+    .tab-card-body { padding: 14px; }
+    .tab-card-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .tab-card-desc { font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .tab-card-meta { display: flex; align-items: center; justify-content: space-between; }
+    .tab-card-price { font-size: 17px; font-weight: 900; color: var(--primary); }
+    .tab-card-duration { font-size: 11px; color: var(--muted); }
+    .tab-card-rating { font-size: 11px; color: #FBBF24; margin-top: 5px; }
+    /* Steps dentro da aba Como Funciona */
+    .how-tab { padding: 8px 0; }
 
     /* Avaliações */
     .reviews-list { display: flex; flex-direction: column; gap: 14px; }
@@ -324,34 +371,121 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     if (c) clientMap[cid] = c.name;
   }
 
-  // ── Seção: Serviços ──────────────────────────────────────────────────────
-  const servicesHtml = serviceList.length === 0
+  // ── Buscar Produtos de Venda ─────────────────────────────────────────────
+  const productList = await db.getAllProductsWithMedia(true, tenant.id);
+  const saleProducts = productList.filter((p: any) => p.productType === 'sale' || !p.productType);
+
+  // ── Helper: preço com lock para visitantes ───────────────────────────────
+  const priceHtml = (price: string | number) => isLoggedIn
+    ? `<span class="tab-card-price">${formatPrice(price)}</span>`
+    : `<a href="/pub/${slug}/login?redirect=" class="price-locked">🔒 Ver preço</a>`;
+
+  // ── Seção: Cards de Serviços (para o painel de abas) ─────────────────────
+  const servicesTabHtml = serviceList.length === 0
     ? `<div class="empty">Nenhum serviço cadastrado ainda.</div>`
     : serviceList.map((s) => `
-      <div class="service-card">
+      <a href="/pub/${slug}/agendar" class="tab-card" style="text-decoration:none;color:inherit">
         ${s.thumbnailUrl
-          ? `<img class="service-thumb" src="${escapeHtml(s.thumbnailUrl)}" alt="${escapeHtml(s.name)}" loading="lazy" />`
-          : `<div class="service-thumb-placeholder">✂️</div>`
+          ? `<img class="tab-card-thumb" src="${escapeHtml(s.thumbnailUrl)}" alt="${escapeHtml(s.name)}" loading="lazy" />`
+          : `<div class="tab-card-thumb-placeholder">✂️</div>`
         }
-        <div class="service-body">
-          <div class="service-name">${escapeHtml(s.name)}</div>
-          ${s.description ? `<div class="service-desc">${escapeHtml(s.description)}</div>` : ""}
-          ${s.avgRating ? `<div class="service-rating">${stars(s.avgRating)} ${s.avgRating} (${s.reviewCount})</div>` : ""}
-          <div class="service-meta">
-            <span class="service-price">${formatPrice(s.price)}</span>
-            <span class="service-duration">${formatDuration(s.durationMinutes)}</span>
+        <div class="tab-card-body">
+          <div class="tab-card-name">${escapeHtml(s.name)}</div>
+          ${s.description ? `<div class="tab-card-desc">${escapeHtml(s.description)}</div>` : ""}
+          ${s.avgRating ? `<div class="tab-card-rating">★ ${s.avgRating} (${s.reviewCount})</div>` : ""}
+          <div class="tab-card-meta">
+            ${priceHtml(s.price)}
+            <span class="tab-card-duration">${formatDuration(s.durationMinutes)}</span>
+          </div>
+        </div>
+      </a>
+    `).join("");
+
+  // ── Seção: Cards de Produtos (para o painel de abas) ─────────────────────
+  const productsTabHtml = saleProducts.length === 0
+    ? `<div class="empty">Nenhum produto disponível.</div>`
+    : saleProducts.map((p: any) => `
+      <div class="tab-card">
+        ${p.thumbnailUrl
+          ? `<img class="tab-card-thumb" src="${escapeHtml(p.thumbnailUrl)}" alt="${escapeHtml(p.name)}" loading="lazy" />`
+          : `<div class="tab-card-thumb-placeholder">🧴</div>`
+        }
+        <div class="tab-card-body">
+          <div class="tab-card-name">${escapeHtml(p.name)}</div>
+          ${p.description ? `<div class="tab-card-desc">${escapeHtml(p.description)}</div>` : ""}
+          <div class="tab-card-meta">
+            ${priceHtml(p.price)}
+            ${p.stockQuantity != null ? `<span class="tab-card-duration">${p.stockQuantity} em estoque</span>` : ""}
           </div>
         </div>
       </div>
     `).join("");
 
-  // ── Seção: Galeria ───────────────────────────────────────────────────────
+  // ── Seção: Galeria (Carrossel) ────────────────────────────────────────────
   const galleryHtml = galleryUrls.length === 0 ? "" : `
     <div class="section">
       <div class="section-title">Galeria</div>
-      <div class="gallery-grid">
-        ${galleryUrls.map((url) => `<img class="gallery-img" src="${escapeHtml(url)}" alt="Foto do ambiente" loading="lazy" />`).join("")}
+      <div class="gallery-carousel" id="galleryCarousel">
+        <div class="gallery-track" id="galleryTrack">
+          ${galleryUrls.map((url, i) => `
+            <div class="gallery-slide">
+              <img src="${escapeHtml(url)}" alt="Foto ${i + 1}" loading="lazy" onclick="openLightbox(${i})" />
+            </div>
+          `).join("")}
+        </div>
+        ${galleryUrls.length > 1 ? `
+          <button class="gallery-nav gallery-prev" onclick="galleryMove(-1)">&#8249;</button>
+          <button class="gallery-nav gallery-next" onclick="galleryMove(1)">&#8250;</button>
+          <div class="gallery-dots">${galleryUrls.map((_, i) => `<div class="gallery-dot${i === 0 ? " active" : ""}" onclick="galleryGoTo(${i})"></div>`).join("")}</div>
+          <div class="gallery-counter" id="galleryCounter">1 / ${galleryUrls.length}</div>
+        ` : ""}
       </div>
+      <!-- Lightbox -->
+      <div class="lightbox-overlay" id="lightboxOverlay" onclick="if(event.target===this)closeLightbox()">
+        <span class="lightbox-close" onclick="closeLightbox()">×</span>
+        <img class="lightbox-img" id="lightboxImg" src="" alt="" />
+        ${galleryUrls.length > 1 ? `
+          <button class="lightbox-nav lightbox-lprev" onclick="lightboxMove(-1)">&#8249;</button>
+          <button class="lightbox-nav lightbox-lnext" onclick="lightboxMove(1)">&#8250;</button>
+        ` : ""}
+      </div>
+      <script>
+        var _galleryUrls = ${JSON.stringify(galleryUrls)};
+        var _gIdx = 0;
+        var _gAutoplay;
+        function galleryGoTo(i) {
+          _gIdx = (i + _galleryUrls.length) % _galleryUrls.length;
+          document.getElementById('galleryTrack').style.transform = 'translateX(-' + (_gIdx * 100) + '%)';
+          document.querySelectorAll('.gallery-dot').forEach(function(d, j) { d.classList.toggle('active', j === _gIdx); });
+          var ctr = document.getElementById('galleryCounter');
+          if (ctr) ctr.textContent = (_gIdx + 1) + ' / ' + _galleryUrls.length;
+        }
+        function galleryMove(dir) { clearInterval(_gAutoplay); galleryGoTo(_gIdx + dir); startAutoplay(); }
+        function startAutoplay() { _gAutoplay = setInterval(function() { galleryGoTo(_gIdx + 1); }, 4000); }
+        startAutoplay();
+        // Lightbox
+        var _lbIdx = 0;
+        function openLightbox(i) {
+          _lbIdx = i;
+          document.getElementById('lightboxImg').src = _galleryUrls[i];
+          document.getElementById('lightboxOverlay').classList.add('open');
+          document.body.style.overflow = 'hidden';
+        }
+        function closeLightbox() {
+          document.getElementById('lightboxOverlay').classList.remove('open');
+          document.body.style.overflow = '';
+        }
+        function lightboxMove(dir) {
+          _lbIdx = (_lbIdx + dir + _galleryUrls.length) % _galleryUrls.length;
+          document.getElementById('lightboxImg').src = _galleryUrls[_lbIdx];
+        }
+        document.addEventListener('keydown', function(e) {
+          if (!document.getElementById('lightboxOverlay').classList.contains('open')) return;
+          if (e.key === 'ArrowLeft') lightboxMove(-1);
+          if (e.key === 'ArrowRight') lightboxMove(1);
+          if (e.key === 'Escape') closeLightbox();
+        });
+      <\/script>
     </div>
   `;
 
@@ -587,16 +721,61 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       </div>
     </div>
 
-    ${howItWorksHtml}
+    ${galleryHtml}
 
-    <!-- Serviços -->
-    <div class="section">
-      <div class="section-title">Serviços</div>
-      <div class="services-grid">${servicesHtml}</div>
+    <!-- Painel de Abas: Serviços / Produtos / Assinaturas / Como Funciona -->
+    <div class="tabs-section">
+      <div class="tabs-header">
+        <button class="tab-btn active" onclick="switchTab('services',this)">✂️ Serviços</button>
+        ${saleProducts.length > 0 ? `<button class="tab-btn" onclick="switchTab('products',this)">🧴 Produtos</button>` : ""}
+        ${subscriptionPlansHtml ? `<button class="tab-btn" onclick="switchTab('plans',this)">🏷️ Assinaturas</button>` : ""}
+        <button class="tab-btn" onclick="switchTab('how',this)">ℹ️ Como Funciona</button>
+      </div>
+
+      <!-- Aba: Serviços -->
+      <div class="tab-panel active" id="tab-services">
+        ${!isLoggedIn ? `<div class="cta-unlock-banner" style="margin:0 0 20px">
+          <div class="cta-unlock-content"><div class="cta-unlock-icon">🔒</div><div><div class="cta-unlock-title">Faça login para ver os preços</div><div class="cta-unlock-sub">Crie uma conta gratuita e acesse todos os valores.</div></div></div>
+          <a href="/pub/${slug}/login" class="cta-unlock-btn">Entrar / Cadastrar</a>
+        </div>` : ""}
+        <div class="tab-cards-grid">${servicesTabHtml}</div>
+      </div>
+
+      <!-- Aba: Produtos -->
+      ${saleProducts.length > 0 ? `<div class="tab-panel" id="tab-products">
+        ${!isLoggedIn ? `<div class="cta-unlock-banner" style="margin:0 0 20px">
+          <div class="cta-unlock-content"><div class="cta-unlock-icon">🔒</div><div><div class="cta-unlock-title">Faça login para ver os preços</div><div class="cta-unlock-sub">Crie uma conta gratuita e acesse todos os valores.</div></div></div>
+          <a href="/pub/${slug}/login" class="cta-unlock-btn">Entrar / Cadastrar</a>
+        </div>` : ""}
+        <div class="tab-cards-grid">${productsTabHtml}</div>
+      </div>` : ""}
+
+      <!-- Aba: Assinaturas -->
+      ${subscriptionPlansHtml ? `<div class="tab-panel" id="tab-plans">${subscriptionPlansHtml}</div>` : ""}
+
+      <!-- Aba: Como Funciona -->
+      <div class="tab-panel" id="tab-how">
+        <div class="how-tab">
+          <div class="steps-grid">
+            <div class="step-card"><div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">1</div><div class="step-icon">✂️</div><div class="step-title">Escolha o Serviço</div><div class="step-desc">Selecione o corte ou tratamento que deseja.</div></div>
+            <div class="step-card"><div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">2</div><div class="step-icon">💈</div><div class="step-title">Escolha o Barbeiro</div><div class="step-desc">Selecione seu profissional favorito.</div></div>
+            <div class="step-card"><div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">3</div><div class="step-icon">📅</div><div class="step-title">Escolha o Horário</div><div class="step-desc">Veja os horários disponíveis e escolha o melhor para você.</div></div>
+            <div class="step-card"><div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">4</div><div class="step-icon">✅</div><div class="step-title">Confirme</div><div class="step-desc">Confirme o agendamento e receba lembretes automáticos.</div></div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    ${subscriptionPlansHtml}
-    ${galleryHtml}
+    <script>
+      function switchTab(id, btn) {
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+        btn.classList.add('active');
+        var panel = document.getElementById('tab-' + id);
+        if (panel) panel.classList.add('active');
+      }
+    <\/script>
+
     ${teamHtml}
     ${reviewsHtml}
     ${infoHtml}
