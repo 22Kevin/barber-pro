@@ -536,6 +536,30 @@ export default function PaginaClienteScreen() {
                 </Pressable>
               </View>
 
+              {/* Botão Abrir minha página */}
+              <Pressable
+                style={({ pressed }) => [{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  borderRadius: 12,
+                  borderWidth: 1.5,
+                  borderColor: activeColor,
+                  backgroundColor: `${activeColor}18`,
+                  marginBottom: 16,
+                  opacity: pressed ? 0.75 : 1,
+                  transform: pressed ? [{ scale: 0.97 }] : [],
+                }]}
+                onPress={() => Linking.openURL(publicUrl).catch(() => Alert.alert("Erro", "Não foi possível abrir a página."))}
+              >
+                <Text style={{ fontSize: 16 }}>🌐</Text>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: activeColor }}>Abrir minha página</Text>
+                <Text style={{ fontSize: 12, color: activeColor, opacity: 0.7 }}>↗</Text>
+              </Pressable>
+
               {/* QR Code */}
               <View style={[styles.qrContainer, { borderTopColor: colors.border }]}>
                 <Text style={[styles.qrLabel, { color: colors.foreground }]}>QR Code da Barbearia</Text>
