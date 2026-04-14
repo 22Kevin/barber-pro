@@ -570,33 +570,43 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
         const planCards = (plans as any[]).map((plan: any, idx: number) => {
           const isPopular = idx === Math.floor(plans.length / 2) && plans.length > 1;
           const svcs = planServicesData[plan.id] ?? [];
-          const svcList = svcs.map((s: any) => `<li>✓ ${escapeHtml(s.serviceName)}</li>`).join("");
+          const svcList = svcs.length > 0
+            ? svcs.map((s: any) => `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:4px"><span style="color:var(--primary)">✓</span>${escapeHtml(s.serviceName)}</div>`).join("")
+            : "";
           const servicesJson = escapeHtml(JSON.stringify(svcs.map((s: any) => ({ id: s.serviceId, name: s.serviceName, price: s.servicePrice }))));
+          const priceDisplay = isLoggedIn
+            ? `<div style="font-size:22px;font-weight:900;color:var(--primary);margin-bottom:2px">R$ ${Number(plan.price).toFixed(2).replace(".", ",")}<span style="font-size:13px;font-weight:500;color:var(--muted)">/mês</span></div>`
+            : `<a href="/pub/${slug}/login" class="price-locked" style="margin-bottom:4px">🔒 Ver preço</a>`;
           return `
-            <div class="plan-card${isPopular ? " plan-popular" : ""}">
-              ${isPopular ? `<div class="plan-badge" style="background:${primaryColor}">MAIS POPULAR</div>` : ""}
-              <div class="plan-name">${escapeHtml(plan.name)}</div>
-              <div class="plan-price"><span class="plan-currency">R$</span> <span class="plan-value">${Number(plan.price).toFixed(2).replace(".", ",")}</span><span class="plan-period">/mês</span></div>
-              ${plan.description ? `<div class="plan-desc">${escapeHtml(plan.description)}</div>` : ""}
-              <ul class="plan-features">
-                <li>✓ ${plan.recurrences} agendamento${plan.recurrences !== 1 ? "s" : ""} por mês</li>
-                ${svcList}
-                <li>✓ Cancele quando quiser</li>
-              </ul>
-              <button class="plan-cta-btn"
-                style="background:${isPopular ? primaryColor : "transparent"};color:${isPopular ? "#0A0A0A" : primaryColor};border:2px solid ${primaryColor}"
-                onclick="openPlanModal(${plan.id}, '${escapeHtml(plan.name)}', ${plan.price}, ${plan.maxServices}, ${plan.maxProducts}, ${plan.recurrences}, '${servicesJson}')">
-                ASSINAR PLANO
-              </button>
+            <div class="tab-card" style="position:relative;display:flex;flex-direction:column">
+              ${isPopular ? `<div style="position:absolute;top:12px;right:12px;background:${primaryColor};color:#0A0A0A;font-size:10px;font-weight:900;padding:3px 10px;border-radius:20px;letter-spacing:0.5px">POPULAR</div>` : ""}
+              <div class="tab-card-thumb-placeholder" style="height:100px;font-size:28px;background:${primaryColor}18">🏷️</div>
+              <div class="tab-card-body" style="flex:1;display:flex;flex-direction:column">
+                <div class="tab-card-name" style="font-size:15px;margin-bottom:6px">${escapeHtml(plan.name)}</div>
+                ${plan.description ? `<div class="tab-card-desc" style="margin-bottom:10px">${escapeHtml(plan.description)}</div>` : ""}
+                <div style="margin-bottom:10px">
+                  <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Inclui</div>
+                  <div style="font-size:12px;color:var(--muted);margin-bottom:4px"><span style="color:var(--primary)">✓</span> ${plan.recurrences} agendamento${plan.recurrences !== 1 ? "s" : ""}/mês</div>
+                  ${svcList}
+                  <div style="font-size:12px;color:var(--muted);margin-top:4px"><span style="color:var(--primary)">✓</span> Cancele quando quiser</div>
+                </div>
+                <div class="tab-card-meta" style="margin-top:auto;padding-top:10px;border-top:1px solid var(--border);flex-direction:column;align-items:flex-start;gap:10px">
+                  ${priceDisplay}
+                  ${isLoggedIn ? `<button
+                    onclick="openPlanModal(${plan.id}, '${escapeHtml(plan.name)}', ${plan.price}, ${plan.maxServices}, ${plan.maxProducts}, ${plan.recurrences}, '${servicesJson}')"
+                    style="width:100%;padding:10px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;background:${isPopular ? `var(--primary)` : `transparent`};color:${isPopular ? `#0A0A0A` : `var(--primary)`};border:2px solid var(--primary);letter-spacing:0.3px">
+                    ASSINAR PLANO
+                  </button>` : `<a href="/pub/${slug}/login" style="display:block;width:100%;padding:10px;border-radius:10px;font-size:13px;font-weight:800;text-align:center;background:transparent;color:var(--primary);border:2px solid var(--primary);letter-spacing:0.3px;text-decoration:none">ENTRAR PARA ASSINAR</a>`}
+                </div>
+              </div>
             </div>
           `;
         }).join("");
         subscriptionPlansHtml = `
-          <div class="section">
-            <div class="section-title">Planos e Assinaturas</div>
-            <p style="color:var(--muted);font-size:14px;margin-bottom:24px">Assine um plano e garanta seus horários todo mês.</p>
-            <div class="plans-grid">${planCards}</div>
+          <div style="margin-bottom:16px">
+            <p style="color:var(--muted);font-size:14px;margin:0">Assine um plano e garanta seus horários todo mês com desconto.</p>
           </div>
+          <div class="tab-cards-grid">${planCards}</div>
           <!-- Modal de Assinatura -->
           <div class="plan-modal-overlay" id="planModalOverlay" onclick="if(event.target===this)closePlanModal()">
             <div class="plan-modal">
