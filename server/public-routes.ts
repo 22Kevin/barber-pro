@@ -384,7 +384,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   const servicesTabHtml = serviceList.length === 0
     ? `<div class="empty">Nenhum serviço cadastrado ainda.</div>`
     : serviceList.map((s) => `
-      <a href="/pub/${slug}/agendar" class="tab-card" style="text-decoration:none;color:inherit">
+      <a href="/pub/${slug}/servico/${s.id}" class="tab-card" style="text-decoration:none;color:inherit">
         ${s.thumbnailUrl
           ? `<img class="tab-card-thumb" src="${escapeHtml(s.thumbnailUrl)}" alt="${escapeHtml(s.name)}" loading="lazy" />`
           : `<div class="tab-card-thumb-placeholder">✂️</div>`
@@ -405,7 +405,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   const productsTabHtml = saleProducts.length === 0
     ? `<div class="empty">Nenhum produto disponível.</div>`
     : saleProducts.map((p: any) => `
-      <div class="tab-card">
+      <a href="/pub/${slug}/produto/${p.id}" class="tab-card" style="text-decoration:none;color:inherit">
         ${p.thumbnailUrl
           ? `<img class="tab-card-thumb" src="${escapeHtml(p.thumbnailUrl)}" alt="${escapeHtml(p.name)}" loading="lazy" />`
           : `<div class="tab-card-thumb-placeholder">🧴</div>`
@@ -415,10 +415,10 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
           ${p.description ? `<div class="tab-card-desc">${escapeHtml(p.description)}</div>` : ""}
           <div class="tab-card-meta">
             ${priceHtml(p.price)}
-            ${p.stockQuantity != null ? `<span class="tab-card-duration">${p.stockQuantity} em estoque</span>` : ""}
+            ${p.stockQuantity != null ? `<span class="tab-card-duration">${(p.stockQuantity > 0 ? p.stockQuantity + " em estoque" : "Sem estoque")}</span>` : ""}
           </div>
         </div>
-      </div>
+      </a>
     `).join("");
 
   // ── Seção: Galeria (Carrossel) ────────────────────────────────────────────
@@ -592,11 +592,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
                 </div>
                 <div class="tab-card-meta" style="margin-top:auto;padding-top:10px;border-top:1px solid var(--border);flex-direction:column;align-items:flex-start;gap:10px">
                   ${priceDisplay}
-                  ${isLoggedIn ? `<button
-                    onclick="openPlanModal(${plan.id}, '${escapeHtml(plan.name)}', ${plan.price}, ${plan.maxServices}, ${plan.maxProducts}, ${plan.recurrences}, '${servicesJson}')"
-                    style="width:100%;padding:10px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;background:${isPopular ? `var(--primary)` : `transparent`};color:${isPopular ? `#0A0A0A` : `var(--primary)`};border:2px solid var(--primary);letter-spacing:0.3px">
-                    ASSINAR PLANO
-                  </button>` : `<a href="/pub/${slug}/login" style="display:block;width:100%;padding:10px;border-radius:10px;font-size:13px;font-weight:800;text-align:center;background:transparent;color:var(--primary);border:2px solid var(--primary);letter-spacing:0.3px;text-decoration:none">ENTRAR PARA ASSINAR</a>`}
+                  <a href="/pub/${slug}/plano/${plan.id}" style="display:block;width:100%;padding:10px;border-radius:10px;font-size:13px;font-weight:800;text-align:center;background:${isPopular ? `var(--primary)` : `transparent`};color:${isPopular ? `#0A0A0A` : `var(--primary)`};border:2px solid var(--primary);letter-spacing:0.3px;text-decoration:none">${isLoggedIn ? 'VER PLANO' : 'ENTRAR PARA ASSINAR'}</a>
                 </div>
               </div>
             </div>
@@ -1304,6 +1300,7 @@ async function renderPerfilPage(slug: string, res: Response, req: Request) {
   if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
   const settings = await db.getShopSettingsByTenantId(tenant.id);
   const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
+  const shopName = settings?.shopName ?? tenant.name;
 
   // Verificar sessão do cliente
   const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
@@ -1311,75 +1308,230 @@ async function renderPerfilPage(slug: string, res: Response, req: Request) {
   if (clientSessionRaw) {
     try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
   }
-  if (!loggedClient) {
-    res.redirect(`/pub/${slug}/login?redirect=perfil`);
-    return;
-  }
+  if (!loggedClient) { res.redirect(`/pub/${slug}/login?redirect=perfil`); return; }
 
-  // Buscar dados atuais do cliente no banco
   const clientData = await db.getClientById(loggedClient.id);
   if (!clientData) { res.redirect(`/pub/${slug}/login`); return; }
 
+  // Buscar agendamentos do cliente
+  const allAppointments = await db.getClientAppointments(loggedClient.id);
+  const nowBrasilia = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const todayStr = nowBrasilia.toISOString().slice(0, 10);
+  const upcomingAppts = allAppointments.filter(a =>
+    (a.date > todayStr || (a.date === todayStr && a.startTime >= nowBrasilia.toTimeString().slice(0,5))) &&
+    !['cancelled','no_show','completed'].includes(a.status)
+  ).slice(0, 5);
+  const pastAppts = allAppointments.filter(a => a.status === 'completed').slice(0, 10);
+
+  // Pontos de fidelidade
+  const totalPoints = (clientData as any).totalPoints ?? 0;
+  const loyaltyConf = await db.getLoyaltyConfig(tenant.id);
+  const loyaltyActive = (loyaltyConf as any)?.isActive ?? false;
+  const pointsPerVisit = (loyaltyConf as any)?.pointsPerVisit ?? 10;
+  const nextRewardPoints = (loyaltyConf as any)?.rewardThreshold ?? 100;
+  const progressPct = Math.min(100, Math.round((totalPoints % nextRewardPoints) / nextRewardPoints * 100));
+
   const saved = req.query.saved === "1";
   const error = req.query.error ? decodeURIComponent(req.query.error as string) : null;
+  const tab = (req.query.tab as string) ?? "agenda";
+
+  // Formatar data
+  const fmtDate = (d: string) => { const [y,m,day] = d.split("-"); return `${day}/${m}/${y}`; };
+  const statusLabel: Record<string,string> = {
+    scheduled: "Agendado", confirmed: "Confirmado", pending_approval: "Aguarda aprovação",
+    completed: "Concluído", cancelled: "Cancelado", no_show: "Não compareceu"
+  };
+  const statusColor: Record<string,string> = {
+    scheduled: "#60A5FA", confirmed: "#4ADE80", pending_approval: "#FBBF24",
+    completed: "#9CA3AF", cancelled: "#F87171", no_show: "#F87171"
+  };
+
+  const upcomingHtml = upcomingAppts.length === 0
+    ? `<div style="text-align:center;padding:32px 16px;color:var(--muted)">
+        <div style="font-size:40px;margin-bottom:12px">📅</div>
+        <div style="font-size:14px">Nenhum agendamento futuro</div>
+        <a href="/pub/${slug}/agendar" style="display:inline-block;margin-top:16px;background:${primaryColor};color:#0A0A0A;font-weight:700;padding:10px 24px;border-radius:50px;font-size:13px">Agendar agora</a>
+      </div>`
+    : upcomingAppts.map(a => `
+      <div style="background:var(--surface2);border:1px solid ${statusColor[a.status] ?? '#334155'}33;border-left:4px solid ${statusColor[a.status] ?? primaryColor};border-radius:14px;padding:16px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div>
+            <div style="font-size:15px;font-weight:800">${escapeHtml((a as any).serviceName ?? "Serviço")}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">com ${escapeHtml((a as any).barberName ?? "Profissional")}</div>
+          </div>
+          <span style="background:${statusColor[a.status] ?? '#334155'}22;color:${statusColor[a.status] ?? '#9CA3AF'};font-size:11px;font-weight:700;padding:4px 10px;border-radius:50px">${statusLabel[a.status] ?? a.status}</span>
+        </div>
+        <div style="display:flex;gap:16px;font-size:12px;color:var(--muted)">
+          <span>📅 ${fmtDate(a.date)}</span>
+          <span>🕐 ${a.startTime.slice(0,5)}</span>
+          ${(a as any).price ? `<span style="color:${primaryColor};font-weight:700">R$ ${Number((a as any).price).toFixed(2).replace('.',',')}</span>` : ''}
+        </div>
+      </div>`).join("")
+  ;
+
+  const historyHtml = pastAppts.length === 0
+    ? `<div style="text-align:center;padding:32px 16px;color:var(--muted)">
+        <div style="font-size:40px;margin-bottom:12px">✂️</div>
+        <div style="font-size:14px">Nenhum corte registrado ainda</div>
+      </div>`
+    : pastAppts.map(a => `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;opacity:0.85">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div>
+            <div style="font-size:15px;font-weight:800">${escapeHtml((a as any).serviceName ?? "Serviço")}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">com ${escapeHtml((a as any).barberName ?? "Profissional")}</div>
+          </div>
+          <span style="background:#4ADE8015;color:#4ADE80;font-size:11px;font-weight:700;padding:4px 10px;border-radius:50px">✓ Concluído</span>
+        </div>
+        <div style="display:flex;gap:16px;font-size:12px;color:var(--muted)">
+          <span>📅 ${fmtDate(a.date)}</span>
+          <span>🕐 ${a.startTime.slice(0,5)}</span>
+          ${(a as any).price ? `<span style="color:${primaryColor};font-weight:700">R$ ${Number((a as any).price).toFixed(2).replace('.',',')}</span>` : ''}
+        </div>
+      </div>`).join("")
+  ;
+
+  const avatarHtml = (clientData as any).photoUrl
+    ? `<img src="${escapeHtml((clientData as any).photoUrl)}" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid ${primaryColor}" />`
+    : `<div style="width:90px;height:90px;border-radius:50%;background:var(--surface2);border:3px solid ${primaryColor};display:flex;align-items:center;justify-content:center;font-size:36px">👤</div>`;
 
   const body = `
-    <div style="max-width:480px;margin:0 auto;padding:32px 24px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:32px">
-        <a href="/pub/${slug}" style="color:var(--muted);font-size:20px">&#8592;</a>
+    <div style="max-width:520px;margin:0 auto;padding:24px 16px 48px">
+
+      <!-- Cabeçalho -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <a href="/pub/${slug}" style="color:var(--muted);font-size:22px;line-height:1">&#8592;</a>
         <div>
-          <div style="font-size:18px;font-weight:800">Meu Perfil</div>
-          <div style="font-size:12px;color:var(--muted)">${escapeHtml(settings?.shopName ?? tenant.name)}</div>
+          <div style="font-size:20px;font-weight:900">Meu Perfil</div>
+          <div style="font-size:12px;color:var(--muted)">${escapeHtml(shopName)}</div>
         </div>
       </div>
 
-      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:#4ADE80;padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">&#10003; Perfil atualizado com sucesso!</div>` : ""}
-      ${error ? `<div style="background:#EF444422;border:1px solid #EF444444;color:#F87171;padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">&#10007; ${escapeHtml(error)}</div>` : ""}
+      ${saved ? `<div style="background:#4ADE8018;border:1px solid #4ADE8044;color:#4ADE80;padding:12px 16px;border-radius:12px;margin-bottom:16px;font-size:14px">✓ Perfil atualizado com sucesso!</div>` : ""}
+      ${error ? `<div style="background:#EF444418;border:1px solid #EF444444;color:#F87171;padding:12px 16px;border-radius:12px;margin-bottom:16px;font-size:14px">✗ ${escapeHtml(error)}</div>` : ""}
 
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px">
-        <div style="text-align:center;margin-bottom:28px">
-          <div style="width:80px;height:80px;border-radius:50%;background:var(--surface2);border:3px solid var(--primary);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 12px">&#128100;</div>
-          <div style="font-size:16px;font-weight:800">${escapeHtml(clientData.name)}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px">Cliente desde ${new Date((clientData as any).createdAt ?? Date.now()).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div>
+      <!-- Card do Avatar -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:16px;text-align:center">
+        <div style="position:relative;display:inline-block;margin-bottom:12px">
+          ${avatarHtml}
+          <label for="avatarInput" style="position:absolute;bottom:0;right:0;width:28px;height:28px;background:${primaryColor};border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px">📷</label>
+          <input id="avatarInput" type="file" accept="image/*" style="display:none" onchange="uploadAvatar(this)" />
         </div>
-
-        <form method="POST" action="/pub-api/perfil">
-          <input type="hidden" name="slug" value="${escapeHtml(slug)}" />
-          <div style="margin-bottom:16px">
-            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">NOME COMPLETO</label>
-            <input type="text" name="name" value="${escapeHtml(clientData.name)}" required
-              style="width:100%;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none" />
-          </div>
-          <div style="margin-bottom:16px">
-            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">TELEFONE / WHATSAPP</label>
-            <input type="tel" name="phone" value="${escapeHtml(clientData.phone ?? "")}" placeholder="(11) 99999-9999"
-              style="width:100%;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none" />
-          </div>
-          <div style="margin-bottom:24px">
-            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">E-MAIL</label>
-            <input type="email" name="email" value="${escapeHtml(clientData.email ?? "")}" placeholder="seu@email.com"
-              style="width:100%;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none" />
-          </div>
-          <button type="submit"
-            style="width:100%;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:800;border:none;border-radius:14px;cursor:pointer">
-            Salvar Alteracoes
-          </button>
-        </form>
-
-        <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
-          <a href="/pub/${slug}/meus-agendamentos" style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;color:var(--text);font-size:14px;font-weight:600">
-            <span>&#128197; Meus Agendamentos</span>
-            <span style="color:var(--muted)">&#8250;</span>
-          </a>
-          <a href="/pub/${slug}/logout" style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;color:#F87171;font-size:14px;font-weight:600;border-top:1px solid var(--border)">
-            <span>&#128682; Sair da conta</span>
-            <span style="color:var(--muted)">&#8250;</span>
-          </a>
-        </div>
+        <div style="font-size:18px;font-weight:900">${escapeHtml(clientData.name)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Cliente desde ${new Date((clientData as any).createdAt ?? Date.now()).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</div>
+        <div id="avatarStatus" style="font-size:12px;margin-top:8px;color:var(--muted)"></div>
       </div>
+
+      <!-- Pontos de Fidelidade -->
+      ${loyaltyActive ? `
+      <div style="background:linear-gradient(135deg,${primaryColor}22,${primaryColor}08);border:1px solid ${primaryColor}44;border-radius:20px;padding:20px;margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:${primaryColor};letter-spacing:0.5px">⭐ PONTOS DE FIDELIDADE</div>
+            <div style="font-size:28px;font-weight:900;margin-top:4px">${totalPoints} <span style="font-size:14px;color:var(--muted);font-weight:400">pts</span></div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:var(--muted)">Próxima recompensa</div>
+            <div style="font-size:16px;font-weight:800;color:${primaryColor}">${nextRewardPoints} pts</div>
+          </div>
+        </div>
+        <div style="background:var(--surface2);border-radius:50px;height:8px;overflow:hidden">
+          <div style="background:${primaryColor};height:100%;width:${progressPct}%;border-radius:50px;transition:width 0.5s"></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:right">${progressPct}% para a próxima recompensa</div>
+      </div>` : ""}
+
+      <!-- Abas: Agenda / Histórico / Dados -->
+      <div style="display:flex;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px">
+        <a href="?tab=agenda" style="flex:1;text-align:center;padding:12px 4px;font-size:13px;font-weight:700;text-decoration:none;${tab==='agenda'?`background:${primaryColor};color:#0A0A0A`:'color:var(--muted)'}">
+          📅 Próximos
+        </a>
+        <a href="?tab=historico" style="flex:1;text-align:center;padding:12px 4px;font-size:13px;font-weight:700;text-decoration:none;border-left:1px solid var(--border);${tab==='historico'?`background:${primaryColor};color:#0A0A0A`:'color:var(--muted)'}">
+          ✂️ Histórico
+        </a>
+        <a href="?tab=dados" style="flex:1;text-align:center;padding:12px 4px;font-size:13px;font-weight:700;text-decoration:none;border-left:1px solid var(--border);${tab==='dados'?`background:${primaryColor};color:#0A0A0A`:'color:var(--muted)'}">
+          ✏️ Meus Dados
+        </a>
+      </div>
+
+      <!-- Conteúdo da aba -->
+      ${tab === 'agenda' ? `
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0.5px;margin-bottom:12px">PRÓXIMOS AGENDAMENTOS (${upcomingAppts.length})</div>
+          ${upcomingHtml}
+        </div>` : ""}
+
+      ${tab === 'historico' ? `
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0.5px;margin-bottom:12px">HISTÓRICO DE CORTES (${pastAppts.length})</div>
+          ${historyHtml}
+        </div>` : ""}
+
+      ${tab === 'dados' ? `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px">
+          <form method="POST" action="/pub-api/perfil">
+            <input type="hidden" name="slug" value="${escapeHtml(slug)}" />
+            <div style="margin-bottom:16px">
+              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">NOME COMPLETO</label>
+              <input type="text" name="name" value="${escapeHtml(clientData.name)}" required
+                style="width:100%;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none;box-sizing:border-box" />
+            </div>
+            <div style="margin-bottom:16px">
+              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">TELEFONE / WHATSAPP</label>
+              <input type="tel" name="phone" value="${escapeHtml(clientData.phone ?? "")}" placeholder="(11) 99999-9999"
+                style="width:100%;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none;box-sizing:border-box" />
+            </div>
+            <div style="margin-bottom:24px">
+              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">E-MAIL</label>
+              <input type="email" name="email" value="${escapeHtml(clientData.email ?? "")}" placeholder="seu@email.com"
+                style="width:100%;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;outline:none;box-sizing:border-box" />
+            </div>
+            <button type="submit"
+              style="width:100%;padding:14px;background:${primaryColor};color:#0A0A0A;font-size:15px;font-weight:800;border:none;border-radius:14px;cursor:pointer">
+              Salvar Alterações
+            </button>
+          </form>
+          <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+            <a href="/pub/${slug}/logout" style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;color:#F87171;font-size:14px;font-weight:600">
+              <span>🚪 Sair da conta</span>
+              <span style="color:var(--muted)">›</span>
+            </a>
+          </div>
+        </div>` : ""}
+
     </div>
+
+    <script>
+    async function uploadAvatar(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const status = document.getElementById('avatarStatus');
+      status.textContent = 'Enviando foto...';
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        const base64 = e.target.result.split(',')[1];
+        try {
+          const res = await fetch('/pub-api/perfil/avatar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: ${loggedClient!.id}, fileBase64: base64, mimeType: file.type, slug: '${escapeHtml(slug)}' })
+          });
+          const data = await res.json();
+          if (data.url) {
+            status.textContent = '✓ Foto atualizada!';
+            status.style.color = '#4ADE80';
+            setTimeout(() => location.reload(), 800);
+          } else {
+            status.textContent = 'Erro ao enviar foto.';
+            status.style.color = '#F87171';
+          }
+        } catch { status.textContent = 'Erro ao enviar foto.'; status.style.color = '#F87171'; }
+      };
+      reader.readAsDataURL(file);
+    }
+    </script>
   `;
-  res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
+  res.send(publicLayout(shopName, primaryColor, body, "", settings));
 }
 async function renderReviewPage(slug: string, appointmentIdStr: string, res: Response, req: Request) {
   const appointmentId = parseInt(appointmentIdStr);
@@ -1669,6 +1821,292 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
   res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
 }
 
+// ─── Página de Detalhe de Serviço ───────────────────────────────────────────
+async function renderServiceDetailPage(slug: string, serviceId: number, res: Response, req: Request) {
+  const tenant = await db.getTenantBySlug(slug);
+  if (!tenant) { res.status(404).send("Barbearia não encontrada"); return; }
+  const settings = await db.getShopSettingsByTenantId(tenant.id);
+  const primaryColor = (settings as any)?.primaryColor || "#C9A84C";
+  const service = await db.getServiceById(serviceId);
+  if (!service || service.tenantId !== tenant.id) { res.redirect(`/pub/${slug}`); return; }
+  const media = await db.getMediaByEntity("service", serviceId);
+  const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+  const isLoggedIn = !!sessionData;
+  let clientInfo: any = null;
+  if (sessionData) { try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {} }
+  const images = media.filter(m => m.type === "image");
+  const videos = media.filter(m => m.type === "video");
+  const mediaHtml = images.length === 0 && videos.length === 0
+    ? `<div style="width:100%;height:280px;background:var(--surface2);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:64px;margin-bottom:28px">✂️</div>`
+    : `<div class="gallery-carousel" id="galleryCarousel" style="margin-bottom:28px">
+        <div class="gallery-track" id="galleryTrack">
+          ${images.map((m, i) => `<div class="gallery-slide"><img src="${escapeHtml(m.url)}" alt="${escapeHtml(service.name)}" onclick="openLightbox(${i})" loading="lazy" /></div>`).join("")}
+          ${videos.map(m => `<div class="gallery-slide"><video src="${escapeHtml(m.url)}" controls style="width:100%;height:340px;object-fit:cover;display:block"></video></div>`).join("")}
+        </div>
+        ${images.length > 1 ? `<button class="gallery-nav gallery-prev" onclick="galleryMove(-1)">&#8249;</button><button class="gallery-nav gallery-next" onclick="galleryMove(1)">&#8250;</button><div class="gallery-dots" id="galleryDots">${images.map((_,i) => `<div class="gallery-dot${i===0?' active':''}" onclick="galleryGoTo(${i})"></div>`).join("")}</div><div class="gallery-counter" id="galleryCounter">1 / ${images.length}</div>` : ""}
+      </div>
+      ${images.length > 0 ? `<div class="lightbox-overlay" id="lightboxOverlay"><span class="lightbox-close" onclick="closeLightbox()">×</span><img class="lightbox-img" id="lightboxImg" src="" alt="" /><button class="lightbox-nav lightbox-lprev" onclick="lightboxMove(-1)">&#8249;</button><button class="lightbox-nav lightbox-lnext" onclick="lightboxMove(1)">&#8250;</button></div>` : ""}`;
+  const priceSection = isLoggedIn
+    ? `<div style="font-size:32px;font-weight:900;color:var(--primary);margin-bottom:4px">${formatPrice(service.price)}</div>`
+    : `<a href="/pub/${slug}/login" style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:700;color:var(--text)">🔒 Faça login para ver o preço</a>`;
+  const bookBtn = isLoggedIn
+    ? `<a href="/pub/${slug}/agendar?service=${serviceId}" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;text-decoration:none">📅 Agendar este Serviço</a>`
+    : `<a href="/pub/${slug}/login?redirect=servico/${serviceId}" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;text-decoration:none">Entrar para Agendar</a>`;
+  const body = `
+    <div style="max-width:700px;margin:0 auto;padding:24px 20px 80px">
+      <a href="/pub/${slug}" style="display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:14px;margin-bottom:24px;font-weight:600">
+        ← Voltar
+      </a>
+      ${mediaHtml}
+      <div style="margin-bottom:28px">
+        <h1 style="font-size:28px;font-weight:900;margin-bottom:8px;font-family:var(--font-styled-family,inherit)">${escapeHtml(service.name)}</h1>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+          <span style="background:var(--surface2);border:1px solid var(--border);padding:6px 14px;border-radius:20px;font-size:13px;color:var(--muted);font-weight:600">⏱ ${formatDuration(service.durationMinutes)}</span>
+        </div>
+        ${priceSection}
+      </div>
+      ${service.description ? `<div style="margin-bottom:28px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Descrição</div><p style="font-size:15px;color:var(--text);line-height:1.7">${escapeHtml(service.description)}</p></div>` : ""}
+      <div style="position:fixed;bottom:0;left:0;right:0;padding:16px 20px;background:var(--bg);border-top:1px solid var(--border);z-index:100">${bookBtn}</div>
+    </div>
+    <script>
+      var _imgs = ${JSON.stringify(images.map(m => m.url))};
+      var _cur = 0;
+      function galleryMove(dir) { galleryGoTo((_cur + dir + _imgs.length) % _imgs.length); }
+      function galleryGoTo(i) {
+        _cur = i;
+        document.getElementById('galleryTrack').style.transform = 'translateX(-' + (i * 100) + '%)';
+        document.querySelectorAll('.gallery-dot').forEach(function(d,idx){ d.classList.toggle('active', idx===i); });
+        var c = document.getElementById('galleryCounter'); if(c) c.textContent = (i+1) + ' / ' + _imgs.length;
+      }
+      function openLightbox(i) { _cur=i; document.getElementById('lightboxImg').src=_imgs[i]; document.getElementById('lightboxOverlay').classList.add('open'); }
+      function closeLightbox() { document.getElementById('lightboxOverlay').classList.remove('open'); }
+      function lightboxMove(dir) { _cur=(_cur+dir+_imgs.length)%_imgs.length; document.getElementById('lightboxImg').src=_imgs[_cur]; }
+      document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeLightbox(); if(e.key==='ArrowLeft') lightboxMove(-1); if(e.key==='ArrowRight') lightboxMove(1); });
+    <\/script>
+  `;
+  res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
+}
+
+// ─── Página de Detalhe de Plano de Assinatura ──────────────────────────────
+async function renderPlanDetailPage(slug: string, planId: number, res: Response, req: Request) {
+  const tenant = await db.getTenantBySlug(slug);
+  if (!tenant) { res.status(404).send("Barbearia não encontrada"); return; }
+  const settings = await db.getShopSettingsByTenantId(tenant.id);
+  const primaryColor = (settings as any)?.primaryColor || "#C9A84C";
+  const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+  const isLoggedIn = !!sessionData;
+  let clientInfo: any = null;
+  if (sessionData) { try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {} }
+  // Buscar plano, serviços e produtos inclusos
+  let plan: any = null;
+  let planServices: any[] = [];
+  let planProducts: any[] = [];
+  try {
+    const dbConn = await db.getDb();
+    if (dbConn) {
+      const planResult = await dbConn.execute(
+        sql`SELECT * FROM subscription_plans WHERE id = ${planId} AND tenantId = ${tenant.id} AND isActive = 1 LIMIT 1`
+      ) as any;
+      const plans = Array.isArray(planResult) ? planResult[0] : planResult?.rows ?? [];
+      plan = plans?.[0] ?? null;
+      if (plan) {
+        const svcsResult = await dbConn.execute(
+          sql`SELECT sps.serviceId, s.name as serviceName, s.durationMinutes, s.price as servicePrice
+           FROM subscription_plan_services sps
+           JOIN services s ON s.id = sps.serviceId
+           WHERE sps.planId = ${planId}`
+        ) as any;
+        planServices = Array.isArray(svcsResult) ? svcsResult[0] : svcsResult?.rows ?? [];
+        const prdsResult = await dbConn.execute(
+          sql`SELECT spp.productId, p.name as productName, p.price as productPrice
+           FROM subscription_plan_products spp
+           JOIN products p ON p.id = spp.productId
+           WHERE spp.planId = ${planId}`
+        ) as any;
+        planProducts = Array.isArray(prdsResult) ? prdsResult[0] : prdsResult?.rows ?? [];
+      }
+    }
+  } catch {}
+  if (!plan) { res.redirect(`/pub/${slug}`); return; }
+  const svcList = planServices.map((s: any) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="color:var(--primary);font-size:18px">✂️</span>
+        <span style="font-size:14px;font-weight:600">${escapeHtml(s.serviceName)}</span>
+      </div>
+      <span style="font-size:12px;color:var(--muted)">${formatDuration(s.durationMinutes)}</span>
+    </div>`).join("");
+  const prdList = planProducts.length > 0 ? planProducts.map((p: any) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--primary);font-size:18px">🧴</span>
+      <span style="font-size:14px;font-weight:600">${escapeHtml(p.productName)}</span>
+    </div>`).join("") : "";
+  const priceDisplay = isLoggedIn
+    ? `<div style="font-size:36px;font-weight:900;color:var(--primary);line-height:1">${formatPrice(plan.price)}<span style="font-size:16px;font-weight:500;color:var(--muted)">/mês</span></div>`
+    : `<a href="/pub/${slug}/login" style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:700;color:var(--text)">🔒 Faça login para ver o preço</a>`;
+  const actionSection = isLoggedIn ? `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px">Forma de Pagamento</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <label style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface2);border:2px solid var(--border);border-radius:12px;cursor:pointer" id="payOnline">
+          <input type="radio" name="payMethod" value="online" onchange="selectPay(this)" style="accent-color:var(--primary)" />
+          <div>
+            <div style="font-size:14px;font-weight:700">📳 Pagar pelo sistema</div>
+            <div style="font-size:12px;color:var(--muted)">Cartão, Pix ou boleto — processado com segurança</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface2);border:2px solid var(--border);border-radius:12px;cursor:pointer" id="payStore">
+          <input type="radio" name="payMethod" value="store" onchange="selectPay(this)" style="accent-color:var(--primary)" />
+          <div>
+            <div style="font-size:14px;font-weight:700">🏥 Pagar na loja</div>
+            <div style="font-size:12px;color:var(--muted)">Combine diretamente com o barbeiro</div>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div id="planMsg" style="font-size:13px;text-align:center;margin-bottom:12px"></div>
+    <button onclick="subscribePlan()" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;border:none;cursor:pointer">Assinar Plano</button>` : `<a href="/pub/${slug}/login?redirect=plano/${planId}" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;text-decoration:none">Entrar para Assinar</a>`;
+  const body = `
+    <div style="max-width:700px;margin:0 auto;padding:24px 20px 80px">
+      <a href="/pub/${slug}" style="display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:14px;margin-bottom:24px;font-weight:600">← Voltar</a>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;margin-bottom:24px">
+        <div style="font-size:28px;margin-bottom:12px">🏷️</div>
+        <h1 style="font-size:26px;font-weight:900;margin-bottom:8px;font-family:var(--font-styled-family,inherit)">${escapeHtml(plan.name)}</h1>
+        ${plan.description ? `<p style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:16px">${escapeHtml(plan.description)}</p>` : ""}
+        ${priceDisplay}
+        <div style="margin-top:12px;font-size:13px;color:var(--muted)">${plan.recurrences} agendamento${plan.recurrences !== 1 ? "s" : ""}/mês • Cancele quando quiser</div>
+      </div>
+      ${planServices.length > 0 ? `<div style="margin-bottom:24px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Serviços Incluídos</div>${svcList}</div>` : ""}
+      ${planProducts.length > 0 ? `<div style="margin-bottom:24px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Produtos Incluídos</div>${prdList}</div>` : ""}
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Regras do Plano</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.7">
+          <div style="margin-bottom:8px">✅ ${plan.recurrences} agendamento${plan.recurrences !== 1 ? "s" : ""} por mês</div>
+          ${plan.maxServices < 999 ? `<div style="margin-bottom:8px">✅ Até ${plan.maxServices} serviço${plan.maxServices !== 1 ? "s" : ""} por agendamento</div>` : ""}
+          <div style="margin-bottom:8px">✅ Agendamentos com os barbeiros disponíveis</div>
+          <div style="margin-bottom:8px">✅ Cobrança mensal recorrente</div>
+          <div>✅ Cancele a qualquer momento</div>
+        </div>
+      </div>
+      <div style="position:fixed;bottom:0;left:0;right:0;padding:16px 20px;background:var(--bg);border-top:1px solid var(--border);z-index:100">${actionSection}</div>
+    </div>
+    <script>
+      var _selectedPay = null;
+      function selectPay(el) {
+        _selectedPay = el.value;
+        document.getElementById('payOnline').style.borderColor = el.value==='online' ? 'var(--primary)' : 'var(--border)';
+        document.getElementById('payStore').style.borderColor = el.value==='store' ? 'var(--primary)' : 'var(--border)';
+      }
+      function subscribePlan() {
+        if (!_selectedPay) { alert('Escolha uma forma de pagamento'); return; }
+        var msg = document.getElementById('planMsg');
+        if (_selectedPay === 'store') {
+          msg.style.color = '#22C55E';
+          msg.textContent = '✅ Pedido registrado! Vá até a barbearia para confirmar e pagar.';
+          return;
+        }
+        // Online: redirecionar para agendamento com plano selecionado
+        window.location.href = '/pub/${slug}/agendar?planId=${planId}';
+      }
+    <\/script>
+  `;
+  res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
+}
+
+// ─── Página de Detalhe de Produto ────────────────────────────────────────────
+async function renderProductDetailPage(slug: string, productId: number, res: Response, req: Request) {
+  const tenant = await db.getTenantBySlug(slug);
+  if (!tenant) { res.status(404).send("Barbearia não encontrada"); return; }
+  const settings = await db.getShopSettingsByTenantId(tenant.id);
+  const primaryColor = (settings as any)?.primaryColor || "#C9A84C";
+  const product = await db.getProductById(productId);
+  if (!product || product.tenantId !== tenant.id) { res.redirect(`/pub/${slug}`); return; }
+  const media = await db.getMediaByEntity("product", productId);
+  const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+  const isLoggedIn = !!sessionData;
+  let clientInfo: any = null;
+  if (sessionData) { try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {} }
+  const images = media.filter(m => m.type === "image");
+  const videos = media.filter(m => m.type === "video");
+  const mediaHtml = images.length === 0 && videos.length === 0
+    ? `<div style="width:100%;height:280px;background:var(--surface2);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:64px;margin-bottom:28px">🧴</div>`
+    : `<div class="gallery-carousel" id="galleryCarousel" style="margin-bottom:28px">
+        <div class="gallery-track" id="galleryTrack">
+          ${images.map((m, i) => `<div class="gallery-slide"><img src="${escapeHtml(m.url)}" alt="${escapeHtml(product.name)}" onclick="openLightbox(${i})" loading="lazy" /></div>`).join("")}
+          ${videos.map(m => `<div class="gallery-slide"><video src="${escapeHtml(m.url)}" controls style="width:100%;height:340px;object-fit:cover;display:block"></video></div>`).join("")}
+        </div>
+        ${images.length > 1 ? `<button class="gallery-nav gallery-prev" onclick="galleryMove(-1)">&#8249;</button><button class="gallery-nav gallery-next" onclick="galleryMove(1)">&#8250;</button><div class="gallery-dots" id="galleryDots">${images.map((_,i) => `<div class="gallery-dot${i===0?' active':''}" onclick="galleryGoTo(${i})"></div>`).join("")}</div><div class="gallery-counter" id="galleryCounter">1 / ${images.length}</div>` : ""}
+      </div>
+      ${images.length > 0 ? `<div class="lightbox-overlay" id="lightboxOverlay"><span class="lightbox-close" onclick="closeLightbox()">×</span><img class="lightbox-img" id="lightboxImg" src="" alt="" /><button class="lightbox-nav lightbox-lprev" onclick="lightboxMove(-1)">&#8249;</button><button class="lightbox-nav lightbox-lnext" onclick="lightboxMove(1)">&#8250;</button></div>` : ""}`;
+  const inStock = product.stockQuantity == null || product.stockQuantity > 0;
+  const priceSection = isLoggedIn
+    ? `<div style="font-size:32px;font-weight:900;color:var(--primary);margin-bottom:4px">${formatPrice(product.price)}</div><div style="font-size:13px;color:${inStock ? "#22C55E" : "#F87171"};font-weight:700;margin-bottom:16px">${inStock ? (product.stockQuantity != null ? product.stockQuantity + " em estoque" : "Disponível") : "Sem estoque"}</div>`
+    : `<a href="/pub/${slug}/login" style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px">🔒 Faça login para ver o preço</a>`;
+  const actionBtn = isLoggedIn
+    ? (inStock
+        ? `<button onclick="buyProduct()" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;border:none;cursor:pointer">🛒 Comprar</button>`
+        : `<div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <label style="font-size:13px;color:var(--muted);font-weight:600">Quantidade:</label>
+              <input type="number" id="orderQty" min="1" value="1" style="width:70px;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;text-align:center" />
+            </div>
+            <button onclick="orderProduct()" style="display:block;width:100%;padding:16px;background:transparent;color:var(--primary);font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;border:2px solid var(--primary);cursor:pointer">📦 Encomendar</button>
+            <div id="orderMsg" style="margin-top:12px;font-size:13px;text-align:center"></div>
+          </div>`)
+    : `<a href="/pub/${slug}/login?redirect=produto/${productId}" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;text-decoration:none">Entrar para Comprar</a>`;
+  const body = `
+    <div style="max-width:700px;margin:0 auto;padding:24px 20px 80px">
+      <a href="/pub/${slug}" style="display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:14px;margin-bottom:24px;font-weight:600">
+        ← Voltar
+      </a>
+      ${mediaHtml}
+      <div style="margin-bottom:28px">
+        <h1 style="font-size:28px;font-weight:900;margin-bottom:8px;font-family:var(--font-styled-family,inherit)">${escapeHtml(product.name)}</h1>
+        ${priceSection}
+      </div>
+      ${product.description ? `<div style="margin-bottom:28px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Descrição</div><p style="font-size:15px;color:var(--text);line-height:1.7">${escapeHtml(product.description)}</p></div>` : ""}
+      <div style="position:fixed;bottom:0;left:0;right:0;padding:16px 20px;background:var(--bg);border-top:1px solid var(--border);z-index:100">${actionBtn}</div>
+    </div>
+    <script>
+      var _imgs = ${JSON.stringify(images.map(m => m.url))};
+      var _cur = 0;
+      function galleryMove(dir) { galleryGoTo((_cur + dir + _imgs.length) % _imgs.length); }
+      function galleryGoTo(i) {
+        _cur = i;
+        document.getElementById('galleryTrack').style.transform = 'translateX(-' + (i * 100) + '%)';
+        document.querySelectorAll('.gallery-dot').forEach(function(d,idx){ d.classList.toggle('active', idx===i); });
+        var c = document.getElementById('galleryCounter'); if(c) c.textContent = (i+1) + ' / ' + _imgs.length;
+      }
+      function openLightbox(i) { _cur=i; document.getElementById('lightboxImg').src=_imgs[i]; document.getElementById('lightboxOverlay').classList.add('open'); }
+      function closeLightbox() { document.getElementById('lightboxOverlay').classList.remove('open'); }
+      function lightboxMove(dir) { _cur=(_cur+dir+_imgs.length)%_imgs.length; document.getElementById('lightboxImg').src=_imgs[_cur]; }
+      document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeLightbox(); if(e.key==='ArrowLeft') lightboxMove(-1); if(e.key==='ArrowRight') lightboxMove(1); });
+      function buyProduct() {
+        window.location.href = '/pub/${slug}/agendar?buyProduct=${productId}';
+      }
+      function orderProduct() {
+        var qty = parseInt(document.getElementById('orderQty').value) || 1;
+        var msg = document.getElementById('orderMsg');
+        msg.textContent = 'Enviando pedido...';
+        fetch('/pub-api/order-product', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId: ${productId}, quantity: qty, slug: '${slug}' })
+        }).then(r => r.json()).then(data => {
+          if (data.success) {
+            msg.style.color = '#22C55E';
+            msg.textContent = '✅ Pedido enviado! O barbeiro foi notificado e entrará em contato.';
+          } else {
+            msg.style.color = '#F87171';
+            msg.textContent = '❌ ' + (data.error || 'Erro ao enviar pedido');
+          }
+        }).catch(() => { msg.style.color='#F87171'; msg.textContent='❌ Erro de conexão'; });
+      }
+    <\/script>
+  `;
+  res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
+}
+
 export function registerPublicRoutes(app: Express): void {
   app.use(cookieParser());
   // Rota de desenvolvimento: /pub/:slug
@@ -1678,6 +2116,51 @@ export function registerPublicRoutes(app: Express): void {
 
   app.get("/pub/:slug/agendar", async (req: Request, res: Response) => {
     await renderBookingPage(req.params.slug, res, req);
+  });
+
+  app.get("/pub/:slug/servico/:serviceId", async (req: Request, res: Response) => {
+    await renderServiceDetailPage(req.params.slug, parseInt(req.params.serviceId), res, req);
+  });
+
+  app.get("/pub/:slug/produto/:productId", async (req: Request, res: Response) => {
+    await renderProductDetailPage(req.params.slug, parseInt(req.params.productId), res, req);
+  });
+
+  app.get("/pub/:slug/plano/:planId", async (req: Request, res: Response) => {
+    await renderPlanDetailPage(req.params.slug, parseInt(req.params.planId), res, req);
+  });
+
+  app.post("/pub-api/order-product", async (req: Request, res: Response) => {
+    try {
+      const { productId, quantity, slug } = req.body;
+      if (!productId || !quantity || !slug) { res.status(400).json({ error: "Dados incompletos" }); return; }
+      const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+      if (!sessionData) { res.status(401).json({ error: "Não autenticado" }); return; }
+      let clientInfo: any;
+      try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch { res.status(401).json({ error: "Sessão inválida" }); return; }
+      const product = await db.getProductById(parseInt(productId));
+      if (!product) { res.status(404).json({ error: "Produto não encontrado" }); return; }
+      const tenant = await db.getTenantBySlug(slug);
+      if (!tenant) { res.status(404).json({ error: "Barbearia não encontrada" }); return; }
+      // Notificar barbeiros sobre o pedido via push notification
+      const barbers = await db.getAllBarbers(tenant.id);
+      for (const barber of barbers.slice(0, 3)) {
+        try {
+          const pushToken = await db.getBarberPushToken(barber.id);
+          if (pushToken) {
+            await db.sendExpoPushNotification(
+              pushToken,
+              "Novo Pedido de Produto",
+              `${clientInfo.name} quer encomendar ${quantity}x ${product.name}`,
+              { productId, quantity, clientId: clientInfo.id, clientName: clientInfo.name }
+            );
+          }
+        } catch {}
+      }
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
 
@@ -2088,6 +2571,23 @@ export function registerPublicRoutes(app: Express): void {
     } catch (e: any) {
       const { slug } = req.body;
       res.redirect(`/pub/${slug ?? ""}/perfil?error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // POST /pub-api/perfil/avatar — Upload de foto de perfil do cliente
+  app.post("/pub-api/perfil/avatar", async (req: Request, res: Response) => {
+    try {
+      const { clientId, fileBase64, mimeType } = req.body;
+      if (!clientId || !fileBase64 || !mimeType) { res.status(400).json({ error: "Dados incompletos" }); return; }
+      const { storagePut } = await import("./storage");
+      const ext = mimeType.split("/")[1] || "jpg";
+      const key = `barber-pro/clients/photo-${clientId}-${Date.now()}.${ext}`;
+      const buffer = Buffer.from(fileBase64, "base64");
+      const { url } = await storagePut(key, buffer, mimeType);
+      await db.updateClient(Number(clientId), { photoUrl: url });
+      res.json({ url });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
     }
   });
 

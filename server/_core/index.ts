@@ -240,6 +240,32 @@ async function startServer() {
     }
   });
 
+  // ─── Webhook Asaas ─────────────────────────────────────────────────────────
+  app.post("/api/asaas/webhook", async (req, res) => {
+    try {
+      const { parseAsaasWebhook } = await import("../asaas");
+      const parsed = parseAsaasWebhook(req.body);
+      const { getDb } = await import("../db");
+      const dbConn = await getDb();
+      if (dbConn && parsed.asaasId) {
+        // Mapear status Asaas → status interno
+        const statusMap: Record<string, string> = {
+          RECEIVED: "paid", CONFIRMED: "paid",
+          OVERDUE: "overdue", REFUNDED: "refunded", CANCELLED: "cancelled",
+        };
+        const internalStatus = statusMap[parsed.status] ?? "pending";
+        const paidClause = internalStatus === "paid" ? ", paidAt = NOW()" : "";
+        await (dbConn as any).execute(
+          `UPDATE online_payments SET status = '${internalStatus}', updatedAt = NOW()${paidClause} WHERE asaasPaymentId = '${parsed.asaasId}' OR asaasSubscriptionId = '${parsed.asaasId}'`
+        );
+      }
+      res.json({ received: true });
+    } catch (err: any) {
+      console.error("[asaas-webhook]", err.message);
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   app.use(
     "/api/trpc",
     createExpressMiddleware({

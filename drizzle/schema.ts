@@ -576,3 +576,35 @@ export const subscriptionAppointments = mysqlTable("subscription_appointments", 
   recurrenceIndex: int("recurrenceIndex").notNull().default(1),
 });
 export type SubscriptionAppointment = typeof subscriptionAppointments.$inferSelect;
+
+// ─── Online Payments — Asaas ──────────────────────────────────────────────────
+export const onlinePayments = mysqlTable("online_payments", {
+  id: int("id").primaryKey().autoincrement(),
+  tenantId: int("tenantId").notNull(),
+  clientId: int("clientId").notNull(),
+  /** Tipo de cobrança: produto avulso, agendamento ou assinatura */
+  chargeType: mysqlEnum("chargeType", ["product", "appointment", "subscription"]).notNull(),
+  /** ID do recurso relacionado (productId, appointmentId ou subscriptionId) */
+  referenceId: int("referenceId"),
+  /** ID da cobrança no Asaas */
+  asaasPaymentId: varchar("asaasPaymentId", { length: 100 }),
+  /** ID da assinatura recorrente no Asaas (apenas para chargeType=subscription) */
+  asaasSubscriptionId: varchar("asaasSubscriptionId", { length: 100 }),
+  /** ID do cliente no Asaas */
+  asaasCustomerId: varchar("asaasCustomerId", { length: 100 }),
+  billingType: mysqlEnum("billingType", ["BOLETO", "CREDIT_CARD", "PIX", "STORE"]).notNull().default("PIX"),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: mysqlEnum("status", ["pending", "paid", "overdue", "refunded", "cancelled"]).notNull().default("pending"),
+  /** URL da fatura ou boleto gerada pelo Asaas */
+  invoiceUrl: text("invoiceUrl"),
+  /** QR Code Pix em base64 */
+  pixQrCode: text("pixQrCode"),
+  /** Copia e cola Pix */
+  pixCopyCola: text("pixCopyCola"),
+  dueDate: date("dueDate"),
+  paidAt: timestamp("paidAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+export type OnlinePayment = typeof onlinePayments.$inferSelect;
+export type InsertOnlinePayment = typeof onlinePayments.$inferInsert;

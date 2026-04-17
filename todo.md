@@ -1523,3 +1523,11 @@
 - [x] Upload direto da Imagem de Compartilhamento (substituir campo de URL por uploader)
 - [x] Aplicar fontStyle na página pública /pub/[slug]
 - [x] Pré-visualização em tempo real (miniatura que atualiza ao mudar cor/estilo)
+
+## Rodada 12 — Landing page: detalhes de serviço, produto, assinatura + Asaas + Meu Perfil
+
+- [ ] Página de detalhe de Serviço na landing page (galeria, descrição, duração, agendamento multi-serviço)
+- [ ] Página de detalhe de Produto (galeria, descrição, Comprar/Encomendar com quantidade)
+- [ ] Página de detalhe de Assinatura (regras, serviços/produtos inclusos, datas, pagamento mensal)
+- [ ] Estrutura de integração Asaas (cobrança avulsa, agendamento, recorrente)
+- [ ] Página Meu Perfil do cliente (foto, dados, histórico com cards, pontos de fidelidade)
