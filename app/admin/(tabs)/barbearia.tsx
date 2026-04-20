@@ -454,41 +454,6 @@ export default function BarbeariaScreen() {
         {/* ── ABA DADOS ── */}
         {activeTab === "dados" && (
           <>
-            <Text style={styles.sectionTitle}>Identidade Visual</Text>
-            <View style={{ flexDirection: "row", gap: 16, marginBottom: 20, alignItems: "flex-start" }}>
-              <View style={{ alignItems: "center", gap: 6 }}>
-                <SingleImageUploader
-                  value={shopLogoUrl}
-                  onUpload={(url) => {
-                    setShopLogoUrl(url);
-                    // Salva automaticamente o logo no banco após o upload
-                    updateSettingsMutation.mutate({ logoUrl: url, tenantId } as any);
-                  }}
-                  imageType="logo"
-                  label="Logo"
-                  size={90}
-                />
-                <Text style={{ color: "#888880", fontSize: 11 }}>Logo</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.fieldLabel, { marginBottom: 4 }]}>Fotos do Ambiente</Text>
-                <Text style={{ color: "#555", fontSize: 11, marginBottom: 8 }}>Pressione e segure para reordenar</Text>
-                <SortableGallery
-                  images={shopGallery}
-                  onChange={(newGallery) => {
-                    setShopGallery(newGallery);
-                    // Salva automaticamente a galeria no banco após mudanças
-                    updateSettingsMutation.mutate({
-                      galleryUrls: newGallery.length > 0 ? JSON.stringify(newGallery) : null,
-                      tenantId,
-                    } as any);
-                  }}
-                  maxImages={8}
-                />
-              </View>
-            </View>
-
-            <View style={styles.divider} />
             <Text style={styles.sectionTitle}>Informações da Barbearia</Text>
             {[
               { label: "Nome da Barbearia", value: shopName, setter: setShopName, placeholder: "Barber Pro", keyboard: "default" as const },
@@ -965,8 +930,8 @@ export default function BarbeariaScreen() {
 const styles = StyleSheet.create({
   addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
-  tabsScroll: { flexGrow: 0, marginBottom: 4 },
-  tabsContent: { gap: 8, paddingVertical: 8, paddingHorizontal: 16 },
+  tabsScroll: { flexGrow: 0, marginBottom: 4, overflow: "visible" },
+  tabsContent: { gap: 8, paddingVertical: 10, paddingHorizontal: 16, paddingRight: 24 },
   tab: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: "#141414", borderWidth: 1, borderColor: "#2A2A2A" },
   tabActive: { backgroundColor: "#C9A84C", borderColor: "#C9A84C" },
   tabText: { fontSize: 13, color: "#888880", fontWeight: "600" },

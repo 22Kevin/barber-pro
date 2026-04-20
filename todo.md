@@ -1531,3 +1531,16 @@
 - [ ] Página de detalhe de Assinatura (regras, serviços/produtos inclusos, datas, pagamento mensal)
 - [ ] Estrutura de integração Asaas (cobrança avulsa, agendamento, recorrente)
 - [ ] Página Meu Perfil do cliente (foto, dados, histórico com cards, pontos de fidelidade)
+
+## Rodada — Correções TypeScript + Redesign Agendamento Público + Navbar Cliente
+
+- [x] Corrigir erros TypeScript em public-routes.ts (template literals mesclados)
+- [x] Redesenhar página de agendamento público (/pub/:slug/agendar) com fluxo em 4 etapas (stepper)
+- [x] Calendário visual horizontal (strip) com dias dos próximos 30 dias
+- [x] Divisão de horários em blocos: Manhã / Tarde / Noite
+- [x] Cards de barbeiros com foto/avatar e seleção visual
+- [x] Resumo do agendamento antes da confirmação (etapa 4)
+- [x] Remover código antigo duplicado da página de agendamento
+- [x] Adicionar navbar superior na landing page pública com dropdown de perfil do cliente
+- [x] Navbar: logado → avatar + nome + dropdown (Meu Perfil, Meus Agendamentos, Agendar, Sair)
+- [x] Navbar: não logado → botão "Entrar"

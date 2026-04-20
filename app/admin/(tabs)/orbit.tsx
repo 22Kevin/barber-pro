@@ -10,6 +10,7 @@ import {
   Image,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
+import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
 import { useBarberAuth } from "@/lib/auth-context";
 
@@ -125,9 +126,9 @@ export default function OrbitScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background" safeAreaClassName="bg-background">
-      {/* Header */}
+      <AdminHeader title="Clientes em Órbita" />
+      {/* Subtítulo */}
       <View style={styles.header}>
-        <Text style={styles.title}>Clientes em Órbita</Text>
         <Text style={styles.subtitle}>Visitantes que ainda não agendaram</Text>
       </View>
 
