@@ -945,6 +945,8 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
     name: s.name,
     price: s.price,
     durationMinutes: s.durationMinutes,
+    thumbnailUrl: (s as any).thumbnailUrl ?? null,
+    description: (s as any).description ?? null,
   })));
   const barbersJson = JSON.stringify(barberList.map((b) => ({
     id: b.id,
@@ -977,72 +979,95 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
   const body = `
     <style>
-      .booking-page { max-width: 520px; margin: 0 auto; padding: 24px 16px 80px; }
-      .booking-header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
-      .booking-back { color: var(--muted); font-size: 22px; text-decoration: none; line-height: 1; }
-      .booking-title { font-size: 18px; font-weight: 800; }
+      .booking-page { max-width: 520px; margin: 0 auto; padding: 20px 16px 100px; }
+      .booking-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+      .booking-back { color: var(--muted); font-size: 22px; text-decoration: none; line-height: 1; padding: 4px; }
+      .booking-title { font-size: 17px; font-weight: 800; }
       .booking-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
       /* Etapas */
       .step-indicator { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
-      .step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; transition: all 0.2s; }
-      .step-dot.active { background: var(--primary); color: #0A0A0A; }
+      .step-dot { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; transition: all 0.2s; }
+      .step-dot.active { background: var(--primary); color: #0A0A0A; box-shadow: 0 0 0 4px var(--primary-dim); }
       .step-dot.done { background: #22C55E; color: #fff; }
       .step-dot.pending { background: var(--surface2); color: var(--muted); }
-      .step-line { flex: 1; height: 2px; background: var(--border); margin: 0 4px; }
+      .step-line { flex: 1; height: 2px; background: var(--border); margin: 0 4px; transition: background 0.3s; }
       .step-line.done { background: #22C55E; }
 
-      /* Serviços */
-      .services-grid { display: flex; flex-direction: column; gap: 10px; }
-      .service-card { background: var(--surface); border: 2px solid var(--border); border-radius: 14px; padding: 14px 16px; cursor: pointer; display: flex; align-items: center; gap: 14px; transition: all 0.15s; }
-      .service-card:hover { border-color: var(--primary); }
-      .service-card.selected { border-color: var(--primary); background: var(--primary-dim); }
-      .service-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
-      .service-name { font-size: 14px; font-weight: 700; }
-      .service-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
-      .service-check { margin-left: auto; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-      .service-card.selected .service-check { background: var(--primary); border-color: var(--primary); color: #0A0A0A; font-weight: 900; }
+      /* Serviços — grade 2 colunas com foto */
+      .step-section-title { font-size: 17px; font-weight: 800; margin-bottom: 16px; }
+      .services-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      @media (max-width: 360px) { .services-grid2 { grid-template-columns: 1fr; } }
+      .svc-card2 { background: var(--surface); border: 2px solid var(--border); border-radius: 16px; overflow: hidden; cursor: pointer; transition: border-color 0.15s, transform 0.15s; position: relative; }
+      .svc-card2:hover { border-color: var(--primary); transform: translateY(-2px); }
+      .svc-card2.selected { border-color: var(--primary); }
+      .svc-card2.selected::after { content: '✓'; position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #0A0A0A; font-size: 12px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+      .svc-thumb2 { width: 100%; height: 110px; object-fit: cover; background: var(--surface2); display: block; }
+      .svc-thumb2-placeholder { width: 100%; height: 110px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 32px; }
+      .svc-body2 { padding: 10px 12px 12px; }
+      .svc-name2 { font-size: 13px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
+      .svc-meta2 { font-size: 11px; color: var(--muted); }
+      .svc-price2 { font-size: 14px; font-weight: 900; color: var(--primary); margin-top: 4px; }
 
       /* Barbeiros */
-      .barbers-grid { display: flex; gap: 12px; flex-wrap: wrap; }
-      .barber-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 12px; background: var(--surface); border: 2px solid var(--border); border-radius: 16px; cursor: pointer; min-width: 90px; flex: 1; transition: all 0.15s; }
-      .barber-card:hover { border-color: var(--primary); }
+      .barbers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; }
+      .barber-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 12px 12px; background: var(--surface); border: 2px solid var(--border); border-radius: 16px; cursor: pointer; transition: all 0.15s; }
+      .barber-card:hover { border-color: var(--primary); transform: translateY(-2px); }
       .barber-card.selected { border-color: var(--primary); background: var(--primary-dim); }
-      .barber-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; background: var(--surface2); }
-      .barber-avatar-placeholder { width: 56px; height: 56px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: var(--muted); }
-      .barber-name { font-size: 12px; font-weight: 700; text-align: center; }
+      .barber-avatar { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: var(--surface2); border: 2.5px solid var(--border); }
+      .barber-card.selected .barber-avatar { border-color: var(--primary); }
+      .barber-avatar-placeholder { width: 64px; height: 64px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: var(--muted); border: 2.5px solid var(--border); }
+      .barber-card.selected .barber-avatar-placeholder { border-color: var(--primary); }
+      .barber-name { font-size: 12px; font-weight: 700; text-align: center; line-height: 1.3; }
       .barber-spec { font-size: 10px; color: var(--muted); text-align: center; }
+      .barber-check-badge { width: 20px; height: 20px; border-radius: 50%; background: var(--primary); color: #0A0A0A; font-size: 11px; font-weight: 900; display: none; align-items: center; justify-content: center; }
+      .barber-card.selected .barber-check-badge { display: flex; }
 
-      /* Calendário */
-      .calendar-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; -ms-overflow-style: none; }
-      .calendar-scroll::-webkit-scrollbar { display: none; }
-      .cal-day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 8px; background: var(--surface); border: 2px solid var(--border); border-radius: 14px; cursor: pointer; min-width: 52px; transition: all 0.15s; flex-shrink: 0; }
-      .cal-day:hover { border-color: var(--primary); }
-      .cal-day.selected { border-color: var(--primary); background: var(--primary); }
-      .cal-day.selected .cal-weekday, .cal-day.selected .cal-num, .cal-day.selected .cal-month { color: #0A0A0A; }
-      .cal-weekday { font-size: 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
-      .cal-num { font-size: 18px; font-weight: 800; }
-      .cal-month { font-size: 10px; color: var(--muted); }
+      /* Calendário mensal */
+      .cal-month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+      .cal-month-label { font-size: 15px; font-weight: 800; }
+      .cal-nav-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; transition: background 0.15s; }
+      .cal-nav-btn:hover { background: var(--surface); border-color: var(--primary); }
+      .cal-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+      .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+      .cal-header-cell { text-align: center; font-size: 11px; font-weight: 700; color: var(--muted); padding: 4px 0 8px; text-transform: uppercase; }
+      .cal-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: 2px solid transparent; }
+      .cal-cell:hover:not(.cal-empty):not(.cal-past):not(.cal-disabled) { border-color: var(--primary); color: var(--primary); }
+      .cal-cell.cal-today { background: var(--surface2); font-weight: 800; }
+      .cal-cell.cal-selected { background: var(--primary); color: #0A0A0A; font-weight: 900; border-color: var(--primary); }
+      .cal-cell.cal-past { color: var(--muted); opacity: 0.35; cursor: not-allowed; }
+      .cal-cell.cal-empty { cursor: default; }
+      .cal-cell.cal-disabled { color: var(--muted); opacity: 0.3; cursor: not-allowed; }
 
       /* Slots */
-      .period-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; font-weight: 700; text-transform: uppercase; margin: 16px 0 8px; display: flex; align-items: center; gap: 6px; }
-      .period-label::before { content: ''; display: block; width: 3px; height: 12px; border-radius: 2px; background: var(--primary); }
+      .period-section { margin-top: 20px; }
+      .period-label { font-size: 12px; color: var(--muted); letter-spacing: 0.8px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+      .period-label-icon { font-size: 16px; }
+      .period-label-line { flex: 1; height: 1px; background: var(--border); }
       .slots-row { display: flex; flex-wrap: wrap; gap: 8px; }
-      .slot-btn { padding: 10px 14px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
-      .slot-btn:hover { border-color: var(--primary); color: var(--primary); }
+      .slot-btn { padding: 10px 16px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s; min-width: 76px; text-align: center; }
+      .slot-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-dim); }
       .slot-btn.selected { background: var(--primary); border-color: var(--primary); color: #0A0A0A; }
 
       /* Resumo */
-      .booking-summary { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
-      .summary-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 4px 0; }
+      .booking-summary { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
+      .summary-hero { display: flex; align-items: center; gap: 14px; padding: 16px; border-bottom: 1px solid var(--border); }
+      .summary-svc-thumb { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; background: var(--surface2); flex-shrink: 0; }
+      .summary-svc-thumb-placeholder { width: 56px; height: 56px; border-radius: 12px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+      .summary-svc-name { font-size: 15px; font-weight: 800; }
+      .summary-svc-price { font-size: 18px; font-weight: 900; color: var(--primary); margin-top: 2px; }
+      .summary-rows { padding: 12px 16px; }
+      .summary-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 6px 0; }
       .summary-label { color: var(--muted); }
       .summary-value { font-weight: 700; }
+      .summary-divider { height: 1px; background: var(--border); margin: 4px 0; }
 
       /* Botões de navegação */
       .booking-nav { display: flex; gap: 10px; margin-top: 20px; }
-      .btn-back-step { flex: 1; padding: 14px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; color: var(--text); font-size: 14px; font-weight: 700; cursor: pointer; }
-      .btn-next-step { flex: 2; padding: 14px; background: var(--primary); border: none; border-radius: 14px; color: #0A0A0A; font-size: 15px; font-weight: 800; cursor: pointer; opacity: 0.5; }
-      .btn-next-step.ready { opacity: 1; }
+      .btn-back-step { flex: 1; padding: 14px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; color: var(--text); font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+      .btn-back-step:hover { background: var(--surface2); }
+      .btn-next-step { flex: 2; padding: 14px; background: var(--primary); border: none; border-radius: 14px; color: #0A0A0A; font-size: 15px; font-weight: 800; cursor: pointer; opacity: 0.4; pointer-events: none; transition: opacity 0.2s; }
+      .btn-next-step.ready { opacity: 1; pointer-events: auto; }
 
       /* Login banner */
       .login-banner { background: var(--primary-dim); border: 1px solid var(--primary)44; border-radius: 12px; padding: 14px; margin-bottom: 16px; font-size: 13px; color: var(--muted); }
@@ -1051,6 +1076,10 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       /* Mensagens */
       .msg-success { background: #22C55E22; border: 1px solid #22C55E44; border-radius: 12px; padding: 20px; text-align: center; font-size: 14px; color: #4ADE80; }
       .msg-error { background: #EF444422; border: 1px solid #EF444444; border-radius: 12px; padding: 14px; text-align: center; font-size: 13px; color: #F87171; margin-top: 12px; }
+
+      /* Slots loading */
+      .slots-loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 24px; color: var(--muted); font-size: 13px; }
+      .slots-empty { text-align: center; padding: 24px; color: var(--muted); font-size: 13px; background: var(--surface2); border-radius: 12px; }
     </style>
 
     <div class="booking-page">
@@ -1061,7 +1090,10 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           <div class="booking-title">${escapeHtml(settings?.shopName ?? tenant.name)}</div>
           <div class="booking-subtitle">Agendamento Online</div>
         </div>
-        ${loggedClient ? `<div style="margin-left:auto;text-align:right"><div style="font-size:12px;font-weight:700">${escapeHtml(loggedClient.name)}</div><a href="/pub/${slug}/logout" style="font-size:11px;color:var(--muted)">Sair</a></div>` : `<a href="/pub/${slug}/login?redirect=agendar" style="margin-left:auto;background:var(--primary);color:#0A0A0A;font-size:12px;font-weight:800;padding:8px 14px;border-radius:10px;text-decoration:none">Entrar</a>`}
+        ${loggedClient
+          ? `<div style="margin-left:auto;text-align:right"><div style="font-size:13px;font-weight:700">${escapeHtml(loggedClient.name.split(' ')[0])}</div><a href="/pub/${slug}/logout" style="font-size:11px;color:var(--muted)">Sair</a></div>`
+          : `<a href="/pub/${slug}/login?redirect=agendar" style="margin-left:auto;background:var(--primary);color:#0A0A0A;font-size:12px;font-weight:800;padding:8px 14px;border-radius:10px;text-decoration:none">Entrar</a>`
+        }
       </div>
 
       <!-- Indicador de etapas -->
@@ -1077,8 +1109,8 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       <!-- Etapa 1: Serviço -->
       <div id="step-1">
-        <div style="font-size:16px;font-weight:800;margin-bottom:16px">Qual serviço?</div>
-        <div class="services-grid" id="services-list"></div>
+        <div class="step-section-title">✂️ Qual serviço?</div>
+        <div class="services-grid2" id="services-list"></div>
         <div class="booking-nav">
           <button class="btn-next-step" id="btn-step1-next" onclick="goToStep(2)" style="flex:1">Próximo →</button>
         </div>
@@ -1086,7 +1118,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       <!-- Etapa 2: Profissional -->
       <div id="step-2" style="display:none">
-        <div style="font-size:16px;font-weight:800;margin-bottom:16px">Escolha o profissional</div>
+        <div class="step-section-title">💈 Escolha o profissional</div>
         <div class="barbers-grid" id="barbers-list"></div>
         <div class="booking-nav">
           <button class="btn-back-step" onclick="goToStep(1)">← Voltar</button>
@@ -1096,10 +1128,18 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       <!-- Etapa 3: Data e Horário -->
       <div id="step-3" style="display:none">
-        <div style="font-size:16px;font-weight:800;margin-bottom:16px">Escolha a data</div>
-        <div class="calendar-scroll" id="calendar-strip"></div>
-        <div id="slots-area" style="margin-top:16px">
-          <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center;color:var(--muted);font-size:13px">Selecione uma data para ver os horários.</div>
+        <div class="step-section-title">📅 Escolha a data</div>
+        <!-- Navegação do mês -->
+        <div class="cal-month-nav">
+          <button class="cal-nav-btn" id="cal-prev" onclick="changeMonth(-1)">‹</button>
+          <div class="cal-month-label" id="cal-month-label"></div>
+          <button class="cal-nav-btn" id="cal-next" onclick="changeMonth(1)">›</button>
+        </div>
+        <!-- Grade do calendário -->
+        <div class="cal-grid" id="cal-grid"></div>
+        <!-- Horários -->
+        <div id="slots-area" style="margin-top:8px">
+          <div class="slots-empty">Selecione uma data para ver os horários disponíveis.</div>
         </div>
         <div class="booking-nav">
           <button class="btn-back-step" onclick="goToStep(2)">← Voltar</button>
@@ -1109,9 +1149,12 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       <!-- Etapa 4: Confirmação -->
       <div id="step-4" style="display:none">
-        <div style="font-size:16px;font-weight:800;margin-bottom:16px">Confirmar Agendamento</div>
+        <div class="step-section-title">✅ Confirmar Agendamento</div>
         <div class="booking-summary" id="booking-summary"></div>
-        ${loggedClient ? `` : `<div class="login-banner">💡 <a href="/pub/${slug}/login?redirect=agendar">Faça login</a> ou <a href="/pub/${slug}/cadastro?redirect=agendar">crie uma conta</a> para confirmar.</div>`}
+        ${loggedClient
+          ? ``
+          : `<div class="login-banner">💡 <a href="/pub/${slug}/login?redirect=agendar">Faça login</a> ou <a href="/pub/${slug}/cadastro?redirect=agendar">crie uma conta</a> para confirmar.</div>`
+        }
         <button id="confirm-btn" ${loggedClient ? `` : `disabled`}
           style="width:100%;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:800;padding:16px;border-radius:14px;border:none;cursor:${loggedClient ? `pointer` : `not-allowed`};opacity:${loggedClient ? `1` : `0.5`}">
           ${loggedClient ? `Confirmar Agendamento` : `Faça login para confirmar`}
@@ -1170,7 +1213,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         window.scrollTo(0, 0);
       }
 
-      // ─── Etapa 1: Serviços ───────────────────────────────────────────────────
+      // ─── Etapa 1: Serviços (grade 2 colunas com foto) ────────────────────────
       function renderServices() {
         var list = document.getElementById('services-list');
         var btn = document.getElementById('btn-step1-next');
@@ -1180,11 +1223,18 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
             ? Math.floor(s.durationMinutes/60) + 'h' + (s.durationMinutes%60 ? (s.durationMinutes%60)+'min' : '')
             : s.durationMinutes + 'min';
           var price = 'R$ ' + parseFloat(s.price).toFixed(2).replace('.', ',');
-          html += '<div class="service-card" id="svc-' + s.id + '" onclick="selectService(' + s.id + ')">';
-          html += '<div class="service-icon">✂️</div>';
-          html += '<div><div class="service-name">' + escHtml(s.name) + '</div><div class="service-meta">' + dur + ' &bull; ' + price + '</div></div>';
-          html += '<div class="service-check" id="svc-check-' + s.id + '"></div>';
-          html += '</div>';
+          var isSel = selectedService && selectedService.id === s.id;
+          html += '<div class="svc-card2' + (isSel ? ' selected' : '') + '" id="svc-' + s.id + '" onclick="selectService(' + s.id + ')">';
+          if (s.thumbnailUrl) {
+            html += '<img class="svc-thumb2" src="' + escHtml(s.thumbnailUrl) + '" alt="' + escHtml(s.name) + '" loading="lazy" />';
+          } else {
+            html += '<div class="svc-thumb2-placeholder">✂️</div>';
+          }
+          html += '<div class="svc-body2">';
+          html += '<div class="svc-name2">' + escHtml(s.name) + '</div>';
+          html += '<div class="svc-meta2">⏱ ' + dur + '</div>';
+          html += '<div class="svc-price2">' + price + '</div>';
+          html += '</div></div>';
         });
         list.innerHTML = html;
         btn.className = 'btn-next-step' + (selectedService ? ' ready' : '');
@@ -1192,34 +1242,33 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       function selectService(id) {
         selectedService = SERVICES.find(function(s) { return s.id === id; }) || null;
-        document.querySelectorAll('.service-card').forEach(function(el) { el.classList.remove('selected'); });
-        document.querySelectorAll('.service-check').forEach(function(el) { el.textContent = ''; });
+        document.querySelectorAll('.svc-card2').forEach(function(el) { el.classList.remove('selected'); });
         if (selectedService) {
           var card = document.getElementById('svc-' + id);
-          var check = document.getElementById('svc-check-' + id);
           if (card) card.classList.add('selected');
-          if (check) check.textContent = '✓';
         }
         var btn = document.getElementById('btn-step1-next');
         if (btn) btn.className = 'btn-next-step' + (selectedService ? ' ready' : '');
-        // Limpar slot ao mudar serviço
         selectedSlot = null;
       }
 
-      // ─── Etapa 2: Barbeiros ───────────────────────────────────────────────────
+      // ─── Etapa 2: Barbeiros (com foto grande) ────────────────────────────────
       function renderBarbers() {
         var list = document.getElementById('barbers-list');
         var html = '';
         BARBERS.forEach(function(b) {
           var initials = b.name.split(' ').map(function(w) { return w[0]; }).join('').substring(0, 2).toUpperCase();
-          var avatarHtml = b.photoUrl
-            ? '<img class="barber-avatar" src="' + b.photoUrl + '" alt="' + escHtml(b.name) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" />'
-              + '<div class="barber-avatar-placeholder" style="display:none">' + initials + '</div>'
-            : '<div class="barber-avatar-placeholder">' + initials + '</div>';
-          html += '<div class="barber-card' + (selectedBarber && selectedBarber.id === b.id ? ' selected' : '') + '" id="barber-' + b.id + '" onclick="selectBarber(' + b.id + ')">';
-          html += avatarHtml;
+          var isSel = selectedBarber && selectedBarber.id === b.id;
+          html += '<div class="barber-card' + (isSel ? ' selected' : '') + '" id="barber-' + b.id + '" onclick="selectBarber(' + b.id + ')">';
+          if (b.photoUrl) {
+            html += '<img class="barber-avatar" src="' + escHtml(b.photoUrl) + '" alt="' + escHtml(b.name) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" />';
+            html += '<div class="barber-avatar-placeholder" style="display:none">' + initials + '</div>';
+          } else {
+            html += '<div class="barber-avatar-placeholder">' + initials + '</div>';
+          }
           html += '<div class="barber-name">' + escHtml(b.name) + '</div>';
           if (b.specialties) html += '<div class="barber-spec">' + escHtml(b.specialties.split(',')[0].trim()) + '</div>';
+          html += '<div class="barber-check-badge">✓</div>';
           html += '</div>';
         });
         list.innerHTML = html;
@@ -1233,24 +1282,72 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         selectedSlot = null;
       }
 
-      // ─── Etapa 3: Calendário e Slots ─────────────────────────────────────────
+      // ─── Etapa 3: Calendário Mensal + Slots ──────────────────────────────────
+      var calViewYear = new Date().getFullYear();
+      var calViewMonth = new Date().getMonth(); // 0-indexed
+      var MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      var WEEKDAY_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
       function renderCalendar() {
-        var strip = document.getElementById('calendar-strip');
+        var today = new Date();
+        today.setHours(0,0,0,0);
+        var maxDate = new Date(today);
+        maxDate.setDate(today.getDate() + 60);
+
+        var label = document.getElementById('cal-month-label');
+        if (label) label.textContent = MONTH_NAMES[calViewMonth] + ' ' + calViewYear;
+
+        var prevBtn = document.getElementById('cal-prev');
+        var nextBtn = document.getElementById('cal-next');
+        if (prevBtn) prevBtn.disabled = (calViewYear === today.getFullYear() && calViewMonth <= today.getMonth());
+        if (nextBtn) {
+          nextBtn.disabled = (calViewYear > maxDate.getFullYear() || (calViewYear === maxDate.getFullYear() && calViewMonth >= maxDate.getMonth()));
+        }
+
+        var grid = document.getElementById('cal-grid');
         var html = '';
-        CALENDAR.forEach(function(d) {
-          var sel = selectedDate === d.iso;
-          html += '<div class="cal-day' + (sel ? ' selected' : '') + '" id="cal-' + d.iso + '" onclick="selectDate(\'' + d.iso + '\')"><div class="cal-weekday">' + d.weekday + '</div><div class="cal-num">' + d.day + '</div><div class="cal-month">' + d.month + '</div></div>';
+        WEEKDAY_NAMES.forEach(function(d) {
+          html += '<div class="cal-header-cell">' + d + '</div>';
         });
-        strip.innerHTML = html;
+
+        var firstDay = new Date(calViewYear, calViewMonth, 1).getDay();
+        var daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
+
+        for (var i = 0; i < firstDay; i++) {
+          html += '<div class="cal-cell cal-empty"></div>';
+        }
+
+        for (var day = 1; day <= daysInMonth; day++) {
+          var d = new Date(calViewYear, calViewMonth, day);
+          d.setHours(0,0,0,0);
+          var iso = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+          var isToday = (d.getTime() === today.getTime());
+          var isPast = d < today;
+          var isFuture = d > maxDate;
+          var isSel = selectedDate === iso;
+          var cls = 'cal-cell';
+          if (isSel) cls += ' cal-selected';
+          else if (isToday) cls += ' cal-today';
+          if (isPast || isFuture) cls += ' cal-past';
+          var onclickAttr = (isPast || isFuture) ? '' : ' onclick="selectDate(\'' + iso + '\')"';
+          html += '<div class="' + cls + '"' + onclickAttr + '>' + day + '</div>';
+        }
+
+        grid.innerHTML = html;
         if (selectedDate) loadSlots();
+      }
+
+      function changeMonth(delta) {
+        calViewMonth += delta;
+        if (calViewMonth < 0) { calViewMonth = 11; calViewYear--; }
+        if (calViewMonth > 11) { calViewMonth = 0; calViewYear++; }
+        renderCalendar();
       }
 
       function selectDate(iso) {
         selectedDate = iso;
         selectedSlot = null;
-        document.querySelectorAll('.cal-day').forEach(function(el) { el.classList.remove('selected'); });
-        var el = document.getElementById('cal-' + iso);
-        if (el) { el.classList.add('selected'); el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); }
+        renderCalendar();
         var btn = document.getElementById('btn-step3-next');
         if (btn) btn.className = 'btn-next-step';
         loadSlots();
@@ -1276,22 +1373,23 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           var manha = slots.filter(function(s) { return parseInt(s.startTime) < 12; });
           var tarde = slots.filter(function(s) { var h = parseInt(s.startTime); return h >= 12 && h < 18; });
           var noite = slots.filter(function(s) { return parseInt(s.startTime) >= 18; });
-          var html = '';
+          var html = '<div style="margin-top:16px">';
           if (manha.length) {
-            html += '<div class="period-label">☀️ Manhã</div><div class="slots-row">';
+            html += '<div class="period-section"><div class="period-label"><span class="period-label-icon">☀️</span><span>Manhã</span><span class="period-label-line"></span></div><div class="slots-row">';
             manha.forEach(function(s) { html += '<button class="slot-btn" onclick="selectSlot(\'' + s.startTime + '\',\'' + s.endTime + '\',this)">' + s.startTime + '</button>'; });
-            html += '</div>';
+            html += '</div></div>';
           }
           if (tarde.length) {
-            html += '<div class="period-label">🌤️ Tarde</div><div class="slots-row">';
+            html += '<div class="period-section"><div class="period-label"><span class="period-label-icon">🌤️</span><span>Tarde</span><span class="period-label-line"></span></div><div class="slots-row">';
             tarde.forEach(function(s) { html += '<button class="slot-btn" onclick="selectSlot(\'' + s.startTime + '\',\'' + s.endTime + '\',this)">' + s.startTime + '</button>'; });
-            html += '</div>';
+            html += '</div></div>';
           }
           if (noite.length) {
-            html += '<div class="period-label">🌙 Noite</div><div class="slots-row">';
+            html += '<div class="period-section"><div class="period-label"><span class="period-label-icon">🌙</span><span>Noite</span><span class="period-label-line"></span></div><div class="slots-row">';
             noite.forEach(function(s) { html += '<button class="slot-btn" onclick="selectSlot(\'' + s.startTime + '\',\'' + s.endTime + '\',this)">' + s.startTime + '</button>'; });
-            html += '</div>';
+            html += '</div></div>';
           }
+          html += '</div>';
           slotsArea.innerHTML = html;
         } catch(e) {
           slotsArea.innerHTML = '<div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center;color:#F87171;font-size:13px">Erro ao carregar horários.</div>';
@@ -1311,21 +1409,37 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         var el = document.getElementById('booking-summary');
         if (!el) return;
         var svcName = selectedService ? selectedService.name : '—';
+        var svcThumb = selectedService && selectedService.thumbnailUrl ? selectedService.thumbnailUrl : null;
         var barberName = selectedBarber ? selectedBarber.name : 'Qualquer profissional';
+        var barberPhoto = selectedBarber && selectedBarber.photoUrl ? selectedBarber.photoUrl : null;
+        var barberInitials = selectedBarber ? selectedBarber.name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase() : '?';
         var dateFormatted = selectedDate ? selectedDate.split('-').reverse().join('/') : '—';
         var timeStr = selectedSlot ? selectedSlot.startTime + ' – ' + selectedSlot.endTime : '—';
         var price = selectedService ? 'R$ ' + parseFloat(selectedService.price).toFixed(2).replace('.', ',') : '—';
-        el.innerHTML = [
-          '<div class="summary-row"><span class="summary-label">Serviço</span><span class="summary-value">' + escHtml(svcName) + '</span></div>',
-          '<div style="height:1px;background:var(--border);margin:8px 0"></div>',
-          '<div class="summary-row"><span class="summary-label">Profissional</span><span class="summary-value">' + escHtml(barberName) + '</span></div>',
-          '<div style="height:1px;background:var(--border);margin:8px 0"></div>',
-          '<div class="summary-row"><span class="summary-label">Data</span><span class="summary-value">' + dateFormatted + '</span></div>',
-          '<div class="summary-row"><span class="summary-label">Horário</span><span class="summary-value">' + timeStr + '</span></div>',
-          '<div style="height:1px;background:var(--border);margin:8px 0"></div>',
-          '<div class="summary-row"><span class="summary-label">Valor</span><span class="summary-value" style="color:var(--primary)">' + price + '</span></div>',
-        ].join('');
-        // Atualizar botão de confirmação
+
+        var thumbHtml = svcThumb
+          ? '<img class="summary-svc-thumb" src="' + escHtml(svcThumb) + '" alt="" />'
+          : '<div class="summary-svc-thumb-placeholder">✂️</div>';
+
+        var barberAvatarHtml = barberPhoto
+          ? '<img style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--primary);flex-shrink:0" src="' + escHtml(barberPhoto) + '" alt="" />'
+          : '<div style="width:28px;height:28px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--muted);flex-shrink:0;border:2px solid var(--border)">' + barberInitials + '</div>';
+
+        el.innerHTML =
+          '<div class="summary-hero">' +
+            thumbHtml +
+            '<div>' +
+              '<div class="summary-svc-name">' + escHtml(svcName) + '</div>' +
+              '<div class="summary-svc-price">' + price + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="summary-rows">' +
+            '<div class="summary-row"><span class="summary-label">Profissional</span><span class="summary-value" style="display:flex;align-items:center;gap:8px">' + barberAvatarHtml + escHtml(barberName) + '</span></div>' +
+            '<div class="summary-divider"></div>' +
+            '<div class="summary-row"><span class="summary-label">Data</span><span class="summary-value">' + dateFormatted + '</span></div>' +
+            '<div class="summary-row"><span class="summary-label">Horário</span><span class="summary-value">' + timeStr + '</span></div>' +
+          '</div>';
+
         var btn = document.getElementById('confirm-btn');
         if (btn && !LOGGED_CLIENT) {
           btn.disabled = false;
