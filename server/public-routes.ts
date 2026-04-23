@@ -1261,7 +1261,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           var isSel = selectedBarber && selectedBarber.id === b.id;
           html += '<div class="barber-card' + (isSel ? ' selected' : '') + '" id="barber-' + b.id + '" onclick="selectBarber(' + b.id + ')">';
           if (b.photoUrl) {
-            html += '<img class="barber-avatar" src="' + escHtml(b.photoUrl) + '" alt="' + escHtml(b.name) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" />';
+            html += '<img class="barber-avatar" src="' + escHtml(b.photoUrl) + '" alt="' + escHtml(b.name) + '" onerror="this.style.display=&quot;none&quot;;this.nextElementSibling.style.display=&quot;flex&quot;" />';
             html += '<div class="barber-avatar-placeholder" style="display:none">' + initials + '</div>';
           } else {
             html += '<div class="barber-avatar-placeholder">' + initials + '</div>';
@@ -1329,11 +1329,17 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           if (isSel) cls += ' cal-selected';
           else if (isToday) cls += ' cal-today';
           if (isPast || isFuture) cls += ' cal-past';
-          var onclickAttr = (isPast || isFuture) ? '' : ' onclick="selectDate(\'' + iso + '\')"';
-          html += '<div class="' + cls + '"' + onclickAttr + '>' + day + '</div>';
+          var dataAttr = ' data-iso="' + iso + '"';
+          var clickable = (!isPast && !isFuture) ? ' data-clickable="1"' : '';
+          html += '<div class="' + cls + '"' + dataAttr + clickable + '>' + day + '</div>';
         }
 
         grid.innerHTML = html;
+        // Event delegation para cliques nos dias
+        grid.onclick = function(e) {
+          var cell = e.target.closest('[data-clickable]');
+          if (cell) selectDate(cell.getAttribute('data-iso'));
+        };
         if (selectedDate) loadSlots();
       }
 
@@ -1373,24 +1379,39 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           var manha = slots.filter(function(s) { return parseInt(s.startTime) < 12; });
           var tarde = slots.filter(function(s) { var h = parseInt(s.startTime); return h >= 12 && h < 18; });
           var noite = slots.filter(function(s) { return parseInt(s.startTime) >= 18; });
+          function slotBtn(s) {
+            return '<button class="slot-btn" data-start="' + s.startTime + '" data-end="' + s.endTime + '">' + s.startTime + '</button>';
+          }
           var html = '<div style="margin-top:16px">';
           if (manha.length) {
             html += '<div class="period-section"><div class="period-label"><span class="period-label-icon">☀️</span><span>Manhã</span><span class="period-label-line"></span></div><div class="slots-row">';
-            manha.forEach(function(s) { html += '<button class="slot-btn" onclick="selectSlot(\'' + s.startTime + '\',\'' + s.endTime + '\',this)">' + s.startTime + '</button>'; });
+            manha.forEach(function(s) { html += slotBtn(s); });
             html += '</div></div>';
           }
           if (tarde.length) {
             html += '<div class="period-section"><div class="period-label"><span class="period-label-icon">🌤️</span><span>Tarde</span><span class="period-label-line"></span></div><div class="slots-row">';
-            tarde.forEach(function(s) { html += '<button class="slot-btn" onclick="selectSlot(\'' + s.startTime + '\',\'' + s.endTime + '\',this)">' + s.startTime + '</button>'; });
+            tarde.forEach(function(s) { html += slotBtn(s); });
             html += '</div></div>';
           }
           if (noite.length) {
             html += '<div class="period-section"><div class="period-label"><span class="period-label-icon">🌙</span><span>Noite</span><span class="period-label-line"></span></div><div class="slots-row">';
-            noite.forEach(function(s) { html += '<button class="slot-btn" onclick="selectSlot(\'' + s.startTime + '\',\'' + s.endTime + '\',this)">' + s.startTime + '</button>'; });
+            noite.forEach(function(s) { html += slotBtn(s); });
             html += '</div></div>';
           }
           html += '</div>';
           slotsArea.innerHTML = html;
+          // Event delegation para cliques nos slots
+          slotsArea.onclick = function(e) {
+            var btn = e.target.closest('.slot-btn');
+            if (!btn) return;
+            var start = btn.getAttribute('data-start');
+            var end = btn.getAttribute('data-end');
+            selectedSlot = { startTime: start, endTime: end };
+            document.querySelectorAll('.slot-btn').forEach(function(b) { b.classList.remove('selected'); });
+            btn.classList.add('selected');
+            var nextBtn = document.getElementById('btn-step3-next');
+            if (nextBtn) nextBtn.className = 'btn-next-step ready';
+          };
         } catch(e) {
           slotsArea.innerHTML = '<div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center;color:#F87171;font-size:13px">Erro ao carregar horários.</div>';
         }
