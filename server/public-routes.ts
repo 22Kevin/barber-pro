@@ -938,6 +938,8 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
   }
 
   const hasMp = !!(settings as any)?.mercadoPagoAccessToken;
+  const waNumber = ((settings as any)?.whatsapp || (settings as any)?.phone || "").replace(/\D/g, "");
+  const waNumberJson = JSON.stringify(waNumber ? "55" + waNumber : "");
 
   // Dados dos serviços e barbeiros em JSON para o JS da página
   const servicesJson = JSON.stringify(serviceList.map((s) => ({
@@ -1077,6 +1079,27 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       .msg-success { background: #22C55E22; border: 1px solid #22C55E44; border-radius: 12px; padding: 20px; text-align: center; font-size: 14px; color: #4ADE80; }
       .msg-error { background: #EF444422; border: 1px solid #EF444444; border-radius: 12px; padding: 14px; text-align: center; font-size: 13px; color: #F87171; margin-top: 12px; }
 
+      /* Etapa 1 — serviço principal + accordion */
+      .main-svc-card { display: flex; align-items: center; gap: 14px; background: var(--surface); border: 2px solid var(--primary); border-radius: 16px; overflow: hidden; margin-bottom: 16px; }
+      .main-svc-thumb { width: 80px; height: 80px; object-fit: cover; flex-shrink: 0; background: var(--surface2); }
+      .main-svc-thumb-placeholder { width: 80px; height: 80px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+      .main-svc-body { flex: 1; padding: 12px 14px 12px 0; }
+      .main-svc-name { font-size: 15px; font-weight: 800; }
+      .main-svc-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+      .main-svc-price { font-size: 16px; font-weight: 900; color: var(--primary); margin-top: 4px; }
+      .add-more-toggle { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--surface); border: 1.5px dashed var(--border); border-radius: 14px; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 12px; transition: background 0.15s; }
+      .add-more-toggle:hover { background: var(--surface2); }
+      .selected-summary { background: var(--surface2); border-radius: 12px; padding: 12px 16px; margin-top: 12px; }
+      .selected-summary-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+      .selected-summary-row { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+      .selected-summary-total { display: flex; justify-content: space-between; font-size: 14px; font-weight: 800; padding-top: 8px; margin-top: 6px; border-top: 1px solid var(--border); }
+      .svc-card2.extra-selected { border-color: var(--primary); }
+      .svc-card2.extra-selected::after { content: '✓'; position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #0A0A0A; font-size: 12px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+
+      /* Calendário — dias indisponíveis */
+      .cal-cell.cal-unavailable { color: var(--muted); opacity: 0.25; cursor: not-allowed; }
+      .cal-cell.cal-loading { opacity: 0.5; cursor: wait; }
+
       /* Slots loading */
       .slots-loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 24px; color: var(--muted); font-size: 13px; }
       .slots-empty { text-align: center; padding: 24px; color: var(--muted); font-size: 13px; background: var(--surface2); border-radius: 12px; }
@@ -1107,12 +1130,23 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         <div class="step-dot pending" id="dot-4">4</div>
       </div>
 
-      <!-- Etapa 1: Serviço -->
+      <!-- Etapa 1: Serviço selecionado + adicionar mais -->
       <div id="step-1">
-        <div class="step-section-title">✂️ Qual serviço?</div>
-        <div class="services-grid2" id="services-list"></div>
+        <div class="step-section-title">✂️ Serviço selecionado</div>
+        <!-- Card do serviço principal (pré-selecionado) -->
+        <div id="main-svc-card" class="main-svc-card"></div>
+        <!-- Accordion: adicionar mais serviços -->
+        <div class="add-more-toggle" id="add-more-toggle" onclick="toggleAddMore()">
+          <span id="add-more-icon">＋</span>
+          <span>Adicionar mais serviços</span>
+        </div>
+        <div id="add-more-panel" style="display:none">
+          <div class="services-grid2" id="services-list"></div>
+        </div>
+        <!-- Resumo dos serviços selecionados -->
+        <div id="selected-summary" style="display:none" class="selected-summary"></div>
         <div class="booking-nav">
-          <button class="btn-next-step" id="btn-step1-next" onclick="goToStep(2)" style="flex:1">Próximo →</button>
+          <button class="btn-next-step ready" id="btn-step1-next" onclick="goToStep(2)" style="flex:1">Próximo →</button>
         </div>
       </div>
 
@@ -1174,8 +1208,10 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       var BARBERS = ${barbersJson};
       var CALENDAR = ${calendarJson};
       var HAS_MP = ${hasMpJson};
+      var WA_NUMBER = ${waNumberJson};
 
-      var selectedService = null;
+      var selectedService = null;   // serviço principal (compatibilidade)
+      var selectedServices = [];    // todos os serviços selecionados (inclui o principal)
       var selectedBarber = BARBERS.length > 0 ? BARBERS[0] : null; // padrão: primeiro barbeiro
       var selectedDate = null;
       var selectedSlot = null;
@@ -1213,18 +1249,36 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         window.scrollTo(0, 0);
       }
 
-      // ─── Etapa 1: Serviços (grade 2 colunas com foto) ────────────────────────
+      // ─── Etapa 1: Serviço principal + accordion de serviços extras ──────────
+      function fmtDur(min) {
+        return min >= 60 ? Math.floor(min/60) + 'h' + (min%60 ? (min%60)+'min' : '') : min + 'min';
+      }
+      function fmtPrice(p) { return 'R$ ' + parseFloat(p).toFixed(2).replace('.', ','); }
+
+      function renderMainServiceCard() {
+        var el = document.getElementById('main-svc-card');
+        if (!el || !selectedService) return;
+        var s = selectedService;
+        var thumbHtml = s.thumbnailUrl
+          ? '<img class="main-svc-thumb" src="' + escHtml(s.thumbnailUrl) + '" alt="" loading="lazy" />'
+          : '<div class="main-svc-thumb-placeholder">✂️</div>';
+        el.innerHTML = thumbHtml +
+          '<div class="main-svc-body">' +
+            '<div class="main-svc-name">' + escHtml(s.name) + '</div>' +
+            '<div class="main-svc-meta">⏱ ' + fmtDur(s.durationMinutes) + '</div>' +
+            '<div class="main-svc-price">' + fmtPrice(s.price) + '</div>' +
+          '</div>';
+      }
+
       function renderServices() {
         var list = document.getElementById('services-list');
-        var btn = document.getElementById('btn-step1-next');
+        if (!list) return;
         var html = '';
         SERVICES.forEach(function(s) {
-          var dur = s.durationMinutes >= 60
-            ? Math.floor(s.durationMinutes/60) + 'h' + (s.durationMinutes%60 ? (s.durationMinutes%60)+'min' : '')
-            : s.durationMinutes + 'min';
-          var price = 'R$ ' + parseFloat(s.price).toFixed(2).replace('.', ',');
-          var isSel = selectedService && selectedService.id === s.id;
-          html += '<div class="svc-card2' + (isSel ? ' selected' : '') + '" id="svc-' + s.id + '" onclick="selectService(' + s.id + ')">';
+          // Não mostrar o serviço principal na lista de extras
+          if (selectedService && s.id === selectedService.id) return;
+          var isExtra = selectedServices.some(function(x) { return x.id === s.id; });
+          html += '<div class="svc-card2' + (isExtra ? ' extra-selected' : '') + '" id="svc-' + s.id + '" onclick="toggleExtraService(' + s.id + ')">';
           if (s.thumbnailUrl) {
             html += '<img class="svc-thumb2" src="' + escHtml(s.thumbnailUrl) + '" alt="' + escHtml(s.name) + '" loading="lazy" />';
           } else {
@@ -1232,23 +1286,64 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           }
           html += '<div class="svc-body2">';
           html += '<div class="svc-name2">' + escHtml(s.name) + '</div>';
-          html += '<div class="svc-meta2">⏱ ' + dur + '</div>';
-          html += '<div class="svc-price2">' + price + '</div>';
+          html += '<div class="svc-meta2">⏱ ' + fmtDur(s.durationMinutes) + '</div>';
+          html += '<div class="svc-price2">' + fmtPrice(s.price) + '</div>';
           html += '</div></div>';
         });
-        list.innerHTML = html;
-        btn.className = 'btn-next-step' + (selectedService ? ' ready' : '');
+        list.innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Nenhum outro serviço disponível.</div>';
+      }
+
+      function toggleExtraService(id) {
+        var svc = SERVICES.find(function(s) { return s.id === id; });
+        if (!svc) return;
+        var idx = selectedServices.findIndex(function(s) { return s.id === id; });
+        if (idx >= 0) {
+          selectedServices.splice(idx, 1);
+        } else {
+          selectedServices.push(svc);
+        }
+        renderServices();
+        renderSelectedSummary();
+        selectedSlot = null;
+      }
+
+      function renderSelectedSummary() {
+        var el = document.getElementById('selected-summary');
+        if (!el) return;
+        if (selectedServices.length === 0) {
+          el.style.display = 'none';
+          return;
+        }
+        var totalMin = (selectedService ? selectedService.durationMinutes : 0) +
+          selectedServices.reduce(function(acc, s) { return acc + s.durationMinutes; }, 0);
+        var totalPrice = (selectedService ? parseFloat(selectedService.price) : 0) +
+          selectedServices.reduce(function(acc, s) { return acc + parseFloat(s.price); }, 0);
+        var rows = selectedServices.map(function(s) {
+          return '<div class="selected-summary-row"><span>' + escHtml(s.name) + '</span><span>' + fmtPrice(s.price) + '</span></div>';
+        }).join('');
+        el.innerHTML =
+          '<div class="selected-summary-title">Serviços adicionados</div>' +
+          rows +
+          '<div class="selected-summary-total"><span>Total: ' + fmtDur(totalMin) + '</span><span>' + fmtPrice(String(totalPrice)) + '</span></div>';
+        el.style.display = 'block';
+      }
+
+      function toggleAddMore() {
+        var panel = document.getElementById('add-more-panel');
+        var icon = document.getElementById('add-more-icon');
+        if (!panel) return;
+        var isOpen = panel.style.display !== 'none';
+        panel.style.display = isOpen ? 'none' : 'block';
+        if (icon) icon.textContent = isOpen ? '＋' : '－';
+        if (!isOpen) renderServices();
       }
 
       function selectService(id) {
         selectedService = SERVICES.find(function(s) { return s.id === id; }) || null;
-        document.querySelectorAll('.svc-card2').forEach(function(el) { el.classList.remove('selected'); });
-        if (selectedService) {
-          var card = document.getElementById('svc-' + id);
-          if (card) card.classList.add('selected');
-        }
-        var btn = document.getElementById('btn-step1-next');
-        if (btn) btn.className = 'btn-next-step' + (selectedService ? ' ready' : '');
+        selectedServices = [];
+        renderMainServiceCard();
+        renderServices();
+        renderSelectedSummary();
         selectedSlot = null;
       }
 
@@ -1288,6 +1383,39 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       var MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
       var WEEKDAY_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 
+      // Cache de disponibilidade por dia: { 'YYYY-MM-DD': true/false/null }
+      var dayAvailCache = {};
+
+      async function prefetchMonthAvailability(year, month) {
+        var barberId = selectedBarber ? selectedBarber.id : ${firstBarberId};
+        var extraMin = selectedServices.reduce(function(acc, s) { return acc + s.durationMinutes; }, 0);
+        var duration = (selectedService ? selectedService.durationMinutes : 30) + extraMin;
+        var today = new Date(); today.setHours(0,0,0,0);
+        var maxDate = new Date(today); maxDate.setDate(today.getDate() + 60);
+        var firstDay = new Date(year, month, 1);
+        var lastDay = new Date(year, month + 1, 0);
+        var promises = [];
+        for (var d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+          var dt = new Date(d);
+          if (dt < today || dt > maxDate) continue;
+          var iso = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+          if (dayAvailCache[iso] !== undefined) continue;
+          dayAvailCache[iso] = null; // marcando como "carregando"
+          (function(isoDate) {
+            promises.push(
+              fetch('/pub-api/slots?barberId=' + barberId + '&date=' + isoDate + '&duration=' + duration)
+                .then(function(r) { return r.json(); })
+                .then(function(slots) { dayAvailCache[isoDate] = slots.length > 0; })
+                .catch(function() { dayAvailCache[isoDate] = false; })
+            );
+          })(iso);
+        }
+        if (promises.length > 0) {
+          await Promise.all(promises);
+          renderCalendar();
+        }
+      }
+
       function renderCalendar() {
         var today = new Date();
         today.setHours(0,0,0,0);
@@ -1326,11 +1454,14 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           var isFuture = d > maxDate;
           var isSel = selectedDate === iso;
           var cls = 'cal-cell';
+          var avail = dayAvailCache[iso];
+          var isUnavail = (!isPast && !isFuture && avail === false);
           if (isSel) cls += ' cal-selected';
           else if (isToday) cls += ' cal-today';
           if (isPast || isFuture) cls += ' cal-past';
+          else if (isUnavail) cls += ' cal-unavailable';
           var dataAttr = ' data-iso="' + iso + '"';
-          var clickable = (!isPast && !isFuture) ? ' data-clickable="1"' : '';
+          var clickable = (!isPast && !isFuture && !isUnavail) ? ' data-clickable="1"' : '';
           html += '<div class="' + cls + '"' + dataAttr + clickable + '>' + day + '</div>';
         }
 
@@ -1341,6 +1472,8 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           if (cell) selectDate(cell.getAttribute('data-iso'));
         };
         if (selectedDate) loadSlots();
+        // Pré-carregar disponibilidade dos dias do mês em background
+        prefetchMonthAvailability(calViewYear, calViewMonth);
       }
 
       function changeMonth(delta) {
@@ -1367,7 +1500,8 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         }
         slotsArea.innerHTML = '<div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center;color:var(--muted);font-size:13px">Carregando horários...</div>';
         var barberId = selectedBarber ? selectedBarber.id : ${firstBarberId};
-        var duration = selectedService ? selectedService.durationMinutes : 30;
+        var extraMin = selectedServices.reduce(function(acc, s) { return acc + s.durationMinutes; }, 0);
+        var duration = (selectedService ? selectedService.durationMinutes : 30) + extraMin;
         try {
           var r = await fetch('/pub-api/slots?barberId=' + barberId + '&date=' + selectedDate + '&duration=' + duration);
           var slots = await r.json();
@@ -1429,14 +1563,18 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       function renderSummary() {
         var el = document.getElementById('booking-summary');
         if (!el) return;
-        var svcName = selectedService ? selectedService.name : '—';
+        var allSvcs = selectedService ? [selectedService].concat(selectedServices) : [];
+        var svcName = allSvcs.length > 1
+          ? allSvcs.map(function(s) { return s.name; }).join(' + ')
+          : (selectedService ? selectedService.name : '—');
         var svcThumb = selectedService && selectedService.thumbnailUrl ? selectedService.thumbnailUrl : null;
+        var totalPrice = allSvcs.reduce(function(acc, s) { return acc + parseFloat(s.price); }, 0);
         var barberName = selectedBarber ? selectedBarber.name : 'Qualquer profissional';
         var barberPhoto = selectedBarber && selectedBarber.photoUrl ? selectedBarber.photoUrl : null;
         var barberInitials = selectedBarber ? selectedBarber.name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase() : '?';
         var dateFormatted = selectedDate ? selectedDate.split('-').reverse().join('/') : '—';
         var timeStr = selectedSlot ? selectedSlot.startTime + ' – ' + selectedSlot.endTime : '—';
-        var price = selectedService ? 'R$ ' + parseFloat(selectedService.price).toFixed(2).replace('.', ',') : '—';
+        var price = allSvcs.length > 0 ? 'R$ ' + totalPrice.toFixed(2).replace('.', ',') : '—';
 
         var thumbHtml = svcThumb
           ? '<img class="summary-svc-thumb" src="' + escHtml(svcThumb) + '" alt="" />'
@@ -1511,7 +1649,21 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           if (HAS_MP && lastServicePrice > 0) {
             showPaymentPanel(data.id, lastServicePrice, selectedDate, selectedSlot.startTime);
           } else {
-            successMsg.innerHTML = '✅ Agendamento confirmado!<br><strong>' + selectedDate.split('-').reverse().join('/') + ' às ' + selectedSlot.startTime + '</strong><br><br><a href="/pub/' + SLUG + '" style="color:var(--primary)">← Voltar para a página da barbearia</a>';
+            var dateFormatted = selectedDate.split('-').reverse().join('/');
+            var svcName = selectedService ? selectedService.name : 'Serviço';
+            var barberName = selectedBarber ? selectedBarber.name : 'profissional';
+            var waMsg = 'Olá! Meu agendamento foi confirmado:%0A%0A✂️ ' + encodeURIComponent(svcName) + '%0A📅 ' + dateFormatted + ' às ' + selectedSlot.startTime + '%0A💈 ' + encodeURIComponent(barberName);
+            var waHtml = WA_NUMBER
+              ? '<a href="https://wa.me/' + WA_NUMBER + '?text=' + waMsg + '" target="_blank" style="display:block;margin-top:14px;padding:14px;background:#25D366;color:#fff;font-size:14px;font-weight:800;border-radius:12px;text-decoration:none;text-align:center">📲 Confirmar pelo WhatsApp</a>'
+              : '';
+            successMsg.innerHTML =
+              '<div style="text-align:center;margin-bottom:16px">' +
+                '<div style="font-size:32px;margin-bottom:8px">✅</div>' +
+                '<div style="font-size:16px;font-weight:800;color:#4ADE80">Agendamento confirmado!</div>' +
+                '<div style="font-size:13px;color:var(--muted);margin-top:4px">' + dateFormatted + ' às ' + selectedSlot.startTime + '</div>' +
+              '</div>' +
+              waHtml +
+              '<a href="/pub/' + SLUG + '" style="display:block;margin-top:10px;text-align:center;color:var(--primary);font-size:13px">← Voltar para a página da barbearia</a>';
             successMsg.style.display = 'block';
           }
         } catch(e) {
@@ -1529,14 +1681,16 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       }
 
       // ─── Inicializar ──────────────────────────────────────────────────────────
-      renderServices();
       renderBarbers();
 
-      // Pré-preencher via query string (retorno do login)
+      // Pré-preencher via query string (retorno do login ou clique em "Agendar")
       var params = new URLSearchParams(window.location.search);
       if (params.get('service')) {
         var svcId = parseInt(params.get('service'));
         selectService(svcId);
+      } else if (SERVICES.length > 0) {
+        // Se não veio serviço na URL, selecionar o primeiro por padrão
+        selectService(SERVICES[0].id);
       }
       if (params.get('barber')) {
         var bid = parseInt(params.get('barber'));
@@ -1575,7 +1729,21 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       function payAtShop() {
         var successMsg = document.getElementById('success-msg');
-        successMsg.innerHTML = '✅ Agendamento confirmado!<br><div style="font-size:13px;color:var(--muted);margin-top:8px">Você pagará na barbearia no dia do atendimento.</div><br><a href="/pub/' + SLUG + '" style="color:var(--primary)">← Voltar para a página da barbearia</a>';
+        var dateFormatted = selectedDate ? selectedDate.split('-').reverse().join('/') : '';
+        var svcName = selectedService ? selectedService.name : 'Serviço';
+        var barberName = selectedBarber ? selectedBarber.name : 'profissional';
+        var waMsg = 'Olá! Meu agendamento foi confirmado:%0A%0A✂️ ' + encodeURIComponent(svcName) + '%0A📅 ' + dateFormatted + ' às ' + (selectedSlot ? selectedSlot.startTime : '') + '%0A💈 ' + encodeURIComponent(barberName);
+        var waHtml = WA_NUMBER
+          ? '<a href="https://wa.me/' + WA_NUMBER + '?text=' + waMsg + '" target="_blank" style="display:block;margin-top:14px;padding:14px;background:#25D366;color:#fff;font-size:14px;font-weight:800;border-radius:12px;text-decoration:none;text-align:center">📲 Confirmar pelo WhatsApp</a>'
+          : '';
+        successMsg.innerHTML =
+          '<div style="text-align:center;margin-bottom:12px">' +
+            '<div style="font-size:32px;margin-bottom:8px">✅</div>' +
+            '<div style="font-size:16px;font-weight:800;color:#4ADE80">Agendamento confirmado!</div>' +
+            '<div style="font-size:13px;color:var(--muted);margin-top:4px">Você pagará na barbearia no dia do atendimento.</div>' +
+          '</div>' +
+          waHtml +
+          '<a href="/pub/' + SLUG + '" style="display:block;margin-top:10px;text-align:center;color:var(--primary);font-size:13px">← Voltar para a página da barbearia</a>';
       }
 
       async function payOnline(appointmentId, price) {

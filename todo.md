@@ -1544,3 +1544,9 @@
 - [x] Adicionar navbar superior na landing page pública com dropdown de perfil do cliente
 - [x] Navbar: logado → avatar + nome + dropdown (Meu Perfil, Meus Agendamentos, Agendar, Sair)
 - [x] Navbar: não logado → botão "Entrar"
+
+## Melhorias na Página de Agendamento Público (Abr/2026)
+
+- [x] Etapa 1 redesenhada: exibir serviço já selecionado + accordion "Adicionar mais serviços" com seleção múltipla e soma de duração/preço
+- [x] Bloquear dias sem disponibilidade no calendário (consultar API de slots por dia e marcar dias sem horários como indisponíveis)
+- [x] Confirmação por WhatsApp após agendamento confirmado (link wa.me com mensagem pré-formatada)
