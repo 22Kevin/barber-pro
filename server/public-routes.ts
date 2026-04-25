@@ -2385,9 +2385,11 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
     return `<span style="background:${s.color}22;color:${s.color};font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:0.5px">${s.label}</span>`;
   }
 
-  function apptCard(a: any, canCancel: boolean) {
+  function apptCard(a: any, canCancel: boolean, canReschedule: boolean = false) {
     const svc = serviceMap[a.serviceId];
     const barber = barberMap[a.barberId];
+    const rescheduleUrl = `/pub/${slug}/agendar?service=${a.serviceId}${a.barberId ? `&barber=${a.barberId}` : ''}`;
+    const hasActions = canCancel || canReschedule;
     return `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:12px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
@@ -2397,25 +2399,25 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
           </div>
           ${statusBadge(a.status)}
         </div>
-        <div style="display:flex;align-items:center;gap:16px;font-size:13px;color:var(--muted);margin-bottom:${canCancel ? "16" : "0"}px">
-          <span>📅 ${a.date}</span>
+        <div style="display:flex;align-items:center;gap:16px;font-size:13px;color:var(--muted);margin-bottom:${hasActions ? "16" : "0"}px">
+          <span>📅 ${a.date.split('-').reverse().join('/')}</span>
           <span>🕐 ${a.startTime} – ${a.endTime}</span>
           ${svc ? `<span style="color:var(--primary);font-weight:700">${formatPrice(svc.price)}</span>` : ""}
         </div>
-        ${canCancel ? `
-          <button onclick="cancelAppt(${a.id}, this)" style="width:100%;padding:10px;background:transparent;border:1px solid #EF444466;border-radius:10px;color:#F87171;font-size:13px;font-weight:600;cursor:pointer">
-            Cancelar agendamento
-          </button>` : ""}
+        ${hasActions ? `<div style="display:flex;gap:8px">
+          ${canReschedule ? `<a href="${rescheduleUrl}" style="flex:1;display:block;padding:10px;background:var(--primary);color:#0A0A0A;font-size:13px;font-weight:800;border-radius:10px;text-align:center;text-decoration:none">📅 Reagendar</a>` : ""}
+          ${canCancel ? `<button onclick="cancelAppt(${a.id}, this)" style="flex:1;padding:10px;background:transparent;border:1px solid #EF444466;border-radius:10px;color:#F87171;font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>` : ""}
+        </div>` : ""}
       </div>`;
   }
 
   const upcomingHtml = upcoming.length === 0
     ? `<div style="text-align:center;padding:32px;color:var(--muted);font-size:14px">Nenhum agendamento próximo.<br><a href="/pub/${slug}/agendar" style="color:var(--primary);font-weight:700">Agendar agora</a></div>`
-    : upcoming.map((a: any) => apptCard(a, ["scheduled", "confirmed"].includes(a.status))).join("");
+    : upcoming.map((a: any) => apptCard(a, ["scheduled", "confirmed"].includes(a.status), true)).join("");
 
   const pastHtml = past.length === 0
     ? `<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Nenhum agendamento anterior.</div>`
-    : past.slice(0, 10).map((a: any) => apptCard(a, false)).join("");
+    : past.slice(0, 10).map((a: any) => apptCard(a, false, true)).join("");
 
   const body = `
     <div style="max-width:560px;margin:0 auto;padding:32px 24px">

@@ -1550,3 +1550,8 @@
 - [x] Etapa 1 redesenhada: exibir serviço já selecionado + accordion "Adicionar mais serviços" com seleção múltipla e soma de duração/preço
 - [x] Bloquear dias sem disponibilidade no calendário (consultar API de slots por dia e marcar dias sem horários como indisponíveis)
 - [x] Confirmação por WhatsApp após agendamento confirmado (link wa.me com mensagem pré-formatada)
+
+## Reagendamento pelo Cliente (Abr/2026)
+
+- [x] Botão "Reagendar" nos cards do histórico de agendamentos do cliente (página pública)
+- [x] Redirecionamento para o fluxo de agendamento com serviço pré-selecionado ao clicar em Reagendar
