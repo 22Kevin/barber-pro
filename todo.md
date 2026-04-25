@@ -1555,3 +1555,9 @@
 
 - [x] Botão "Reagendar" nos cards do histórico de agendamentos do cliente (página pública)
 - [x] Redirecionamento para o fluxo de agendamento com serviço pré-selecionado ao clicar em Reagendar
+
+## Melhorias em Meus Agendamentos (Abr/2026)
+
+- [x] Avaliação pós-atendimento: botão "⭐ Avaliar" nos cards concluídos + modal com estrelas (1-5) e comentário
+- [x] Banner de lembrete 24h antes do agendamento com botão de confirmação de presença
+- [x] Filtro de status no histórico (Todos / Concluídos / Cancelados)

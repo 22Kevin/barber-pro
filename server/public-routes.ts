@@ -2368,9 +2368,35 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
   const serviceMap = Object.fromEntries(allServices.map((s) => [s.id, s]));
   const barberMap = Object.fromEntries(allBarbers.map((b) => [b.id, b]));
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Buscar avaliações já feitas pelo cliente para saber quais agendamentos já foram avaliados
+  const clientReviews = await db.getReviewsByClient(loggedClient.id, tenant.id);
+  const reviewedApptIds = new Set(clientReviews.map((r: any) => r.appointmentId).filter(Boolean));
+
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
   const upcoming = rawAppts.filter((a: any) => a.date >= today && a.status !== "cancelled");
   const past = rawAppts.filter((a: any) => a.date < today || a.status === "cancelled");
+
+  // Banner de lembrete: agendamento nas próximas 24h
+  const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const reminderAppt = upcoming.find((a: any) => {
+    const apptDt = new Date(`${a.date}T${a.startTime}:00`);
+    return apptDt >= now && apptDt <= in24h && ["scheduled", "confirmed"].includes(a.status);
+  });
+  const reminderBanner = reminderAppt ? (() => {
+    const svc = serviceMap[(reminderAppt as any).serviceId];
+    const barber = barberMap[(reminderAppt as any).barberId];
+    const dateFormatted = (reminderAppt as any).date.split('-').reverse().join('/');
+    return `
+      <div style="background:linear-gradient(135deg,#F59E0B22,#F59E0B11);border:1.5px solid #F59E0B66;border-radius:16px;padding:18px 20px;margin-bottom:24px;display:flex;align-items:flex-start;gap:14px">
+        <div style="font-size:28px;line-height:1;flex-shrink:0">⏰</div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:800;color:#F59E0B;margin-bottom:4px">Lembrete: agendamento em breve!</div>
+          <div style="font-size:13px;color:var(--text);margin-bottom:2px"><strong>${escapeHtml(svc?.name ?? "Serviço")}</strong> com ${barber ? escapeHtml(barber.name) : "profissional"}</div>
+          <div style="font-size:12px;color:var(--muted)">📅 ${dateFormatted} às ${(reminderAppt as any).startTime}</div>
+        </div>
+      </div>`;
+  })() : "";
 
   function statusBadge(status: string) {
     const map: Record<string, { label: string; color: string }> = {
@@ -2389,24 +2415,30 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
     const svc = serviceMap[a.serviceId];
     const barber = barberMap[a.barberId];
     const rescheduleUrl = `/pub/${slug}/agendar?service=${a.serviceId}${a.barberId ? `&barber=${a.barberId}` : ''}`;
-    const hasActions = canCancel || canReschedule;
+    const canReview = a.status === "completed" && !reviewedApptIds.has(a.id);
+    const alreadyReviewed = a.status === "completed" && reviewedApptIds.has(a.id);
+    const hasActions = canCancel || canReschedule || canReview;
     return `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:12px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:12px" data-status="${a.status}">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
           <div>
             <div style="font-size:15px;font-weight:800;margin-bottom:4px">${escapeHtml(svc?.name ?? "Serviço")}</div>
             <div style="font-size:13px;color:var(--muted)">${barber ? escapeHtml(barber.name) : "Qualquer profissional"}</div>
           </div>
-          ${statusBadge(a.status)}
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            ${statusBadge(a.status)}
+            ${alreadyReviewed ? `<span style="font-size:11px;color:#F59E0B">⭐ Avaliado</span>` : ""}
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:16px;font-size:13px;color:var(--muted);margin-bottom:${hasActions ? "16" : "0"}px">
           <span>📅 ${a.date.split('-').reverse().join('/')}</span>
           <span>🕐 ${a.startTime} – ${a.endTime}</span>
           ${svc ? `<span style="color:var(--primary);font-weight:700">${formatPrice(svc.price)}</span>` : ""}
         </div>
-        ${hasActions ? `<div style="display:flex;gap:8px">
-          ${canReschedule ? `<a href="${rescheduleUrl}" style="flex:1;display:block;padding:10px;background:var(--primary);color:#0A0A0A;font-size:13px;font-weight:800;border-radius:10px;text-align:center;text-decoration:none">📅 Reagendar</a>` : ""}
-          ${canCancel ? `<button onclick="cancelAppt(${a.id}, this)" style="flex:1;padding:10px;background:transparent;border:1px solid #EF444466;border-radius:10px;color:#F87171;font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>` : ""}
+        ${hasActions ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${canReview ? `<button onclick="openReviewModal(${a.id}, '${escapeHtml(svc?.name ?? "Serviço").replace(/'/g, "\'")}', this)" style="flex:1;min-width:100px;padding:10px;background:#F59E0B22;border:1.5px solid #F59E0B66;border-radius:10px;color:#F59E0B;font-size:13px;font-weight:700;cursor:pointer">⭐ Avaliar</button>` : ""}
+          ${canReschedule ? `<a href="${rescheduleUrl}" style="flex:1;min-width:100px;display:block;padding:10px;background:var(--primary);color:#0A0A0A;font-size:13px;font-weight:800;border-radius:10px;text-align:center;text-decoration:none">📅 Reagendar</a>` : ""}
+          ${canCancel ? `<button onclick="cancelAppt(${a.id}, this)" style="flex:1;min-width:100px;padding:10px;background:transparent;border:1px solid #EF444466;border-radius:10px;color:#F87171;font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>` : ""}
         </div>` : ""}
       </div>`;
   }
@@ -2420,8 +2452,45 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
     : past.slice(0, 10).map((a: any) => apptCard(a, false, true)).join("");
 
   const body = `
+    <style>
+      .filter-bar { display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px; }
+      .filter-btn { padding:7px 16px;border-radius:20px;font-size:13px;font-weight:700;border:1.5px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;white-space:nowrap;transition:all 0.15s; }
+      .filter-btn.active { background:var(--primary);color:#0A0A0A;border-color:var(--primary); }
+      /* Modal de avaliação */
+      .review-overlay { display:none;position:fixed;inset:0;background:#00000088;z-index:1000;align-items:flex-end;justify-content:center; }
+      .review-overlay.open { display:flex; }
+      .review-sheet { background:var(--bg);border-radius:24px 24px 0 0;padding:28px 24px 40px;width:100%;max-width:520px;animation:slideUp 0.25s ease; }
+      @keyframes slideUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+      .star-row { display:flex;gap:8px;justify-content:center;margin:20px 0; }
+      .star-btn { font-size:36px;cursor:pointer;opacity:0.3;transition:opacity 0.1s,transform 0.1s; }
+      .star-btn.active { opacity:1;transform:scale(1.15); }
+      .review-textarea { width:100%;padding:12px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;font-size:14px;color:var(--text);resize:none;font-family:inherit;box-sizing:border-box; }
+      .review-textarea:focus { outline:none;border-color:var(--primary); }
+    </style>
+
+    <!-- Modal de avaliação -->
+    <div class="review-overlay" id="reviewOverlay" onclick="closeReviewModal(event)">
+      <div class="review-sheet" onclick="event.stopPropagation()">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div style="font-size:17px;font-weight:800">Avaliar serviço</div>
+          <button onclick="closeReviewModal()" style="background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">×</button>
+        </div>
+        <div id="review-svc-name" style="font-size:13px;color:var(--muted);margin-bottom:4px"></div>
+        <div class="star-row" id="star-row">
+          <span class="star-btn" data-star="1" onclick="setStar(1)">★</span>
+          <span class="star-btn" data-star="2" onclick="setStar(2)">★</span>
+          <span class="star-btn" data-star="3" onclick="setStar(3)">★</span>
+          <span class="star-btn" data-star="4" onclick="setStar(4)">★</span>
+          <span class="star-btn" data-star="5" onclick="setStar(5)">★</span>
+        </div>
+        <textarea id="review-comment" class="review-textarea" rows="3" placeholder="Comentário opcional..."></textarea>
+        <div id="review-error" style="color:#F87171;font-size:12px;margin-top:8px;display:none"></div>
+        <button id="review-submit-btn" onclick="submitReview()" style="width:100%;margin-top:14px;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:800;border:none;border-radius:12px;cursor:pointer">Enviar avaliação</button>
+      </div>
+    </div>
+
     <div style="max-width:560px;margin:0 auto;padding:32px 24px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
         <div style="display:flex;align-items:center;gap:12px">
           <a href="/pub/${slug}" style="color:var(--muted);font-size:20px">←</a>
           <div>
@@ -2435,15 +2504,102 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
         </div>
       </div>
 
+      ${reminderBanner}
+
       <div style="font-size:14px;font-weight:800;margin-bottom:16px;color:var(--muted);letter-spacing:1px">PRÓXIMOS</div>
       ${upcomingHtml}
 
       ${past.length > 0 ? `
-        <div style="font-size:14px;font-weight:800;margin:28px 0 16px;color:var(--muted);letter-spacing:1px">HISTÓRICO</div>
-        ${pastHtml}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:28px 0 12px">
+          <div style="font-size:14px;font-weight:800;color:var(--muted);letter-spacing:1px">HISTÓRICO</div>
+        </div>
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="filterHistory('all', this)">Todos</button>
+          <button class="filter-btn" onclick="filterHistory('completed', this)">Concluídos</button>
+          <button class="filter-btn" onclick="filterHistory('cancelled', this)">Cancelados</button>
+        </div>
+        <div id="history-list">${pastHtml}</div>
       ` : ""}
     </div>
     <script>
+      // ─── Filtro de histórico ───────────────────────────────────────────────
+      function filterHistory(status, btn) {
+        document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        document.querySelectorAll('#history-list [data-status]').forEach(function(card) {
+          if (status === 'all') {
+            card.style.display = '';
+          } else {
+            card.style.display = card.getAttribute('data-status') === status ? '' : 'none';
+          }
+        });
+      }
+
+      // ─── Modal de avaliação ────────────────────────────────────────────────
+      var _reviewApptId = null;
+      var _reviewRating = 0;
+      var _reviewBtn = null;
+
+      function openReviewModal(apptId, svcName, btn) {
+        _reviewApptId = apptId;
+        _reviewRating = 0;
+        _reviewBtn = btn;
+        document.getElementById('review-svc-name').textContent = svcName;
+        document.getElementById('review-comment').value = '';
+        document.getElementById('review-error').style.display = 'none';
+        document.getElementById('review-submit-btn').disabled = false;
+        document.getElementById('review-submit-btn').textContent = 'Enviar avaliação';
+        setStar(0);
+        document.getElementById('reviewOverlay').classList.add('open');
+      }
+
+      function closeReviewModal(e) {
+        if (e && e.target !== document.getElementById('reviewOverlay')) return;
+        document.getElementById('reviewOverlay').classList.remove('open');
+      }
+
+      function setStar(n) {
+        _reviewRating = n;
+        document.querySelectorAll('.star-btn').forEach(function(s) {
+          s.classList.toggle('active', parseInt(s.getAttribute('data-star')) <= n);
+        });
+      }
+
+      async function submitReview() {
+        var errEl = document.getElementById('review-error');
+        errEl.style.display = 'none';
+        if (!_reviewRating) { errEl.textContent = 'Selecione uma nota de 1 a 5 estrelas.'; errEl.style.display = 'block'; return; }
+        var btn = document.getElementById('review-submit-btn');
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+        try {
+          var r = await fetch('/pub-api/submit-review', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              appointmentId: _reviewApptId,
+              slug: '${slug}',
+              rating: _reviewRating,
+              comment: document.getElementById('review-comment').value.trim()
+            })
+          });
+          var data = await r.json();
+          if (!r.ok) throw new Error(data.error || 'Erro ao enviar avaliação');
+          document.getElementById('reviewOverlay').classList.remove('open');
+          if (_reviewBtn) {
+            _reviewBtn.textContent = '⭐ Avaliado';
+            _reviewBtn.disabled = true;
+            _reviewBtn.style.opacity = '0.6';
+          }
+        } catch(e) {
+          errEl.textContent = e.message;
+          errEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Enviar avaliação';
+        }
+      }
+
+      // ─── Cancelar agendamento ──────────────────────────────────────────────
       async function cancelAppt(id, btn) {
         if (!confirm('Deseja cancelar este agendamento?')) return;
         btn.disabled = true;
