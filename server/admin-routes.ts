@@ -593,7 +593,7 @@ async function renderAgenda(req: Request, res: Response) {
                     <td>${esc(serviceMap[a.serviceId] ?? "—")}</td>
                     <td>${esc(barberMap[a.barberId] ?? "—")}</td>
                     <td id="status-${a.id}">${statusBadge(a.status)}</td>
-                    <td style="white-space:nowrap">
+                    <td id="actions-${a.id}" style="white-space:nowrap">
                       ${a.status === "scheduled" ? `<button onclick="updateStatus(${a.id},'confirmed')" style="background:#C9A84C;color:#000;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-right:4px">Confirmar</button>` : ""}
                       ${a.status === "confirmed" || a.status === "scheduled" ? `<button onclick="updateStatus(${a.id},'in_progress')" style="background:#3B82F6;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-right:4px">Iniciar</button>` : ""}
                       ${a.status === "in_progress" || a.status === "confirmed" ? `<button onclick="updateStatus(${a.id},'completed')" style="background:#22C55E;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-right:4px">Concluir</button>` : ""}
@@ -606,7 +606,7 @@ async function renderAgenda(req: Request, res: Response) {
             </table>
             <script>
               async function updateStatus(id, status) {
-                const labels = {confirmed:"Confirmado",in_progress:"Em andamento",completed:"Concluído",cancelled:"Cancelado",no_show:"Não compareceu",scheduled:"Agendado"};
+                const labels = {confirmed:"Confirmado",in_progress:"Em andamento",completed:"Conclu\u00eddo",cancelled:"Cancelado",no_show:"N\u00e3o compareceu",scheduled:"Agendado"};
                 const colors = {scheduled:"badge-warning",confirmed:"badge-gold",in_progress:"badge-gold",completed:"badge-success",cancelled:"badge-error",no_show:"badge-muted"};
                 try {
                   const r = await fetch("/admin-api/appointment-status", {
@@ -616,9 +616,24 @@ async function renderAgenda(req: Request, res: Response) {
                     body: JSON.stringify({id, status})
                   });
                   if (!r.ok) { const e = await r.json(); alert("Erro: " + e.error); return; }
+                  const data = await r.json();
                   const cell = document.getElementById("status-" + id);
                   if (cell) cell.innerHTML = "<span class=\"badge " + (colors[status]||"badge-muted") + "\">" + (labels[status]||status) + "</span>";
-                  setTimeout(() => location.reload(), 800);
+                  // Se confirmado e tem WhatsApp, mostrar bot\u00e3o de envio
+                  if (status === "confirmed" && data.whatsapp?.waLink) {
+                    const wa = data.whatsapp;
+                    const btnRow = document.getElementById("actions-" + id);
+                    if (btnRow) {
+                      const waBtn = document.createElement("a");
+                      waBtn.href = wa.waLink;
+                      waBtn.target = "_blank";
+                      waBtn.rel = "noopener";
+                      waBtn.style.cssText = "display:inline-flex;align-items:center;gap:6px;background:#25D366;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;text-decoration:none;margin-right:4px";
+                      waBtn.innerHTML = "\ud83d\udcf2 WhatsApp";
+                      btnRow.prepend(waBtn);
+                    }
+                  }
+                  setTimeout(() => location.reload(), 2000);
                 } catch(e) { alert("Erro ao atualizar status"); }
               }
             </script>`
@@ -2968,7 +2983,25 @@ export function registerAdminRoutes(app: Express): void {
         }
       }
       await db.updateAppointmentStatus(id, status);
-      res.json({ ok: true });
+      // Se confirmando, retornar dados do cliente para WhatsApp de confirmação
+      let whatsappData: Record<string, any> | null = null;
+      if (status === "confirmed") {
+        try {
+          const appt = await db.getAppointmentById(id);
+          if (appt?.clientId) {
+            const client = await db.getClientById(appt.clientId);
+            const svc = appt.serviceId ? await db.getServiceById(appt.serviceId) : null;
+            const apptBarber = appt.barberId ? await db.getBarberById(appt.barberId) : null;
+            if (client?.phone) {
+              const phone = client.phone.replace(/\D/g, "");
+              const dateFormatted = appt.date.split("-").reverse().join("/");
+              const msg = encodeURIComponent(`Ol\u00e1 ${client.name}! \u2705 Seu agendamento foi *confirmado*!\n\n\u2702\ufe0f *Servi\u00e7o:* ${svc?.name ?? "Servi\u00e7o"}\n\ud83d\udc64 *Profissional:* ${apptBarber?.name ?? "Profissional"}\n\ud83d\udcc5 *Data:* ${dateFormatted}\n\ud83d\udd50 *Hor\u00e1rio:* ${appt.startTime}\n\nTe esperamos! \ud83d\ude0a`);
+              whatsappData = { phone, waLink: `https://wa.me/55${phone}?text=${msg}`, clientName: client.name };
+            }
+          }
+        } catch {}
+      }
+      res.json({ ok: true, whatsapp: whatsappData });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

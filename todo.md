@@ -1561,3 +1561,9 @@
 - [x] Avaliação pós-atendimento: botão "⭐ Avaliar" nos cards concluídos + modal com estrelas (1-5) e comentário
 - [x] Banner de lembrete 24h antes do agendamento com botão de confirmação de presença
 - [x] Filtro de status no histórico (Todos / Concluídos / Cancelados)
+
+## Melhorias Avançadas (Abr/2026)
+
+- [x] Página de perfil do cliente (/pub/:slug/perfil) com foto de avatar, edição de nome/telefone/e-mail e saldo de fidelidade
+- [x] Notificação WhatsApp de confirmação de agendamento ao cliente quando barbeiro confirmar no painel admin
+- [x] Página de detalhe do agendamento (/pub/:slug/agendamento/:id) com timeline de status, avaliação e compartilhamento de comprovante no WhatsApp

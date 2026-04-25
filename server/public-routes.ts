@@ -2435,6 +2435,9 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
           <span>🕐 ${a.startTime} – ${a.endTime}</span>
           ${svc ? `<span style="color:var(--primary);font-weight:700">${formatPrice(svc.price)}</span>` : ""}
         </div>
+        <div style="margin-bottom:${hasActions ? "8" : "0"}px">
+          <a href="/pub/${slug}/agendamento/${a.id}" style="font-size:12px;color:var(--muted);text-decoration:underline">Ver detalhes →</a>
+        </div>
         ${hasActions ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
           ${canReview ? `<button onclick="openReviewModal(${a.id}, '${escapeHtml(svc?.name ?? "Serviço").replace(/'/g, "\'")}', this)" style="flex:1;min-width:100px;padding:10px;background:#F59E0B22;border:1.5px solid #F59E0B66;border-radius:10px;color:#F59E0B;font-size:13px;font-weight:700;cursor:pointer">⭐ Avaliar</button>` : ""}
           ${canReschedule ? `<a href="${rescheduleUrl}" style="flex:1;min-width:100px;display:block;padding:10px;background:var(--primary);color:#0A0A0A;font-size:13px;font-weight:800;border-radius:10px;text-align:center;text-decoration:none">📅 Reagendar</a>` : ""}
@@ -3667,6 +3670,105 @@ export function registerPublicRoutes(app: Express): void {
         <div style="font-size:14px;color:var(--muted);margin-bottom:32px">Seu pagamento está sendo processado. Você receberá uma confirmação em breve.</div>
         <a href="/pub/${slug}" style="display:inline-block;background:var(--primary);color:#0A0A0A;font-weight:800;padding:14px 32px;border-radius:50px;text-decoration:none;font-size:15px">← Voltar para ${escapeHtml(shopName)}</a>
       </div>
+    `;
+    res.send(publicLayout(shopName, primaryColor, body, "", settings));
+  });
+
+  // ─── Página de Detalhe do Agendamento ──────────────────────────────────────
+  app.get("/pub/:slug/agendamento/:id", async (req: Request, res: Response) => {
+    const { slug, id } = req.params;
+    const tenant = await db.getTenantBySlug(slug);
+    if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
+    const settings = await db.getShopSettingsByTenantId(tenant.id);
+    const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
+    const shopName = settings?.shopName ?? tenant.name;
+    const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+    let loggedClient: { id: number; name: string; email: string; phone?: string } | null = null;
+    if (clientSessionRaw) {
+      try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+    }
+    if (!loggedClient) { res.redirect(`/pub/${slug}/login?redirect=agendamento/${id}`); return; }
+    const apptId = parseInt(id);
+    if (isNaN(apptId)) { res.status(400).send("ID inválido."); return; }
+    const appt = await db.getAppointmentById(apptId);
+    if (!appt || appt.clientId !== loggedClient.id) { res.status(404).send("Agendamento não encontrado."); return; }
+    const svc = appt.serviceId ? await db.getServiceById(appt.serviceId) : null;
+    const barber = appt.barberId ? await db.getBarberById(appt.barberId) : null;
+    const review = await db.getReviewByAppointmentId(apptId);
+    const waNumber = (settings as any)?.whatsappNumber ?? "";
+    const fmtD = (d: string) => { const [y,m,day] = d.split("-"); return `${day}/${m}/${y}`; };
+    const statusLabel: Record<string,string> = { scheduled: "Agendado", confirmed: "Confirmado", pending_approval: "Aguarda aprovação", in_progress: "Em andamento", completed: "Concluído", cancelled: "Cancelado", no_show: "Não compareceu" };
+    const statusColor: Record<string,string> = { scheduled: "#60A5FA", confirmed: "#4ADE80", pending_approval: "#FBBF24", in_progress: "#F59E0B", completed: "#9CA3AF", cancelled: "#F87171", no_show: "#F87171" };
+    const statusIcon: Record<string,string> = { scheduled: "📋", confirmed: "✅", pending_approval: "⏳", in_progress: "✂️", completed: "🎉", cancelled: "❌", no_show: "😔" };
+    const statusFlow = ["scheduled", "confirmed", "in_progress", "completed"];
+    const currentIdx = statusFlow.indexOf(appt.status);
+    const isCancelled = appt.status === "cancelled" || appt.status === "no_show";
+    const price = svc?.price ? `R$ ${Number(svc.price).toFixed(2).replace(".", ",")}` : "";
+    const waMsg = encodeURIComponent(`Olá! Segue meu comprovante:\n\n✂️ *Serviço:* ${svc?.name ?? "Serviço"}\n👤 *Profissional:* ${barber?.name ?? "Profissional"}\n📅 *Data:* ${fmtD(appt.date)}\n🕐 *Horário:* ${appt.startTime.slice(0,5)}${price ? `\n💰 *Valor:* ${price}` : ""}\n\n🏪 ${escapeHtml(shopName)}`);
+    const waShareLink = waNumber ? `https://wa.me/55${waNumber.replace(/\D/g,"")}?text=${waMsg}` : `https://wa.me/?text=${waMsg}`;
+    const barberPhotoHtml = barber?.photoUrl
+      ? `<img src="${escapeHtml(barber.photoUrl)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid ${primaryColor}" />`
+      : `<div style="width:48px;height:48px;border-radius:50%;background:var(--surface2);border:2px solid ${primaryColor};display:flex;align-items:center;justify-content:center;font-size:20px">✂️</div>`;
+    const body = `
+      <div style="max-width:520px;margin:0 auto;padding:24px 16px 48px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+          <a href="/pub/${slug}/meus-agendamentos" style="color:var(--muted);font-size:22px;line-height:1">&#8592;</a>
+          <div><div style="font-size:20px;font-weight:900">Detalhe do Agendamento</div><div style="font-size:12px;color:var(--muted)">${escapeHtml(shopName)}</div></div>
+        </div>
+        <div style="background:${statusColor[appt.status] ?? "#334155"}18;border:1px solid ${statusColor[appt.status] ?? "#334155"}44;border-radius:20px;padding:20px;margin-bottom:16px;text-align:center">
+          <div style="font-size:40px;margin-bottom:8px">${statusIcon[appt.status] ?? "📋"}</div>
+          <div style="font-size:18px;font-weight:900;color:${statusColor[appt.status] ?? "var(--text)"};margin-bottom:4px">${statusLabel[appt.status] ?? appt.status}</div>
+          ${appt.cancelReason ? `<div style="font-size:13px;color:var(--muted);margin-top:8px">Motivo: ${escapeHtml(appt.cancelReason)}</div>` : ""}
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:16px">DETALHES DO SERVIÇO</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div><div style="font-size:18px;font-weight:900">${escapeHtml(svc?.name ?? "Serviço")}</div>${svc?.durationMinutes ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">⏱ ${svc.durationMinutes} min</div>` : ""}</div>
+            ${svc?.price ? `<div style="font-size:22px;font-weight:900;color:${primaryColor}">R$ ${Number(svc.price).toFixed(2).replace(".",",")}</div>` : ""}
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="background:var(--surface2);border-radius:12px;padding:12px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">📅 DATA</div><div style="font-size:15px;font-weight:800">${fmtD(appt.date)}</div></div>
+            <div style="background:var(--surface2);border-radius:12px;padding:12px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">🕐 HORÁRIO</div><div style="font-size:15px;font-weight:800">${appt.startTime.slice(0,5)} – ${appt.endTime?.slice(0,5) ?? ""}</div></div>
+          </div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:16px">PROFISSIONAL</div>
+          <div style="display:flex;align-items:center;gap:12px">${barberPhotoHtml}<div><div style="font-size:16px;font-weight:800">${escapeHtml(barber?.name ?? "Profissional")}</div>${barber?.specialties ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">${escapeHtml(barber.specialties)}</div>` : ""}</div></div>
+        </div>
+        ${!isCancelled ? `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:16px">PROGRESSO</div>
+          <div style="display:flex;align-items:center">
+            ${statusFlow.map((s, i) => {
+              const done = i <= currentIdx;
+              const isCur = i === currentIdx;
+              const ic: Record<string,string> = { scheduled: "📋", confirmed: "✅", in_progress: "✂️", completed: "🎉" };
+              const lb: Record<string,string> = { scheduled: "Agendado", confirmed: "Confirmado", in_progress: "Em andamento", completed: "Concluído" };
+              return `<div style="display:flex;flex-direction:column;align-items:center;flex:1"><div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:${done ? primaryColor : "var(--surface2)"};border:2px solid ${done ? primaryColor : "var(--border)"};margin-bottom:6px${isCur ? `;box-shadow:0 0 0 4px ${primaryColor}33` : ""}">${done ? ic[s] : "○"}</div><div style="font-size:10px;color:${done ? "var(--text)" : "var(--muted)"};font-weight:${isCur ? "800" : "400"};text-align:center">${lb[s]}</div></div>${i < statusFlow.length - 1 ? `<div style="flex:1;height:2px;background:${i < currentIdx ? primaryColor : "var(--border)"};margin-bottom:20px"></div>` : ""}`;
+            }).join("")}
+          </div>
+        </div>` : ""}
+        ${appt.notes ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">📝 OBSERVAÇÕES</div><div style="font-size:14px">${escapeHtml(appt.notes)}</div></div>` : ""}
+        ${appt.status === "completed" ? `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px;margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:12px">⭐ AVALIAÇÃO</div>
+          ${review ? `<div style="display:flex;gap:4px;margin-bottom:8px">${Array.from({length:5}).map((_,i) => `<span style="font-size:24px;color:${i < (review.rating ?? 0) ? "#FBBF24" : "var(--border)"}">${i < (review.rating ?? 0) ? "★" : "☆"}</span>`).join("")}</div>${review.comment ? `<div style="font-size:14px;color:var(--muted);font-style:italic">"${escapeHtml(review.comment)}"</div>` : ""}` : `<a href="/pub/${slug}/avaliar/${apptId}" style="display:inline-block;background:${primaryColor};color:#0A0A0A;font-weight:800;padding:12px 24px;border-radius:50px;text-decoration:none;font-size:14px">⭐ Avaliar este atendimento</a>`}
+        </div>` : ""}
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <a href="${waShareLink}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:10px;background:#25D366;color:#fff;font-weight:800;padding:16px;border-radius:16px;text-decoration:none;font-size:15px">📲 Compartilhar comprovante no WhatsApp</a>
+          ${isCancelled || appt.status === "completed" ? `<a href="/pub/${slug}/agendar?serviceId=${appt.serviceId ?? ""}&barberId=${appt.barberId ?? ""}" style="display:flex;align-items:center;justify-content:center;gap:10px;background:${primaryColor};color:#0A0A0A;font-weight:800;padding:16px;border-radius:16px;text-decoration:none;font-size:15px">📅 Reagendar</a>` : ""}
+          ${!isCancelled && appt.status !== "completed" && appt.status !== "in_progress" ? `<button onclick="cancelAppt(${apptId})" style="display:flex;align-items:center;justify-content:center;gap:10px;background:transparent;color:#F87171;border:1px solid #F87171;font-weight:700;padding:14px;border-radius:16px;font-size:14px;cursor:pointer;width:100%">❌ Cancelar agendamento</button>` : ""}
+        </div>
+        <div style="text-align:center;margin-top:24px;font-size:11px;color:var(--muted)">Agendamento #${apptId} · Criado em ${new Date(appt.createdAt).toLocaleDateString("pt-BR")}</div>
+      </div>
+      <script>
+        async function cancelAppt(id) {
+          if (!confirm("Tem certeza que deseja cancelar este agendamento?")) return;
+          const r = await fetch("/pub-api/cancel-appointment", { method: "POST", headers: {"Content-Type":"application/json"}, credentials: "include", body: JSON.stringify({appointmentId: id, slug: "${slug}"}) });
+          if (r.ok) { location.href = "/pub/${slug}/meus-agendamentos"; }
+          else { const e = await r.json(); alert("Erro: " + (e.error || "Não foi possível cancelar")); }
+        }
+      </script>
     `;
     res.send(publicLayout(shopName, primaryColor, body, "", settings));
   });
