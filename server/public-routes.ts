@@ -2545,7 +2545,9 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
           const st = orderStatusLabels[o.status] ?? { label: o.status, color: "#888", step: 0 };
           const date = new Date(o.createdAt).toLocaleDateString("pt-BR");
           const canCancel = ["received"].includes(o.status);
-          const timelineHtml = o.status !== "cancelled" ? `
+          const isReady = o.status === "ready";
+          const isCancelled = o.status === "cancelled";
+          const timelineHtml = !isCancelled ? `
             <div style="display:flex;align-items:center;gap:0;margin:12px 0 4px">
               ${steps.map((s, i) => {
                 const done = st.step > i;
@@ -2559,7 +2561,22 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
             <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:8px">
               ${steps.map(s => `<div style="flex:1;text-align:center">${s}</div>`).join("")}
             </div>` : "";
-          return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px">
+          // Banner de cancelamento com motivo
+          const cancelBanner = isCancelled && o.cancelReason ? `
+            <div style="background:#EF444410;border:1px solid #EF444430;border-radius:10px;padding:10px 12px;margin-top:10px">
+              <div style="font-size:11px;font-weight:700;color:#EF4444;margin-bottom:3px">Motivo do cancelamento</div>
+              <div style="font-size:13px;color:#EF4444AA">${escapeHtml(o.cancelReason)}</div>
+            </div>` : "";
+          // Banner de pronto para retirada
+          const readyBanner = isReady ? `
+            <div style="background:#10B98115;border:1.5px solid #10B98155;border-radius:10px;padding:12px 14px;margin-top:10px;display:flex;align-items:center;gap:10px">
+              <div style="font-size:24px">🎉</div>
+              <div>
+                <div style="font-size:13px;font-weight:800;color:#10B981">Seu pedido está pronto!</div>
+                <div style="font-size:12px;color:var(--muted)">Compareça à barbearia para retirar${o.estimatedDays ? " (prazo: " + o.estimatedDays + " dia(s))" : ""}.</div>
+              </div>
+            </div>` : "";
+          return `<div style="background:var(--surface);border:1px solid ${isReady ? "#10B98155" : isCancelled ? "#EF444430" : "var(--border)"};border-radius:16px;padding:16px;margin-bottom:12px">
             <div style="display:flex;gap:12px;align-items:flex-start">
               ${o.product?.thumbnailUrl ? `<img src="${escapeHtml(o.product.thumbnailUrl)}" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0" />` : `<div style="width:52px;height:52px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📦</div>`}
               <div style="flex:1;min-width:0">
@@ -2569,7 +2586,10 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
               </div>
             </div>
             ${timelineHtml}
+            ${cancelBanner}
+            ${readyBanner}
             ${canCancel ? `<button onclick="cancelOrder(${o.id}, this)" style="margin-top:10px;width:100%;padding:10px;background:transparent;border:1px solid #EF4444;color:#EF4444;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">Cancelar encomenda</button>` : ""}
+            ${isReady ? `<button onclick="confirmOrderReceipt(${o.id}, this)" style="margin-top:10px;width:100%;padding:12px;background:var(--primary);color:#0A0A0A;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer">✅ Confirmar Recebimento</button>` : ""}
             ${o.status === "delivered" ? `<button onclick="openProductReview(${o.id}, '${escapeHtml(o.product?.name ?? "Produto")}', ${o.productId})" style="margin-top:10px;width:100%;padding:10px;background:transparent;border:1px solid #C9A84C;color:#C9A84C;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">⭐ Avaliar produto</button>` : ""}
           </div>`;
         }).join("");
@@ -2672,6 +2692,25 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
         } catch(e) {
           alert(e.message);
           btn.disabled = false; btn.textContent = 'Cancelar encomenda';
+        }
+      }
+
+      // ─── Confirmar recebimento pelo cliente ────────────────────────────────
+      async function confirmOrderReceipt(id, btn) {
+        if (!confirm('Confirmar que você retirou este pedido?')) return;
+        btn.disabled = true; btn.textContent = 'Confirmando...';
+        try {
+          var r = await fetch('/pub-api/confirm-order-receipt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: id, slug: '${slug}' })
+          });
+          var data = await r.json();
+          if (!r.ok) throw new Error(data.error || 'Erro ao confirmar');
+          window.location.reload();
+        } catch(e) {
+          alert(e.message);
+          btn.disabled = false; btn.textContent = '\u2705 Confirmar Recebimento';
         }
       }
 
@@ -3537,6 +3576,28 @@ export function registerPublicRoutes(app: Express): void {
       if (!appt) { res.status(404).json({ error: "Agendamento não encontrado" }); return; }
       if ((appt as any).status === "cancelled") { res.status(400).json({ error: "Agendamento já cancelado" }); return; }
       await db.updateAppointment(parseInt(appointmentId), { status: "cancelled" });
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /pub-api/confirm-order-receipt — Cliente confirma recebimento (ready -> delivered)
+  app.post("/pub-api/confirm-order-receipt", async (req: Request, res: Response) => {
+    try {
+      const { orderId, slug } = req.body;
+      if (!orderId) { res.status(400).json({ error: "orderId é obrigatório" }); return; }
+      const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+      if (!clientSessionRaw) { res.status(401).json({ error: "Não autenticado" }); return; }
+      let loggedClient: { id: number } | null = null;
+      try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+      if (!loggedClient) { res.status(401).json({ error: "Sessão inválida" }); return; }
+      const order = await db.getProductOrderById(parseInt(orderId));
+      if (!order) { res.status(404).json({ error: "Encomenda não encontrada" }); return; }
+      if (order.clientId !== loggedClient.id) { res.status(403).json({ error: "Acesso negado" }); return; }
+      if (order.status !== "ready") { res.status(400).json({ error: "Encomenda não está pronta para retirada" }); return; }
+      // Marcar como entregue sem registrar pagamento (barbeiro já registrou no app)
+      await db.updateProductOrderStatus(parseInt(orderId), "delivered");
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message });

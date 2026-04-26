@@ -1598,3 +1598,11 @@
 - [x] Modal de cancelamento com campo de motivo ao clicar no botão X na tela Encomendas
 - [x] Salvar motivo do cancelamento no banco (cancelReason) ao cancelar encomenda
 - [x] Após cancelar, oferecer opção de enviar WhatsApp ao cliente com o motivo do cancelamento
+
+## Melhorias de Encomendas Round 2 (Abr/2026)
+
+- [x] Exibir motivo do cancelamento no card quando status = cancelled
+- [x] Modal de pagamento ao avançar para Entregue (forma de pagamento + valor + registro no financeiro)
+- [x] Coluna totalPrice salva no banco na tabela product_orders
+- [x] Notificação de cancelamento na área pública (Minhas Encomendas) com motivo
+- [x] Botão "Confirmar Recebimento" na área pública quando status = ready

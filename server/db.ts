@@ -2281,7 +2281,7 @@ export async function getProductOrdersByClient(clientId: number, tenantId: numbe
 export async function updateProductOrderStatus(
   id: number,
   status: "received" | "confirmed" | "preparing" | "ready" | "delivered" | "cancelled",
-  extra?: { estimatedDays?: number; cancelReason?: string }
+  extra?: { estimatedDays?: number; cancelReason?: string; paymentMethod?: string; barberId?: number }
 ) {
   const db = await getDb();
   if (!db) return;
@@ -2290,7 +2290,49 @@ export async function updateProductOrderStatus(
   if (status === "cancelled") updateData.cancelledAt = new Date();
   if (extra?.estimatedDays) updateData.estimatedDays = extra.estimatedDays;
   if (extra?.cancelReason) updateData.cancelReason = extra.cancelReason;
+  if (extra?.paymentMethod) {
+    updateData.paymentMethod = extra.paymentMethod;
+    updateData.paidAt = new Date();
+  }
   await db.update(productOrders).set(updateData).where(eq(productOrders.id, id));
+
+  // Se marcando como entregue com pagamento, registrar no financeiro
+  if (status === "delivered" && extra?.paymentMethod && extra?.barberId) {
+    const order = await getProductOrderById(id);
+    if (order) {
+      const unitPrice = order.totalPrice
+        ? (parseFloat(order.totalPrice) / order.quantity).toFixed(2)
+        : "0.00";
+      const total = order.totalPrice ? parseFloat(order.totalPrice).toFixed(2) : "0.00";
+      const pmMap: Record<string, string> = {
+        cash: "cash", credit_card: "credit_card", debit_card: "debit_card",
+        pix: "pix", other: "other",
+      };
+      const pm = (pmMap[extra.paymentMethod] ?? "other") as "cash" | "credit_card" | "debit_card" | "pix" | "mercado_pago" | "other";
+      await createSale(
+        {
+          clientId: order.clientId ?? undefined,
+          barberId: extra.barberId,
+          subtotal: total,
+          discount: "0",
+          total,
+          paymentMethod: pm,
+          paymentStatus: "paid",
+          notes: `Encomenda #${id}`,
+        } as any,
+        [
+          {
+            itemType: "product",
+            itemId: order.productId,
+            itemName: order.productName ?? "Produto",
+            quantity: order.quantity,
+            unitPrice,
+            total,
+          },
+        ]
+      );
+    }
+  }
 }
 
 export async function getProductOrderById(id: number) {

@@ -622,6 +622,9 @@ export const productOrders = mysqlTable("product_orders", {
   cancelledAt: timestamp("cancelledAt"),
   cancelReason: text("cancelReason"),
   deliveredAt: timestamp("deliveredAt"),
+  totalPrice: decimal("totalPrice", { precision: 10, scale: 2 }),
+  paymentMethod: varchar("paymentMethod", { length: 50 }),
+  paidAt: timestamp("paidAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

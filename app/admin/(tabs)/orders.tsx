@@ -53,6 +53,14 @@ const FILTER_OPTIONS: { label: string; value: string }[] = [
   { label: "Cancelado", value: "cancelled" },
 ];
 
+const PAYMENT_OPTIONS: { label: string; value: string; icon: string }[] = [
+  { label: "Dinheiro", value: "cash", icon: "💵" },
+  { label: "Cartão de Crédito", value: "credit_card", icon: "💳" },
+  { label: "Cartão de Débito", value: "debit_card", icon: "💳" },
+  { label: "Pix", value: "pix", icon: "⚡" },
+  { label: "Outro", value: "other", icon: "🔄" },
+];
+
 type Order = {
   id: number;
   clientName?: string | null;
@@ -63,6 +71,7 @@ type Order = {
   status: string;
   estimatedDays?: number | null;
   totalPrice?: string | null;
+  cancelReason?: string | null;
   createdAt?: string | Date | null;
 };
 
@@ -74,9 +83,8 @@ export default function OrdersScreen() {
   const [filter, setFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [estimatedDays, setEstimatedDays] = useState("");
 
-  // Modal para prazo estimado
+  // Modal de prazo estimado (ao confirmar)
   const [showDaysModal, setShowDaysModal] = useState(false);
   const [pendingAdvanceOrder, setPendingAdvanceOrder] = useState<Order | null>(null);
   const [daysInput, setDaysInput] = useState("");
@@ -85,6 +93,11 @@ export default function OrdersScreen() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+
+  // Modal de pagamento (ao marcar como Entregue)
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingDeliverOrder, setPendingDeliverOrder] = useState<Order | null>(null);
+  const [selectedPayment, setSelectedPayment] = useState<string>("");
 
   const utils = trpc.useUtils();
 
@@ -102,6 +115,9 @@ export default function OrdersScreen() {
       setShowDaysModal(false);
       setPendingAdvanceOrder(null);
       setDaysInput("");
+      setShowPaymentModal(false);
+      setPendingDeliverOrder(null);
+      setSelectedPayment("");
     },
     onError: (e) => Alert.alert("Erro", e.message),
   });
@@ -114,9 +130,15 @@ export default function OrdersScreen() {
     const nextStatus = STATUS_FLOW[currentIdx + 1];
 
     if (nextStatus === "confirmed") {
+      // Modal de prazo estimado
       setPendingAdvanceOrder(order);
       setDaysInput("");
       setShowDaysModal(true);
+    } else if (nextStatus === "delivered") {
+      // Modal de pagamento
+      setPendingDeliverOrder(order);
+      setSelectedPayment("");
+      setShowPaymentModal(true);
     } else {
       Alert.alert(
         "Atualizar Status",
@@ -139,21 +161,28 @@ export default function OrdersScreen() {
     });
   }
 
-  // Abre o modal de cancelamento (substitui o Alert simples)
+  function confirmPaymentModal() {
+    if (!pendingDeliverOrder || !selectedPayment) return;
+    updateStatusMutation.mutate({
+      id: pendingDeliverOrder.id,
+      status: "delivered",
+      paymentMethod: selectedPayment,
+      barberId: barber?.id ?? undefined,
+    });
+  }
+
   function handleCancelOrder(order: Order) {
     setCancelOrder(order);
     setCancelReason("");
     setShowCancelModal(true);
   }
 
-  // Confirma o cancelamento e fecha o modal
   function confirmCancel() {
     if (!cancelOrder) return;
     updateStatusMutation.mutate(
       { id: cancelOrder.id, status: "cancelled", cancelReason: cancelReason.trim() || undefined },
       {
         onSuccess: () => {
-          // Após cancelar com sucesso, oferece enviar WhatsApp se tiver telefone e motivo
           const order = cancelOrder;
           setShowCancelModal(false);
           setCancelOrder(null);
@@ -170,10 +199,7 @@ export default function OrdersScreen() {
               "Deseja enviar uma mensagem WhatsApp ao cliente explicando o cancelamento?",
               [
                 { text: "Não", style: "cancel" },
-                {
-                  text: "Enviar WhatsApp",
-                  onPress: () => Linking.openURL(`https://wa.me/55${phone}?text=${msg}`),
-                },
+                { text: "Enviar WhatsApp", onPress: () => Linking.openURL(`https://wa.me/55${phone}?text=${msg}`) },
               ]
             );
           }
@@ -194,7 +220,6 @@ export default function OrdersScreen() {
 
   function openDetail(order: Order) {
     setSelectedOrder(order);
-    setEstimatedDays(order.estimatedDays ? String(order.estimatedDays) : "");
     setShowDetailModal(true);
   }
 
@@ -206,6 +231,7 @@ export default function OrdersScreen() {
     const currentIdx = STATUS_FLOW.indexOf(status);
     const canAdvance = currentIdx >= 0 && currentIdx < STATUS_FLOW.length - 1;
     const canCancel = status !== "delivered" && status !== "cancelled";
+    const isCancelled = status === "cancelled";
 
     return (
       <TouchableOpacity style={styles.card} onPress={() => openDetail(item)} activeOpacity={0.85}>
@@ -236,6 +262,14 @@ export default function OrdersScreen() {
 
         {item.note ? (
           <Text style={styles.noteText} numberOfLines={2}>📝 {item.note}</Text>
+        ) : null}
+
+        {/* Motivo do cancelamento */}
+        {isCancelled && item.cancelReason ? (
+          <View style={styles.cancelReasonCard}>
+            <Text style={styles.cancelReasonCardLabel}>Motivo do cancelamento:</Text>
+            <Text style={styles.cancelReasonCardText} numberOfLines={2}>{item.cancelReason}</Text>
+          </View>
         ) : null}
 
         {/* Ações */}
@@ -354,6 +388,12 @@ export default function OrdersScreen() {
                     <Text style={styles.detailValue}>{selectedOrder.note}</Text>
                   </View>
                 )}
+                {selectedOrder.cancelReason && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Motivo Cancelamento</Text>
+                    <Text style={[styles.detailValue, { color: "#EF4444" }]}>{selectedOrder.cancelReason}</Text>
+                  </View>
+                )}
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Status</Text>
                   <View style={[styles.statusBadge, { backgroundColor: (STATUS_COLORS[selectedOrder.status as OrderStatus] ?? "#888") + "22", borderColor: STATUS_COLORS[selectedOrder.status as OrderStatus] ?? "#888" }]}>
@@ -397,10 +437,7 @@ export default function OrdersScreen() {
 
       {/* Modal de prazo estimado */}
       <Modal visible={showDaysModal} transparent animationType="fade" onRequestClose={() => setShowDaysModal(false)}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.centeredOverlay}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.centeredOverlay}>
           <Pressable style={styles.centeredOverlay} onPress={() => setShowDaysModal(false)}>
             <Pressable style={styles.floatModalSheet} onPress={(e) => e.stopPropagation()}>
               <Text style={styles.floatModalTitle}>Prazo de Retirada</Text>
@@ -416,11 +453,7 @@ export default function OrdersScreen() {
                 autoFocus
               />
               <View style={styles.floatModalActions}>
-                <TouchableOpacity
-                  style={styles.floatSkipBtn}
-                  onPress={() => { setDaysInput(""); confirmDaysModal(); }}
-                  activeOpacity={0.8}
-                >
+                <TouchableOpacity style={styles.floatSkipBtn} onPress={() => { setDaysInput(""); confirmDaysModal(); }} activeOpacity={0.8}>
                   <Text style={styles.floatSkipBtnText}>Pular</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -429,11 +462,7 @@ export default function OrdersScreen() {
                   disabled={updateStatusMutation.isPending}
                   activeOpacity={0.8}
                 >
-                  {updateStatusMutation.isPending ? (
-                    <ActivityIndicator size="small" color="#0A0A0A" />
-                  ) : (
-                    <Text style={styles.floatConfirmBtnText}>Confirmar</Text>
-                  )}
+                  {updateStatusMutation.isPending ? <ActivityIndicator size="small" color="#0A0A0A" /> : <Text style={styles.floatConfirmBtnText}>Confirmar</Text>}
                 </TouchableOpacity>
               </View>
             </Pressable>
@@ -441,15 +470,63 @@ export default function OrdersScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Modal de pagamento (ao marcar como Entregue) */}
+      <Modal visible={showPaymentModal} transparent animationType="fade" onRequestClose={() => setShowPaymentModal(false)}>
+        <Pressable style={styles.centeredOverlay} onPress={() => setShowPaymentModal(false)}>
+          <Pressable style={styles.floatModalSheet} onPress={(e) => e.stopPropagation()}>
+            {/* Ícone */}
+            <View style={styles.paymentIconWrap}>
+              <Text style={styles.paymentIconText}>💰</Text>
+            </View>
+            <Text style={styles.floatModalTitle}>Registrar Pagamento</Text>
+            {pendingDeliverOrder && (
+              <Text style={styles.floatModalSubtitle}>
+                {pendingDeliverOrder.productName} · {pendingDeliverOrder.clientName}
+                {pendingDeliverOrder.totalPrice ? `  ·  R$ ${pendingDeliverOrder.totalPrice}` : ""}
+              </Text>
+            )}
+            <Text style={styles.paymentLabel}>Forma de pagamento</Text>
+            <View style={styles.paymentGrid}>
+              {PAYMENT_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[styles.paymentOption, selectedPayment === opt.value && styles.paymentOptionSelected]}
+                  onPress={() => setSelectedPayment(opt.value)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.paymentOptionIcon}>{opt.icon}</Text>
+                  <Text style={[styles.paymentOptionText, selectedPayment === opt.value && styles.paymentOptionTextSelected]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.floatModalActions}>
+              <TouchableOpacity style={styles.floatSkipBtn} onPress={() => setShowPaymentModal(false)} activeOpacity={0.8}>
+                <Text style={styles.floatSkipBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.floatConfirmBtn, (!selectedPayment || updateStatusMutation.isPending) && { opacity: 0.5 }]}
+                onPress={confirmPaymentModal}
+                disabled={!selectedPayment || updateStatusMutation.isPending}
+                activeOpacity={0.8}
+              >
+                {updateStatusMutation.isPending ? (
+                  <ActivityIndicator size="small" color="#0A0A0A" />
+                ) : (
+                  <Text style={styles.floatConfirmBtnText}>Confirmar Entrega</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Modal de cancelamento com motivo */}
       <Modal visible={showCancelModal} transparent animationType="fade" onRequestClose={() => setShowCancelModal(false)}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.centeredOverlay}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.centeredOverlay}>
           <Pressable style={styles.centeredOverlay} onPress={() => setShowCancelModal(false)}>
             <Pressable style={styles.floatModalSheet} onPress={(e) => e.stopPropagation()}>
-              {/* Ícone de alerta */}
               <View style={styles.cancelIconWrap}>
                 <Text style={styles.cancelIconText}>✕</Text>
               </View>
@@ -475,11 +552,7 @@ export default function OrdersScreen() {
                 💬 Após cancelar, você poderá enviar uma mensagem WhatsApp ao cliente com o motivo.
               </Text>
               <View style={styles.floatModalActions}>
-                <TouchableOpacity
-                  style={styles.floatSkipBtn}
-                  onPress={() => setShowCancelModal(false)}
-                  activeOpacity={0.8}
-                >
+                <TouchableOpacity style={styles.floatSkipBtn} onPress={() => setShowCancelModal(false)} activeOpacity={0.8}>
                   <Text style={styles.floatSkipBtnText}>Voltar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -488,11 +561,7 @@ export default function OrdersScreen() {
                   disabled={updateStatusMutation.isPending}
                   activeOpacity={0.8}
                 >
-                  {updateStatusMutation.isPending ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <Text style={styles.cancelConfirmBtnText}>Cancelar Encomenda</Text>
-                  )}
+                  {updateStatusMutation.isPending ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={styles.cancelConfirmBtnText}>Cancelar Encomenda</Text>}
                 </TouchableOpacity>
               </View>
             </Pressable>
@@ -550,6 +619,16 @@ const styles = StyleSheet.create({
   cardMeta: { fontSize: 12, color: "#888" },
   cardMetaSep: { fontSize: 12, color: "#444" },
   noteText: { fontSize: 12, color: "#666", fontStyle: "italic" },
+  cancelReasonCard: {
+    backgroundColor: "#EF444410",
+    borderWidth: 1,
+    borderColor: "#EF444430",
+    borderRadius: 8,
+    padding: 8,
+    gap: 2,
+  },
+  cancelReasonCardLabel: { fontSize: 11, color: "#EF4444", fontWeight: "700" },
+  cancelReasonCardText: { fontSize: 12, color: "#EF4444AA" },
   cardActions: { flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 4 },
   advanceBtn: {
     flexDirection: "row",
@@ -605,7 +684,7 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: "row", gap: 10, marginTop: 8 },
   closeModalBtn: { flex: 1, backgroundColor: "#1A1A1A", borderRadius: 10, paddingVertical: 12, alignItems: "center", borderWidth: 1, borderColor: "#2A2A2A" },
   closeModalBtnText: { color: "#888", fontSize: 14, fontWeight: "600" },
-  // Modais flutuantes centralizados (prazo + cancelamento)
+  // Modais flutuantes centralizados
   centeredOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center" },
   floatModalSheet: {
     backgroundColor: "#141414",
@@ -648,7 +727,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   floatConfirmBtnText: { color: "#0A0A0A", fontSize: 14, fontWeight: "700" },
-  // Estilos específicos do modal de cancelamento
+  // Modal de pagamento
+  paymentIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#C9A84C20",
+    borderWidth: 1.5,
+    borderColor: "#C9A84C",
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
+    marginBottom: 2,
+  },
+  paymentIconText: { fontSize: 24 },
+  paymentLabel: { fontSize: 13, color: "#888", fontWeight: "600" },
+  paymentGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  paymentOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#1A1A1A",
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minWidth: "45%",
+    flex: 1,
+  },
+  paymentOptionSelected: { backgroundColor: "#C9A84C20", borderColor: "#C9A84C" },
+  paymentOptionIcon: { fontSize: 16 },
+  paymentOptionText: { fontSize: 12, color: "#888", fontWeight: "600" },
+  paymentOptionTextSelected: { color: "#C9A84C" },
+  // Modal de cancelamento
   cancelIconWrap: {
     width: 48,
     height: 48,

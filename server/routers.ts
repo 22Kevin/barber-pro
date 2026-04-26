@@ -1691,11 +1691,13 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .query(({ input }) => db.getProductOrderById(input.id)),
     updateStatus: publicProcedure
-      .input(z.object({ id: z.number(), status: z.string(), estimatedDays: z.number().optional(), cancelReason: z.string().optional() }))
+      .input(z.object({ id: z.number(), status: z.string(), estimatedDays: z.number().optional(), cancelReason: z.string().optional(), paymentMethod: z.string().optional(), barberId: z.number().optional() }))
       .mutation(async ({ input }) => {
-        const extra: { estimatedDays?: number; cancelReason?: string } = {};
+        const extra: { estimatedDays?: number; cancelReason?: string; paymentMethod?: string; barberId?: number } = {};
         if (input.estimatedDays !== undefined) extra.estimatedDays = input.estimatedDays;
         if (input.cancelReason !== undefined) extra.cancelReason = input.cancelReason;
+        if (input.paymentMethod !== undefined) extra.paymentMethod = input.paymentMethod;
+        if (input.barberId !== undefined) extra.barberId = input.barberId;
         await db.updateProductOrderStatus(input.id, input.status as any, Object.keys(extra).length > 0 ? extra : undefined);
         return { ok: true };
       }),
