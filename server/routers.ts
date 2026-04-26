@@ -1691,9 +1691,12 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .query(({ input }) => db.getProductOrderById(input.id)),
     updateStatus: publicProcedure
-      .input(z.object({ id: z.number(), status: z.string(), estimatedDays: z.number().optional() }))
+      .input(z.object({ id: z.number(), status: z.string(), estimatedDays: z.number().optional(), cancelReason: z.string().optional() }))
       .mutation(async ({ input }) => {
-        await db.updateProductOrderStatus(input.id, input.status as any, input.estimatedDays !== undefined ? { estimatedDays: input.estimatedDays } : undefined);
+        const extra: { estimatedDays?: number; cancelReason?: string } = {};
+        if (input.estimatedDays !== undefined) extra.estimatedDays = input.estimatedDays;
+        if (input.cancelReason !== undefined) extra.cancelReason = input.cancelReason;
+        await db.updateProductOrderStatus(input.id, input.status as any, Object.keys(extra).length > 0 ? extra : undefined);
         return { ok: true };
       }),
     pendingCount: publicProcedure

@@ -76,10 +76,15 @@ export default function OrdersScreen() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [estimatedDays, setEstimatedDays] = useState("");
 
-  // Modal para prazo estimado (substitui Alert.prompt que não funciona no Android)
+  // Modal para prazo estimado
   const [showDaysModal, setShowDaysModal] = useState(false);
   const [pendingAdvanceOrder, setPendingAdvanceOrder] = useState<Order | null>(null);
   const [daysInput, setDaysInput] = useState("");
+
+  // Modal de cancelamento com motivo
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   const utils = trpc.useUtils();
 
@@ -109,7 +114,6 @@ export default function OrdersScreen() {
     const nextStatus = STATUS_FLOW[currentIdx + 1];
 
     if (nextStatus === "confirmed") {
-      // Mostra modal customizado para pedir prazo estimado (funciona no Android e iOS)
       setPendingAdvanceOrder(order);
       setDaysInput("");
       setShowDaysModal(true);
@@ -135,14 +139,46 @@ export default function OrdersScreen() {
     });
   }
 
+  // Abre o modal de cancelamento (substitui o Alert simples)
   function handleCancelOrder(order: Order) {
-    Alert.alert(
-      "Cancelar Encomenda",
-      "Deseja cancelar esta encomenda?",
-      [
-        { text: "Não", style: "cancel" },
-        { text: "Cancelar Encomenda", style: "destructive", onPress: () => updateStatusMutation.mutate({ id: order.id, status: "cancelled" }) },
-      ]
+    setCancelOrder(order);
+    setCancelReason("");
+    setShowCancelModal(true);
+  }
+
+  // Confirma o cancelamento e fecha o modal
+  function confirmCancel() {
+    if (!cancelOrder) return;
+    updateStatusMutation.mutate(
+      { id: cancelOrder.id, status: "cancelled", cancelReason: cancelReason.trim() || undefined },
+      {
+        onSuccess: () => {
+          // Após cancelar com sucesso, oferece enviar WhatsApp se tiver telefone e motivo
+          const order = cancelOrder;
+          setShowCancelModal(false);
+          setCancelOrder(null);
+          setCancelReason("");
+
+          if (order.clientPhone) {
+            const reason = cancelReason.trim();
+            const phone = order.clientPhone.replace(/\D/g, "");
+            const msg = encodeURIComponent(
+              `Olá${order.clientName ? ` ${order.clientName}` : ""}! 👋\n\nInfelizmente precisamos *cancelar* sua encomenda de *${order.productName ?? "produto"}* (x${order.quantity}).${reason ? `\n\n*Motivo:* ${reason}` : ""}\n\nSentimos muito pelo inconveniente. Qualquer dúvida, estamos à disposição! ✂️`
+            );
+            Alert.alert(
+              "Encomenda Cancelada",
+              "Deseja enviar uma mensagem WhatsApp ao cliente explicando o cancelamento?",
+              [
+                { text: "Não", style: "cancel" },
+                {
+                  text: "Enviar WhatsApp",
+                  onPress: () => Linking.openURL(`https://wa.me/55${phone}?text=${msg}`),
+                },
+              ]
+            );
+          }
+        },
+      }
     );
   }
 
@@ -359,18 +395,18 @@ export default function OrdersScreen() {
         </Pressable>
       </Modal>
 
-      {/* Modal de prazo estimado (substitui Alert.prompt para compatibilidade Android) */}
+      {/* Modal de prazo estimado */}
       <Modal visible={showDaysModal} transparent animationType="fade" onRequestClose={() => setShowDaysModal(false)}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
+          style={styles.centeredOverlay}
         >
-          <Pressable style={styles.modalOverlay} onPress={() => setShowDaysModal(false)}>
-            <Pressable style={styles.daysModalSheet} onPress={(e) => e.stopPropagation()}>
-              <Text style={styles.daysModalTitle}>Prazo de Retirada</Text>
-              <Text style={styles.daysModalSubtitle}>Em quantos dias o produto estará pronto? (opcional)</Text>
+          <Pressable style={styles.centeredOverlay} onPress={() => setShowDaysModal(false)}>
+            <Pressable style={styles.floatModalSheet} onPress={(e) => e.stopPropagation()}>
+              <Text style={styles.floatModalTitle}>Prazo de Retirada</Text>
+              <Text style={styles.floatModalSubtitle}>Em quantos dias o produto estará pronto? (opcional)</Text>
               <TextInput
-                style={styles.daysInput}
+                style={styles.floatInput}
                 value={daysInput}
                 onChangeText={setDaysInput}
                 placeholder="Ex: 3"
@@ -379,19 +415,16 @@ export default function OrdersScreen() {
                 maxLength={3}
                 autoFocus
               />
-              <View style={styles.daysModalActions}>
+              <View style={styles.floatModalActions}>
                 <TouchableOpacity
-                  style={styles.daysSkipBtn}
-                  onPress={() => {
-                    setDaysInput("");
-                    confirmDaysModal();
-                  }}
+                  style={styles.floatSkipBtn}
+                  onPress={() => { setDaysInput(""); confirmDaysModal(); }}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.daysSkipBtnText}>Pular</Text>
+                  <Text style={styles.floatSkipBtnText}>Pular</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.daysConfirmBtn, updateStatusMutation.isPending && { opacity: 0.6 }]}
+                  style={[styles.floatConfirmBtn, updateStatusMutation.isPending && { opacity: 0.6 }]}
                   onPress={confirmDaysModal}
                   disabled={updateStatusMutation.isPending}
                   activeOpacity={0.8}
@@ -399,7 +432,66 @@ export default function OrdersScreen() {
                   {updateStatusMutation.isPending ? (
                     <ActivityIndicator size="small" color="#0A0A0A" />
                   ) : (
-                    <Text style={styles.daysConfirmBtnText}>Confirmar</Text>
+                    <Text style={styles.floatConfirmBtnText}>Confirmar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Modal de cancelamento com motivo */}
+      <Modal visible={showCancelModal} transparent animationType="fade" onRequestClose={() => setShowCancelModal(false)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.centeredOverlay}
+        >
+          <Pressable style={styles.centeredOverlay} onPress={() => setShowCancelModal(false)}>
+            <Pressable style={styles.floatModalSheet} onPress={(e) => e.stopPropagation()}>
+              {/* Ícone de alerta */}
+              <View style={styles.cancelIconWrap}>
+                <Text style={styles.cancelIconText}>✕</Text>
+              </View>
+              <Text style={styles.floatModalTitle}>Cancelar Encomenda</Text>
+              {cancelOrder && (
+                <Text style={styles.floatModalSubtitle}>
+                  {cancelOrder.productName ?? "Produto"} · {cancelOrder.clientName ?? "Cliente"}
+                </Text>
+              )}
+              <Text style={styles.cancelReasonLabel}>Motivo do cancelamento (opcional)</Text>
+              <TextInput
+                style={[styles.floatInput, styles.cancelReasonInput]}
+                value={cancelReason}
+                onChangeText={setCancelReason}
+                placeholder="Ex: produto fora de estoque, pedido duplicado..."
+                placeholderTextColor="#555"
+                multiline
+                numberOfLines={3}
+                maxLength={300}
+                textAlignVertical="top"
+              />
+              <Text style={styles.cancelHint}>
+                💬 Após cancelar, você poderá enviar uma mensagem WhatsApp ao cliente com o motivo.
+              </Text>
+              <View style={styles.floatModalActions}>
+                <TouchableOpacity
+                  style={styles.floatSkipBtn}
+                  onPress={() => setShowCancelModal(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.floatSkipBtnText}>Voltar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.cancelConfirmBtn, updateStatusMutation.isPending && { opacity: 0.6 }]}
+                  onPress={confirmCancel}
+                  disabled={updateStatusMutation.isPending}
+                  activeOpacity={0.8}
+                >
+                  {updateStatusMutation.isPending ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.cancelConfirmBtnText}>Cancelar Encomenda</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -488,6 +580,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  // Modal de detalhe (bottom sheet)
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
   modalSheet: {
     backgroundColor: "#141414",
@@ -512,21 +605,20 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: "row", gap: 10, marginTop: 8 },
   closeModalBtn: { flex: 1, backgroundColor: "#1A1A1A", borderRadius: 10, paddingVertical: 12, alignItems: "center", borderWidth: 1, borderColor: "#2A2A2A" },
   closeModalBtnText: { color: "#888", fontSize: 14, fontWeight: "600" },
-  // Days modal
-  daysModalSheet: {
+  // Modais flutuantes centralizados (prazo + cancelamento)
+  centeredOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center" },
+  floatModalSheet: {
     backgroundColor: "#141414",
-    borderRadius: 16,
-    padding: 20,
-    margin: 20,
+    borderRadius: 18,
+    padding: 22,
     gap: 12,
     borderWidth: 1,
     borderColor: "#2A2A2A",
-    alignSelf: "center",
-    width: "90%",
+    width: "88%",
   },
-  daysModalTitle: { fontSize: 17, fontWeight: "800", color: "#F5F5F0", textAlign: "center" },
-  daysModalSubtitle: { fontSize: 13, color: "#888", textAlign: "center" },
-  daysInput: {
+  floatModalTitle: { fontSize: 17, fontWeight: "800", color: "#F5F5F0", textAlign: "center" },
+  floatModalSubtitle: { fontSize: 13, color: "#888", textAlign: "center" },
+  floatInput: {
     backgroundColor: "#1A1A1A",
     borderWidth: 1,
     borderColor: "#333",
@@ -534,11 +626,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     color: "#F5F5F0",
-    fontSize: 16,
+    fontSize: 15,
     textAlign: "center",
   },
-  daysModalActions: { flexDirection: "row", gap: 10, marginTop: 4 },
-  daysSkipBtn: {
+  floatModalActions: { flexDirection: "row", gap: 10, marginTop: 4 },
+  floatSkipBtn: {
     flex: 1,
     backgroundColor: "#1A1A1A",
     borderRadius: 10,
@@ -547,13 +639,42 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2A2A2A",
   },
-  daysSkipBtnText: { color: "#888", fontSize: 14, fontWeight: "600" },
-  daysConfirmBtn: {
+  floatSkipBtnText: { color: "#888", fontSize: 14, fontWeight: "600" },
+  floatConfirmBtn: {
     flex: 2,
     backgroundColor: "#C9A84C",
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
   },
-  daysConfirmBtnText: { color: "#0A0A0A", fontSize: 14, fontWeight: "700" },
+  floatConfirmBtnText: { color: "#0A0A0A", fontSize: 14, fontWeight: "700" },
+  // Estilos específicos do modal de cancelamento
+  cancelIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#EF444420",
+    borderWidth: 1.5,
+    borderColor: "#EF4444",
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
+    marginBottom: 2,
+  },
+  cancelIconText: { fontSize: 20, color: "#EF4444", fontWeight: "800" },
+  cancelReasonLabel: { fontSize: 13, color: "#888", fontWeight: "600" },
+  cancelReasonInput: {
+    textAlign: "left",
+    minHeight: 80,
+    paddingTop: 12,
+  },
+  cancelHint: { fontSize: 12, color: "#555", lineHeight: 18 },
+  cancelConfirmBtn: {
+    flex: 2,
+    backgroundColor: "#EF4444",
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  cancelConfirmBtnText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
 });

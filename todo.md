@@ -1592,3 +1592,9 @@
 - [x] Avaliação de produto pós-entrega: botão "⭐ Avaliar" no card da encomenda do cliente após status=delivered
 - [x] Relatório de encomendas no painel admin (total por período, produtos mais encomendados, ticket médio)
 - [x] Notificação WhatsApp ao cliente ao atualizar status de encomenda (via link wa.me — push notifications substituídas por WhatsApp)
+
+## Correção — Cancelamento de Encomenda pelo Barbeiro (Abr/2026)
+
+- [x] Modal de cancelamento com campo de motivo ao clicar no botão X na tela Encomendas
+- [x] Salvar motivo do cancelamento no banco (cancelReason) ao cancelar encomenda
+- [x] Após cancelar, oferecer opção de enviar WhatsApp ao cliente com o motivo do cancelamento
