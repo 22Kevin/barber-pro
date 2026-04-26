@@ -39,6 +39,18 @@ export default function RootLayout() {
     initManusRuntime();
   }, []);
 
+  // Registrar Service Worker para PWA (apenas na web)
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    if (!('serviceWorker' in navigator)) return;
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((reg) => console.log('[PWA] Service Worker registrado:', reg.scope))
+        .catch((err) => console.warn('[PWA] Falha ao registrar Service Worker:', err));
+    });
+  }, []);
+
   const handleSafeAreaUpdate = useCallback((metrics: Metrics) => {
     setInsets(metrics.insets);
     setFrame(metrics.frame);

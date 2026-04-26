@@ -57,6 +57,17 @@ const config: ExpoConfig = {
     bundler: "metro",
     output: "static",
     favicon: "./assets/images/favicon.png",
+    // PWA configuration
+    name: "Barber Pro",
+    shortName: "Barber Pro",
+    description: "Sistema completo de gestão para barbearias: agendamentos, financeiro, estoque e muito mais.",
+    themeColor: "#C9A84C",
+    backgroundColor: "#0A0A0A",
+    lang: "pt-BR",
+    scope: "/",
+    startUrl: "/",
+    display: "standalone",
+    orientation: "portrait",
   },
   plugins: [
     "expo-router",

@@ -1665,3 +1665,11 @@
 - [ ] Registrar domínio usebarberpro.com (disponível no Namecheap por ~$6,79/1º ano)
 - [ ] Configurar PWA manifest (nome, ícones, theme_color, display: standalone)
 - [ ] Configurar Google Sign-In (EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID + EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME)
+
+## Configuração PWA — Round 11 (Abr/2026)
+
+- [x] Configurar PWA manifest (web.json) com nome, ícones, theme_color, display: standalone
+- [x] Adicionar meta tags PWA no HTML base (apple-touch-icon, theme-color, viewport)
+- [x] Gerar ícones PWA em múltiplos tamanhos (192x192, 512x512, maskable)
+- [x] Configurar service worker para cache offline básico
+- [ ] Publicar pelo Manus e apontar DNS da Hostinger para o domínio usebarberpro.com
