@@ -112,6 +112,8 @@ export default function ReportsScreen() {
   const topClientsQuery = trpc.reports.topClients.useQuery(dateRange);
   const occupancyQuery = trpc.reports.barberOccupancy.useQuery(dateRange);
   const exportPdfMutation = trpc.reports.exportPdf.useMutation();
+  const exportOrdersPdfMutation = trpc.reports.exportOrdersPdf.useMutation();
+  const [exportingOrders, setExportingOrders] = useState(false);
   const ordersSummaryQuery = trpc.reports.ordersSummary.useQuery(
     { tenantId: tenantId ?? 0, ...dateRange },
     { enabled: !!tenantId }
@@ -133,6 +135,37 @@ export default function ReportsScreen() {
     { key: "month", label: "30 dias" },
     { key: "year", label: "12 meses" },
   ];
+
+  async function handleExportOrdersPdf() {
+    if (exportingOrders || !tenantId) return;
+    setExportingOrders(true);
+    try {
+      const result = await exportOrdersPdfMutation.mutateAsync({ tenantId, ...dateRange });
+      if (!result.pdfBase64) throw new Error("PDF vazio");
+      if (Platform.OS === "web") {
+        const blob = new Blob([Uint8Array.from(atob(result.pdfBase64), c => c.charCodeAt(0))], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `encomendas-${dateRange.startDate}-${dateRange.endDate}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const fileUri = `${FileSystem.cacheDirectory}encomendas-${dateRange.startDate}.pdf`;
+        await FileSystem.writeAsStringAsync(fileUri, result.pdfBase64, { encoding: FileSystem.EncodingType.Base64 });
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(fileUri, { mimeType: "application/pdf", dialogTitle: "Exportar Encomendas" });
+        } else {
+          Alert.alert("PDF salvo", `Arquivo salvo em: ${fileUri}`);
+        }
+      }
+    } catch (err: any) {
+      Alert.alert("Erro ao exportar", err.message);
+    } finally {
+      setExportingOrders(false);
+    }
+  }
 
   async function handleExportPdf() {
     if (exporting) return;
@@ -356,10 +389,32 @@ export default function ReportsScreen() {
         {/* Relatório de Encomendas */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Encomendas de Produtos</Text>
-            {ordersSummary && ordersSummary.totalRevenue > 0 && (
-              <Text style={styles.cardTotal}>{formatCurrency(ordersSummary.totalRevenue)}</Text>
-            )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>Encomendas de Produtos</Text>
+              {ordersSummary && ordersSummary.totalRevenue > 0 && (
+                <Text style={styles.cardTotal}>{formatCurrency(ordersSummary.totalRevenue)}</Text>
+              )}
+            </View>
+            <Pressable
+              style={({ pressed }) => [{
+                backgroundColor: "#C9A84C",
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 16,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                opacity: pressed || exportingOrders ? 0.7 : 1,
+              }]}
+              onPress={handleExportOrdersPdf}
+              disabled={exportingOrders}
+            >
+              {exportingOrders ? (
+                <ActivityIndicator size="small" color="#0A0A0A" />
+              ) : (
+                <Text style={{ fontSize: 11, fontWeight: "700", color: "#0A0A0A" }}>PDF</Text>
+              )}
+            </Pressable>
           </View>
           {/* Gráfico de evolução */}
           {ordersTimelineQuery.isLoading ? (

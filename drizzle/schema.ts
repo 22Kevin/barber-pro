@@ -430,6 +430,7 @@ export const recurringAppointments = mysqlTable("recurring_appointments", {
 });
 
 // ─── Movimentações de Estoque ────────────────────────────────────────────────
+// supplierId adicionado para rastrear o fornecedor de cada reposição
 export const stockMovements = mysqlTable("stock_movements", {
   id: int("id").autoincrement().primaryKey(),
   productId: int("productId").notNull(),
@@ -438,6 +439,7 @@ export const stockMovements = mysqlTable("stock_movements", {
   reason: varchar("reason", { length: 255 }),
   barberId: int("barberId"),
   saleId: int("saleId"),
+  supplierId: int("supplierId"),
   date: varchar("date", { length: 10 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -634,3 +636,19 @@ export const productOrders = mysqlTable("product_orders", {
 });
 export type ProductOrder = typeof productOrders.$inferSelect;
 export type InsertProductOrder = typeof productOrders.$inferInsert;
+
+// ─── Fornecedores ───────────────────────────────────────────────────────────────────────────────────
+export const suppliers = mysqlTable("suppliers", {
+  id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId").notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  contact: varchar("contact", { length: 120 }),
+  phone: varchar("phone", { length: 30 }),
+  email: varchar("email", { length: 120 }),
+  notes: text("notes"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = typeof suppliers.$inferInsert;

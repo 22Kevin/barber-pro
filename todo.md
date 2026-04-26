@@ -1630,3 +1630,9 @@
 - [x] Avaliações de produto na tela de detalhe do produto na loja do cliente (média + comentários)
 - [x] Filtro de período (hoje / semana / mês) na aba Encomendas do app do barbeiro
 - [x] Botão "Repor Estoque" no admin com quantidade, custo unitário e registro no histórico de movimentações + despesa financeira automática
+
+## Melhorias Finais do Dia — Round 7 (Abr/2026)
+
+- [x] Média de avaliações no card do produto na grade da loja do cliente (⭐ nota + contagem)
+- [x] Exportar relatório de encomendas em PDF (botão na tela Relatórios)
+- [x] Painel de fornecedores no admin (cadastro + vínculo à reposição de estoque)

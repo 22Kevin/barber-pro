@@ -48,6 +48,7 @@ export default function ProductsScreen() {
   const [restockCost, setRestockCost] = useState("");
   const [restockPayment, setRestockPayment] = useState("cash");
   const [restockNote, setRestockNote] = useState("");
+  const [restockSupplierId, setRestockSupplierId] = useState<number | null>(null);
 
   const movementsQuery = trpc.stock.movements.useQuery(
     { productId: historyProduct?.id ?? 0 },
@@ -76,6 +77,12 @@ export default function ProductsScreen() {
     onSuccess: () => { utils.products.list.invalidate(); closeModal(); },
     onError: (e) => Alert.alert("Erro", e.message),
   });
+
+  const suppliersQuery = trpc.suppliers.list.useQuery(
+    { tenantId: tenantId ?? 0 },
+    { enabled: (tenantId ?? 0) > 0 }
+  );
+  const suppliersList = (suppliersQuery.data ?? []) as { id: number; name: string }[];
 
   const restockMutation = trpc.stock.restock.useMutation({
     onSuccess: () => {
@@ -110,6 +117,7 @@ export default function ProductsScreen() {
       note: restockNote.trim() || undefined,
       barberId: barber?.id ?? undefined,
       tenantId: tenantId ?? undefined,
+      supplierId: restockSupplierId ?? undefined,
     });
   }
 
@@ -379,6 +387,25 @@ export default function ProductsScreen() {
                     <Pressable key={pm.v} onPress={() => setRestockPayment(pm.v)}
                       style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: restockPayment === pm.v ? "#C9A84C22" : "#1E1E1E", borderWidth: 1, borderColor: restockPayment === pm.v ? "#C9A84C" : "#2A2A2A" }}>
                       <Text style={{ color: restockPayment === pm.v ? "#C9A84C" : "#888880", fontSize: 13, fontWeight: restockPayment === pm.v ? "700" : "400" }}>{pm.l}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </Field>
+              <Field label="Fornecedor — opcional">
+                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                  <Pressable
+                    onPress={() => setRestockSupplierId(null)}
+                    style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: restockSupplierId === null ? "#C9A84C22" : "#1E1E1E", borderWidth: 1, borderColor: restockSupplierId === null ? "#C9A84C" : "#2A2A2A" }}
+                  >
+                    <Text style={{ color: restockSupplierId === null ? "#C9A84C" : "#888880", fontSize: 12, fontWeight: restockSupplierId === null ? "700" : "400" }}>Nenhum</Text>
+                  </Pressable>
+                  {suppliersList.map((s) => (
+                    <Pressable
+                      key={s.id}
+                      onPress={() => setRestockSupplierId(s.id)}
+                      style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: restockSupplierId === s.id ? "#C9A84C22" : "#1E1E1E", borderWidth: 1, borderColor: restockSupplierId === s.id ? "#C9A84C" : "#2A2A2A" }}
+                    >
+                      <Text style={{ color: restockSupplierId === s.id ? "#C9A84C" : "#888880", fontSize: 12, fontWeight: restockSupplierId === s.id ? "700" : "400" }}>{s.name}</Text>
                     </Pressable>
                   ))}
                 </View>

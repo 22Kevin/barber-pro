@@ -32,6 +32,9 @@ import {
   whatsappMessages,
   orbitLeads,
   productOrders,
+  suppliers,
+  type Supplier,
+  type InsertSupplier,
   type WhatsappMessage,
   type InsertWhatsappMessage,
   type Tenant,
@@ -360,10 +363,21 @@ export async function getAllProductsWithMedia(activeOnly = false, tenantId?: num
   const media = await db.select().from(mediaFiles)
     .where(and(eq(mediaFiles.entityType, "product"), inArray(mediaFiles.entityId, ids), eq(mediaFiles.type, "image")))
     .orderBy(mediaFiles.order);
-  return prods.map((p) => ({
-    ...p,
-    thumbnailUrl: media.find((m) => m.entityId === p.id)?.url ?? null,
-  }));
+  // Buscar média de avaliações por produto
+  const productReviews = await db.select().from(reviews)
+    .where(and(inArray(reviews.productId, ids)));
+  return prods.map((p) => {
+    const pReviews = productReviews.filter((r) => r.productId === p.id);
+    const avgRating = pReviews.length > 0
+      ? Math.round((pReviews.reduce((sum, r) => sum + r.rating, 0) / pReviews.length) * 10) / 10
+      : null;
+    return {
+      ...p,
+      thumbnailUrl: media.find((m) => m.entityId === p.id)?.url ?? null,
+      avgRating,
+      reviewCount: pReviews.length,
+    };
+  });
 }
 export async function getAllProducts(activeOnly = false, tenantId?: number | null) {
   const db = await getDb();
@@ -2417,4 +2431,39 @@ export async function getProductOrderById(id: number) {
     .where(eq(productOrders.id, id))
     .limit(1);
   return result.length > 0 ? result[0] : null;
+}
+
+// ─── Fornecedores ─────────────────────────────────────────────────────────────
+export async function getSuppliersByTenant(tenantId: number): Promise<Supplier[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(suppliers)
+    .where(and(eq(suppliers.tenantId, tenantId), eq(suppliers.isActive, true)))
+    .orderBy(suppliers.name);
+}
+
+export async function getSupplierById(id: number): Promise<Supplier | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(suppliers).where(eq(suppliers.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function createSupplier(data: InsertSupplier): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(suppliers).values(data);
+  return result[0].insertId;
+}
+
+export async function updateSupplier(id: number, data: Partial<InsertSupplier>): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(suppliers).set({ ...data, updatedAt: new Date() }).where(eq(suppliers.id, id));
+}
+
+export async function deleteSupplier(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(suppliers).set({ isActive: false, updatedAt: new Date() }).where(eq(suppliers.id, id));
 }

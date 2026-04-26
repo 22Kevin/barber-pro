@@ -55,6 +55,12 @@ function ProductCard({ product, onPress }: { product: any; onPress: () => void }
       {/* Conteúdo */}
       <View style={styles.cardBody}>
         <Text style={styles.cardName} numberOfLines={2}>{product.name}</Text>
+        {product.avgRating != null && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginBottom: 4 }}>
+            <Text style={{ fontSize: 11, color: "#EAB308" }}>⭐ {product.avgRating.toFixed(1)}</Text>
+            <Text style={{ fontSize: 11, color: "#666" }}>({product.reviewCount})</Text>
+          </View>
+        )}
         {product.stock > 0 ? (
           <Text style={styles.cardStock}>✓ Em estoque</Text>
         ) : (

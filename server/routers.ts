@@ -1391,6 +1391,89 @@ export const appRouter = router({
         topProducts,
       };
     }),
+  exportOrdersPdf: publicProcedure
+    .input(z.object({ tenantId: z.number(), startDate: z.string(), endDate: z.string() }))
+    .mutation(async ({ input }) => {
+      const settings = await db.getShopSettings().catch(() => null) as any;
+      const shopName = settings?.shopName || "Barber Pro";
+      const orders = await db.getProductOrdersByTenant(input.tenantId);
+      const filtered = (orders as any[]).filter((o) => {
+        const d = o.createdAt ? new Date(o.createdAt).toISOString().split("T")[0] : "";
+        return d >= input.startDate && d <= input.endDate;
+      });
+      const delivered = filtered.filter((o) => o.status === "delivered");
+      const cancelled = filtered.filter((o) => o.status === "cancelled");
+      const pending = filtered.filter((o) => !["delivered", "cancelled"].includes(o.status));
+      const totalRevenue = delivered.reduce((sum: number, o: any) => sum + parseFloat(o.totalPrice ?? "0"), 0);
+      const productMap: Record<string, { name: string; count: number; revenue: number }> = {};
+      for (const o of filtered) {
+        const name = o.productName ?? "Produto";
+        if (!productMap[name]) productMap[name] = { name, count: 0, revenue: 0 };
+        productMap[name].count += o.quantity ?? 1;
+        if (o.status === "delivered") productMap[name].revenue += parseFloat(o.totalPrice ?? "0");
+      }
+      const topProducts = Object.values(productMap).sort((a, b) => b.count - a.count).slice(0, 10);
+      const doc = new PDFDocument({ margin: 50, size: "A4" });
+      const chunks: Buffer[] = [];
+      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+      const pdfPromise = new Promise<Buffer>((resolve) => doc.on("end", () => resolve(Buffer.concat(chunks))));
+      const fmt = (v: number) => `R$ ${v.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".")}` ;
+      const fmtDate = (d: string) => d.split("-").reverse().join("/");
+      const gold = "#C9A84C";
+      doc.fontSize(20).fillColor(gold).text(shopName, { align: "center" });
+      doc.moveDown(0.5);
+      doc.fontSize(14).fillColor("#222").text(`Relatório de Encomendas — ${fmtDate(input.startDate)} a ${fmtDate(input.endDate)}`, { align: "center" });
+      doc.moveDown(0.5);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor(gold).lineWidth(1.5).stroke();
+      doc.moveDown(1);
+      doc.fontSize(13).fillColor(gold).text("Resumo do Período");
+      doc.moveDown(0.3);
+      const kpiRows = [
+        { label: "Total de Encomendas", value: filtered.length.toString() },
+        { label: "Entregues", value: delivered.length.toString() },
+        { label: "Em Aberto", value: pending.length.toString() },
+        { label: "Canceladas", value: cancelled.length.toString() },
+        { label: "Receita Gerada (Entregas)", value: fmt(totalRevenue) },
+      ];
+      for (const row of kpiRows) {
+        doc.fontSize(11).fillColor("#222");
+        const y = doc.y;
+        doc.text(row.label, 50, y, { continued: true, width: 350 });
+        doc.text(row.value, { align: "right" });
+      }
+      doc.moveDown(1);
+      doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#ddd").lineWidth(0.5).stroke();
+      doc.moveDown(1);
+      if (topProducts.length > 0) {
+        doc.fontSize(13).fillColor(gold).text("Produtos Mais Encomendados");
+        doc.moveDown(0.3);
+        for (const p of topProducts) {
+          doc.fontSize(11).fillColor("#222");
+          const y = doc.y;
+          doc.text(`${p.name} (${p.count}x)`, 50, y, { continued: true, width: 350 });
+          doc.text(fmt(p.revenue), { align: "right" });
+        }
+        doc.moveDown(1);
+        doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor("#ddd").lineWidth(0.5).stroke();
+        doc.moveDown(1);
+      }
+      if (delivered.length > 0) {
+        doc.fontSize(13).fillColor(gold).text("Encomendas Entregues");
+        doc.moveDown(0.3);
+        for (const o of delivered) {
+          doc.fontSize(10).fillColor("#555");
+          const y = doc.y;
+          const dateStr = o.createdAt ? fmtDate(new Date(o.createdAt).toISOString().split("T")[0]) : "";
+          doc.text(`${dateStr} — ${o.productName ?? "Produto"} (${o.quantity}x) — ${o.clientName ?? "Cliente"}`, 50, y, { continued: true, width: 350 });
+          doc.text(fmt(parseFloat(o.totalPrice ?? "0")), { align: "right" });
+        }
+        doc.moveDown(1);
+      }
+      doc.fontSize(9).fillColor("#aaa").text(`Gerado em ${new Date().toLocaleString("pt-BR")} · ${shopName}`, { align: "center" });
+      doc.end();
+      const pdfBuffer = await pdfPromise;
+      return { pdfBase64: pdfBuffer.toString("base64") };
+    }),
   }),
 
   // ─── Mensagens de Retorno Automáticas ────────────────────────────────────────
@@ -1596,6 +1679,7 @@ export const appRouter = router({
         note: z.string().optional(),
         barberId: z.number().optional(),
         tenantId: z.number().optional().nullable(),
+        supplierId: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
         const today = new Date().toISOString().slice(0, 10);
@@ -1607,7 +1691,8 @@ export const appRouter = router({
           reason: input.note ?? "Reposição de estoque",
           barberId: input.barberId,
           date: today,
-        });
+          supplierId: input.supplierId,
+        } as any);
         // 2. Se houver custo unitário, registrar despesa financeira
         if (input.unitCost && input.unitCost > 0) {
           const product = await db.getProductById(input.productId);
@@ -1864,6 +1949,38 @@ export const appRouter = router({
         await db.updateProductOrderStatus(input.id, "cancelled", { cancelReason: "Cancelado pelo cliente" });
         return { ok: true };
       }),
+  }),
+
+  suppliers: router({
+    list: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(({ input }) => db.getSuppliersByTenant(input.tenantId)),
+    create: publicProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        name: z.string().min(1),
+        contact: z.string().optional(),
+        phone: z.string().optional(),
+        email: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(({ input }) => db.createSupplier(input as any)),
+    update: publicProcedure
+      .input(z.object({
+        id: z.number(),
+        name: z.string().min(1).optional(),
+        contact: z.string().optional(),
+        phone: z.string().optional(),
+        email: z.string().optional(),
+        notes: z.string().optional(),
+      }))
+      .mutation(({ input }) => {
+        const { id, ...data } = input;
+        return db.updateSupplier(id, data as any);
+      }),
+    delete: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(({ input }) => db.deleteSupplier(input.id)),
   }),
 });
 export type AppRouter = typeof appRouter;

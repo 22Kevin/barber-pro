@@ -260,6 +260,13 @@
       "when": 1777171182692,
       "tag": "0036_stale_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1777173203564,
+      "tag": "0037_typical_harry_osborn",
+      "breakpoints": true
     }
   ]
 }
