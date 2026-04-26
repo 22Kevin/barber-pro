@@ -2,15 +2,16 @@
 import "./scripts/load-env.js";
 import type { ExpoConfig } from "expo/config";
 
-const bundleId = "space.manus.barber.pro.t20260223005104";
-const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
-const schemeFromBundleId = `manus${timestamp}`;
+// Bundle ID definitivo para as lojas (Google Play e App Store)
+// Domínio: usebarberpro.com
+const bundleId = "com.usebarberpro.app";
+const appScheme = "usebarberpro";
 
 const env = {
   appName: "Barber Pro",
   appSlug: "barber_app",
   logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/CHUXnjOFayrIGRtV.png",
-  scheme: schemeFromBundleId,
+  scheme: appScheme,
   iosBundleId: bundleId,
   androidPackage: bundleId,
   // Google Sign-In credentials (configure via Secrets panel)

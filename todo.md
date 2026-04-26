@@ -1657,3 +1657,11 @@
 - [x] Login com Google nativo via @react-native-google-signin/google-signin (independente do OAuth Manus)
 - [x] Campo googleId na tabela barbers para vincular conta Google ao barbeiro
 - [x] Rota admin.googleLogin no backend para autenticar barbeiro via Google ID Token
+
+## Preparação PWA e Lojas — Round 10 (Abr/2026)
+
+- [x] Atualizar Bundle ID para com.usebarberpro.app (domínio: usebarberpro.com)
+- [x] Atualizar scheme do app para "usebarberpro"
+- [ ] Registrar domínio usebarberpro.com (disponível no Namecheap por ~$6,79/1º ano)
+- [ ] Configurar PWA manifest (nome, ícones, theme_color, display: standalone)
+- [ ] Configurar Google Sign-In (EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID + EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME)
