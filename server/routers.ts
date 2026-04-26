@@ -783,7 +783,7 @@ export const appRouter = router({
       .input(z.object({ clientId: z.number(), tenantId: z.number().optional().nullable() }))
       .query(({ input }) => db.getReviewsByClient(input.clientId, input.tenantId)),
     create: publicProcedure
-      .input(z.object({ tenantId: z.number(), clientId: z.number(), serviceId: z.number(), appointmentId: z.number().optional(), rating: z.number().min(1).max(5), comment: z.string().optional() }))
+      .input(z.object({ tenantId: z.number(), clientId: z.number(), serviceId: z.number().optional().nullable(), appointmentId: z.number().optional().nullable(), productId: z.number().optional().nullable(), orderId: z.number().optional().nullable(), rating: z.number().min(1).max(5), comment: z.string().optional() }))
       .mutation(({ input }) => db.createReview(input)),
   }),
 

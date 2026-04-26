@@ -40,6 +40,14 @@ export default function ProductsScreen() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
+
+  const movementsQuery = trpc.stock.movements.useQuery(
+    { productId: historyProduct?.id ?? 0 },
+    { enabled: !!historyProduct }
+  );
+  const movements = movementsQuery.data ?? [];
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -158,6 +166,9 @@ export default function ProductsScreen() {
                 </View>
               </View>
               <View style={styles.cardActions}>
+                <Pressable onPress={() => { setHistoryProduct(item); setShowHistoryModal(true); }} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
+                  <IconSymbol name="chart.bar.fill" size={18} color="#3B82F6" />
+                </Pressable>
                 <Pressable onPress={() => openEdit(item)} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
                   <IconSymbol name="pencil" size={18} color="#C9A84C" />
                 </Pressable>
@@ -237,6 +248,64 @@ export default function ProductsScreen() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
+
+      {/* Modal de Histórico de Movimentações */}
+      <Modal visible={showHistoryModal} animationType="slide" transparent onRequestClose={() => setShowHistoryModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxHeight: "80%" }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Movimentações</Text>
+                {historyProduct && <Text style={{ fontSize: 12, color: "#888880", marginTop: 2 }}>{historyProduct.name}</Text>}
+              </View>
+              <Pressable onPress={() => { setShowHistoryModal(false); setHistoryProduct(null); }}>
+                <IconSymbol name="xmark" size={22} color="#888880" />
+              </Pressable>
+            </View>
+
+            {movementsQuery.isLoading ? (
+              <ActivityIndicator color="#C9A84C" style={{ marginVertical: 32 }} />
+            ) : movements.length === 0 ? (
+              <View style={{ alignItems: "center", paddingVertical: 40, gap: 8 }}>
+                <Text style={{ fontSize: 32 }}>📦</Text>
+                <Text style={{ color: "#888880", fontSize: 14 }}>Nenhuma movimentação registrada</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={movements}
+                keyExtractor={(m: any) => String(m.id)}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item: m }: { item: any }) => {
+                  const isIn = m.type === "in" || (m.type === "adjustment" && m.quantity > 0);
+                  const color = isIn ? "#22C55E" : m.type === "adjustment" ? "#F59E0B" : "#EF4444";
+                  const icon = isIn ? "↑" : m.type === "adjustment" ? "⇅" : "↓";
+                  const typeLabel = m.type === "in" ? "Entrada" : m.type === "out" ? "Saída" : "Ajuste";
+                  return (
+                    <View style={styles.movRow}>
+                      <View style={[styles.movIcon, { backgroundColor: color + "22" }]}>
+                        <Text style={{ fontSize: 16, color }}>{icon}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                          <Text style={{ fontSize: 13, fontWeight: "700", color: "#F5F5F0" }}>{typeLabel}</Text>
+                          <Text style={{ fontSize: 14, fontWeight: "800", color }}>
+                            {m.quantity > 0 ? "+" : ""}{m.quantity}
+                          </Text>
+                        </View>
+                        {m.reason ? <Text style={{ fontSize: 12, color: "#888880", marginTop: 2 }}>{m.reason}</Text> : null}
+                        {m.barberName ? <Text style={{ fontSize: 11, color: "#555", marginTop: 1 }}>Por: {m.barberName}</Text> : null}
+                        <Text style={{ fontSize: 11, color: "#444", marginTop: 2 }}>
+                          {m.date ? new Date(m.date).toLocaleDateString("pt-BR") : ""}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                }}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -291,4 +360,6 @@ const styles = StyleSheet.create({
   mediaHintText: { flex: 1, fontSize: 12, color: "#888880", lineHeight: 17 },
   createdBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#22C55E18", borderRadius: 8, padding: 10, marginBottom: 10, borderWidth: 1, borderColor: "#22C55E44" },
   createdBannerText: { flex: 1, fontSize: 12, color: "#22C55E", fontWeight: "600", lineHeight: 17 },
+  movRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#1E1E1E" },
+  movIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center" },
 });

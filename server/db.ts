@@ -956,7 +956,7 @@ export async function getRecentReviews(limit = 5, tenantId?: number | null) {
     .limit(limit);
   // Enriquecer com nome do cliente e serviço
   const clientIds = [...new Set(result.map(r => r.clientId))];
-  const serviceIds = [...new Set(result.map(r => r.serviceId))];
+  const serviceIds = [...new Set(result.map(r => r.serviceId).filter((id): id is number => id != null))];
   const [clientList, serviceList] = await Promise.all([
     clientIds.length > 0 ? db.select({ id: clients.id, name: clients.name }).from(clients).where(inArray(clients.id, clientIds)) : [],
     serviceIds.length > 0 ? db.select({ id: services.id, name: services.name }).from(services).where(inArray(services.id, serviceIds)) : [],
@@ -966,11 +966,11 @@ export async function getRecentReviews(limit = 5, tenantId?: number | null) {
   return result.map(r => ({
     ...r,
     clientName: clientMap[r.clientId] ?? "Cliente",
-    serviceName: serviceMap[r.serviceId] ?? "Serviço",
+    serviceName: r.serviceId != null ? (serviceMap[r.serviceId] ?? "Serviço") : "Produto",
   }));
 }
 
-export async function createReview(data: { tenantId: number; clientId: number; serviceId: number; appointmentId?: number; rating: number; comment?: string }) {
+export async function createReview(data: { tenantId: number; clientId: number; serviceId?: number | null; appointmentId?: number | null; productId?: number | null; orderId?: number | null; rating: number; comment?: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(reviews).values(data);
@@ -2263,6 +2263,7 @@ export async function getProductOrdersByTenant(tenantId: number, status?: string
       note: productOrders.note,
       status: productOrders.status,
       estimatedDays: productOrders.estimatedDays,
+      confirmedAt: productOrders.confirmedAt,
       cancelledAt: productOrders.cancelledAt,
       cancelReason: productOrders.cancelReason,
       deliveredAt: productOrders.deliveredAt,
@@ -2381,6 +2382,7 @@ export async function getProductOrderById(id: number) {
       note: productOrders.note,
       status: productOrders.status,
       estimatedDays: productOrders.estimatedDays,
+      confirmedAt: productOrders.confirmedAt,
       cancelledAt: productOrders.cancelledAt,
       cancelReason: productOrders.cancelReason,
       deliveredAt: productOrders.deliveredAt,

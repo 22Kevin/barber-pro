@@ -253,6 +253,13 @@
       "when": 1777168798174,
       "tag": "0035_little_tony_stark",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1777171182692,
+      "tag": "0036_stale_monster_badoon",
+      "breakpoints": true
     }
   ]
 }

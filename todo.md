@@ -1618,3 +1618,9 @@
 - [x] Gráfico de barras de evolução de encomendas por período no painel Relatórios
 - [x] Tela de detalhe de encomenda no app do cliente (timeline de status + foto + prazo + cancelamento + botão Encomendas na tela Histórico)
 - [x] Alerta de estoque mínimo no Dashboard do admin (banner laranja clicando em Produtos)
+
+## Melhorias de Encomendas Round 5 (Abr/2026)
+
+- [x] Reordenar encomendas por urgência no app do barbeiro (prazo vencido/próximo no topo com badge vermelho)
+- [x] Histórico de movimentações de estoque por produto no admin (entradas, saídas, encomendas)
+- [x] Avaliação de produto pós-entrega no app do cliente (botão ⭐ Avaliar após status=delivered)

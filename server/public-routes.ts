@@ -381,7 +381,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     : [];
 
   // Avaliações recentes (máx 6) — filtradas por tenant para isolamento
-  const allReviewsRaw: Array<{ id: number; clientId: number; serviceId: number; rating: number; comment: string | null; createdAt: Date }> = [];
+  const allReviewsRaw: Array<{ id: number; clientId: number; serviceId: number | null; rating: number; comment: string | null; createdAt: Date }> = [];
   for (const svc of serviceList.slice(0, 10)) {
     const r = await db.getReviewsByService(svc.id, tenant.id);
     allReviewsRaw.push(...r);
@@ -550,7 +550,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
               <span class="review-stars">${stars(r.rating)}</span>
             </div>
             ${r.comment ? `<div class="review-comment">${escapeHtml(r.comment)}</div>` : ""}
-            <div class="review-service">Serviço: ${escapeHtml(serviceMap[r.serviceId] ?? "—")}</div>
+            <div class="review-service">Serviço: ${escapeHtml(r.serviceId != null ? (serviceMap[r.serviceId] ?? "—") : "Produto")}</div>
           </div>
         `).join("")}
       </div>

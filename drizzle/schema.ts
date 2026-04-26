@@ -340,8 +340,10 @@ export const reviews = mysqlTable("reviews", {
   id: int("id").autoincrement().primaryKey(),
   tenantId: int("tenantId").notNull().default(0), // isolamento multi-tenant
   clientId: int("clientId").notNull(),
-  serviceId: int("serviceId").notNull(),
+  serviceId: int("serviceId"), // null para avaliações de produto
   appointmentId: int("appointmentId"),
+  productId: int("productId"), // null para avaliações de serviço
+  orderId: int("orderId"), // referencia product_orders
   rating: int("rating").notNull(), // 1-5
   comment: text("comment"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -620,6 +622,7 @@ export const productOrders = mysqlTable("product_orders", {
   note: text("note"),
   status: mysqlEnum("status", ["received", "confirmed", "preparing", "ready", "delivered", "cancelled"]).default("received").notNull(),
   estimatedDays: int("estimatedDays"),
+  confirmedAt: timestamp("confirmedAt"),
   cancelledAt: timestamp("cancelledAt"),
   cancelReason: text("cancelReason"),
   deliveredAt: timestamp("deliveredAt"),

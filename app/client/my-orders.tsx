@@ -4,8 +4,12 @@ import {
   Alert,
   FlatList,
   Image,
+  Modal,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -110,8 +114,109 @@ const tl = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
 });
 
+// ─── Modal de Avaliação ─────────────────────────────────────────────────────────
+function ReviewModal({ visible, order, clientId, tenantId, onClose }: {
+  visible: boolean;
+  order: any;
+  clientId: number;
+  tenantId: number;
+  onClose: () => void;
+}) {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const utils = trpc.useUtils();
+
+  const createReview = trpc.reviews.create.useMutation({
+    onSuccess: () => {
+      utils.productOrders.myOrders.invalidate();
+      Alert.alert("⭐ Obrigado!", "Sua avaliação foi enviada com sucesso.");
+      onClose();
+    },
+    onError: (e) => Alert.alert("Erro", e.message),
+  });
+
+  function handleSubmit() {
+    if (!order) return;
+    createReview.mutate({
+      tenantId,
+      clientId,
+      productId: order.productId,
+      orderId: order.id,
+      rating,
+      comment: comment.trim() || undefined,
+    });
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={rv.overlay} onPress={onClose}>
+        <Pressable style={rv.sheet} onPress={(e) => e.stopPropagation()}>
+          <View style={rv.handle} />
+          <Text style={rv.title}>Avaliar Produto</Text>
+          {order && (
+            <Text style={rv.productName} numberOfLines={1}>{order.productName ?? "Produto"}</Text>
+          )}
+
+          {/* Estrelas */}
+          <View style={rv.starsRow}>
+            {[1, 2, 3, 4, 5].map((s) => (
+              <TouchableOpacity key={s} onPress={() => setRating(s)} activeOpacity={0.7}>
+                <Text style={[rv.star, s <= rating && rv.starActive]}>★</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={rv.ratingLabel}>
+            {rating === 1 ? "Péssimo" : rating === 2 ? "Ruim" : rating === 3 ? "Regular" : rating === 4 ? "Bom" : "Excelente"}
+          </Text>
+
+          {/* Comentário */}
+          <TextInput
+            style={rv.input}
+            value={comment}
+            onChangeText={setComment}
+            placeholder="Deixe um comentário (opcional)..."
+            placeholderTextColor="#555"
+            multiline
+            numberOfLines={3}
+            maxLength={300}
+            returnKeyType="done"
+          />
+
+          <TouchableOpacity
+            style={[rv.submitBtn, createReview.isPending && { opacity: 0.6 }]}
+            onPress={handleSubmit}
+            activeOpacity={0.85}
+            disabled={createReview.isPending}
+          >
+            {createReview.isPending ? (
+              <ActivityIndicator color="#0A0A0A" />
+            ) : (
+              <Text style={rv.submitBtnText}>⭐ Enviar Avaliação</Text>
+            )}
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const rv = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "#000000AA", justifyContent: "flex-end" },
+  sheet: { backgroundColor: "#111827", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, borderWidth: 1, borderColor: "#1F2937" },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#374151", alignSelf: "center", marginBottom: 20 },
+  title: { fontSize: 20, fontWeight: "800", color: "#F9FAFB", textAlign: "center", marginBottom: 4 },
+  productName: { fontSize: 13, color: "#6B7280", textAlign: "center", marginBottom: 20 },
+  starsRow: { flexDirection: "row", justifyContent: "center", gap: 8, marginBottom: 8 },
+  star: { fontSize: 36, color: "#374151" },
+  starActive: { color: "#EAB308" },
+  ratingLabel: { textAlign: "center", fontSize: 14, color: "#EAB308", fontWeight: "600", marginBottom: 16 },
+  input: { backgroundColor: "#1F2937", borderWidth: 1, borderColor: "#374151", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: "#F9FAFB", height: 80, textAlignVertical: "top", marginBottom: 16 },
+  submitBtn: { backgroundColor: "#EAB308", borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+  submitBtnText: { fontSize: 15, fontWeight: "800", color: "#0A0A0A" },
+});
+
 // ─── Card de encomenda ────────────────────────────────────────────────────────
-function OrderCard({ item, onCancel }: { item: any; onCancel: () => void }) {
+function OrderCard({ item, onCancel, onReview }: { item: any; onCancel: () => void; onReview: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const status = item.status as OrderStatus;
   const color = STATUS_COLORS[status] ?? "#888";
@@ -193,19 +298,27 @@ function OrderCard({ item, onCancel }: { item: any; onCancel: () => void }) {
         </TouchableOpacity>
       )}
 
+      {/* Botão Avaliar (apenas quando entregue) */}
+      {isDelivered && (
+        <TouchableOpacity style={styles.reviewBtn} onPress={onReview} activeOpacity={0.85}>
+          <Text style={styles.reviewBtnText}>⭐ Avaliar produto</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Indicador de expandir */}
       <Text style={styles.expandHint}>{expanded ? "▲ Fechar" : "▼ Ver timeline"}</Text>
     </TouchableOpacity>
   );
 }
 
-// ─── Tela principal ───────────────────────────────────────────────────────────
+// ─── Tela principal ─────────────────────────────────────────────────────────
 export default function MyOrdersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useTabBarHeight();
   const { client, isAuthenticated } = useClientAuth();
   const utils = trpc.useUtils();
+  const [reviewOrder, setReviewOrder] = useState<any>(null);
 
   const ordersQuery = trpc.productOrders.myOrders.useQuery(
     { clientId: client?.id ?? 0, tenantId: client?.tenantId ?? client?.preferredTenantId ?? 0 },
@@ -289,12 +402,25 @@ export default function MyOrdersScreen() {
           data={orders}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
-            <OrderCard item={item} onCancel={() => handleCancel(item)} />
+            <OrderCard
+              item={item}
+              onCancel={() => handleCancel(item)}
+              onReview={() => setReviewOrder(item)}
+            />
           )}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: tabBarHeight + 16 }}
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Modal de Avaliação */}
+      <ReviewModal
+        visible={!!reviewOrder}
+        order={reviewOrder}
+        clientId={client?.id ?? 0}
+        tenantId={client?.tenantId ?? client?.preferredTenantId ?? 0}
+        onClose={() => setReviewOrder(null)}
+      />
     </ScreenContainer>
   );
 }
@@ -347,4 +473,6 @@ const styles = StyleSheet.create({
   emptySub: { fontSize: 14, color: "#6B7280", textAlign: "center", marginBottom: 24 },
   shopBtn: { backgroundColor: "#EAB308", paddingHorizontal: 28, paddingVertical: 12, borderRadius: 24 },
   shopBtnText: { fontSize: 14, fontWeight: "700", color: "#0A0A0A" },
+  reviewBtn: { backgroundColor: "#1A1A0A", borderRadius: 10, paddingVertical: 10, alignItems: "center", marginTop: 8, borderWidth: 1, borderColor: "#EAB30833" },
+  reviewBtnText: { fontSize: 13, color: "#EAB308", fontWeight: "700" },
 });

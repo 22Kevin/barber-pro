@@ -75,7 +75,26 @@ type Order = {
   totalPrice?: string | null;
   cancelReason?: string | null;
   createdAt?: string | Date | null;
+  confirmedAt?: string | Date | null;
 };
+
+/** Retorna os dias restantes até o prazo estimado (negativo = vencido) */
+function getDeadlineDays(order: Order): number | null {
+  if (!order.confirmedAt || !order.estimatedDays) return null;
+  const confirmed = new Date(order.confirmedAt).getTime();
+  const deadline = confirmed + order.estimatedDays * 24 * 60 * 60 * 1000;
+  const diff = Math.ceil((deadline - Date.now()) / (24 * 60 * 60 * 1000));
+  return diff;
+}
+
+/** Urgency score: menor = mais urgente */
+function urgencyScore(order: Order): number {
+  const active = ["received", "confirmed", "preparing", "ready"];
+  if (!active.includes(order.status)) return 999;
+  const days = getDeadlineDays(order);
+  if (days === null) return 500; // sem prazo definido, prioridade média
+  return days; // negativo = vencido (mais urgente)
+}
 
 export default function OrdersScreen() {
   const tabBarHeight = useTabBarHeight();
@@ -124,7 +143,9 @@ export default function OrdersScreen() {
     onError: (e) => Alert.alert("Erro", e.message),
   });
 
-  const orders = (ordersQuery.data ?? []) as Order[];
+  const rawOrders = (ordersQuery.data ?? []) as Order[];
+  // Ordenar: ativos com prazo vencido/próximo no topo, depois por data de criação
+  const orders = [...rawOrders].sort((a, b) => urgencyScore(a) - urgencyScore(b));
 
   function handleAdvanceStatus(order: Order) {
     const currentIdx = STATUS_FLOW.indexOf(order.status as OrderStatus);
@@ -235,16 +256,36 @@ export default function OrdersScreen() {
     const canCancel = status !== "delivered" && status !== "cancelled";
     const isCancelled = status === "cancelled";
 
+    const deadlineDays = getDeadlineDays(item);
+    const isOverdue = deadlineDays !== null && deadlineDays < 0 && !isCancelled && status !== "delivered";
+    const isUrgent = deadlineDays !== null && deadlineDays >= 0 && deadlineDays <= 1 && !isCancelled && status !== "delivered";
+
     return (
-      <TouchableOpacity style={styles.card} onPress={() => openDetail(item)} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={[styles.card, isOverdue && styles.cardOverdue, isUrgent && styles.cardUrgent]}
+        onPress={() => openDetail(item)}
+        activeOpacity={0.85}
+      >
         {/* Header do card */}
         <View style={styles.cardHeader}>
           <View style={[styles.statusBadge, { backgroundColor: color + "22", borderColor: color }]}>
             <Text style={[styles.statusText, { color }]}>{STATUS_LABELS[status] ?? status}</Text>
           </View>
-          <Text style={styles.cardDate}>
-            {item.createdAt ? new Date(item.createdAt).toLocaleDateString("pt-BR") : ""}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            {isOverdue && (
+              <View style={styles.urgencyBadge}>
+                <Text style={styles.urgencyBadgeText}>🔴 Vencido</Text>
+              </View>
+            )}
+            {isUrgent && !isOverdue && (
+              <View style={[styles.urgencyBadge, { backgroundColor: "#F5920022" }]}>
+                <Text style={[styles.urgencyBadgeText, { color: "#F59200" }]}>⚠️ Urgente</Text>
+              </View>
+            )}
+            <Text style={styles.cardDate}>
+              {item.createdAt ? new Date(item.createdAt).toLocaleDateString("pt-BR") : ""}
+            </Text>
+          </View>
         </View>
 
         {/* Produto e cliente */}
@@ -805,4 +846,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cancelConfirmBtnText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
+  cardOverdue: { borderColor: "#EF444466", borderWidth: 1.5 },
+  cardUrgent: { borderColor: "#F5920066", borderWidth: 1.5 },
+  urgencyBadge: { backgroundColor: "#EF444422", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  urgencyBadgeText: { fontSize: 10, fontWeight: "700", color: "#EF4444" },
 });
