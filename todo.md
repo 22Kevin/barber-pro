@@ -1585,10 +1585,10 @@
 
 ## Encomendas no App do Barbeiro e Melhorias (Abr/2026)
 
-- [ ] Aba "Encomendas" no menu drawer do app do barbeiro com listagem de pedidos
-- [ ] Filtro por status (Todos / Recebido / Confirmado / Em preparo / Pronto / Entregue) na aba Encomendas
-- [ ] Ações de atualização de status diretamente nos cards de encomenda no app
-- [ ] Badge de contador de encomendas pendentes no item do menu drawer
-- [ ] Avaliação de produto pós-entrega: botão "⭐ Avaliar" no card da encomenda do cliente após status=delivered
-- [ ] Relatório de encomendas no painel admin (total por período, produtos mais encomendados, ticket médio)
-- [ ] Notificação push ao cliente ao atualizar status de encomenda (via expo-notifications)
+- [x] Aba "Encomendas" no menu drawer do app do barbeiro com listagem de pedidos
+- [x] Filtro por status (Todos / Recebido / Confirmado / Em preparo / Pronto / Entregue) na aba Encomendas
+- [x] Ações de atualização de status diretamente nos cards de encomenda no app
+- [x] Badge de contador de encomendas pendentes no item do menu drawer
+- [x] Avaliação de produto pós-entrega: botão "⭐ Avaliar" no card da encomenda do cliente após status=delivered
+- [x] Relatório de encomendas no painel admin (total por período, produtos mais encomendados, ticket médio)
+- [x] Notificação WhatsApp ao cliente ao atualizar status de encomenda (via link wa.me — push notifications substituídas por WhatsApp)

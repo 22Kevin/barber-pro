@@ -3,7 +3,9 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -74,6 +76,11 @@ export default function OrdersScreen() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [estimatedDays, setEstimatedDays] = useState("");
 
+  // Modal para prazo estimado (substitui Alert.prompt que não funciona no Android)
+  const [showDaysModal, setShowDaysModal] = useState(false);
+  const [pendingAdvanceOrder, setPendingAdvanceOrder] = useState<Order | null>(null);
+  const [daysInput, setDaysInput] = useState("");
+
   const utils = trpc.useUtils();
 
   const ordersQuery = trpc.productOrders.list.useQuery(
@@ -87,6 +94,9 @@ export default function OrdersScreen() {
       utils.productOrders.pendingCount.invalidate();
       setShowDetailModal(false);
       setSelectedOrder(null);
+      setShowDaysModal(false);
+      setPendingAdvanceOrder(null);
+      setDaysInput("");
     },
     onError: (e) => Alert.alert("Erro", e.message),
   });
@@ -99,24 +109,10 @@ export default function OrdersScreen() {
     const nextStatus = STATUS_FLOW[currentIdx + 1];
 
     if (nextStatus === "confirmed") {
-      // Pede prazo estimado ao confirmar
-      Alert.prompt(
-        "Prazo de Retirada",
-        "Em quantos dias o produto estará pronto? (opcional)",
-        [
-            { text: "Pular", onPress: () => updateStatusMutation.mutate({ id: order.id, status: nextStatus }) },
-          {
-            text: "Confirmar",
-            onPress: (days: string | undefined) => {
-              const d = days ? parseInt(days) : undefined;
-              updateStatusMutation.mutate({ id: order.id, status: nextStatus, estimatedDays: isNaN(d ?? NaN) ? undefined : d });
-            },
-          },
-        ],
-        "plain-text",
-        "",
-        "numeric"
-      );
+      // Mostra modal customizado para pedir prazo estimado (funciona no Android e iOS)
+      setPendingAdvanceOrder(order);
+      setDaysInput("");
+      setShowDaysModal(true);
     } else {
       Alert.alert(
         "Atualizar Status",
@@ -127,6 +123,16 @@ export default function OrdersScreen() {
         ]
       );
     }
+  }
+
+  function confirmDaysModal() {
+    if (!pendingAdvanceOrder) return;
+    const d = daysInput ? parseInt(daysInput) : undefined;
+    updateStatusMutation.mutate({
+      id: pendingAdvanceOrder.id,
+      status: "confirmed",
+      estimatedDays: d && !isNaN(d) ? d : undefined,
+    });
   }
 
   function handleCancelOrder(order: Order) {
@@ -352,6 +358,55 @@ export default function OrdersScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Modal de prazo estimado (substitui Alert.prompt para compatibilidade Android) */}
+      <Modal visible={showDaysModal} transparent animationType="fade" onRequestClose={() => setShowDaysModal(false)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setShowDaysModal(false)}>
+            <Pressable style={styles.daysModalSheet} onPress={(e) => e.stopPropagation()}>
+              <Text style={styles.daysModalTitle}>Prazo de Retirada</Text>
+              <Text style={styles.daysModalSubtitle}>Em quantos dias o produto estará pronto? (opcional)</Text>
+              <TextInput
+                style={styles.daysInput}
+                value={daysInput}
+                onChangeText={setDaysInput}
+                placeholder="Ex: 3"
+                placeholderTextColor="#555"
+                keyboardType="numeric"
+                maxLength={3}
+                autoFocus
+              />
+              <View style={styles.daysModalActions}>
+                <TouchableOpacity
+                  style={styles.daysSkipBtn}
+                  onPress={() => {
+                    setDaysInput("");
+                    confirmDaysModal();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.daysSkipBtnText}>Pular</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.daysConfirmBtn, updateStatusMutation.isPending && { opacity: 0.6 }]}
+                  onPress={confirmDaysModal}
+                  disabled={updateStatusMutation.isPending}
+                  activeOpacity={0.8}
+                >
+                  {updateStatusMutation.isPending ? (
+                    <ActivityIndicator size="small" color="#0A0A0A" />
+                  ) : (
+                    <Text style={styles.daysConfirmBtnText}>Confirmar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -457,4 +512,48 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: "row", gap: 10, marginTop: 8 },
   closeModalBtn: { flex: 1, backgroundColor: "#1A1A1A", borderRadius: 10, paddingVertical: 12, alignItems: "center", borderWidth: 1, borderColor: "#2A2A2A" },
   closeModalBtnText: { color: "#888", fontSize: 14, fontWeight: "600" },
+  // Days modal
+  daysModalSheet: {
+    backgroundColor: "#141414",
+    borderRadius: 16,
+    padding: 20,
+    margin: 20,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+    alignSelf: "center",
+    width: "90%",
+  },
+  daysModalTitle: { fontSize: 17, fontWeight: "800", color: "#F5F5F0", textAlign: "center" },
+  daysModalSubtitle: { fontSize: 13, color: "#888", textAlign: "center" },
+  daysInput: {
+    backgroundColor: "#1A1A1A",
+    borderWidth: 1,
+    borderColor: "#333",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: "#F5F5F0",
+    fontSize: 16,
+    textAlign: "center",
+  },
+  daysModalActions: { flexDirection: "row", gap: 10, marginTop: 4 },
+  daysSkipBtn: {
+    flex: 1,
+    backgroundColor: "#1A1A1A",
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+  },
+  daysSkipBtnText: { color: "#888", fontSize: 14, fontWeight: "600" },
+  daysConfirmBtn: {
+    flex: 2,
+    backgroundColor: "#C9A84C",
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  daysConfirmBtnText: { color: "#0A0A0A", fontSize: 14, fontWeight: "700" },
 });
