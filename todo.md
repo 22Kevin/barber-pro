@@ -1612,3 +1612,9 @@
 - [x] Notificação push ao cliente ao mudar status da encomenda no app do barbeiro
 - [x] Foto do produto no card de encomenda no app do barbeiro
 - [x] Relatório de encomendas no painel financeiro (serviços vs produtos encomendados)
+
+## Melhorias de Encomendas Round 4 (Abr/2026)
+
+- [x] Gráfico de barras de evolução de encomendas por período no painel Relatórios
+- [x] Tela de detalhe de encomenda no app do cliente (timeline de status + foto + prazo + cancelamento + botão Encomendas na tela Histórico)
+- [x] Alerta de estoque mínimo no Dashboard do admin (banner laranja clicando em Produtos)

@@ -52,6 +52,11 @@ export default function DashboardScreen() {
   const appointmentsQuery = trpc.appointments.allByDate.useQuery({ date: today, tenantId });
   const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
   const pendingPaymentsQuery = trpc.payments.pendingList.useQuery();
+  const lowStockQuery = trpc.stock.lowStock.useQuery(
+    { tenantId: tenantId ?? undefined },
+    { enabled: !!tenantId, staleTime: 5 * 60 * 1000 }
+  );
+  const lowStockItems = lowStockQuery.data ?? [];
 
   const utils = trpc.useUtils();
 
@@ -80,6 +85,7 @@ export default function DashboardScreen() {
       utils.dashboard.stats.invalidate(),
       utils.appointments.allByDate.invalidate(),
       utils.payments.pendingList.invalidate(),
+      utils.stock.lowStock.invalidate(),
     ]);
     setRefreshing(false);
   }, [utils]);
@@ -184,6 +190,26 @@ export default function DashboardScreen() {
           </Pressable>
         </View>
 
+        {/* Alerta de estoque mínimo */}
+        {lowStockItems.length > 0 && (
+          <Pressable
+            style={styles.lowStockBanner}
+            onPress={() => router.push("/admin/(tabs)/products" as any)}
+          >
+            <Text style={styles.lowStockIcon}>⚠️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.lowStockTitle}>
+                {lowStockItems.length} produto{lowStockItems.length !== 1 ? "s" : ""} com estoque baixo
+              </Text>
+              <Text style={styles.lowStockSub} numberOfLines={2}>
+                {lowStockItems.slice(0, 3).map((p: any) => `${p.name} (${p.stockQuantity ?? 0})`).join(" · ")}
+                {lowStockItems.length > 3 ? " · ..." : ""}
+              </Text>
+            </View>
+            <Text style={styles.lowStockArrow}>›</Text>
+          </Pressable>
+        )}
+
         {/* Pagamentos Pendentes MP */}
         {(pendingPaymentsQuery.data?.length ?? 0) > 0 && (
           <>
@@ -270,4 +296,9 @@ const styles = StyleSheet.create({
   trialBannerIcon:  { fontSize: 14 },
   trialBannerText:  { flex: 1, fontSize: 13, color: "#C9A84C", fontWeight: "600" },
   trialBannerTextUrgent: { color: "#F87171" },
+  lowStockBanner: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginTop: 12, marginBottom: 4, backgroundColor: "#1A0D00", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: "#F9730044" },
+  lowStockIcon: { fontSize: 20 },
+  lowStockTitle: { fontSize: 13, color: "#F97316", fontWeight: "700", marginBottom: 2 },
+  lowStockSub: { fontSize: 11, color: "#9CA3AF" },
+  lowStockArrow: { fontSize: 20, color: "#F97316", fontWeight: "700" },
 });

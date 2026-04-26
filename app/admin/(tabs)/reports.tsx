@@ -116,12 +116,17 @@ export default function ReportsScreen() {
     { tenantId: tenantId ?? 0, ...dateRange },
     { enabled: !!tenantId }
   );
+  const ordersTimelineQuery = trpc.reports.ordersTimeline.useQuery(
+    { tenantId: tenantId ?? 0, period },
+    { enabled: !!tenantId }
+  );
 
   const revenue = revenueQuery.data;
   const topServices = topServicesQuery.data ?? [];
   const topClients = topClientsQuery.data ?? [];
   const occupancy = occupancyQuery.data ?? [];
   const ordersSummary = ordersSummaryQuery.data;
+  const ordersTimeline = ordersTimelineQuery.data;
 
   const PERIODS: { key: Period; label: string }[] = [
     { key: "week", label: "7 dias" },
@@ -356,6 +361,18 @@ export default function ReportsScreen() {
               <Text style={styles.cardTotal}>{formatCurrency(ordersSummary.totalRevenue)}</Text>
             )}
           </View>
+          {/* Gráfico de evolução */}
+          {ordersTimelineQuery.isLoading ? (
+            <ActivityIndicator color="#C9A84C" style={{ marginVertical: 12 }} />
+          ) : ordersTimeline && ordersTimeline.total > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              <BarChart
+                labels={ordersTimeline.labels}
+                data={ordersTimeline.data}
+              />
+            </ScrollView>
+          ) : null}
+
           {ordersSummaryQuery.isLoading ? (
             <ActivityIndicator color="#C9A84C" style={{ marginVertical: 16 }} />
           ) : ordersSummary ? (

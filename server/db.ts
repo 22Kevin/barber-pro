@@ -2285,7 +2285,28 @@ export async function getProductOrdersByTenant(tenantId: number, status?: string
 export async function getProductOrdersByClient(clientId: number, tenantId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(productOrders)
+  return db
+    .select({
+      id: productOrders.id,
+      tenantId: productOrders.tenantId,
+      clientId: productOrders.clientId,
+      productId: productOrders.productId,
+      quantity: productOrders.quantity,
+      note: productOrders.note,
+      status: productOrders.status,
+      estimatedDays: productOrders.estimatedDays,
+      cancelledAt: productOrders.cancelledAt,
+      cancelReason: productOrders.cancelReason,
+      deliveredAt: productOrders.deliveredAt,
+      createdAt: productOrders.createdAt,
+      updatedAt: productOrders.updatedAt,
+      productName: products.name,
+      productPrice: products.price,
+      totalPrice: sql<string>`CAST(${products.price} * ${productOrders.quantity} AS CHAR)`,
+      productImageUrl: sql<string | null>`(SELECT url FROM media_files WHERE entityType = 'product' AND entityId = ${productOrders.productId} AND type = 'image' ORDER BY \`order\` ASC LIMIT 1)`,
+    })
+    .from(productOrders)
+    .leftJoin(products, eq(productOrders.productId, products.id))
     .where(and(eq(productOrders.clientId, clientId), eq(productOrders.tenantId, tenantId)))
     .orderBy(desc(productOrders.createdAt));
 }

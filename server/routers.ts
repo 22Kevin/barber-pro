@@ -1306,6 +1306,58 @@ export const appRouter = router({
       const pdfBuffer = await pdfPromise;
       return { pdfBase64: pdfBuffer.toString("base64") };
     }),
+  ordersTimeline: publicProcedure
+    .input(z.object({ tenantId: z.number(), period: z.enum(["week", "month", "year"]).default("month") }))
+    .query(async ({ input }) => {
+      const orders = await db.getProductOrdersByTenant(input.tenantId);
+      const today = new Date();
+      const labels: string[] = [];
+      const data: number[] = [];
+      if (input.period === "week") {
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(today);
+          d.setDate(today.getDate() - i);
+          const dateStr = d.toISOString().split("T")[0];
+          const count = (orders as any[]).filter((o) => {
+            const od = o.createdAt ? new Date(o.createdAt).toISOString().split("T")[0] : "";
+            return od === dateStr;
+          }).length;
+          labels.push(["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][d.getDay()]);
+          data.push(count);
+        }
+      } else if (input.period === "month") {
+        for (let i = 3; i >= 0; i--) {
+          const end = new Date(today);
+          end.setDate(today.getDate() - i * 7);
+          const start = new Date(end);
+          start.setDate(end.getDate() - 6);
+          const startStr = start.toISOString().split("T")[0];
+          const endStr = end.toISOString().split("T")[0];
+          const count = (orders as any[]).filter((o) => {
+            const od = o.createdAt ? new Date(o.createdAt).toISOString().split("T")[0] : "";
+            return od >= startStr && od <= endStr;
+          }).length;
+          labels.push(`Sem ${4 - i}`);
+          data.push(count);
+        }
+      } else {
+        const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          const start = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`;
+          const lastDay = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+          const end = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${lastDay}`;
+          const count = (orders as any[]).filter((o) => {
+            const od = o.createdAt ? new Date(o.createdAt).toISOString().split("T")[0] : "";
+            return od >= start && od <= end;
+          }).length;
+          labels.push(MONTHS[d.getMonth()]);
+          data.push(count);
+        }
+      }
+      const total = data.reduce((a, b) => a + b, 0);
+      return { labels, data, total };
+    }),
   ordersSummary: publicProcedure
     .input(z.object({ tenantId: z.number(), startDate: z.string(), endDate: z.string() }))
     .query(async ({ input }) => {
@@ -1757,8 +1809,20 @@ export const appRouter = router({
       .input(z.object({ tenantId: z.number() }))
       .query(async ({ input }) => {
         const orders = await db.getProductOrdersByTenant(input.tenantId, undefined);
-        const pending = (orders as any[]).filter((o) => !['delivered', 'cancelled'].includes(o.status));
+        const pending = (orders as any[]).filter((o) => !["delivered", "cancelled"].includes(o.status));
         return { count: pending.length };
+      }),
+    myOrders: publicProcedure
+      .input(z.object({ clientId: z.number(), tenantId: z.number() }))
+      .query(({ input }) => db.getProductOrdersByClient(input.clientId, input.tenantId)),
+    cancelByClient: publicProcedure
+      .input(z.object({ id: z.number(), clientId: z.number() }))
+      .mutation(async ({ input }) => {
+        const order = await db.getProductOrderById(input.id);
+        if (!order || (order as any).clientId !== input.clientId) throw new Error("Encomenda não encontrada");
+        if ((order as any).status !== "received") throw new Error("Apenas encomendas com status 'Recebido' podem ser canceladas pelo cliente");
+        await db.updateProductOrderStatus(input.id, "cancelled", { cancelReason: "Cancelado pelo cliente" });
+        return { ok: true };
       }),
   }),
 });

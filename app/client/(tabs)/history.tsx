@@ -245,8 +245,17 @@ export default function ClientHistory() {
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
-          <Text style={styles.headerTitle}>Meus Agendamentos</Text>
-          <Text style={styles.headerSubtitle}>Próximos e histórico de cortes</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>Meus Agendamentos</Text>
+            <Text style={styles.headerSubtitle}>Próximos e histórico de cortes</Text>
+          </View>
+          <TouchableOpacity
+            style={{ backgroundColor: "#1F2937", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: "#374151" }}
+            onPress={() => router.push("/client/my-orders" as any)}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: 11, color: "#EAB308", fontWeight: "700" }}>📦 Encomendas</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── Toggle próximos / histórico ─────────────────────────────────── */}
