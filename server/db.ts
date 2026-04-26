@@ -2242,7 +2242,32 @@ export async function getProductOrdersByTenant(tenantId: number, status?: string
   if (!db) return [];
   const conds: any[] = [eq(productOrders.tenantId, tenantId)];
   if (status && status !== "all") conds.push(eq(productOrders.status, status as any));
-  return db.select().from(productOrders).where(and(...conds)).orderBy(desc(productOrders.createdAt));
+  const rows = await db
+    .select({
+      id: productOrders.id,
+      tenantId: productOrders.tenantId,
+      clientId: productOrders.clientId,
+      productId: productOrders.productId,
+      quantity: productOrders.quantity,
+      note: productOrders.note,
+      status: productOrders.status,
+      estimatedDays: productOrders.estimatedDays,
+      cancelledAt: productOrders.cancelledAt,
+      cancelReason: productOrders.cancelReason,
+      deliveredAt: productOrders.deliveredAt,
+      createdAt: productOrders.createdAt,
+      updatedAt: productOrders.updatedAt,
+      clientName: clients.name,
+      clientPhone: clients.phone,
+      productName: products.name,
+      totalPrice: sql<string>`CAST(${products.price} * ${productOrders.quantity} AS CHAR)`,
+    })
+    .from(productOrders)
+    .leftJoin(clients, eq(productOrders.clientId, clients.id))
+    .leftJoin(products, eq(productOrders.productId, products.id))
+    .where(and(...conds))
+    .orderBy(desc(productOrders.createdAt));
+  return rows;
 }
 
 export async function getProductOrdersByClient(clientId: number, tenantId: number) {
@@ -2271,6 +2296,30 @@ export async function updateProductOrderStatus(
 export async function getProductOrderById(id: number) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.select().from(productOrders).where(eq(productOrders.id, id)).limit(1);
+  const result = await db
+    .select({
+      id: productOrders.id,
+      tenantId: productOrders.tenantId,
+      clientId: productOrders.clientId,
+      productId: productOrders.productId,
+      quantity: productOrders.quantity,
+      note: productOrders.note,
+      status: productOrders.status,
+      estimatedDays: productOrders.estimatedDays,
+      cancelledAt: productOrders.cancelledAt,
+      cancelReason: productOrders.cancelReason,
+      deliveredAt: productOrders.deliveredAt,
+      createdAt: productOrders.createdAt,
+      updatedAt: productOrders.updatedAt,
+      clientName: clients.name,
+      clientPhone: clients.phone,
+      productName: products.name,
+      totalPrice: sql<string>`CAST(${products.price} * ${productOrders.quantity} AS CHAR)`,
+    })
+    .from(productOrders)
+    .leftJoin(clients, eq(productOrders.clientId, clients.id))
+    .leftJoin(products, eq(productOrders.productId, products.id))
+    .where(eq(productOrders.id, id))
+    .limit(1);
   return result.length > 0 ? result[0] : null;
 }
