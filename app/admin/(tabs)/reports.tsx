@@ -21,6 +21,41 @@ import { useBarberAuth } from "@/lib/auth-context";
 type Period = "week" | "month" | "year";
 type Tab = "financeiro" | "servicos" | "encomendas" | "barbeiros";
 
+const CAT_COLORS = ["#EF4444", "#F59E0B", "#6366F1", "#10B981", "#EC4899", "#14B8A6", "#8B5CF6", "#F97316"];
+
+// Componente de linha do DRE
+function DreRow({ label, value, change, color, bold, invertChange }: {
+  label: string; value: number; change: number; color: string; bold?: boolean; invertChange?: boolean;
+}) {
+  // invertChange: para despesas, subir é ruim (vermelho)
+  const isPositive = invertChange ? change <= 0 : change >= 0;
+  const changeColor = isPositive ? "#4CAF50" : "#EF4444";
+  const arrow = change >= 0 ? "↑" : "↓";
+  return (
+    <View style={dreRowStyles.row}>
+      <Text style={[dreRowStyles.label, bold && dreRowStyles.bold]}>{label}</Text>
+      <View style={dreRowStyles.right}>
+        <Text style={[dreRowStyles.value, { color }, bold && dreRowStyles.bold]}>
+          {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)}
+        </Text>
+        {change !== 0 && (
+          <Text style={[dreRowStyles.change, { color: changeColor }]}>
+            {arrow} {Math.abs(change).toFixed(1)}%
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+const dreRowStyles = StyleSheet.create({
+  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 },
+  label: { fontSize: 14, color: "#888880", flex: 1 },
+  bold: { fontWeight: "700", color: "#F5F5F0", fontSize: 15 },
+  right: { alignItems: "flex-end" },
+  value: { fontSize: 14, fontWeight: "600" },
+  change: { fontSize: 11, marginTop: 1 },
+});
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
@@ -115,6 +150,22 @@ export default function ReportsScreen() {
     { tenantId, ...dateRange },
     { enabled: !!tenantId && activeTab === "financeiro" }
   );
+  const dreQuery = trpc.reports.dreComparative.useQuery(
+    { tenantId, ...dateRange },
+    { enabled: !!tenantId && activeTab === "financeiro" }
+  );
+  const expensesByCategoryQuery = trpc.reports.expensesByCategory.useQuery(
+    { tenantId, ...dateRange },
+    { enabled: !!tenantId && activeTab === "financeiro" }
+  );
+  const ticketAvgQuery = trpc.reports.ticketAvgTimeline.useQuery(
+    { tenantId, period },
+    { enabled: !!tenantId && activeTab === "financeiro" }
+  );
+  const projectionQuery = trpc.reports.revenueProjection.useQuery(
+    { tenantId },
+    { enabled: !!tenantId && activeTab === "financeiro" }
+  );
   const exportCsvQuery = trpc.export.financeiroCsv.useQuery(
     { tenantId, days: periodDays },
     { enabled: false }
@@ -129,6 +180,10 @@ export default function ReportsScreen() {
   const ordersSummary = ordersSummaryQuery.data;
   const ordersTimeline = ordersTimelineQuery.data;
   const expensesBySupplier = expensesBySupplierQuery.data ?? [];
+  const dre = dreQuery.data;
+  const expensesByCategory = expensesByCategoryQuery.data ?? [];
+  const ticketAvgTimeline = ticketAvgQuery.data;
+  const projection = projectionQuery.data;
 
   const PERIODS: { key: Period; label: string }[] = [
     { key: "week", label: "7 dias" },
@@ -219,12 +274,114 @@ export default function ReportsScreen() {
   // ─── Render por aba ───────────────────────────────────────────────────────
 
   function renderFinanceiro() {
+    const isLoadingDre = dreQuery.isLoading;
     return (
       <>
-        {/* Faturamento */}
+        {/* ── DRE Simplificado com comparativo ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Resultado do Período</Text>
+          {isLoadingDre ? (
+            <ActivityIndicator color="#C9A84C" style={{ marginVertical: 20 }} />
+          ) : dre ? (
+            <>
+              {/* Linha de receita */}
+              <DreRow
+                label="Receita Bruta"
+                value={dre.revenue}
+                change={dre.revenueChange}
+                color="#4CAF50"
+              />
+              <DreRow
+                label="Despesas"
+                value={dre.expenses}
+                change={dre.expensesChange}
+                color="#EF4444"
+                invertChange
+              />
+              <View style={styles.dreDivider} />
+              <DreRow
+                label="Lucro Líquido"
+                value={dre.netProfit}
+                change={dre.netProfitChange}
+                color={dre.netProfit >= 0 ? "#C9A84C" : "#EF4444"}
+                bold
+              />
+              {/* Margem e ticket médio */}
+              <View style={styles.dreMetaRow}>
+                <View style={styles.dreMetaBox}>
+                  <Text style={styles.dreMetaLabel}>Margem</Text>
+                  <Text style={[styles.dreMetaValue, { color: dre.margin >= 0 ? "#4CAF50" : "#EF4444" }]}>
+                    {dre.margin.toFixed(1)}%
+                  </Text>
+                </View>
+                <View style={styles.dreMetaBox}>
+                  <Text style={styles.dreMetaLabel}>Ticket Médio</Text>
+                  <Text style={styles.dreMetaValue}>{formatCurrency(dre.ticketAvg)}</Text>
+                  <Text style={styles.dreMetaChange}>
+                    {dre.ticketAvgChange >= 0 ? "↑" : "↓"} {Math.abs(dre.ticketAvgChange).toFixed(1)}% vs anterior
+                  </Text>
+                </View>
+                <View style={styles.dreMetaBox}>
+                  <Text style={styles.dreMetaLabel}>Vendas</Text>
+                  <Text style={styles.dreMetaValue}>{dre.salesCount}</Text>
+                  <Text style={styles.dreMetaChange}>vs {dre.prevSalesCount} anterior</Text>
+                </View>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.emptyText}>Nenhum dado disponível</Text>
+          )}
+        </View>
+
+        {/* ── Projeção de receita do mês ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Projeção do Mês</Text>
+          {projectionQuery.isLoading ? (
+            <ActivityIndicator color="#C9A84C" style={{ marginVertical: 16 }} />
+          ) : projection ? (
+            <>
+              {/* Barra de progresso do mês */}
+              <View style={{ marginBottom: 12 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+                  <Text style={styles.rankCount}>Dia {projection.dayOfMonth} de {projection.daysInMonth}</Text>
+                  <Text style={styles.rankCount}>{projection.progressPct.toFixed(0)}% do mês</Text>
+                </View>
+                <View style={[styles.barBg, { height: 8 }]}>
+                  <View style={[styles.barFill, { width: `${projection.progressPct}%` as any, height: 8, backgroundColor: "#6366F1" }]} />
+                </View>
+              </View>
+              {/* KPIs de projeção */}
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <View style={[styles.kpiBox, { borderColor: "#4CAF5033" }]}>
+                  <Text style={styles.kpiLabel}>Acumulado</Text>
+                  <Text style={[styles.kpiValue, { fontSize: 14, color: "#4CAF50" }]}>{formatCurrency(projection.revenueSoFar)}</Text>
+                </View>
+                <View style={[styles.kpiBox, { borderColor: "#C9A84C33" }]}>
+                  <Text style={styles.kpiLabel}>Projeção</Text>
+                  <Text style={[styles.kpiValue, { fontSize: 14 }]}>{formatCurrency(projection.projected)}</Text>
+                </View>
+                <View style={[styles.kpiBox, { borderColor: "#6366F133" }]}>
+                  <Text style={styles.kpiLabel}>Média/Dia</Text>
+                  <Text style={[styles.kpiValue, { fontSize: 14, color: "#6366F1" }]}>{formatCurrency(projection.dailyAvg)}</Text>
+                </View>
+              </View>
+              {/* Comparativo com mês anterior */}
+              <View style={styles.projCompRow}>
+                <Text style={styles.rankCount}>Mês anterior: {formatCurrency(projection.revenuePrevMonth)}</Text>
+                <Text style={[styles.rankCount, { color: projection.projectionVsPrev >= 0 ? "#4CAF50" : "#EF4444", fontWeight: "700" }]}>
+                  {projection.projectionVsPrev >= 0 ? "↑" : "↓"} {Math.abs(projection.projectionVsPrev).toFixed(1)}%
+                </Text>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.emptyText}>Nenhum dado disponível</Text>
+          )}
+        </View>
+
+        {/* ── Faturamento (gráfico) ── */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Faturamento</Text>
+            <Text style={styles.cardTitle}>Evolução do Faturamento</Text>
             {revenue && (
               <Text style={styles.cardTotal}>{formatCurrency(revenue.totalRevenue)}</Text>
             )}
@@ -240,7 +397,46 @@ export default function ReportsScreen() {
           )}
         </View>
 
-        {/* Despesas por Fornecedor */}
+        {/* ── Ticket Médio (gráfico de tendência) ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Ticket Médio por Período</Text>
+          {ticketAvgQuery.isLoading ? (
+            <ActivityIndicator color="#C9A84C" style={{ marginVertical: 20 }} />
+          ) : ticketAvgTimeline && ticketAvgTimeline.data.some(v => v > 0) ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <BarChart labels={ticketAvgTimeline.labels} data={ticketAvgTimeline.data} />
+            </ScrollView>
+          ) : (
+            <Text style={styles.emptyText}>Nenhum dado disponível</Text>
+          )}
+        </View>
+
+        {/* ── Despesas por Categoria ── */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Despesas por Categoria</Text>
+          {expensesByCategoryQuery.isLoading ? (
+            <ActivityIndicator color="#C9A84C" style={{ marginVertical: 16 }} />
+          ) : expensesByCategory.length === 0 ? (
+            <Text style={styles.emptyText}>Nenhuma despesa no período</Text>
+          ) : (
+            expensesByCategory.map((cat, i) => (
+              <View key={cat.category} style={styles.catRow}>
+                <View style={styles.catLabelRow}>
+                  <Text style={styles.rankName} numberOfLines={1}>{cat.category}</Text>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <Text style={[styles.rankValue, { color: "#EF4444" }]}>{formatCurrency(cat.total)}</Text>
+                    <Text style={styles.rankCount}>{cat.pct.toFixed(1)}% · {cat.count} lançamento{cat.count !== 1 ? "s" : ""}</Text>
+                  </View>
+                </View>
+                <View style={styles.barBg}>
+                  <View style={[styles.barFill, { width: `${cat.pct}%` as any, backgroundColor: CAT_COLORS[i % CAT_COLORS.length] }]} />
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* ── Reposições por Fornecedor ── */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Reposições por Fornecedor</Text>
           {expensesBySupplierQuery.isLoading ? (
@@ -700,4 +896,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   exportBtnText: { fontSize: 13, fontWeight: "600", color: "#888880" },
+  dreDivider: { height: 1, backgroundColor: "#2A2A2A", marginVertical: 4 },
+  dreMetaRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  dreMetaBox: {
+    flex: 1,
+    backgroundColor: "#1A1A1A",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+    padding: 10,
+    alignItems: "center",
+  },
+  dreMetaLabel: { fontSize: 10, color: "#555", marginBottom: 4, textAlign: "center" },
+  dreMetaValue: { fontSize: 14, fontWeight: "700", color: "#F5F5F0" },
+  dreMetaChange: { fontSize: 10, color: "#555", marginTop: 2, textAlign: "center" },
+  projCompRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#2A2A2A" },
+  catRow: { marginBottom: 12 },
+  catLabelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
 });

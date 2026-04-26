@@ -1643,3 +1643,10 @@
 - [x] Auditar todas as queries de relatórios para garantir filtro por tenantId
 - [x] Reorganizar tela de Relatórios em seções/abas bem definidas (Financeiro, Serviços, Encomendas, Barbeiros)
 - [x] Relatório de despesas por fornecedor na tela Relatórios
+
+## Melhorias Aba Financeiro — Round 9 (Abr/2026)
+
+- [x] DRE simplificado com comparativo ao período anterior (↑/↓ % vs período anterior)
+- [x] Breakdown de despesas por categoria (barras horizontais com valor e percentual)
+- [x] Ticket médio por período (valor médio por venda com tendência)
+- [x] Projeção de receita do mês com base na tendência atual

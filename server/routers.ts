@@ -1473,6 +1473,179 @@ export const appRouter = router({
     .query(async ({ input }) => {
       return db.getExpensesBySupplier(input.tenantId, input.startDate, input.endDate);
     }),
+
+  // DRE simplificado com comparativo ao período anterior
+  dreComparative: publicProcedure
+    .input(z.object({ tenantId: z.number(), startDate: z.string(), endDate: z.string() }))
+    .query(async ({ input }) => {
+      // Período atual
+      const salesCurrent = await db.getSalesByDateRange(input.startDate, input.endDate, undefined, input.tenantId);
+      const paidCurrent = (salesCurrent as any[]).filter(s => s.paymentStatus === "paid");
+      const revenue = paidCurrent.reduce((s: number, x: any) => s + parseFloat(x.total ?? "0"), 0);
+      const salesCount = paidCurrent.length;
+      const ticketAvg = salesCount > 0 ? revenue / salesCount : 0;
+      const expensesCurrent = await db.getExpensesByDateRange(input.startDate, input.endDate, input.tenantId);
+      const expenses = (expensesCurrent as any[]).reduce((s: number, x: any) => s + parseFloat(x.amount ?? "0"), 0);
+      const netProfit = revenue - expenses;
+      const margin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
+
+      // Período anterior (mesmo intervalo de dias)
+      const startD = new Date(input.startDate + "T12:00:00");
+      const endD = new Date(input.endDate + "T12:00:00");
+      const daysDiff = Math.max(1, Math.round((endD.getTime() - startD.getTime()) / 86400000) + 1);
+      const prevEnd = new Date(startD);
+      prevEnd.setDate(prevEnd.getDate() - 1);
+      const prevStart = new Date(prevEnd);
+      prevStart.setDate(prevStart.getDate() - (daysDiff - 1));
+      const prevStartStr = prevStart.toISOString().split("T")[0];
+      const prevEndStr = prevEnd.toISOString().split("T")[0];
+
+      const salesPrev = await db.getSalesByDateRange(prevStartStr, prevEndStr, undefined, input.tenantId);
+      const paidPrev = (salesPrev as any[]).filter(s => s.paymentStatus === "paid");
+      const prevRevenue = paidPrev.reduce((s: number, x: any) => s + parseFloat(x.total ?? "0"), 0);
+      const prevSalesCount = paidPrev.length;
+      const prevTicketAvg = prevSalesCount > 0 ? prevRevenue / prevSalesCount : 0;
+      const expensesPrev = await db.getExpensesByDateRange(prevStartStr, prevEndStr, input.tenantId);
+      const prevExpenses = (expensesPrev as any[]).reduce((s: number, x: any) => s + parseFloat(x.amount ?? "0"), 0);
+      const prevNetProfit = prevRevenue - prevExpenses;
+      const prevMargin = prevRevenue > 0 ? (prevNetProfit / prevRevenue) * 100 : 0;
+
+      function pctChange(curr: number, prev: number) {
+        if (prev === 0) return curr > 0 ? 100 : 0;
+        return ((curr - prev) / prev) * 100;
+      }
+
+      return {
+        revenue, expenses, netProfit, margin, ticketAvg, salesCount,
+        prevRevenue, prevExpenses, prevNetProfit, prevMargin, prevTicketAvg, prevSalesCount,
+        revenueChange: pctChange(revenue, prevRevenue),
+        expensesChange: pctChange(expenses, prevExpenses),
+        netProfitChange: pctChange(netProfit, prevNetProfit),
+        ticketAvgChange: pctChange(ticketAvg, prevTicketAvg),
+      };
+    }),
+
+  // Breakdown de despesas por categoria
+  expensesByCategory: publicProcedure
+    .input(z.object({ tenantId: z.number(), startDate: z.string(), endDate: z.string() }))
+    .query(async ({ input }) => {
+      const expList = await db.getExpensesByDateRange(input.startDate, input.endDate, input.tenantId);
+      const catMap: Record<string, { category: string; total: number; count: number }> = {};
+      for (const exp of expList as any[]) {
+        const cat = exp.category || "Outros";
+        if (!catMap[cat]) catMap[cat] = { category: cat, total: 0, count: 0 };
+        catMap[cat].total += parseFloat(exp.amount ?? "0");
+        catMap[cat].count += 1;
+      }
+      const totalExpenses = Object.values(catMap).reduce((s, c) => s + c.total, 0);
+      return Object.values(catMap)
+        .sort((a, b) => b.total - a.total)
+        .map(c => ({ ...c, pct: totalExpenses > 0 ? (c.total / totalExpenses) * 100 : 0 }));
+    }),
+
+  // Ticket médio por sub-período (para gráfico de tendência)
+  ticketAvgTimeline: publicProcedure
+    .input(z.object({ tenantId: z.number(), period: z.enum(["week", "month", "year"]).default("month") }))
+    .query(async ({ input }) => {
+      const today = new Date();
+      const labels: string[] = [];
+      const data: number[] = [];
+      const counts: number[] = [];
+
+      if (input.period === "week") {
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(today);
+          d.setDate(today.getDate() - i);
+          const dateStr = d.toISOString().split("T")[0];
+          const sales = await db.getSalesByDateRange(dateStr, dateStr, undefined, input.tenantId);
+          const paid = (sales as any[]).filter(s => s.paymentStatus === "paid");
+          const total = paid.reduce((s: number, x: any) => s + parseFloat(x.total ?? "0"), 0);
+          const avg = paid.length > 0 ? total / paid.length : 0;
+          labels.push(["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][d.getDay()]);
+          data.push(avg);
+          counts.push(paid.length);
+        }
+      } else if (input.period === "month") {
+        for (let i = 3; i >= 0; i--) {
+          const end = new Date(today);
+          end.setDate(today.getDate() - i * 7);
+          const start = new Date(end);
+          start.setDate(end.getDate() - 6);
+          const sales = await db.getSalesByDateRange(start.toISOString().split("T")[0], end.toISOString().split("T")[0], undefined, input.tenantId);
+          const paid = (sales as any[]).filter(s => s.paymentStatus === "paid");
+          const total = paid.reduce((s: number, x: any) => s + parseFloat(x.total ?? "0"), 0);
+          const avg = paid.length > 0 ? total / paid.length : 0;
+          labels.push(`Sem ${4 - i}`);
+          data.push(avg);
+          counts.push(paid.length);
+        }
+      } else {
+        const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+        for (let i = 11; i >= 0; i--) {
+          const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+          const start = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`;
+          const lastDay = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+          const end = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${lastDay}`;
+          const sales = await db.getSalesByDateRange(start, end, undefined, input.tenantId);
+          const paid = (sales as any[]).filter(s => s.paymentStatus === "paid");
+          const total = paid.reduce((s: number, x: any) => s + parseFloat(x.total ?? "0"), 0);
+          const avg = paid.length > 0 ? total / paid.length : 0;
+          labels.push(MONTHS[d.getMonth()]);
+          data.push(avg);
+          counts.push(paid.length);
+        }
+      }
+      return { labels, data, counts };
+    }),
+
+  // Projeção de receita do mês atual
+  revenueProjection: publicProcedure
+    .input(z.object({ tenantId: z.number() }))
+    .query(async ({ input }) => {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      const dayOfMonth = today.getDate();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+      const monthEnd = `${year}-${String(month + 1).padStart(2, "0")}-${daysInMonth}`;
+      const todayStr = today.toISOString().split("T")[0];
+
+      // Receita acumulada no mês até hoje
+      const salesSoFar = await db.getSalesByDateRange(monthStart, todayStr, undefined, input.tenantId);
+      const paidSoFar = (salesSoFar as any[]).filter(s => s.paymentStatus === "paid");
+      const revenueSoFar = paidSoFar.reduce((s: number, x: any) => s + parseFloat(x.total ?? "0"), 0);
+
+      // Projeção linear: (receita_até_hoje / dias_passados) * dias_do_mês
+      const dailyAvg = dayOfMonth > 0 ? revenueSoFar / dayOfMonth : 0;
+      const projected = dailyAvg * daysInMonth;
+      const progressPct = (dayOfMonth / daysInMonth) * 100;
+
+      // Mês anterior para comparativo
+      const prevMonthStart = `${month === 0 ? year - 1 : year}-${String(month === 0 ? 12 : month).padStart(2, "0")}-01`;
+      const prevMonthDays = new Date(month === 0 ? year - 1 : year, month === 0 ? 12 : month, 0).getDate();
+      const prevMonthEnd = `${month === 0 ? year - 1 : year}-${String(month === 0 ? 12 : month).padStart(2, "0")}-${prevMonthDays}`;
+      const salesPrevMonth = await db.getSalesByDateRange(prevMonthStart, prevMonthEnd, undefined, input.tenantId);
+      const paidPrevMonth = (salesPrevMonth as any[]).filter(s => s.paymentStatus === "paid");
+      const revenuePrevMonth = paidPrevMonth.reduce((s: number, x: any) => s + parseFloat(x.total ?? "0"), 0);
+
+      const projectionVsPrev = revenuePrevMonth > 0
+        ? ((projected - revenuePrevMonth) / revenuePrevMonth) * 100
+        : 0;
+
+      return {
+        revenueSoFar,
+        projected,
+        dailyAvg,
+        progressPct,
+        dayOfMonth,
+        daysInMonth,
+        revenuePrevMonth,
+        projectionVsPrev,
+        monthStart,
+        monthEnd,
+      };
+    }),
   }),
 
   // ─── Mensagens de Retorno Automáticas ────────────────────────────────────────
