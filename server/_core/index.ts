@@ -3,10 +3,12 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import path from "path";
+import { fileURLToPath } from "url";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerMercadoPagoRoutes } from "../mp-routes";
 import { registerSuperAdminRoutes } from "../superadmin-routes";
+
 import { registerPublicRoutes } from "../public-routes";
 import { registerAdminRoutes } from "../admin-routes";
 import { appRouter } from "../routers";
@@ -14,6 +16,10 @@ import { createContext } from "./context";
 import { startReviewEmailJob } from "../review-job";
 import { startWhatsAppReminderJob } from "../whatsapp-reminder-job";
 import { startSubscriptionReminderJob } from "../subscription-reminder-job";
+
+// ESM-compatible __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
