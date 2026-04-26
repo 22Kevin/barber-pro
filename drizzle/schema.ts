@@ -608,3 +608,22 @@ export const onlinePayments = mysqlTable("online_payments", {
 });
 export type OnlinePayment = typeof onlinePayments.$inferSelect;
 export type InsertOnlinePayment = typeof onlinePayments.$inferInsert;
+
+// ─── Encomendas de Produtos ───────────────────────────────────────────────────
+export const productOrders = mysqlTable("product_orders", {
+  id: int("id").autoincrement().primaryKey(),
+  tenantId: int("tenantId").notNull(),
+  clientId: int("clientId").notNull(),
+  productId: int("productId").notNull(),
+  quantity: int("quantity").default(1).notNull(),
+  note: text("note"),
+  status: mysqlEnum("status", ["received", "confirmed", "preparing", "ready", "delivered", "cancelled"]).default("received").notNull(),
+  estimatedDays: int("estimatedDays"),
+  cancelledAt: timestamp("cancelledAt"),
+  cancelReason: text("cancelReason"),
+  deliveredAt: timestamp("deliveredAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ProductOrder = typeof productOrders.$inferSelect;
+export type InsertProductOrder = typeof productOrders.$inferInsert;

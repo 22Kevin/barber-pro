@@ -2361,6 +2361,13 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
     return;
   }
 
+  // Buscar encomendas do cliente
+  const clientOrders = await db.getProductOrdersByClient(loggedClient.id, tenant.id);
+  const orderProducts = await Promise.all(clientOrders.map(async (o: any) => {
+    const product = await db.getProductById(o.productId);
+    return { ...o, product };
+  }));
+
   // Buscar agendamentos do cliente com dados de serviço e barbeiro
   const rawAppts = await db.getClientAppointments(loggedClient.id);
   const allServices = await db.getAllServicesWithMediaAndRatings(true, tenant.id);
@@ -2523,6 +2530,52 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
         </div>
         <div id="history-list">${pastHtml}</div>
       ` : ""}
+
+      ${orderProducts.length > 0 ? (() => {
+        const orderStatusLabels: Record<string, { label: string; color: string; step: number }> = {
+          received:  { label: "Recebido",          color: "#F59E0B", step: 1 },
+          confirmed: { label: "Confirmado",         color: "#3B82F6", step: 2 },
+          preparing: { label: "Em preparo",         color: "#8B5CF6", step: 3 },
+          ready:     { label: "Pronto p/ retirada", color: "#10B981", step: 4 },
+          delivered: { label: "Entregue",           color: "#22C55E", step: 5 },
+          cancelled: { label: "Cancelado",          color: "#EF4444", step: 0 },
+        };
+        const steps = ["Recebido", "Confirmado", "Em preparo", "Pronto", "Entregue"];
+        const orderCards = orderProducts.map((o: any) => {
+          const st = orderStatusLabels[o.status] ?? { label: o.status, color: "#888", step: 0 };
+          const date = new Date(o.createdAt).toLocaleDateString("pt-BR");
+          const canCancel = ["received"].includes(o.status);
+          const timelineHtml = o.status !== "cancelled" ? `
+            <div style="display:flex;align-items:center;gap:0;margin:12px 0 4px">
+              ${steps.map((s, i) => {
+                const done = st.step > i;
+                const active = st.step === i + 1;
+                return `<div style="display:flex;flex-direction:column;align-items:center;flex:1">
+                  <div style="width:20px;height:20px;border-radius:50%;background:${done || active ? st.color : "var(--surface2)"};border:2px solid ${done || active ? st.color : "var(--border)"};display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700">${done ? "✓" : active ? "●" : ""}</div>
+                  ${i < steps.length - 1 ? `<div style="position:absolute;width:calc(20% - 20px);height:2px;background:${done ? st.color : "var(--border)"};margin-left:20px;margin-top:9px"></div>` : ""}
+                </div>`;
+              }).join("")}
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:8px">
+              ${steps.map(s => `<div style="flex:1;text-align:center">${s}</div>`).join("")}
+            </div>` : "";
+          return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px">
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              ${o.product?.thumbnailUrl ? `<img src="${escapeHtml(o.product.thumbnailUrl)}" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0" />` : `<div style="width:52px;height:52px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📦</div>`}
+              <div style="flex:1;min-width:0">
+                <div style="font-size:15px;font-weight:800;margin-bottom:2px">${escapeHtml(o.product?.name ?? "Produto")}</div>
+                <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Qtd: ${o.quantity}${o.note ? " · " + escapeHtml(o.note) : ""} · ${date}</div>
+                <span style="background:${st.color}22;color:${st.color};font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px">${st.label}</span>
+              </div>
+            </div>
+            ${timelineHtml}
+            ${canCancel ? `<button onclick="cancelOrder(${o.id}, this)" style="margin-top:10px;width:100%;padding:10px;background:transparent;border:1px solid #EF4444;color:#EF4444;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">Cancelar encomenda</button>` : ""}
+          </div>`;
+        }).join("");
+        return `
+          <div style="margin:28px 0 12px;font-size:14px;font-weight:800;color:var(--muted);letter-spacing:1px">MINHAS ENCOMENDAS</div>
+          ${orderCards}`;
+      })() : ""}
     </div>
     <script>
       // ─── Filtro de histórico ───────────────────────────────────────────────
@@ -2599,6 +2652,25 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
           errEl.style.display = 'block';
           btn.disabled = false;
           btn.textContent = 'Enviar avaliação';
+        }
+      }
+
+      // ─── Cancelar encomenda ────────────────────────────────────────────────
+      async function cancelOrder(id, btn) {
+        if (!confirm('Deseja cancelar esta encomenda?')) return;
+        btn.disabled = true; btn.textContent = 'Cancelando...';
+        try {
+          var r = await fetch('/pub-api/cancel-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: id, slug: '${slug}' })
+          });
+          var data = await r.json();
+          if (!r.ok) throw new Error(data.error || 'Erro ao cancelar');
+          window.location.reload();
+        } catch(e) {
+          alert(e.message);
+          btn.disabled = false; btn.textContent = 'Cancelar encomenda';
         }
       }
 
@@ -2851,14 +2923,7 @@ async function renderProductDetailPage(slug: string, productId: number, res: Res
   const actionBtn = isLoggedIn
     ? (inStock
         ? `<button onclick="buyProduct()" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;border:none;cursor:pointer">🛒 Comprar</button>`
-        : `<div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-              <label style="font-size:13px;color:var(--muted);font-weight:600">Quantidade:</label>
-              <input type="number" id="orderQty" min="1" value="1" style="width:70px;padding:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;text-align:center" />
-            </div>
-            <button onclick="orderProduct()" style="display:block;width:100%;padding:16px;background:transparent;color:var(--primary);font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;border:2px solid var(--primary);cursor:pointer">📦 Encomendar</button>
-            <div id="orderMsg" style="margin-top:12px;font-size:13px;text-align:center"></div>
-          </div>`)
+        : `<button id="btnEncomendar" onclick="openOrderModal()" style="display:block;width:100%;padding:16px;background:transparent;color:var(--primary);font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;border:2px solid var(--primary);cursor:pointer">📦 Encomendar</button>`)
     : `<a href="/pub/${slug}/login?redirect=produto/${productId}" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;text-decoration:none">Entrar para Comprar</a>`;
   const body = `
     <div style="max-width:700px;margin:0 auto;padding:24px 20px 80px">
@@ -2873,9 +2938,57 @@ async function renderProductDetailPage(slug: string, productId: number, res: Res
       ${product.description ? `<div style="margin-bottom:28px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Descrição</div><p style="font-size:15px;color:var(--text);line-height:1.7">${escapeHtml(product.description)}</p></div>` : ""}
       <div style="position:fixed;bottom:0;left:0;right:0;padding:16px 20px;background:var(--bg);border-top:1px solid var(--border);z-index:100">${actionBtn}</div>
     </div>
+    <!-- Modal de Confirmação de Encomenda -->
+    <div id="orderModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);align-items:flex-end;justify-content:center">
+      <div id="orderModalInner" style="background:var(--bg);border-radius:24px 24px 0 0;padding:28px 20px 40px;width:100%;max-width:520px;animation:slideUp 0.3s ease">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <h2 style="font-size:20px;font-weight:900;color:var(--text)">Confirmar Encomenda</h2>
+          <button onclick="closeOrderModal()" style="background:none;border:none;font-size:24px;color:var(--muted);cursor:pointer;padding:4px">✕</button>
+        </div>
+        <div id="orderModalContent">
+          <!-- Resumo do produto -->
+          <div style="display:flex;gap:14px;align-items:center;background:var(--surface);border-radius:14px;padding:14px;margin-bottom:20px">
+            ${images.length > 0
+              ? `<img src="${images[0].url}" style="width:60px;height:60px;border-radius:10px;object-fit:cover;flex-shrink:0" />`
+              : `<div style="width:60px;height:60px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">📦</div>`
+            }
+            <div style="flex:1;min-width:0">
+              <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">${escapeHtml(product.name)}</div>
+              <div style="font-size:15px;font-weight:700;color:var(--primary)">${Number(product.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+            </div>
+          </div>
+          <!-- Quantidade -->
+          <div style="margin-bottom:18px">
+            <label style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:10px">Quantidade</label>
+            <div style="display:flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;width:fit-content">
+              <button id="qtyMinus" onclick="changeQty(-1)" style="width:44px;height:44px;background:var(--surface);border:none;font-size:20px;color:var(--text);cursor:pointer;font-weight:700">−</button>
+              <span id="qtyDisplay" style="min-width:48px;text-align:center;font-size:18px;font-weight:800;color:var(--text);padding:0 8px">1</span>
+              <button id="qtyPlus" onclick="changeQty(1)" style="width:44px;height:44px;background:var(--surface);border:none;font-size:20px;color:var(--text);cursor:pointer;font-weight:700">+</button>
+            </div>
+          </div>
+          <!-- Observação -->
+          <div style="margin-bottom:24px">
+            <label style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;display:block;margin-bottom:10px">Observação (opcional)</label>
+            <textarea id="orderNote" placeholder="Ex: quero a versão sem perfume, cor azul..." rows="3" style="width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;resize:none;box-sizing:border-box;font-family:inherit"></textarea>
+          </div>
+          <!-- Total -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:14px;background:var(--surface);border-radius:12px">
+            <span style="font-size:14px;color:var(--muted);font-weight:600">Total estimado</span>
+            <span id="orderTotal" style="font-size:18px;font-weight:900;color:var(--primary)">${Number(product.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+          </div>
+          <div id="orderModalMsg" style="margin-bottom:12px;font-size:13px;text-align:center;min-height:20px"></div>
+          <button id="btnConfirmOrder" onclick="submitOrder()" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;border:none;cursor:pointer">📦 Confirmar Encomenda</button>
+        </div>
+      </div>
+    </div>
+    <style>
+      @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    </style>
     <script>
       var _imgs = ${JSON.stringify(images.map(m => m.url))};
       var _cur = 0;
+      var _qty = 1;
+      var _unitPrice = ${Number(product.price)};
       function galleryMove(dir) { galleryGoTo((_cur + dir + _imgs.length) % _imgs.length); }
       function galleryGoTo(i) {
         _cur = i;
@@ -2886,27 +2999,45 @@ async function renderProductDetailPage(slug: string, productId: number, res: Res
       function openLightbox(i) { _cur=i; document.getElementById('lightboxImg').src=_imgs[i]; document.getElementById('lightboxOverlay').classList.add('open'); }
       function closeLightbox() { document.getElementById('lightboxOverlay').classList.remove('open'); }
       function lightboxMove(dir) { _cur=(_cur+dir+_imgs.length)%_imgs.length; document.getElementById('lightboxImg').src=_imgs[_cur]; }
-      document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeLightbox(); if(e.key==='ArrowLeft') lightboxMove(-1); if(e.key==='ArrowRight') lightboxMove(1); });
-      function buyProduct() {
-        window.location.href = '/pub/${slug}/agendar?buyProduct=${productId}';
+      document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ closeLightbox(); closeOrderModal(); } if(e.key==='ArrowLeft') lightboxMove(-1); if(e.key==='ArrowRight') lightboxMove(1); });
+      function buyProduct() { window.location.href = '/pub/${slug}/agendar?buyProduct=${productId}'; }
+      function openOrderModal() {
+        _qty = 1;
+        document.getElementById('qtyDisplay').textContent = '1';
+        document.getElementById('orderNote').value = '';
+        document.getElementById('orderModalMsg').textContent = '';
+        document.getElementById('orderTotal').textContent = formatCurrency(_unitPrice);
+        var m = document.getElementById('orderModal');
+        m.style.display = 'flex';
       }
-      function orderProduct() {
-        var qty = parseInt(document.getElementById('orderQty').value) || 1;
-        var msg = document.getElementById('orderMsg');
-        msg.textContent = 'Enviando pedido...';
+      function closeOrderModal() { document.getElementById('orderModal').style.display = 'none'; }
+      function changeQty(delta) {
+        _qty = Math.max(1, _qty + delta);
+        document.getElementById('qtyDisplay').textContent = _qty;
+        document.getElementById('orderTotal').textContent = formatCurrency(_unitPrice * _qty);
+      }
+      function formatCurrency(val) {
+        return 'R$ ' + val.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      }
+      function submitOrder() {
+        var note = document.getElementById('orderNote').value.trim();
+        var msg = document.getElementById('orderModalMsg');
+        var btn = document.getElementById('btnConfirmOrder');
+        btn.disabled = true; btn.textContent = 'Enviando...';
+        msg.textContent = '';
         fetch('/pub-api/order-product', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId: ${productId}, quantity: qty, slug: '${slug}' })
-        }).then(r => r.json()).then(data => {
+          body: JSON.stringify({ productId: ${productId}, quantity: _qty, note: note, slug: '${slug}' })
+        }).then(function(r){ return r.json(); }).then(function(data) {
           if (data.success) {
-            msg.style.color = '#22C55E';
-            msg.textContent = '✅ Pedido enviado! O barbeiro foi notificado e entrará em contato.';
+            document.getElementById('orderModalContent').innerHTML = '<div style="text-align:center;padding:20px 0"><div style="font-size:56px;margin-bottom:16px">🎉</div><h2 style="font-size:22px;font-weight:900;color:var(--text);margin-bottom:12px">Encomenda Realizada!</h2><p style="font-size:15px;color:var(--muted);margin-bottom:8px">Seu pedido foi recebido com sucesso.</p><p style="font-size:14px;color:var(--muted);margin-bottom:28px">O barbeiro irá confirmar em breve.</p><a href="/pub/${slug}/meus-agendamentos" style="display:inline-block;padding:14px 28px;background:var(--primary);color:#0A0A0A;font-weight:900;border-radius:12px;text-decoration:none;font-size:15px">Ver Minhas Encomendas</a><br><br><button onclick="closeOrderModal()" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;margin-top:8px">Fechar</button></div>';
           } else {
             msg.style.color = '#F87171';
             msg.textContent = '❌ ' + (data.error || 'Erro ao enviar pedido');
+            btn.disabled = false; btn.textContent = '📦 Confirmar Encomenda';
           }
-        }).catch(() => { msg.style.color='#F87171'; msg.textContent='❌ Erro de conexão'; });
+        }).catch(function(){ msg.style.color='#F87171'; msg.textContent='❌ Erro de conexão'; btn.disabled=false; btn.textContent='📦 Confirmar Encomenda'; });
       }
     <\/script>
   `;
@@ -2948,17 +3079,26 @@ export function registerPublicRoutes(app: Express): void {
       if (!product) { res.status(404).json({ error: "Produto não encontrado" }); return; }
       const tenant = await db.getTenantBySlug(slug);
       if (!tenant) { res.status(404).json({ error: "Barbearia não encontrada" }); return; }
+      // Salvar encomenda no banco de dados
+      const { note } = req.body;
+      await db.createProductOrder({
+        tenantId: tenant.id,
+        clientId: clientInfo.id,
+        productId: parseInt(productId),
+        quantity: parseInt(quantity),
+        note: note || undefined,
+      });
       // Notificar barbeiros sobre o pedido via push notification
-      const barbers = await db.getAllBarbers(tenant.id);
-      for (const barber of barbers.slice(0, 3)) {
+      const allBarbers = await db.getAllBarbers(tenant.id);
+      for (const barber of allBarbers.slice(0, 3)) {
         try {
           const pushToken = await db.getBarberPushToken(barber.id);
           if (pushToken) {
             await db.sendExpoPushNotification(
               pushToken,
-              "Novo Pedido de Produto",
-              `${clientInfo.name} quer encomendar ${quantity}x ${product.name}`,
-              { productId, quantity, clientId: clientInfo.id, clientName: clientInfo.name }
+              "📦 Nova Encomenda",
+              `${clientInfo.name} encomendou ${quantity}x ${product.name}`,
+              { type: "product_order", productId, quantity, clientId: clientInfo.id }
             );
           }
         } catch {}
@@ -3347,7 +3487,28 @@ export function registerPublicRoutes(app: Express): void {
     }
   });
 
-  // ─── Perfil do Cliente ─────────────────────────────────────────────────────
+  // POST /pub-api/cancel-order — Cancelar encomenda pelo cliente
+  app.post("/pub-api/cancel-order", async (req: Request, res: Response) => {
+    try {
+      const { orderId, slug } = req.body;
+      if (!orderId) { res.status(400).json({ error: "orderId é obrigatório" }); return; }
+      const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+      if (!clientSessionRaw) { res.status(401).json({ error: "Não autenticado" }); return; }
+      let loggedClient: { id: number } | null = null;
+      try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+      if (!loggedClient) { res.status(401).json({ error: "Sessão inválida" }); return; }
+      const order = await db.getProductOrderById(parseInt(orderId));
+      if (!order) { res.status(404).json({ error: "Encomenda não encontrada" }); return; }
+      if (order.clientId !== loggedClient.id) { res.status(403).json({ error: "Acesso negado" }); return; }
+      if (order.status !== "received") { res.status(400).json({ error: "Encomenda não pode ser cancelada neste status" }); return; }
+      await db.updateProductOrderStatus(parseInt(orderId), "cancelled");
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ─── Perfil do Cliente ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   // GET /pub/:slug/perfil — Página de perfil do cliente
   app.get("/pub/:slug/perfil", async (req: Request, res: Response) => {
     await renderPerfilPage(req.params.slug, res, req);

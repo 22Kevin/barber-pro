@@ -1567,3 +1567,18 @@
 - [x] Página de perfil do cliente (/pub/:slug/perfil) com foto de avatar, edição de nome/telefone/e-mail e saldo de fidelidade
 - [x] Notificação WhatsApp de confirmação de agendamento ao cliente quando barbeiro confirmar no painel admin
 - [x] Página de detalhe do agendamento (/pub/:slug/agendamento/:id) com timeline de status, avaliação e compartilhamento de comprovante no WhatsApp
+
+## Sistema de Encomendas de Produtos (Abr/2026)
+
+- [x] Tabela product_orders no banco de dados (clientId, productId, quantity, note, status, estimatedDays, createdAt)
+- [x] Funções db: createProductOrder, getProductOrders, updateProductOrderStatus, getClientProductOrders
+- [x] Modal de confirmação de encomenda na área pública (foto, nome, preço, seletor de quantidade, campo de observação)
+- [x] Rota pub-api/order-product para criar encomenda autenticada
+- [x] Painel de pedidos no admin (/admin/encomendas) com listagem, filtro por status e ações
+- [x] Gestão de status no admin: Recebido → Confirmado → Em preparo → Pronto para retirada → Entregue
+- [x] Prazo de retirada estimado configurável pelo barbeiro ao confirmar pedido
+- [x] Notificação WhatsApp ao cliente ao atualizar status do pedido
+- [x] Seção "Minhas Encomendas" na página Meus Agendamentos com timeline de status
+- [x] Cancelamento pelo cliente enquanto status = "received"
+- [x] Integração com estoque: descontar automaticamente ao marcar como "Entregue"
+- [x] Histórico de encomendas no admin com filtro por status e busca por cliente

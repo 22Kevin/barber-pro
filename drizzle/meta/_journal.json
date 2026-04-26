@@ -232,6 +232,13 @@
       "when": 1776338136670,
       "tag": "0032_oval_jack_power",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1777162197585,
+      "tag": "0033_lovely_ma_gnuci",
+      "breakpoints": true
     }
   ]
 }

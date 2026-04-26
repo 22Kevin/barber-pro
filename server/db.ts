@@ -31,6 +31,7 @@ import {
   tenants,
   whatsappMessages,
   orbitLeads,
+  productOrders,
   type WhatsappMessage,
   type InsertWhatsappMessage,
   type Tenant,
@@ -2214,4 +2215,62 @@ export async function getUpcomingSubscriptionReminders(daysAhead: number = 3) {
   }
 
   return reminders;
+}
+
+// ─── Encomendas de Produtos ───────────────────────────────────────────────────
+export async function createProductOrder(data: {
+  tenantId: number;
+  clientId: number;
+  productId: number;
+  quantity: number;
+  note?: string;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(productOrders).values({
+    tenantId: data.tenantId,
+    clientId: data.clientId,
+    productId: data.productId,
+    quantity: data.quantity,
+    note: data.note ?? null,
+    status: "received",
+  });
+}
+
+export async function getProductOrdersByTenant(tenantId: number, status?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const conds: any[] = [eq(productOrders.tenantId, tenantId)];
+  if (status && status !== "all") conds.push(eq(productOrders.status, status as any));
+  return db.select().from(productOrders).where(and(...conds)).orderBy(desc(productOrders.createdAt));
+}
+
+export async function getProductOrdersByClient(clientId: number, tenantId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(productOrders)
+    .where(and(eq(productOrders.clientId, clientId), eq(productOrders.tenantId, tenantId)))
+    .orderBy(desc(productOrders.createdAt));
+}
+
+export async function updateProductOrderStatus(
+  id: number,
+  status: "received" | "confirmed" | "preparing" | "ready" | "delivered" | "cancelled",
+  extra?: { estimatedDays?: number; cancelReason?: string }
+) {
+  const db = await getDb();
+  if (!db) return;
+  const updateData: Record<string, any> = { status };
+  if (status === "delivered") updateData.deliveredAt = new Date();
+  if (status === "cancelled") updateData.cancelledAt = new Date();
+  if (extra?.estimatedDays) updateData.estimatedDays = extra.estimatedDays;
+  if (extra?.cancelReason) updateData.cancelReason = extra.cancelReason;
+  await db.update(productOrders).set(updateData).where(eq(productOrders.id, id));
+}
+
+export async function getProductOrderById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(productOrders).where(eq(productOrders.id, id)).limit(1);
+  return result.length > 0 ? result[0] : null;
 }

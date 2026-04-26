@@ -114,6 +114,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/servicos", icon: "✂️", label: "Serviços", id: "servicos" },
         { href: "/admin/produtos", icon: "🛍️", label: "Produtos", id: "produtos" },
         { href: "/admin/estoque", icon: "📦", label: "Estoque", id: "estoque" },
+        { href: "/admin/encomendas", icon: "🛒", label: "Encomendas", id: "encomendas" },
       ],
     },
     {
@@ -5587,6 +5588,103 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
     res.send(adminLayout("Clientes em Órbita", "orbita", body, barber?.name, _tp));
+  });
+
+  // ─── Encomendas de Produtos ────────────────────────────────────────────────
+  app.get("/admin/encomendas", requireAdminAuth, async (req: Request, res: Response) => {
+    const barber = (req as any).barber;
+    const tenantId = barber?.tenantId ?? null;
+    const statusFilter = (req.query.status as string) || "all";
+    const orders = await db.getProductOrdersByTenant(tenantId ?? 0, statusFilter);
+    const enriched = await Promise.all(orders.map(async (o: any) => {
+      const product = await db.getProductById(o.productId);
+      const client = await db.getClientById(o.clientId);
+      return { ...o, product, client };
+    }));
+    const statusLabels: Record<string, string> = {
+      received: "Recebido", confirmed: "Confirmado", preparing: "Em preparo",
+      ready: "Pronto p/ retirada", delivered: "Entregue", cancelled: "Cancelado"
+    };
+    const statusColors: Record<string, string> = {
+      received: "#F59E0B", confirmed: "#3B82F6", preparing: "#8B5CF6",
+      ready: "#10B981", delivered: "#22C55E", cancelled: "#EF4444"
+    };
+    const orderRows = enriched.map((o: any) => {
+      const label = statusLabels[o.status] ?? o.status;
+      const color = statusColors[o.status] ?? "#888";
+      const date = new Date(o.createdAt).toLocaleDateString("pt-BR");
+      const clientPhone = (o.client?.phone ?? "").replace(/\D/g, "");
+      const waMsg = encodeURIComponent(`Ol\u00e1 ${o.client?.name ?? ""}! Seu pedido de ${o.quantity}x ${o.product?.name ?? "produto"} est\u00e1 com status: *${label}*.`);
+      const waLink = clientPhone ? `<a href="https://wa.me/55${clientPhone}?text=${waMsg}" target="_blank" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">\uD83D\uDCF2 WhatsApp</a>` : "";
+      const statusOptions = Object.entries(statusLabels).map(([v, l]) =>
+        `<option value="${v}" ${o.status === v ? "selected" : ""}>${l}</option>`
+      ).join("");
+      return `<tr>
+        <td><strong>${esc(o.client?.name ?? "\u2014")}</strong><br><small style="color:var(--muted)">${esc(o.client?.phone ?? "")}</small></td>
+        <td>${esc(o.product?.name ?? "\u2014")}<br><small style="color:var(--muted)">Qtd: ${o.quantity}${o.note ? " \u00b7 " + esc(o.note) : ""}</small></td>
+        <td><span style="background:${color}22;color:${color};padding:4px 10px;border-radius:20px;font-size:12px;font-weight:700">${label}</span></td>
+        <td>${date}</td>
+        <td>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <select onchange="updateOrderStatus(${o.id}, this.value)" style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer">
+              ${statusOptions}
+            </select>
+            ${waLink}
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+    const filterBtns = ["all","received","confirmed","preparing","ready","delivered","cancelled"].map(s => {
+      const lb: Record<string,string> = {all:"Todos",received:"Recebidos",confirmed:"Confirmados",preparing:"Em preparo",ready:"Prontos",delivered:"Entregues",cancelled:"Cancelados"};
+      return `<a href="/admin/encomendas?status=${s}" class="btn ${statusFilter===s?"btn-primary":"btn-ghost"}" style="font-size:13px;padding:8px 16px">${lb[s]}</a>`;
+    }).join("");
+    const body = `
+      <div style="padding:24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+          <h1 style="font-size:24px;font-weight:700;color:var(--foreground)">🛒 Encomendas de Produtos</h1>
+          <div style="font-size:14px;color:var(--muted)">${enriched.length} pedido(s)</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">${filterBtns}</div>
+        ${enriched.length === 0
+          ? `<div class="card" style="text-align:center;padding:48px"><div style="font-size:48px;margin-bottom:12px">📭</div><p style="color:var(--muted)">Nenhuma encomenda encontrada</p></div>`
+          : `<div class="card" style="overflow-x:auto"><table class="table"><thead><tr><th>Cliente</th><th>Produto</th><th>Status</th><th>Data</th><th>A\u00e7\u00f5es</th></tr></thead><tbody>${orderRows}</tbody></table></div>`}
+      </div>
+      <script>
+        function updateOrderStatus(id, status) {
+          fetch('/admin-api/order-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id, status: status })
+          }).then(function(r){ return r.json(); }).then(function(data) {
+            if (data.success) { window.location.reload(); }
+            else { alert('Erro: ' + (data.error || 'Erro desconhecido')); }
+          });
+        }
+      </script>
+    `;
+    const _tp2 = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+    res.send(adminLayout("Encomendas", "encomendas", body, barber?.name, _tp2));
+  });
+
+  app.post("/admin-api/order-status", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const { id, status } = req.body;
+      if (!id || !status) { res.status(400).json({ error: "Dados incompletos" }); return; }
+      await db.updateProductOrderStatus(parseInt(id), status);
+      if (status === "delivered") {
+        const order = await db.getProductOrderById(parseInt(id));
+        if (order) {
+          const product = await db.getProductById(order.productId);
+          if (product) {
+            const newStock = Math.max(0, (product.stockQuantity ?? 0) - order.quantity);
+            await db.updateProduct(order.productId, { stockQuantity: newStock });
+          }
+        }
+      }
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
 }
