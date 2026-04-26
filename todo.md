@@ -1636,3 +1636,10 @@
 - [x] Média de avaliações no card do produto na grade da loja do cliente (⭐ nota + contagem)
 - [x] Exportar relatório de encomendas em PDF (botão na tela Relatórios)
 - [x] Painel de fornecedores no admin (cadastro + vínculo à reposição de estoque)
+
+## Correções Críticas e Melhorias — Round 8 (Abr/2026)
+
+- [x] Corrigir vazamento de dados entre tenants (barbeiros de outras contas aparecendo nos relatórios)
+- [x] Auditar todas as queries de relatórios para garantir filtro por tenantId
+- [x] Reorganizar tela de Relatórios em seções/abas bem definidas (Financeiro, Serviços, Encomendas, Barbeiros)
+- [x] Relatório de despesas por fornecedor na tela Relatórios

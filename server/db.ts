@@ -559,9 +559,16 @@ export async function getAppointmentsByDateRange(barberId: number, startDate: st
       sql`${appointments.status} NOT IN ('cancelled', 'no_show')`))
     .orderBy(appointments.date, appointments.startTime);
 }
-export async function getAllAppointmentsByDateRange(barberId: number, startDate: string, endDate: string) {
+export async function getAllAppointmentsByDateRange(barberId: number, startDate: string, endDate: string, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  // Se tenantId fornecido, verificar se o barbeiro pertence ao tenant
+  if (tenantId != null) {
+    const barberRow = await db.select({ id: barbers.id }).from(barbers)
+      .where(and(eq(barbers.id, barberId), eq(barbers.tenantId, tenantId)))
+      .limit(1);
+    if (barberRow.length === 0) return []; // barbeiro não pertence ao tenant
+  }
   return db
     .select(appointmentFields)
     .from(appointments)
@@ -2431,6 +2438,64 @@ export async function getProductOrderById(id: number) {
     .where(eq(productOrders.id, id))
     .limit(1);
   return result.length > 0 ? result[0] : null;
+}
+
+// ─── Despesas por Fornecedor ─────────────────────────────────────────────────
+export async function getExpensesBySupplier(tenantId: number, startDate: string, endDate: string) {
+  const db = await getDb();
+  if (!db) return [];
+  // Buscar barbeiros do tenant para filtrar despesas
+  const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
+  const barberIds = tenantBarbers.map(b => b.id);
+  if (barberIds.length === 0) return [];
+  // Buscar movimentações de estoque com supplierId no período (reposições)
+  const moves = await db
+    .select({
+      supplierId: stockMovements.supplierId,
+      productId: stockMovements.productId,
+      quantity: stockMovements.quantity,
+      date: stockMovements.date,
+    })
+    .from(stockMovements)
+    .where(and(
+      sql`${stockMovements.supplierId} IS NOT NULL`,
+      eq(stockMovements.type, "in"),
+      gte(stockMovements.date, startDate),
+      lte(stockMovements.date, endDate)
+    ));
+  // Filtrar apenas movimentações de produtos do tenant
+  const tenantProducts = await db.select({ id: products.id, name: products.name, price: products.price })
+    .from(products)
+    .where(eq(products.tenantId, tenantId));
+  const tenantProductIds = new Set(tenantProducts.map(p => p.id));
+  const filteredMoves = moves.filter(m => tenantProductIds.has(m.productId));
+  // Buscar despesas do período filtradas por barbeiros do tenant
+  const expList = await db.select().from(expenses)
+    .where(and(
+      gte(expenses.date, startDate),
+      lte(expenses.date, endDate),
+      sql`(${expenses.barberId} IS NULL OR ${expenses.barberId} IN (${sql.join(barberIds.map(id => sql`${id}`), sql`, `)}))`
+    ));
+  // Buscar fornecedores do tenant
+  const supplierList = await db.select().from(suppliers).where(eq(suppliers.tenantId, tenantId));
+  const supplierMap: Record<number, { id: number; name: string; totalExpenses: number; totalReplenishments: number; replenishmentCount: number }> = {};
+  // Agrupar despesas por fornecedor (via categoria/descrição que mencione fornecedor)
+  // Agrupar reposições de estoque por fornecedor
+  for (const move of filteredMoves) {
+    if (!move.supplierId) continue;
+    const sup = supplierList.find(s => s.id === move.supplierId);
+    if (!sup) continue;
+    if (!supplierMap[sup.id]) supplierMap[sup.id] = { id: sup.id, name: sup.name, totalExpenses: 0, totalReplenishments: 0, replenishmentCount: 0 };
+    const prod = tenantProducts.find(p => p.id === move.productId);
+    const cost = prod ? parseFloat(prod.price) * move.quantity : 0;
+    supplierMap[sup.id].totalReplenishments += cost;
+    supplierMap[sup.id].replenishmentCount += 1;
+  }
+  // Adicionar fornecedores sem movimentações (com total 0)
+  for (const sup of supplierList) {
+    if (!supplierMap[sup.id]) supplierMap[sup.id] = { id: sup.id, name: sup.name, totalExpenses: 0, totalReplenishments: 0, replenishmentCount: 0 };
+  }
+  return Object.values(supplierMap).sort((a, b) => b.totalReplenishments - a.totalReplenishments);
 }
 
 // ─── Fornecedores ─────────────────────────────────────────────────────────────

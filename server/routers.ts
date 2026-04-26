@@ -1061,7 +1061,7 @@ export const appRouter = router({
 
   reports: router({
     revenue: publicProcedure
-      .input(z.object({ period: z.enum(["week", "month", "year"]).default("month") }))
+      .input(z.object({ period: z.enum(["week", "month", "year"]).default("month"), tenantId: z.number() }))
       .query(async ({ input }) => {
       const today = new Date();
       const labels: string[] = [];
@@ -1072,7 +1072,7 @@ export const appRouter = router({
           const d = new Date(today);
           d.setDate(today.getDate() - i);
           const dateStr = d.toISOString().split("T")[0];
-          const sales = await db.getSalesByDateRange(dateStr, dateStr);
+          const sales = await db.getSalesByDateRange(dateStr, dateStr, undefined, input.tenantId);
           const total = (sales as any[]).filter(s => s.paymentStatus === "paid").reduce((sum: number, s: any) => sum + parseFloat(s.total || "0"), 0);
           labels.push(["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][d.getDay()]);
           data.push(total);
@@ -1084,7 +1084,7 @@ export const appRouter = router({
           end.setDate(today.getDate() - i * 7);
           const start = new Date(end);
           start.setDate(end.getDate() - 6);
-          const sales = await db.getSalesByDateRange(start.toISOString().split("T")[0], end.toISOString().split("T")[0]);
+          const sales = await db.getSalesByDateRange(start.toISOString().split("T")[0], end.toISOString().split("T")[0], undefined, input.tenantId);
           const total = (sales as any[]).filter(s => s.paymentStatus === "paid").reduce((sum: number, s: any) => sum + parseFloat(s.total || "0"), 0);
           labels.push(`Sem ${4 - i}`);
           data.push(total);
@@ -1097,7 +1097,7 @@ export const appRouter = router({
           const start = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`;
           const lastDay = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
           const end = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${lastDay}`;
-          const sales = await db.getSalesByDateRange(start, end);
+          const sales = await db.getSalesByDateRange(start, end, undefined, input.tenantId);
           const total = (sales as any[]).filter(s => s.paymentStatus === "paid").reduce((sum: number, s: any) => sum + parseFloat(s.total || "0"), 0);
           labels.push(MONTHS[d.getMonth()]);
           data.push(total);
@@ -1108,19 +1108,13 @@ export const appRouter = router({
     }),
 
   topServices: publicProcedure
-    .input(z.object({ startDate: z.string(), endDate: z.string() }))
+    .input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number() }))
     .query(async ({ input }) => {
-      const sales = await db.getSalesByDateRange(input.startDate, input.endDate);
+      const sales = await db.getSalesByDateRange(input.startDate, input.endDate, undefined, input.tenantId);
       const paidSales = (sales as any[]).filter(s => s.paymentStatus === "paid");
       const serviceMap: Record<string, { name: string; count: number; revenue: number }> = {};
-      for (const sale of paidSales) {
-        const allSalesWithItems = await db.getSalesByDateRange(input.startDate, input.endDate);
-        break; // just to get the structure
-      }
-      // Use saleItems via direct query approach
-      const allSales = paidSales;
       // Build from sale items if available in sale data
-      for (const sale of allSales) {
+      for (const sale of paidSales) {
         if (sale.items && Array.isArray(sale.items)) {
           for (const item of sale.items) {
             if (item.itemType === "service") {
@@ -1135,9 +1129,9 @@ export const appRouter = router({
     }),
 
   topClients: publicProcedure
-    .input(z.object({ startDate: z.string(), endDate: z.string() }))
+    .input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number() }))
     .query(async ({ input }) => {
-      const sales = await db.getSalesByDateRange(input.startDate, input.endDate);
+      const sales = await db.getSalesByDateRange(input.startDate, input.endDate, undefined, input.tenantId);
       const paidSales = (sales as any[]).filter(s => s.paymentStatus === "paid" && s.clientId);
       const clientMap: Record<number, { clientId: number; count: number; revenue: number }> = {};
       for (const sale of paidSales) {
@@ -1146,7 +1140,7 @@ export const appRouter = router({
         clientMap[cid].count += 1;
         clientMap[cid].revenue += parseFloat(sale.total ?? "0");
       }
-      const allClients = await db.getAllClients();
+      const allClients = await db.getAllClients(input.tenantId);
       const clientsById: Record<number, any> = {};
       for (const c of allClients as any[]) clientsById[c.id] = c;
       return Object.values(clientMap)
@@ -1156,9 +1150,9 @@ export const appRouter = router({
     }),
 
   barberOccupancy: publicProcedure
-    .input(z.object({ startDate: z.string(), endDate: z.string() }))
+    .input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number() }))
     .query(async ({ input }) => {
-      const allBarbers = await db.getAllBarbers();
+      const allBarbers = await db.getAllBarbers(input.tenantId);
       const result: {
         barberId: number; name: string; appointments: number; revenue: number;
         completed: number; cancelled: number; noShow: number; occupancyPct: number;
@@ -1171,12 +1165,12 @@ export const appRouter = router({
 
       for (const barber of allBarbers as any[]) {
         // Receita
-        const sales = await db.getSalesByDateRange(input.startDate, input.endDate, barber.id);
+        const sales = await db.getSalesByDateRange(input.startDate, input.endDate, barber.id, input.tenantId);
         const paidSales = (sales as any[]).filter((s: any) => s.paymentStatus === "paid");
         const revenue = paidSales.reduce((sum: number, s: any) => sum + parseFloat(s.total ?? "0"), 0);
 
         // Agendamentos por status no período (todos os status)
-        const allAppts = await db.getAllAppointmentsByDateRange(barber.id, input.startDate, input.endDate);
+        const allAppts = await db.getAllAppointmentsByDateRange(barber.id, input.startDate, input.endDate, input.tenantId);
         const allApptsAny = allAppts as any[];
         const completed = allApptsAny.filter((a: any) => a.status === "completed").length;
         const cancelled = allApptsAny.filter((a: any) => a.status === "cancelled").length;
@@ -1195,18 +1189,18 @@ export const appRouter = router({
       return result.sort((a, b) => b.revenue - a.revenue);
     }),
   exportPdf: publicProcedure
-    .input(z.object({ startDate: z.string(), endDate: z.string(), period: z.string().optional() }))
+    .input(z.object({ startDate: z.string(), endDate: z.string(), period: z.string().optional(), tenantId: z.number() }))
     .mutation(async ({ input }) => {
       const settings = await db.getShopSettings().catch(() => null) as any;
       const shopName = settings?.shopName || "Barber Pro";
       const shopCnpj = settings?.cnpj || "";
       const shopAddress = settings?.address || "";
       // Receitas
-      const sales = await db.getSalesByDateRange(input.startDate, input.endDate);
+      const sales = await db.getSalesByDateRange(input.startDate, input.endDate, undefined, input.tenantId);
       const paidSales = (sales as any[]).filter(s => s.paymentStatus === "paid");
       const totalRevenue = paidSales.reduce((sum: number, s: any) => sum + parseFloat(s.total ?? "0"), 0);
       // Despesas
-      const expenses = await db.getExpensesByDateRange(input.startDate, input.endDate);
+      const expenses = await db.getExpensesByDateRange(input.startDate, input.endDate, input.tenantId);
       const totalExpenses = (expenses as any[]).reduce((sum: number, e: any) => sum + parseFloat(e.amount ?? "0"), 0);
       const netProfit = totalRevenue - totalExpenses;
       // Top serviços
@@ -1473,6 +1467,11 @@ export const appRouter = router({
       doc.end();
       const pdfBuffer = await pdfPromise;
       return { pdfBase64: pdfBuffer.toString("base64") };
+    }),
+  expensesBySupplier: publicProcedure
+    .input(z.object({ tenantId: z.number(), startDate: z.string(), endDate: z.string() }))
+    .query(async ({ input }) => {
+      return db.getExpensesBySupplier(input.tenantId, input.startDate, input.endDate);
     }),
   }),
 
