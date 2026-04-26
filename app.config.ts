@@ -13,6 +13,10 @@ const env = {
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
+  // Google Sign-In credentials (configure via Secrets panel)
+  googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "",
+  googleIosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "",
+  googleIosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME ?? "",
 };
 
 const config: ExpoConfig = {
@@ -74,6 +78,10 @@ const config: ExpoConfig = {
       },
     ],
     ["expo-build-properties", { android: { buildArchs: ["armeabi-v7a", "arm64-v8a"] } }],
+    // Google Sign-In (requires native build — does not work in Expo Go)
+    ...(env.googleIosUrlScheme
+      ? [["@react-native-google-signin/google-signin", { iosUrlScheme: env.googleIosUrlScheme }] as [string, any]]
+      : []),
   ],
   experiments: { typedRoutes: true, reactCompiler: true },
 };

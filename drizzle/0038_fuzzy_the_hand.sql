@@ -1,0 +1,1 @@
+ALTER TABLE `barbers` ADD `googleId` varchar(128);

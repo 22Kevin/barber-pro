@@ -267,6 +267,13 @@
       "when": 1777173203564,
       "tag": "0037_typical_harry_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1777175106349,
+      "tag": "0038_fuzzy_the_hand",
+      "breakpoints": true
     }
   ]
 }

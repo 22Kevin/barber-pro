@@ -144,6 +144,52 @@ export const appRouter = router({
         await db.updateBarber(barber.id, { passwordHash } as any);
         return { success: true, message: "Senha redefinida com sucesso!" };
       }),
+
+    // Login com Google — autentica barbeiro via Google ID
+    googleLogin: publicProcedure
+      .input(z.object({
+        googleId: z.string(),
+        email: z.string().email(),
+        name: z.string(),
+        photoUrl: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        // Buscar barbeiro pelo googleId
+        let barber = await db.getBarberByGoogleId(input.googleId);
+
+        // Se não encontrou pelo googleId, tentar pelo email
+        if (!barber) {
+          barber = await db.getBarberByEmail(input.email);
+          if (barber) {
+            // Vincular googleId à conta existente
+            await db.updateBarber(barber.id, { googleId: input.googleId } as any);
+            barber = { ...barber, googleId: input.googleId } as any;
+          }
+        }
+
+        if (!barber || !barber.isActive) {
+          throw new Error(
+            "Nenhuma conta de barbeiro encontrada para este e-mail Google. " +
+            "Solicite ao administrador que cadastre sua conta com o e-mail: " + input.email
+          );
+        }
+
+        // Atualizar foto se ainda não tiver
+        if (input.photoUrl && !barber.photoUrl) {
+          await db.updateBarber(barber.id, { photoUrl: input.photoUrl } as any);
+        }
+
+        return {
+          id: barber.id,
+          name: barber.name,
+          email: barber.email,
+          phone: barber.phone,
+          photoUrl: input.photoUrl ?? barber.photoUrl,
+          role: barber.role,
+          specialties: barber.specialties,
+          tenantId: barber.tenantId,
+        };
+      }),
   }),
 
   barbers: router({

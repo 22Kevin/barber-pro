@@ -145,6 +145,13 @@ export async function getBarberByEmail(email: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getBarberByGoogleId(googleId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(barbers).where(eq(barbers.googleId as any, googleId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function getBarberById(id: number) {
   const db = await getDb();
   if (!db) return undefined;

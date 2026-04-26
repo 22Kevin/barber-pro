@@ -1650,3 +1650,10 @@
 - [x] Breakdown de despesas por categoria (barras horizontais com valor e percentual)
 - [x] Ticket médio por período (valor médio por venda com tendência)
 - [x] Projeção de receita do mês com base na tendência atual
+
+## Melhorias de Login — Round 10 (Abr/2026)
+
+- [x] Botão "Lembrar-me" no login para manter sessão persistente (não exigir login a cada abertura)
+- [x] Login com Google nativo via @react-native-google-signin/google-signin (independente do OAuth Manus)
+- [x] Campo googleId na tabela barbers para vincular conta Google ao barbeiro
+- [x] Rota admin.googleLogin no backend para autenticar barbeiro via Google ID Token

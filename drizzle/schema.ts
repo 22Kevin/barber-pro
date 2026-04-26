@@ -63,6 +63,7 @@ export const barbers = mysqlTable("barbers", {
   specialties: text("specialties"),
   isActive: boolean("isActive").default(true).notNull(),
   passwordHash: varchar("passwordHash", { length: 255 }),
+  googleId: varchar("googleId", { length: 128 }), // Google Sign-In ID
   pushToken: text("pushToken"), // Expo Push Token para notificações server-side
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
