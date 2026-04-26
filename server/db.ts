@@ -910,6 +910,17 @@ export async function updateClientAccount(id: number, data: Partial<typeof clien
   if (!db) throw new Error("Database not available");
   await db.update(clientAccounts).set(data).where(eq(clientAccounts.id, id));
 }
+export async function saveClientPushToken(clientId: number, pushToken: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(clientAccounts).set({ pushToken }).where(eq(clientAccounts.clientId, clientId));
+}
+export async function getClientPushToken(clientId: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select({ pushToken: clientAccounts.pushToken }).from(clientAccounts).where(eq(clientAccounts.clientId, clientId)).limit(1);
+  return result.length > 0 ? (result[0].pushToken ?? null) : null;
+}
 
 // ─── Avaliações ───────────────────────────────────────────────────────────────
 export async function getReviewsByService(serviceId: number, tenantId?: number | null) {
@@ -2261,6 +2272,7 @@ export async function getProductOrdersByTenant(tenantId: number, status?: string
       clientPhone: clients.phone,
       productName: products.name,
       totalPrice: sql<string>`CAST(${products.price} * ${productOrders.quantity} AS CHAR)`,
+      productImageUrl: sql<string | null>`(SELECT url FROM media_files WHERE entityType = 'product' AND entityId = ${productOrders.productId} AND type = 'image' ORDER BY \`order\` ASC LIMIT 1)`,
     })
     .from(productOrders)
     .leftJoin(clients, eq(productOrders.clientId, clients.id))
@@ -2357,6 +2369,7 @@ export async function getProductOrderById(id: number) {
       clientPhone: clients.phone,
       productName: products.name,
       totalPrice: sql<string>`CAST(${products.price} * ${productOrders.quantity} AS CHAR)`,
+      productImageUrl: sql<string | null>`(SELECT url FROM media_files WHERE entityType = 'product' AND entityId = ${productOrders.productId} AND type = 'image' ORDER BY \`order\` ASC LIMIT 1)`,
     })
     .from(productOrders)
     .leftJoin(clients, eq(productOrders.clientId, clients.id))

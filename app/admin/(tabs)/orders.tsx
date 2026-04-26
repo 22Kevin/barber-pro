@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -66,6 +67,7 @@ type Order = {
   clientName?: string | null;
   clientPhone?: string | null;
   productName?: string | null;
+  productImageUrl?: string | null;
   quantity: number;
   note?: string | null;
   status: string;
@@ -246,7 +248,18 @@ export default function OrdersScreen() {
         </View>
 
         {/* Produto e cliente */}
-        <Text style={styles.productName} numberOfLines={1}>{item.productName ?? "Produto"}</Text>
+        <View style={styles.productRow}>
+          {item.productImageUrl ? (
+            <Image source={{ uri: item.productImageUrl }} style={styles.productThumb} />
+          ) : (
+            <View style={styles.productThumbPlaceholder}>
+              <Text style={{ fontSize: 18 }}>📦</Text>
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.productName} numberOfLines={1}>{item.productName ?? "Produto"}</Text>
+          </View>
+        </View>
         <View style={styles.cardRow}>
           <IconSymbol name="person.fill" size={13} color="#888" />
           <Text style={styles.cardMeta}>{item.clientName ?? "Cliente"}</Text>
@@ -614,6 +627,9 @@ const styles = StyleSheet.create({
   },
   statusText: { fontSize: 11, fontWeight: "700" },
   cardDate: { fontSize: 11, color: "#555" },
+  productRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
+  productThumb: { width: 44, height: 44, borderRadius: 8, backgroundColor: "#1E1E1E" },
+  productThumbPlaceholder: { width: 44, height: 44, borderRadius: 8, backgroundColor: "#1E1E1E", alignItems: "center", justifyContent: "center" },
   productName: { fontSize: 15, fontWeight: "700", color: "#F5F5F0" },
   cardRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   cardMeta: { fontSize: 12, color: "#888" },

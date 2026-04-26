@@ -1606,3 +1606,9 @@
 - [x] Coluna totalPrice salva no banco na tabela product_orders
 - [x] Notificação de cancelamento na área pública (Minhas Encomendas) com motivo
 - [x] Botão "Confirmar Recebimento" na área pública quando status = ready
+
+## Melhorias de Encomendas Round 3 (Abr/2026)
+
+- [x] Notificação push ao cliente ao mudar status da encomenda no app do barbeiro
+- [x] Foto do produto no card de encomenda no app do barbeiro
+- [x] Relatório de encomendas no painel financeiro (serviços vs produtos encomendados)

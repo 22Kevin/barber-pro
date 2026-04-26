@@ -19,6 +19,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { useGoogleAuth } from "@/lib/use-google-auth";
 import { trpc } from "@/lib/trpc";
+import { getExpoPushToken } from "@/lib/use-notifications";
 
 export default function ClientLogin() {
   const router = useRouter();
@@ -37,9 +38,17 @@ export default function ClientLogin() {
     ]).start();
   }, []);
 
+  const savePushToken = trpc.clientAuth.savePushToken.useMutation();
+
+  const registerPushToken = async (clientId: number) => {
+    const token = await getExpoPushToken();
+    if (token && clientId) savePushToken.mutate({ clientId, pushToken: token });
+  };
+
   const loginMutation = trpc.clientAuth.login.useMutation({
     onSuccess: async (data) => {
       await login({ ...data, email: data.email ?? "" });
+      registerPushToken(data.id);
       router.replace("/client/(tabs)/home" as any);
     },
     onError: (err) => Alert.alert("Erro", err.message),
@@ -48,6 +57,7 @@ export default function ClientLogin() {
   const googleLoginMutation = trpc.clientAuth.googleLogin.useMutation({
     onSuccess: async (data) => {
       await login({ ...data, email: data.email ?? "" });
+      registerPushToken(data.id);
       router.replace("/client/(tabs)/home" as any);
     },
     onError: (err) => {

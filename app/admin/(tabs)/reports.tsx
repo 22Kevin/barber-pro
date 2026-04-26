@@ -112,11 +112,16 @@ export default function ReportsScreen() {
   const topClientsQuery = trpc.reports.topClients.useQuery(dateRange);
   const occupancyQuery = trpc.reports.barberOccupancy.useQuery(dateRange);
   const exportPdfMutation = trpc.reports.exportPdf.useMutation();
+  const ordersSummaryQuery = trpc.reports.ordersSummary.useQuery(
+    { tenantId: tenantId ?? 0, ...dateRange },
+    { enabled: !!tenantId }
+  );
 
   const revenue = revenueQuery.data;
   const topServices = topServicesQuery.data ?? [];
   const topClients = topClientsQuery.data ?? [];
   const occupancy = occupancyQuery.data ?? [];
+  const ordersSummary = ordersSummaryQuery.data;
 
   const PERIODS: { key: Period; label: string }[] = [
     { key: "week", label: "7 dias" },
@@ -343,6 +348,70 @@ export default function ReportsScreen() {
           )}
         </View>
 
+        {/* Relatório de Encomendas */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Encomendas de Produtos</Text>
+            {ordersSummary && ordersSummary.totalRevenue > 0 && (
+              <Text style={styles.cardTotal}>{formatCurrency(ordersSummary.totalRevenue)}</Text>
+            )}
+          </View>
+          {ordersSummaryQuery.isLoading ? (
+            <ActivityIndicator color="#C9A84C" style={{ marginVertical: 16 }} />
+          ) : ordersSummary ? (
+            <>
+              {/* KPIs de encomendas */}
+              <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+                <View style={styles.kpiBox}>
+                  <Text style={styles.kpiValue}>{ordersSummary.total}</Text>
+                  <Text style={styles.kpiLabel}>Total</Text>
+                </View>
+                <View style={[styles.kpiBox, { borderColor: "#10B98133" }]}>
+                  <Text style={[styles.kpiValue, { color: "#10B981" }]}>{ordersSummary.delivered}</Text>
+                  <Text style={styles.kpiLabel}>Entregues</Text>
+                </View>
+                <View style={[styles.kpiBox, { borderColor: "#F59E0B33" }]}>
+                  <Text style={[styles.kpiValue, { color: "#F59E0B" }]}>{ordersSummary.pending}</Text>
+                  <Text style={styles.kpiLabel}>Em Aberto</Text>
+                </View>
+                <View style={[styles.kpiBox, { borderColor: "#EF444433" }]}>
+                  <Text style={[styles.kpiValue, { color: "#EF4444" }]}>{ordersSummary.cancelled}</Text>
+                  <Text style={styles.kpiLabel}>Cancelados</Text>
+                </View>
+              </View>
+              {/* Produtos mais encomendados */}
+              {ordersSummary.topProducts.length > 0 && (
+                <>
+                  <Text style={[styles.cardTitle, { fontSize: 13, marginBottom: 8 }]}>Produtos Mais Encomendados</Text>
+                  {ordersSummary.topProducts.map((p, i) => {
+                    const maxCount = ordersSummary.topProducts[0]?.count ?? 1;
+                    const pct = (p.count / maxCount) * 100;
+                    return (
+                      <View key={p.name} style={styles.rankRow}>
+                        <Text style={styles.rankPos}>#{i + 1}</Text>
+                        <View style={styles.rankInfo}>
+                          <View style={styles.rankLabelRow}>
+                            <Text style={styles.rankName} numberOfLines={1}>{p.name}</Text>
+                            <Text style={styles.rankValue}>{p.count}x</Text>
+                          </View>
+                          <View style={styles.barBg}>
+                            <View style={[styles.barFill, { width: `${pct}%` as any, backgroundColor: "#C9A84C" }]} />
+                          </View>
+                          {p.revenue > 0 && (
+                            <Text style={styles.rankCount}>{formatCurrency(p.revenue)} em receita</Text>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </>
+              )}
+            </>
+          ) : (
+            <Text style={styles.emptyText}>Nenhuma encomenda no período</Text>
+          )}
+        </View>
+
         <View style={{ height: 32 }} />
       </ScrollView>
     </ScreenContainer>
@@ -429,4 +498,15 @@ const styles = StyleSheet.create({
   clientRevenue: { alignItems: "flex-end" },
   clientRevenueText: { fontSize: 14, fontWeight: "700", color: "#4CAF50" },
   clientTicket: { fontSize: 10, color: "#555", marginTop: 2 },
+  kpiBox: {
+    flex: 1,
+    backgroundColor: "#1A1A1A",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#C9A84C33",
+    padding: 10,
+    alignItems: "center",
+  },
+  kpiValue: { fontSize: 20, fontWeight: "800", color: "#C9A84C" },
+  kpiLabel: { fontSize: 10, color: "#888", marginTop: 2, textAlign: "center" },
 });

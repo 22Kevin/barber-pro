@@ -21,6 +21,7 @@ import { useClientAuth } from "@/lib/client-auth-context";
 import { useGoogleAuth } from "@/lib/use-google-auth";
 import { trpc } from "@/lib/trpc";
 import { applyPhoneMask, stripMask } from "@/hooks/use-mask";
+import { getExpoPushToken } from "@/lib/use-notifications";
 
 function formatBirthDate(dateStr: string | null): string {
   if (!dateStr) return "";
@@ -51,9 +52,17 @@ export default function ClientRegister() {
     ]).start();
   }, []);
 
+  const savePushToken = trpc.clientAuth.savePushToken.useMutation();
+
+  const registerPushToken = async (clientId: number) => {
+    const token = await getExpoPushToken();
+    if (token && clientId) savePushToken.mutate({ clientId, pushToken: token });
+  };
+
   const registerMutation = trpc.clientAuth.register.useMutation({
     onSuccess: async (data) => {
       await login({ id: data.id, name: data.name, email: data.email, phone: data.phone, totalPoints: 0, birthDate });
+      registerPushToken(data.id);
       router.replace("/client/(tabs)/home" as any);
     },
     onError: (err) => Alert.alert("Erro", err.message),
@@ -62,6 +71,7 @@ export default function ClientRegister() {
   const googleLoginMutation = trpc.clientAuth.googleLogin.useMutation({
     onSuccess: async (data) => {
       await login({ ...data, email: data.email ?? "" });
+      registerPushToken(data.id);
       router.replace("/client/(tabs)/home" as any);
     },
     onError: (err) => {

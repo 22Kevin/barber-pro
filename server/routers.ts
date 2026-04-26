@@ -767,6 +767,9 @@ export const appRouter = router({
         });
         return { success: true };
       }),
+    savePushToken: publicProcedure
+      .input(z.object({ clientId: z.number(), pushToken: z.string() }))
+      .mutation(({ input }) => db.saveClientPushToken(input.clientId, input.pushToken)),
   }),
 
   reviews: router({
@@ -1303,6 +1306,36 @@ export const appRouter = router({
       const pdfBuffer = await pdfPromise;
       return { pdfBase64: pdfBuffer.toString("base64") };
     }),
+  ordersSummary: publicProcedure
+    .input(z.object({ tenantId: z.number(), startDate: z.string(), endDate: z.string() }))
+    .query(async ({ input }) => {
+      const orders = await db.getProductOrdersByTenant(input.tenantId);
+      const filtered = (orders as any[]).filter((o) => {
+        const d = o.createdAt ? new Date(o.createdAt).toISOString().split("T")[0] : "";
+        return d >= input.startDate && d <= input.endDate;
+      });
+      const delivered = filtered.filter((o) => o.status === "delivered");
+      const cancelled = filtered.filter((o) => o.status === "cancelled");
+      const pending = filtered.filter((o) => !["delivered", "cancelled"].includes(o.status));
+      const totalRevenue = delivered.reduce((sum: number, o: any) => sum + parseFloat(o.totalPrice ?? "0"), 0);
+      // Produtos mais encomendados
+      const productMap: Record<string, { name: string; count: number; revenue: number }> = {};
+      for (const o of filtered) {
+        const name = o.productName ?? "Produto";
+        if (!productMap[name]) productMap[name] = { name, count: 0, revenue: 0 };
+        productMap[name].count += o.quantity ?? 1;
+        if (o.status === "delivered") productMap[name].revenue += parseFloat(o.totalPrice ?? "0");
+      }
+      const topProducts = Object.values(productMap).sort((a, b) => b.count - a.count).slice(0, 5);
+      return {
+        total: filtered.length,
+        delivered: delivered.length,
+        cancelled: cancelled.length,
+        pending: pending.length,
+        totalRevenue,
+        topProducts,
+      };
+    }),
   }),
 
   // ─── Mensagens de Retorno Automáticas ────────────────────────────────────────
@@ -1698,7 +1731,26 @@ export const appRouter = router({
         if (input.cancelReason !== undefined) extra.cancelReason = input.cancelReason;
         if (input.paymentMethod !== undefined) extra.paymentMethod = input.paymentMethod;
         if (input.barberId !== undefined) extra.barberId = input.barberId;
+        // Buscar dados da encomenda antes de atualizar (para notificação)
+        const orderBefore = await db.getProductOrderById(input.id);
         await db.updateProductOrderStatus(input.id, input.status as any, Object.keys(extra).length > 0 ? extra : undefined);
+        // Enviar notificação push ao cliente
+        if (orderBefore?.clientId) {
+          const pushToken = await db.getClientPushToken(orderBefore.clientId);
+          if (pushToken) {
+            const statusMessages: Record<string, { title: string; body: string }> = {
+              confirmed: { title: "✅ Encomenda confirmada", body: `Seu pedido de ${orderBefore.productName ?? "produto"} foi confirmado pela barbearia!${input.estimatedDays ? ` Prazo estimado: ${input.estimatedDays} dias.` : ""}` },
+              in_progress: { title: "🔧 Em preparo", body: `Seu pedido de ${orderBefore.productName ?? "produto"} está sendo preparado.` },
+              ready: { title: "🎉 Pronto para retirada!", body: `Seu pedido de ${orderBefore.productName ?? "produto"} está pronto! Compareça à barbearia para retirar.` },
+              delivered: { title: "📦 Entregue", body: `Seu pedido de ${orderBefore.productName ?? "produto"} foi entregue. Obrigado!` },
+              cancelled: { title: "❌ Encomenda cancelada", body: `Seu pedido de ${orderBefore.productName ?? "produto"} foi cancelado.${input.cancelReason ? ` Motivo: ${input.cancelReason}` : ""}` },
+            };
+            const msg = statusMessages[input.status];
+            if (msg) {
+              await db.sendExpoPushNotification(pushToken, msg.title, msg.body, { orderId: input.id, screen: "orders" });
+            }
+          }
+        }
         return { ok: true };
       }),
     pendingCount: publicProcedure
