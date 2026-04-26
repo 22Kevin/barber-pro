@@ -102,6 +102,7 @@ export default function OrdersScreen() {
   const tenantId = barber?.tenantId ?? 0;
 
   const [filter, setFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("all"); // "all" | "today" | "week" | "month"
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
@@ -144,8 +145,27 @@ export default function OrdersScreen() {
   });
 
   const rawOrders = (ordersQuery.data ?? []) as Order[];
+  // Filtrar por período
+  const periodFiltered = rawOrders.filter((o) => {
+    if (periodFilter === "all") return true;
+    if (!o.createdAt) return false;
+    const created = new Date(o.createdAt);
+    const now = new Date();
+    if (periodFilter === "today") {
+      return created.toDateString() === now.toDateString();
+    }
+    if (periodFilter === "week") {
+      const weekAgo = new Date(); weekAgo.setDate(now.getDate() - 7);
+      return created >= weekAgo;
+    }
+    if (periodFilter === "month") {
+      const monthAgo = new Date(); monthAgo.setDate(now.getDate() - 30);
+      return created >= monthAgo;
+    }
+    return true;
+  });
   // Ordenar: ativos com prazo vencido/próximo no topo, depois por data de criação
-  const orders = [...rawOrders].sort((a, b) => urgencyScore(a) - urgencyScore(b));
+  const orders = [...periodFiltered].sort((a, b) => urgencyScore(a) - urgencyScore(b));
 
   function handleAdvanceStatus(order: Order) {
     const currentIdx = STATUS_FLOW.indexOf(order.status as OrderStatus);
@@ -368,7 +388,7 @@ export default function OrdersScreen() {
         }
       />
 
-      {/* Filtros */}
+      {/* Filtros de status */}
       <View style={styles.filterRow}>
         <FlatList
           horizontal
@@ -388,6 +408,25 @@ export default function OrdersScreen() {
             </TouchableOpacity>
           )}
         />
+      </View>
+
+      {/* Filtro de período */}
+      <View style={styles.periodRow}>
+        {(["all", "today", "week", "month"] as const).map((p) => {
+          const labels = { all: "Todos os períodos", today: "Hoje", week: "7 dias", month: "30 dias" };
+          return (
+            <TouchableOpacity
+              key={p}
+              style={[styles.periodChip, periodFilter === p && styles.periodChipActive]}
+              onPress={() => setPeriodFilter(p)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.periodChipText, periodFilter === p && styles.periodChipTextActive]}>
+                {labels[p]}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {ordersQuery.isLoading ? (
@@ -850,4 +889,9 @@ const styles = StyleSheet.create({
   cardUrgent: { borderColor: "#F5920066", borderWidth: 1.5 },
   urgencyBadge: { backgroundColor: "#EF444422", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
   urgencyBadgeText: { fontSize: 10, fontWeight: "700", color: "#EF4444" },
+  periodRow: { flexDirection: "row", paddingHorizontal: 14, paddingVertical: 8, gap: 8, borderBottomWidth: 0.5, borderBottomColor: "#1E1E1E" },
+  periodChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#2A2A2A" },
+  periodChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
+  periodChipText: { fontSize: 12, color: "#666" },
+  periodChipTextActive: { color: "#C9A84C", fontWeight: "700" },
 });

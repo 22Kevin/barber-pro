@@ -1624,3 +1624,9 @@
 - [x] Reordenar encomendas por urgência no app do barbeiro (prazo vencido/próximo no topo com badge vermelho)
 - [x] Histórico de movimentações de estoque por produto no admin (entradas, saídas, encomendas)
 - [x] Avaliação de produto pós-entrega no app do cliente (botão ⭐ Avaliar após status=delivered)
+
+## Melhorias de Encomendas Round 6 (Abr/2026)
+
+- [x] Avaliações de produto na tela de detalhe do produto na loja do cliente (média + comentários)
+- [x] Filtro de período (hoje / semana / mês) na aba Encomendas do app do barbeiro
+- [x] Botão "Repor Estoque" no admin com quantidade, custo unitário e registro no histórico de movimentações + despesa financeira automática

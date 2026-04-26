@@ -779,6 +779,9 @@ export const appRouter = router({
     byService: publicProcedure
       .input(z.object({ serviceId: z.number(), tenantId: z.number().optional().nullable() }))
       .query(({ input }) => db.getReviewsByService(input.serviceId, input.tenantId)),
+    byProduct: publicProcedure
+      .input(z.object({ productId: z.number(), tenantId: z.number().optional().nullable() }))
+      .query(({ input }) => db.getReviewsByProduct(input.productId, input.tenantId)),
     byClient: publicProcedure
       .input(z.object({ clientId: z.number(), tenantId: z.number().optional().nullable() }))
       .query(({ input }) => db.getReviewsByClient(input.clientId, input.tenantId)),
@@ -1584,6 +1587,43 @@ export const appRouter = router({
     lowStock: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
       return db.getLowStockProducts(input?.tenantId);
     }),
+    restock: publicProcedure
+      .input(z.object({
+        productId: z.number(),
+        quantity: z.number().min(1),
+        unitCost: z.number().min(0).optional(),
+        paymentMethod: z.string().optional(),
+        note: z.string().optional(),
+        barberId: z.number().optional(),
+        tenantId: z.number().optional().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        const today = new Date().toISOString().slice(0, 10);
+        // 1. Registrar entrada no histórico de estoque
+        await db.addStockMovement({
+          productId: input.productId,
+          type: "in",
+          quantity: input.quantity,
+          reason: input.note ?? "Reposição de estoque",
+          barberId: input.barberId,
+          date: today,
+        });
+        // 2. Se houver custo unitário, registrar despesa financeira
+        if (input.unitCost && input.unitCost > 0) {
+          const product = await db.getProductById(input.productId);
+          const productName = product?.name ?? "Produto";
+          const totalCost = input.unitCost * input.quantity;
+          await db.createExpense({
+            category: "Estoque",
+            description: `Reposição: ${productName} (${input.quantity}x R$${input.unitCost.toFixed(2)})${input.note ? ` - ${input.note}` : ""}`,
+            amount: String(totalCost.toFixed(2)),
+            date: today,
+            paymentMethod: input.paymentMethod ?? null,
+            barberId: input.barberId ?? null,
+          } as any);
+        }
+        return { success: true };
+      }),
   }),
   // ─── Onboarding SaaS (criação de novo tenant) ─────────────────────────────
   onboarding: router({

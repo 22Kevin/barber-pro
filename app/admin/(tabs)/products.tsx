@@ -42,6 +42,12 @@ export default function ProductsScreen() {
   const [search, setSearch] = useState("");
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyProduct, setHistoryProduct] = useState<Product | null>(null);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [restockProduct, setRestockProduct] = useState<Product | null>(null);
+  const [restockQty, setRestockQty] = useState("1");
+  const [restockCost, setRestockCost] = useState("");
+  const [restockPayment, setRestockPayment] = useState("cash");
+  const [restockNote, setRestockNote] = useState("");
 
   const movementsQuery = trpc.stock.movements.useQuery(
     { productId: historyProduct?.id ?? 0 },
@@ -70,6 +76,42 @@ export default function ProductsScreen() {
     onSuccess: () => { utils.products.list.invalidate(); closeModal(); },
     onError: (e) => Alert.alert("Erro", e.message),
   });
+
+  const restockMutation = trpc.stock.restock.useMutation({
+    onSuccess: () => {
+      utils.products.list.invalidate();
+      utils.stock.movements.invalidate();
+      setShowRestockModal(false);
+      setRestockProduct(null);
+      Alert.alert("Estoque Reposto", "Estoque atualizado com sucesso!");
+    },
+    onError: (e) => Alert.alert("Erro", e.message),
+  });
+
+  function openRestock(p: Product) {
+    setRestockProduct(p);
+    setRestockQty("1");
+    setRestockCost("");
+    setRestockPayment("cash");
+    setRestockNote("");
+    setShowRestockModal(true);
+  }
+
+  function confirmRestock() {
+    if (!restockProduct) return;
+    const qty = parseInt(restockQty);
+    if (isNaN(qty) || qty < 1) { Alert.alert("Atenção", "Informe uma quantidade válida."); return; }
+    const cost = restockCost ? parseFloat(restockCost.replace(",", ".")) : undefined;
+    restockMutation.mutate({
+      productId: restockProduct.id,
+      quantity: qty,
+      unitCost: cost,
+      paymentMethod: restockPayment || undefined,
+      note: restockNote.trim() || undefined,
+      barberId: barber?.id ?? undefined,
+      tenantId: tenantId ?? undefined,
+    });
+  }
 
   function openCreate() {
     setEditing(null);
@@ -168,6 +210,9 @@ export default function ProductsScreen() {
               <View style={styles.cardActions}>
                 <Pressable onPress={() => { setHistoryProduct(item); setShowHistoryModal(true); }} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
                   <IconSymbol name="chart.bar.fill" size={18} color="#3B82F6" />
+                </Pressable>
+                <Pressable onPress={() => openRestock(item)} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
+                  <IconSymbol name="plus.circle.fill" size={18} color="#22C55E" />
                 </Pressable>
                 <Pressable onPress={() => openEdit(item)} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
                   <IconSymbol name="pencil" size={18} color="#C9A84C" />
@@ -304,6 +349,48 @@ export default function ProductsScreen() {
               />
             )}
           </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Reposição de Estoque */}
+      <Modal visible={showRestockModal} transparent animationType="slide" onRequestClose={() => setShowRestockModal(false)}>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Repor Estoque</Text>
+                <Pressable onPress={() => setShowRestockModal(false)}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
+              </View>
+              {restockProduct && (
+                <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 12, marginBottom: 16 }}>
+                  <Text style={{ color: "#C9A84C", fontWeight: "700", fontSize: 15 }}>{restockProduct.name}</Text>
+                  <Text style={{ color: "#888880", fontSize: 13, marginTop: 2 }}>Estoque atual: {restockProduct.stock} unidades</Text>
+                </View>
+              )}
+              <Field label="Quantidade a Repor *">
+                <TextInput style={styles.input} value={restockQty} onChangeText={setRestockQty} placeholder="1" placeholderTextColor="#555" keyboardType="number-pad" />
+              </Field>
+              <Field label="Custo Unitário (R$) — opcional">
+                <TextInput style={styles.input} value={restockCost} onChangeText={setRestockCost} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
+              </Field>
+              <Field label="Forma de Pagamento">
+                <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                  {[{v:"cash",l:"Dinheiro"},{v:"card",l:"Cartão"},{v:"pix",l:"Pix"},{v:"other",l:"Outro"}].map((pm) => (
+                    <Pressable key={pm.v} onPress={() => setRestockPayment(pm.v)}
+                      style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: restockPayment === pm.v ? "#C9A84C22" : "#1E1E1E", borderWidth: 1, borderColor: restockPayment === pm.v ? "#C9A84C" : "#2A2A2A" }}>
+                      <Text style={{ color: restockPayment === pm.v ? "#C9A84C" : "#888880", fontSize: 13, fontWeight: restockPayment === pm.v ? "700" : "400" }}>{pm.l}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </Field>
+              <Field label="Observação">
+                <TextInput style={styles.input} value={restockNote} onChangeText={setRestockNote} placeholder="Ex: Compra no fornecedor X" placeholderTextColor="#555" />
+              </Field>
+              <Pressable style={[styles.saveBtn, restockMutation.isPending && { opacity: 0.6 }]} onPress={confirmRestock} disabled={restockMutation.isPending}>
+                <Text style={styles.saveBtnText}>{restockMutation.isPending ? "Salvando..." : `Repor +${restockQty || 0} unidades`}</Text>
+              </Pressable>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </ScreenContainer>

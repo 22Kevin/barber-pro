@@ -930,6 +930,23 @@ export async function getReviewsByService(serviceId: number, tenantId?: number |
   if (tenantId != null) conditions.push(eq(reviews.tenantId, tenantId));
   return db.select().from(reviews).where(and(...conditions)).orderBy(desc(reviews.createdAt));
 }
+export async function getReviewsByProduct(productId: number, tenantId?: number | null) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(reviews.productId, productId)];
+  if (tenantId != null) conditions.push(eq(reviews.tenantId, tenantId));
+  const result = await db
+    .select({ id: reviews.id, rating: reviews.rating, comment: reviews.comment, createdAt: reviews.createdAt, clientId: reviews.clientId })
+    .from(reviews)
+    .where(and(...conditions))
+    .orderBy(desc(reviews.createdAt));
+  const clientIds = [...new Set(result.map(r => r.clientId))];
+  const clientList = clientIds.length > 0
+    ? await db.select({ id: clients.id, name: clients.name }).from(clients).where(inArray(clients.id, clientIds))
+    : [];
+  const clientMap = Object.fromEntries(clientList.map(c => [c.id, c.name]));
+  return result.map(r => ({ ...r, clientName: clientMap[r.clientId] ?? "Cliente" }));
+}
 export async function getReviewsByClient(clientId: number, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];

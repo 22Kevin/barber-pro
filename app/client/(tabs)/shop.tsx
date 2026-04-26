@@ -76,6 +76,14 @@ function ProductDetail({ product, onClose }: { product: any; onClose: () => void
   const [expandDesc, setExpandDesc] = useState(false);
   const [selectedImg, setSelectedImg] = useState<string | null>(null);
   const images = mediaQuery.data?.filter((m: any) => m.type === "image") ?? [];
+  const reviewsQuery = trpc.reviews.byProduct.useQuery(
+    { productId: product.id, tenantId: product.tenantId ?? null },
+    { enabled: !!product.id }
+  );
+  const productReviews = reviewsQuery.data ?? [];
+  const avgRating = productReviews.length > 0
+    ? productReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / productReviews.length
+    : 0;
 
   // Fade-in de entrada
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -155,6 +163,38 @@ function ProductDetail({ product, onClose }: { product: any; onClose: () => void
               )}
             </View>
           ) : null}
+
+          {/* Avaliações */}
+          <View style={styles.reviewsSection}>
+            <View style={styles.reviewsHeader}>
+              <Text style={styles.reviewsSectionTitle}>Avaliações</Text>
+              {productReviews.length > 0 && (
+                <View style={styles.avgRatingBadge}>
+                  <Text style={styles.avgRatingText}>
+                    ⭐ {avgRating.toFixed(1)} ({productReviews.length})
+                  </Text>
+                </View>
+              )}
+            </View>
+            {reviewsQuery.isLoading ? (
+              <Text style={styles.reviewsEmpty}>Carregando...</Text>
+            ) : productReviews.length === 0 ? (
+              <Text style={styles.reviewsEmpty}>Nenhuma avaliação ainda. Seja o primeiro!</Text>
+            ) : (
+              productReviews.slice(0, 5).map((r: any) => (
+                <View key={r.id} style={styles.reviewCard}>
+                  <View style={styles.reviewCardHeader}>
+                    <Text style={styles.reviewClientName}>{r.clientName}</Text>
+                    <Text style={styles.reviewStars}>{"⭐".repeat(r.rating)}{"\u2606".repeat(5 - r.rating)}</Text>
+                  </View>
+                  {r.comment ? <Text style={styles.reviewComment}>{r.comment}</Text> : null}
+                  <Text style={styles.reviewDate}>
+                    {r.createdAt ? new Date(r.createdAt).toLocaleDateString("pt-BR") : ""}
+                  </Text>
+                </View>
+              ))
+            )}
+          </View>
 
           {/* Info de compra */}
           <View style={styles.infoBox}>
@@ -646,4 +686,16 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 13,
   },
+  reviewsSection: { marginTop: 24, marginBottom: 8 },
+  reviewsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  reviewsSectionTitle: { fontSize: 16, fontWeight: "800", color: "#F9FAFB" },
+  avgRatingBadge: { backgroundColor: "#1A1A0A", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, borderWidth: 1, borderColor: "#EAB30844" },
+  avgRatingText: { fontSize: 13, color: "#EAB308", fontWeight: "700" },
+  reviewsEmpty: { fontSize: 13, color: "#4B5563", fontStyle: "italic", textAlign: "center", paddingVertical: 16 },
+  reviewCard: { backgroundColor: "#111827", borderRadius: 12, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: "#1F2937" },
+  reviewCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  reviewClientName: { fontSize: 13, fontWeight: "700", color: "#F9FAFB" },
+  reviewStars: { fontSize: 13 },
+  reviewComment: { fontSize: 13, color: "#D1D5DB", marginBottom: 4, lineHeight: 18 },
+  reviewDate: { fontSize: 11, color: "#4B5563" },
 });
