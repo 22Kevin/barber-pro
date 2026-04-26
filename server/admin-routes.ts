@@ -2027,6 +2027,48 @@ async function renderRelatorios(req: Request, res: Response) {
   const periodOptions = [
     { v: "7", l: "7 dias" }, { v: "14", l: "14 dias" }, { v: "30", l: "30 dias" }, { v: "60", l: "60 dias" }, { v: "90", l: "90 dias" }
   ].map(o => `<option value="${o.v}" ${period === o.v ? "selected" : ""}>${o.l}</option>`).join("");
+  // Encomendas no período
+  const allOrders = await db.getProductOrdersByTenant(tenantId ?? 0);
+  const ordersInPeriod = allOrders.filter((o: any) => {
+    const d = new Date(o.createdAt);
+    return d >= startDate && d <= endDate;
+  });
+  const ordersTotal = ordersInPeriod.length;
+  const ordersDelivered = ordersInPeriod.filter((o: any) => o.status === 'delivered').length;
+  const ordersPending = ordersInPeriod.filter((o: any) => ['received','confirmed','preparing','ready'].includes(o.status)).length;
+  const ordersCancelled = ordersInPeriod.filter((o: any) => o.status === 'cancelled').length;
+  // Produtos mais encomendados
+  const productMap: Record<string, { name: string; count: number }> = {};
+  ordersInPeriod.forEach((o: any) => {
+    const key = String(o.productId);
+    if (!productMap[key]) productMap[key] = { name: o.productName ?? 'Produto', count: 0 };
+    productMap[key].count += (o.quantity ?? 1);
+  });
+  const topProducts = Object.values(productMap).sort((a, b) => b.count - a.count).slice(0, 5);
+  const topProductsRows = topProducts.map(p => `<tr><td>${esc(p.name)}</td><td style="text-align:right">${p.count} un.</td></tr>`).join('') || '<tr><td colspan="2" style="text-align:center;color:var(--muted)">Sem encomendas no período</td></tr>';
+  const ordersReportHtml = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px">
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:24px;font-weight:800;color:#C9A84C">${ordersTotal}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Total</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:24px;font-weight:800;color:#4ADE80">${ordersDelivered}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Entregues</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:24px;font-weight:800;color:#F59E0B">${ordersPending}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Em aberto</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:24px;font-weight:800;color:var(--error)">${ordersCancelled}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Cancelados</div>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--muted)">PRODUTOS MAIS ENCOMENDADOS</div>
+      <table><thead><tr><th>Produto</th><th style="text-align:right">Qtd</th></tr></thead><tbody>${topProductsRows}</tbody></table>
+    </div>`;
   const body = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
       <h2 style="font-size:20px;font-weight:700;margin:0">📊 Relatórios</h2>
@@ -2086,6 +2128,11 @@ async function renderRelatorios(req: Request, res: Response) {
     <div class="card" style="margin-bottom:24px">
       <div class="card-header"><div class="card-title">💳 Formas de Pagamento</div></div>
       <div class="card-body">${pieSvg}</div>
+    </div>
+    <!-- Encomendas -->
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header"><div class="card-title">📦 Encomendas de Produtos</div></div>
+      <div class="card-body">${ordersReportHtml}</div>
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";

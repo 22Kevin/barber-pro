@@ -1683,5 +1683,26 @@ export const appRouter = router({
   }),
 
   subscriptionPlans: subscriptionPlanRouter,
+  productOrders: router({
+    list: publicProcedure
+      .input(z.object({ tenantId: z.number(), status: z.string().optional() }))
+      .query(({ input }) => db.getProductOrdersByTenant(input.tenantId, input.status)),
+    get: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .query(({ input }) => db.getProductOrderById(input.id)),
+    updateStatus: publicProcedure
+      .input(z.object({ id: z.number(), status: z.string(), estimatedDays: z.number().optional() }))
+      .mutation(async ({ input }) => {
+        await db.updateProductOrderStatus(input.id, input.status as any, input.estimatedDays !== undefined ? { estimatedDays: input.estimatedDays } : undefined);
+        return { ok: true };
+      }),
+    pendingCount: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }) => {
+        const orders = await db.getProductOrdersByTenant(input.tenantId, undefined);
+        const pending = (orders as any[]).filter((o) => !['delivered', 'cancelled'].includes(o.status));
+        return { count: pending.length };
+      }),
+  }),
 });
 export type AppRouter = typeof appRouter;

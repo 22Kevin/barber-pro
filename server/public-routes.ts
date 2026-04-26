@@ -417,7 +417,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       <a href="/pub/${slug}/servico/${s.id}" class="tab-card" style="text-decoration:none;color:inherit">
         ${s.thumbnailUrl
           ? `<img class="tab-card-thumb" src="${escapeHtml(s.thumbnailUrl)}" alt="${escapeHtml(s.name)}" loading="lazy" />`
-          : `<div class="tab-card-thumb-placeholder">✂️</div>`
+          : `<div class="tab-card-thumb-placeholder">✂</div>`
         }
         <div class="tab-card-body">
           <div class="tab-card-name">${escapeHtml(s.name)}</div>
@@ -753,7 +753,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       <div class="steps-grid">
         <div class="step-card">
           <div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">1</div>
-          <div class="step-icon">✂️</div>
+          <div class="step-icon">✂</div>
           <div class="step-title">Escolha o Serviço</div>
           <div class="step-desc">Selecione o corte ou tratamento que deseja.</div>
         </div>
@@ -815,7 +815,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
               <div class="pub-navbar-dropdown-menu">
                 <a href="/pub/${slug}/perfil" class="pub-navbar-dropdown-item">👤 Meu Perfil</a>
                 <a href="/pub/${slug}/meus-agendamentos" class="pub-navbar-dropdown-item">📅 Meus Agendamentos</a>
-                <a href="/pub/${slug}/agendar" class="pub-navbar-dropdown-item">✂️ Agendar Horário</a>
+                <a href="/pub/${slug}/agendar" class="pub-navbar-dropdown-item">✂ Agendar Horário</a>
                 <div style="height:1px;background:var(--border);margin:4px 0"></div>
                 <a href="/pub/${slug}/logout" class="pub-navbar-dropdown-item danger">🚪 Sair</a>
               </div>
@@ -854,7 +854,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     <!-- Painel de Abas: Serviços / Produtos / Assinaturas / Como Funciona -->
     <div class="tabs-section">
       <div class="tabs-header">
-        <button class="tab-btn active" onclick="switchTab('services',this)">✂️ Serviços</button>
+        <button class="tab-btn active" onclick="switchTab('services',this)">✂ Serviços</button>
         ${saleProducts.length > 0 ? `<button class="tab-btn" onclick="switchTab('products',this)">🧴 Produtos</button>` : ""}
         ${subscriptionPlansHtml ? `<button class="tab-btn" onclick="switchTab('plans',this)">🏷️ Assinaturas</button>` : ""}
         <button class="tab-btn" onclick="switchTab('how',this)">ℹ️ Como Funciona</button>
@@ -885,7 +885,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       <div class="tab-panel" id="tab-how">
         <div class="how-tab">
           <div class="steps-grid">
-            <div class="step-card"><div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">1</div><div class="step-icon">✂️</div><div class="step-title">Escolha o Serviço</div><div class="step-desc">Selecione o corte ou tratamento que deseja.</div></div>
+            <div class="step-card"><div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">1</div><div class="step-icon">✂</div><div class="step-title">Escolha o Serviço</div><div class="step-desc">Selecione o corte ou tratamento que deseja.</div></div>
             <div class="step-card"><div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">2</div><div class="step-icon">💈</div><div class="step-title">Escolha o Barbeiro</div><div class="step-desc">Selecione seu profissional favorito.</div></div>
             <div class="step-card"><div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">3</div><div class="step-icon">📅</div><div class="step-title">Escolha o Horário</div><div class="step-desc">Veja os horários disponíveis e escolha o melhor para você.</div></div>
             <div class="step-card"><div class="step-number" style="background:${primaryColor}22;color:${primaryColor}">4</div><div class="step-icon">✅</div><div class="step-title">Confirme</div><div class="step-desc">Confirme o agendamento e receba lembretes automáticos.</div></div>
@@ -1132,7 +1132,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       <!-- Etapa 1: Serviço selecionado + adicionar mais -->
       <div id="step-1">
-        <div class="step-section-title">✂️ Serviço selecionado</div>
+        <div class="step-section-title">✂ Serviço selecionado</div>
         <!-- Card do serviço principal (pré-selecionado) -->
         <div id="main-svc-card" class="main-svc-card"></div>
         <!-- Accordion: adicionar mais serviços -->
@@ -1261,7 +1261,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         var s = selectedService;
         var thumbHtml = s.thumbnailUrl
           ? '<img class="main-svc-thumb" src="' + escHtml(s.thumbnailUrl) + '" alt="" loading="lazy" />'
-          : '<div class="main-svc-thumb-placeholder">✂️</div>';
+          : '<div class="main-svc-thumb-placeholder">✂</div>';
         el.innerHTML = thumbHtml +
           '<div class="main-svc-body">' +
             '<div class="main-svc-name">' + escHtml(s.name) + '</div>' +
@@ -1282,7 +1282,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           if (s.thumbnailUrl) {
             html += '<img class="svc-thumb2" src="' + escHtml(s.thumbnailUrl) + '" alt="' + escHtml(s.name) + '" loading="lazy" />';
           } else {
-            html += '<div class="svc-thumb2-placeholder">✂️</div>';
+            html += '<div class="svc-thumb2-placeholder">✂</div>';
           }
           html += '<div class="svc-body2">';
           html += '<div class="svc-name2">' + escHtml(s.name) + '</div>';
@@ -1578,7 +1578,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
         var thumbHtml = svcThumb
           ? '<img class="summary-svc-thumb" src="' + escHtml(svcThumb) + '" alt="" />'
-          : '<div class="summary-svc-thumb-placeholder">✂️</div>';
+          : '<div class="summary-svc-thumb-placeholder">✂</div>';
 
         var barberAvatarHtml = barberPhoto
           ? '<img style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--primary);flex-shrink:0" src="' + escHtml(barberPhoto) + '" alt="" />'
@@ -1652,7 +1652,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
             var dateFormatted = selectedDate.split('-').reverse().join('/');
             var svcName = selectedService ? selectedService.name : 'Serviço';
             var barberName = selectedBarber ? selectedBarber.name : 'profissional';
-            var waMsg = 'Olá! Meu agendamento foi confirmado:%0A%0A✂️ ' + encodeURIComponent(svcName) + '%0A📅 ' + dateFormatted + ' às ' + selectedSlot.startTime + '%0A💈 ' + encodeURIComponent(barberName);
+            var waMsg = 'Olá! Meu agendamento foi confirmado:%0A%0A✂ ' + encodeURIComponent(svcName) + '%0A📅 ' + dateFormatted + ' às ' + selectedSlot.startTime + '%0A💈 ' + encodeURIComponent(barberName);
             var waHtml = WA_NUMBER
               ? '<a href="https://wa.me/' + WA_NUMBER + '?text=' + waMsg + '" target="_blank" style="display:block;margin-top:14px;padding:14px;background:#25D366;color:#fff;font-size:14px;font-weight:800;border-radius:12px;text-decoration:none;text-align:center">📲 Confirmar pelo WhatsApp</a>'
               : '';
@@ -1732,7 +1732,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         var dateFormatted = selectedDate ? selectedDate.split('-').reverse().join('/') : '';
         var svcName = selectedService ? selectedService.name : 'Serviço';
         var barberName = selectedBarber ? selectedBarber.name : 'profissional';
-        var waMsg = 'Olá! Meu agendamento foi confirmado:%0A%0A✂️ ' + encodeURIComponent(svcName) + '%0A📅 ' + dateFormatted + ' às ' + (selectedSlot ? selectedSlot.startTime : '') + '%0A💈 ' + encodeURIComponent(barberName);
+        var waMsg = 'Olá! Meu agendamento foi confirmado:%0A%0A✂ ' + encodeURIComponent(svcName) + '%0A📅 ' + dateFormatted + ' às ' + (selectedSlot ? selectedSlot.startTime : '') + '%0A💈 ' + encodeURIComponent(barberName);
         var waHtml = WA_NUMBER
           ? '<a href="https://wa.me/' + WA_NUMBER + '?text=' + waMsg + '" target="_blank" style="display:block;margin-top:14px;padding:14px;background:#25D366;color:#fff;font-size:14px;font-weight:800;border-radius:12px;text-decoration:none;text-align:center">📲 Confirmar pelo WhatsApp</a>'
           : '';
@@ -1814,7 +1814,7 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
           <div style="font-size:26px;font-weight:900;letter-spacing:-0.5px;margin-bottom:8px">${shopName}</div>
           <div style="font-size:14px;color:#ffffff99;line-height:1.5">Agende seu horário de forma rápida e fácil.</div>
           <div style="margin-top:32px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-            <div style="background:#ffffff14;border:1px solid #ffffff22;border-radius:12px;padding:12px 18px;font-size:13px;color:#ffffffcc">✂️ Serviços</div>
+            <div style="background:#ffffff14;border:1px solid #ffffff22;border-radius:12px;padding:12px 18px;font-size:13px;color:#ffffffcc">✂ Serviços</div>
             <div style="background:#ffffff14;border:1px solid #ffffff22;border-radius:12px;padding:12px 18px;font-size:13px;color:#ffffffcc">📅 Agendamentos</div>
             <div style="background:#ffffff14;border:1px solid #ffffff22;border-radius:12px;padding:12px 18px;font-size:13px;color:#ffffffcc">⭐ Fidelidade</div>
           </div>
@@ -2016,7 +2016,7 @@ async function renderPerfilPage(slug: string, res: Response, req: Request) {
 
   const historyHtml = pastAppts.length === 0
     ? `<div style="text-align:center;padding:32px 16px;color:var(--muted)">
-        <div style="font-size:40px;margin-bottom:12px">✂️</div>
+        <div style="font-size:40px;margin-bottom:12px">✂</div>
         <div style="font-size:14px">Nenhum corte registrado ainda</div>
       </div>`
     : pastAppts.map(a => `
@@ -2092,7 +2092,7 @@ async function renderPerfilPage(slug: string, res: Response, req: Request) {
           📅 Próximos
         </a>
         <a href="?tab=historico" style="flex:1;text-align:center;padding:12px 4px;font-size:13px;font-weight:700;text-decoration:none;border-left:1px solid var(--border);${tab==='historico'?`background:${primaryColor};color:#0A0A0A`:'color:var(--muted)'}">
-          ✂️ Histórico
+          ✂ Histórico
         </a>
         <a href="?tab=dados" style="flex:1;text-align:center;padding:12px 4px;font-size:13px;font-weight:700;text-decoration:none;border-left:1px solid var(--border);${tab==='dados'?`background:${primaryColor};color:#0A0A0A`:'color:var(--muted)'}">
           ✏️ Meus Dados
@@ -2238,7 +2238,7 @@ async function renderReviewPage(slug: string, appointmentIdStr: string, res: Res
     <div style="max-width:480px;margin:0 auto;padding:32px 24px">
       <!-- Cabeçalho -->
       <div style="text-align:center;margin-bottom:32px">
-        <div style="font-size:48px;margin-bottom:12px">✂️</div>
+        <div style="font-size:48px;margin-bottom:12px">✂</div>
         <div style="font-size:22px;font-weight:900;margin-bottom:6px">Como foi seu atendimento?</div>
         <div style="font-size:14px;color:var(--muted)">Sua opinião ajuda outros clientes e melhora nosso serviço.</div>
       </div>
@@ -2570,6 +2570,7 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
             </div>
             ${timelineHtml}
             ${canCancel ? `<button onclick="cancelOrder(${o.id}, this)" style="margin-top:10px;width:100%;padding:10px;background:transparent;border:1px solid #EF4444;color:#EF4444;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">Cancelar encomenda</button>` : ""}
+            ${o.status === "delivered" ? `<button onclick="openProductReview(${o.id}, '${escapeHtml(o.product?.name ?? "Produto")}', ${o.productId})" style="margin-top:10px;width:100%;padding:10px;background:transparent;border:1px solid #C9A84C;color:#C9A84C;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">⭐ Avaliar produto</button>` : ""}
           </div>`;
         }).join("");
         return `
@@ -2674,6 +2675,61 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
         }
       }
 
+      // ─── Avaliar produto ────────────────────────────────────────────────────
+      function openProductReview(orderId, productName, productId) {
+        var modal = document.getElementById('productReviewModal');
+        if (!modal) {
+          modal = document.createElement('div');
+          modal.id = 'productReviewModal';
+          modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+          var starsHtml = [1,2,3,4,5].map(function(n){ return '<span data-star="'+n+'" onclick="setPRStar('+n+')" style="font-size:36px;cursor:pointer;opacity:0.3">&#9733;</span>'; }).join('');
+          modal.innerHTML = '<div style="background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 32px;width:100%;max-width:480px">'
+            + '<div style="text-align:center;margin-bottom:16px">'
+            + '<div style="font-size:22px;font-weight:900;margin-bottom:4px">Avaliar Produto</div>'
+            + '<div id="prName" style="font-size:14px;color:var(--muted)"></div>'
+            + '</div>'
+            + '<div style="display:flex;justify-content:center;gap:8px;margin:16px 0" id="prStars">' + starsHtml + '</div>'
+            + '<textarea id="prComment" placeholder="Coment\u00e1rio (opcional)" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;resize:none;height:80px;box-sizing:border-box"></textarea>'
+            + '<button id="prSubmit" onclick="submitProductReview()" style="margin-top:12px;width:100%;padding:14px;background:var(--primary);color:#0A0A0A;font-weight:900;border-radius:12px;border:none;font-size:15px;cursor:pointer">Enviar Avalia\u00e7\u00e3o</button>'
+            + '<button onclick="document.getElementById(\'productReviewModal\').style.display=\'none\'" style="margin-top:8px;width:100%;padding:10px;background:transparent;border:none;color:var(--muted);font-size:14px;cursor:pointer">Cancelar</button>'
+            + '</div>';
+          document.body.appendChild(modal);
+        }
+        modal._orderId = orderId;
+        modal._productId = productId;
+        modal._rating = 0;
+        document.getElementById('prName').textContent = productName;
+        document.getElementById('prComment').value = '';
+        document.querySelectorAll('#prStars span').forEach(function(s) { s.style.opacity = '0.3'; });
+        modal.style.display = 'flex';
+      }
+      function setPRStar(n) {
+        var modal = document.getElementById('productReviewModal');
+        modal._rating = n;
+        document.querySelectorAll('#prStars span').forEach(function(s) {
+          s.style.opacity = parseInt(s.getAttribute('data-star')) <= n ? '1' : '0.3';
+        });
+      }
+      async function submitProductReview() {
+        var modal = document.getElementById('productReviewModal');
+        if (!modal._rating) { alert('Selecione uma nota de 1 a 5 estrelas'); return; }
+        var btn = document.getElementById('prSubmit');
+        btn.disabled = true; btn.textContent = 'Enviando...';
+        try {
+          var r = await fetch('/pub-api/submit-review', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: '${slug}', rating: modal._rating, comment: document.getElementById('prComment').value, productId: modal._productId })
+          });
+          if (!r.ok) throw new Error('Erro ao enviar');
+          modal.style.display = 'none';
+          alert('Avaliação enviada! Obrigado 🙏');
+        } catch(e) {
+          alert(e.message);
+          btn.disabled = false; btn.textContent = 'Enviar Avaliação';
+        }
+      }
+
       // ─── Cancelar agendamento ──────────────────────────────────────────────
       async function cancelAppt(id, btn) {
         if (!confirm('Deseja cancelar este agendamento?')) return;
@@ -2715,7 +2771,7 @@ async function renderServiceDetailPage(slug: string, serviceId: number, res: Res
   const images = media.filter(m => m.type === "image");
   const videos = media.filter(m => m.type === "video");
   const mediaHtml = images.length === 0 && videos.length === 0
-    ? `<div style="width:100%;height:280px;background:var(--surface2);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:64px;margin-bottom:28px">✂️</div>`
+    ? `<div style="width:100%;height:280px;background:var(--surface2);border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:64px;margin-bottom:28px">✂</div>`
     : `<div class="gallery-carousel" id="galleryCarousel" style="margin-bottom:28px">
         <div class="gallery-track" id="galleryTrack">
           ${images.map((m, i) => `<div class="gallery-slide"><img src="${escapeHtml(m.url)}" alt="${escapeHtml(service.name)}" onclick="openLightbox(${i})" loading="lazy" /></div>`).join("")}
@@ -2809,7 +2865,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
   const svcList = planServices.map((s: any) => `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:10px">
-        <span style="color:var(--primary);font-size:18px">✂️</span>
+        <span style="color:var(--primary);font-size:18px">✂</span>
         <span style="font-size:14px;font-weight:600">${escapeHtml(s.serviceName)}</span>
       </div>
       <span style="font-size:12px;color:var(--muted)">${formatDuration(s.durationMinutes)}</span>
@@ -3567,7 +3623,7 @@ export function registerPublicRoutes(app: Express): void {
       <a href="/pub/${t.slug}" style="text-decoration:none;color:inherit;display:block">
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:box-shadow 0.2s" onmouseover="this.style.boxShadow='0 4px 24px rgba(0,0,0,0.15)'" onmouseout="this.style.boxShadow='none'">
           <div style="height:140px;background:${t.fotoCapa ? `url('${t.fotoCapa}') center/cover no-repeat` : 'linear-gradient(135deg,#1e2022,#2d3035)'};position:relative">
-            ${t.logoUrl ? `<img src="${t.logoUrl}" style="position:absolute;bottom:-24px;left:16px;width:48px;height:48px;border-radius:50%;border:3px solid var(--surface);object-fit:cover" />` : `<div style="position:absolute;bottom:-24px;left:16px;width:48px;height:48px;border-radius:50%;border:3px solid var(--surface);background:#333;display:flex;align-items:center;justify-content:center;font-size:20px">✂️</div>`}
+            ${t.logoUrl ? `<img src="${t.logoUrl}" style="position:absolute;bottom:-24px;left:16px;width:48px;height:48px;border-radius:50%;border:3px solid var(--surface);object-fit:cover" />` : `<div style="position:absolute;bottom:-24px;left:16px;width:48px;height:48px;border-radius:50%;border:3px solid var(--surface);background:#333;display:flex;align-items:center;justify-content:center;font-size:20px">✂</div>`}
           </div>
           <div style="padding:32px 16px 16px">
             <div style="font-size:16px;font-weight:800;margin-bottom:4px">${t.name}</div>
@@ -3581,7 +3637,7 @@ export function registerPublicRoutes(app: Express): void {
     const body = `
       <div style="max-width:1100px;margin:0 auto;padding:32px 20px">
         <div style="text-align:center;margin-bottom:40px">
-          <h1 style="font-size:32px;font-weight:900;margin-bottom:8px">✂️ Encontre sua Barbearia</h1>
+          <h1 style="font-size:32px;font-weight:900;margin-bottom:8px">✂ Encontre sua Barbearia</h1>
           <p style="font-size:16px;color:var(--muted)">Descubra as melhores barbearias e salões da sua região</p>
         </div>
         <form method="GET" action="/marketplace" style="margin-bottom:40px;display:flex;gap:12px;max-width:600px;margin-left:auto;margin-right:auto">
@@ -3599,7 +3655,7 @@ export function registerPublicRoutes(app: Express): void {
       </div>
     `;
     // Usar um layout genérico sem tenant
-    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Marketplace — Barber Pro</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1011;color:#ECEDEE;min-height:100vh}:root{--surface:#1e2022;--border:#334155;--muted:#9BA1A6;--primary:#C9A84C;--text:#ECEDEE;--bg:#0f1011}nav{background:#1e2022;border-bottom:1px solid #334155;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}<a{color:inherit}</style></head><body><nav><span style="font-size:18px;font-weight:900">✂️ Barber Pro</span><a href="/marketplace" style="font-size:13px;color:#9BA1A6">Marketplace</a></nav>${body}</body></html>`;
+    const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Marketplace — Barber Pro</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1011;color:#ECEDEE;min-height:100vh}:root{--surface:#1e2022;--border:#334155;--muted:#9BA1A6;--primary:#C9A84C;--text:#ECEDEE;--bg:#0f1011}nav{background:#1e2022;border-bottom:1px solid #334155;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}<a{color:inherit}</style></head><body><nav><span style="font-size:18px;font-weight:900">✂ Barber Pro</span><a href="/marketplace" style="font-size:13px;color:#9BA1A6">Marketplace</a></nav>${body}</body></html>`;
     res.send(html);
   });
 
@@ -3860,16 +3916,16 @@ export function registerPublicRoutes(app: Express): void {
     const fmtD = (d: string) => { const [y,m,day] = d.split("-"); return `${day}/${m}/${y}`; };
     const statusLabel: Record<string,string> = { scheduled: "Agendado", confirmed: "Confirmado", pending_approval: "Aguarda aprovação", in_progress: "Em andamento", completed: "Concluído", cancelled: "Cancelado", no_show: "Não compareceu" };
     const statusColor: Record<string,string> = { scheduled: "#60A5FA", confirmed: "#4ADE80", pending_approval: "#FBBF24", in_progress: "#F59E0B", completed: "#9CA3AF", cancelled: "#F87171", no_show: "#F87171" };
-    const statusIcon: Record<string,string> = { scheduled: "📋", confirmed: "✅", pending_approval: "⏳", in_progress: "✂️", completed: "🎉", cancelled: "❌", no_show: "😔" };
+    const statusIcon: Record<string,string> = { scheduled: "📋", confirmed: "✅", pending_approval: "⏳", in_progress: "✂", completed: "🎉", cancelled: "❌", no_show: "😔" };
     const statusFlow = ["scheduled", "confirmed", "in_progress", "completed"];
     const currentIdx = statusFlow.indexOf(appt.status);
     const isCancelled = appt.status === "cancelled" || appt.status === "no_show";
     const price = svc?.price ? `R$ ${Number(svc.price).toFixed(2).replace(".", ",")}` : "";
-    const waMsg = encodeURIComponent(`Olá! Segue meu comprovante:\n\n✂️ *Serviço:* ${svc?.name ?? "Serviço"}\n👤 *Profissional:* ${barber?.name ?? "Profissional"}\n📅 *Data:* ${fmtD(appt.date)}\n🕐 *Horário:* ${appt.startTime.slice(0,5)}${price ? `\n💰 *Valor:* ${price}` : ""}\n\n🏪 ${escapeHtml(shopName)}`);
+    const waMsg = encodeURIComponent(`Olá! Segue meu comprovante:\n\n✂ *Serviço:* ${svc?.name ?? "Serviço"}\n👤 *Profissional:* ${barber?.name ?? "Profissional"}\n📅 *Data:* ${fmtD(appt.date)}\n🕐 *Horário:* ${appt.startTime.slice(0,5)}${price ? `\n💰 *Valor:* ${price}` : ""}\n\n🏪 ${escapeHtml(shopName)}`);
     const waShareLink = waNumber ? `https://wa.me/55${waNumber.replace(/\D/g,"")}?text=${waMsg}` : `https://wa.me/?text=${waMsg}`;
     const barberPhotoHtml = barber?.photoUrl
       ? `<img src="${escapeHtml(barber.photoUrl)}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid ${primaryColor}" />`
-      : `<div style="width:48px;height:48px;border-radius:50%;background:var(--surface2);border:2px solid ${primaryColor};display:flex;align-items:center;justify-content:center;font-size:20px">✂️</div>`;
+      : `<div style="width:48px;height:48px;border-radius:50%;background:var(--surface2);border:2px solid ${primaryColor};display:flex;align-items:center;justify-content:center;font-size:20px">✂</div>`;
     const body = `
       <div style="max-width:520px;margin:0 auto;padding:24px 16px 48px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
@@ -3903,7 +3959,7 @@ export function registerPublicRoutes(app: Express): void {
             ${statusFlow.map((s, i) => {
               const done = i <= currentIdx;
               const isCur = i === currentIdx;
-              const ic: Record<string,string> = { scheduled: "📋", confirmed: "✅", in_progress: "✂️", completed: "🎉" };
+              const ic: Record<string,string> = { scheduled: "📋", confirmed: "✅", in_progress: "✂", completed: "🎉" };
               const lb: Record<string,string> = { scheduled: "Agendado", confirmed: "Confirmado", in_progress: "Em andamento", completed: "Concluído" };
               return `<div style="display:flex;flex-direction:column;align-items:center;flex:1"><div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;background:${done ? primaryColor : "var(--surface2)"};border:2px solid ${done ? primaryColor : "var(--border)"};margin-bottom:6px${isCur ? `;box-shadow:0 0 0 4px ${primaryColor}33` : ""}">${done ? ic[s] : "○"}</div><div style="font-size:10px;color:${done ? "var(--text)" : "var(--muted)"};font-weight:${isCur ? "800" : "400"};text-align:center">${lb[s]}</div></div>${i < statusFlow.length - 1 ? `<div style="flex:1;height:2px;background:${i < currentIdx ? primaryColor : "var(--border)"};margin-bottom:20px"></div>` : ""}`;
             }).join("")}

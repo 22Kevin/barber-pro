@@ -213,6 +213,13 @@ export default function AdminTabsLayout() {
           tabBarItemStyle: { display: "none" },
         }}
       />
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: "Encomendas",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
     </Tabs>
   );
 }

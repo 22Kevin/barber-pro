@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, usePathname } from "expo-router";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
+import { trpc } from "@/lib/trpc";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.78, 320);
@@ -41,6 +42,7 @@ const DRAWER_GROUPS: DrawerGroup[] = [
       { label: "Agenda",          icon: "calendar",                    route: "/admin/(tabs)/agenda",            roles: ["super_admin", "barber", "receptionist"] },
       { label: "Clientes",        icon: "person.2.fill",               route: "/admin/(tabs)/clients",           roles: ["super_admin", "barber", "receptionist"] },
       { label: "Lista de Espera", icon: "person.badge.clock",          route: "/admin/(tabs)/waitlist",          roles: ["super_admin", "barber", "receptionist"] },
+      { label: "Encomendas",      icon: "cube.box.fill",               route: "/admin/(tabs)/orders",            roles: ["super_admin", "barber", "receptionist"] },
       { label: "Avaliações",      icon: "star.bubble.fill",             route: "/admin/(tabs)/reviews",           roles: ["super_admin", "receptionist"] },
       { label: "Clientes em Órbita", icon: "location.circle.fill",         route: "/admin/(tabs)/orbit",             roles: ["super_admin", "receptionist"] },
     ],
@@ -102,6 +104,12 @@ export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
   const [shouldRender, setShouldRender] = useState(visible);
 
   const role = (barber?.role ?? "barber") as Role;
+  const tenantId = barber?.tenantId ?? 0;
+  const pendingOrdersQuery = trpc.productOrders.pendingCount.useQuery(
+    { tenantId },
+    { enabled: tenantId > 0, refetchInterval: 30000 }
+  );
+  const pendingOrdersCount = pendingOrdersQuery.data?.count ?? 0;
   const initials = (barber?.name ?? "?").split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
   const roleLabel = role === "super_admin" ? "Super Admin" : role === "barber" ? "Barbeiro" : "Recepcionista";
 
@@ -207,6 +215,11 @@ export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
                       <Text style={[styles.itemLabel, isActive && styles.itemLabelActive]} numberOfLines={1}>
                         {item.label}
                       </Text>
+                      {item.route.includes("orders") && pendingOrdersCount > 0 && !isActive && (
+                        <View style={styles.pendingBadge}>
+                          <Text style={styles.pendingBadgeText}>{pendingOrdersCount}</Text>
+                        </View>
+                      )}
                       {isActive && <View style={styles.activeDot} />}
                     </TouchableOpacity>
                   );
@@ -292,4 +305,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 9, borderRadius: 10,
   },
   logoutText: { fontSize: 13, fontWeight: "600", color: "#EF4444" },
+  pendingBadge: {
+    backgroundColor: "#EF4444",
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  pendingBadgeText: { color: "#FFF", fontSize: 10, fontWeight: "800" },
 });
