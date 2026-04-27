@@ -1673,3 +1673,10 @@
 - [x] Gerar ícones PWA em múltiplos tamanhos (192x192, 512x512, maskable)
 - [x] Configurar service worker para cache offline básico
 - [ ] Publicar pelo Manus e apontar DNS da Hostinger para o domínio usebarberpro.com
+
+## Estrutura de URLs Opção A — Round 12 (Abr/2026)
+
+- [x] Atualizar EXPO_PUBLIC_API_BASE_URL para https://api.usebarberpro.com
+- [x] Roteamento por subdomínio no servidor: app.usebarberpro.com → painel admin, usebarberpro.com → landing/agendamentos
+- [x] Landing page de vendas já existente atualizada com URL usebarberpro.com
+- [ ] Rota pública usebarberpro.com/:slug para páginas de agendamento de cada barbearia (próxima fase)

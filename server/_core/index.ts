@@ -74,9 +74,44 @@ async function startServer() {
   registerAdminRoutes(app);
   registerPublicRoutes(app);
 
-  // Serve landing page at root and /landing
+  // ─── Roteamento por subdomínio ─────────────────────────────────────────────
+  // usebarberpro.com        → landing page de vendas
+  // app.usebarberpro.com    → redireciona para o app (mesmo servidor, rota /app)
+  // api.usebarberpro.com    → apenas API (sem servir HTML)
+  // usebarberpro.com/:slug  → página de agendamento da barbearia
+
   const landingPath = path.join(__dirname, "..", "landing", "index.html");
-  app.get("/", (_req, res) => res.sendFile(landingPath));
+  const distPath = path.join(__dirname, "..", "..", "dist-web");
+
+  // Middleware de detecção de subdomínio
+  app.use((req, _res, next) => {
+    const host = req.hostname || "";
+    // Detectar subdomínio: app.usebarberpro.com ou api.usebarberpro.com
+    if (host.startsWith("app.")) {
+      (req as any).__subdomain = "app";
+    } else if (host.startsWith("api.")) {
+      (req as any).__subdomain = "api";
+    } else {
+      (req as any).__subdomain = "root";
+    }
+    next();
+  });
+
+  // Rota raiz: landing page (apenas no domínio raiz)
+  app.get("/", (req, res) => {
+    const sub = (req as any).__subdomain;
+    if (sub === "app") {
+      // app.usebarberpro.com → redirecionar para o app web
+      return res.redirect(301, "/admin");
+    }
+    if (sub === "api") {
+      // api.usebarberpro.com / → retornar info da API
+      return res.json({ name: "Barber Pro API", version: "1.0.0", status: "ok" });
+    }
+    // Domínio raiz → landing page
+    return res.sendFile(landingPath);
+  });
+
   app.get("/landing", (_req, res) => res.sendFile(landingPath));
 
   app.get("/api/health", (_req, res) => {
