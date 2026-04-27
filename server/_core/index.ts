@@ -80,7 +80,13 @@ async function startServer() {
   // api.usebarberpro.com    → apenas API (sem servir HTML)
   // usebarberpro.com/:slug  → página de agendamento da barbearia
 
-  const landingPath = path.join(__dirname, "..", "landing", "index.html");
+  // Resolve landing page path compatível com dev (server/_core/) e produção (dist/)
+  // Em dev: __dirname = server/_core, landing fica em server/landing (../landing)
+  // Em produção: __dirname = dist, landing fica em server/landing (relativo ao cwd)
+  const { existsSync } = await import("fs");
+  const landingDevPath = path.join(__dirname, "..", "landing", "index.html");
+  const landingProdPath = path.join(process.cwd(), "server", "landing", "index.html");
+  const landingPath = existsSync(landingDevPath) ? landingDevPath : landingProdPath;
   const distPath = path.join(__dirname, "..", "..", "dist-web");
 
   // Middleware de detecção de subdomínio
