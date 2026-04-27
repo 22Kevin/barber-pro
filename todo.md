@@ -1664,7 +1664,7 @@
 - [x] Atualizar scheme do app para "usebarberpro"
 - [ ] Registrar domínio usebarberpro.com (disponível no Namecheap por ~$6,79/1º ano)
 - [ ] Configurar PWA manifest (nome, ícones, theme_color, display: standalone)
-- [ ] Configurar Google Sign-In (EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID + EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME)
+- [x] Configurar Google Sign-In (EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID + EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME)
 
 ## Configuração PWA — Round 11 (Abr/2026)
 
