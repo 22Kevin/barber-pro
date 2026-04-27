@@ -1685,3 +1685,10 @@
 
 - [x] Atualizar redirecionamento Hostinger para barberapp-9fdxpx6c.manus.space
 - [x] Corrigir URLs exibidas no app e servidor para mostrar usebarberpro.com/:slug em vez de URLs internas do Manus
+
+## Melhorias de UX e Marketing
+
+- [x] Página 404 personalizada com identidade visual Barber Pro e CTA de cadastro
+- [x] Meta tags SEO dinâmicas (Open Graph) por barbearia nas páginas /:slug
+- [x] Banner de instalação PWA nas páginas públicas das barbearias
+- [x] Melhorar landing page de vendas com novo design premium e copywriting alinhado com os vídeos de propaganda

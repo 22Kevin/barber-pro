@@ -76,7 +76,7 @@ const FONT_STYLE_WEIGHT: Record<string, string> = {
   minimalista: '200',
 };
 
-function publicLayout(shopName: string, primaryColor: string, body: string, extraHead = "", settings?: any): string {
+function publicLayout(shopName: string, primaryColor: string, body: string, extraHead = "", settings?: any, slug = ""): string {
   const trackingScripts = buildTrackingScripts(settings);
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -87,6 +87,8 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
   <meta name="description" content="${escapeHtml(settings?.seoDescription || `Agende seu horário em ${shopName} de forma rápida e fácil.`)}" />
   <!-- Open Graph / WhatsApp / Facebook -->
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Barber Pro" />
+  ${slug ? `<meta property="og:url" content="https://usebarberpro.com/${slug}" /><link rel="canonical" href="https://usebarberpro.com/${slug}" />` : ""}
   <meta property="og:title" content="${escapeHtml(settings?.seoTitle || shopName)}" />
   <meta property="og:description" content="${escapeHtml(settings?.seoDescription || `Agende seu horário em ${shopName} de forma rápida e fácil.`)}" />
   ${settings?.seoImageUrl ? `<meta property="og:image" content="${escapeHtml(settings.seoImageUrl)}" /><meta property="og:image:width" content="1200" /><meta property="og:image:height" content="630" />` : (settings?.bannerUrl ? `<meta property="og:image" content="${escapeHtml(settings.bannerUrl)}" />` : (settings?.logoUrl ? `<meta property="og:image" content="${escapeHtml(settings.logoUrl)}" />` : ""))}
@@ -346,9 +348,55 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
       .app-download-banner { flex-direction: column; text-align: center; }
       .app-download-buttons { justify-content: center; }
     }
-  </style>
+    /* Banner PWA */
+  #pwa-banner { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999; padding: 12px 16px; background: #161616; border-top: 1px solid #2A2A2A; align-items: center; gap: 12px; box-shadow: 0 -4px 24px #00000088; }
+  #pwa-banner.show { display: flex; }
+  #pwa-banner-icon { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; border: 1.5px solid var(--primary); flex-shrink: 0; }
+  #pwa-banner-icon-placeholder { width: 44px; height: 44px; border-radius: 10px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; border: 1.5px solid var(--primary); }
+  #pwa-banner-text { flex: 1; min-width: 0; }
+  #pwa-banner-title { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #pwa-banner-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  #pwa-banner-btn { background: var(--primary); color: #0A0A0A; font-size: 12px; font-weight: 800; padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+  #pwa-banner-close { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 4px; flex-shrink: 0; line-height: 1; }
+  @media (min-width: 640px) { #pwa-banner { display: none !important; } }
+</style>
 </head>
 <body>
+  <!-- Banner de instalação PWA (mobile only) -->
+  <div id="pwa-banner">
+    ${settings?.logoUrl
+      ? `<img id="pwa-banner-icon" src="${escapeHtml(settings.logoUrl)}" alt="${escapeHtml(settings?.shopName || shopName)}" />`
+      : `<div id="pwa-banner-icon-placeholder">✂️</div>`
+    }
+    <div id="pwa-banner-text">
+      <div id="pwa-banner-title">${escapeHtml(settings?.shopName || shopName)}</div>
+      <div id="pwa-banner-sub">Adicionar à tela inicial</div>
+    </div>
+    <button id="pwa-banner-btn" onclick="pwaBannerInstall()">Instalar</button>
+    <button id="pwa-banner-close" onclick="pwaBannerDismiss()" aria-label="Fechar">×</button>
+  </div>
+  <script>
+    var _pwaDeferredPrompt = null;
+    var _pwaBannerDismissed = false;
+    try { _pwaBannerDismissed = !!localStorage.getItem('pwa_banner_dismissed'); } catch(e) {}
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      _pwaDeferredPrompt = e;
+      if (!_pwaBannerDismissed) {
+        setTimeout(function() { var b = document.getElementById('pwa-banner'); if (b) b.classList.add('show'); }, 3000);
+      }
+    });
+    function pwaBannerInstall() {
+      var b = document.getElementById('pwa-banner');
+      if (b) b.classList.remove('show');
+      if (_pwaDeferredPrompt) { _pwaDeferredPrompt.prompt(); _pwaDeferredPrompt.userChoice.then(function() { _pwaDeferredPrompt = null; }); }
+    }
+    function pwaBannerDismiss() {
+      var b = document.getElementById('pwa-banner');
+      if (b) b.classList.remove('show');
+      try { localStorage.setItem('pwa_banner_dismissed', '1'); } catch(e) {}
+    }
+  </script>
   ${body}
 </body>
 </html>`;
@@ -358,7 +406,48 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
 async function renderShopPage(slug: string, res: Response, req?: Request) {
   const tenant = await db.getTenantBySlug(slug);
   if (!tenant) {
-    res.status(404).send(`<!DOCTYPE html><html><body style="background:#0A0A0A;color:#F0EEE8;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center"><div><h1 style="font-size:48px;margin-bottom:8px">404</h1><p style="color:#888">Barbearia não encontrada.</p><p style="margin-top:16px"><a href="https://barberpro.com.br" style="color:#C9A84C">Barber Pro</a></p></div></body></html>`);
+    res.status(404).send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Barbearia não encontrada — Barber Pro</title>
+  <meta name="description" content="Esta página de barbearia não existe. Cadastre sua barbearia gratuitamente no Barber Pro." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0A0A0A; color: #F0EEE8; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; }
+    .logo { font-size: 13px; font-weight: 900; letter-spacing: 3px; color: #C9A84C; text-transform: uppercase; margin-bottom: 48px; }
+    .code { font-size: 96px; font-weight: 900; line-height: 1; background: linear-gradient(135deg, #C9A84C, #9a7a2e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 16px; }
+    h1 { font-size: 24px; font-weight: 800; margin-bottom: 12px; }
+    p { font-size: 15px; color: #888880; line-height: 1.6; max-width: 400px; margin-bottom: 40px; }
+    .slug-hint { background: #161616; border: 1px solid #2A2A2A; border-radius: 12px; padding: 16px 20px; margin-bottom: 40px; max-width: 420px; width: 100%; }
+    .slug-hint-label { font-size: 11px; color: #888880; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+    .slug-hint-url { font-family: monospace; font-size: 14px; color: #C9A84C; word-break: break-all; }
+    .actions { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; }
+    .btn-primary { display: block; background: linear-gradient(135deg, #e8c97a, #C9A84C); color: #0A0A0A; font-size: 15px; font-weight: 800; padding: 16px 24px; border-radius: 12px; text-decoration: none; transition: opacity 0.2s; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-ghost { display: block; background: transparent; color: #C9A84C; font-size: 14px; font-weight: 600; padding: 14px 24px; border-radius: 12px; border: 1px solid rgba(201,168,76,0.3); text-decoration: none; transition: border-color 0.2s; }
+    .btn-ghost:hover { border-color: #C9A84C; }
+    .footer { margin-top: 48px; font-size: 12px; color: #555; }
+  </style>
+</head>
+<body>
+  <div class="logo">✦ Barber Pro</div>
+  <div class="code">404</div>
+  <h1>Barbearia não encontrada</h1>
+  <p>O link que você acessou não corresponde a nenhuma barbearia cadastrada na plataforma.</p>
+  <div class="slug-hint">
+    <div class="slug-hint-label">Você tentou acessar</div>
+    <div class="slug-hint-url">usebarberpro.com/${escapeHtml(slug)}</div>
+  </div>
+  <div class="actions">
+    <a href="https://usebarberpro.com" class="btn-primary">🏠 Voltar para o início</a>
+    <a href="https://usebarberpro.com/#cadastro" class="btn-ghost">✂️ Cadastrar minha barbearia</a>
+  </div>
+  <div class="footer">Powered by Barber Pro — Sistema de Gestão para Barbearias</div>
+</body>
+</html>`);
+
     return;
   }
 
@@ -918,7 +1007,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     </div>
   `;
 
-   res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
+   res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings, slug));
 }
 
 // ─── Rota de agendamentoe login Página de agendamento ────────────────────────────────────────────────────
