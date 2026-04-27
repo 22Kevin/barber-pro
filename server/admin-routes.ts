@@ -2725,23 +2725,30 @@ export function registerAdminRoutes(app: Express): void {
 
   // POST /admin/login
   app.post("/admin/login", async (req: Request, res: Response) => {
-    const { email, password } = req.body ?? {};
-    if (!email || !password) return res.redirect("/admin/login?error=1");
+    try {
+      const { email, password } = req.body ?? {};
+      if (!email || !password) return res.redirect("/admin/login?error=1");
 
-    let bcrypt: any;
-    try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
+      let bcrypt: any;
+      try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
 
-    const barber = await db.getBarberByEmail(email);
-    if (!barber || !barber.isActive || !barber.passwordHash) return res.redirect("/admin/login?error=1");
+      const barber = await db.getBarberByEmail(email);
+      console.log(`[login] email=${email} found=${!!barber} isActive=${barber?.isActive} hasHash=${!!barber?.passwordHash} bcryptLoaded=${!!bcrypt}`);
+      if (!barber || !barber.isActive || !barber.passwordHash) return res.redirect("/admin/login?error=1");
 
-    const valid = bcrypt
-      ? await bcrypt.compare(password, barber.passwordHash)
-      : password === barber.passwordHash;
-    if (!valid) return res.redirect("/admin/login?error=1");
+      const valid = bcrypt
+        ? await bcrypt.compare(password, barber.passwordHash)
+        : password === barber.passwordHash;
+      console.log(`[login] valid=${valid}`);
+      if (!valid) return res.redirect("/admin/login?error=1");
 
-    const token = encodeSession(barber.id, barber.role);
-    res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/admin; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`);
-    res.redirect("/admin");
+      const token = encodeSession(barber.id, barber.role);
+      res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/admin; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`);
+      res.redirect("/admin");
+    } catch (err) {
+      console.error("[login] Unexpected error:", err);
+      res.redirect("/admin/login?error=1");
+    }
   });
 
   // GET /admin/logout
