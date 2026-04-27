@@ -22,6 +22,7 @@ import PDFDocument from "pdfkit";
 
 const ADMIN_SESSION_COOKIE = "bp_admin_session";
 const SESSION_MAX_AGE = 8 * 60 * 60; // 8 horas
+const SESSION_MAX_AGE_REMEMBER = 30 * 24 * 60 * 60; // 30 dias
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function esc(str: string | null | undefined): string {
@@ -60,9 +61,9 @@ function monthRange(): { start: string; end: string } {
   return { start, end };
 }
 
-// ─── Sessão simples (JWT-less, cookie assinado com barberId) ──────────────────
-function encodeSession(barberId: number, role: string): string {
-  const payload = Buffer.from(JSON.stringify({ barberId, role, ts: Date.now() })).toString("base64url");
+// ─── Sessão simples (JWT-less, cookie assinado com barberId) ──────────────────────────────────────────────────────────
+function encodeSession(barberId: number, role: string, maxAge = SESSION_MAX_AGE): string {
+  const payload = Buffer.from(JSON.stringify({ barberId, role, ts: Date.now(), maxAge })).toString("base64url");
   return payload;
 }
 
@@ -70,15 +71,16 @@ function decodeSession(token: string): { barberId: number; role: string } | null
   try {
     const data = JSON.parse(Buffer.from(token, "base64url").toString("utf-8"));
     if (!data.barberId || !data.role) return null;
-    // Expirar após 8h
-    if (Date.now() - data.ts > SESSION_MAX_AGE * 1000) return null;
+    // Usar maxAge armazenado no token (suporta 8h ou 30 dias)
+    const maxAge = data.maxAge ?? SESSION_MAX_AGE;
+    if (Date.now() - data.ts > maxAge * 1000) return null;
     return { barberId: data.barberId, role: data.role };
   } catch {
     return null;
   }
 }
 
-// ─── Middleware de autenticação ───────────────────────────────────────────────
+// ─── Middleware de autenticação ────────────────────────────────────────────────────────────
 function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.[ADMIN_SESSION_COOKIE];
   if (!token) return res.redirect("/admin/login");
@@ -304,7 +306,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
 }
 
 // ─── Página de Login ──────────────────────────────────────────────────────────
-function loginPage(error = false): string {
+function loginPage(error = false, errorMsg?: string): string {
+  const REMEMBER_COOKIE = "bp_admin_remember_email";
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -318,30 +321,101 @@ function loginPage(error = false): string {
     .logo { font-size: 22px; font-weight: 900; color: #C9A84C; letter-spacing: 2px; text-align: center; margin-bottom: 6px; }
     .subtitle { font-size: 13px; color: #888880; text-align: center; margin-bottom: 32px; }
     label { display: block; font-size: 12px; color: #888880; margin-bottom: 6px; }
-    input { width: 100%; padding: 12px 14px; background: #0C0C0C; border: 1px solid #2A2A2A; border-radius: 10px; color: #F0EEE8; font-size: 14px; margin-bottom: 16px; }
-    input:focus { outline: none; border-color: #C9A84C; }
-    button { width: 100%; padding: 14px; background: #C9A84C; color: #0C0C0C; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 8px; }
-    button:hover { opacity: 0.9; }
+    input[type=email], input[type=password] { width: 100%; padding: 12px 14px; background: #0C0C0C; border: 1px solid #2A2A2A; border-radius: 10px; color: #F0EEE8; font-size: 14px; margin-bottom: 16px; }
+    input[type=email]:focus, input[type=password]:focus { outline: none; border-color: #C9A84C; }
+    .remember-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; cursor: pointer; }
+    .remember-row input[type=checkbox] { width: 16px; height: 16px; accent-color: #C9A84C; cursor: pointer; }
+    .remember-row span { font-size: 13px; color: #888880; }
+    button.btn-primary { width: 100%; padding: 14px; background: #C9A84C; color: #0C0C0C; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 4px; }
+    button.btn-primary:hover { opacity: 0.9; }
+    .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #2A2A2A; }
+    .divider span { font-size: 12px; color: #555550; white-space: nowrap; }
+    button.btn-google { width: 100%; padding: 13px 14px; background: #1E1E1E; color: #F0EEE8; border: 1px solid #2A2A2A; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    button.btn-google:hover { background: #252525; border-color: #3A3A3A; }
+    button.btn-google svg { flex-shrink: 0; }
     .error { background: #F8717122; border: 1px solid #F8717144; color: #F87171; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
     .back { display: block; text-align: center; margin-top: 20px; font-size: 12px; color: #888880; text-decoration: none; }
     .back:hover { color: #C9A84C; }
+    .loading { opacity: 0.6; pointer-events: none; }
   </style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <div class="card">
     <div class="logo">BARBER PRO</div>
     <div class="subtitle">Painel Administrativo</div>
-    ${error ? `<div class="error">Email ou senha incorretos.</div>` : ""}
-    <form method="POST" action="/admin/login">
+    ${error ? `<div class="error">${errorMsg ?? "Email ou senha incorretos."}</div>` : ""}
+    <form method="POST" action="/admin/login" id="loginForm">
       <label>Email</label>
-      <input type="email" name="email" placeholder="seu@email.com" required autofocus />
+      <input type="email" name="email" id="emailInput" placeholder="seu@email.com" required autofocus />
       <label>Senha</label>
       <input type="password" name="password" placeholder="••••••••" required />
-      <button type="submit">Entrar</button>
+      <input type="hidden" name="remember" id="rememberInput" value="0" />
+      <label class="remember-row" onclick="toggleRemember()">
+        <input type="checkbox" id="rememberCheck" />
+        <span>Lembrar meu e-mail neste dispositivo</span>
+      </label>
+      <button type="submit" class="btn-primary">Entrar</button>
     </form>
-    <a href="/admin/forgot-password" class="back" style="margin-top:14px;color:#C9A84C">Esqueci minha senha</a>
+    <div class="divider"><span>ou</span></div>
+    <button class="btn-google" id="googleBtn" onclick="startGoogleLogin()">
+      <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      Entrar com Google
+    </button>
+    <a href="/admin/forgot-password" class="back" style="margin-top:20px;color:#C9A84C">Esqueci minha senha</a>
     <a href="/" class="back">← Voltar ao app</a>
   </div>
+  <script>
+    // ─── Lembrar e-mail ───────────────────────────────────────────────────────
+    const REMEMBER_KEY = "bp_admin_remember";
+    const emailInput = document.getElementById("emailInput");
+    const rememberCheck = document.getElementById("rememberCheck");
+    const rememberInput = document.getElementById("rememberInput");
+
+    // Restaurar e-mail salvo
+    try {
+      const saved = localStorage.getItem(REMEMBER_KEY);
+      if (saved) {
+        const { email, remember } = JSON.parse(saved);
+        if (remember && email) {
+          emailInput.value = email;
+          rememberCheck.checked = true;
+          rememberInput.value = "1";
+        }
+      }
+    } catch(e) {}
+
+    function toggleRemember() {
+      // Checkbox toggle is handled by the label click natively
+      setTimeout(() => {
+        rememberInput.value = rememberCheck.checked ? "1" : "0";
+      }, 0);
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", function() {
+      try {
+        if (rememberCheck.checked) {
+          localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email: emailInput.value, remember: true }));
+        } else {
+          localStorage.removeItem(REMEMBER_KEY);
+        }
+      } catch(e) {}
+    });
+
+    // ─── Login com Google ─────────────────────────────────────────────────────
+    function startGoogleLogin() {
+      const btn = document.getElementById("googleBtn");
+      btn.classList.add("loading");
+      btn.textContent = "Aguardando Google...";
+      window.location.href = "/admin/google-login";
+    }
+  </script>
 </body>
 </html>`;
 }
@@ -2720,13 +2794,14 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/login", (req: Request, res: Response) => {
     const token = (req as any).cookies?.[ADMIN_SESSION_COOKIE];
     if (token && decodeSession(token)) return res.redirect("/admin");
-    res.send(loginPage(req.query.error === "1"));
+    const errorMsg = req.query.msg ? decodeURIComponent(req.query.msg as string) : undefined;
+    res.send(loginPage(req.query.error === "1", errorMsg));
   });
 
   // POST /admin/login
   app.post("/admin/login", async (req: Request, res: Response) => {
     try {
-      const { email, password } = req.body ?? {};
+      const { email, password, remember } = req.body ?? {};
       if (!email || !password) return res.redirect("/admin/login?error=1");
 
       let bcrypt: any;
@@ -2742,12 +2817,70 @@ export function registerAdminRoutes(app: Express): void {
       console.log(`[login] valid=${valid}`);
       if (!valid) return res.redirect("/admin/login?error=1");
 
+      const rememberMe = remember === "1" || remember === "true";
+      const maxAge = rememberMe ? SESSION_MAX_AGE_REMEMBER : SESSION_MAX_AGE;
       const token = encodeSession(barber.id, barber.role);
-      res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/admin; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`);
+      res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/admin; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`);
       res.redirect("/admin");
     } catch (err) {
       console.error("[login] Unexpected error:", err);
       res.redirect("/admin/login?error=1");
+    }
+  });
+
+  // GET /admin/google-login — inicia o fluxo OAuth do Google via Manus
+  app.get("/admin/google-login", (req: Request, res: Response) => {
+    const appId = process.env.VITE_APP_ID ?? "";
+    const portalUrl = process.env.VITE_OAUTH_PORTAL_URL ?? "https://manus.im";
+    const baseUrl = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.host}`;
+    const redirectUri = `${baseUrl}/admin/google-callback`;
+    const state = Buffer.from(redirectUri).toString("base64");
+    const url = new URL(`${portalUrl}/app-auth`);
+    url.searchParams.set("appId", appId);
+    url.searchParams.set("redirectUri", redirectUri);
+    url.searchParams.set("state", state);
+    url.searchParams.set("type", "signIn");
+    res.redirect(url.toString());
+  });
+
+  // GET /admin/google-callback — recebe o code do OAuth e faz login
+  app.get("/admin/google-callback", async (req: Request, res: Response) => {
+    try {
+      const code = req.query.code as string;
+      const state = req.query.state as string;
+      if (!code || !state) return res.redirect("/admin/login?error=1");
+
+      // Trocar code por token via SDK do Manus
+      const { sdk } = await import("./_core/sdk.js");
+      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
+      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
+
+      if (!userInfo.email) {
+        return res.redirect("/admin/login?error=1&msg=" + encodeURIComponent("E-mail não retornado pelo Google."));
+      }
+
+      // Buscar barbeiro pelo email
+      let barber = await db.getBarberByEmail(userInfo.email);
+      if (!barber && userInfo.openId) {
+        barber = await db.getBarberByGoogleId(userInfo.openId);
+      }
+
+      if (!barber || !barber.isActive) {
+        const msg = encodeURIComponent(`Nenhuma conta encontrada para ${userInfo.email}. Solicite ao administrador que cadastre sua conta.`);
+        return res.redirect("/admin/login?error=1&msg=" + msg);
+      }
+
+      // Vincular googleId se ainda não estiver vinculado
+      if (userInfo.openId && !(barber as any).googleId) {
+        await db.updateBarber(barber.id, { googleId: userInfo.openId } as any);
+      }
+
+      const token = encodeSession(barber.id, barber.role);
+      res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/admin; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_REMEMBER}`);
+      res.redirect("/admin");
+    } catch (err) {
+      console.error("[google-callback] Error:", err);
+      res.redirect("/admin/login?error=1&msg=" + encodeURIComponent("Erro ao autenticar com Google. Tente novamente."));
     }
   });
 

@@ -1709,3 +1709,8 @@
 - [ ] Configurar CNAME na Hostinger: @ → ej15amvb.up.railway.app (substituir redirect 301)
 - [ ] Configurar TXT na Hostinger: _railway-verify → railway-verify=4e52249290cc7e1281ab9cd33138c43a4757c19b5ca8a27e4183848b3d5655a2
 - [ ] Conectar repositório GitHub ao Railway para deploy automático (requer integração GitHub no painel Railway)
+
+## Login Admin — Melhorias de Autenticação
+
+- [x] Checkbox "Lembrar-me" no login do painel admin (sessão 30 dias)
+- [x] Login via Google nativo no painel admin (OAuth Google direto)
