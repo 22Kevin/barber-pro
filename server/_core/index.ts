@@ -307,6 +307,44 @@ async function startServer() {
     }
   });
 
+  // ─── Rotas /:slug — usebarberpro.com/:slug serve a página pública de cada barbearia ───
+  // Slugs de sistema reservados (não são barbearias)
+  const SYSTEM_PATHS = new Set(["api", "admin", "superadmin", "pub", "pub-api", "landing", "status", "marketplace", "internal", "app", "www", "_next", "static", "assets", "favicon.ico"]);
+
+  // GET /:slug → página principal da barbearia
+  app.get("/:slug", async (req, res, next) => {
+    const { slug } = req.params;
+    if (SYSTEM_PATHS.has(slug)) return next();
+    // Verificar se existe tenant com esse slug
+    const { getDb } = await import("../db");
+    const db = await getDb();
+    if (!db) return next();
+    try {
+      const [rows] = await (db as any).execute(`SELECT id FROM tenants WHERE slug = '${slug.replace(/'/g, "''")}' AND status IN ('active','trial') LIMIT 1`);
+      if (!rows || (rows as any[]).length === 0) return next();
+      // Redirecionar para /pub/:slug mantendo query string
+      const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+      return res.redirect(301, `/pub/${slug}${qs}`);
+    } catch { return next(); }
+  });
+
+  // GET /:slug/* → sub-rotas da barbearia (agendar, login, cadastro, etc.)
+  app.get("/:slug/*", async (req, res, next) => {
+    const { slug } = req.params;
+    if (SYSTEM_PATHS.has(slug)) return next();
+    const { getDb } = await import("../db");
+    const db = await getDb();
+    if (!db) return next();
+    try {
+      const [rows] = await (db as any).execute(`SELECT id FROM tenants WHERE slug = '${slug.replace(/'/g, "''")}' AND status IN ('active','trial') LIMIT 1`);
+      if (!rows || (rows as any[]).length === 0) return next();
+      // Extrair o sub-path após /:slug/
+      const subPath = (req.params as any)[0] || "";
+      const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
+      return res.redirect(301, `/pub/${slug}/${subPath}${qs}`);
+    } catch { return next(); }
+  });
+
   app.use(
     "/api/trpc",
     createExpressMiddleware({

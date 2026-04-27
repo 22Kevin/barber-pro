@@ -1679,4 +1679,4 @@
 - [x] Atualizar EXPO_PUBLIC_API_BASE_URL para https://api.usebarberpro.com
 - [x] Roteamento por subdomínio no servidor: app.usebarberpro.com → painel admin, usebarberpro.com → landing/agendamentos
 - [x] Landing page de vendas já existente atualizada com URL usebarberpro.com
-- [ ] Rota pública usebarberpro.com/:slug para páginas de agendamento de cada barbearia (próxima fase)
+- [x] Rota pública usebarberpro.com/:slug para páginas de agendamento de cada barbearia (redirecionamento 301 para /pub/:slug)
