@@ -1702,3 +1702,10 @@
 - [ ] Fazer deploy do servidor no Railway via CLI
 - [ ] Apontar domínio usebarberpro.com para o Railway via CNAME na Hostinger
 - [ ] Verificar funcionamento completo em produção
+
+## Configuração de Domínio e Deploy Automático — Round 14 (Abr/2026)
+- [x] Domínio customizado usebarberpro.com adicionado no Railway (status ACTIVE)
+- [x] PUBLIC_BASE_URL já configurado como https://usebarberpro.com no Railway
+- [ ] Configurar CNAME na Hostinger: @ → ej15amvb.up.railway.app (substituir redirect 301)
+- [ ] Configurar TXT na Hostinger: _railway-verify → railway-verify=4e52249290cc7e1281ab9cd33138c43a4757c19b5ca8a27e4183848b3d5655a2
+- [ ] Conectar repositório GitHub ao Railway para deploy automático (requer integração GitHub no painel Railway)
