@@ -108,7 +108,7 @@ function bookingEmailHtml(data: BookingEmailData): string {
 
       <!-- CTA -->
       <div style="text-align:center;margin-bottom:28px">
-        <a href="${process.env.PUBLIC_BASE_URL ?? "https://barberpro.com.br"}/pub/${data.shopSlug}/meus-agendamentos"
+        <a href="https://usebarberpro.com/${data.shopSlug}/meus-agendamentos"
            style="display:inline-block;background:#C9A84C;color:#0A0A0A;font-size:14px;font-weight:800;padding:14px 32px;border-radius:12px;text-decoration:none">
           Ver meus agendamentos
         </a>
@@ -222,7 +222,7 @@ function barberNotificationHtml(data: BarberNotificationEmailData): string {
 
       <!-- CTA -->
       <div style="text-align:center;margin-bottom:24px">
-        <a href="${process.env.PUBLIC_BASE_URL ?? "https://barberpro.com.br"}/admin/agenda"
+        <a href="https://usebarberpro.com/admin/agenda"
            style="display:inline-block;background:#C9A84C;color:#0A0A0A;font-size:14px;font-weight:800;padding:14px 32px;border-radius:12px;text-decoration:none">
           Ver agenda no painel
         </a>
@@ -294,7 +294,7 @@ export async function sendReviewRequestEmail(opts: {
   }
   if (!opts.clientEmail) return;
 
-  const reviewUrl = `${opts.baseUrl}/pub/${opts.shopSlug}/avaliar/${opts.appointmentId}`;
+  const reviewUrl = `https://usebarberpro.com/${opts.shopSlug}/avaliar/${opts.appointmentId}`;
   const rawFrom3 = process.env.SMTP_FROM ?? process.env.SMTP_USER;
   const from3 = rawFrom3 && rawFrom3.includes('<') ? rawFrom3 : `"${opts.shopName}" <${rawFrom3}>`;
 

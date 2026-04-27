@@ -1680,3 +1680,8 @@
 - [x] Roteamento por subdomínio no servidor: app.usebarberpro.com → painel admin, usebarberpro.com → landing/agendamentos
 - [x] Landing page de vendas já existente atualizada com URL usebarberpro.com
 - [x] Rota pública usebarberpro.com/:slug para páginas de agendamento de cada barbearia (redirecionamento 301 para /pub/:slug)
+
+## Domínio e URLs Públicas
+
+- [x] Atualizar redirecionamento Hostinger para barberapp-9fdxpx6c.manus.space
+- [x] Corrigir URLs exibidas no app e servidor para mostrar usebarberpro.com/:slug em vez de URLs internas do Manus

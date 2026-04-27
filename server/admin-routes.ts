@@ -1447,8 +1447,8 @@ async function renderConfiguracoes(req: Request, res: Response) {
   const tenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
   const currentSlug = tenant?.slug ?? "";
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "";
-  const publicUrl = currentSlug ? `${baseUrl}/pub/${currentSlug}` : "";
-  const bookingUrl = currentSlug ? `${baseUrl}/pub/${currentSlug}/agendar` : "";
+  const publicUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}` : "";
+  const bookingUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}/agendar` : "";
 
   // Gerar QR Code como data URL
   let qrDataUrl = "";
@@ -1724,7 +1724,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
         <div style="font-size:13px;color:var(--muted);margin-bottom:16px">O identificador da URL (“slug”) é a parte final do link que identifica sua barbearia. Use apenas letras minúsculas, números e hífens.</div>
         <form method="POST" action="/admin/configuracoes/slug">
           <div style="display:flex;align-items:center;gap:0;margin-bottom:16px">
-            <div style="padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:12px;color:var(--muted);white-space:nowrap;font-family:monospace">${esc(baseUrl)}/pub/</div>
+            <div style="padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:12px;color:var(--muted);white-space:nowrap;font-family:monospace">usebarberpro.com/</div>
             <input class="form-input" type="text" name="slug" value="${esc(currentSlug)}" required pattern="[a-z0-9\\-]+" title="Apenas letras minúsculas, números e hífens" style="border-radius:0 8px 8px 0;font-family:monospace;font-size:14px" placeholder="nome-da-barbearia" />
           </div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:16px">⚠️ Ao alterar o slug, o link antigo deixará de funcionar. Atualize todos os locais onde o link foi compartilhado.</div>
@@ -2153,8 +2153,8 @@ async function renderPaginaCliente(req: Request, res: Response) {
   const tenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
   const currentSlug = tenant?.slug ?? "";
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "";
-  const publicUrl = currentSlug ? `${baseUrl}/pub/${currentSlug}` : "";
-  const bookingUrl = currentSlug ? `${baseUrl}/pub/${currentSlug}/agendar` : "";
+  const publicUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}` : "";
+  const bookingUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}/agendar` : "";
 
   // Gerar QR Code
   let qrDataUrl = "";
@@ -2230,7 +2230,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px">O slug é a parte final do link que identifica sua barbearia. Use apenas letras minúsculas, números e hífens.</p>
         <form method="POST" action="/admin/pagina-cliente/slug">
           <div style="display:flex;align-items:center;gap:0;margin-bottom:12px">
-            <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:12px;color:var(--muted);white-space:nowrap;font-family:monospace">${esc(baseUrl)}/pub/</div>
+            <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:12px;color:var(--muted);white-space:nowrap;font-family:monospace">usebarberpro.com/</div>
             <input class="form-input" type="text" name="slug" value="${esc(currentSlug)}" required pattern="[a-z0-9\\-]+" title="Apenas letras minúsculas, números e hífens" style="border-radius:0 8px 8px 0;font-family:monospace;font-size:14px" placeholder="nome-da-barbearia" />
           </div>
           <p style="font-size:11px;color:var(--muted);margin-bottom:16px">⚠️ Ao alterar o slug, o link antigo deixará de funcionar. Atualize todos os locais onde o link foi compartilhado.</p>
