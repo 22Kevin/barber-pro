@@ -1692,3 +1692,13 @@
 - [x] Meta tags SEO dinâmicas (Open Graph) por barbearia nas páginas /:slug
 - [x] Banner de instalação PWA nas páginas públicas das barbearias
 - [x] Melhorar landing page de vendas com novo design premium e copywriting alinhado com os vídeos de propaganda
+
+## Deploy Permanente no Railway — Round 13 (Abr/2026)
+
+- [ ] Criar Dockerfile para o servidor Express
+- [ ] Criar railway.toml com configuração de build e start
+- [ ] Configurar variáveis de ambiente no Railway
+- [ ] Criar banco de dados PostgreSQL no Railway e migrar schema
+- [ ] Fazer deploy do servidor no Railway via CLI
+- [ ] Apontar domínio usebarberpro.com para o Railway via CNAME na Hostinger
+- [ ] Verificar funcionamento completo em produção

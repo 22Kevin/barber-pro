@@ -1,0 +1,27 @@
+# Mobile app files (not needed for server deploy)
+app/
+components/
+hooks/
+constants/
+assets/
+global.css
+tailwind.config.js
+theme.config.js
+theme.config.d.ts
+
+# Build artifacts
+.expo/
+web-build/
+dist/
+
+# Dependencies
+node_modules/
+
+# Dev files
+*.test.ts
+*.test.tsx
+tests/
+
+# Misc
+.DS_Store
+*.orig.*
