@@ -262,11 +262,12 @@
     .wa-float svg { width: 26px; height: 26px; fill: white; }
 
     /* ── FADE UP ── */
-    .fade-up { opacity: 0; transform: translateY(22px); transition: opacity 0.55s ease, transform 0.55s ease; }
-    .fade-up.visible { opacity: 1; transform: translateY(0); }
-    .d1 { transition-delay: 0.1s; }
-    .d2 { transition-delay: 0.2s; }
-    .d3 { transition-delay: 0.3s; }
+    /* Animação desabilitada para garantir visibilidade em todos os dispositivos */
+    .fade-up { opacity: 1; transform: none; }
+    .fade-up.visible { opacity: 1; transform: none; }
+    .d1 { }
+    .d2 { }
+    .d3 { }
 
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
@@ -1014,9 +1015,11 @@
   // Mobile menu
   function toggleMobileMenu(){var h=document.getElementById('nav-hamburger'),d=document.getElementById('nav-drawer'),o=d.classList.contains('open');if(o){d.classList.remove('open');h.classList.remove('open');document.body.style.overflow='';}else{d.classList.add('open');h.classList.add('open');document.body.style.overflow='hidden';}}
   function closeMobileMenu(){document.getElementById('nav-hamburger').classList.remove('open');document.getElementById('nav-drawer').classList.remove('open');document.body.style.overflow='';}
-  // Fade up
-  var fo=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add('visible');fo.unobserve(x.target);}});},{threshold:0.12});
+  // Fade up — threshold 0 garante disparo mesmo em elementos grandes ou parcialmente visíveis
+  var fo=new IntersectionObserver(function(e){e.forEach(function(x){if(x.isIntersecting){x.target.classList.add('visible');fo.unobserve(x.target);}});},{threshold:0,rootMargin:'0px 0px -40px 0px'});
   document.querySelectorAll('.fade-up').forEach(function(el){fo.observe(el);});
+  // Fallback: garante que todos os elementos sejam visíveis após 1.5s (caso o observer falhe)
+  setTimeout(function(){document.querySelectorAll('.fade-up:not(.visible)').forEach(function(el){el.classList.add('visible');});},1500);
   // Modal signup
   var currentPlan='Equipe',currentPrice='R$89';
   function openModal(plan,price){currentPlan=plan||'Equipe';currentPrice=price||'R$89';document.getElementById('modalPlanName').textContent=currentPlan;document.getElementById('modalPlanPrice').innerHTML=currentPrice+'<span style="font-size:13px;color:var(--gray)">/mês</span>';document.getElementById('signupModal').classList.add('open');document.body.style.overflow='hidden';resetModal();}

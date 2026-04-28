@@ -114,11 +114,19 @@ async function startServer() {
       // api.usebarberpro.com / → retornar info da API
       return res.json({ name: "Barber Pro API", version: "1.0.0", status: "ok" });
     }
-    // Domínio raiz → landing page
+    // Domínio raiz → landing page (sem cache para garantir versão mais recente)
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     return res.sendFile(landingPath);
   });
 
-  app.get("/landing", (_req, res) => res.sendFile(landingPath));
+  app.get("/landing", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.sendFile(landingPath);
+  });
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
