@@ -1,5 +1,6 @@
 import { and, count, desc, eq, gte, inArray, like, lte, notInArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import {
   appointments,
   barbers,
@@ -58,7 +59,6 @@ export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
       // Use mysql2 pool for automatic reconnection on ECONNRESET
-      const mysql = require("mysql2/promise");
       const pool = mysql.createPool({
         uri: process.env.DATABASE_URL,
         waitForConnections: true,
@@ -67,7 +67,7 @@ export async function getDb() {
         enableKeepAlive: true,
         keepAliveInitialDelay: 10000,
       });
-      _db = drizzle(pool);
+      _db = drizzle(pool as any);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
