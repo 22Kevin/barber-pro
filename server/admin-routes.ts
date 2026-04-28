@@ -2791,6 +2791,27 @@ export function registerAdminRoutes(app: Express): void {
     next();
   });
 
+  // POST /api/error-log — Ingestão de erros do browser (sem autenticação)
+  app.post("/api/error-log", async (req: Request, res: Response) => {
+    try {
+      const { message, stack, url, userAgent, tenantId, context, source } = req.body ?? {};
+      if (!message) return res.status(400).json({ ok: false });
+      await db.insertErrorLog({
+        source: source ?? "browser",
+        message: String(message).slice(0, 2000),
+        stack: stack ? String(stack).slice(0, 5000) : undefined,
+        url: url ? String(url).slice(0, 500) : undefined,
+        userAgent: userAgent ? String(userAgent).slice(0, 500) : undefined,
+        tenantId: tenantId ?? undefined,
+        context: context ? JSON.stringify(context) : undefined,
+      });
+      res.json({ ok: true });
+    } catch (e) {
+      console.error("[error-log]", e);
+      res.status(500).json({ ok: false });
+    }
+  });
+
   // GET /admin/login
   app.get("/admin/login", (req: Request, res: Response) => {
     const token = (req as any).cookies?.[ADMIN_SESSION_COOKIE];

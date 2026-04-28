@@ -261,13 +261,25 @@
     .wa-float:hover { transform: scale(1.1); }
     .wa-float svg { width: 26px; height: 26px; fill: white; }
 
-    /* ── FADE UP ── */
-    /* Animação desabilitada para garantir visibilidade em todos os dispositivos */
-    .fade-up { opacity: 1; transform: none; }
-    .fade-up.visible { opacity: 1; transform: none; }
-    .d1 { }
-    .d2 { }
-    .d3 { }
+    /* ── FADE UP — CSS puro com @keyframes + animation-delay ── */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-up {
+      opacity: 0;
+      animation: fadeSlideUp 0.55s ease forwards;
+      animation-play-state: paused;
+    }
+    /* Quando o elemento entra na viewport via JS (IntersectionObserver) */
+    .fade-up.visible { animation-play-state: running; }
+    /* Fallback: se JS falhar, garante visibilidade após 0.1s */
+    @media (prefers-reduced-motion: reduce) {
+      .fade-up { opacity: 1; animation: none; }
+    }
+    .d1 { animation-delay: 0.1s; }
+    .d2 { animation-delay: 0.2s; }
+    .d3 { animation-delay: 0.3s; }
 
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
@@ -1044,6 +1056,23 @@
   document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeModal();closeLoginModal();}});
   // Spin
   var st=document.createElement('style');st.textContent='@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';document.head.appendChild(st);
+</script>
+<script>
+(function(){
+  var ENDPOINT='/api/error-log';
+  function send(data){
+    try{
+      navigator.sendBeacon(ENDPOINT,JSON.stringify(Object.assign({source:'browser',url:location.href,userAgent:navigator.userAgent},data)));
+    }catch(e){}
+  }
+  window.onerror=function(msg,src,line,col,err){
+    send({message:String(msg),stack:err&&err.stack?err.stack:'at '+src+':'+line+':'+col});
+  };
+  window.addEventListener('unhandledrejection',function(e){
+    var reason=e.reason;
+    send({message:reason instanceof Error?reason.message:String(reason),stack:reason instanceof Error?reason.stack:undefined});
+  });
+})();
 </script>
 </body>
 </html>

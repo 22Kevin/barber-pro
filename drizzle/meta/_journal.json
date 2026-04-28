@@ -274,6 +274,13 @@
       "when": 1777175106349,
       "tag": "0038_fuzzy_the_hand",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1777404712563,
+      "tag": "0039_strong_vanisher",
+      "breakpoints": true
     }
   ]
 }

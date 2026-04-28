@@ -1738,3 +1738,38 @@
 
 - [x] Corrigir bcryptjs não carregando em produção (require() dinâmico incompatível com ESM/esbuild)
 - [x] Substituir require() dinâmico por import estático em admin-routes.ts, routers.ts e public-routes.ts
+
+## Melhorias da Landing Page — Animação + Monitoramento (Abr/2026)
+
+- [ ] Substituir fade-up por animação CSS pura com @keyframes (sem depender de IntersectionObserver)
+- [ ] Integrar Sentry para monitoramento de erros JavaScript em produção
+- [ ] Criar tabela error_logs no banco de dados
+- [ ] Criar rota POST /api/error-log para ingestão de erros do browser
+- [ ] Adicionar captura de window.onerror e unhandledrejection na landing page e no painel admin
+- [ ] Criar tela de Erros no painel admin (/admin/errors) para visualizar os logs
+
+## Painel Super-Admin (/superadmin)
+
+- [ ] Criar tabela superadmin_sessions no banco para sessões do super-admin
+- [ ] Criar arquivo server/superadmin-routes.ts com login exclusivo (/superadmin/login)
+- [ ] Dashboard: métricas gerais (total tenants, MRR, agendamentos, leads)
+- [ ] Seção Tenants: lista completa com plano, status, ações (ativar/suspender/cancelar)
+- [ ] Seção Tenants: página de detalhes de cada tenant
+- [ ] Seção Erros: logs de error_logs com filtro por data e tenant
+- [ ] Seção Leads: lista de orbit_leads (cadastros incompletos da landing page)
+- [ ] CMS Landing Page: edição de depoimentos (adicionar/editar/remover)
+- [ ] CMS Landing Page: edição dos planos exibidos na landing page
+- [ ] CMS Landing Page: edição dos textos principais (headline, subtítulo, CTA)
+- [ ] Registrar as rotas do superadmin no server/_core/index.ts
+
+## Sistema de Login do Backoffice (Super-Admin)
+
+- [x] Criar tabela backoffice_users (id, name, email, passwordHash, role: super_admin|admin|suporte, isActive, createdAt)
+- [x] Popular tabela com usuário super_admin inicial (kevin.rayan25@gmail.com / kras22mgg31)
+- [x] Reescrever login do /superadmin para usar e-mail + senha com bcrypt
+- [x] Implementar sessões JWT ou cookie assinado para o backoffice
+- [x] Middleware de autorização por role (super_admin > admin > suporte)
+- [x] Seção Usuários do Backoffice: listar, criar, editar, desativar (só super_admin)
+- [x] Seção Erros: logs com filtro por data e tenant
+- [x] Seção Leads: cadastros incompletos da landing page
+- [x] CMS Landing Page: depoimentos, planos, textos principais

@@ -1,6 +1,9 @@
 import { and, count, desc, eq, gte, inArray, like, lte, notInArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
+
+// Re-export sql tagged template for use in other modules
+export { sql as sqlRaw };
 import {
   appointments,
   barbers,
@@ -2548,4 +2551,48 @@ export async function deleteSupplier(id: number): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(suppliers).set({ isActive: false, updatedAt: new Date() }).where(eq(suppliers.id, id));
+}
+
+// ─── Error Logs ───────────────────────────────────────────────────────────────
+export async function insertErrorLog(data: {
+  source?: string;
+  message: string;
+  stack?: string;
+  url?: string;
+  userAgent?: string;
+  tenantId?: number;
+  context?: string;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) return; // silently skip if no DB
+  await db.execute(sql`
+    INSERT INTO error_logs (source, message, stack, url, userAgent, tenantId, context)
+    VALUES (
+      ${data.source ?? "browser"},
+      ${data.message},
+      ${data.stack ?? null},
+      ${data.url ?? null},
+      ${data.userAgent ?? null},
+      ${data.tenantId ?? null},
+      ${data.context ?? null}
+    )
+  `);
+}
+
+export async function getErrorLogs(limit = 100): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.execute(sql`
+    SELECT id, source, message, stack, url, userAgent, tenantId, context, createdAt
+    FROM error_logs
+    ORDER BY createdAt DESC
+    LIMIT ${limit}
+  `);
+  return (rows[0] as unknown as any[]);
+}
+
+export async function clearErrorLogs(): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(sql`DELETE FROM error_logs WHERE createdAt < DATE_SUB(NOW(), INTERVAL 30 DAY)`);
 }

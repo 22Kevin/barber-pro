@@ -653,3 +653,25 @@ export const suppliers = mysqlTable("suppliers", {
 });
 export type Supplier = typeof suppliers.$inferSelect;
 export type InsertSupplier = typeof suppliers.$inferInsert;
+
+// ─── Error Logs (Monitoramento de Erros) ─────────────────────────────────────
+export const errorLogs = mysqlTable("error_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Origem do erro: 'browser' (JS do cliente) ou 'server' (Node.js) */
+  source: varchar("source", { length: 20 }).notNull().default("browser"),
+  /** Mensagem do erro */
+  message: text("message").notNull(),
+  /** Stack trace completo */
+  stack: text("stack"),
+  /** URL da página onde ocorreu o erro */
+  url: varchar("url", { length: 500 }),
+  /** User agent do navegador */
+  userAgent: varchar("userAgent", { length: 500 }),
+  /** Tenant relacionado (se disponível) */
+  tenantId: int("tenantId"),
+  /** Contexto extra em JSON (ex: rota, ação do usuário) */
+  context: text("context"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ErrorLog = typeof errorLogs.$inferSelect;
+export type InsertErrorLog = typeof errorLogs.$inferInsert;
