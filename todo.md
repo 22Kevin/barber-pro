@@ -1714,3 +1714,17 @@
 
 - [x] Checkbox "Lembrar-me" no login do painel admin (sessão 30 dias)
 - [x] Login via Google nativo no painel admin (OAuth Google direto)
+
+## Cadastro Landing Page — Alinhamento com App Mobile
+
+- [ ] Adicionar campos CNPJ e Instagram na Etapa 1 (Barbearia)
+- [ ] Adicionar campos Rua, Número e Complemento na Etapa 2 (Endereço)
+- [ ] Criar Etapa 3 completa (Horários): dias da semana, abertura/fechamento, intervalo de almoço
+- [ ] Atualizar a barra de progresso para 4 etapas (era 3)
+- [ ] Atualizar a rota onboarding.createTenant para receber os novos campos
+
+## Cadastro Landing Page — Alinhamento com App Mobile
+
+- [x] Campos CNPJ e Instagram na Etapa 1 do cadastro da landing page
+- [x] Campos Rua, Número e Complemento na Etapa 2 do cadastro da landing page
+- [x] Etapa 3 completa de Horários no cadastro da landing page (dias da semana, abertura/fechamento, intervalo de almoço)

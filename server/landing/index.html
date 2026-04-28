@@ -236,6 +236,9 @@
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .btn-submit { width: 100%; background: linear-gradient(135deg, var(--gold-light), var(--gold)); color: var(--black); font-size: 15px; font-weight: 800; padding: 14px; border-radius: 10px; border: none; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; margin-top: 8px; }
     .btn-submit:hover { box-shadow: 0 8px 28px rgba(201,168,76,0.4); }
+    .day-btn { background: var(--black-4); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; font-size: 12px; font-weight: 600; color: var(--gray-light); cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; min-width: 44px; }
+    .day-btn.active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold-light); }
+    .day-btn:hover { border-color: var(--gold-border); color: var(--white); }
     .modal-terms { font-size: 11px; color: var(--gray); text-align: center; margin-top: 16px; line-height: 1.6; }
     .modal-terms a { color: var(--gold-light); }
     .modal-login-link { font-size: 13px; color: var(--gray); text-align: center; margin-top: 12px; }
@@ -793,6 +796,8 @@
         <div class="modal-step active" id="step-bar-1"></div>
         <div class="modal-step" id="step-bar-2"></div>
         <div class="modal-step" id="step-bar-3"></div>
+        <div class="modal-step" id="step-bar-4"></div>
+        <div class="modal-step" id="step-bar-5"></div>
       </div>
       <div class="modal-plan-sel">
         <div>
@@ -801,10 +806,10 @@
         </div>
         <div class="modal-plan-price" id="modalPlanPrice">R$89<span style="font-size:13px;color:var(--gray)">/mês</span></div>
       </div>
-      <!-- Step 1 -->
+      <!-- Step 1: Dados da Barbearia -->
       <div id="formStep1">
-        <h2 class="modal-title">Crie sua conta</h2>
-        <p class="modal-sub">Comece com o nome da sua barbearia. Você pode ajustar tudo depois.</p>
+        <h2 class="modal-title">Dados da Barbearia</h2>
+        <p class="modal-sub">Informações básicas que aparecerão para seus clientes.</p>
         <form onsubmit="goToStep2(event)">
           <div class="form-group">
             <label class="form-label">Nome da barbearia *</label>
@@ -815,30 +820,112 @@
             <label class="form-label">Telefone / WhatsApp *</label>
             <input type="tel" class="form-input" id="inputTelefone" placeholder="(11) 99999-9999" required maxlength="15" oninput="maskPhone(this)" />
           </div>
-          <div class="form-group">
-            <label class="form-label">CEP *</label>
-            <input type="text" class="form-input" id="inputCep" placeholder="00000-000" required maxlength="9" oninput="maskCep(this)" onblur="fetchCep()" />
-            <span id="cepSpinner" style="display:none;font-size:12px;color:var(--gray)">Buscando...</span>
-            <span id="cepError" style="display:none;font-size:12px;color:#F87171">CEP não encontrado.</span>
-          </div>
           <div class="form-row">
             <div class="form-group" style="margin-bottom:0">
-              <label class="form-label">Cidade *</label>
-              <input type="text" class="form-input" id="inputCidade" placeholder="Sua cidade" required />
+              <label class="form-label">CNPJ</label>
+              <input type="text" class="form-input" id="inputCnpj" placeholder="00.000.000/0001-00" maxlength="18" oninput="maskCnpj(this)" />
             </div>
             <div class="form-group" style="margin-bottom:0">
-              <label class="form-label">Estado *</label>
-              <input type="text" class="form-input" id="inputEstado" placeholder="SP" required maxlength="2" />
+              <label class="form-label">Instagram</label>
+              <input type="text" class="form-input" id="inputInstagram" placeholder="@barbearia" />
             </div>
           </div>
           <button type="submit" class="btn-submit" style="margin-top:20px">Continuar →</button>
         </form>
       </div>
-      <!-- Step 2 -->
+      <!-- Step 2: Endereço -->
       <div id="formStep2" style="display:none">
-        <h2 class="modal-title">Seus dados de acesso</h2>
-        <p class="modal-sub">Crie seu login de administrador.</p>
+        <h2 class="modal-title">Endereço</h2>
+        <p class="modal-sub">Onde sua barbearia está localizada.</p>
         <form onsubmit="goToStep3(event)">
+          <div class="form-group">
+            <label class="form-label">CEP</label>
+            <input type="text" class="form-input" id="inputCep" placeholder="00000-000" maxlength="9" oninput="maskCep(this)" onblur="fetchCep()" />
+            <span id="cepSpinner" style="display:none;font-size:12px;color:var(--gray)">Buscando...</span>
+            <span id="cepError" style="display:none;font-size:12px;color:#F87171">CEP não encontrado.</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rua / Avenida</label>
+            <input type="text" class="form-input" id="inputRua" placeholder="Rua das Flores" />
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0;flex:1">
+              <label class="form-label">Número</label>
+              <input type="text" class="form-input" id="inputNumero" placeholder="123" />
+            </div>
+            <div class="form-group" style="margin-bottom:0;flex:2">
+              <label class="form-label">Complemento</label>
+              <input type="text" class="form-input" id="inputComplemento" placeholder="Sala 2 (opcional)" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0;flex:2">
+              <label class="form-label">Cidade *</label>
+              <input type="text" class="form-input" id="inputCidade" placeholder="São Paulo" required />
+            </div>
+            <div class="form-group" style="margin-bottom:0;flex:1">
+              <label class="form-label">Estado *</label>
+              <input type="text" class="form-input" id="inputEstado" placeholder="SP" required maxlength="2" oninput="this.value=this.value.toUpperCase()" />
+            </div>
+          </div>
+          <button type="submit" class="btn-submit" style="margin-top:20px">Continuar →</button>
+          <div style="text-align:center;margin-top:12px">
+            <button type="button" onclick="showStep(1)" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer">← Voltar</button>
+          </div>
+        </form>
+      </div>
+      <!-- Step 3: Horários -->
+      <div id="formStep3" style="display:none">
+        <h2 class="modal-title">Horários de Funcionamento</h2>
+        <p class="modal-sub">Configure os dias e horários padrão da barbearia.</p>
+        <div class="form-group">
+          <label class="form-label">Dias de funcionamento *</label>
+          <div id="daysSelector" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <button type="button" class="day-btn" data-day="0" onclick="toggleDay(0)">Dom</button>
+            <button type="button" class="day-btn active" data-day="1" onclick="toggleDay(1)">Seg</button>
+            <button type="button" class="day-btn active" data-day="2" onclick="toggleDay(2)">Ter</button>
+            <button type="button" class="day-btn active" data-day="3" onclick="toggleDay(3)">Qua</button>
+            <button type="button" class="day-btn active" data-day="4" onclick="toggleDay(4)">Qui</button>
+            <button type="button" class="day-btn active" data-day="5" onclick="toggleDay(5)">Sex</button>
+            <button type="button" class="day-btn active" data-day="6" onclick="toggleDay(6)">Sáb</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Abertura</label>
+            <input type="text" class="form-input" id="inputAbertura" value="09:00" placeholder="09:00" maxlength="5" oninput="maskTime(this)" />
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Fechamento</label>
+            <input type="text" class="form-input" id="inputFechamento" value="19:00" placeholder="19:00" maxlength="5" oninput="maskTime(this)" />
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:14px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="checkAlmoco" checked onchange="toggleAlmoco()" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer" />
+            <span class="form-label" style="margin-bottom:0">Intervalo de almoço</span>
+          </label>
+        </div>
+        <div id="almocoFields" class="form-row">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Início almoço</label>
+            <input type="text" class="form-input" id="inputAlmocoInicio" value="12:00" placeholder="12:00" maxlength="5" oninput="maskTime(this)" />
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Fim almoço</label>
+            <input type="text" class="form-input" id="inputAlmocoFim" value="13:00" placeholder="13:00" maxlength="5" oninput="maskTime(this)" />
+          </div>
+        </div>
+        <button type="button" class="btn-submit" onclick="goToStep4()" style="margin-top:20px">Continuar →</button>
+        <div style="text-align:center;margin-top:12px">
+          <button type="button" onclick="showStep(2)" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer">← Voltar</button>
+        </div>
+      </div>
+      <!-- Step 4: Dados de Acesso -->
+      <div id="formStep4" style="display:none">
+        <h2 class="modal-title">Conta do Administrador</h2>
+        <p class="modal-sub">Crie o acesso principal para gerenciar sua barbearia.</p>
+        <form onsubmit="goToStep5(event)">
           <div class="form-group">
             <label class="form-label">Seu nome *</label>
             <input type="text" class="form-input" id="inputNomeAdmin" placeholder="Seu nome completo" required />
@@ -857,12 +944,12 @@
           </div>
           <button type="submit" class="btn-submit">Continuar →</button>
           <div style="text-align:center;margin-top:12px">
-            <button type="button" onclick="backToStep1()" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer">← Voltar</button>
+            <button type="button" onclick="showStep(3)" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer">← Voltar</button>
           </div>
         </form>
       </div>
-      <!-- Step 3 -->
-      <div id="formStep3" style="display:none">
+      <!-- Step 5: Pagamento -->
+      <div id="formStep5" style="display:none">
         <h2 class="modal-title">Forma de pagamento</h2>
         <p class="modal-sub">Escolha como pagar após os 14 dias grátis.</p>
         <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
@@ -879,13 +966,13 @@
             <div><div style="font-weight:700;color:var(--white);font-size:14px">Boleto bancário</div><div style="font-size:12px;color:var(--gray);margin-top:2px">Vencimento em 3 dias úteis após o período gratuito</div></div>
           </button>
         </div>
-        <button type="button" onclick="goToStep4()" id="btnContinuarPagamento" class="btn-submit" style="opacity:0.4;pointer-events:none" disabled>Iniciar período gratuito →</button>
+        <button type="button" onclick="submitRegistration()" id="btnContinuarPagamento" class="btn-submit" style="opacity:0.4;pointer-events:none" disabled>Iniciar período gratuito →</button>
         <div style="text-align:center;margin-top:12px">
-          <button type="button" onclick="backToStep2()" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer">← Voltar</button>
+          <button type="button" onclick="showStep(4)" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer">← Voltar</button>
         </div>
       </div>
-      <!-- Step 4 loading -->
-      <div id="formStep4" style="display:none;text-align:center;padding:40px 0">
+      <!-- Step 6: Loading -->
+      <div id="formStep6" style="display:none;text-align:center;padding:40px 0">
         <div style="font-size:48px;margin-bottom:20px;animation:spin 1s linear infinite;display:inline-block">⚙️</div>
         <h3 style="font-size:22px;margin-bottom:12px">Configurando sua barbearia...</h3>
         <p style="color:var(--gray);font-size:14px">Isso leva apenas alguns segundos.</p>
@@ -924,18 +1011,11 @@
   // Masks
   function maskPhone(i){var v=i.value.replace(/\D/g,'').slice(0,11);if(v.length<=2)v=v.replace(/(\d{0,2})/,'($1');else if(v.length<=6)v=v.replace(/(\d{2})(\d{0,4})/,'($1) $2');else if(v.length<=10)v=v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');else v=v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');i.value=v;}
   function maskCep(i){var v=i.value.replace(/\D/g,'').slice(0,8);if(v.length>5)v=v.replace(/(\d{5})(\d{0,3})/,'$1-$2');i.value=v;}
-  function fetchCep(){var c=document.getElementById('inputCep').value.replace(/\D/g,'');if(c.length!==8)return;document.getElementById('cepSpinner').style.display='inline';document.getElementById('cepError').style.display='none';fetch('https://viacep.com.br/ws/'+c+'/json/').then(function(r){return r.json();}).then(function(d){document.getElementById('cepSpinner').style.display='none';if(d.erro){document.getElementById('cepError').style.display='block';}else{document.getElementById('inputCidade').value=d.localidade||'';document.getElementById('inputEstado').value=d.uf||'';}}).catch(function(){document.getElementById('cepSpinner').style.display='none';document.getElementById('cepError').style.display='block';});}
+  function fetchCep(){var c=document.getElementById('inputCep').value.replace(/\D/g,'');if(c.length!==8)return;document.getElementById('cepSpinner').style.display='inline';document.getElementById('cepError').style.display='none';fetch('https://viacep.com.br/ws/'+c+'/json/').then(function(r){return r.json();}).then(function(d){document.getElementById('cepSpinner').style.display='none';if(d.erro){document.getElementById('cepError').style.display='block';}else{var ruaEl=document.getElementById('inputRua');if(ruaEl&&!ruaEl.value)ruaEl.value=d.logradouro||'';document.getElementById('inputCidade').value=d.localidade||'';document.getElementById('inputEstado').value=d.uf||'';}}).catch(function(){document.getElementById('cepSpinner').style.display='none';document.getElementById('cepError').style.display='block';});}
   // Steps
-  function resetModal(){showStep(1);document.getElementById('modalFormContent').style.display='';document.getElementById('modalSuccess').style.display='none';['inputNomeBarbearia','inputTelefone','inputCep','inputCidade','inputEstado','inputNomeAdmin','inputEmail','inputSenha','inputSenhaConfirm'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});document.getElementById('slugPreview').textContent='';}
-  function showStep(n){[1,2,3,4].forEach(function(i){var el=document.getElementById('formStep'+i);if(el)el.style.display=i===n?'':'none';});[1,2,3].forEach(function(i){var b=document.getElementById('step-bar-'+i);if(b)b.className='modal-step'+(i<n?' done':(i===n?' active':''));});}
-  function updateSlugPreview(){var n=document.getElementById('inputNomeBarbearia').value,s=n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-');document.getElementById('slugPreview').textContent=s?'🔗 usebarberpro.com/'+s:'';}
-  function goToStep2(e){e.preventDefault();showStep(2);}
-  function backToStep1(){showStep(1);}
-  var selPay=null;
-  function selectPayment(m){selPay=m;['card','pix','boleto'].forEach(function(x){var el=document.getElementById('pay'+x.charAt(0).toUpperCase()+x.slice(1));if(el)el.style.borderColor=x===m?'var(--gold)':'rgba(255,255,255,0.1)';});var b=document.getElementById('btnContinuarPagamento');b.disabled=false;b.style.opacity='1';b.style.pointerEvents='auto';}
-  function goToStep3(e){e.preventDefault();var s=document.getElementById('inputSenha').value,c=document.getElementById('inputSenhaConfirm').value;if(s!==c){alert('As senhas não coincidem.');return;}if(s.length<6){alert('A senha deve ter pelo menos 6 caracteres.');return;}showStep(3);}
-  function backToStep2(){showStep(2);}
-  function goToStep4(){showStep(4);var nome=document.getElementById('inputNomeBarbearia').value,tel=document.getElementById('inputTelefone').value,cep=document.getElementById('inputCep').value.replace(/\D/g,''),cidade=document.getElementById('inputCidade').value,estado=document.getElementById('inputEstado').value,nomeAdmin=document.getElementById('inputNomeAdmin').value,email=document.getElementById('inputEmail').value,senha=document.getElementById('inputSenha').value,plan=currentPlan.toLowerCase()==='equipe'?'team':(currentPlan.toLowerCase()==='estúdio'||currentPlan.toLowerCase()==='studio'?'studio':'solo');fetch('/api/trpc/onboarding.createTenant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({json:{name:nome,phone:tel,cep:cep,city:cidade,state:estado,adminName:nomeAdmin,email:email,password:senha,plan:plan,paymentMethod:selPay||'card'}})}).then(function(r){return r.json();}).then(function(data){if(data.result&&data.result.data&&data.result.data.json){var r=data.result.data.json;showSuccess(r.tenantSlug,r.adminUrl||'/admin');}else{var msg='Erro ao criar barbearia. Tente novamente.';try{var e=data.error&&data.error.json;if(e&&e.message)msg=e.message;}catch(x){}alert(msg);showStep(3);}}).catch(function(err){console.error(err);alert('Erro de conexão. Verifique sua internet e tente novamente.');showStep(3);});}
+   function resetModal(){showStep(1);document.getElementById('modalFormContent').style.display='';document.getElementById('modalSuccess').style.display='none';['inputNomeBarbearia','inputTelefone','inputCnpj','inputInstagram','inputCep','inputRua','inputNumero','inputComplemento','inputCidade','inputEstado','inputAbertura','inputFechamento','inputAlmocoInicio','inputAlmocoFim','inputNomeAdmin','inputEmail','inputSenha','inputSenhaConfirm'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});if(document.getElementById('inputAbertura'))document.getElementById('inputAbertura').value='09:00';if(document.getElementById('inputFechamento'))document.getElementById('inputFechamento').value='19:00';if(document.getElementById('inputAlmocoInicio'))document.getElementById('inputAlmocoInicio').value='12:00';if(document.getElementById('inputAlmocoFim'))document.getElementById('inputAlmocoFim').value='13:00';document.getElementById('slugPreview').textContent='';selPay=null;}
+  function showStep(n){[1,2,3,4,5,6].forEach(function(i){var el=document.getElementById('formStep'+i);if(el)el.style.display=i===n?'':'none';});[1,2,3,4,5].forEach(function(i){var b=document.getElementById('step-bar-'+i);if(b)b.className='modal-step'+(i<n?' done':(i===n?' active':''));});}
+  function updateSlugPreview(){var n=document.getElementById('inputNomeBarbearia').value,s=n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-');document.getElementById('slugPreview').textContent=s?'\uD83D\uDD17 usebarberpro.com/'+s:'';}  function maskCnpj(i){var v=i.value.replace(/\D/g,'').slice(0,14);if(v.length<=2)v=v;else if(v.length<=5)v=v.replace(/(\d{2})(\d{0,3})/,'$1.$2');else if(v.length<=8)v=v.replace(/(\d{2})(\d{3})(\d{0,3})/,'$1.$2.$3');else if(v.length<=12)v=v.replace(/(\d{2})(\d{3})(\d{3})(\d{0,4})/,'$1.$2.$3/$4');else v=v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/,'$1.$2.$3/$4-$5');i.value=v;}  function maskTime(i){var v=i.value.replace(/\D/g,'').slice(0,4);if(v.length>2)v=v.slice(0,2)+':'+v.slice(2);i.value=v;}  var activeDays=[1,2,3,4,5,6];  function toggleDay(d){var idx=activeDays.indexOf(d);if(idx>-1)activeDays.splice(idx,1);else activeDays.push(d);document.querySelectorAll('.day-btn').forEach(function(b){var day=parseInt(b.getAttribute('data-day'));b.className='day-btn'+(activeDays.indexOf(day)>-1?' active':'');});}  function toggleAlmoco(){var show=document.getElementById('checkAlmoco').checked;document.getElementById('almocoFields').style.display=show?'':'none';}  function goToStep2(e){e.preventDefault();showStep(2);}  function goToStep3(e){e.preventDefault();showStep(3);}  function goToStep4(){showStep(4);}  function goToStep5(e){e.preventDefault();var s=document.getElementById('inputSenha').value,c=document.getElementById('inputSenhaConfirm').value;if(s!==c){alert('As senhas n\u00e3o coincidem.');return;}if(s.length<6){alert('A senha deve ter pelo menos 6 caracteres.');return;}showStep(5);}  var selPay=null;  function selectPayment(m){selPay=m;['card','pix','boleto'].forEach(function(x){var el=document.getElementById('pay'+x.charAt(0).toUpperCase()+x.slice(1));if(el)el.style.borderColor=x===m?'var(--gold)':'rgba(255,255,255,0.1)';});var b=document.getElementById('btnContinuarPagamento');b.disabled=false;b.style.opacity='1';b.style.pointerEvents='auto';}  function submitRegistration(){showStep(6);var nome=document.getElementById('inputNomeBarbearia').value,tel=document.getElementById('inputTelefone').value,cnpj=document.getElementById('inputCnpj').value.replace(/\D/g,''),instagram=document.getElementById('inputInstagram').value,cep=document.getElementById('inputCep').value.replace(/\D/g,''),rua=document.getElementById('inputRua').value,numero=document.getElementById('inputNumero').value,complemento=document.getElementById('inputComplemento').value,cidade=document.getElementById('inputCidade').value,estado=document.getElementById('inputEstado').value,abertura=document.getElementById('inputAbertura').value||'09:00',fechamento=document.getElementById('inputFechamento').value||'19:00',temAlmoco=document.getElementById('checkAlmoco').checked,almocoInicio=temAlmoco?(document.getElementById('inputAlmocoInicio').value||'12:00'):null,almocoFim=temAlmoco?(document.getElementById('inputAlmocoFim').value||'13:00'):null,nomeAdmin=document.getElementById('inputNomeAdmin').value,email=document.getElementById('inputEmail').value,senha=document.getElementById('inputSenha').value,plan=currentPlan.toLowerCase()==='equipe'?'team':(currentPlan.toLowerCase()==='est\u00fadio'||currentPlan.toLowerCase()==='studio'?'studio':'solo');var payload={name:nome,phone:tel,cep:cep,city:cidade,state:estado,adminName:nomeAdmin,email:email,password:senha,plan:plan,paymentMethod:selPay||'card'};if(cnpj)payload.cnpj=cnpj;if(instagram)payload.instagram=instagram;if(rua)payload.address=rua+(numero?' '+numero:'')+(complemento?', '+complemento:'');if(activeDays.length)payload.workDays=activeDays;payload.openTime=abertura;payload.closeTime=fechamento;if(almocoInicio)payload.lunchStart=almocoInicio;if(almocoFim)payload.lunchEnd=almocoFim;fetch('/api/trpc/onboarding.register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({json:payload})}).then(function(r){return r.json();}).then(function(data){if(data.result&&data.result.data&&data.result.data.json){var r=data.result.data.json;showSuccess(r.tenantSlug,r.adminUrl||'/admin');}else{var msg='Erro ao criar barbearia. Tente novamente.';try{var e=data.error&&data.error.json;if(e&&e.message)msg=e.message;}catch(x){}alert(msg);showStep(5);}}).catch(function(err){console.error(err);alert('Erro de conex\u00e3o. Verifique sua internet e tente novamente.');showStep(5);});}
   function showSuccess(slug,adminUrl){document.getElementById('modalFormContent').style.display='none';var s=document.getElementById('modalSuccess');s.style.display='block';document.getElementById('successPublicLink').textContent='https://usebarberpro.com/'+slug;document.getElementById('successPanelLink').href=adminUrl||'/admin';}
   function goToLogin(){closeModal();openLoginModal();}
   // Modal login
