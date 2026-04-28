@@ -319,6 +319,7 @@
       <li><a href="#como-funciona">Como funciona</a></li>
       <li><a href="#planos">Planos</a></li>
       <li><a href="#faq">FAQ</a></li>
+      <li><a href="#interesse" style="color:var(--gold);font-weight:700">Demonstração</a></li>
     </ul>
     <div class="nav-actions">
       <button class="btn-ghost" onclick="openLoginModal()">Entrar</button>
@@ -334,6 +335,7 @@
   <a href="#como-funciona" onclick="closeMobileMenu()">Como funciona</a>
   <a href="#planos" onclick="closeMobileMenu()">Planos</a>
   <a href="#faq" onclick="closeMobileMenu()">FAQ</a>
+  <a href="#interesse" onclick="closeMobileMenu()" style="color:var(--gold);font-weight:700">Demonstração Gratuita</a>
   <a href="#" onclick="closeMobileMenu(); openLoginModal(); return false;">Entrar no painel</a>
   <a href="#" class="drawer-cta" onclick="closeMobileMenu(); openModal('Equipe', 'R$89'); return false;">✦ Testar 14 dias grátis</a>
 </div>
@@ -723,6 +725,52 @@
   </div>
 </section>
 
+<!-- FORMULÁRIO DE INTERESSE (LEAD CAPTURE) -->
+<section class="section" id="interesse" style="background:linear-gradient(180deg,#0A0A0A 0%,#111008 100%)">
+  <div class="container">
+    <div style="max-width:560px;margin:0 auto;text-align:center">
+      <div class="section-label" style="margin-bottom:16px">Quero saber mais</div>
+      <h2 style="font-size:clamp(22px,4vw,34px);font-weight:900;line-height:1.2;margin-bottom:12px">
+        Receba uma <span class="gold-gradient">demonstração gratuita</span><br/>do Barber Pro
+      </h2>
+      <p style="color:#888880;font-size:15px;margin-bottom:28px;line-height:1.6">
+        Deixe seus dados e nossa equipe entra em contato para mostrar como o sistema funciona na prática.
+      </p>
+      <form id="lead-form" style="display:flex;flex-direction:column;gap:12px" onsubmit="submitLead(event)">
+        <input type="text" id="lead-name" placeholder="Seu nome" style="
+          width:100%;padding:14px 16px;background:#141414;border:1px solid #2A2A2A;
+          border-radius:12px;color:#F0EEE8;font-size:15px;outline:none;font-family:inherit;
+          transition:border-color 0.2s;
+        " onfocus="this.style.borderColor='#C9A84C'" onblur="this.style.borderColor='#2A2A2A'" />
+        <input type="email" id="lead-email" placeholder="Seu e-mail" required style="
+          width:100%;padding:14px 16px;background:#141414;border:1px solid #2A2A2A;
+          border-radius:12px;color:#F0EEE8;font-size:15px;outline:none;font-family:inherit;
+          transition:border-color 0.2s;
+        " onfocus="this.style.borderColor='#C9A84C'" onblur="this.style.borderColor='#2A2A2A'" />
+        <input type="tel" id="lead-phone" placeholder="WhatsApp (com DDD)" style="
+          width:100%;padding:14px 16px;background:#141414;border:1px solid #2A2A2A;
+          border-radius:12px;color:#F0EEE8;font-size:15px;outline:none;font-family:inherit;
+          transition:border-color 0.2s;
+        " onfocus="this.style.borderColor='#C9A84C'" onblur="this.style.borderColor='#2A2A2A'" />
+        <button type="submit" id="lead-btn" style="
+          width:100%;padding:15px;background:linear-gradient(135deg,#C9A84C,#E8C96A);
+          color:#0A0A0A;font-size:16px;font-weight:800;border:none;border-radius:12px;
+          cursor:pointer;letter-spacing:0.5px;transition:opacity 0.2s;
+        " onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+          QUERO UMA DEMONSTRAÇÃO GRATUITA
+        </button>
+        <p id="lead-msg" style="font-size:13px;color:#4ADE80;display:none;margin-top:4px">
+          ✓ Recebemos seu contato! Nossa equipe falará com você em breve.
+        </p>
+        <p id="lead-err" style="font-size:13px;color:#F87171;display:none;margin-top:4px">
+          Preencha o e-mail ou telefone para continuar.
+        </p>
+      </form>
+      <p style="font-size:12px;color:#555;margin-top:14px">Seus dados são 100% seguros. Sem spam.</p>
+    </div>
+  </div>
+</section>
+
 <!-- CTA FINAL -->
 <section class="section">
   <div class="container">
@@ -1056,6 +1104,38 @@
   document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeModal();closeLoginModal();}});
   // Spin
   var st=document.createElement('style');st.textContent='@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';document.head.appendChild(st);
+
+  // Lead capture
+  function submitLead(e){
+    e.preventDefault();
+    var name=document.getElementById('lead-name').value.trim();
+    var email=document.getElementById('lead-email').value.trim();
+    var phone=document.getElementById('lead-phone').value.trim();
+    var msg=document.getElementById('lead-msg');
+    var err=document.getElementById('lead-err');
+    var btn=document.getElementById('lead-btn');
+    msg.style.display='none'; err.style.display='none';
+    if(!email && !phone){err.style.display='block';return;}
+    btn.textContent='Enviando...'; btn.disabled=true;
+    fetch('/api/lead',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:name,email:email,phone:phone})
+    }).then(function(r){return r.json();})
+    .then(function(d){
+      if(d.ok){
+        msg.style.display='block';
+        document.getElementById('lead-form').reset();
+        btn.textContent='QUERO UMA DEMONSTRA\u00c7\u00c3O GRATUITA';
+        btn.disabled=false;
+      } else { throw new Error('server error'); }
+    }).catch(function(){
+      err.textContent='Ocorreu um erro. Tente novamente.';
+      err.style.display='block';
+      btn.textContent='QUERO UMA DEMONSTRA\u00c7\u00c3O GRATUITA';
+      btn.disabled=false;
+    });
+  }
 </script>
 <script>
 (function(){

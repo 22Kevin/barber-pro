@@ -132,6 +132,25 @@ async function startServer() {
     res.json({ ok: true, timestamp: Date.now() });
   });
 
+  // Captura de leads da landing page
+  app.post("/api/lead", async (req, res) => {
+    try {
+      const { name, email, phone } = req.body as { name?: string; email?: string; phone?: string };
+      if (!email && !phone) return res.status(400).json({ ok: false, error: "email ou telefone obrigatório" });
+      const { getDb, sqlRaw } = await import("../db");
+      const dbConn = await getDb();
+      if (dbConn) {
+        await dbConn.execute(
+          sqlRaw`INSERT INTO orbit_leads (name, email, phone, source) VALUES (${name ?? null}, ${email ?? null}, ${phone ?? null}, 'landing')`
+        );
+      }
+      res.json({ ok: true });
+    } catch (e) {
+      console.error("[Lead Capture]", e);
+      res.status(500).json({ ok: false });
+    }
+  });
+
   // Página pública de status do sistema
   app.get("/status", async (_req, res) => {
     const startTime = Date.now();

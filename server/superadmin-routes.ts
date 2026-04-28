@@ -418,6 +418,35 @@ export function registerSuperAdminRoutes(app: Express): void {
       const mrr = allTenants.filter((t) => t.status === "active")
         .reduce((s, t) => s + (t.plan === "solo" ? 49 : t.plan === "team" ? 89 : 149), 0);
 
+      // Gráfico: novos cadastros por semana (12 semanas)
+      const now = new Date();
+      const weekLabels: string[] = [];
+      const weekCounts: number[] = [];
+      for (let w = 11; w >= 0; w--) {
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - w * 7 - now.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+        const count = allTenants.filter((t) => {
+          const d = new Date(t.createdAt);
+          return d >= weekStart && d < weekEnd;
+        }).length;
+        const label = weekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+        weekLabels.push(label);
+        weekCounts.push(count);
+      }
+      const chartLabels = JSON.stringify(weekLabels);
+      const chartData = JSON.stringify(weekCounts);
+      const totalLeads = await (async () => {
+        try {
+          const dbConn = await db.getDb();
+          if (!dbConn) return 0;
+          const rows: any[] = await dbConn.execute(db.sqlRaw`SELECT COUNT(*) as cnt FROM orbit_leads`) as any;
+          return rows?.[0]?.[0]?.cnt ?? 0;
+        } catch { return 0; }
+      })();
+
       // Últimas 5 barbearias
       const recent = allTenants.slice(0, 5).map((t) => `
         <tr>
@@ -462,7 +491,62 @@ export function registerSuperAdminRoutes(app: Express): void {
               <div class="metric-value">R$${mrr}</div>
               <div class="metric-sub">receita mensal recorrente</div>
             </div>
+            <div class="metric-card">
+              <div class="metric-label">Leads Capturados</div>
+              <div class="metric-value" style="color:var(--info)">${totalLeads}</div>
+              <div class="metric-sub">interesse na landing page</div>
+            </div>
           </div>
+
+          <!-- GRÁFICO DE CRESCIMENTO -->
+          <div class="table-wrap" style="margin-bottom:24px">
+            <div class="table-header">
+              <h2>Crescimento Semanal</h2>
+              <span style="font-size:12px;color:var(--muted)">Novos cadastros por semana (12 semanas)</span>
+            </div>
+            <div style="padding:20px 16px">
+              <canvas id="growthChart" height="80"></canvas>
+            </div>
+          </div>
+          <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+          <script>
+            (function(){
+              var ctx = document.getElementById('growthChart').getContext('2d');
+              new Chart(ctx, {
+                type: 'line',
+                data: {
+                  labels: ${chartLabels},
+                  datasets: [{
+                    label: 'Novos cadastros',
+                    data: ${chartData},
+                    borderColor: '#C9A84C',
+                    backgroundColor: 'rgba(201,168,76,0.12)',
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#C9A84C',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.4
+                  }]
+                },
+                options: {
+                  responsive: true,
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      callbacks: {
+                        label: function(ctx){ return ctx.parsed.y + ' cadastro' + (ctx.parsed.y !== 1 ? 's' : ''); }
+                      }
+                    }
+                  },
+                  scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 11 } } },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 11 }, stepSize: 1 }, beginAtZero: true }
+                  }
+                }
+              });
+            })();
+          </script>
 
           <div class="table-wrap">
             <div class="table-header">

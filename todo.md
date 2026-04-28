@@ -1773,3 +1773,11 @@
 - [x] Seção Erros: logs com filtro por data e tenant
 - [x] Seção Leads: cadastros incompletos da landing page
 - [x] CMS Landing Page: depoimentos, planos, textos principais
+
+## Captura de Leads e Gráfico de Crescimento
+
+- [x] Criar tabela orbit_leads no banco (id, name, email, phone, source, createdAt)
+- [x] Criar rota POST /api/lead para capturar leads da landing page
+- [x] Adicionar formulário de interesse na landing page (nome + e-mail + telefone) antes do CTA de cadastro
+- [x] Exibir leads capturados na seção Leads do backoffice
+- [x] Adicionar gráfico de crescimento (novos cadastros por semana) no dashboard do backoffice
