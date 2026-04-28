@@ -1717,14 +1717,19 @@
 
 ## Cadastro Landing Page — Alinhamento com App Mobile
 
-- [ ] Adicionar campos CNPJ e Instagram na Etapa 1 (Barbearia)
-- [ ] Adicionar campos Rua, Número e Complemento na Etapa 2 (Endereço)
-- [ ] Criar Etapa 3 completa (Horários): dias da semana, abertura/fechamento, intervalo de almoço
-- [ ] Atualizar a barra de progresso para 4 etapas (era 3)
-- [ ] Atualizar a rota onboarding.createTenant para receber os novos campos
+- [x] Adicionar campos CNPJ e Instagram na Etapa 1 (Barbearia)
+- [x] Adicionar campos Rua, Número e Complemento na Etapa 2 (Endereço)
+- [x] Criar Etapa 3 completa (Horários): dias da semana, abertura/fechamento, intervalo de almoço
+- [x] Atualizar a barra de progresso para 4 etapas (era 3)
+- [x] Atualizar a rota onboarding.createTenant para receber os novos campos
 
 ## Cadastro Landing Page — Alinhamento com App Mobile
 
 - [x] Campos CNPJ e Instagram na Etapa 1 do cadastro da landing page
 - [x] Campos Rua, Número e Complemento na Etapa 2 do cadastro da landing page
 - [x] Etapa 3 completa de Horários no cadastro da landing page (dias da semana, abertura/fechamento, intervalo de almoço)
+
+## Validação e Testes do Cadastro — Landing Page
+
+- [x] Validação visual (borda vermelha + mensagem) nos campos obrigatórios do modal de cadastro
+- [ ] Teste completo do fluxo de cadastro na landing page (nome, endereço, horários, acesso, pagamento)
