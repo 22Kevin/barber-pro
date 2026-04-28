@@ -12,6 +12,7 @@ import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import QRCode from "qrcode";
 import PDFDocument from "pdfkit";
 import { sendPasswordResetEmail } from "./email";
+import bcrypt from "bcryptjs";
 
 function getMpClient() {
   const accessToken = process.env.MP_ACCESS_TOKEN;
@@ -63,8 +64,6 @@ function generatePixPayload(params: {
   return payload + (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, "0");
 }
 
-let bcrypt: any;
-try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
 
 function randomSuffix() {
   return crypto.randomBytes(8).toString("hex");

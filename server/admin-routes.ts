@@ -19,6 +19,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import * as db from "./db";
 import PDFDocument from "pdfkit";
+import bcrypt from "bcryptjs";
 
 const ADMIN_SESSION_COOKIE = "bp_admin_session";
 const SESSION_MAX_AGE = 8 * 60 * 60; // 8 horas
@@ -2804,16 +2805,11 @@ export function registerAdminRoutes(app: Express): void {
       const { email, password, remember } = req.body ?? {};
       if (!email || !password) return res.redirect("/admin/login?error=1");
 
-      let bcrypt: any;
-      try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
-
       const barber = await db.getBarberByEmail(email);
-      console.log(`[login] email=${email} found=${!!barber} isActive=${barber?.isActive} hasHash=${!!barber?.passwordHash} bcryptLoaded=${!!bcrypt}`);
+      console.log(`[login] email=${email} found=${!!barber} isActive=${barber?.isActive} hasHash=${!!barber?.passwordHash}`);
       if (!barber || !barber.isActive || !barber.passwordHash) return res.redirect("/admin/login?error=1");
 
-      const valid = bcrypt
-        ? await bcrypt.compare(password, barber.passwordHash)
-        : password === barber.passwordHash;
+      const valid = await bcrypt.compare(password, barber.passwordHash);
       console.log(`[login] valid=${valid}`);
       if (!valid) return res.redirect("/admin/login?error=1");
 
@@ -3015,9 +3011,7 @@ export function registerAdminRoutes(app: Express): void {
     if (!valid) {
       return res.redirect(`/admin/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(token)}&error=1`);
     }
-    let bcrypt: any;
-    try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
-    const hash = bcrypt ? await bcrypt.hash(password, 10) : password;
+    const hash = await bcrypt.hash(password, 10);
     const barber = await db.getBarberByEmail(email);
     if (!barber) return res.redirect("/admin/login?error=1");
     await db.updateBarber(barber.id, { passwordHash: hash });
@@ -3085,9 +3079,7 @@ export function registerAdminRoutes(app: Express): void {
       if (password.length < 6) {
         res.redirect("/admin/configuracoes?tab=equipe&novo=1&error=Senha+deve+ter+m%C3%ADnimo+6+caracteres"); return;
       }
-      let bcrypt: any;
-      try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
-      const passwordHash = bcrypt ? await bcrypt.hash(password, 10) : password;
+      const passwordHash = await bcrypt.hash(password, 10);
       await db.createBarber({ name, email, phone: phone || null, passwordHash, role: "barber", isActive: true });
       res.redirect("/admin/configuracoes?tab=equipe&saved=1");
     } catch (e: any) {
@@ -5168,13 +5160,9 @@ export function registerAdminRoutes(app: Express): void {
     }
     const barber = await db.getBarberById(session.barberId);
     if (!barber || !barber.passwordHash) { res.redirect("/admin/meu-perfil?pwerr=Barbeiro+n%C3%A3o+encontrado"); return; }
-    let bcrypt: any;
-    try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
-    const valid = bcrypt
-      ? await bcrypt.compare(currentPassword, barber.passwordHash)
-      : currentPassword === barber.passwordHash;
+    const valid = await bcrypt.compare(currentPassword, barber.passwordHash);
     if (!valid) { res.redirect("/admin/meu-perfil?pwerr=Senha+atual+incorreta"); return; }
-    const newHash = bcrypt ? await bcrypt.hash(newPassword, 10) : newPassword;
+    const newHash = await bcrypt.hash(newPassword, 10);
     await db.updateBarber(session.barberId, { passwordHash: newHash });
     res.redirect("/admin/meu-perfil?pw=1");
   });

@@ -16,6 +16,7 @@ import * as db from "./db";
 import { sql } from "drizzle-orm";
 import { sendBookingConfirmationEmail, sendBarberNotificationEmail, sendPasswordResetEmail } from "./email";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
+import bcrypt from "bcryptjs";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function escapeHtml(str: string | null | undefined): string {
@@ -3316,9 +3317,7 @@ export function registerPublicRoutes(app: Express): void {
       if (!email || !password) { res.status(400).json({ error: "Email e senha são obrigatórios" }); return; }
       const account = await db.getClientAccountByEmail(email);
       if (!account) { res.status(401).json({ error: "Email ou senha incorretos" }); return; }
-      let bcrypt: any;
-      try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
-      const valid = bcrypt ? await bcrypt.compare(password, account.passwordHash) : password === account.passwordHash;
+      const valid = await bcrypt.compare(password, account.passwordHash);
       if (!valid) { res.status(401).json({ error: "Email ou senha incorretos" }); return; }
       const client = await db.getClientById(account.clientId);
       if (!client) { res.status(404).json({ error: "Cliente não encontrado" }); return; }
@@ -3340,9 +3339,7 @@ export function registerPublicRoutes(app: Express): void {
       if (password.length < 6) { res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres" }); return; }
       const existing = await db.getClientAccountByEmail(email);
       if (existing) { res.status(409).json({ error: "Email já cadastrado. Faça login." }); return; }
-      let bcrypt: any;
-      try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
-      const passwordHash = bcrypt ? await bcrypt.hash(password, 10) : password;
+      const passwordHash = await bcrypt.hash(password, 10);
       // Obter tenantId via slug para associar o cliente à barbearia correta
       const tenantForReg = slug ? await db.getTenantBySlug(slug) : null;
       const clientId = await db.createClient({ name, email, phone, isActive: true, tenantId: tenantForReg?.id ?? null, birthDate: birthDate ?? null } as any);
@@ -3616,9 +3613,7 @@ export function registerPublicRoutes(app: Express): void {
         if (!consumed) { res.redirect(`/pub/${slug}/forgot-password?step=code&email=${encodeURIComponent(email)}&error=1`); return; }
         const account = await db.getClientAccountByEmail(email);
         if (!account) { res.redirect(`/pub/${slug}/forgot-password?error=1`); return; }
-        let bcrypt: any;
-        try { bcrypt = require("bcryptjs"); } catch { bcrypt = null; }
-        const passwordHash = bcrypt ? await bcrypt.hash(newPassword, 10) : newPassword;
+        const passwordHash = await bcrypt.hash(newPassword, 10);
         await db.updateClientAccount(account.id, { passwordHash });
         res.redirect(`/pub/${slug}/login?reset=1`);
       } else {

@@ -1733,3 +1733,8 @@
 
 - [x] Validação visual (borda vermelha + mensagem) nos campos obrigatórios do modal de cadastro
 - [ ] Teste completo do fluxo de cadastro na landing page (nome, endereço, horários, acesso, pagamento)
+
+## Correção Crítica — Login Admin em Produção (Abr/2026)
+
+- [x] Corrigir bcryptjs não carregando em produção (require() dinâmico incompatível com ESM/esbuild)
+- [x] Substituir require() dinâmico por import estático em admin-routes.ts, routers.ts e public-routes.ts
