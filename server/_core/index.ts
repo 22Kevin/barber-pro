@@ -145,6 +145,14 @@ async function startServer() {
         );
       }
       res.json({ ok: true });
+      // Notificar admin por e-mail (assíncrono, não bloqueia a resposta)
+      const { sendLeadNotificationEmail } = await import("../email");
+      sendLeadNotificationEmail({
+        leadName: name ?? "",
+        leadEmail: email ?? "",
+        leadPhone: phone ?? "",
+        capturedAt: new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }),
+      }).catch((err) => console.error("[Lead Email]", err));
     } catch (e) {
       console.error("[Lead Capture]", e);
       res.status(500).json({ ok: false });

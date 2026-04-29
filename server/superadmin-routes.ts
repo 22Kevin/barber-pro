@@ -438,6 +438,19 @@ export function registerSuperAdminRoutes(app: Express): void {
       }
       const chartLabels = JSON.stringify(weekLabels);
       const chartData = JSON.stringify(weekCounts);
+
+      // Gráfico de MRR acumulado por semana (12 semanas)
+      const mrrByWeek: number[] = [];
+      for (let w = 11; w >= 0; w--) {
+        const weekEnd = new Date(now);
+        weekEnd.setDate(now.getDate() - w * 7 - now.getDay() + 7);
+        weekEnd.setHours(23, 59, 59, 999);
+        const mrrAtWeek = allTenants
+          .filter((t) => t.status === "active" && new Date(t.createdAt) <= weekEnd)
+          .reduce((s, t) => s + (t.plan === "solo" ? 49 : t.plan === "team" ? 89 : 149), 0);
+        mrrByWeek.push(mrrAtWeek);
+      }
+      const mrrChartData = JSON.stringify(mrrByWeek);
       const totalLeads = await (async () => {
         try {
           const dbConn = await db.getDb();
@@ -511,8 +524,16 @@ export function registerSuperAdminRoutes(app: Express): void {
           <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
           <script>
             (function(){
-              var ctx = document.getElementById('growthChart').getContext('2d');
-              new Chart(ctx, {
+              var opts = {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                  x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 11 } } },
+                  y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 11 } }, beginAtZero: true }
+                }
+              };
+              // Gráfico de crescimento
+              new Chart(document.getElementById('growthChart').getContext('2d'), {
                 type: 'line',
                 data: {
                   labels: ${chartLabels},
@@ -529,24 +550,46 @@ export function registerSuperAdminRoutes(app: Express): void {
                     tension: 0.4
                   }]
                 },
-                options: {
-                  responsive: true,
-                  plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                      callbacks: {
-                        label: function(ctx){ return ctx.parsed.y + ' cadastro' + (ctx.parsed.y !== 1 ? 's' : ''); }
-                      }
-                    }
-                  },
-                  scales: {
-                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 11 } } },
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 11 }, stepSize: 1 }, beginAtZero: true }
-                  }
-                }
+                options: Object.assign({}, opts, {
+                  plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c){ return c.parsed.y + ' cadastro' + (c.parsed.y !== 1 ? 's' : ''); } } } },
+                  scales: { x: opts.scales.x, y: Object.assign({}, opts.scales.y, { ticks: { color: '#888', font: { size: 11 }, stepSize: 1 } }) }
+                })
+              });
+              // Gráfico de MRR
+              new Chart(document.getElementById('mrrChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                  labels: ${chartLabels},
+                  datasets: [{
+                    label: 'MRR',
+                    data: ${mrrChartData},
+                    borderColor: '#22C55E',
+                    backgroundColor: 'rgba(34,197,94,0.10)',
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#22C55E',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.4
+                  }]
+                },
+                options: Object.assign({}, opts, {
+                  plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c){ return 'R$' + c.parsed.y; } } } }
+                })
               });
             })();
           </script>
+
+          <!-- GRÁFICO DE MRR -->
+          <div class="table-wrap" style="margin-bottom:24px">
+            <div class="table-header">
+              <h2>Evolução do MRR</h2>
+              <span style="font-size:12px;color:var(--muted)">Receita mensal recorrente acumulada (12 semanas)</span>
+            </div>
+            <div style="padding:20px 16px">
+              <canvas id="mrrChart" height="80"></canvas>
+            </div>
+          </div>
 
           <div class="table-wrap">
             <div class="table-header">
@@ -570,9 +613,16 @@ export function registerSuperAdminRoutes(app: Express): void {
   app.get("/superadmin/tenants", requireAuth, async (req: Request, res: Response) => {
     const session = (req as any).boSession as BOSession;
     const filterStatus = (req.query.status as string) ?? "all";
+    const filterPlan = (req.query.plan as string) ?? "all";
+    const searchTenant = ((req.query.search as string) ?? "").trim().toLowerCase();
     try {
       let allTenants = await db.getAllTenants();
       if (filterStatus !== "all") allTenants = allTenants.filter((t) => t.status === filterStatus);
+      if (filterPlan !== "all") allTenants = allTenants.filter((t) => t.plan === filterPlan);
+      if (searchTenant) allTenants = allTenants.filter((t) =>
+        t.name.toLowerCase().includes(searchTenant) ||
+        t.slug.toLowerCase().includes(searchTenant)
+      );
 
       const rows = allTenants.map((t) => `
         <tr>
@@ -597,6 +647,8 @@ export function registerSuperAdminRoutes(app: Express): void {
 
       const filters = ["all", "active", "trial", "suspended", "cancelled"];
       const filterLabels: Record<string, string> = { all: "Todos", active: "Ativos", trial: "Trial", suspended: "Suspensos", cancelled: "Cancelados" };
+      const planFilters = ["all", "solo", "team", "studio"];
+      const planFilterLabels: Record<string, string> = { all: "Todos os planos", solo: "Solo", team: "Equipe", studio: "Estúdio" };
 
       res.send(layout("Barbearias", session, `
         <div class="container">
@@ -605,8 +657,24 @@ export function registerSuperAdminRoutes(app: Express): void {
             <div class="page-sub">${allTenants.length} resultado${allTenants.length !== 1 ? "s" : ""}</div>
           </div>
 
+          <form method="GET" action="/superadmin/tenants" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+            <div style="flex:1;min-width:200px">
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">BUSCAR</label>
+              <input name="search" value="${esc(searchTenant)}" placeholder="Nome ou slug da barbearia..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+            </div>
+            <div>
+              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">PLANO</label>
+              <select name="plan" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px">
+                ${planFilters.map((p) => `<option value="${p}" ${filterPlan === p ? "selected" : ""}>${planFilterLabels[p]}</option>`).join("")}
+              </select>
+            </div>
+            <input type="hidden" name="status" value="${esc(filterStatus)}" />
+            <button type="submit" class="btn btn-gold">Filtrar</button>
+            <a href="/superadmin/tenants" class="btn btn-gray">Limpar</a>
+          </form>
+
           <div class="filters">
-            ${filters.map((f) => `<a href="/superadmin/tenants?status=${f}" class="filter-btn ${filterStatus === f ? "active" : ""}">${filterLabels[f]}</a>`).join("")}
+            ${filters.map((f) => `<a href="/superadmin/tenants?status=${f}&plan=${filterPlan}&search=${encodeURIComponent(searchTenant)}" class="filter-btn ${filterStatus === f ? "active" : ""}">${filterLabels[f]}</a>`).join("")}
           </div>
 
           <div class="table-wrap">
@@ -661,8 +729,31 @@ export function registerSuperAdminRoutes(app: Express): void {
   // ── GET /superadmin/erros ──────────────────────────────────────────────────
   app.get("/superadmin/erros", requireAuth, async (req: Request, res: Response) => {
     const session = (req as any).boSession as BOSession;
+    const searchErr = ((req.query.search as string) ?? "").trim();
+    const errSource = (req.query.source as string) ?? "all";
+    const errDateFrom = (req.query.dateFrom as string) ?? "";
+    const errDateTo = (req.query.dateTo as string) ?? "";
     try {
-      const logs = await db.getErrorLogs(200);
+      let logs = await db.getErrorLogs(500);
+
+      // Filtros em memória
+      if (searchErr) {
+        const q = searchErr.toLowerCase();
+        logs = logs.filter((l: any) =>
+          (l.message ?? "").toLowerCase().includes(q) ||
+          (l.url ?? "").toLowerCase().includes(q)
+        );
+      }
+      if (errSource !== "all") logs = logs.filter((l: any) => (l.source ?? "browser") === errSource);
+      if (errDateFrom) {
+        const from = new Date(errDateFrom + "T00:00:00");
+        logs = logs.filter((l: any) => new Date(l.createdAt) >= from);
+      }
+      if (errDateTo) {
+        const to = new Date(errDateTo + "T23:59:59");
+        logs = logs.filter((l: any) => new Date(l.createdAt) <= to);
+      }
+
       const rows = logs.map((l: any) => `
         <tr>
           <td style="white-space:nowrap;color:var(--muted)">${new Date(l.createdAt).toLocaleString("pt-BR")}</td>
@@ -676,19 +767,47 @@ export function registerSuperAdminRoutes(app: Express): void {
         </tr>
       `).join("");
 
+      const filterBar = `
+        <form method="GET" action="/superadmin/erros" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px">
+          <div style="flex:1;min-width:200px">
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">BUSCAR</label>
+            <input name="search" value="${esc(searchErr)}" placeholder="Mensagem ou URL..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">ORIGEM</label>
+            <select name="source" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px">
+              <option value="all" ${errSource === "all" ? "selected" : ""}>Todas</option>
+              <option value="browser" ${errSource === "browser" ? "selected" : ""}>Browser</option>
+              <option value="server" ${errSource === "server" ? "selected" : ""}>Servidor</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">DE</label>
+            <input type="date" name="dateFrom" value="${esc(errDateFrom)}" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">ATÉ</label>
+            <input type="date" name="dateTo" value="${esc(errDateTo)}" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+          </div>
+          <button type="submit" class="btn btn-gold">Filtrar</button>
+          <a href="/superadmin/erros" class="btn btn-gray">Limpar</a>
+        </form>
+      `;
+
       res.send(layout("Erros", session, `
         <div class="container">
           <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
             <div>
               <div class="page-title">Log de Erros</div>
-              <div class="page-sub">${logs.length} erros recentes (últimos 30 dias)</div>
+              <div class="page-sub">${logs.length} resultado${logs.length !== 1 ? "s" : ""}</div>
             </div>
             ${session.role === "super_admin" ? `<a href="/superadmin/erros/clear" class="btn btn-red" onclick="return confirm('Limpar erros com mais de 30 dias?')">Limpar antigos</a>` : ""}
           </div>
+          ${filterBar}
           <div class="table-wrap">
             <table>
               <thead><tr><th>Data</th><th>Origem</th><th>Mensagem</th><th>URL</th><th>Tenant</th></tr></thead>
-              <tbody>${rows || '<tr><td colspan="5"><div class="empty"><div class="empty-icon">✅</div><div>Nenhum erro registrado.</div></div></td></tr>'}</tbody>
+              <tbody>${rows || '<tr><td colspan="5"><div class="empty"><div class="empty-icon">✅</div><div>Nenhum erro encontrado.</div></div></td></tr>'}</tbody>
             </table>
           </div>
         </div>
@@ -707,21 +826,58 @@ export function registerSuperAdminRoutes(app: Express): void {
   // ── GET /superadmin/leads ──────────────────────────────────────────────────
   app.get("/superadmin/leads", requireAuth, async (req: Request, res: Response) => {
     const session = (req as any).boSession as BOSession;
+    const search = (req.query.search as string ?? "").trim();
+    const dateFrom = (req.query.dateFrom as string ?? "");
+    const dateTo = (req.query.dateTo as string ?? "");
+    const exportCsv = req.query.export === "csv";
     try {
       const dbConn = await db.getDb();
       let leads: any[] = [];
       if (dbConn) {
         try {
           const rows = await dbConn.execute(
-            db.sqlRaw`SELECT id, name, email, phone, createdAt FROM orbit_leads ORDER BY createdAt DESC LIMIT 200`
+            db.sqlRaw`SELECT id, name, email, phone, source, createdAt FROM orbit_leads ORDER BY createdAt DESC LIMIT 500`
           );
           leads = (rows[0] as unknown as any[]);
-        } catch {
-          // Tabela pode não existir ainda
-        }
+        } catch { /* tabela pode não existir */ }
       }
 
-      const rows = leads.map((l: any) => `
+      // Filtros em memória
+      if (search) {
+        const q = search.toLowerCase();
+        leads = leads.filter((l: any) =>
+          (l.name ?? "").toLowerCase().includes(q) ||
+          (l.email ?? "").toLowerCase().includes(q) ||
+          (l.phone ?? "").includes(q)
+        );
+      }
+      if (dateFrom) {
+        const from = new Date(dateFrom + "T00:00:00");
+        leads = leads.filter((l: any) => new Date(l.createdAt) >= from);
+      }
+      if (dateTo) {
+        const to = new Date(dateTo + "T23:59:59");
+        leads = leads.filter((l: any) => new Date(l.createdAt) <= to);
+      }
+
+      // Exportar CSV
+      if (exportCsv) {
+        const csvLines = ["Nome,E-mail,WhatsApp,Data"];
+        for (const l of leads) {
+          const row = [
+            `"${(l.name ?? "").replace(/"/g, '""')}"`,
+            `"${(l.email ?? "").replace(/"/g, '""')}"`,
+            `"${(l.phone ?? "").replace(/"/g, '""')}"`,
+            `"${new Date(l.createdAt).toLocaleString("pt-BR")}"`,
+          ].join(",");
+          csvLines.push(row);
+        }
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", `attachment; filename="leads-${new Date().toISOString().slice(0,10)}.csv"`);
+        return res.send("\uFEFF" + csvLines.join("\n"));
+      }
+
+      const tableRows = leads.map((l: any) => `
         <tr>
           <td style="font-weight:600">${esc(l.name ?? "—")}</td>
           <td>${esc(l.email ?? "—")}</td>
@@ -730,16 +886,37 @@ export function registerSuperAdminRoutes(app: Express): void {
         </tr>
       `).join("");
 
+      const filterBar = `
+        <form method="GET" action="/superadmin/leads" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px">
+          <div style="flex:1;min-width:180px">
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">BUSCAR</label>
+            <input name="search" value="${esc(search)}" placeholder="Nome, e-mail ou telefone..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">DE</label>
+            <input type="date" name="dateFrom" value="${esc(dateFrom)}" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">ATÉ</label>
+            <input type="date" name="dateTo" value="${esc(dateTo)}" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+          </div>
+          <button type="submit" class="btn btn-gold">Filtrar</button>
+          <a href="/superadmin/leads" class="btn btn-gray">Limpar</a>
+          <a href="/superadmin/leads?export=csv${search ? '&search=' + encodeURIComponent(search) : ''}${dateFrom ? '&dateFrom=' + dateFrom : ''}${dateTo ? '&dateTo=' + dateTo : ''}" class="btn btn-gray" style="margin-left:auto">↓ Exportar CSV</a>
+        </form>
+      `;
+
       res.send(layout("Leads", session, `
         <div class="container">
           <div class="page-header">
             <div class="page-title">Leads da Landing Page</div>
-            <div class="page-sub">${leads.length} pessoa${leads.length !== 1 ? "s" : ""} que demonstraram interesse</div>
+            <div class="page-sub">${leads.length} resultado${leads.length !== 1 ? "s" : ""} encontrado${leads.length !== 1 ? "s" : ""}</div>
           </div>
+          ${filterBar}
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Data</th></tr></thead>
-              <tbody>${rows || '<tr><td colspan="4"><div class="empty"><div class="empty-icon">📋</div><div>Nenhum lead registrado ainda.</div></div></td></tr>'}</tbody>
+              <thead><tr><th>Nome</th><th>E-mail</th><th>WhatsApp</th><th>Data</th></tr></thead>
+              <tbody>${tableRows || '<tr><td colspan="4"><div class="empty"><div class="empty-icon">📋</div><div>Nenhum lead encontrado.</div></div></td></tr>'}</tbody>
             </table>
           </div>
         </div>

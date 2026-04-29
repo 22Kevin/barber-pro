@@ -1781,3 +1781,13 @@
 - [x] Adicionar formulário de interesse na landing page (nome + e-mail + telefone) antes do CTA de cadastro
 - [x] Exibir leads capturados na seção Leads do backoffice
 - [x] Adicionar gráfico de crescimento (novos cadastros por semana) no dashboard do backoffice
+
+## Backoffice — Melhorias (Abr/2026)
+
+- [x] Notificação por e-mail ao capturar novo lead (kevin.rayan25@gmail.com)
+- [x] Exportar leads como CSV no backoffice
+- [x] Gráfico de MRR no dashboard do backoffice
+- [x] Filtros na seção Tenants (por status, plano, data)
+- [x] Filtros na seção Erros (por data, origem, tenant)
+- [x] Filtros na seção Leads (por data, origem)
+- [x] Busca por nome/e-mail em Tenants e Leads

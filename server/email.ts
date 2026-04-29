@@ -424,3 +424,80 @@ export async function sendPasswordResetEmail(opts: {
     console.error("[email] Erro ao enviar e-mail de recuperação:", err);
   }
 }
+
+// ─── Notificação de Novo Lead (Backoffice) ────────────────────────────────────
+export async function sendLeadNotificationEmail(opts: {
+  leadName: string;
+  leadEmail: string;
+  leadPhone: string;
+  capturedAt: string;
+}): Promise<void> {
+  const transporter = createTransporter();
+  if (!transporter) {
+    console.log("[email] SMTP não configurado — notificação de lead não enviada.");
+    return;
+  }
+  const adminEmail = process.env.SUPERADMIN_NOTIFY_EMAIL ?? "kevin.rayan25@gmail.com";
+  const rawFrom = process.env.SMTP_FROM ?? process.env.SMTP_USER;
+  const from = rawFrom && rawFrom.includes("<") ? rawFrom : `"Barber Pro" <${rawFrom}>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Novo Lead — Barber Pro</title>
+</head>
+<body style="margin:0;padding:0;background:#0C0C0C;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:520px;margin:32px auto;background:#161616;border-radius:20px;overflow:hidden;border:1px solid #2A2A2A">
+    <div style="background:#C9A84C;padding:24px 36px;text-align:center">
+      <div style="font-size:20px;font-weight:900;color:#0A0A0A;letter-spacing:2px">BARBER PRO</div>
+      <div style="font-size:12px;color:#0A0A0A99;margin-top:4px">Novo interesse na plataforma</div>
+    </div>
+    <div style="padding:32px 36px">
+      <div style="font-size:20px;font-weight:800;color:#F0EEE8;margin-bottom:8px">🎯 Novo lead capturado!</div>
+      <div style="font-size:14px;color:#9BA1A6;margin-bottom:24px">
+        Alguém demonstrou interesse no Barber Pro e preencheu o formulário de demonstração.
+      </div>
+      <div style="background:#1E1E1E;border-radius:14px;padding:20px 24px;border:1px solid #2A2A2A;margin-bottom:24px">
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;color:#9BA1A6;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Nome</div>
+          <div style="font-size:15px;font-weight:700;color:#F0EEE8">${opts.leadName || "Não informado"}</div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;color:#9BA1A6;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">E-mail</div>
+          <div style="font-size:15px;font-weight:700;color:#C9A84C">${opts.leadEmail || "Não informado"}</div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;color:#9BA1A6;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">WhatsApp</div>
+          <div style="font-size:15px;font-weight:700;color:#F0EEE8">${opts.leadPhone || "Não informado"}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#9BA1A6;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Capturado em</div>
+          <div style="font-size:13px;color:#9BA1A6">${opts.capturedAt}</div>
+        </div>
+      </div>
+      <div style="text-align:center">
+        <a href="https://usebarberpro.com/superadmin/leads" style="display:inline-block;background:#C9A84C;color:#0A0A0A;font-size:13px;font-weight:800;padding:12px 28px;border-radius:10px;text-decoration:none">
+          Ver todos os leads →
+        </a>
+      </div>
+    </div>
+    <div style="background:#0C0C0C;padding:14px 36px;text-align:center;border-top:1px solid #2A2A2A">
+      <div style="font-size:11px;color:#555550">Barber Pro — Backoffice</div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  try {
+    await transporter.sendMail({
+      from,
+      to: adminEmail,
+      subject: `🎯 Novo lead: ${opts.leadName || opts.leadEmail || "Visitante"} — Barber Pro`,
+      html,
+    });
+    console.log(`[email] Notificação de lead enviada para ${adminEmail}`);
+  } catch (err) {
+    console.error("[email] Erro ao enviar notificação de lead:", err);
+  }
+}
