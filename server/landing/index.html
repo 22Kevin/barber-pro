@@ -261,25 +261,13 @@
     .wa-float:hover { transform: scale(1.1); }
     .wa-float svg { width: 26px; height: 26px; fill: white; }
 
-    /* ── FADE UP — CSS puro com @keyframes + animation-delay ── */
-    @keyframes fadeSlideUp {
-      from { opacity: 0; transform: translateY(24px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    /* ── FADE UP — sempre visível, sem dependência de JS ── */
     .fade-up {
-      opacity: 0;
-      animation: fadeSlideUp 0.55s ease forwards;
-      animation-play-state: paused;
+      opacity: 1;
+      transform: none;
     }
-    /* Quando o elemento entra na viewport via JS (IntersectionObserver) */
-    .fade-up.visible { animation-play-state: running; }
-    /* Fallback: se JS falhar, garante visibilidade após 0.1s */
-    @media (prefers-reduced-motion: reduce) {
-      .fade-up { opacity: 1; animation: none; }
-    }
-    .d1 { animation-delay: 0.1s; }
-    .d2 { animation-delay: 0.2s; }
-    .d3 { animation-delay: 0.3s; }
+    .fade-up.visible { opacity: 1; }
+    .d1, .d2, .d3 {}
 
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {

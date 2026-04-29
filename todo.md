@@ -1791,3 +1791,7 @@
 - [x] Filtros na seção Erros (por data, origem, tenant)
 - [x] Filtros na seção Leads (por data, origem)
 - [x] Busca por nome/e-mail em Tenants e Leads
+
+## Bug — Cards Pretos na Landing Page (Abr/2026)
+
+- [x] Corrigir cards invisíveis (opacity:0) na landing page — problema recorrente com animações CSS
