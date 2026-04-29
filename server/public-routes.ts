@@ -187,19 +187,20 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
     /* Grid de cards dentro das abas */
-    .tab-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-    @media (max-width: 480px) { .tab-cards-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
-    .tab-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: border-color 0.2s, transform 0.15s; cursor: pointer; }
+    .tab-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    @media (max-width: 700px) { .tab-cards-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+    @media (max-width: 380px) { .tab-cards-grid { grid-template-columns: 1fr; gap: 10px; } }
+    .tab-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: border-color 0.2s, transform 0.15s; cursor: pointer; display: flex !important; flex-direction: column !important; text-decoration: none; color: inherit; }
     .tab-card:hover { border-color: var(--primary); transform: translateY(-2px); }
-    .tab-card-thumb { width: 100%; height: 160px; object-fit: cover; background: var(--surface2); }
-    .tab-card-thumb-placeholder { width: 100%; height: 160px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 36px; }
-    .tab-card-body { padding: 14px; }
-    .tab-card-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-    .tab-card-desc { font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .tab-card-meta { display: flex; align-items: center; justify-content: space-between; }
-    .tab-card-price { font-size: 17px; font-weight: 900; color: var(--primary); }
+    .tab-card-thumb { width: 100%; height: 140px; object-fit: cover; background: var(--surface2); flex-shrink: 0; display: block; }
+    .tab-card-thumb-placeholder { width: 100%; height: 140px; background: var(--surface2); display: flex !important; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0; }
+    .tab-card-body { padding: 12px; flex: 1; display: flex !important; flex-direction: column !important; }
+    .tab-card-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
+    .tab-card-desc { font-size: 11px; color: var(--muted); margin-bottom: 8px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex: 1; }
+    .tab-card-meta { display: flex !important; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); }
+    .tab-card-price { font-size: 14px; font-weight: 900; color: var(--primary); }
     .tab-card-duration { font-size: 11px; color: var(--muted); }
-    .tab-card-rating { font-size: 11px; color: #FBBF24; margin-top: 5px; }
+    .tab-card-rating { font-size: 11px; color: #FBBF24; margin-top: 4px; }
     /* Steps dentro da aba Como Funciona */
     .how-tab { padding: 8px 0; }
 
@@ -1801,20 +1802,49 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         var priceFormatted = 'R$ ' + price.toFixed(2).replace('.', ',');
         var successMsg = document.getElementById('success-msg');
         successMsg.innerHTML = [
-          '<div style="text-align:center;margin-bottom:20px">',
-            '<div style="font-size:32px;margin-bottom:8px">✅</div>',
-            '<div style="font-size:16px;font-weight:800;color:#4ADE80">Agendamento confirmado!</div>',
-            '<div style="font-size:13px;color:var(--muted);margin-top:4px">' + date.split('-').reverse().join('/') + ' às ' + time + '</div>',
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;overflow:hidden">',
+            // Header de sucesso
+            '<div style="background:linear-gradient(135deg,#22C55E18 0%,#22C55E06 100%);border-bottom:1px solid #22C55E28;padding:28px 24px;text-align:center">',
+              '<div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#22C55E33,#22C55E11);border:2px solid #22C55E55;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:28px">✅</div>',
+              '<div style="font-size:19px;font-weight:900;color:#4ADE80;margin-bottom:6px">Agendamento Confirmado!</div>',
+              '<div style="display:inline-flex;align-items:center;gap:6px;background:#22C55E18;border:1px solid #22C55E33;border-radius:20px;padding:5px 14px;font-size:13px;color:#4ADE80;font-weight:600">📅 ' + date.split('-').reverse().join('/') + ' às ' + time + '</div>',
+            '</div>',
+            // Seção de pagamento
+            '<div style="padding:24px">',
+              '<div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:16px">Como deseja pagar?</div>',
+              '<div style="display:flex;flex-direction:column;gap:10px">',
+                // Botão Pagar Online
+                '<button onclick="payOnline(' + appointmentId + ',' + price + ')" id="btn-pay-online" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:800;border:none;border-radius:14px;cursor:pointer;text-align:left;box-shadow:0 4px 14px var(--primary)44">',
+                  '<div style="width:40px;height:40px;border-radius:10px;background:#0A0A0A22;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💳</div>',
+                  '<div style="flex:1">',
+                    '<div style="font-size:14px;font-weight:800">Pagar Online</div>',
+                    '<div style="font-size:12px;font-weight:600;opacity:0.75;margin-top:1px">Cartão, Pix ou boleto • ' + priceFormatted + '</div>',
+                  '</div>',
+                  '<div style="font-size:18px;opacity:0.6">›</div>',
+                '</button>',
+                // Botão Pix
+                '<button onclick="payPix(' + appointmentId + ',' + price + ')" id="btn-pay-pix" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;background:var(--surface2);color:var(--text);font-size:15px;font-weight:700;border:1.5px solid var(--border);border-radius:14px;cursor:pointer;text-align:left">',
+                  '<div style="width:40px;height:40px;border-radius:10px;background:#22C55E18;border:1px solid #22C55E33;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📱</div>',
+                  '<div style="flex:1">',
+                    '<div style="font-size:14px;font-weight:700">Pagar via Pix</div>',
+                    '<div style="font-size:12px;color:var(--muted);margin-top:1px">QR Code instantâneo • ' + priceFormatted + '</div>',
+                  '</div>',
+                  '<div style="font-size:18px;color:var(--muted)">›</div>',
+                '</button>',
+                // Botão Pagar na Barbearia
+                '<button onclick="payAtShop()" style="display:flex;align-items:center;gap:14px;width:100%;padding:14px 18px;background:transparent;color:var(--muted);font-size:14px;font-weight:600;border:1px solid var(--border);border-radius:14px;cursor:pointer;text-align:left">',
+                  '<div style="width:40px;height:40px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🏪</div>',
+                  '<div>Pagar na barbearia</div>',
+                '</button>',
+              '</div>',
+              '<div id="payment-status" style="margin-top:14px;font-size:13px"></div>',
+            '</div>',
           '</div>',
-          '<div style="font-size:13px;color:var(--muted);margin-bottom:16px;text-align:center">Como deseja pagar?</div>',
-          '<div style="display:flex;flex-direction:column;gap:10px">',
-            '<button onclick="payOnline(' + appointmentId + ',' + price + ')" id="btn-pay-online" style="width:100%;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:800;border:none;border-radius:12px;cursor:pointer">💳 Pagar Online (' + priceFormatted + ')</button>',
-            '<button onclick="payPix(' + appointmentId + ',' + price + ')" id="btn-pay-pix" style="width:100%;padding:14px;background:var(--surface2);color:var(--text);font-size:15px;font-weight:700;border:1px solid var(--border);border-radius:12px;cursor:pointer">📱 Pagar via Pix (' + priceFormatted + ')</button>',
-            '<button onclick="payAtShop()" style="width:100%;padding:14px;background:transparent;color:var(--muted);font-size:14px;font-weight:600;border:1px solid var(--border);border-radius:12px;cursor:pointer">Pagar na barbearia</button>',
-          '</div>',
-          '<div id="payment-status" style="margin-top:14px;text-align:center;font-size:13px"></div>',
         ].join('');
         successMsg.style.display = 'block';
+        successMsg.style.background = 'transparent';
+        successMsg.style.border = 'none';
+        successMsg.style.padding = '0';
       }
 
       function payAtShop() {
@@ -1856,7 +1886,18 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           var r = await fetch('/pub-api/pix-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: SLUG, appointmentId, price }) });
           var data = await r.json();
           if (!r.ok) throw new Error(data.error || 'Erro ao gerar Pix');
-          status.innerHTML = '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:20px;margin-top:8px"><div style="font-size:13px;font-weight:700;margin-bottom:12px">📱 Pague via Pix</div>' + (data.qrCodeBase64 ? '<img src="data:image/png;base64,' + data.qrCodeBase64 + '" style="width:180px;height:180px;display:block;margin:0 auto 12px" />' : '') + '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Código Pix:</div><div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;word-break:break-all;font-family:monospace">' + data.pixCode + '</div><div style="font-size:11px;color:var(--muted);margin-top:10px">Após o pagamento, seu agendamento será confirmado automaticamente.</div></div>';
+          status.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-top:8px">' +
+            '<div style="background:linear-gradient(135deg,#22C55E22 0%,#22C55E08 100%);border-bottom:1px solid #22C55E33;padding:16px;text-align:center">' +
+              '<div style="font-size:15px;font-weight:800;color:#4ADE80">📱 Pague via Pix</div>' +
+              '<div style="font-size:12px;color:var(--muted);margin-top:2px">Escaneie o QR Code ou copie o código</div>' +
+            '</div>' +
+            '<div style="padding:20px;text-align:center">' +
+              (data.qrCodeBase64 ? '<img src="data:image/png;base64,' + data.qrCodeBase64 + '" style="width:200px;height:200px;display:block;margin:0 auto 16px;border-radius:12px;border:2px solid var(--border)" />' : '') +
+              '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Código Pix (Copia e Cola)</div>' +
+              '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:11px;word-break:break-all;font-family:monospace;text-align:left;margin-bottom:12px">' + data.pixCode + '</div>' +
+              '<div style="font-size:12px;color:var(--muted);line-height:1.5">Após o pagamento, seu agendamento será confirmado automaticamente.</div>' +
+            '</div>' +
+          '</div>';
           btn.style.display = 'none';
         } catch(e) { status.style.color = '#F87171'; status.textContent = e.message; btn.disabled = false; btn.textContent = '📱 Pagar via Pix'; }
       }
@@ -1900,13 +1941,22 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
         <div class="login-side-bg"></div>
         <div class="login-side-overlay"></div>
         <div class="login-side-content">
-          ${logoUrl ? `<img src="${logoUrl}" style="width:100px;height:100px;border-radius:24px;object-fit:cover;border:3px solid ${primaryColor};margin-bottom:20px;box-shadow:0 8px 32px #00000066" />` : `<div style="font-size:64px;margin-bottom:20px">💈</div>`}
-          <div style="font-size:26px;font-weight:900;letter-spacing:-0.5px;margin-bottom:8px">${shopName}</div>
-          <div style="font-size:14px;color:#ffffff99;line-height:1.5">Agende seu horário de forma rápida e fácil.</div>
-          <div style="margin-top:32px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-            <div style="background:#ffffff14;border:1px solid #ffffff22;border-radius:12px;padding:12px 18px;font-size:13px;color:#ffffffcc">✂ Serviços</div>
-            <div style="background:#ffffff14;border:1px solid #ffffff22;border-radius:12px;padding:12px 18px;font-size:13px;color:#ffffffcc">📅 Agendamentos</div>
-            <div style="background:#ffffff14;border:1px solid #ffffff22;border-radius:12px;padding:12px 18px;font-size:13px;color:#ffffffcc">⭐ Fidelidade</div>
+          <!-- Cabeçalho: foto + nome alinhados horizontalmente -->
+          <div style="display:flex;align-items:center;gap:16px;justify-content:center;margin-bottom:24px">
+            ${logoUrl
+              ? `<img src="${logoUrl}" style="width:72px;height:72px;border-radius:18px;object-fit:cover;border:3px solid ${primaryColor};box-shadow:0 8px 32px #00000066;flex-shrink:0;display:block" />`
+              : `<div style="width:72px;height:72px;border-radius:18px;background:#ffffff14;display:flex;align-items:center;justify-content:center;font-size:36px;flex-shrink:0;border:3px solid ${primaryColor}">💈</div>`
+            }
+            <div style="text-align:left">
+              <div style="font-size:24px;font-weight:900;letter-spacing:-0.5px;line-height:1.2">${shopName}</div>
+              <div style="font-size:13px;color:#ffffff88;margin-top:4px">Agendamento Online</div>
+            </div>
+          </div>
+          <div style="font-size:14px;color:#ffffff99;line-height:1.6;max-width:280px;margin:0 auto 32px">Agende seu horário de forma rápida e fácil.</div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <div style="background:#ffffff14;border:1px solid #ffffff22;border-radius:12px;padding:10px 16px;font-size:13px;color:#ffffffcc">✂ Serviços</div>
+            <div style="background:#ffffff14;border:1px solid #ffffff22;border-radius:12px;padding:10px 16px;font-size:13px;color:#ffffffcc">📅 Agendamentos</div>
+            <div style="background:#ffffff14;border:1px solid #ffffff22;border-radius:12px;padding:10px 16px;font-size:13px;color:#ffffffcc">⭐ Fidelidade</div>
           </div>
         </div>
       </div>
@@ -1914,9 +1964,12 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
       <div class="login-form-col">
         <div class="login-card">
           <!-- Logo mobile (só aparece em telas pequenas) -->
-          <div style="text-align:center;margin-bottom:28px;display:block" class="login-mobile-header">
-            ${logoUrl ? `<img src="${logoUrl}" style="width:64px;height:64px;border-radius:16px;object-fit:cover;border:2px solid ${primaryColor};margin-bottom:12px" />` : `<div style="font-size:40px;margin-bottom:12px">💈</div>`}
-            <div style="font-size:18px;font-weight:800">${shopName}</div>
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px" class="login-mobile-header">
+            ${logoUrl ? `<img src="${logoUrl}" style="width:52px;height:52px;border-radius:12px;object-fit:cover;border:2px solid ${primaryColor};flex-shrink:0;display:block" />` : `<div style="width:52px;height:52px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">💈</div>`}
+            <div style="display:flex;flex-direction:column;justify-content:center;min-width:0">
+              <div style="font-size:17px;font-weight:900;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${shopName}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px">Agendamento Online</div>
+            </div>
           </div>
           <style>@media (min-width:768px) { .login-mobile-header { display:none !important; } }</style>
           <div style="margin-bottom:24px">
@@ -2950,7 +3003,7 @@ async function renderServiceDetailPage(slug: string, serviceId: number, res: Res
   res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
 }
 
-// ─── Página de Detalhe de Plano de Assinatura ──────────────────────────────
+// ─── Página de Detalhe de Plano de Assinatura (Fluxo 4 etapas) ────────────────
 async function renderPlanDetailPage(slug: string, planId: number, res: Response, req: Request) {
   const tenant = await db.getTenantBySlug(slug);
   if (!tenant) { res.status(404).send("Barbearia não encontrada"); return; }
@@ -2960,7 +3013,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
   const isLoggedIn = !!sessionData;
   let clientInfo: any = null;
   if (sessionData) { try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {} }
-  // Buscar plano, serviços e produtos inclusos
+  // Buscar plano, serviços, produtos e barbeiros
   let plan: any = null;
   let planServices: any[] = [];
   let planProducts: any[] = [];
@@ -2991,86 +3044,520 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
     }
   } catch {}
   if (!plan) { res.redirect(`/pub/${slug}`); return; }
-  const svcList = planServices.map((s: any) => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="color:var(--primary);font-size:18px">✂</span>
-        <span style="font-size:14px;font-weight:600">${escapeHtml(s.serviceName)}</span>
-      </div>
-      <span style="font-size:12px;color:var(--muted)">${formatDuration(s.durationMinutes)}</span>
-    </div>`).join("");
-  const prdList = planProducts.length > 0 ? planProducts.map((p: any) => `
-    <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)">
-      <span style="color:var(--primary);font-size:18px">🧴</span>
-      <span style="font-size:14px;font-weight:600">${escapeHtml(p.productName)}</span>
-    </div>`).join("") : "";
-  const priceDisplay = isLoggedIn
-    ? `<div style="font-size:36px;font-weight:900;color:var(--primary);line-height:1">${formatPrice(plan.price)}<span style="font-size:16px;font-weight:500;color:var(--muted)">/mês</span></div>`
-    : `<a href="/pub/${slug}/login" style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:700;color:var(--text)">🔒 Faça login para ver o preço</a>`;
-  const actionSection = isLoggedIn ? `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:20px">
-      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px">Forma de Pagamento</div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <label style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface2);border:2px solid var(--border);border-radius:12px;cursor:pointer" id="payOnline">
-          <input type="radio" name="payMethod" value="online" onchange="selectPay(this)" style="accent-color:var(--primary)" />
-          <div>
-            <div style="font-size:14px;font-weight:700">📳 Pagar pelo sistema</div>
-            <div style="font-size:12px;color:var(--muted)">Cartão, Pix ou boleto — processado com segurança</div>
-          </div>
-        </label>
-        <label style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--surface2);border:2px solid var(--border);border-radius:12px;cursor:pointer" id="payStore">
-          <input type="radio" name="payMethod" value="store" onchange="selectPay(this)" style="accent-color:var(--primary)" />
-          <div>
-            <div style="font-size:14px;font-weight:700">🏥 Pagar na loja</div>
-            <div style="font-size:12px;color:var(--muted)">Combine diretamente com o barbeiro</div>
-          </div>
-        </label>
-      </div>
-    </div>
-    <div id="planMsg" style="font-size:13px;text-align:center;margin-bottom:12px"></div>
-    <button onclick="subscribePlan()" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;border:none;cursor:pointer">Assinar Plano</button>` : `<a href="/pub/${slug}/login?redirect=plano/${planId}" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;text-decoration:none">Entrar para Assinar</a>`;
+  // Buscar barbeiros ativos
+  const barberList = await db.getAllBarbers(tenant.id);
+  const barbersJson = JSON.stringify(barberList.map((b: any) => ({
+    id: b.id,
+    name: b.name,
+    photoUrl: b.photoUrl ?? null,
+    specialties: b.specialties ?? null,
+  })));
+  const planServicesJson = JSON.stringify(planServices);
+  const planProductsJson = JSON.stringify(planProducts);
+  const planJson = JSON.stringify({
+    id: plan.id,
+    name: plan.name,
+    description: plan.description ?? "",
+    price: Number(plan.price),
+    recurrences: plan.recurrences,
+    maxServices: plan.maxServices ?? 999,
+    maxProducts: plan.maxProducts ?? 999,
+  });
+  const tenantIdJson = JSON.stringify(tenant.id);
+  const slugJson = JSON.stringify(slug);
+  const clientJson = isLoggedIn ? JSON.stringify(clientInfo) : "null";
+  // Gerar próximos 30 dias para o calendário
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const calDays: { iso: string; day: number }[] = [];
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    calDays.push({ iso: d.toISOString().split("T")[0], day: d.getDate() });
+  }
+  const calJson = JSON.stringify(calDays);
+  const firstBarberId = barberList[0]?.id ?? 1;
   const body = `
-    <div style="max-width:700px;margin:0 auto;padding:24px 20px 80px">
-      <a href="/pub/${slug}" style="display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:14px;margin-bottom:24px;font-weight:600">← Voltar</a>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;margin-bottom:24px">
-        <div style="font-size:28px;margin-bottom:12px">🏷️</div>
-        <h1 style="font-size:26px;font-weight:900;margin-bottom:8px;font-family:var(--font-styled-family,inherit)">${escapeHtml(plan.name)}</h1>
-        ${plan.description ? `<p style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:16px">${escapeHtml(plan.description)}</p>` : ""}
-        ${priceDisplay}
-        <div style="margin-top:12px;font-size:13px;color:var(--muted)">${plan.recurrences} agendamento${plan.recurrences !== 1 ? "s" : ""}/mês • Cancele quando quiser</div>
+    <style>
+      .plan-step { display: none; }
+      .plan-step.active { display: block; }
+      .plan-step-indicator { display: flex; align-items: center; gap: 0; margin-bottom: 24px; }
+      .plan-step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; transition: all 0.2s; }
+      .plan-step-dot.active { background: var(--primary); color: #0A0A0A; box-shadow: 0 0 0 4px var(--primary)22; }
+      .plan-step-dot.done { background: #22C55E; color: #fff; }
+      .plan-step-dot.pending { background: var(--surface2); color: var(--muted); }
+      .plan-step-line { flex: 1; height: 2px; background: var(--border); margin: 0 4px; transition: background 0.3s; }
+      .plan-step-line.done { background: #22C55E; }
+      .plan-barber-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 10px; background: var(--surface); border: 2px solid var(--border); border-radius: 14px; cursor: pointer; transition: all 0.15s; }
+      .plan-barber-card:hover { border-color: var(--primary); }
+      .plan-barber-card.selected { border-color: var(--primary); background: var(--primary)18; }
+      .plan-barber-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); }
+      .plan-barber-placeholder { width: 56px; height: 56px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: var(--muted); border: 2px solid var(--border); }
+      .plan-barber-name { font-size: 12px; font-weight: 700; text-align: center; }
+      .plan-svc-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--surface); border: 2px solid var(--border); border-radius: 14px; cursor: pointer; transition: border-color 0.15s; }
+      .plan-svc-item:hover { border-color: var(--primary); }
+      .plan-svc-item.selected { border-color: var(--primary); background: var(--primary)10; }
+      .plan-prd-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--surface); border: 2px solid var(--border); border-radius: 14px; cursor: pointer; transition: border-color 0.15s; }
+      .plan-prd-item:hover { border-color: var(--primary); }
+      .plan-prd-item.selected { border-color: var(--primary); background: var(--primary)10; }
+      .plan-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 16px; }
+      .plan-cal-header { text-align: center; font-size: 10px; font-weight: 700; color: var(--muted); padding: 4px 0 8px; text-transform: uppercase; }
+      .plan-cal-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: 2px solid transparent; }
+      .plan-cal-cell:hover:not(.plan-cal-past):not(.plan-cal-empty) { border-color: var(--primary); color: var(--primary); }
+      .plan-cal-cell.plan-cal-selected { background: var(--primary); color: #0A0A0A; font-weight: 900; }
+      .plan-cal-cell.plan-cal-past { color: var(--muted); opacity: 0.3; cursor: not-allowed; }
+      .plan-cal-cell.plan-cal-empty { cursor: default; }
+      .plan-slot-btn { padding: 10px 14px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; min-width: 70px; text-align: center; }
+      .plan-slot-btn:hover { border-color: var(--primary); color: var(--primary); }
+      .plan-slot-btn.selected { background: var(--primary); border-color: var(--primary); color: #0A0A0A; }
+      .plan-pay-option { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--surface); border: 2px solid var(--border); border-radius: 14px; cursor: pointer; transition: border-color 0.15s; margin-bottom: 10px; }
+      .plan-pay-option:hover { border-color: var(--primary); }
+      .plan-pay-option.selected { border-color: var(--primary); background: var(--primary)10; }
+      .plan-nav { display: flex; gap: 10px; margin-top: 20px; }
+      .plan-btn-back { flex: 1; padding: 14px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; color: var(--text); font-size: 14px; font-weight: 700; cursor: pointer; }
+      .plan-btn-next { flex: 2; padding: 14px; background: var(--primary); border: none; border-radius: 14px; color: #0A0A0A; font-size: 15px; font-weight: 800; cursor: pointer; opacity: 0.4; pointer-events: none; }
+      .plan-btn-next.ready { opacity: 1; pointer-events: auto; }
+      .plan-section-title { font-size: 16px; font-weight: 800; margin-bottom: 16px; }
+      .plan-slots-row { display: flex; flex-wrap: wrap; gap: 8px; }
+      .plan-period-label { font-size: 11px; color: var(--muted); letter-spacing: 0.8px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+      .plan-period-line { flex: 1; height: 1px; background: var(--border); }
+      .plan-slot-group { margin-top: 16px; }
+      .plan-summary-row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+      .plan-summary-label { color: var(--muted); }
+      .plan-summary-value { font-weight: 700; }
+      .plan-appt-chip { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
+      .plan-appt-chip-remove { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 4px; }
+    </style>
+
+    <div style="max-width:520px;margin:0 auto;padding:24px 20px 80px">
+      <!-- Cabeçalho -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <button id="plan-back-btn" onclick="planBack()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:0;line-height:1">←</button>
+        <div>
+          <div style="font-size:18px;font-weight:900">${escapeHtml(plan.name)}</div>
+          <div style="font-size:12px;color:var(--muted)">Assinatura de Plano</div>
+        </div>
+        ${isLoggedIn ? `<div style="margin-left:auto;text-align:right"><div style="font-size:13px;font-weight:700">${escapeHtml(clientInfo?.name?.split(' ')[0] ?? '')}</div><a href="/pub/${slug}/logout" style="font-size:11px;color:var(--muted)">Sair</a></div>` : `<a href="/pub/${slug}/login?redirect=plano/${planId}" style="margin-left:auto;background:var(--primary);color:#0A0A0A;font-size:12px;font-weight:800;padding:8px 14px;border-radius:10px;text-decoration:none">Entrar</a>`}
       </div>
-      ${planServices.length > 0 ? `<div style="margin-bottom:24px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Serviços Incluídos</div>${svcList}</div>` : ""}
-      ${planProducts.length > 0 ? `<div style="margin-bottom:24px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Produtos Incluídos</div>${prdList}</div>` : ""}
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:24px">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Regras do Plano</div>
-        <div style="font-size:13px;color:var(--text);line-height:1.7">
-          <div style="margin-bottom:8px">✅ ${plan.recurrences} agendamento${plan.recurrences !== 1 ? "s" : ""} por mês</div>
-          ${plan.maxServices < 999 ? `<div style="margin-bottom:8px">✅ Até ${plan.maxServices} serviço${plan.maxServices !== 1 ? "s" : ""} por agendamento</div>` : ""}
-          <div style="margin-bottom:8px">✅ Agendamentos com os barbeiros disponíveis</div>
-          <div style="margin-bottom:8px">✅ Cobrança mensal recorrente</div>
-          <div>✅ Cancele a qualquer momento</div>
+
+      <!-- Indicador de etapas -->
+      <div class="plan-step-indicator" id="plan-step-indicator">
+        <div class="plan-step-dot active" id="plan-dot-1">1</div>
+        <div class="plan-step-line" id="plan-line-1"></div>
+        <div class="plan-step-dot pending" id="plan-dot-2">2</div>
+        <div class="plan-step-line" id="plan-line-2"></div>
+        <div class="plan-step-dot pending" id="plan-dot-3">3</div>
+        <div class="plan-step-line" id="plan-line-3"></div>
+        <div class="plan-step-dot pending" id="plan-dot-4">4</div>
+      </div>
+
+      <!-- Etapa 1: Detalhes do Plano -->
+      <div class="plan-step active" id="plan-step-1">
+        <div class="plan-section-title">🏷️ Detalhes do Plano</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px">
+          <div style="font-size:22px;font-weight:900;margin-bottom:6px">${escapeHtml(plan.name)}</div>
+          ${plan.description ? `<div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">${escapeHtml(plan.description)}</div>` : ""}
+          <div style="font-size:32px;font-weight:900;color:var(--primary);line-height:1">${isLoggedIn ? formatPrice(plan.price) : "???"}<span style="font-size:14px;font-weight:500;color:var(--muted)">/mês</span></div>
+          <div style="margin-top:8px;font-size:13px;color:var(--muted)">${plan.recurrences} agendamento${plan.recurrences !== 1 ? "s" : ""}/mês • Cancele quando quiser</div>
+        </div>
+        ${planServices.length > 0 ? `<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Serviços Incluídos</div>${planServices.map((s: any) => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px"><span style="color:var(--primary)">✂</span><span style="font-size:13px;font-weight:600">${escapeHtml(s.serviceName)}</span></div><span style="font-size:11px;color:var(--muted)">${formatDuration(s.durationMinutes)}</span></div>`).join("")}</div>` : ""}
+        ${planProducts.length > 0 ? `<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Produtos Incluídos</div>${planProducts.map((p: any) => `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--primary)">🧴</span><span style="font-size:13px;font-weight:600">${escapeHtml(p.productName)}</span></div>`).join("")}</div>` : ""}
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Regras</div>
+          <div style="font-size:13px;color:var(--text);line-height:1.8">
+            <div>✅ ${plan.recurrences} agendamento${plan.recurrences !== 1 ? "s" : ""} por mês</div>
+            ${plan.maxServices < 999 ? `<div>✅ Até ${plan.maxServices} serviço${plan.maxServices !== 1 ? "s" : ""} por agendamento</div>` : ""}
+            <div>✅ Cobrança mensal recorrente</div>
+            <div>✅ Cancele a qualquer momento</div>
+          </div>
+        </div>
+        ${isLoggedIn
+          ? `<div class="plan-nav"><button class="plan-btn-next ready" onclick="planGoTo(2)" style="flex:1">Próximo: Serviços →</button></div>`
+          : `<a href="/pub/${slug}/login?redirect=plano/${planId}" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;text-decoration:none;margin-top:16px">Entrar para Assinar</a>`
+        }
+      </div>
+
+      <!-- Etapa 2: Serviços e Produtos -->
+      <div class="plan-step" id="plan-step-2">
+        <div class="plan-section-title">✂ Serviços e Produtos</div>
+        <div id="plan-svc-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
+        <div id="plan-prd-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
+        <div class="plan-nav">
+          <button class="plan-btn-back" onclick="planGoTo(1)">← Voltar</button>
+          <button class="plan-btn-next" id="plan-btn-svc-next" onclick="planGoTo(3)">Próximo: Horários →</button>
         </div>
       </div>
-      <div style="position:fixed;bottom:0;left:0;right:0;padding:16px 20px;background:var(--bg);border-top:1px solid var(--border);z-index:100">${actionSection}</div>
+
+      <!-- Etapa 3: Profissional e Horários -->
+      <div class="plan-step" id="plan-step-3">
+        <div class="plan-section-title">📅 Profissional e Horários</div>
+        <!-- Seleção de barbeiro -->
+        <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">💈 Profissional</div>
+        <div id="plan-barbers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px;margin-bottom:20px"></div>
+        <!-- Calendário -->
+        <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">📅 Escolha as datas (${plan.recurrences}x)</div>
+        <div class="plan-cal-grid" id="plan-cal-grid"></div>
+        <!-- Slots -->
+        <div id="plan-slots-area" style="margin-top:8px"></div>
+        <!-- Agendamentos adicionados -->
+        <div id="plan-appts-list" style="margin-top:16px"></div>
+        <div class="plan-nav">
+          <button class="plan-btn-back" onclick="planGoTo(2)">← Voltar</button>
+          <button class="plan-btn-next" id="plan-btn-sched-next" onclick="planGoTo(4)">Próximo: Pagamento →</button>
+        </div>
+      </div>
+
+      <!-- Etapa 4: Pagamento e Confirmação -->
+      <div class="plan-step" id="plan-step-4">
+        <div class="plan-section-title">💳 Pagamento</div>
+        <!-- Resumo -->
+        <div id="plan-summary" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:16px"></div>
+        <!-- Opções de pagamento -->
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Forma de Pagamento</div>
+        <div id="plan-pay-options">
+          <div class="plan-pay-option selected" id="plan-pay-cash" onclick="selectPlanPay('cash')">
+            <span style="font-size:20px">💵</span>
+            <div><div style="font-size:14px;font-weight:700">Dinheiro</div><div style="font-size:12px;color:var(--muted)">Pagar na barbearia</div></div>
+            <span id="plan-pay-cash-check" style="margin-left:auto;color:var(--primary);font-size:18px">✔</span>
+          </div>
+          <div class="plan-pay-option" id="plan-pay-pix" onclick="selectPlanPay('pix')">
+            <span style="font-size:20px">📱</span>
+            <div><div style="font-size:14px;font-weight:700">Pix</div><div style="font-size:12px;color:var(--muted)">Pagar na barbearia</div></div>
+            <span id="plan-pay-pix-check" style="margin-left:auto;color:var(--primary);font-size:18px;display:none">✔</span>
+          </div>
+          <div class="plan-pay-option" id="plan-pay-debit" onclick="selectPlanPay('debit_card')">
+            <span style="font-size:20px">💳</span>
+            <div><div style="font-size:14px;font-weight:700">Cartão Débito</div><div style="font-size:12px;color:var(--muted)">Pagar na barbearia</div></div>
+            <span id="plan-pay-debit-check" style="margin-left:auto;color:var(--primary);font-size:18px;display:none">✔</span>
+          </div>
+          <div class="plan-pay-option" id="plan-pay-credit" onclick="selectPlanPay('credit_card')">
+            <span style="font-size:20px">💳</span>
+            <div><div style="font-size:14px;font-weight:700">Cartão Crédito</div><div style="font-size:12px;color:var(--muted)">Renovação mensal automática</div></div>
+            <span id="plan-pay-credit-check" style="margin-left:auto;color:var(--primary);font-size:18px;display:none">✔</span>
+          </div>
+        </div>
+        <div id="plan-confirm-msg" style="margin-top:14px;font-size:13px;text-align:center"></div>
+        <div class="plan-nav">
+          <button class="plan-btn-back" onclick="planGoTo(3)">← Voltar</button>
+          <button class="plan-btn-next ready" id="plan-btn-confirm" onclick="confirmPlanSubscription()">Confirmar Assinatura</button>
+        </div>
+      </div>
     </div>
+
     <script>
-      var _selectedPay = null;
-      function selectPay(el) {
-        _selectedPay = el.value;
-        document.getElementById('payOnline').style.borderColor = el.value==='online' ? 'var(--primary)' : 'var(--border)';
-        document.getElementById('payStore').style.borderColor = el.value==='store' ? 'var(--primary)' : 'var(--border)';
+      var PLAN = ${planJson};
+      var PLAN_SERVICES = ${planServicesJson};
+      var PLAN_PRODUCTS = ${planProductsJson};
+      var BARBERS = ${barbersJson};
+      var CALENDAR = ${calJson};
+      var SLUG = ${slugJson};
+      var TENANT_ID = ${tenantIdJson};
+      var CLIENT = ${clientJson};
+
+      var planCurrentStep = 1;
+      var planSelectedBarber = BARBERS.length > 0 ? BARBERS[0] : null;
+      var planSelectedServices = [];
+      var planSelectedProducts = [];
+      var planSelectedAppts = []; // [{date, time}]
+      var planSelectedDate = null;
+      var planPayMethod = 'cash';
+
+      // ─── Navegação entre etapas ──────────────────────────────────────────────
+      function planGoTo(step) {
+        document.querySelectorAll('.plan-step').forEach(function(el) { el.classList.remove('active'); });
+        document.getElementById('plan-step-' + step).classList.add('active');
+        for (var i = 1; i <= 4; i++) {
+          var dot = document.getElementById('plan-dot-' + i);
+          var line = document.getElementById('plan-line-' + i);
+          if (i < step) { dot.className = 'plan-step-dot done'; dot.textContent = '✓'; }
+          else if (i === step) { dot.className = 'plan-step-dot active'; dot.textContent = i; }
+          else { dot.className = 'plan-step-dot pending'; dot.textContent = i; }
+          if (line) { line.className = i < step ? 'plan-step-line done' : 'plan-step-line'; }
+        }
+        planCurrentStep = step;
+        if (step === 2) renderPlanSvcList();
+        if (step === 3) { renderPlanBarbers(); renderPlanCal(); }
+        if (step === 4) renderPlanSummary();
+        window.scrollTo(0, 0);
       }
-      function subscribePlan() {
-        if (!_selectedPay) { alert('Escolha uma forma de pagamento'); return; }
-        var msg = document.getElementById('planMsg');
-        if (_selectedPay === 'store') {
-          msg.style.color = '#22C55E';
-          msg.textContent = '✅ Pedido registrado! Vá até a barbearia para confirmar e pagar.';
+
+      function planBack() {
+        if (planCurrentStep === 1) { window.location.href = '/pub/' + SLUG; return; }
+        planGoTo(planCurrentStep - 1);
+      }
+
+      // ─── Etapa 2: Serviços e Produtos ────────────────────────────────────────
+      function renderPlanSvcList() {
+        var svcEl = document.getElementById('plan-svc-list');
+        var prdEl = document.getElementById('plan-prd-list');
+        var svcHtml = '';
+        if (PLAN_SERVICES.length > 0) {
+          svcHtml += '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">✂ Serviços</div>';
+          PLAN_SERVICES.forEach(function(s) {
+            var isSel = planSelectedServices.indexOf(s.serviceId) >= 0;
+            svcHtml += '<div class="plan-svc-item' + (isSel ? ' selected' : '') + '" onclick="togglePlanSvc(' + s.serviceId + ')">' +
+              '<div>' +
+                '<div style="font-size:14px;font-weight:700">' + escHtml(s.serviceName) + '</div>' +
+                '<div style="font-size:12px;color:var(--muted);margin-top:2px">' + fmtDur(s.durationMinutes) + '</div>' +
+              '</div>' +
+              '<div style="display:flex;align-items:center;gap:10px">' +
+                '<span style="font-size:13px;font-weight:700;color:var(--primary)">' + fmtPrice(s.servicePrice) + '</span>' +
+                '<div style="width:22px;height:22px;border-radius:50%;border:2px solid ' + (isSel ? 'var(--primary)' : 'var(--border)') + ';background:' + (isSel ? 'var(--primary)' : 'transparent') + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:' + (isSel ? '#0A0A0A' : 'transparent') + '">✓</div>' +
+              '</div>' +
+            '</div>';
+          });
+        }
+        svcEl.innerHTML = svcHtml;
+        var prdHtml = '';
+        if (PLAN_PRODUCTS.length > 0) {
+          prdHtml += '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">🧴 Produtos</div>';
+          PLAN_PRODUCTS.forEach(function(p) {
+            var isSel = planSelectedProducts.indexOf(p.productId) >= 0;
+            prdHtml += '<div class="plan-prd-item' + (isSel ? ' selected' : '') + '" onclick="togglePlanPrd(' + p.productId + ')">' +
+              '<div style="font-size:14px;font-weight:700">' + escHtml(p.productName) + '</div>' +
+              '<div style="display:flex;align-items:center;gap:10px">' +
+                '<div style="width:22px;height:22px;border-radius:50%;border:2px solid ' + (isSel ? 'var(--primary)' : 'var(--border)') + ';background:' + (isSel ? 'var(--primary)' : 'transparent') + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:' + (isSel ? '#0A0A0A' : 'transparent') + '">✓</div>' +
+              '</div>' +
+            '</div>';
+          });
+        }
+        prdEl.innerHTML = prdHtml;
+        updatePlanSvcNext();
+      }
+
+      function togglePlanSvc(id) {
+        var idx = planSelectedServices.indexOf(id);
+        if (idx >= 0) planSelectedServices.splice(idx, 1);
+        else if (planSelectedServices.length < (PLAN.maxServices || 999)) planSelectedServices.push(id);
+        renderPlanSvcList();
+      }
+
+      function togglePlanPrd(id) {
+        var idx = planSelectedProducts.indexOf(id);
+        if (idx >= 0) planSelectedProducts.splice(idx, 1);
+        else if (planSelectedProducts.length < (PLAN.maxProducts || 999)) planSelectedProducts.push(id);
+        renderPlanSvcList();
+      }
+
+      function updatePlanSvcNext() {
+        var btn = document.getElementById('plan-btn-svc-next');
+        // Pode avançar se não há serviços no plano OU se selecionou pelo menos 1
+        var ok = PLAN_SERVICES.length === 0 || planSelectedServices.length > 0;
+        btn.className = ok ? 'plan-btn-next ready' : 'plan-btn-next';
+      }
+
+      // ─── Etapa 3: Barbeiros e Horários ───────────────────────────────────────
+      function renderPlanBarbers() {
+        var grid = document.getElementById('plan-barbers-grid');
+        var html = '';
+        BARBERS.forEach(function(b) {
+          var initials = b.name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+          var isSel = planSelectedBarber && planSelectedBarber.id === b.id;
+          html += '<div class="plan-barber-card' + (isSel ? ' selected' : '') + '" onclick="selectPlanBarber(' + b.id + ')">';
+          if (b.photoUrl) {
+            html += '<img class="plan-barber-avatar" src="' + escHtml(b.photoUrl) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" />';
+            html += '<div class="plan-barber-placeholder" style="display:none">' + initials + '</div>';
+          } else {
+            html += '<div class="plan-barber-placeholder">' + initials + '</div>';
+          }
+          html += '<div class="plan-barber-name">' + escHtml(b.name) + '</div>';
+          html += '</div>';
+        });
+        grid.innerHTML = html;
+      }
+
+      function selectPlanBarber(id) {
+        planSelectedBarber = BARBERS.find(function(b){return b.id===id;}) || null;
+        planSelectedDate = null;
+        planSelectedAppts = [];
+        renderPlanBarbers();
+        renderPlanCal();
+        updatePlanSchedNext();
+      }
+
+      // Calendário mensal
+      var planCalYear = new Date().getFullYear();
+      var planCalMonth = new Date().getMonth();
+      var MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      var WEEKDAY_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+      function renderPlanCal() {
+        var grid = document.getElementById('plan-cal-grid');
+        var today = new Date(); today.setHours(0,0,0,0);
+        var firstDay = new Date(planCalYear, planCalMonth, 1).getDay();
+        var daysInMonth = new Date(planCalYear, planCalMonth + 1, 0).getDate();
+        var html = '';
+        WEEKDAY_NAMES.forEach(function(d) {
+          html += '<div class="plan-cal-header">' + d + '</div>';
+        });
+        for (var i = 0; i < firstDay; i++) html += '<div class="plan-cal-cell plan-cal-empty"></div>';
+        for (var d = 1; d <= daysInMonth; d++) {
+          var dt = new Date(planCalYear, planCalMonth, d);
+          dt.setHours(0,0,0,0);
+          var iso = dt.toISOString().split('T')[0];
+          var isPast = dt < today;
+          var isSel = planSelectedDate === iso;
+          var cls = 'plan-cal-cell' + (isPast ? ' plan-cal-past' : '') + (isSel ? ' plan-cal-selected' : '');
+          var onclick = isPast ? '' : 'onclick="selectPlanDate(\''+iso+'\')"\';
+          html += '<div class="' + cls + '"' + (isPast ? '' : ' onclick="selectPlanDate(\''+iso+'\')"\'') + '>' + d + '</div>';
+        }
+        // Cabeçalho do mês
+        var calTitle = document.getElementById('plan-cal-title');
+        if (calTitle) calTitle.textContent = MONTH_NAMES[planCalMonth] + ' ' + planCalYear;
+        grid.innerHTML = html;
+      }
+
+      function selectPlanDate(iso) {
+        planSelectedDate = iso;
+        renderPlanCal();
+        loadPlanSlots();
+      }
+
+      async function loadPlanSlots() {
+        var area = document.getElementById('plan-slots-area');
+        if (!planSelectedDate) { area.innerHTML = ''; return; }
+        var barberId = planSelectedBarber ? planSelectedBarber.id : ${firstBarberId};
+        var duration = 30;
+        if (planSelectedServices.length > 0) {
+          var svc = PLAN_SERVICES.find(function(s){return s.serviceId===planSelectedServices[0];});
+          if (svc) duration = svc.durationMinutes || 30;
+        }
+        area.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">Carregando horários...</div>';
+        try {
+          var r = await fetch('/pub-api/slots?barberId=' + barberId + '&date=' + planSelectedDate + '&duration=' + duration);
+          var slots = await r.json();
+          if (!slots.length) { area.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">Nenhum horário disponível.</div>'; return; }
+          var manha = slots.filter(function(s){return parseInt(s.startTime)<12;});
+          var tarde = slots.filter(function(s){var h=parseInt(s.startTime);return h>=12&&h<18;});
+          var noite = slots.filter(function(s){return parseInt(s.startTime)>=18;});
+          function slotBtn(s) {
+            return '<button class="plan-slot-btn" onclick="addPlanAppt(\''+s.startTime+'\')">'+s.startTime+'</button>';
+          }
+          var html = '<div style="margin-top:8px">';
+          if (manha.length) html += '<div class="plan-slot-group"><div class="plan-period-label">☀️ Manhã<div class="plan-period-line"></div></div><div class="plan-slots-row">' + manha.map(slotBtn).join('') + '</div></div>';
+          if (tarde.length) html += '<div class="plan-slot-group"><div class="plan-period-label">🌤️ Tarde<div class="plan-period-line"></div></div><div class="plan-slots-row">' + tarde.map(slotBtn).join('') + '</div></div>';
+          if (noite.length) html += '<div class="plan-slot-group"><div class="plan-period-label">🌙 Noite<div class="plan-period-line"></div></div><div class="plan-slots-row">' + noite.map(slotBtn).join('') + '</div></div>';
+          html += '</div>';
+          area.innerHTML = html;
+        } catch(e) {
+          area.innerHTML = '<div style="padding:16px;text-align:center;color:#F87171;font-size:13px">Erro ao carregar horários.</div>';
+        }
+      }
+
+      function addPlanAppt(time) {
+        if (!planSelectedDate) return;
+        // Verificar se já adicionou este slot
+        var exists = planSelectedAppts.find(function(a){return a.date===planSelectedDate&&a.time===time;});
+        if (exists) return;
+        // Verificar limite de agendamentos
+        if (planSelectedAppts.length >= PLAN.recurrences) {
+          alert('Você já selecionou o máximo de ' + PLAN.recurrences + ' agendamento(s) para este plano.');
           return;
         }
-        // Online: redirecionar para agendamento com plano selecionado
-        window.location.href = '/pub/${slug}/agendar?planId=${planId}';
+        planSelectedAppts.push({ date: planSelectedDate, time: time, barberId: planSelectedBarber ? planSelectedBarber.id : null });
+        renderPlanAppts();
+        updatePlanSchedNext();
       }
+
+      function removePlanAppt(idx) {
+        planSelectedAppts.splice(idx, 1);
+        renderPlanAppts();
+        updatePlanSchedNext();
+      }
+
+      function renderPlanAppts() {
+        var el = document.getElementById('plan-appts-list');
+        if (planSelectedAppts.length === 0) { el.innerHTML = ''; return; }
+        var html = '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Agendamentos selecionados (' + planSelectedAppts.length + '/' + PLAN.recurrences + ')</div>';
+        planSelectedAppts.forEach(function(a, i) {
+          var dateFormatted = a.date.split('-').reverse().join('/');
+          html += '<div class="plan-appt-chip">' +
+            '<span>📅 ' + dateFormatted + ' às ' + a.time + '</span>' +
+            '<button class="plan-appt-chip-remove" onclick="removePlanAppt(' + i + ')">&#x2715;</button>' +
+          '</div>';
+        });
+        el.innerHTML = html;
+      }
+
+      function updatePlanSchedNext() {
+        var btn = document.getElementById('plan-btn-sched-next');
+        var ok = planSelectedAppts.length >= PLAN.recurrences;
+        btn.className = ok ? 'plan-btn-next ready' : 'plan-btn-next';
+      }
+
+      // ─── Etapa 4: Pagamento ───────────────────────────────────────────────────
+      function selectPlanPay(method) {
+        planPayMethod = method;
+        ['cash','pix','debit_card','credit_card'].forEach(function(m) {
+          var el = document.getElementById('plan-pay-' + m.replace('_card','').replace('debit','debit').replace('credit','credit'));
+          var check = document.getElementById('plan-pay-' + m.replace('_card','').replace('debit','debit').replace('credit','credit') + '-check');
+          if (el) el.className = 'plan-pay-option' + (m === method ? ' selected' : '');
+          if (check) check.style.display = m === method ? 'block' : 'none';
+        });
+      }
+
+      function renderPlanSummary() {
+        var el = document.getElementById('plan-summary');
+        var svcNames = planSelectedServices.map(function(id) {
+          var s = PLAN_SERVICES.find(function(x){return x.serviceId===id;});
+          return s ? s.serviceName : '';
+        }).filter(Boolean).join(', ');
+        var apptCount = planSelectedAppts.length;
+        var html = '<div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:12px">Resumo da Assinatura</div>';
+        html += '<div class="plan-summary-row"><span class="plan-summary-label">Plano</span><span class="plan-summary-value">' + escHtml(PLAN.name) + '</span></div>';
+        if (svcNames) html += '<div class="plan-summary-row"><span class="plan-summary-label">Serviços</span><span class="plan-summary-value">' + escHtml(svcNames) + '</span></div>';
+        html += '<div class="plan-summary-row"><span class="plan-summary-label">Agendamentos</span><span class="plan-summary-value">' + apptCount + 'x no mês</span></div>';
+        html += '<div class="plan-summary-row" style="border-bottom:none"><span class="plan-summary-label">Valor</span><span class="plan-summary-value" style="color:var(--primary);font-size:16px">R$ ' + Number(PLAN.price).toFixed(2).replace('.',',') + '</span></div>';
+        el.innerHTML = html;
+      }
+
+      async function confirmPlanSubscription() {
+        var btn = document.getElementById('plan-btn-confirm');
+        var msg = document.getElementById('plan-confirm-msg');
+        btn.disabled = true;
+        btn.textContent = 'Confirmando...';
+        msg.textContent = '';
+        try {
+          var r = await fetch('/pub-api/subscribe-plan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              slug: SLUG,
+              planId: PLAN.id,
+              barberId: planSelectedBarber ? planSelectedBarber.id : null,
+              selectedServiceIds: planSelectedServices,
+              selectedProductIds: planSelectedProducts,
+              paymentMethod: planPayMethod,
+              appointments: planSelectedAppts,
+            }),
+          });
+          var data = await r.json();
+          if (!r.ok) throw new Error(data.error || 'Erro ao confirmar assinatura');
+          msg.style.color = '#4ADE80';
+          msg.innerHTML = '✅ Assinatura confirmada! Seus agendamentos foram criados.';
+          btn.style.display = 'none';
+          // Mostrar botão de ver agendamentos
+          var navEl = document.querySelector('.plan-nav');
+          if (navEl) {
+            navEl.innerHTML = '<a href="/pub/' + SLUG + '/meus-agendamentos" style="display:block;width:100%;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:800;border-radius:14px;text-align:center;text-decoration:none;margin-top:8px">Ver Meus Agendamentos</a>';
+          }
+        } catch(e) {
+          msg.style.color = '#F87171';
+          msg.textContent = e.message;
+          btn.disabled = false;
+          btn.textContent = 'Confirmar Assinatura';
+        }
+      }
+
+      // ─── Helpers ──────────────────────────────────────────────────────────────
+      function escHtml(s) { var d=document.createElement('div');d.textContent=s;return d.innerHTML; }
+      function fmtDur(m) { if(!m)return''; var h=Math.floor(m/60),min=m%60; return h>0?(min>0?h+'h'+min+'min':h+'h'):min+'min'; }
+      function fmtPrice(p) { return 'R$ '+Number(p).toFixed(2).replace('.',','); }
+
+      // Inicializar seleções padrão
+      if (PLAN_SERVICES.length > 0) planSelectedServices = [PLAN_SERVICES[0].serviceId];
+      if (PLAN_PRODUCTS.length > 0) planSelectedProducts = [PLAN_PRODUCTS[0].productId];
     <\/script>
   `;
   res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings));
@@ -3437,7 +3924,11 @@ export function registerPublicRoutes(app: Express): void {
     const end = (req.query.end as string) ?? "";
     const appId = process.env.VITE_APP_ID ?? "";
     const portalUrl = process.env.VITE_OAUTH_PORTAL_URL ?? "https://manus.im";
-    const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://localhost:3000`;
+    // Detectar a URL base a partir do Host header da requisição (mais confiável em produção)
+    const reqHost = req.headers["x-forwarded-host"] as string || req.headers.host || "localhost:3000";
+    const reqProto = (req.headers["x-forwarded-proto"] as string || req.protocol || "http").split(",")[0].trim();
+    const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL
+      ?? (reqHost.includes("localhost") ? `http://${reqHost}` : `${reqProto}://${reqHost}`);
     // Callback URL com parâmetros de contexto codificados no state
     const callbackUrl = `${apiBaseUrl}/pub-api/oauth-callback`;
     const stateData = Buffer.from(JSON.stringify({ slug, redirect, service, date, barber, start, end })).toString("base64");
@@ -3866,7 +4357,10 @@ export function registerPublicRoutes(app: Express): void {
       if (!appt) { res.status(404).json({ error: "Agendamento não encontrado" }); return; }
       const service = await db.getServiceById(appt.serviceId);
       const client = await db.getClientById(appt.clientId);
-      const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://localhost:3000`;
+      const mpReqHost = req.headers["x-forwarded-host"] as string || req.headers.host || "localhost:3000";
+      const mpReqProto = (req.headers["x-forwarded-proto"] as string || req.protocol || "http").split(",")[0].trim();
+      const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL
+        ?? (mpReqHost.includes("localhost") ? `http://${mpReqHost}` : `${mpReqProto}://${mpReqHost}`);
       const mpClient = new MercadoPagoConfig({ accessToken });
       const preference = new Preference(mpClient);
       const pref = await preference.create({
@@ -3919,7 +4413,10 @@ export function registerPublicRoutes(app: Express): void {
       if (!appt) { res.status(404).json({ error: "Agendamento não encontrado" }); return; }
       const service = await db.getServiceById(appt.serviceId);
       const client = await db.getClientById(appt.clientId);
-      const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://localhost:3000`;
+      const pixReqHost = req.headers["x-forwarded-host"] as string || req.headers.host || "localhost:3000";
+      const pixReqProto = (req.headers["x-forwarded-proto"] as string || req.protocol || "http").split(",")[0].trim();
+      const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL
+        ?? (pixReqHost.includes("localhost") ? `http://${pixReqHost}` : `${pixReqProto}://${pixReqHost}`);
       const mpClient = new MercadoPagoConfig({ accessToken });
       const payment = new Payment(mpClient);
       const paymentData = await payment.create({
@@ -3953,6 +4450,93 @@ export function registerPublicRoutes(app: Express): void {
       });
     } catch (e: any) {
       console.error("[Pix Checkout]", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /pub-api/subscribe-plan — Criar assinatura de plano via página pública
+  app.post("/pub-api/subscribe-plan", async (req: Request, res: Response) => {
+    try {
+      const { slug, planId, barberId, selectedServiceIds, selectedProductIds, paymentMethod, appointments } = req.body;
+      if (!slug || !planId) { res.status(400).json({ error: "slug e planId são obrigatórios" }); return; }
+      // Verificar sessão do cliente
+      const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+      if (!sessionData) { res.status(401).json({ error: "Faça login para assinar um plano" }); return; }
+      let clientInfo: any = null;
+      try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {}
+      if (!clientInfo?.id) { res.status(401).json({ error: "Sessão inválida" }); return; }
+      const tenant = await db.getTenantBySlug(slug);
+      if (!tenant) { res.status(404).json({ error: "Barbearia não encontrada" }); return; }
+      // Buscar plano
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.status(500).json({ error: "Erro de banco de dados" }); return; }
+      const planResult = await dbConn.execute(sql`SELECT * FROM subscription_plans WHERE id = ${planId} AND tenantId = ${tenant.id} AND isActive = 1 LIMIT 1`) as any;
+      const plans = Array.isArray(planResult) ? planResult[0] : planResult?.rows ?? [];
+      const plan = plans?.[0];
+      if (!plan) { res.status(404).json({ error: "Plano não encontrado" }); return; }
+      // Criar assinatura diretamente
+      const now = new Date();
+      const cycleStart = now.toISOString().split("T")[0];
+      const cycleEndDate = new Date(now);
+      cycleEndDate.setMonth(cycleEndDate.getMonth() + 1);
+      const cycleEnd = cycleEndDate.toISOString().split("T")[0];
+      const svcIds = Array.isArray(selectedServiceIds) ? selectedServiceIds : [];
+      const prdIds = Array.isArray(selectedProductIds) ? selectedProductIds : [];
+      const appts = Array.isArray(appointments) ? appointments : [];
+      const barberIdVal = barberId ? parseInt(barberId) : null;
+      const payMethod = paymentMethod || "cash";
+      // Inserir assinatura
+      const subResult = await dbConn.execute(sql`
+        INSERT INTO client_subscriptions
+          (tenantId, planId, clientId, barberId, selectedServiceIds, selectedProductIds,
+           status, paymentMethod, price, cycleStart, cycleEnd, autoRenew)
+        VALUES (
+          ${tenant.id}, ${planId}, ${clientInfo.id}, ${barberIdVal},
+          ${JSON.stringify(svcIds)}, ${JSON.stringify(prdIds)},
+          'active', ${payMethod}, ${Number(plan.price)},
+          ${cycleStart}, ${cycleEnd}, 0
+        )
+      `) as any;
+      const subRows = Array.isArray(subResult) ? subResult[0] : subResult;
+      const subscriptionId = subRows?.insertId ?? subRows?.[0]?.insertId;
+      // Inserir agendamentos
+      const primaryServiceId = svcIds[0] ?? 0;
+      let serviceDurationMinutes = 30;
+      if (primaryServiceId > 0) {
+        try {
+          const svcResult = await dbConn.execute(sql`SELECT durationMinutes FROM services WHERE id = ${primaryServiceId} LIMIT 1`) as any;
+          const svcRows = Array.isArray(svcResult) ? svcResult[0] : svcResult?.rows ?? [];
+          if (svcRows?.[0]?.durationMinutes) serviceDurationMinutes = svcRows[0].durationMinutes;
+        } catch {}
+      }
+      function addMin(t: string, mins: number): string {
+        const [h, m] = t.split(":").map(Number);
+        const total = h * 60 + m + mins;
+        return `${Math.floor(total / 60).toString().padStart(2, "0")}:${(total % 60).toString().padStart(2, "00")}:00`;
+      }
+      const appointmentIds: number[] = [];
+      for (let i = 0; i < appts.length; i++) {
+        const appt = appts[i];
+        const apptBarberId = appt.barberId ?? barberIdVal;
+        const startTime = appt.time.includes(":") && appt.time.split(":").length === 2 ? appt.time + ":00" : appt.time;
+        const endTime = addMin(appt.time, serviceDurationMinutes);
+        const apptResult = await dbConn.execute(sql`
+          INSERT INTO appointments (clientId, barberId, serviceId, date, startTime, endTime, status)
+          VALUES (${clientInfo.id}, ${apptBarberId}, ${primaryServiceId}, ${appt.date}, ${startTime}, ${endTime}, 'confirmed')
+        `) as any;
+        const apptRows = Array.isArray(apptResult) ? apptResult[0] : apptResult;
+        const apptId = apptRows?.insertId ?? apptRows?.[0]?.insertId;
+        if (apptId && subscriptionId) {
+          await dbConn.execute(sql`
+            INSERT INTO subscription_appointments (subscriptionId, appointmentId, tenantId, recurrenceIndex)
+            VALUES (${subscriptionId}, ${apptId}, ${tenant.id}, ${i + 1})
+          `);
+          appointmentIds.push(apptId);
+        }
+      }
+      res.json({ ok: true, subscriptionId, appointmentIds });
+    } catch (e: any) {
+      console.error("[Subscribe Plan]", e);
       res.status(500).json({ error: e.message });
     }
   });

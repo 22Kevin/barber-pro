@@ -1795,3 +1795,11 @@
 ## Bug — Cards Pretos na Landing Page (Abr/2026)
 
 - [x] Corrigir cards invisíveis (opacity:0) na landing page — problema recorrente com animações CSS
+
+## Correções Visuais e Funcionais — Página Pública do Cliente (Abr/2026)
+
+- [ ] Corrigir layout desorganizado dos cards de serviços na página pública (grid quebrado, imagens desalinhadas)
+- [ ] Alinhar foto de perfil da barbearia com o nome no painel de login do cliente
+- [ ] Investigar e corrigir erro 403 CloudFront no login com Google
+- [ ] Melhorar estética da tela de pagamento do plano de assinatura
+- [ ] Corrigir fluxo de assinatura de plano para seguir as mesmas etapas do app (seleção de serviços, barbeiro, horário, pagamento)
