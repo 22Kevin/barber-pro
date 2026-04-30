@@ -1905,32 +1905,82 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           var data = await r.json();
           var msg = document.getElementById('pix-confirm-msg');
           if (data.paid) {
-            if (msg) msg.innerHTML = '<span style="color:#4ADE80;font-weight:800">✅ Pagamento confirmado! Seu agendamento foi confirmado.</span>';
+            showPaymentSuccess('pix');
           } else {
-            if (msg) msg.innerHTML = '<span style="color:var(--muted)">⏳ Pagamento ainda não confirmado. Tente novamente em alguns segundos.</span>';
+            if (msg) msg.innerHTML = '<span style="color:var(--muted)">⏳ Pagamento ainda não confirmado. Aguarde alguns segundos e tente novamente.</span>';
           }
         } catch(e) { console.error('Erro ao verificar pagamento', e); }
+      }
+      // ─── Máscaras de campos ────────────────────────────────────────────────────
+      function maskCardNumber(el) {
+        var v = el.value.replace(/\D/g,'').substring(0,16);
+        el.value = v.replace(/(\d{4})(?=\d)/g,'$1 ').trim();
+      }
+      function maskCpf(el) {
+        var v = el.value.replace(/\D/g,'').substring(0,11);
+        if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/,'$1.$2.$3-$4');
+        else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/,'$1.$2.$3');
+        else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/,'$1.$2');
+        el.value = v;
+      }
+      function maskCep(el) {
+        var v = el.value.replace(/\D/g,'').substring(0,8);
+        if (v.length > 5) v = v.replace(/(\d{5})(\d{1,3})/,'$1-$2');
+        el.value = v;
+      }
+      function maskMonth(el) {
+        var v = el.value.replace(/\D/g,'').substring(0,2);
+        if (v.length === 2) { var n = parseInt(v); if (n < 1) v = '01'; if (n > 12) v = '12'; }
+        el.value = v;
       }
       // ─── Pagamento via Cartão (Asaas) ─────────────────────────────────────────
       async function payOnline(appointmentId, price) {
         var status = document.getElementById('payment-status');
-        // Mostrar formulário de cartão
+        var inpStyle = 'padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box';
+        var inpStyleFlex = 'padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;flex:1;box-sizing:border-box';
         status.innerHTML =
           '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-top:8px">' +
-            '<div style="font-size:15px;font-weight:800;margin-bottom:16px">💳 Dados do Cartão</div>' +
+            '<div style="font-size:15px;font-weight:800;margin-bottom:4px">💳 Dados do Cartão</div>' +
+            '<div style="font-size:12px;color:var(--muted);margin-bottom:16px">🔒 Pagamento seguro via Asaas</div>' +
             '<div style="display:flex;flex-direction:column;gap:10px">' +
-              '<input id="cc-name" placeholder="Nome no cartão" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box" />' +
-              '<input id="cc-number" placeholder="Número do cartão" maxlength="19" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box" />' +
-              '<div style="display:flex;gap:10px">' +
-                '<input id="cc-month" placeholder="MM" maxlength="2" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;flex:1;box-sizing:border-box" />' +
-                '<input id="cc-year" placeholder="AAAA" maxlength="4" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;flex:1;box-sizing:border-box" />' +
-                '<input id="cc-cvv" placeholder="CVV" maxlength="4" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;flex:1;box-sizing:border-box" />' +
+              '<div>' +
+                '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">Nome no cartão</label>' +
+                '<input id="cc-name" placeholder="Ex: JOAO DA SILVA" autocomplete="cc-name" style="' + inpStyle + '" />' +
               '</div>' +
-              '<input id="cc-cpf" placeholder="CPF do titular (somente números)" maxlength="14" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box" />' +
-              '<input id="cc-cep" placeholder="CEP do titular" maxlength="9" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box" />' +
-              '<input id="cc-addr-num" placeholder="Número do endereço" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box" />' +
+              '<div>' +
+                '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">Número do cartão</label>' +
+                '<input id="cc-number" placeholder="0000 0000 0000 0000" maxlength="19" inputmode="numeric" autocomplete="cc-number" oninput="maskCardNumber(this)" style="' + inpStyle + ';letter-spacing:1px" />' +
+              '</div>' +
+              '<div style="display:flex;gap:10px">' +
+                '<div style="flex:1">' +
+                  '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">Mês</label>' +
+                  '<input id="cc-month" placeholder="MM" maxlength="2" inputmode="numeric" autocomplete="cc-exp-month" oninput="maskMonth(this)" style="' + inpStyleFlex + '" />' +
+                '</div>' +
+                '<div style="flex:1">' +
+                  '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">Ano</label>' +
+                  '<input id="cc-year" placeholder="AAAA" maxlength="4" inputmode="numeric" autocomplete="cc-exp-year" style="' + inpStyleFlex + '" />' +
+                '</div>' +
+                '<div style="flex:1">' +
+                  '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">CVV</label>' +
+                  '<input id="cc-cvv" placeholder="123" maxlength="4" inputmode="numeric" autocomplete="cc-csc" style="' + inpStyleFlex + '" />' +
+                '</div>' +
+              '</div>' +
+              '<div>' +
+                '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">CPF do titular</label>' +
+                '<input id="cc-cpf" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" oninput="maskCpf(this)" style="' + inpStyle + '" />' +
+              '</div>' +
+              '<div style="display:flex;gap:10px">' +
+                '<div style="flex:1">' +
+                  '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">CEP</label>' +
+                  '<input id="cc-cep" placeholder="00000-000" maxlength="9" inputmode="numeric" oninput="maskCep(this)" style="' + inpStyleFlex + '" />' +
+                '</div>' +
+                '<div style="flex:1">' +
+                  '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">Nº endereço</label>' +
+                  '<input id="cc-addr-num" placeholder="Ex: 123" inputmode="numeric" style="' + inpStyleFlex + '" />' +
+                '</div>' +
+              '</div>' +
               '<div id="cc-error" style="color:#F87171;font-size:13px;display:none"></div>' +
-              '<button id="cc-submit-btn" onclick="submitCard(' + appointmentId + ',' + price + ')" style="padding:14px;background:var(--primary);color:#0A0A0A;font-size:14px;font-weight:800;border:none;border-radius:12px;cursor:pointer;width:100%">Confirmar Pagamento</button>' +
+              '<button id="cc-submit-btn" onclick="submitCard(' + appointmentId + ',' + price + ')" style="padding:14px;background:var(--primary);color:#0A0A0A;font-size:14px;font-weight:800;border:none;border-radius:12px;cursor:pointer;width:100%;margin-top:4px">🔒 Confirmar Pagamento</button>' +
             '</div>' +
           '</div>';
       }
@@ -1948,7 +1998,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         if (!name || !number || !month || !year || !cvv || !cpf) {
           ccError.textContent = 'Preencha todos os campos obrigatórios.'; ccError.style.display = 'block'; return;
         }
-        var btn = document.getElementById('cc-submit-btn'); btn.disabled = true; btn.textContent = 'Processando...';
+        var btn = document.getElementById('cc-submit-btn'); btn.disabled = true; btn.textContent = '⏳ Processando...';
         try {
           var r = await fetch('/pub-api/asaas-card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
             slug: SLUG, appointmentId, amount: price, description: 'Agendamento',
@@ -1957,16 +2007,57 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           }) });
           var data = await r.json();
           if (!r.ok) throw new Error(data.error || 'Erro ao processar cartão');
-          var status = document.getElementById('payment-status');
-          status.innerHTML = '<div style="text-align:center;padding:20px;background:var(--surface);border:1px solid #22C55E33;border-radius:16px;margin-top:8px">' +
-            '<div style="font-size:32px;margin-bottom:8px">✅</div>' +
-            '<div style="font-size:16px;font-weight:800;color:#4ADE80">Pagamento confirmado!</div>' +
-            '<div style="font-size:13px;color:var(--muted);margin-top:4px">Seu agendamento foi confirmado com sucesso.</div>' +
-          '</div>';
+          showPaymentSuccess('card');
         } catch(e) {
           ccError.textContent = e.message; ccError.style.display = 'block';
-          btn.disabled = false; btn.textContent = 'Confirmar Pagamento';
+          btn.disabled = false; btn.textContent = '🔒 Confirmar Pagamento';
         }
+      }
+      // ─── Tela de confirmação pós-pagamento ────────────────────────────────────
+      function showPaymentSuccess(method) {
+        var svcName = selectedServices.length > 0 ? selectedServices.map(function(s) { return s.name; }).join(' + ') : (selectedService ? selectedService.name : 'Serviço');
+        var barberName = selectedBarber ? selectedBarber.name : 'profissional';
+        var dateFormatted = selectedDate ? selectedDate.split('-').reverse().join('/') : '';
+        var timeStr = selectedSlot ? selectedSlot.startTime : '';
+        var methodLabel = method === 'pix' ? '📱 Pix' : '💳 Cartão de crédito';
+        var waMsg = 'Olá! Meu agendamento foi confirmado e o pagamento realizado:%0A%0A✂ ' + encodeURIComponent(svcName) + '%0A📅 ' + dateFormatted + ' às ' + timeStr + '%0A💈 ' + encodeURIComponent(barberName) + '%0A💳 Pago via ' + (method === 'pix' ? 'Pix' : 'Cartão');
+        var waHtml = WA_NUMBER
+          ? '<a href="https://wa.me/' + WA_NUMBER + '?text=' + waMsg + '" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;padding:14px;background:#25D366;color:#fff;font-size:14px;font-weight:800;border-radius:12px;text-decoration:none">📲 Enviar confirmação pelo WhatsApp</a>'
+          : '';
+        var statusEl = document.getElementById('payment-status');
+        statusEl.innerHTML =
+          '<div style="background:var(--surface);border:1px solid #22C55E44;border-radius:16px;overflow:hidden;margin-top:8px">' +
+            '<div style="background:linear-gradient(135deg,#22C55E22 0%,#22C55E08 100%);border-bottom:1px solid #22C55E33;padding:24px;text-align:center">' +
+              '<div style="width:64px;height:64px;border-radius:50%;background:#22C55E22;border:2px solid #22C55E55;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px">✅</div>' +
+              '<div style="font-size:17px;font-weight:900;color:#4ADE80">Pagamento Confirmado!</div>' +
+              '<div style="font-size:13px;color:var(--muted);margin-top:4px">Seu agendamento está confirmado</div>' +
+            '</div>' +
+            '<div style="padding:20px">' +
+              '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">' +
+                '<div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px">Resumo do agendamento</div>' +
+                '<div style="display:flex;flex-direction:column;gap:8px">' +
+                  '<div style="display:flex;justify-content:space-between;font-size:13px">' +
+                    '<span style="color:var(--muted)">✂ Serviço</span>' +
+                    '<span style="font-weight:700;color:var(--text)">' + svcName + '</span>' +
+                  '</div>' +
+                  '<div style="display:flex;justify-content:space-between;font-size:13px">' +
+                    '<span style="color:var(--muted)">📅 Data e hora</span>' +
+                    '<span style="font-weight:700;color:var(--text)">' + dateFormatted + ' às ' + timeStr + '</span>' +
+                  '</div>' +
+                  '<div style="display:flex;justify-content:space-between;font-size:13px">' +
+                    '<span style="color:var(--muted)">💈 Profissional</span>' +
+                    '<span style="font-weight:700;color:var(--text)">' + barberName + '</span>' +
+                  '</div>' +
+                  '<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:8px;display:flex;justify-content:space-between;font-size:13px">' +
+                    '<span style="color:var(--muted)">💳 Forma de pagamento</span>' +
+                    '<span style="font-weight:700;color:#4ADE80">' + methodLabel + '</span>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+              waHtml +
+              '<a href="/pub/' + SLUG + '" style="display:block;margin-top:12px;text-align:center;color:var(--primary);font-size:13px;font-weight:600;text-decoration:none">← Voltar para a página da barbearia</a>' +
+            '</div>' +
+          '</div>';
       }
     </script>
   `;

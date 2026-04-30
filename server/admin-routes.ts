@@ -18,6 +18,7 @@
 
 import type { Express, Request, Response, NextFunction } from "express";
 import * as db from "./db";
+import { sql } from "drizzle-orm";
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
 
@@ -1552,10 +1553,86 @@ async function renderFinanceiro(req: Request, res: Response) {
     </div>
   `;
 
-  const tabs = [
+  // ─── Aba Pagamentos Online ─────────────────────────────────────────────────
+  let tabPagamentos = '';
+  if (activeTab === "pagamentos") {
+    const dbConn = await db.getDb();
+    let pmtRows: any[] = [];
+    if (dbConn && tenantId) {
+      const raw = await dbConn.execute(sql`
+        SELECT op.id, op.billingType, op.amount, op.status, op.createdAt, op.paidAt, op.invoiceUrl,
+               op.chargeType, op.referenceId, op.asaasPaymentId,
+               c.name AS clientName
+        FROM online_payments op
+        LEFT JOIN clients c ON c.id = op.clientId
+        WHERE op.tenantId = ${tenantId}
+          AND op.createdAt >= ${start} AND op.createdAt <= CONCAT(${end}, ' 23:59:59')
+        ORDER BY op.createdAt DESC
+        LIMIT 100
+      `) as any;
+      pmtRows = Array.isArray(raw) ? (raw[0] as any[]) : (raw?.rows ?? []);
+    }
+    const totalPaid = pmtRows.filter((p: any) => p.status === 'paid').reduce((s: number, p: any) => s + parseFloat(p.amount), 0);
+    const totalPending = pmtRows.filter((p: any) => p.status === 'pending').reduce((s: number, p: any) => s + parseFloat(p.amount), 0);
+    const billingLabel = (bt: string) => bt === 'PIX' ? '📱 Pix' : bt === 'CREDIT_CARD' ? '💳 Cartão' : bt === 'BOLETO' ? '🧾 Boleto' : bt;
+    const statusBadge = (s: string) => {
+      if (s === 'paid') return '<span style="background:#22C55E22;color:#4ADE80;border:1px solid #22C55E44;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✅ Pago</span>';
+      if (s === 'pending') return '<span style="background:#F59E0B22;color:#FBBF24;border:1px solid #F59E0B44;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">⏳ Pendente</span>';
+      if (s === 'overdue') return '<span style="background:#EF444422;color:#F87171;border:1px solid #EF444444;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">⚠️ Vencido</span>';
+      if (s === 'refunded') return '<span style="background:#6366F122;color:#818CF8;border:1px solid #6366F144;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">↩ Estornado</span>';
+      if (s === 'cancelled') return '<span style="background:#6B728022;color:#9BA1A6;border:1px solid #6B728044;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✖ Cancelado</span>';
+      return s;
+    };
+    const fmtDate = (d: any) => d ? new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+    const fmtBRL = (v: number) => 'R$ ' + v.toFixed(2).replace('.', ',');
+    tabPagamentos = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">💰 Total Recebido</div>
+          <div style="font-size:22px;font-weight:900;color:#4ADE80">${fmtBRL(totalPaid)}</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">⏳ Pendente</div>
+          <div style="font-size:22px;font-weight:900;color:#FBBF24">${fmtBRL(totalPending)}</div>
+        </div>
+      </div>
+      ${pmtRows.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--muted);font-size:14px">Nenhum pagamento online no período.</div>' : `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border);background:var(--surface2)">
+                <th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Cliente</th>
+                <th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Método</th>
+                <th style="padding:12px 16px;text-align:right;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Valor</th>
+                <th style="padding:12px 16px;text-align:center;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Status</th>
+                <th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Data</th>
+                <th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Pago em</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${pmtRows.map((p: any, i: number) => `
+                <tr style="border-bottom:1px solid var(--border);background:${i % 2 === 0 ? 'transparent' : 'var(--surface2)'}">
+                  <td style="padding:12px 16px;color:var(--text);font-weight:600">${p.clientName || '—'}</td>
+                  <td style="padding:12px 16px;color:var(--text)">${billingLabel(p.billingType)}</td>
+                  <td style="padding:12px 16px;text-align:right;font-weight:700;color:var(--text)">${fmtBRL(parseFloat(p.amount))}</td>
+                  <td style="padding:12px 16px;text-align:center">${statusBadge(p.status)}</td>
+                  <td style="padding:12px 16px;color:var(--muted);font-size:12px">${fmtDate(p.createdAt)}</td>
+                  <td style="padding:12px 16px;color:var(--muted);font-size:12px">${fmtDate(p.paidAt)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      `}
+    `;
+  }
+    const tabs = [
     { id: "resumo", label: "📊 Resumo" },
     { id: "receitas", label: "🧧 Receitas" },
     { id: "despesas", label: "💸 Despesas" },
+    { id: "pagamentos", label: "💳 Pagamentos Online" },
   ];
   const tabNav = `
     <div style="display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:0">
@@ -1577,7 +1654,7 @@ async function renderFinanceiro(req: Request, res: Response) {
       </div>
     </div>
     ${tabNav}
-    ${activeTab === "resumo" ? tabResumo : activeTab === "receitas" ? tabReceitas : tabDespesas}
+    ${activeTab === "resumo" ? tabResumo : activeTab === "receitas" ? tabReceitas : activeTab === "pagamentos" ? tabPagamentos : tabDespesas}
   `;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
