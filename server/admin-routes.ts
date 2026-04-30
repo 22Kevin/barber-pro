@@ -1309,10 +1309,10 @@ async function renderFinanceiro(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
   const tenantId = barber?.tenantId ?? null;
-  const activeTab = (req.query.tab as string) || "resumo";
+   const activeTab = (req.query.tab as string) || "resumo";
+  const pmtStatus = (req.query.pmtStatus as string) || "all"; // filtro de status para aba pagamentos
   const saved = req.query.saved === "1";
   const deleted = req.query.deleted === "1";
-
   // Filtro de período
   const period = (req.query.period as string) || "month";
   let start: string, end: string;
@@ -1588,8 +1588,19 @@ async function renderFinanceiro(req: Request, res: Response) {
     const dbConn = await db.getDb();
     let pmtRows: any[] = [];
     if (dbConn && tenantId) {
-      const raw = await dbConn.execute(sql`
-        SELECT op.id, op.billingType, op.amount, op.status, op.createdAt, op.paidAt, op.invoiceUrl,
+      const pmtStatusFilter = pmtStatus !== "all" ? pmtStatus : null;
+      const pmtQueryObj = pmtStatusFilter
+        ? sql`SELECT op.id, op.billingType, op.amount, op.status, op.createdAt, op.paidAt, op.invoiceUrl,
+               op.chargeType, op.referenceId, op.asaasPaymentId,
+               c.name AS clientName
+        FROM online_payments op
+        LEFT JOIN clients c ON c.id = op.clientId
+        WHERE op.tenantId = ${tenantId}
+          AND op.createdAt >= ${start} AND op.createdAt <= CONCAT(${end}, ' 23:59:59')
+          AND op.status = ${pmtStatusFilter}
+        ORDER BY op.createdAt DESC
+        LIMIT 200`
+        : sql`SELECT op.id, op.billingType, op.amount, op.status, op.createdAt, op.paidAt, op.invoiceUrl,
                op.chargeType, op.referenceId, op.asaasPaymentId,
                c.name AS clientName
         FROM online_payments op
@@ -1597,8 +1608,8 @@ async function renderFinanceiro(req: Request, res: Response) {
         WHERE op.tenantId = ${tenantId}
           AND op.createdAt >= ${start} AND op.createdAt <= CONCAT(${end}, ' 23:59:59')
         ORDER BY op.createdAt DESC
-        LIMIT 100
-      `) as any;
+        LIMIT 200`;
+      const raw = await dbConn.execute(pmtQueryObj) as any;
       pmtRows = Array.isArray(raw) ? (raw[0] as any[]) : (raw?.rows ?? []);
     }
     const totalPaid = pmtRows.filter((p: any) => p.status === 'paid').reduce((s: number, p: any) => s + parseFloat(p.amount), 0);
@@ -1681,7 +1692,13 @@ async function renderFinanceiro(req: Request, res: Response) {
             <div style="font-size:22px;font-weight:900;color:#FBBF24">${fmtBRL(totalPending)}</div>
           </div>
         </div>
-        <a href="/admin/export/pagamentos-online.csv?start=${start}&end=${end}" class="btn btn-ghost" style="font-size:12px;padding:6px 14px;white-space:nowrap;align-self:flex-end">↓ Exportar CSV</a>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;align-self:flex-end">
+          <select onchange="location.href='/admin/financeiro?tab=pagamentos&period=${period}&pmtStatus='+this.value"
+            style="padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+            ${[{v:'all',l:'Todos os status'},{v:'paid',l:'\u2705 Pago'},{v:'pending',l:'\u23f3 Pendente'},{v:'overdue',l:'\u26a0\ufe0f Vencido'},{v:'cancelled',l:'\u2716 Cancelado'},{v:'refunded',l:'\u21a9 Estornado'}].map(o => '<option value="' + o.v + '"' + (pmtStatus === o.v ? ' selected' : '') + '>' + o.l + '</option>').join('')}
+          </select>
+          <a href="/admin/export/pagamentos-online.csv?start=${start}&end=${end}${pmtStatus !== 'all' ? '&status=' + pmtStatus : ''}" class="btn btn-ghost" style="font-size:12px;padding:6px 14px;white-space:nowrap">↓ Exportar CSV</a>
+        </div>
       </div>
       ${pmtTableHtml}
     `;
@@ -2355,6 +2372,27 @@ async function renderRelatorios(req: Request, res: Response) {
       <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--muted)">PRODUTOS MAIS ENCOMENDADOS</div>
       <table><thead><tr><th>Produto</th><th style="text-align:right">Qtd</th></tr></thead><tbody>${topProductsRows}</tbody></table>
     </div>`;
+  // Buscar cobranças vencidas (Asaas)
+  let overdueRows: any[] = [];
+  try {
+    const dbConn = await db.getDb();
+    if (dbConn && tenantId) {
+      const rawOverdue = await dbConn.execute(sql`
+        SELECT op.id, op.amount, op.dueDate, op.invoiceUrl, op.asaasPaymentId,
+               c.name AS clientName, c.phone AS clientPhone
+        FROM online_payments op
+        LEFT JOIN clients c ON c.id = op.clientId
+        WHERE op.tenantId = ${tenantId}
+          AND op.status = 'overdue'
+        ORDER BY op.dueDate ASC
+        LIMIT 100
+      `) as any;
+      overdueRows = Array.isArray(rawOverdue) ? (rawOverdue[0] as any[]) : (rawOverdue?.rows ?? []);
+    }
+  } catch (overdueErr: any) {
+    console.error("[relatorios] Erro ao buscar inadimpl\u00eancia:", overdueErr.message);
+  }
+
   const body = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
       <h2 style="font-size:20px;font-weight:700;margin:0">📊 Relatórios</h2>
@@ -2419,6 +2457,31 @@ async function renderRelatorios(req: Request, res: Response) {
     <div class="card" style="margin-bottom:24px">
       <div class="card-header"><div class="card-title">📦 Encomendas de Produtos</div></div>
       <div class="card-body">${ordersReportHtml}</div>
+    </div>
+    <!-- Inadimplência -->
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header" style="justify-content:space-between">
+        <div class="card-title">⚠️ Cobranças Vencidas (Asaas)</div>
+        <span style="font-size:12px;color:var(--muted)">${overdueRows.length} cliente${overdueRows.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="card-body">
+        ${overdueRows.length === 0
+          ? '<div style="text-align:center;padding:32px;color:var(--muted);font-size:14px">✅ Nenhuma cobrança vencida no momento.</div>'
+          : (() => {
+              const rows = overdueRows.map((o: any) => {
+                const daysOverdue = o.dueDate ? Math.floor((Date.now() - new Date(o.dueDate).getTime()) / 86400000) : '\u2014';
+                const phone = (o.clientPhone || '').replace(/\D/g, '');
+                const fullPhone = phone.startsWith('55') ? phone : '55' + phone;
+                const payLink = o.invoiceUrl || '';
+                const waMsg = encodeURIComponent('Olá ' + (o.clientName || '') + '! Identificamos uma cobrança em aberto no valor de R$ ' + parseFloat(o.amount).toFixed(2).replace('.', ',') + '. Acesse o link para regularizar: ' + payLink);
+                const waBtn = phone ? '<a href="https://wa.me/' + fullPhone + '?text=' + waMsg + '" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:#25D366;border-color:#25D36644">📲 Cobrar</a>' : '';
+                const dueDateFmt = o.dueDate ? new Date(o.dueDate + 'T12:00:00').toLocaleDateString('pt-BR') : '\u2014';
+                return '<tr><td style="font-weight:600">' + esc(o.clientName || '\u2014') + '</td><td style="color:var(--muted);font-size:12px">' + esc(o.clientPhone || '\u2014') + '</td><td style="text-align:right;font-weight:700;color:#F87171">R$ ' + parseFloat(o.amount).toFixed(2).replace('.', ',') + '</td><td style="color:var(--muted);font-size:12px">' + dueDateFmt + '</td><td style="text-align:center"><span style="background:#EF444422;color:#F87171;border:1px solid #EF444444;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">' + daysOverdue + ' dias</span></td><td>' + waBtn + '</td></tr>';
+              }).join('');
+              return '<table><thead><tr><th>Cliente</th><th>Telefone</th><th style="text-align:right">Valor</th><th>Vencimento</th><th>Dias em atraso</th><th>Ações</th></tr></thead><tbody>' + rows + '</tbody></table>';
+            })()
+        }
+      </div>
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";

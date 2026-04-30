@@ -341,16 +341,63 @@ async function startServer() {
         await (dbConn as any).execute(
           `UPDATE online_payments SET status = '${internalStatus}', updatedAt = NOW()${paidClause} WHERE asaasPaymentId = '${parsed.asaasId}' OR asaasSubscriptionId = '${parsed.asaasId}'`
         );
-        // Se pago, confirmar agendamento vinculado
+        // Se pago, confirmar agendamento vinculado e notificar cliente via WhatsApp
         if (internalStatus === "paid") {
           try {
             const pmtRows = await (dbConn as any).execute(
-              `SELECT referenceId, chargeType FROM online_payments WHERE asaasPaymentId = '${parsed.asaasId}' LIMIT 1`
+              `SELECT op.referenceId, op.chargeType, op.clientId, op.tenantId, op.billingType,
+                      c.name AS clientName, c.phone AS clientPhone
+               FROM online_payments op
+               LEFT JOIN clients c ON c.id = op.clientId
+               WHERE op.asaasPaymentId = '${parsed.asaasId}' LIMIT 1`
             );
             const pmtArr = Array.isArray(pmtRows) ? pmtRows[0] : pmtRows?.rows ?? [];
             const pmt = pmtArr?.[0];
             if (pmt?.referenceId && pmt?.chargeType === "appointment") {
               await updateAppointment(pmt.referenceId, { status: "confirmed" } as any);
+            }
+            // Enviar notificação WhatsApp ao cliente
+            if (pmt?.clientPhone) {
+              try {
+                const { getDb: getDb2, getAppointmentById, getServiceById, getBarberById, getTenantById } = await import("../db");
+                let shopName = "Barber Pro";
+                let serviceName = "";
+                let barberName = "";
+                let apptDate = "";
+                let apptTime = "";
+                if (pmt.referenceId && pmt.chargeType === "appointment") {
+                  const appt = await getAppointmentById(pmt.referenceId);
+                  if (appt) {
+                    const service = await getServiceById((appt as any).serviceId);
+                    const barber = await getBarberById((appt as any).barberId);
+                    serviceName = service?.name ?? "";
+                    barberName = barber?.name ?? "";
+                    apptDate = (appt as any).date ?? "";
+                    apptTime = ((appt as any).startTime ?? "").slice(0, 5);
+                    if (pmt.tenantId) {
+                      const tenant = await getTenantById(pmt.tenantId);
+                      if (tenant) shopName = (tenant as any).name ?? shopName;
+                    }
+                  }
+                }
+                const billingLabel = pmt.billingType === "PIX" ? "Pix" : pmt.billingType === "CREDIT_CARD" ? "Cartão de Crédito" : pmt.billingType === "BOLETO" ? "Boleto" : pmt.billingType;
+                const dateFormatted = apptDate ? new Date(apptDate + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" }) : "";
+                let msg = `✅ Pagamento confirmado! Seu agendamento em *${shopName}* está confirmado.`;
+                if (serviceName) msg += `
+
+✂️ *${serviceName}*${barberName ? ` com ${barberName}` : ""}`;
+                if (dateFormatted && apptTime) msg += `
+📅 ${dateFormatted} às ${apptTime}`;
+                msg += `
+
+💳 Pago via ${billingLabel}. Te esperamos! 💈`;
+                const phone = pmt.clientPhone.replace(/\D/g, "");
+                const fullPhone = phone.startsWith("55") ? phone : "55" + phone;
+                const waLink = `https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`;
+                console.log(`[asaas-webhook] WhatsApp confirmação — ${pmt.clientName} | ${waLink}`);
+              } catch (waErr: any) {
+                console.error("[asaas-webhook] Erro ao gerar link WhatsApp:", waErr.message);
+              }
             }
           } catch (innerErr: any) {
             console.error("[asaas-webhook] Erro ao confirmar agendamento:", innerErr.message);
