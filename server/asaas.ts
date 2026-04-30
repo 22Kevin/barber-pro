@@ -23,7 +23,7 @@ const ASAAS_API_KEY = process.env.ASAAS_API_KEY ?? "";
 const ASAAS_SANDBOX = process.env.ASAAS_SANDBOX === "true";
 const ASAAS_BASE_URL = ASAAS_SANDBOX
   ? "https://sandbox.asaas.com/api/v3"
-  : "https://api.asaas.com/api/v3";
+  : "https://api.asaas.com/v3";
 
 export const asaasEnabled = !!ASAAS_API_KEY;
 

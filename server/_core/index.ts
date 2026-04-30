@@ -312,6 +312,7 @@ async function startServer() {
         `CREATE TABLE IF NOT EXISTS subscription_plan_products (id INT PRIMARY KEY AUTO_INCREMENT, planId INT NOT NULL, productId INT NOT NULL, tenantId INT NOT NULL)`,
         `CREATE TABLE IF NOT EXISTS client_subscriptions (id INT PRIMARY KEY AUTO_INCREMENT, tenantId INT NOT NULL, planId INT NOT NULL, clientId INT NOT NULL, barberId INT, selectedServiceIds TEXT, selectedProductIds TEXT, status ENUM('active','cancelled','expired') NOT NULL DEFAULT 'active', paymentMethod ENUM('credit_card','pix','cash','debit_card') NOT NULL DEFAULT 'cash', price DECIMAL(10,2) NOT NULL, cycleStart DATE NOT NULL, cycleEnd DATE NOT NULL, usedRecurrences INT NOT NULL DEFAULT 0, cancelledAt TIMESTAMP NULL, cancelReason TEXT, autoRenew BOOLEAN NOT NULL DEFAULT FALSE, createdAt TIMESTAMP NOT NULL DEFAULT NOW(), updatedAt TIMESTAMP NOT NULL DEFAULT NOW())`,
         `CREATE TABLE IF NOT EXISTS subscription_appointments (id INT PRIMARY KEY AUTO_INCREMENT, subscriptionId INT NOT NULL, appointmentId INT NOT NULL, tenantId INT NOT NULL, recurrenceIndex INT NOT NULL DEFAULT 1)`,
+        `CREATE TABLE IF NOT EXISTS online_payments (id INT PRIMARY KEY AUTO_INCREMENT, tenantId INT NOT NULL, clientId INT NOT NULL, chargeType ENUM('product','appointment','subscription') NOT NULL, referenceId INT, asaasPaymentId VARCHAR(100), asaasSubscriptionId VARCHAR(100), asaasCustomerId VARCHAR(100), billingType ENUM('BOLETO','CREDIT_CARD','PIX','STORE') NOT NULL DEFAULT 'PIX', amount DECIMAL(10,2) NOT NULL, status ENUM('pending','paid','overdue','refunded','cancelled') NOT NULL DEFAULT 'pending', invoiceUrl TEXT, pixQrCode TEXT, pixCopyCola TEXT, dueDate DATE, paidAt TIMESTAMP NULL, createdAt TIMESTAMP NOT NULL DEFAULT NOW(), updatedAt TIMESTAMP NOT NULL DEFAULT NOW())`,
       ];
       for (const sql of sqls) {
         await db.execute(sql as any);
@@ -326,8 +327,8 @@ async function startServer() {
   app.post("/api/asaas/webhook", async (req, res) => {
     try {
       const { parseAsaasWebhook } = await import("../asaas");
+      const { getDb, updateAppointment } = await import("../db");
       const parsed = parseAsaasWebhook(req.body);
-      const { getDb } = await import("../db");
       const dbConn = await getDb();
       if (dbConn && parsed.asaasId) {
         // Mapear status Asaas → status interno
@@ -340,6 +341,21 @@ async function startServer() {
         await (dbConn as any).execute(
           `UPDATE online_payments SET status = '${internalStatus}', updatedAt = NOW()${paidClause} WHERE asaasPaymentId = '${parsed.asaasId}' OR asaasSubscriptionId = '${parsed.asaasId}'`
         );
+        // Se pago, confirmar agendamento vinculado
+        if (internalStatus === "paid") {
+          try {
+            const pmtRows = await (dbConn as any).execute(
+              `SELECT referenceId, chargeType FROM online_payments WHERE asaasPaymentId = '${parsed.asaasId}' LIMIT 1`
+            );
+            const pmtArr = Array.isArray(pmtRows) ? pmtRows[0] : pmtRows?.rows ?? [];
+            const pmt = pmtArr?.[0];
+            if (pmt?.referenceId && pmt?.chargeType === "appointment") {
+              await updateAppointment(pmt.referenceId, { status: "confirmed" } as any);
+            }
+          } catch (innerErr: any) {
+            console.error("[asaas-webhook] Erro ao confirmar agendamento:", innerErr.message);
+          }
+        }
       }
       res.json({ received: true });
     } catch (err: any) {

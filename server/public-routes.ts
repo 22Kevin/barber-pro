@@ -17,6 +17,7 @@ import { sql } from "drizzle-orm";
 import { sendBookingConfirmationEmail, sendBarberNotificationEmail, sendPasswordResetEmail } from "./email";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import bcrypt from "bcryptjs";
+import { asaasEnabled, getOrCreateAsaasCustomer, createAsaasCharge, createAsaasSubscription, asaasDefaultDueDate } from "./asaas";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function escapeHtml(str: string | null | undefined): string {
@@ -1866,40 +1867,106 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           '<a href="/pub/' + SLUG + '" style="display:block;margin-top:10px;text-align:center;color:var(--primary);font-size:13px">← Voltar para a página da barbearia</a>';
       }
 
-      async function payOnline(appointmentId, price) {
-        var btn = document.getElementById('btn-pay-online');
-        var status = document.getElementById('payment-status');
-        btn.disabled = true; btn.textContent = 'Aguarde...';
-        try {
-          var r = await fetch('/pub-api/mp-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: SLUG, appointmentId, price }) });
-          var data = await r.json();
-          if (!r.ok) throw new Error(data.error || 'Erro ao criar pagamento');
-          window.location.href = data.checkoutUrl;
-        } catch(e) { status.style.color = '#F87171'; status.textContent = e.message; btn.disabled = false; btn.textContent = '💳 Pagar Online'; }
-      }
-
+      // ─── Pagamento via Pix (Asaas) ───────────────────────────────────────────────
       async function payPix(appointmentId, price) {
         var btn = document.getElementById('btn-pay-pix');
         var status = document.getElementById('payment-status');
         btn.disabled = true; btn.textContent = 'Gerando QR Code...';
         try {
-          var r = await fetch('/pub-api/pix-checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: SLUG, appointmentId, price }) });
+          var r = await fetch('/pub-api/asaas-pix', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: SLUG, appointmentId, amount: price, description: 'Agendamento' }) });
           var data = await r.json();
           if (!r.ok) throw new Error(data.error || 'Erro ao gerar Pix');
-          status.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-top:8px">' +
-            '<div style="background:linear-gradient(135deg,#22C55E22 0%,#22C55E08 100%);border-bottom:1px solid #22C55E33;padding:16px;text-align:center">' +
-              '<div style="font-size:15px;font-weight:800;color:#4ADE80">📱 Pague via Pix</div>' +
-              '<div style="font-size:12px;color:var(--muted);margin-top:2px">Escaneie o QR Code ou copie o código</div>' +
-            '</div>' +
-            '<div style="padding:20px;text-align:center">' +
-              (data.qrCodeBase64 ? '<img src="data:image/png;base64,' + data.qrCodeBase64 + '" style="width:200px;height:200px;display:block;margin:0 auto 16px;border-radius:12px;border:2px solid var(--border)" />' : '') +
-              '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Código Pix (Copia e Cola)</div>' +
-              '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:11px;word-break:break-all;font-family:monospace;text-align:left;margin-bottom:12px">' + data.pixCode + '</div>' +
-              '<div style="font-size:12px;color:var(--muted);line-height:1.5">Após o pagamento, seu agendamento será confirmado automaticamente.</div>' +
-            '</div>' +
-          '</div>';
+          var paymentId = data.paymentId;
+          status.innerHTML =
+            '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-top:8px">' +
+              '<div style="background:linear-gradient(135deg,#22C55E22 0%,#22C55E08 100%);border-bottom:1px solid #22C55E33;padding:16px;text-align:center">' +
+                '<div style="font-size:15px;font-weight:800;color:#4ADE80">📱 Pague via Pix</div>' +
+                '<div style="font-size:12px;color:var(--muted);margin-top:2px">Escaneie o QR Code ou copie o código</div>' +
+              '</div>' +
+              '<div style="padding:20px;text-align:center">' +
+                (data.pixQrCode ? '<img src="data:image/png;base64,' + data.pixQrCode + '" style="width:200px;height:200px;display:block;margin:0 auto 16px;border-radius:12px;border:2px solid var(--border)" />' : '') +
+                '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Código Pix (Copia e Cola)</div>' +
+                '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:11px;word-break:break-all;font-family:monospace;text-align:left;margin-bottom:12px" id="pix-code">' + (data.pixCopyCola || '') + '</div>' +
+                '<button onclick="copyPixCode()" style="width:100%;padding:10px;background:var(--primary);color:#0A0A0A;font-size:13px;font-weight:800;border:none;border-radius:10px;cursor:pointer;margin-bottom:12px">📋 Copiar código Pix</button>' +
+                '<div style="font-size:12px;color:var(--muted);line-height:1.5" id="pix-confirm-msg">Após o pagamento, seu agendamento será confirmado automaticamente.</div>' +
+                '<button onclick="checkPixPayment(\'' + paymentId + '\')" style="margin-top:10px;width:100%;padding:10px;background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;border:1.5px solid var(--border);border-radius:10px;cursor:pointer">🔄 Verificar pagamento</button>' +
+              '</div>' +
+            '</div>';
           btn.style.display = 'none';
         } catch(e) { status.style.color = '#F87171'; status.textContent = e.message; btn.disabled = false; btn.textContent = '📱 Pagar via Pix'; }
+      }
+      function copyPixCode() {
+        var el = document.getElementById('pix-code');
+        if (el) { navigator.clipboard.writeText(el.textContent).then(function() { alert('Código Pix copiado!'); }); }
+      }
+      async function checkPixPayment(paymentId) {
+        try {
+          var r = await fetch('/pub-api/asaas-payment-status/' + paymentId);
+          var data = await r.json();
+          var msg = document.getElementById('pix-confirm-msg');
+          if (data.paid) {
+            if (msg) msg.innerHTML = '<span style="color:#4ADE80;font-weight:800">✅ Pagamento confirmado! Seu agendamento foi confirmado.</span>';
+          } else {
+            if (msg) msg.innerHTML = '<span style="color:var(--muted)">⏳ Pagamento ainda não confirmado. Tente novamente em alguns segundos.</span>';
+          }
+        } catch(e) { console.error('Erro ao verificar pagamento', e); }
+      }
+      // ─── Pagamento via Cartão (Asaas) ─────────────────────────────────────────
+      async function payOnline(appointmentId, price) {
+        var status = document.getElementById('payment-status');
+        // Mostrar formulário de cartão
+        status.innerHTML =
+          '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-top:8px">' +
+            '<div style="font-size:15px;font-weight:800;margin-bottom:16px">💳 Dados do Cartão</div>' +
+            '<div style="display:flex;flex-direction:column;gap:10px">' +
+              '<input id="cc-name" placeholder="Nome no cartão" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box" />' +
+              '<input id="cc-number" placeholder="Número do cartão" maxlength="19" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box" />' +
+              '<div style="display:flex;gap:10px">' +
+                '<input id="cc-month" placeholder="MM" maxlength="2" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;flex:1;box-sizing:border-box" />' +
+                '<input id="cc-year" placeholder="AAAA" maxlength="4" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;flex:1;box-sizing:border-box" />' +
+                '<input id="cc-cvv" placeholder="CVV" maxlength="4" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;flex:1;box-sizing:border-box" />' +
+              '</div>' +
+              '<input id="cc-cpf" placeholder="CPF do titular (somente números)" maxlength="14" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box" />' +
+              '<input id="cc-cep" placeholder="CEP do titular" maxlength="9" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box" />' +
+              '<input id="cc-addr-num" placeholder="Número do endereço" style="padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;width:100%;box-sizing:border-box" />' +
+              '<div id="cc-error" style="color:#F87171;font-size:13px;display:none"></div>' +
+              '<button id="cc-submit-btn" onclick="submitCard(' + appointmentId + ',' + price + ')" style="padding:14px;background:var(--primary);color:#0A0A0A;font-size:14px;font-weight:800;border:none;border-radius:12px;cursor:pointer;width:100%">Confirmar Pagamento</button>' +
+            '</div>' +
+          '</div>';
+      }
+      async function submitCard(appointmentId, price) {
+        var ccError = document.getElementById('cc-error');
+        ccError.style.display = 'none';
+        var name = document.getElementById('cc-name').value.trim();
+        var number = document.getElementById('cc-number').value.replace(/\s/g,'');
+        var month = document.getElementById('cc-month').value.trim();
+        var year = document.getElementById('cc-year').value.trim();
+        var cvv = document.getElementById('cc-cvv').value.trim();
+        var cpf = document.getElementById('cc-cpf').value.replace(/\D/g,'');
+        var cep = document.getElementById('cc-cep').value.replace(/\D/g,'');
+        var addrNum = document.getElementById('cc-addr-num').value.trim();
+        if (!name || !number || !month || !year || !cvv || !cpf) {
+          ccError.textContent = 'Preencha todos os campos obrigatórios.'; ccError.style.display = 'block'; return;
+        }
+        var btn = document.getElementById('cc-submit-btn'); btn.disabled = true; btn.textContent = 'Processando...';
+        try {
+          var r = await fetch('/pub-api/asaas-card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+            slug: SLUG, appointmentId, amount: price, description: 'Agendamento',
+            cardHolderName: name, cardNumber: number, cardExpMonth: month, cardExpYear: year, cardCvv: cvv,
+            holderCpfCnpj: cpf, holderPostalCode: cep, holderAddressNumber: addrNum,
+          }) });
+          var data = await r.json();
+          if (!r.ok) throw new Error(data.error || 'Erro ao processar cartão');
+          var status = document.getElementById('payment-status');
+          status.innerHTML = '<div style="text-align:center;padding:20px;background:var(--surface);border:1px solid #22C55E33;border-radius:16px;margin-top:8px">' +
+            '<div style="font-size:32px;margin-bottom:8px">✅</div>' +
+            '<div style="font-size:16px;font-weight:800;color:#4ADE80">Pagamento confirmado!</div>' +
+            '<div style="font-size:13px;color:var(--muted);margin-top:4px">Seu agendamento foi confirmado com sucesso.</div>' +
+          '</div>';
+        } catch(e) {
+          ccError.textContent = e.message; ccError.style.display = 'block';
+          btn.disabled = false; btn.textContent = 'Confirmar Pagamento';
+        }
       }
     </script>
   `;
@@ -4450,6 +4517,166 @@ export function registerPublicRoutes(app: Express): void {
       });
     } catch (e: any) {
       console.error("[Pix Checkout]", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /pub-api/asaas-pix — Criar cobrança Pix via Asaas
+  app.post("/pub-api/asaas-pix", async (req: Request, res: Response) => {
+    try {
+      const { slug, appointmentId, amount, clientName, clientEmail, clientPhone, clientCpf, description } = req.body;
+      if (!slug || !amount) { res.status(400).json({ error: "slug e amount são obrigatórios" }); return; }
+      if (!asaasEnabled) { res.status(503).json({ error: "Pagamento online não configurado. Configure ASAAS_API_KEY." }); return; }
+      // Verificar sessão do cliente
+      const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+      let clientInfo: any = null;
+      if (sessionData) {
+        try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {}
+      }
+      const clientId = clientInfo?.id ?? 0;
+      // Criar/recuperar cliente no Asaas
+      const asaasCustomerId = await getOrCreateAsaasCustomer({
+        name: clientName || clientInfo?.name || "Cliente",
+        email: clientEmail || clientInfo?.email,
+        mobilePhone: clientPhone || clientInfo?.phone,
+        cpfCnpj: clientCpf,
+        externalReference: clientId ? String(clientId) : undefined,
+      });
+      // Criar cobrança Pix
+      const charge = await createAsaasCharge({
+        customer: asaasCustomerId,
+        billingType: "PIX",
+        value: Number(amount),
+        dueDate: asaasDefaultDueDate(),
+        description: description || "Agendamento Barber Pro",
+        externalReference: appointmentId ? String(appointmentId) : undefined,
+      });
+      // Salvar no banco
+      const dbConn = await db.getDb();
+      if (dbConn && clientId) {
+        const tenant = await db.getTenantBySlug(slug);
+        if (tenant) {
+          await dbConn.execute(sql`
+            INSERT INTO online_payments (tenantId, clientId, chargeType, referenceId, asaasPaymentId, asaasCustomerId, billingType, amount, status, invoiceUrl, pixQrCode, pixCopyCola, dueDate)
+            VALUES (${tenant.id}, ${clientId}, 'appointment', ${appointmentId ?? null}, ${charge.id}, ${asaasCustomerId}, 'PIX', ${Number(amount)}, 'pending', ${charge.invoiceUrl ?? null}, ${charge.pixQrCode ?? null}, ${charge.pixCopyCola ?? null}, ${charge.dueDate})
+          `);
+        }
+      }
+      res.json({
+        ok: true,
+        paymentId: charge.id,
+        pixQrCode: charge.pixQrCode,
+        pixCopyCola: charge.pixCopyCola,
+        invoiceUrl: charge.invoiceUrl,
+        value: charge.value,
+        dueDate: charge.dueDate,
+      });
+    } catch (e: any) {
+      console.error("[Asaas Pix]", e?.response?.data || e.message);
+      res.status(500).json({ error: e?.response?.data?.errors?.[0]?.description || e.message });
+    }
+  });
+
+  // POST /pub-api/asaas-card — Criar cobrança por cartão de crédito via Asaas
+  app.post("/pub-api/asaas-card", async (req: Request, res: Response) => {
+    try {
+      const { slug, appointmentId, amount, clientName, clientEmail, clientPhone, clientCpf, description,
+              cardHolderName, cardNumber, cardExpMonth, cardExpYear, cardCvv,
+              holderName, holderCpfCnpj, holderPostalCode, holderAddressNumber, holderPhone } = req.body;
+      if (!slug || !amount || !cardNumber) { res.status(400).json({ error: "Dados incompletos" }); return; }
+      if (!asaasEnabled) { res.status(503).json({ error: "Pagamento online não configurado." }); return; }
+      const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+      let clientInfo: any = null;
+      if (sessionData) {
+        try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {}
+      }
+      const clientId = clientInfo?.id ?? 0;
+      const asaasCustomerId = await getOrCreateAsaasCustomer({
+        name: clientName || clientInfo?.name || "Cliente",
+        email: clientEmail || clientInfo?.email,
+        mobilePhone: clientPhone || clientInfo?.phone,
+        cpfCnpj: clientCpf,
+        externalReference: clientId ? String(clientId) : undefined,
+      });
+      // Criar cobrança com cartão de crédito (tokenização)
+      const { default: axios } = await import("axios");
+      const cardRes = await axios.post(
+        `https://api.asaas.com/v3/payments`,
+        {
+          customer: asaasCustomerId,
+          billingType: "CREDIT_CARD",
+          value: Number(amount),
+          dueDate: asaasDefaultDueDate(),
+          description: description || "Agendamento Barber Pro",
+          externalReference: appointmentId ? String(appointmentId) : undefined,
+          creditCard: {
+            holderName: cardHolderName,
+            number: cardNumber.replace(/\s/g, ""),
+            expiryMonth: cardExpMonth,
+            expiryYear: cardExpYear,
+            ccv: cardCvv,
+          },
+          creditCardHolderInfo: {
+            name: holderName || cardHolderName,
+            cpfCnpj: holderCpfCnpj || clientCpf,
+            postalCode: holderPostalCode,
+            addressNumber: holderAddressNumber,
+            phone: holderPhone || clientPhone || clientInfo?.phone,
+          },
+        },
+        { headers: { "access_token": process.env.ASAAS_API_KEY ?? "", "Content-Type": "application/json" } }
+      );
+      const charge = cardRes.data;
+      const dbConn = await db.getDb();
+      if (dbConn && clientId) {
+        const tenant = await db.getTenantBySlug(slug);
+        if (tenant) {
+          await dbConn.execute(sql`
+            INSERT INTO online_payments (tenantId, clientId, chargeType, referenceId, asaasPaymentId, asaasCustomerId, billingType, amount, status, invoiceUrl, dueDate)
+            VALUES (${tenant.id}, ${clientId}, 'appointment', ${appointmentId ?? null}, ${charge.id}, ${asaasCustomerId}, 'CREDIT_CARD', ${Number(amount)}, ${charge.status === 'CONFIRMED' ? 'paid' : 'pending'}, ${charge.invoiceUrl ?? null}, ${charge.dueDate})
+          `);
+        }
+      }
+      if (charge.status === "CONFIRMED" || charge.status === "RECEIVED") {
+        if (appointmentId) {
+          await db.updateAppointment(Number(appointmentId), { status: "confirmed" } as any);
+        }
+      }
+      res.json({ ok: true, paymentId: charge.id, status: charge.status, invoiceUrl: charge.invoiceUrl });
+    } catch (e: any) {
+      console.error("[Asaas Card]", e?.response?.data || e.message);
+      const errMsg = e?.response?.data?.errors?.[0]?.description || e.message;
+      res.status(500).json({ error: errMsg });
+    }
+  });
+
+  // GET /pub-api/asaas-payment-status/:paymentId — Verificar status de pagamento Asaas
+  app.get("/pub-api/asaas-payment-status/:paymentId", async (req: Request, res: Response) => {
+    try {
+      const { paymentId } = req.params;
+      if (!asaasEnabled) { res.status(503).json({ error: "Asaas não configurado" }); return; }
+      const { default: axios } = await import("axios");
+      const r = await axios.get(`https://api.asaas.com/v3/payments/${paymentId}`,
+        { headers: { "access_token": process.env.ASAAS_API_KEY ?? "" } });
+      const status = r.data?.status;
+      const paid = status === "RECEIVED" || status === "CONFIRMED";
+      // Se pago, atualizar banco
+      if (paid) {
+        const dbConn = await db.getDb();
+        if (dbConn) {
+          await dbConn.execute(sql`UPDATE online_payments SET status = 'paid', paidAt = NOW() WHERE asaasPaymentId = ${paymentId} AND status = 'pending'`);
+          // Atualizar agendamento se existir
+          const pmtRows = await dbConn.execute(sql`SELECT referenceId, chargeType FROM online_payments WHERE asaasPaymentId = ${paymentId} LIMIT 1`) as any;
+          const pmtArr = Array.isArray(pmtRows) ? pmtRows[0] : pmtRows?.rows ?? [];
+          const pmt = pmtArr?.[0];
+          if (pmt?.referenceId && pmt?.chargeType === "appointment") {
+            await db.updateAppointment(pmt.referenceId, { status: "confirmed" } as any);
+          }
+        }
+      }
+      res.json({ ok: true, status, paid });
+    } catch (e: any) {
+      console.error("[Asaas Status]", e?.response?.data || e.message);
       res.status(500).json({ error: e.message });
     }
   });
