@@ -513,6 +513,82 @@ async function renderDashboard(req: Request, res: Response) {
       </div>
     </div>
 
+    <!-- Card: Baixe o App (detecção de dispositivo via JS) -->
+    <div class="card" id="download-app-card" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border:1px solid #3d5a8044;display:none">
+      <div class="card-header">
+        <div class="card-title">📱 Baixe o App no Celular</div>
+        <button onclick="document.getElementById('download-app-card').style.display='none';localStorage.setItem('hideAppCard','1')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px" title="Fechar">×</button>
+      </div>
+      <div class="card-body">
+        <!-- Android -->
+        <div id="app-android" style="display:none">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Gerencie sua barbearia de onde estiver. Instale o app Barber Pro no seu Android:</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+            <a id="play-store-link" href="https://play.google.com/store/apps/details?id=space.manus.barber.app" target="_blank" style="display:inline-flex;align-items:center;gap:10px;background:#01875f;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:600;font-size:14px">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M3.18 23.76c.3.17.65.19.96.06l12.45-7.2-2.78-2.78-10.63 9.92zM.5 1.4C.19 1.73 0 2.24 0 2.9v18.2c0 .66.19 1.17.5 1.5l.08.07 10.2-10.2v-.24L.58 1.33.5 1.4zM20.27 10.3l-2.9-1.68-3.1 3.1 3.1 3.1 2.92-1.69c.83-.48.83-1.26-.02-1.83zM4.14.24L16.59 7.44l-2.78 2.78L3.18.24C3.49.11 3.84.13 4.14.24z"/></svg>
+              Google Play
+            </a>
+            <span style="font-size:12px;color:var(--muted)">ou</span>
+            <a href="/admin/download-apk" style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);color:var(--foreground);padding:12px 20px;border-radius:12px;text-decoration:none;font-size:13px;border:1px solid var(--border)">
+              ⬇️ Baixar APK direto
+            </a>
+          </div>
+        </div>
+        <!-- iPhone / iOS -->
+        <div id="app-ios" style="display:none">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Você está usando um iPhone. O app Barber Pro está disponível de duas formas:</p>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="background:var(--surface2);border-radius:12px;padding:14px 16px;border:1px solid var(--border)">
+              <div style="font-weight:600;font-size:13px;margin-bottom:4px">🌐 Usar pelo navegador (recomendado)</div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Acesse o painel completo pelo Safari — sem instalar nada. Toque em <strong>Compartilhar → Adicionar à Tela de Início</strong> para criar um atalho.</div>
+              <a href="/admin" style="display:inline-flex;align-items:center;gap:6px;background:var(--primary);color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:600">Acessar painel →</a>
+            </div>
+            <div style="background:var(--surface2);border-radius:12px;padding:14px 16px;border:1px solid var(--border)">
+              <div style="font-weight:600;font-size:13px;margin-bottom:4px">📲 App nativo (em breve)</div>
+              <div style="font-size:12px;color:var(--muted)">O app para iPhone estará disponível na App Store em breve. Você será notificado por e-mail quando estiver disponível.</div>
+            </div>
+          </div>
+        </div>
+        <!-- Desktop -->
+        <div id="app-desktop" style="display:none">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Escaneie o QR Code com seu celular para baixar o app Barber Pro:</p>
+          <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+            <div style="background:#fff;padding:10px;border-radius:12px;border:1px solid var(--border)">
+              <img src="/admin/app-qrcode" width="140" height="140" alt="QR Code App" style="display:block" />
+            </div>
+            <div style="flex:1;min-width:200px">
+              <div style="margin-bottom:12px">
+                <div style="font-weight:600;font-size:13px;margin-bottom:4px">📱 Android</div>
+                <a id="play-store-link-desktop" href="https://play.google.com/store/apps/details?id=space.manus.barber.app" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:#01875f;color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:600">Google Play →</a>
+              </div>
+              <div>
+                <div style="font-weight:600;font-size:13px;margin-bottom:4px">🍎 iPhone</div>
+                <span style="font-size:12px;color:var(--muted)">App Store — em breve</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+    (function(){
+      if(localStorage.getItem('hideAppCard')==='1') return;
+      var ua=navigator.userAgent||'';
+      var isAndroid=/Android/i.test(ua);
+      var isIOS=/iPhone|iPad|iPod/i.test(ua);
+      var card=document.getElementById('download-app-card');
+      if(!card) return;
+      card.style.display='';
+      if(isAndroid){
+        document.getElementById('app-android').style.display='';
+      } else if(isIOS){
+        document.getElementById('app-ios').style.display='';
+      } else {
+        document.getElementById('app-desktop').style.display='';
+      }
+    })();
+    </script>
+
     ${dashBookingUrl ? `
     <div class="card" style="background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);border:1px solid var(--gold)44">
       <div class="card-header">
@@ -5877,10 +5953,33 @@ export function registerAdminRoutes(app: Express): void {
           }
         }
       }
-      res.json({ success: true });
+       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
+  // GET /admin/app-qrcode — Gera QR Code para download do app (Play Store)
+  app.get("/admin/app-qrcode", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const playStoreUrl = process.env.PLAY_STORE_URL ?? "https://play.google.com/store/apps/details?id=space.manus.barber.app";
+      const QRCode = await import("qrcode");
+      const qrBuffer = await QRCode.default.toBuffer(playStoreUrl, {
+        width: 280,
+        margin: 2,
+        color: { dark: "#000000", light: "#FFFFFF" },
+      });
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.send(qrBuffer);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // GET /admin/download-apk — Redireciona para o APK ou Play Store
+  app.get("/admin/download-apk", requireAdminAuth, (req: Request, res: Response) => {
+    const apkUrl = process.env.APK_DOWNLOAD_URL ?? process.env.PLAY_STORE_URL ?? "https://play.google.com/store/apps/details?id=space.manus.barber.app";
+    res.redirect(apkUrl);
+  });
 }
