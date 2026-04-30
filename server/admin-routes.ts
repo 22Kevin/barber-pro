@@ -19,6 +19,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import * as db from "./db";
 import { sql } from "drizzle-orm";
+import { asaasEnabled } from "./asaas";
+import axios from "axios";
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
 
@@ -752,6 +754,7 @@ async function renderAgenda(req: Request, res: Response) {
                       ${a.status === "in_progress" || a.status === "confirmed" ? `<button onclick="updateStatus(${a.id},'completed')" style="background:#22C55E;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-right:4px">Concluir</button>` : ""}
                       ${a.status !== "cancelled" && a.status !== "completed" ? `<button onclick="updateStatus(${a.id},'cancelled')" style="background:#EF4444;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-right:4px">Cancelar</button>` : ""}
                       ${a.status === "confirmed" || a.status === "scheduled" ? `<button onclick="updateStatus(${a.id},'no_show')" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px">Não veio</button>` : ""}
+                      ${(a.status === "scheduled" || a.status === "confirmed") && tenantSlug ? `<button onclick="resendPaymentLink(${a.id},'${tenantSlug}',this)" style="background:#25D36622;color:#25D366;border:1px solid #25D36644;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-left:4px" title="Reenviar link de pagamento pelo WhatsApp">💳 Link Pgto</button>` : ""}
                     </td>
                   </tr>
                 `).join("")}
@@ -789,13 +792,39 @@ async function renderAgenda(req: Request, res: Response) {
                   setTimeout(() => location.reload(), 2000);
                 } catch(e) { alert("Erro ao atualizar status"); }
               }
+              async function resendPaymentLink(appointmentId, slug, btn) {
+                try {
+                  btn.disabled = true; btn.textContent = '⏳ Buscando...';
+                  const r = await fetch("/admin-api/payment-link", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ appointmentId, slug })
+                  });
+                  const data = await r.json();
+                  if (!r.ok) throw new Error(data.error || "Erro ao buscar link");
+                  const link = data.paymentUrl;
+                  const clientPhone = data.clientPhone ? data.clientPhone.replace(/\D/g, '') : '';
+                  const msg = encodeURIComponent("Olá, " + (data.clientName || "cliente") + "! Segue o link para pagamento do seu agendamento em " + (data.shopName || "nossa barbearia") + ":\n" + link);
+                  const waUrl = clientPhone
+                    ? "https://wa.me/55" + clientPhone + "?text=" + msg
+                    : "https://wa.me/?text=" + msg;
+                  window.open(waUrl, "_blank");
+                  btn.disabled = false; btn.textContent = "💳 Link Pgto";
+                } catch(e) {
+                  alert("Erro: " + e.message);
+                  btn.disabled = false; btn.textContent = "💳 Link Pgto";
+                }
+              }
             </script>`
         }
       </div>
     </div>
   `;
 
-  const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+  const tenantObj = barber?.tenantId ? await db.getTenantById(barber.tenantId) : null;
+  const _tp = (tenantObj as any)?.plan ?? "";
+  const tenantSlug = (tenantObj as any)?.slug ?? "";
   res.send(adminLayout(`Agenda — ${fmtDate(dateStr)}`, "agenda", body, barber?.name, _tp));
 }
 
@@ -1585,47 +1614,76 @@ async function renderFinanceiro(req: Request, res: Response) {
     };
     const fmtDate = (d: any) => d ? new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
     const fmtBRL = (v: number) => 'R$ ' + v.toFixed(2).replace('.', ',');
+    const tenantForSlug = tenantId ? await db.getTenantById(tenantId) : null;
+    const tenantSlug = (tenantForSlug as any)?.slug ?? '';
+    // Build payments table HTML separately to avoid nested template literals (esbuild compat)
+    let pmtTableHtml = '';
+    if (pmtRows.length === 0) {
+      pmtTableHtml = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:14px">Nenhum pagamento online no período.</div>';
+    } else {
+      const pmtRowsHtml = pmtRows.map((p: any, i: number) => {
+        const payLink = tenantSlug && p.referenceId ? '/pub/' + tenantSlug + '/pagar/' + p.referenceId : (p.invoiceUrl || '');
+        const cancelBtn = (p.status === 'pending' && p.asaasPaymentId)
+          ? '<button onclick="cancelAsaasCharge(\'' + p.asaasPaymentId + '\',this)" style="background:#EF444422;color:#F87171;border:1px solid #EF444444;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">✖ Cancelar</button>'
+          : '';
+        const resendBtn = (p.status === 'pending' && payLink)
+          ? '<a href="https://wa.me/?text=' + encodeURIComponent('Olá! Segue o link para pagamento do seu agendamento: ' + payLink) + '" target="_blank" rel="noopener" style="display:inline-block;background:#25D36622;color:#25D366;border:1px solid #25D36644;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;margin-right:4px">📲 WhatsApp</a>'
+          : '';
+        const rowBg = i % 2 === 0 ? 'transparent' : 'var(--surface2)';
+        return '<tr id="pmt-row-' + p.asaasPaymentId + '" style="border-bottom:1px solid var(--border);background:' + rowBg + '">'
+          + '<td style="padding:12px 16px;color:var(--text);font-weight:600">' + (p.clientName || '—') + '</td>'
+          + '<td style="padding:12px 16px;color:var(--text)">' + billingLabel(p.billingType) + '</td>'
+          + '<td style="padding:12px 16px;text-align:right;font-weight:700;color:var(--text)">' + fmtBRL(parseFloat(p.amount)) + '</td>'
+          + '<td style="padding:12px 16px;text-align:center" id="pmt-status-' + p.asaasPaymentId + '">' + statusBadge(p.status) + '</td>'
+          + '<td style="padding:12px 16px;color:var(--muted);font-size:12px">' + fmtDate(p.createdAt) + '</td>'
+          + '<td style="padding:12px 16px;color:var(--muted);font-size:12px">' + fmtDate(p.paidAt) + '</td>'
+          + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">' + resendBtn + cancelBtn + '</td>'
+          + '</tr>';
+      }).join('');
+      pmtTableHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">'
+        + '<div style="overflow-x:auto">'
+        + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+        + '<thead><tr style="border-bottom:1px solid var(--border);background:var(--surface2)">'
+        + '<th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Cliente</th>'
+        + '<th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Método</th>'
+        + '<th style="padding:12px 16px;text-align:right;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Valor</th>'
+        + '<th style="padding:12px 16px;text-align:center;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Status</th>'
+        + '<th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Data</th>'
+        + '<th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Pago em</th>'
+        + '<th style="padding:12px 16px;text-align:center;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Ações</th>'
+        + '</tr></thead>'
+        + '<tbody>' + pmtRowsHtml + '</tbody>'
+        + '</table></div></div>'
+        + '<script>'
+        + 'async function cancelAsaasCharge(asaasPaymentId, btn) {'
+        + '  if (!confirm("Cancelar esta cobrança no Asaas? Esta ação não pode ser desfeita.")) return;'
+        + '  btn.disabled = true; btn.textContent = "⏳ Cancelando...";'
+        + '  try {'
+        + '    const r = await fetch("/admin-api/cancel-asaas-charge", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ asaasPaymentId }) });'
+        + '    const data = await r.json();'
+        + '    if (!r.ok) throw new Error(data.error || "Erro ao cancelar");'
+        + '    const statusCell = document.getElementById("pmt-status-" + asaasPaymentId);'
+        + '    if (statusCell) statusCell.innerHTML = "<span style=\"background:#6B728022;color:#9BA1A6;border:1px solid #6B728044;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700\">✖ Cancelado</span>";'
+        + '    btn.style.display = "none";'
+        + '  } catch(e) { alert("Erro: " + e.message); btn.disabled = false; btn.textContent = "✖ Cancelar"; }'
+        + '}'
+        + '</script>';
+    }
     tabPagamentos = `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
-          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">💰 Total Recebido</div>
-          <div style="font-size:22px;font-weight:900;color:#4ADE80">${fmtBRL(totalPaid)}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-width:240px">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">💰 Total Recebido</div>
+            <div style="font-size:22px;font-weight:900;color:#4ADE80">${fmtBRL(totalPaid)}</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">⏳ Pendente</div>
+            <div style="font-size:22px;font-weight:900;color:#FBBF24">${fmtBRL(totalPending)}</div>
+          </div>
         </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
-          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">⏳ Pendente</div>
-          <div style="font-size:22px;font-weight:900;color:#FBBF24">${fmtBRL(totalPending)}</div>
-        </div>
+        <a href="/admin/export/pagamentos-online.csv?start=${start}&end=${end}" class="btn btn-ghost" style="font-size:12px;padding:6px 14px;white-space:nowrap;align-self:flex-end">↓ Exportar CSV</a>
       </div>
-      ${pmtRows.length === 0 ? '<div style="text-align:center;padding:40px;color:var(--muted);font-size:14px">Nenhum pagamento online no período.</div>' : `
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
-        <div style="overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:13px">
-            <thead>
-              <tr style="border-bottom:1px solid var(--border);background:var(--surface2)">
-                <th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Cliente</th>
-                <th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Método</th>
-                <th style="padding:12px 16px;text-align:right;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Valor</th>
-                <th style="padding:12px 16px;text-align:center;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Status</th>
-                <th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Data</th>
-                <th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Pago em</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${pmtRows.map((p: any, i: number) => `
-                <tr style="border-bottom:1px solid var(--border);background:${i % 2 === 0 ? 'transparent' : 'var(--surface2)'}">
-                  <td style="padding:12px 16px;color:var(--text);font-weight:600">${p.clientName || '—'}</td>
-                  <td style="padding:12px 16px;color:var(--text)">${billingLabel(p.billingType)}</td>
-                  <td style="padding:12px 16px;text-align:right;font-weight:700;color:var(--text)">${fmtBRL(parseFloat(p.amount))}</td>
-                  <td style="padding:12px 16px;text-align:center">${statusBadge(p.status)}</td>
-                  <td style="padding:12px 16px;color:var(--muted);font-size:12px">${fmtDate(p.createdAt)}</td>
-                  <td style="padding:12px 16px;color:var(--muted);font-size:12px">${fmtDate(p.paidAt)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      `}
+      ${pmtTableHtml}
     `;
   }
     const tabs = [
@@ -5545,6 +5603,44 @@ export function registerAdminRoutes(app: Express): void {
     res.send("\uFEFF" + csv);
   });
 
+  // GET /admin/export/pagamentos-online.csv — Exportar pagamentos online em CSV
+  app.get("/admin/export/pagamentos-online.csv", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number; role: string };
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    const dbConn = await db.getDb();
+    if (!dbConn || !tenantId) { res.status(400).send("Tenant não encontrado"); return; }
+    const startParam = (req.query.start as string) || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+    const endParam = (req.query.end as string) || new Date().toISOString().slice(0, 10);
+    const raw = await dbConn.execute(sql`
+      SELECT op.id, op.billingType, op.amount, op.status, op.createdAt, op.paidAt, op.invoiceUrl,
+             op.chargeType, op.referenceId, op.asaasPaymentId,
+             c.name AS clientName, c.phone AS clientPhone
+      FROM online_payments op
+      LEFT JOIN clients c ON c.id = op.clientId
+      WHERE op.tenantId = ${tenantId}
+        AND op.createdAt >= ${startParam} AND op.createdAt <= CONCAT(${endParam}, ' 23:59:59')
+      ORDER BY op.createdAt DESC
+      LIMIT 1000
+    `) as any;
+    const rows = Array.isArray(raw) ? (raw[0] as any[]) : (raw?.rows ?? []);
+    const billingLabel = (bt: string) => bt === 'PIX' ? 'Pix' : bt === 'CREDIT_CARD' ? 'Cartão de Crédito' : bt === 'BOLETO' ? 'Boleto' : bt;
+    const statusLabel = (s: string) => ({ paid: 'Pago', pending: 'Pendente', overdue: 'Vencido', refunded: 'Estornado', cancelled: 'Cancelado' }[s] ?? s);
+    const fmtDateCsv = (d: any) => d ? new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    const csvRows = [
+      ["ID", "Cliente", "Telefone", "Método de Pagamento", "Valor (R$)", "Status", "ID Asaas", "Data de Criação", "Data de Pagamento", "Link da Fatura"],
+      ...rows.map((p: any) => [
+        p.id, p.clientName || '', p.clientPhone || '',
+        billingLabel(p.billingType), parseFloat(p.amount).toFixed(2).replace('.', ','),
+        statusLabel(p.status), p.asaasPaymentId || '',
+        fmtDateCsv(p.createdAt), fmtDateCsv(p.paidAt), p.invoiceUrl || ''
+      ])
+    ];
+    const csv = csvRows.map((r: any[]) => r.map((v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(",")).join("\n");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="pagamentos-online-${startParam}-${endParam}.csv"`);
+    res.send("﻿" + csv);
+  });
   // GET /admin/export/relatorio.pdf — Exportar DRE simplificado em PDF
   app.get("/admin/export/relatorio.pdf", requireAdminAuth, async (req: Request, res: Response) => {
     try {
@@ -6054,6 +6150,74 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  // POST /admin-api/cancel-asaas-charge — Cancelar cobrança Asaas pendente
+  app.post("/admin-api/cancel-asaas-charge", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const { asaasPaymentId } = req.body;
+      if (!asaasPaymentId) { res.status(400).json({ error: "asaasPaymentId é obrigatório" }); return; }
+      if (!asaasEnabled) { res.status(503).json({ error: "Asaas não configurado" }); return; }
+      const ASAAS_API_KEY = process.env.ASAAS_API_KEY ?? "";
+      const ASAAS_SANDBOX = process.env.ASAAS_SANDBOX === "true";
+      const ASAAS_BASE_URL = ASAAS_SANDBOX ? "https://sandbox.asaas.com/api/v3" : "https://api.asaas.com/v3";
+      await axios.delete(`${ASAAS_BASE_URL}/payments/${asaasPaymentId}`, {
+        headers: { "access_token": ASAAS_API_KEY, "Content-Type": "application/json" },
+        timeout: 15000,
+      });
+      const dbConn = await db.getDb();
+      if (dbConn) {
+        await dbConn.execute(sql`UPDATE online_payments SET status = 'cancelled', updatedAt = NOW() WHERE asaasPaymentId = ${asaasPaymentId}`);
+      }
+      res.json({ ok: true });
+    } catch (e: any) {
+      const msg = e?.response?.data?.errors?.[0]?.description || e?.response?.data?.description || e.message;
+      console.error("[cancel-asaas-charge]", msg);
+      res.status(500).json({ error: msg });
+    }
+  });
+  // POST /admin-api/payment-link — Buscar ou gerar link de pagamento para reenvio por WhatsApp
+  app.post("/admin-api/payment-link", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const { appointmentId, slug } = req.body;
+      if (!appointmentId || !slug) { res.status(400).json({ error: "appointmentId e slug são obrigatórios" }); return; }
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const tenantId = barber?.tenantId ?? null;
+      // Buscar dados do agendamento
+      const appt = await db.getAppointmentById(parseInt(appointmentId));
+      if (!appt) { res.status(404).json({ error: "Agendamento não encontrado" }); return; }
+      // Buscar dados do cliente
+      const client = appt.clientId ? await db.getClientById(appt.clientId) : null;
+      // Buscar configurações da loja
+      const settings = await db.getShopSettings(tenantId);
+      // Verificar se já existe pagamento pendente no banco
+      const dbConn = await db.getDb();
+      let existingPayment: any = null;
+      if (dbConn && tenantId) {
+        const raw = await dbConn.execute(sql`
+          SELECT invoiceUrl, asaasPaymentId FROM online_payments
+          WHERE tenantId = ${tenantId} AND referenceId = ${parseInt(appointmentId)} AND status = 'pending'
+          ORDER BY createdAt DESC LIMIT 1
+        `) as any;
+        const rows = Array.isArray(raw) ? (raw[0] as any[]) : (raw?.rows ?? []);
+        if (rows.length > 0) existingPayment = rows[0];
+      }
+      // Montar URL de pagamento — usar invoiceUrl do Asaas se disponível, senão link da página pública
+      const baseUrl = process.env.PUBLIC_URL || `https://usebarberpro.com`;
+      const publicPayUrl = `${baseUrl}/pub/${slug}`;
+      const paymentUrl = existingPayment?.invoiceUrl || publicPayUrl;
+      res.json({
+        ok: true,
+        paymentUrl,
+        clientName: (client as any)?.name || '',
+        clientPhone: (client as any)?.phone || '',
+        shopName: settings?.shopName || '',
+        hasExistingCharge: !!existingPayment,
+      });
+    } catch (e: any) {
+      console.error("[payment-link]", e.message);
+      res.status(500).json({ error: e.message });
+    }
+  });
   // GET /admin/download-apk — Redireciona para o APK ou Play Store
   app.get("/admin/download-apk", requireAdminAuth, (req: Request, res: Response) => {
     const apkUrl = process.env.APK_DOWNLOAD_URL ?? process.env.PLAY_STORE_URL ?? "https://play.google.com/store/apps/details?id=space.manus.barber.app";
