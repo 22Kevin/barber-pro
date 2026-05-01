@@ -4,10 +4,13 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "node dist/index.js"
+# Health check: Railway verifica este endpoint após o deploy
+# Se não responder em 300s, considera o deploy falho e faz rollback
 healthcheckPath = "/api/health"
-healthcheckTimeout = 60
+healthcheckTimeout = 300
+# Reinício automático em caso de crash
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
+restartPolicyMaxRetries = 5
 
 [[services]]
 name = "barber-pro-server"

@@ -40,7 +40,42 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+// ─── Verificação de variáveis de ambiente obrigatórias ───────────────────────
+function checkRequiredEnvVars() {
+  const required: Record<string, string> = {
+    DATABASE_URL: "String de conexão com o banco de dados MySQL",
+    JWT_SECRET: "Chave secreta para assinatura de tokens JWT",
+  };
+  const optional: Record<string, string> = {
+    ASAAS_API_KEY: "Chave de API do Asaas (pagamentos online)",
+    SMTP_HOST: "Servidor SMTP para envio de e-mails",
+    SMTP_USER: "Usuário SMTP",
+    SMTP_PASS: "Senha SMTP",
+  };
+
+  let hasError = false;
+  for (const [key, desc] of Object.entries(required)) {
+    if (!process.env[key]) {
+      console.error(`[ENV] ❌ OBRIGATÓRIO ausente: ${key} — ${desc}`);
+      hasError = true;
+    } else {
+      console.log(`[ENV] ✅ ${key} configurado`);
+    }
+  }
+  for (const [key, desc] of Object.entries(optional)) {
+    if (!process.env[key]) {
+      console.warn(`[ENV] ⚠️  Opcional ausente: ${key} — ${desc}`);
+    } else {
+      console.log(`[ENV] ✅ ${key} configurado`);
+    }
+  }
+  if (hasError && process.env.NODE_ENV === "production") {
+    console.error("[ENV] Variáveis obrigatórias ausentes. O servidor pode não funcionar corretamente.");
+  }
+}
+
 async function startServer() {
+  checkRequiredEnvVars();
   const app = express();
   const server = createServer(app);
 
@@ -128,8 +163,26 @@ async function startServer() {
     res.sendFile(landingPath);
   });
 
-  app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, timestamp: Date.now() });
+  app.get("/api/health", async (_req, res) => {
+    // Verificação rápida do banco de dados
+    let dbOk = false;
+    try {
+      const { getDb } = await import("../db");
+      const dbConn = await getDb();
+      if (dbConn) {
+        await dbConn.execute("SELECT 1");
+        dbOk = true;
+      }
+    } catch { dbOk = false; }
+
+    const status = dbOk ? 200 : 503;
+    res.status(status).json({
+      ok: dbOk,
+      timestamp: Date.now(),
+      uptime: Math.floor(process.uptime()),
+      env: process.env.NODE_ENV ?? "unknown",
+      db: dbOk ? "ok" : "unavailable",
+    });
   });
 
   // Captura de leads da landing page
