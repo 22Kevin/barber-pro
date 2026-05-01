@@ -120,6 +120,24 @@ export async function withTenant<T>(
   }
 }
 
+/**
+ * Helper que executa uma query com RLS ativado quando tenantId é fornecido.
+ * Substitui o padrão: const db = await getDb(); if (tenantId != null) { ... }
+ * 
+ * Uso: return runWithTenant(tenantId, (db) => db.select().from(table)...)
+ */
+export async function runWithTenant<T>(
+  tenantId: number | null | undefined,
+  fn: (db: ReturnType<typeof drizzle>) => Promise<T>
+): Promise<T> {
+  if (tenantId != null) {
+    return withTenant(tenantId, fn);
+  }
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return fn(db);
+}
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
@@ -215,24 +233,14 @@ export async function getBarberById(id: number) {
 }
 
 export async function getAllBarbers(tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  if (tenantId != null) {
-    return db.select().from(barbers)
-      .where(and(eq(barbers.isActive, true), eq(barbers.tenantId, tenantId)))
-      .orderBy(barbers.name);
-  }
-  return db.select().from(barbers).where(eq(barbers.isActive, true)).orderBy(barbers.name);
+  return runWithTenant(tenantId, (db) =>
+    db.select().from(barbers).where(eq(barbers.isActive, true)).orderBy(barbers.name)
+  ).catch(() => [] as typeof barbers.$inferSelect[]);
 }
 export async function getAllBarbersIncludingInactive(tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  if (tenantId != null) {
-    return db.select().from(barbers)
-      .where(eq(barbers.tenantId, tenantId))
-      .orderBy(barbers.name);
-  }
-  return db.select().from(barbers).orderBy(barbers.name);
+  return runWithTenant(tenantId, (db) =>
+    db.select().from(barbers).orderBy(barbers.name)
+  ).catch(() => [] as typeof barbers.$inferSelect[]);
 }
 export async function reactivateBarber(id: number) {
   const db = await getDb();
@@ -306,14 +314,9 @@ export async function deleteBarber(id: number) {
 
 // ─── Clientes ─────────────────────────────────────────────────────────────────
 export async function getAllClients(tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  if (tenantId != null) {
-    return db.select().from(clients)
-      .where(and(eq(clients.isActive, true), eq(clients.tenantId, tenantId)))
-      .orderBy(clients.name);
-  }
-  return db.select().from(clients).where(eq(clients.isActive, true)).orderBy(clients.name);
+  return runWithTenant(tenantId, (db) =>
+    db.select().from(clients).where(eq(clients.isActive, true)).orderBy(clients.name)
+  ).catch(() => [] as typeof clients.$inferSelect[]);
 }
 
 export async function getClientById(id: number) {
@@ -352,36 +355,34 @@ export async function createCategory(name: string, type: "service" | "product") 
 
 // ─── Serviços ─────────────────────────────────────────────────────────────────
 export async function getAllServices(activeOnly = false, tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  const conditions = [];
-  if (activeOnly) conditions.push(eq(services.isActive, true));
-  if (tenantId != null) conditions.push(eq(services.tenantId, tenantId));
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
-  return where
-    ? db.select().from(services).where(where).orderBy(services.name)
-    : db.select().from(services).orderBy(services.name);
+  return runWithTenant(tenantId, (db) => {
+    const conditions = [];
+    if (activeOnly) conditions.push(eq(services.isActive, true));
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    return where
+      ? db.select().from(services).where(where).orderBy(services.name)
+      : db.select().from(services).orderBy(services.name);
+  }).catch(() => [] as typeof services.$inferSelect[]);
 }
 
 export async function getAllServicesWithMedia(activeOnly = false, tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  const conditions = [];
-  if (activeOnly) conditions.push(eq(services.isActive, true));
-  if (tenantId != null) conditions.push(eq(services.tenantId, tenantId));
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
-  const svcs = where
-    ? await db.select().from(services).where(where).orderBy(services.name)
-    : await db.select().from(services).orderBy(services.name);
-  const ids = svcs.map((s) => s.id);
-  if (ids.length === 0) return svcs.map((s) => ({ ...s, thumbnailUrl: null as string | null }));
-  const media = await db.select().from(mediaFiles)
-    .where(and(eq(mediaFiles.entityType, "service"), inArray(mediaFiles.entityId, ids), eq(mediaFiles.type, "image")))
-    .orderBy(mediaFiles.order);
-  return svcs.map((s) => ({
-    ...s,
-    thumbnailUrl: media.find((m) => m.entityId === s.id)?.url ?? null,
-  }));
+  return runWithTenant(tenantId, async (db) => {
+    const conditions = [];
+    if (activeOnly) conditions.push(eq(services.isActive, true));
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const svcs = where
+      ? await db.select().from(services).where(where).orderBy(services.name)
+      : await db.select().from(services).orderBy(services.name);
+    const ids = svcs.map((s) => s.id);
+    if (ids.length === 0) return svcs.map((s) => ({ ...s, thumbnailUrl: null as string | null }));
+    const media = await db.select().from(mediaFiles)
+      .where(and(eq(mediaFiles.entityType, "service"), inArray(mediaFiles.entityId, ids), eq(mediaFiles.type, "image")))
+      .orderBy(mediaFiles.order);
+    return svcs.map((s) => ({
+      ...s,
+      thumbnailUrl: media.find((m) => m.entityId === s.id)?.url ?? null,
+    }));
+  }).catch(() => [] as (typeof services.$inferSelect & { thumbnailUrl: string | null })[]);
 }
 export async function getServiceById(id: number) {
   const db = await getDb();
@@ -411,46 +412,43 @@ export async function deleteService(id: number) {
 
 // ─── Produtos ─────────────────────────────────────────────────────────────────
 export async function getAllProductsWithMedia(activeOnly = false, tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  const conditions = [];
-  if (activeOnly) conditions.push(eq(products.isActive, true));
-  if (tenantId != null) conditions.push(eq(products.tenantId, tenantId));
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
-  const prods = where
-    ? await db.select().from(products).where(where).orderBy(products.name)
-    : await db.select().from(products).orderBy(products.name);
-  const ids = prods.map((p) => p.id);
-  if (ids.length === 0) return prods.map((p) => ({ ...p, thumbnailUrl: null as string | null }));
-  const media = await db.select().from(mediaFiles)
-    .where(and(eq(mediaFiles.entityType, "product"), inArray(mediaFiles.entityId, ids), eq(mediaFiles.type, "image")))
-    .orderBy(mediaFiles.order);
-  // Buscar média de avaliações por produto
-  const productReviews = await db.select().from(reviews)
-    .where(and(inArray(reviews.productId, ids)));
-  return prods.map((p) => {
-    const pReviews = productReviews.filter((r) => r.productId === p.id);
-    const avgRating = pReviews.length > 0
-      ? Math.round((pReviews.reduce((sum, r) => sum + r.rating, 0) / pReviews.length) * 10) / 10
-      : null;
-    return {
-      ...p,
-      thumbnailUrl: media.find((m) => m.entityId === p.id)?.url ?? null,
-      avgRating,
-      reviewCount: pReviews.length,
-    };
-  });
+  return runWithTenant(tenantId, async (db) => {
+    const conditions = [];
+    if (activeOnly) conditions.push(eq(products.isActive, true));
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const prods = where
+      ? await db.select().from(products).where(where).orderBy(products.name)
+      : await db.select().from(products).orderBy(products.name);
+    const ids = prods.map((p) => p.id);
+    if (ids.length === 0) return prods.map((p) => ({ ...p, thumbnailUrl: null as string | null, avgRating: null as number | null, reviewCount: 0 }));
+    const media = await db.select().from(mediaFiles)
+      .where(and(eq(mediaFiles.entityType, "product"), inArray(mediaFiles.entityId, ids), eq(mediaFiles.type, "image")))
+      .orderBy(mediaFiles.order);
+    const productReviews = await db.select().from(reviews)
+      .where(and(inArray(reviews.productId, ids)));
+    return prods.map((p) => {
+      const pReviews = productReviews.filter((r) => r.productId === p.id);
+      const avgRating = pReviews.length > 0
+        ? Math.round((pReviews.reduce((sum, r) => sum + r.rating, 0) / pReviews.length) * 10) / 10
+        : null;
+      return {
+        ...p,
+        thumbnailUrl: media.find((m) => m.entityId === p.id)?.url ?? null,
+        avgRating,
+        reviewCount: pReviews.length,
+      };
+    });
+  }).catch(() => [] as (typeof products.$inferSelect & { thumbnailUrl: string | null; avgRating: number | null; reviewCount: number })[]);
 }
 export async function getAllProducts(activeOnly = false, tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  const conditions = [];
-  if (activeOnly) conditions.push(eq(products.isActive, true));
-  if (tenantId != null) conditions.push(eq(products.tenantId, tenantId));
-  const where = conditions.length > 0 ? and(...conditions) : undefined;
-  return where
-    ? db.select().from(products).where(where).orderBy(products.name)
-    : db.select().from(products).orderBy(products.name);
+  return runWithTenant(tenantId, (db) => {
+    const conditions = [];
+    if (activeOnly) conditions.push(eq(products.isActive, true));
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    return where
+      ? db.select().from(products).where(where).orderBy(products.name)
+      : db.select().from(products).orderBy(products.name);
+  }).catch(() => [] as typeof products.$inferSelect[]);
 }
 
 export async function getProductById(id: number) {
@@ -839,12 +837,9 @@ export async function deleteExpense(id: number) {
 
 // ─── Cupons ───────────────────────────────────────────────────────────────────
 export async function getAllCoupons(tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  if (tenantId != null) {
-    return db.select().from(coupons).where(eq(coupons.tenantId, tenantId)).orderBy(desc(coupons.createdAt));
-  }
-  return db.select().from(coupons).orderBy(desc(coupons.createdAt));
+  return runWithTenant(tenantId, (db) =>
+    db.select().from(coupons).orderBy(desc(coupons.createdAt))
+  ).catch(() => [] as typeof coupons.$inferSelect[]);
 }
 
 export async function getCouponByCode(code: string) {
@@ -869,14 +864,10 @@ export async function updateCoupon(id: number, data: Partial<typeof coupons.$inf
 
 // ─── Fidelidade ───────────────────────────────────────────────────────────────
 export async function getLoyaltyConfig(tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return null;
-  if (tenantId != null) {
-    const result = await db.select().from(loyaltyConfig).where(eq(loyaltyConfig.tenantId, tenantId)).limit(1);
-    return result.length > 0 ? result[0] : null;
-  }
-  const result = await db.select().from(loyaltyConfig).limit(1);
-  return result.length > 0 ? result[0] : null;
+  return runWithTenant(tenantId, async (db) => {
+    const result = await db.select().from(loyaltyConfig).limit(1);
+    return result[0] ?? null;
+  }).catch(() => null);
 }
 
 export async function upsertLoyaltyConfig(data: { isActive: boolean; pointsPerService: number; pointsPerReal: string; pointsExpireMonths: number; tenantId?: number | null }) {
@@ -891,12 +882,9 @@ export async function upsertLoyaltyConfig(data: { isActive: boolean; pointsPerSe
 }
 
 export async function getLoyaltyRewards(tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  if (tenantId != null) {
-    return db.select().from(loyaltyRewards).where(and(eq(loyaltyRewards.isActive, true), eq(loyaltyRewards.tenantId, tenantId))).orderBy(loyaltyRewards.pointsRequired);
-  }
-  return db.select().from(loyaltyRewards).where(eq(loyaltyRewards.isActive, true)).orderBy(loyaltyRewards.pointsRequired);
+  return runWithTenant(tenantId, (db) =>
+    db.select().from(loyaltyRewards).where(eq(loyaltyRewards.isActive, true)).orderBy(loyaltyRewards.pointsRequired)
+  ).catch(() => [] as typeof loyaltyRewards.$inferSelect[]);
 }
 
 export async function createLoyaltyReward(data: { name: string; description?: string; pointsRequired: number; rewardType: "free_service" | "discount_percent" | "discount_fixed" | "free_product"; rewardValue?: string; tenantId?: number | null }) {
@@ -922,14 +910,10 @@ export async function addClientPoints(clientId: number, points: number, type: "e
 
 // ─── Configurações da Barbearia ───────────────────────────────────────────────
 export async function getShopSettings(tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return null;
-  if (tenantId != null) {
-    const result = await db.select().from(shopSettings).where(eq(shopSettings.tenantId, tenantId)).limit(1);
-    return result.length > 0 ? result[0] : null;
-  }
-  const result = await db.select().from(shopSettings).limit(1);
-  return result.length > 0 ? result[0] : null;
+  return runWithTenant(tenantId, async (db) => {
+    const result = await db.select().from(shopSettings).limit(1);
+    return result[0] ?? null;
+  }).catch(() => null);
 }
 export async function upsertShopSettings(data: Partial<typeof shopSettings.$inferInsert>, tenantId?: number | null) {
   const db = await getDb();
@@ -1038,36 +1022,33 @@ export async function getReviewsByClient(clientId: number, tenantId?: number | n
   return db.select().from(reviews).where(and(...conditions)).orderBy(desc(reviews.createdAt));
 }
 export async function getRecentReviews(limit = 5, tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  const conditions = tenantId != null ? [eq(reviews.tenantId, tenantId)] : [];
-  const result = await db
-    .select({
-      id: reviews.id,
-      rating: reviews.rating,
-      comment: reviews.comment,
-      createdAt: reviews.createdAt,
-      clientId: reviews.clientId,
-      serviceId: reviews.serviceId,
-    })
-    .from(reviews)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(reviews.createdAt))
-    .limit(limit);
-  // Enriquecer com nome do cliente e serviço
-  const clientIds = [...new Set(result.map(r => r.clientId))];
-  const serviceIds = [...new Set(result.map(r => r.serviceId).filter((id): id is number => id != null))];
-  const [clientList, serviceList] = await Promise.all([
-    clientIds.length > 0 ? db.select({ id: clients.id, name: clients.name }).from(clients).where(inArray(clients.id, clientIds)) : [],
-    serviceIds.length > 0 ? db.select({ id: services.id, name: services.name }).from(services).where(inArray(services.id, serviceIds)) : [],
-  ]);
-  const clientMap = Object.fromEntries(clientList.map(c => [c.id, c.name]));
-  const serviceMap = Object.fromEntries(serviceList.map(s => [s.id, s.name]));
-  return result.map(r => ({
-    ...r,
-    clientName: clientMap[r.clientId] ?? "Cliente",
-    serviceName: r.serviceId != null ? (serviceMap[r.serviceId] ?? "Serviço") : "Produto",
-  }));
+  return runWithTenant(tenantId, async (db) => {
+    const result = await db
+      .select({
+        id: reviews.id,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        createdAt: reviews.createdAt,
+        clientId: reviews.clientId,
+        serviceId: reviews.serviceId,
+      })
+      .from(reviews)
+      .orderBy(desc(reviews.createdAt))
+      .limit(limit);
+    const clientIds = [...new Set(result.map(r => r.clientId))];
+    const serviceIds = [...new Set(result.map(r => r.serviceId).filter((id): id is number => id != null))];
+    const [clientList, serviceList] = await Promise.all([
+      clientIds.length > 0 ? db.select({ id: clients.id, name: clients.name }).from(clients).where(inArray(clients.id, clientIds)) : [],
+      serviceIds.length > 0 ? db.select({ id: services.id, name: services.name }).from(services).where(inArray(services.id, serviceIds)) : [],
+    ]);
+    const clientMap = Object.fromEntries(clientList.map(c => [c.id, c.name]));
+    const serviceMap = Object.fromEntries(serviceList.map(s => [s.id, s.name]));
+    return result.map(r => ({
+      ...r,
+      clientName: clientMap[r.clientId] ?? "Cliente",
+      serviceName: r.serviceId != null ? (serviceMap[r.serviceId] ?? "Serviço") : "Produto",
+    }));
+  }).catch(() => [] as { id: number; rating: number; comment: string | null; createdAt: Date; clientId: number; serviceId: number | null; clientName: string; serviceName: string }[]);
 }
 
 export async function createReview(data: { tenantId: number; clientId: number; serviceId?: number | null; appointmentId?: number | null; productId?: number | null; orderId?: number | null; rating: number; comment?: string }) {
@@ -1199,16 +1180,13 @@ export async function getAllServicesWithMediaAndRatings(activeOnly = false, tena
 // ─── Mensagens de Retorno Automáticas ────────────────────────────────────────
 
 export async function listReturnMessageConfigs(tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  if (tenantId != null) {
-    // Filter by services belonging to this tenant
-    const tenantServices = await db.select({ id: services.id }).from(services).where(eq(services.tenantId, tenantId));
+  return runWithTenant(tenantId, async (db) => {
+    // With RLS active, services table is already filtered by tenant
+    const tenantServices = await db.select({ id: services.id }).from(services);
     const serviceIds = tenantServices.map((s) => s.id);
-    if (serviceIds.length === 0) return [];
+    if (serviceIds.length === 0) return [] as typeof returnMessageConfigs.$inferSelect[];
     return db.select().from(returnMessageConfigs).where(inArray(returnMessageConfigs.serviceId, serviceIds)).orderBy(returnMessageConfigs.serviceId);
-  }
-  return db.select().from(returnMessageConfigs).orderBy(returnMessageConfigs.serviceId);
+  }).catch(() => [] as typeof returnMessageConfigs.$inferSelect[]);
 }
 
 export async function upsertReturnMessageConfig(input: {
@@ -1242,12 +1220,9 @@ export async function deleteReturnMessageConfig(serviceId: number) {
 // ─── Promoções e Notícias ─────────────────────────────────────────────────────
 
 export async function listPromotions(tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  if (tenantId != null) {
-    return db.select().from(promotions).where(eq(promotions.tenantId, tenantId)).orderBy(desc(promotions.createdAt));
-  }
-  return db.select().from(promotions).orderBy(desc(promotions.createdAt));
+  return runWithTenant(tenantId, (db) =>
+    db.select().from(promotions).orderBy(desc(promotions.createdAt))
+  ).catch(() => [] as typeof promotions.$inferSelect[]);
 }
 
 export async function getPromotionRecipientCount(
@@ -1390,18 +1365,18 @@ export async function getCommissionConfig(barberId: number) {
 }
 
 export async function listCommissionConfigs(tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  const configs = await db.select().from(commissionConfigs);
-  const barberConditions = tenantId != null
-    ? and(eq(barbers.isActive, true), eq(barbers.tenantId, tenantId))
-    : eq(barbers.isActive, true);
-  const barberList = await db.select().from(barbers).where(barberConditions);
-  return barberList.map((b) => ({
-    ...b,
-    commissionRate: parseFloat(configs.find((c) => c.barberId === b.id)?.defaultRate ?? "50"),
-    hasConfig: configs.some((c) => c.barberId === b.id),
-  }));
+  return runWithTenant(tenantId, async (db) => {
+    // With RLS active, barbers table is already filtered by tenant
+    const [configs, barberList] = await Promise.all([
+      db.select().from(commissionConfigs),
+      db.select().from(barbers).where(eq(barbers.isActive, true)),
+    ]);
+    return barberList.map((b) => ({
+      ...b,
+      commissionRate: parseFloat(configs.find((c) => c.barberId === b.id)?.defaultRate ?? "50"),
+      hasConfig: configs.some((c) => c.barberId === b.id),
+    }));
+  }).catch(() => [] as (typeof barbers.$inferSelect & { commissionRate: number; hasConfig: boolean })[]);
 }
 
 export async function upsertCommissionConfig(input: { barberId: number; defaultRate: number }) {
@@ -1579,26 +1554,24 @@ export async function cancelRecurring(id: number) {
 }
 
 export async function getAllRecurringAppointments(tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  let list;
-  if (tenantId != null) {
-    const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
+  return runWithTenant(tenantId, async (db) => {
+    // With RLS active, barbers table is already filtered by tenant
+    const tenantBarbers = await db.select({ id: barbers.id }).from(barbers);
     const barberIds = tenantBarbers.map((b) => b.id);
-    if (barberIds.length === 0) return [];
-    list = await db.select().from(recurringAppointments).where(and(eq(recurringAppointments.isActive, true), inArray(recurringAppointments.barberId, barberIds)));
-  } else {
-    list = await db.select().from(recurringAppointments).where(eq(recurringAppointments.isActive, true));
-  }
-  const clientList = await db.select().from(clients);
-  const barberList = await db.select().from(barbers);
-  const svcList = await db.select().from(services);
-  return list.map((r) => ({
-    ...r,
-    clientName: clientList.find((c) => c.id === r.clientId)?.name ?? "—",
-    barberName: barberList.find((b) => b.id === r.barberId)?.name ?? "—",
-    serviceName: svcList.find((s) => s.id === r.serviceId)?.name ?? "—",
-  }));
+    if (barberIds.length === 0) return [] as (typeof recurringAppointments.$inferSelect & { clientName: string; barberName: string; serviceName: string })[];
+    const [list, clientList, barberList, svcList] = await Promise.all([
+      db.select().from(recurringAppointments).where(and(eq(recurringAppointments.isActive, true), inArray(recurringAppointments.barberId, barberIds))),
+      db.select().from(clients),
+      db.select().from(barbers),
+      db.select().from(services),
+    ]);
+    return list.map((r) => ({
+      ...r,
+      clientName: clientList.find((c) => c.id === r.clientId)?.name ?? "—",
+      barberName: barberList.find((b) => b.id === r.barberId)?.name ?? "—",
+      serviceName: svcList.find((s) => s.id === r.serviceId)?.name ?? "—",
+    }));
+  }).catch(() => [] as (typeof recurringAppointments.$inferSelect & { clientName: string; barberName: string; serviceName: string })[]);
 }
 
 // ─── Conversão de Promoções ───────────────────────────────────────────────────
@@ -1637,19 +1610,16 @@ export async function getPromotionConversionReport(tenantId?: number | null) {
 
 // ─── Controle de Estoque ──────────────────────────────────────────────────────
 export async function getStockProducts(tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) return [];
-  const conditions = tenantId != null
-    ? and(eq(products.isActive, true), eq(products.tenantId, tenantId))
-    : eq(products.isActive, true);
-  const prods = await db.select().from(products).where(conditions).orderBy(products.name);
-  return prods.map((p) => ({
-    ...p,
-    price: parseFloat(p.price as any),
-    stockQuantity: p.stockQuantity ?? 0,
-    minStockAlert: p.minStockAlert ?? 5,
-    isLowStock: (p.stockQuantity ?? 0) <= (p.minStockAlert ?? 5),
-  }));
+  return runWithTenant(tenantId, async (db) => {
+    const prods = await db.select().from(products).where(eq(products.isActive, true)).orderBy(products.name);
+    return prods.map((p) => ({
+      ...p,
+      price: parseFloat(p.price as any),
+      stockQuantity: p.stockQuantity ?? 0,
+      minStockAlert: p.minStockAlert ?? 5,
+      isLowStock: (p.stockQuantity ?? 0) <= (p.minStockAlert ?? 5),
+    }));
+  }).catch(() => [] as (typeof products.$inferSelect & { price: number; stockQuantity: number; minStockAlert: number; isLowStock: boolean })[]);
 }
 
 export async function addStockMovement(data: {
