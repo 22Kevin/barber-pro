@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voltamos em breve — Barber Pro</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0A0A0A;
+      color: #ECEDEE;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    /* ── Partículas de fundo ── */
+    .particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .particle {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: #C9A84C;
+      opacity: 0;
+      animation: float-particle 6s infinite ease-in-out;
+    }
+    @keyframes float-particle {
+      0%   { opacity: 0; transform: translateY(100vh) scale(0); }
+      10%  { opacity: 0.6; }
+      90%  { opacity: 0.3; }
+      100% { opacity: 0; transform: translateY(-20px) scale(1.5); }
+    }
+
+    /* ── Container principal ── */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+    }
+
+    /* ── Logo ── */
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 40px;
+      animation: fade-down 0.8s ease both;
+    }
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #C9A84C, #8B6914);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .logo-text {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #C9A84C;
+    }
+
+    /* ── Cena do barbeiro ── */
+    .scene {
+      position: relative;
+      width: 280px;
+      height: 280px;
+      margin: 0 auto 32px;
+      animation: fade-up 0.8s 0.2s ease both;
+    }
+
+    /* Cadeira de barbeiro */
+    .barber-chair {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    /* Barbeiro SVG animado */
+    .barber-figure {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-60%);
+      animation: barber-panic 2s ease-in-out infinite;
+    }
+    @keyframes barber-panic {
+      0%, 100% { transform: translateX(-60%) rotate(0deg); }
+      15%       { transform: translateX(-60%) rotate(-4deg) translateY(-4px); }
+      30%       { transform: translateX(-60%) rotate(4deg) translateY(-2px); }
+      45%       { transform: translateX(-60%) rotate(-3deg) translateY(-5px); }
+      60%       { transform: translateX(-60%) rotate(2deg) translateY(-3px); }
+      75%       { transform: translateX(-60%) rotate(-2deg) translateY(-1px); }
+    }
+
+    /* Ferramentas voando */
+    .tool {
+      position: absolute;
+      font-size: 22px;
+      animation: fly-tool 2s ease-in-out infinite;
+    }
+    .tool-1 { top: 40px; left: 30px;  animation-delay: 0s;    animation-name: fly-tool-1; }
+    .tool-2 { top: 20px; right: 40px; animation-delay: 0.4s;  animation-name: fly-tool-2; }
+    .tool-3 { top: 70px; right: 20px; animation-delay: 0.8s;  animation-name: fly-tool-3; }
+    .tool-4 { top: 55px; left: 50px;  animation-delay: 1.2s;  animation-name: fly-tool-4; }
+
+    @keyframes fly-tool-1 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg);   opacity: 0.8; }
+      50%       { transform: translate(-12px, -18px) rotate(-30deg); opacity: 1; }
+    }
+    @keyframes fly-tool-2 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg);   opacity: 0.8; }
+      50%       { transform: translate(10px, -22px) rotate(25deg);  opacity: 1; }
+    }
+    @keyframes fly-tool-3 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg);   opacity: 0.8; }
+      50%       { transform: translate(14px, -14px) rotate(40deg);  opacity: 1; }
+    }
+    @keyframes fly-tool-4 {
+      0%, 100% { transform: translate(0, 0) rotate(0deg);   opacity: 0.8; }
+      50%       { transform: translate(-8px, -20px) rotate(-20deg); opacity: 1; }
+    }
+
+    /* Balão de fala */
+    .speech-bubble {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #1A1A1A;
+      border: 1.5px solid #C9A84C44;
+      border-radius: 16px 16px 16px 4px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #C9A84C;
+      white-space: nowrap;
+      animation: bubble-pulse 2s ease-in-out infinite;
+    }
+    .speech-bubble::after {
+      content: "";
+      position: absolute;
+      bottom: -10px;
+      left: 12px;
+      border: 5px solid transparent;
+      border-top-color: #C9A84C44;
+    }
+    @keyframes bubble-pulse {
+      0%, 100% { transform: scale(1);    opacity: 1; }
+      50%       { transform: scale(1.05); opacity: 0.9; }
+    }
+
+    /* Faíscas / estrelas de estresse */
+    .sparks {
+      position: absolute;
+      top: 80px;
+      left: 20px;
+      animation: sparks-anim 1.5s ease-in-out infinite;
+    }
+    @keyframes sparks-anim {
+      0%, 100% { opacity: 0; transform: scale(0.8) rotate(0deg); }
+      50%       { opacity: 1; transform: scale(1.2) rotate(15deg); }
+    }
+
+    /* ── Textos ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #C9A84C18;
+      border: 1px solid #C9A84C44;
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #C9A84C;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      animation: fade-up 0.8s 0.3s ease both;
+    }
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #C9A84C;
+      animation: blink 1.2s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.3; transform: scale(0.7); }
+    }
+
+    h1 {
+      font-size: clamp(26px, 6vw, 36px);
+      font-weight: 900;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      animation: fade-up 0.8s 0.4s ease both;
+    }
+    h1 span { color: #C9A84C; }
+
+    .subtitle {
+      font-size: 16px;
+      color: #9BA1A6;
+      line-height: 1.6;
+      margin-bottom: 32px;
+      animation: fade-up 0.8s 0.5s ease both;
+    }
+    .subtitle strong { color: #ECEDEE; }
+
+    /* ── Card de status ── */
+    .status-card {
+      background: #111;
+      border: 1px solid #1E2022;
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 32px;
+      animation: fade-up 0.8s 0.6s ease both;
+    }
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #1E2022;
+      font-size: 14px;
+    }
+    .status-row:last-child { border-bottom: none; }
+    .status-icon { font-size: 18px; width: 24px; text-align: center; }
+    .status-label { flex: 1; color: #9BA1A6; }
+    .status-value { font-weight: 700; }
+    .status-value.ok     { color: #22C55E; }
+    .status-value.warn   { color: #F59E0B; }
+    .status-value.fixing { color: #C9A84C; animation: blink 1.5s ease-in-out infinite; }
+
+    /* ── Barra de progresso ── */
+    .progress-wrap {
+      margin-bottom: 32px;
+      animation: fade-up 0.8s 0.7s ease both;
+    }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #687076;
+      margin-bottom: 8px;
+    }
+    .progress-bar {
+      height: 6px;
+      background: #1E2022;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #8B6914, #C9A84C, #F0C060);
+      border-radius: 999px;
+      animation: progress-anim 4s ease-in-out infinite;
+      background-size: 200% 100%;
+    }
+    @keyframes progress-anim {
+      0%   { background-position: 100% 0; width: 30%; }
+      50%  { background-position: 0% 0;   width: 75%; }
+      100% { background-position: 100% 0; width: 30%; }
+    }
+
+    /* ── Botão de atualizar ── */
+    .btn-refresh {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #C9A84C, #8B6914);
+      color: #0A0A0A;
+      font-size: 15px;
+      font-weight: 800;
+      padding: 14px 32px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+      animation: fade-up 0.8s 0.8s ease both;
+      box-shadow: 0 4px 24px #C9A84C33;
+    }
+    .btn-refresh:hover  { transform: translateY(-2px); box-shadow: 0 8px 32px #C9A84C44; }
+    .btn-refresh:active { transform: translateY(0px);  box-shadow: 0 2px 12px #C9A84C22; }
+    .btn-refresh .icon  { font-size: 18px; animation: spin-slow 3s linear infinite; }
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 40px;
+      font-size: 12px;
+      color: #444;
+      animation: fade-up 0.8s 0.9s ease both;
+    }
+    .footer a { color: #C9A84C; text-decoration: none; }
+
+    /* ── Animações de entrada ── */
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fade-down {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Contador de atualização automática ── */
+    .auto-refresh {
+      font-size: 12px;
+      color: #687076;
+      margin-top: 12px;
+      animation: fade-up 0.8s 1s ease both;
+    }
+    #countdown { color: #C9A84C; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+  <!-- Partículas de fundo -->
+  <div class="particles" id="particles"></div>
+
+  <div class="container">
+
+    <!-- Logo -->
+    <div class="logo">
+      <div class="logo-icon">✂️</div>
+      <div class="logo-text">BARBER PRO</div>
+    </div>
+
+    <!-- Cena animada do barbeiro -->
+    <div class="scene">
+
+      <!-- Balão de fala -->
+      <div class="speech-bubble">Calma! Já resolvo! 😅</div>
+
+      <!-- Ferramentas voando -->
+      <div class="tool tool-1">✂️</div>
+      <div class="tool tool-2">💈</div>
+      <div class="tool tool-3">🪒</div>
+      <div class="tool tool-4">🔧</div>
+
+      <!-- Faíscas de estresse -->
+      <div class="sparks">⚡</div>
+
+      <!-- Barbeiro SVG -->
+      <div class="barber-figure">
+        <svg width="130" height="180" viewBox="0 0 130 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Sombra no chão -->
+          <ellipse cx="65" cy="172" rx="38" ry="7" fill="#C9A84C" opacity="0.15"/>
+
+          <!-- Corpo / jaleco -->
+          <rect x="32" y="90" width="66" height="72" rx="14" fill="#1A1A1A" stroke="#C9A84C" stroke-width="1.5"/>
+          <!-- Botões do jaleco -->
+          <circle cx="65" cy="108" r="3" fill="#C9A84C" opacity="0.6"/>
+          <circle cx="65" cy="120" r="3" fill="#C9A84C" opacity="0.6"/>
+          <circle cx="65" cy="132" r="3" fill="#C9A84C" opacity="0.6"/>
+          <!-- Bolso -->
+          <rect x="38" y="100" width="18" height="14" rx="4" fill="#111" stroke="#C9A84C44" stroke-width="1"/>
+          <!-- Pente no bolso -->
+          <rect x="43" y="98" width="3" height="8" rx="1" fill="#C9A84C" opacity="0.8"/>
+
+          <!-- Braço esquerdo (levantado em desespero) -->
+          <g style="transform-origin: 32px 100px; animation: arm-left 2s ease-in-out infinite;">
+            <style>
+              @keyframes arm-left {
+                0%, 100% { transform: rotate(0deg); }
+                25%       { transform: rotate(-30deg); }
+                75%       { transform: rotate(-15deg); }
+              }
+            </style>
+            <rect x="8" y="88" width="26" height="14" rx="7" fill="#1A1A1A" stroke="#C9A84C" stroke-width="1.5" transform="rotate(-35 8 95)"/>
+            <!-- Mão esquerda -->
+            <circle cx="14" cy="75" r="9" fill="#D4A574"/>
+            <!-- Dedos -->
+            <ellipse cx="8"  cy="68" rx="4" ry="6" rx="3.5" ry="5.5" fill="#D4A574" transform="rotate(-20 8 68)"/>
+            <ellipse cx="14" cy="66" rx="3.5" ry="6" fill="#D4A574"/>
+            <ellipse cx="20" cy="68" rx="3.5" ry="5.5" fill="#D4A574" transform="rotate(20 20 68)"/>
+          </g>
+
+          <!-- Braço direito (segurando chave de fenda) -->
+          <g style="transform-origin: 98px 100px; animation: arm-right 2s ease-in-out infinite;">
+            <style>
+              @keyframes arm-right {
+                0%, 100% { transform: rotate(0deg); }
+                25%       { transform: rotate(25deg); }
+                75%       { transform: rotate(10deg); }
+              }
+            </style>
+            <rect x="96" y="88" width="26" height="14" rx="7" fill="#1A1A1A" stroke="#C9A84C" stroke-width="1.5" transform="rotate(35 122 95)"/>
+            <!-- Mão direita -->
+            <circle cx="116" cy="75" r="9" fill="#D4A574"/>
+            <!-- Chave de fenda -->
+            <rect x="118" y="55" width="5" height="28" rx="2.5" fill="#888" transform="rotate(15 118 70)"/>
+            <rect x="117" y="53" width="7" height="6" rx="1" fill="#C9A84C" transform="rotate(15 118 56)"/>
+          </g>
+
+          <!-- Pescoço -->
+          <rect x="57" y="76" width="16" height="18" rx="6" fill="#D4A574"/>
+
+          <!-- Cabeça -->
+          <ellipse cx="65" cy="60" rx="28" ry="30" fill="#D4A574"/>
+
+          <!-- Cabelo -->
+          <path d="M37 52 Q38 28 65 26 Q92 28 93 52 Q88 38 65 36 Q42 38 37 52Z" fill="#2A1A0A"/>
+          <!-- Bigode estiloso -->
+          <path d="M54 72 Q58 76 65 74 Q72 76 76 72" stroke="#2A1A0A" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <!-- Olhos preocupados -->
+          <ellipse cx="54" cy="58" rx="5" ry="6" fill="white"/>
+          <ellipse cx="76" cy="58" rx="5" ry="6" fill="white"/>
+          <circle cx="55" cy="59" r="3.5" fill="#2A1A0A"/>
+          <circle cx="77" cy="59" r="3.5" fill="#2A1A0A"/>
+          <!-- Brilho nos olhos -->
+          <circle cx="56.5" cy="57.5" r="1.2" fill="white"/>
+          <circle cx="78.5" cy="57.5" r="1.2" fill="white"/>
+          <!-- Sobrancelhas franzidas -->
+          <path d="M49 51 Q54 47 59 51" stroke="#2A1A0A" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <path d="M71 51 Q76 47 81 51" stroke="#2A1A0A" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+          <!-- Boca aberta (preocupado) -->
+          <path d="M58 78 Q65 84 72 78" stroke="#2A1A0A" stroke-width="2" stroke-linecap="round" fill="#C97070" opacity="0.7"/>
+
+          <!-- Pernas -->
+          <rect x="40" y="155" width="18" height="22" rx="8" fill="#111" stroke="#C9A84C44" stroke-width="1"/>
+          <rect x="72" y="155" width="18" height="22" rx="8" fill="#111" stroke="#C9A84C44" stroke-width="1"/>
+          <!-- Sapatos -->
+          <ellipse cx="49" cy="176" rx="12" ry="5" fill="#1A1A1A" stroke="#C9A84C33" stroke-width="1"/>
+          <ellipse cx="81" cy="176" rx="12" ry="5" fill="#1A1A1A" stroke="#C9A84C33" stroke-width="1"/>
+
+          <!-- Suor de estresse -->
+          <ellipse cx="90" cy="45" rx="4" ry="6" fill="#60A5FA" opacity="0.7" style="animation: sweat 2s ease-in-out infinite;">
+            <animateTransform attributeName="transform" type="translate" values="0,0; 0,8; 0,0" dur="2s" repeatCount="indefinite"/>
+          </ellipse>
+          <ellipse cx="96" cy="38" rx="3" ry="5" fill="#60A5FA" opacity="0.5" style="animation: sweat 2s 0.5s ease-in-out infinite;">
+            <animateTransform attributeName="transform" type="translate" values="0,0; 0,10; 0,0" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+          </ellipse>
+        </svg>
+      </div>
+
+      <!-- Cadeira de barbeiro (SVG simples) -->
+      <svg width="100" height="70" viewBox="0 0 100 70" fill="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;bottom:0;left:50%;transform:translateX(-50%)">
+        <!-- Base -->
+        <rect x="30" y="55" width="40" height="8" rx="4" fill="#1A1A1A" stroke="#C9A84C44" stroke-width="1"/>
+        <!-- Coluna central -->
+        <rect x="46" y="35" width="8" height="22" rx="3" fill="#2A2A2A" stroke="#C9A84C33" stroke-width="1"/>
+        <!-- Assento -->
+        <rect x="15" y="28" width="70" height="12" rx="6" fill="#1A1A1A" stroke="#C9A84C55" stroke-width="1.5"/>
+        <!-- Encosto -->
+        <rect x="20" y="5" width="60" height="26" rx="8" fill="#141414" stroke="#C9A84C44" stroke-width="1.5"/>
+        <!-- Apoio de braço esquerdo -->
+        <rect x="10" y="18" width="12" height="6" rx="3" fill="#1A1A1A" stroke="#C9A84C33" stroke-width="1"/>
+        <!-- Apoio de braço direito -->
+        <rect x="78" y="18" width="12" height="6" rx="3" fill="#1A1A1A" stroke="#C9A84C33" stroke-width="1"/>
+        <!-- Detalhe dourado no encosto -->
+        <rect x="28" y="10" width="44" height="3" rx="1.5" fill="#C9A84C" opacity="0.3"/>
+      </svg>
+
+    </div>
+
+    <!-- Badge de status -->
+    <div class="badge">
+      <div class="badge-dot"></div>
+      Manutenção em andamento
+    </div>
+
+    <!-- Título -->
+    <h1>Ei! Estamos <span>consertando</span><br>as tesouras 🛠️</h1>
+
+    <!-- Subtítulo -->
+    <p class="subtitle">
+      Nosso barbeiro favorito encontrou um probleminha técnico e já está
+      <strong>trabalhando para resolver</strong>. Isso não vai demorar muito —
+      prometemos que voltamos mais afiados do que nunca!
+    </p>
+
+    <!-- Card de status -->
+    <div class="status-card">
+      <div class="status-row">
+        <div class="status-icon">🖥️</div>
+        <div class="status-label">Servidor principal</div>
+        <div class="status-value fixing">Reiniciando...</div>
+      </div>
+      <div class="status-row">
+        <div class="status-icon">🗄️</div>
+        <div class="status-label">Banco de dados</div>
+        <div class="status-value ok">Operacional</div>
+      </div>
+      <div class="status-row">
+        <div class="status-icon">📅</div>
+        <div class="status-label">Agendamentos</div>
+        <div class="status-value warn">Temporariamente indisponível</div>
+      </div>
+      <div class="status-row">
+        <div class="status-icon">🔔</div>
+        <div class="status-label">Notificações</div>
+        <div class="status-value ok">Operacional</div>
+      </div>
+    </div>
+
+    <!-- Barra de progresso -->
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>Progresso da recuperação</span>
+        <span>Em andamento...</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill"></div>
+      </div>
+    </div>
+
+    <!-- Botão de atualizar -->
+    <a href="/" class="btn-refresh">
+      <span class="icon">⚙️</span>
+      Tentar novamente
+    </a>
+
+    <!-- Contador de atualização automática -->
+    <p class="auto-refresh">
+      Atualizando automaticamente em <span id="countdown">30</span>s
+    </p>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>© 2025 Barber Pro · <a href="mailto:suporte@usebarberpro.com">suporte@usebarberpro.com</a></p>
+      <p style="margin-top:6px">Se o problema persistir, entre em contato com nosso suporte.</p>
+    </div>
+
+  </div>
+
+  <script>
+    // ── Partículas de fundo ──────────────────────────────────────────────────
+    const container = document.getElementById('particles');
+    for (let i = 0; i < 25; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.animationDelay = (Math.random() * 6) + 's';
+      p.style.animationDuration = (4 + Math.random() * 4) + 's';
+      p.style.width = p.style.height = (2 + Math.random() * 3) + 'px';
+      container.appendChild(p);
+    }
+
+    // ── Contador regressivo com recarga automática ───────────────────────────
+    let seconds = 30;
+    const el = document.getElementById('countdown');
+    const timer = setInterval(() => {
+      seconds--;
+      el.textContent = seconds;
+      if (seconds <= 0) {
+        clearInterval(timer);
+        window.location.reload();
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

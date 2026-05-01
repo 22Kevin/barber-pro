@@ -122,6 +122,11 @@ async function startServer() {
   const landingDevPath = path.join(__dirname, "..", "landing", "index.html");
   const landingProdPath = path.join(process.cwd(), "server", "landing", "index.html");
   const landingPath = existsSync(landingDevPath) ? landingDevPath : landingProdPath;
+
+  // Caminho da página de manutenção
+  const maintenanceDevPath = path.join(__dirname, "..", "landing", "maintenance.html");
+  const maintenanceProdPath = path.join(process.cwd(), "server", "landing", "maintenance.html");
+  const maintenancePath = existsSync(maintenanceDevPath) ? maintenanceDevPath : maintenanceProdPath;
   const distPath = path.join(__dirname, "..", "..", "dist-web");
 
   // Middleware de detecção de subdomínio
@@ -509,6 +514,30 @@ async function startServer() {
       createContext,
     }),
   );
+
+  // Rota explícita de manutenção (acessível manualmente)
+  app.get("/manutencao", (_req, res) => {
+    res.status(503).sendFile(maintenancePath);
+  });
+
+  // Handler de erro global 500 — retorna página de manutenção para requisições HTML
+  app.use((err: any, req: any, res: any, _next: any) => {
+    console.error("[server-error]", err?.message ?? err);
+    const acceptsHtml = req.headers?.accept?.includes("text/html");
+    if (acceptsHtml) {
+      return res.status(503).sendFile(maintenancePath);
+    }
+    res.status(500).json({ ok: false, error: "Internal server error" });
+  });
+
+  // Middleware 404 — retorna página de manutenção para rotas HTML não encontradas
+  app.use((req: any, res: any) => {
+    const acceptsHtml = req.headers?.accept?.includes("text/html");
+    if (acceptsHtml) {
+      return res.status(404).sendFile(maintenancePath);
+    }
+    res.status(404).json({ ok: false, error: "Not found" });
+  });
 
   const preferredPort = parseInt(process.env.PORT || "3000");
   // Em produção, usa a porta exata fornecida pelo host (Railway injeta $PORT)
