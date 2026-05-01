@@ -3119,6 +3119,51 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  // GET /admin/google-signup — inicia o fluxo OAuth do Google para cadastro de nova barbearia
+  app.get("/admin/google-signup", (req: Request, res: Response) => {
+    const appId = process.env.VITE_APP_ID ?? "";
+    const portalUrl = process.env.VITE_OAUTH_PORTAL_URL ?? "https://manus.im";
+    const baseUrl = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.host}`;
+    const redirectUri = `${baseUrl}/admin/google-signup-callback`;
+    const state = Buffer.from(redirectUri).toString("base64");
+    const url = new URL(`${portalUrl}/app-auth`);
+    url.searchParams.set("appId", appId);
+    url.searchParams.set("redirectUri", redirectUri);
+    url.searchParams.set("state", state);
+    url.searchParams.set("type", "signIn");
+    res.redirect(url.toString());
+  });
+
+  // GET /admin/google-signup-callback — recebe o code e redireciona para landing com dados pré-preenchidos
+  app.get("/admin/google-signup-callback", async (req: Request, res: Response) => {
+    try {
+      const code = req.query.code as string;
+      const state = req.query.state as string;
+      if (!code || !state) return res.redirect("/?signup_error=1");
+      const { sdk } = await import("./_core/sdk.js");
+      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
+      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
+      if (!userInfo.email) return res.redirect("/?signup_error=1");
+      // Verificar se já existe conta com este e-mail
+      const existingBarber = await db.getBarberByEmail(userInfo.email);
+      if (existingBarber) {
+        // Já tem conta — redirecionar para login com aviso
+        return res.redirect(`/admin/login?info=already_exists&email=${encodeURIComponent(userInfo.email)}`);
+      }
+      // Redirecionar para landing com dados do Google para pré-preencher o modal
+      const params = new URLSearchParams({
+        google_signup: "1",
+        name: userInfo.name ?? "",
+        email: userInfo.email,
+        openId: (userInfo as any).openId ?? "",
+      });
+      res.redirect(`/?${params.toString()}#cadastro`);
+    } catch (err) {
+      console.error("[google-signup-callback] Error:", err);
+      res.redirect("/?signup_error=1");
+    }
+  });
+
   // GET /admin/google-login — inicia o fluxo OAuth do Google via Manus
   app.get("/admin/google-login", (req: Request, res: Response) => {
     const appId = process.env.VITE_APP_ID ?? "";

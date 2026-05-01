@@ -1816,3 +1816,10 @@
 - [ ] Corrigir reconexão automática do pool SSL (erros intermitentes nos jobs em produção)
 - [ ] Auditar e aplicar runWithTenant() nas funções update/delete das tabelas com RLS
 - [ ] Implementar testes de isolamento multi-tenant (script que valida que dados não vazam entre tenants)
+
+## Problemas identificados no vídeo (01/05/2026)
+
+- [ ] Caracteres quebrados (quadradinhos) nos cards de planos e na seção "3 passos" da landing
+- [ ] Seleção de plano no modal de cadastro — plano fixado em "Equipe", cliente não consegue alterar
+- [ ] Botão "Entrar com Google" ausente no modal de cadastro (etapa de e-mail/senha)
+- [ ] Botão "Entrar com Google" ausente no modal de login rápido da landing page

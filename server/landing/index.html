@@ -224,7 +224,12 @@
     .modal-step { flex: 1; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; transition: background 0.3s; }
     .modal-step.active { background: var(--gold); }
     .modal-step.done { background: rgba(201,168,76,0.45); }
-    .modal-plan-sel { display: flex; align-items: center; justify-content: space-between; background: var(--gold-dim); border: 1px solid var(--gold-border); border-radius: 10px; padding: 12px 16px; margin-bottom: 22px; }
+    .modal-plan-sel { display: flex; align-items: center; justify-content: space-between; background: var(--gold-dim); border: 1px solid var(--gold-border); border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; transition: opacity 0.2s; }
+    .modal-plan-sel:hover { opacity: 0.85; }
+    .plan-option-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; background: none; border: none; border-bottom: 1px solid rgba(255,255,255,0.06); color: var(--white); font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; text-align: left; transition: background 0.15s; }
+    .plan-option-btn:last-child { border-bottom: none; }
+    .plan-option-btn:hover { background: rgba(255,255,255,0.05); }
+    .plan-option-btn.plan-option-active { color: var(--gold-light); background: var(--gold-dim); }
     .modal-plan-name { font-size: 11px; font-weight: 700; color: var(--gold); letter-spacing: 1px; text-transform: uppercase; }
     .modal-plan-price { font-size: 18px; font-weight: 800; }
     .form-group { margin-bottom: 14px; }
@@ -543,12 +548,12 @@
         <div class="step-title">Crie sua conta</div>
         <div class="step-desc">Informe o nome da sua barbearia, seus dados e escolha o plano. Em menos de 5 minutos você já tem sua página no ar.</div>
       </div>
-      <div class="step-card">>
+      <div class="step-card">
         <div class="step-num">2</div>
         <div class="step-title">Configure seus serviços</div>
         <div class="step-desc">Adicione seus serviços, preços, duração e fotos. Defina seus horários de atendimento e sua equipe.</div>
       </div>
-      <div class="step-card">>
+      <div class="step-card">
         <div class="step-num">3</div>
         <div class="step-title">Compartilhe e receba</div>
         <div class="step-desc">Compartilhe seu link <strong style="color:var(--gold)">usebarberpro.com/sua-barbearia</strong> no Instagram e WhatsApp. Seus clientes agendam sozinhos.</div>
@@ -583,7 +588,7 @@
         </ul>
         <button class="btn-plan btn-plan-outline" onclick="openModal('Solo', 'R$49')">Começar grátis</button>
       </div>
-      <div class="price-card best">>
+      <div class="price-card best">
         <div class="price-badge">Mais popular</div>
         <div class="price-plan">Equipe</div>
         <div class="price-val"><sup>R$</sup>89</div>
@@ -601,7 +606,7 @@
         </ul>
         <button class="btn-plan btn-plan-gold" onclick="openModal('Equipe', 'R$89')">Começar grátis</button>
       </div>
-      <div class="price-card">>
+      <div class="price-card">
         <div class="price-plan">Estúdio</div>
         <div class="price-val"><sup>R$</sup>149</div>
         <div class="price-period">por mês</div>
@@ -826,6 +831,10 @@
       </div>
     </form>
     <div class="login-divider"><div class="login-divider-line"></div><div class="login-divider-text">ou</div><div class="login-divider-line"></div></div>
+    <button type="button" onclick="window.location.href='/admin/google-login'" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#1e1e1e;color:#f0eee8;border:1px solid #2a2a2a;border-radius:12px;padding:13px 14px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px" onmouseover="this.style.background='#252525'" onmouseout="this.style.background='#1e1e1e'">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+      Entrar com Google
+    </button>
     <p style="text-align:center;font-size:14px;color:var(--gray)">Não tem conta? <a href="#" onclick="closeLoginModal(); openModal('Equipe', 'R$89'); return false;" style="color:var(--gold-light);font-weight:600">Criar barbearia grátis</a></p>
   </div>
 </div>
@@ -846,12 +855,21 @@
         <div class="modal-step" id="step-bar-4"></div>
         <div class="modal-step" id="step-bar-5"></div>
       </div>
-      <div class="modal-plan-sel">
+      <div class="modal-plan-sel" id="modalPlanSel" onclick="togglePlanSelector()" style="cursor:pointer;user-select:none">
         <div>
           <div class="modal-plan-name" id="modalPlanName">Equipe</div>
           <div style="font-size:12px;color:var(--gray);margin-top:2px">14 dias grátis, depois</div>
         </div>
-        <div class="modal-plan-price" id="modalPlanPrice">R$89<span style="font-size:13px;color:var(--gray)">/mês</span></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="modal-plan-price" id="modalPlanPrice">R$89<span style="font-size:13px;color:var(--gray)">/mês</span></div>
+          <span style="font-size:11px;color:var(--gold);font-weight:700">Trocar ▾</span>
+        </div>
+      </div>
+      <!-- Seletor de plano expandível -->
+      <div id="planSelectorDropdown" style="display:none;background:var(--black-4);border:1px solid var(--gold-border);border-radius:12px;margin-bottom:16px;overflow:hidden">
+        <button type="button" onclick="changePlan('Solo','R$49')" class="plan-option-btn" id="planOpt-Solo">Solo — R$49/mês <span style="font-size:11px;color:var(--gray)">1 barbeiro</span></button>
+        <button type="button" onclick="changePlan('Equipe','R$89')" class="plan-option-btn plan-option-active" id="planOpt-Equipe">Equipe — R$89/mês <span style="font-size:11px;color:var(--gray)">Até 5 barbeiros</span></button>
+        <button type="button" onclick="changePlan('Estúdio','R$149')" class="plan-option-btn" id="planOpt-Estúdio">Estúdio — R$149/mês <span style="font-size:11px;color:var(--gray)">Ilimitado</span></button>
       </div>
       <!-- Step 1: Dados da Barbearia -->
       <div id="formStep1">
@@ -979,6 +997,11 @@
       <div id="formStep4" style="display:none">
         <h2 class="modal-title">Conta do Administrador</h2>
         <p class="modal-sub">Crie o acesso principal para gerenciar sua barbearia.</p>
+        <button type="button" onclick="startGoogleSignup()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#1e1e1e;color:#f0eee8;border:1px solid #2a2a2a;border-radius:12px;padding:13px 14px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px" onmouseover="this.style.background='#252525'" onmouseout="this.style.background='#1e1e1e'">
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+          Continuar com Google
+        </button>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div><span style="font-size:12px;color:var(--gray)">ou preencha manualmente</span><div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div></div>
         <form onsubmit="goToStep5(event)">
           <div class="form-group">
             <label class="form-label">Seu nome *</label>
@@ -1051,6 +1074,33 @@
 </div>
 
 <script>
+  // Pré-preencher modal após retorno do Google OAuth signup
+  (function(){
+    var params = new URLSearchParams(window.location.search);
+    if(params.get('google_signup')==='1'){
+      var name = params.get('name')||'';
+      var email = params.get('email')||'';
+      var openId = params.get('openId')||'';
+      // Abrir modal no step 4 (conta do admin) com dados pré-preenchidos
+      openModal('Equipe','R$89');
+      showStep(4);
+      setTimeout(function(){
+        var nomeEl=document.getElementById('inputNomeAdmin');
+        var emailEl=document.getElementById('inputEmail');
+        if(nomeEl)nomeEl.value=name;
+        if(emailEl){emailEl.value=email;emailEl.readOnly=true;emailEl.style.opacity='0.6';}
+        // Guardar openId para envio no cadastro
+        window._googleOpenId=openId;
+        window._googleEmail=email;
+      },100);
+      // Limpar URL
+      history.replaceState(null,'',window.location.pathname);
+    }
+    if(params.get('signup_error')==='1'){
+      setTimeout(function(){alert('Erro ao autenticar com Google. Tente novamente.');},200);
+      history.replaceState(null,'',window.location.pathname);
+    }
+  })();
   // FAQ
   function toggleFaq(btn){var i=btn.closest('.faq-item'),o=i.classList.contains('open');document.querySelectorAll('.faq-item.open').forEach(function(x){x.classList.remove('open')});if(!o)i.classList.add('open');}
   // Nav scroll
@@ -1062,6 +1112,11 @@
   // Modal signup
   var currentPlan='Equipe',currentPrice='R$89';
   function openModal(plan,price){currentPlan=plan||'Equipe';currentPrice=price||'R$89';document.getElementById('modalPlanName').textContent=currentPlan;document.getElementById('modalPlanPrice').innerHTML=currentPrice+'<span style="font-size:13px;color:var(--gray)">/mês</span>';document.getElementById('signupModal').classList.add('open');document.body.style.overflow='hidden';resetModal();}
+  // Seletor de plano no modal
+  function togglePlanSelector(){var d=document.getElementById('planSelectorDropdown');d.style.display=d.style.display==='none'?'block':'none';}
+  function changePlan(plan,price){currentPlan=plan;currentPrice=price;document.getElementById('modalPlanName').textContent=plan;document.getElementById('modalPlanPrice').innerHTML=price+'<span style="font-size:13px;color:var(--gray)">/mês</span>';document.querySelectorAll('.plan-option-btn').forEach(function(b){b.classList.remove('plan-option-active');});var opt=document.getElementById('planOpt-'+plan);if(opt)opt.classList.add('plan-option-active');document.getElementById('planSelectorDropdown').style.display='none';}
+  // Cadastro com Google — salva dados do modal na session e redireciona
+  function startGoogleSignup(){var nome=document.getElementById('inputNomeBarbearia').value,tel=document.getElementById('inputTelefone').value,cidade=document.getElementById('inputCidade').value,estado=document.getElementById('inputEstado').value;sessionStorage.setItem('signupData',JSON.stringify({plan:currentPlan,price:currentPrice,shopName:nome,phone:tel,city:cidade,state:estado}));window.location.href='/admin/google-signup';}
   function closeModal(){document.getElementById('signupModal').classList.remove('open');document.body.style.overflow='';}
   function handleOverlayClick(e){if(e.target===document.getElementById('signupModal'))closeModal();}
   // Masks
