@@ -294,10 +294,10 @@ export async function sendExpoPushNotification(
   }
 }
 export async function createBarber(data: InsertBarber) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  const result = await db.insert(barbers).values(data).returning({ id: barbers.id });
-  return result[0].id;
+  return runWithTenant(data.tenantId, async (db) => {
+    const result = await db.insert(barbers).values(data).returning({ id: barbers.id });
+    return result[0].id;
+  });
 }
 
 export async function updateBarber(id: number, data: Partial<InsertBarber>) {
@@ -327,10 +327,10 @@ export async function getClientById(id: number) {
 }
 
 export async function createClient(data: InsertClient) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  const result = await db.insert(clients).values(data).returning({ id: clients.id });
-  return result[0].id;
+  return runWithTenant(data.tenantId, async (db) => {
+    const result = await db.insert(clients).values(data).returning({ id: clients.id });
+    return result[0].id;
+  });
 }
 
 export async function updateClient(id: number, data: Partial<InsertClient>) {
@@ -392,10 +392,10 @@ export async function getServiceById(id: number) {
 }
 
 export async function createService(data: InsertService) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  const result = await db.insert(services).values(data).returning({ id: services.id });
-  return result[0].id;
+  return runWithTenant(data.tenantId, async (db) => {
+    const result = await db.insert(services).values(data).returning({ id: services.id });
+    return result[0].id;
+  });
 }
 
 export async function updateService(id: number, data: Partial<InsertService>) {
@@ -459,10 +459,10 @@ export async function getProductById(id: number) {
 }
 
 export async function createProduct(data: InsertProduct) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  const result = await db.insert(products).values(data).returning({ id: products.id });
-  return result[0].id;
+  return runWithTenant(data.tenantId, async (db) => {
+    const result = await db.insert(products).values(data).returning({ id: products.id });
+    return result[0].id;
+  });
 }
 
 export async function updateProduct(id: number, data: Partial<InsertProduct>) {
@@ -817,10 +817,10 @@ export async function getExpensesByDateRange(startDate: string, endDate: string,
 }
 
 export async function createExpense(data: InsertExpense) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  const result = await db.insert(expenses).values(data).returning({ id: expenses.id });
-  return result[0].id;
+  return runWithTenant(data.tenantId, async (db) => {
+    const result = await db.insert(expenses).values(data).returning({ id: expenses.id });
+    return result[0].id;
+  });
 }
 
 export async function updateExpense(id: number, data: Partial<InsertExpense>) {
@@ -850,10 +850,10 @@ export async function getCouponByCode(code: string) {
 }
 
 export async function createCoupon(data: { code: string; description?: string; discountType: "percent" | "fixed"; discountValue: string; minOrderValue?: string; maxUses?: number; validFrom?: string; validUntil?: string; tenantId?: number | null }) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  const result = await db.insert(coupons).values({ ...data, code: data.code.toUpperCase() }).returning({ id: coupons.id });
-  return result[0].id;
+  return runWithTenant(data.tenantId, async (db) => {
+    const result = await db.insert(coupons).values({ ...data, code: data.code.toUpperCase() }).returning({ id: coupons.id });
+    return result[0].id;
+  });
 }
 
 export async function updateCoupon(id: number, data: Partial<typeof coupons.$inferInsert>) {
@@ -871,14 +871,14 @@ export async function getLoyaltyConfig(tenantId?: number | null) {
 }
 
 export async function upsertLoyaltyConfig(data: { isActive: boolean; pointsPerService: number; pointsPerReal: string; pointsExpireMonths: number; tenantId?: number | null }) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  const existing = await getLoyaltyConfig(data.tenantId);
-  if (existing) {
-    await db.update(loyaltyConfig).set(data).where(eq(loyaltyConfig.id, existing.id));
-  } else {
-    await db.insert(loyaltyConfig).values(data).returning({ id: loyaltyConfig.id });
-  }
+  return runWithTenant(data.tenantId, async (db) => {
+    const existing = await getLoyaltyConfig(data.tenantId);
+    if (existing) {
+      await db.update(loyaltyConfig).set(data).where(eq(loyaltyConfig.id, existing.id));
+    } else {
+      await db.insert(loyaltyConfig).values(data).returning({ id: loyaltyConfig.id });
+    }
+  });
 }
 
 export async function getLoyaltyRewards(tenantId?: number | null) {
@@ -888,10 +888,10 @@ export async function getLoyaltyRewards(tenantId?: number | null) {
 }
 
 export async function createLoyaltyReward(data: { name: string; description?: string; pointsRequired: number; rewardType: "free_service" | "discount_percent" | "discount_fixed" | "free_product"; rewardValue?: string; tenantId?: number | null }) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  const result = await db.insert(loyaltyRewards).values(data).returning({ id: loyaltyRewards.id });
-  return result[0].id;
+  return runWithTenant(data.tenantId, async (db) => {
+    const result = await db.insert(loyaltyRewards).values(data).returning({ id: loyaltyRewards.id });
+    return result[0].id;
+  });
 }
 
 export async function updateLoyaltyReward(id: number, data: Partial<typeof loyaltyRewards.$inferInsert>) {
@@ -916,14 +916,14 @@ export async function getShopSettings(tenantId?: number | null) {
   }).catch(() => null);
 }
 export async function upsertShopSettings(data: Partial<typeof shopSettings.$inferInsert>, tenantId?: number | null) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  const existing = await getShopSettings(tenantId);
-  if (existing) {
-    await db.update(shopSettings).set(data).where(eq(shopSettings.id, existing.id));
-  } else {
-    await db.insert(shopSettings).values({ shopName: "Barber Pro", ...data, ...(tenantId != null ? { tenantId } : {}) }).returning({ id: shopSettings.id });
-  }
+  return runWithTenant(tenantId, async (db) => {
+    const existing = await getShopSettings(tenantId);
+    if (existing) {
+      await db.update(shopSettings).set(data).where(eq(shopSettings.id, existing.id));
+    } else {
+      await db.insert(shopSettings).values({ shopName: "Barber Pro", ...data, ...(tenantId != null ? { tenantId } : {}) }).returning({ id: shopSettings.id });
+    }
+  });
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -1052,10 +1052,10 @@ export async function getRecentReviews(limit = 5, tenantId?: number | null) {
 }
 
 export async function createReview(data: { tenantId: number; clientId: number; serviceId?: number | null; appointmentId?: number | null; productId?: number | null; orderId?: number | null; rating: number; comment?: string }) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  const result = await db.insert(reviews).values(data).returning({ id: reviews.id });
-  return result[0].id;
+  return runWithTenant(data.tenantId, async (db) => {
+    const result = await db.insert(reviews).values(data).returning({ id: reviews.id });
+    return result[0].id;
+  });
 }
 export async function getClientPointsHistory(clientId: number) {
   const db = await getDb();
@@ -1276,10 +1276,10 @@ export async function createPromotion(input: {
   recipientCount: number;
   tenantId?: number | null;
 }) {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  await db.insert(promotions).values({ ...input, sentAt: new Date() }).returning({ id: promotions.id });
-  return { success: true, recipientCount: input.recipientCount };
+  return runWithTenant(input.tenantId, async (db) => {
+    await db.insert(promotions).values({ ...input, sentAt: new Date() }).returning({ id: promotions.id });
+    return { success: true, recipientCount: input.recipientCount };
+  });
 }
 
 // ─── Lista de Espera ──────────────────────────────────────────────────────────
@@ -1759,19 +1759,19 @@ export async function createShopSettingsForTenant(tenantId: number, data: {
   addressNumber?: string;
   addressComplement?: string;
 }): Promise<void> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-  await db.insert(shopSettings).values({
-    tenantId,
-    shopName: data.shopName,
-    phone: data.phone,
-    cnpj: data.cnpj,
-    instagram: data.instagram,
-    cep: data.cep,
-    address: data.address,
-    addressNumber: data.addressNumber,
-    addressComplement: data.addressComplement,
-  }).returning({ id: shopSettings.id });
+  await runWithTenant(tenantId, async (db) => {
+    await db.insert(shopSettings).values({
+      tenantId,
+      shopName: data.shopName,
+      phone: data.phone,
+      cnpj: data.cnpj,
+      instagram: data.instagram,
+      cep: data.cep,
+      address: data.address,
+      addressNumber: data.addressNumber,
+      addressComplement: data.addressComplement,
+    }).returning({ id: shopSettings.id });
+  });
 }
 
 export async function getBarberByEmailAndTenant(email: string, tenantId: number) {
@@ -2023,19 +2023,19 @@ export async function saveClientConsent(data: {
 
 /** Registra ou atualiza o lead quando o cliente faz login em uma barbearia. */
 export async function upsertOrbitLead(clientId: number, tenantId: number, source: "link" | "geo"): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
   try {
-    // Verificar se já existe um lead não convertido para este par cliente/tenant
-    const existing = await db
-      .select({ id: orbitLeads.id })
-      .from(orbitLeads)
-      .where(and(eq(orbitLeads.clientId, clientId), eq(orbitLeads.tenantId, tenantId)))
-      .limit(1);
-    if (existing.length === 0) {
-      await db.insert(orbitLeads).values({ clientId, tenantId, source, loginAt: new Date() }).returning({ id: orbitLeads.id });
-    }
-    // Se já existe, não atualiza (preserva o loginAt original)
+    await runWithTenant(tenantId, async (db) => {
+      // Verificar se já existe um lead não convertido para este par cliente/tenant
+      const existing = await db
+        .select({ id: orbitLeads.id })
+        .from(orbitLeads)
+        .where(and(eq(orbitLeads.clientId, clientId), eq(orbitLeads.tenantId, tenantId)))
+        .limit(1);
+      if (existing.length === 0) {
+        await db.insert(orbitLeads).values({ clientId, tenantId, source, loginAt: new Date() }).returning({ id: orbitLeads.id });
+      }
+      // Se já existe, não atualiza (preserva o loginAt original)
+    });
   } catch (err) {
     console.error("[orbitLead] upsertOrbitLead error:", err);
   }
