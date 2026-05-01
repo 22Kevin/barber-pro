@@ -1,1 +1,0 @@
-ALTER TABLE `shop_settings` ADD `galleryUrls` text;

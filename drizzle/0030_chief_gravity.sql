@@ -1,1 +1,0 @@
-ALTER TABLE `appointments` MODIFY COLUMN `status` enum('scheduled','confirmed','in_progress','completed','cancelled','no_show','pending_approval') NOT NULL DEFAULT 'scheduled';

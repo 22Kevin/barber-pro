@@ -1,1 +1,0 @@
-ALTER TABLE `client_accounts` ADD `pushToken` text;

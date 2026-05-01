@@ -2,9 +2,9 @@
  * Router tRPC para Planos de Assinatura e Assinaturas de Clientes
  * Usa Drizzle ORM sql`` template literals para SQL raw com parâmetros seguros.
  *
- * Padrão Drizzle mysql2 para db.execute(sql`...`):
- *   SELECT → result[0] é o array de rows
- *   INSERT/UPDATE/DELETE → result[0] é ResultSetHeader { insertId, affectedRows, ... }
+ * Padrão Drizzle node-postgres para db.execute(sql`...`):
+ *   SELECT → result.rows é o array de rows
+ *   INSERT/UPDATE/DELETE → result.rowCount é o número de linhas afetadas
  */
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -23,9 +23,8 @@ async function getConn() {
 async function selectSql(query: ReturnType<typeof sql>): Promise<any[]> {
   const db = await getConn();
   const result = await db.execute(query);
-  // drizzle-orm/mysql2: execute retorna [RowDataPacket[], FieldPacket[]]
-  // result[0] é o array de rows
-  const rows = result[0] as unknown as any[];
+  // drizzle-orm/node-postgres: execute retorna QueryResult com .rows
+  const rows = (result as any).rows as any[];
   return rows ?? [];
 }
 
@@ -33,21 +32,21 @@ async function selectSql(query: ReturnType<typeof sql>): Promise<any[]> {
 async function selectRaw(queryStr: string): Promise<any[]> {
   const db = await getConn();
   const result = await db.execute(queryStr as any);
-  return (result[0] as unknown as any[]) ?? [];
+  return ((result as any).rows as any[]) ?? [];
 }
 
-/** INSERT/UPDATE/DELETE: retorna ResultSetHeader */
+/** INSERT/UPDATE/DELETE: retorna rowCount */
 async function mutateSql(query: ReturnType<typeof sql>): Promise<{ insertId: number; affectedRows: number }> {
   const db = await getConn();
   const result = await db.execute(query);
-  return result[0] as any;
+  return { insertId: 0, affectedRows: (result as any).rowCount ?? 0 };
 }
 
-/** INSERT/UPDATE/DELETE com string raw (para evitar problemas de serialização do Drizzle com JSON/arrays) */
+/** INSERT/UPDATE/DELETE com string raw */
 async function mutateRaw(queryStr: string): Promise<{ insertId: number; affectedRows: number }> {
   const db = await getConn();
   const result = await db.execute(queryStr as any);
-  return result[0] as any;
+  return { insertId: 0, affectedRows: (result as any).rowCount ?? 0 };
 }
 
 // ─── Router ──────────────────────────────────────────────────────────────────

@@ -1,2 +1,0 @@
-ALTER TABLE `promotions` MODIFY COLUMN `targetAudience` enum('all','inactive_30','inactive_60','birthday_month','specific_client') NOT NULL DEFAULT 'all';--> statement-breakpoint
-ALTER TABLE `promotions` ADD `specificClientId` int;

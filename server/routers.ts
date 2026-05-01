@@ -2330,7 +2330,7 @@ export const appRouter = router({
                 AND (${endDate ?? null} IS NULL OR DATE(op.createdAt) <= ${endDate ?? null})
               ORDER BY op.createdAt DESC LIMIT 200
             `);
-        return (rows as any[]).map((p: any) => ({
+        return ((rows as any).rows as any[]).map((p: any) => ({
           id: p.id,
           billingType: p.billingType ?? "PIX",
           amount: parseFloat(p.amount ?? "0"),
@@ -2359,7 +2359,7 @@ export const appRouter = router({
             AND op.status = 'overdue'
           ORDER BY op.dueDate ASC LIMIT 100
         `);
-        return (rows as any[]).map((p: any) => ({
+        return ((rows as any).rows as any[]).map((p: any) => ({
           id: p.id,
           billingType: p.billingType ?? "PIX",
           amount: parseFloat(p.amount ?? "0"),
@@ -2394,7 +2394,7 @@ export const appRouter = router({
           WHERE referenceId = ${String(input.appointmentId)} AND tenantId = ${input.tenantId}
           ORDER BY createdAt DESC LIMIT 1
         `);
-        const p = (rows as any[])[0];
+        const p = ((rows as any).rows as any[])[0];
         if (!p) return null;
         return {
           invoiceUrl: p.invoiceUrl ?? null,

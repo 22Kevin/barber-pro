@@ -311,7 +311,7 @@ async function getBoUser(email: string): Promise<any | null> {
   const rows = await dbConn.execute(
     db.sqlRaw`SELECT id, name, email, passwordHash, role, isActive FROM backoffice_users WHERE email = ${email} LIMIT 1`
   );
-  const list = (rows[0] as unknown as any[]);
+  const list = ((rows as any).rows as any[]);
   return list.length > 0 ? list[0] : null;
 }
 
@@ -321,7 +321,7 @@ async function getAllBoUsers(): Promise<any[]> {
   const rows = await dbConn.execute(
     db.sqlRaw`SELECT id, name, email, role, isActive, createdAt FROM backoffice_users ORDER BY createdAt DESC`
   );
-  return (rows[0] as unknown as any[]);
+  return ((rows as any).rows as any[]);
 }
 
 async function createBoUser(name: string, email: string, passwordHash: string, role: BORoleType): Promise<void> {
@@ -838,7 +838,7 @@ export function registerSuperAdminRoutes(app: Express): void {
           const rows = await dbConn.execute(
             db.sqlRaw`SELECT id, name, email, phone, source, createdAt FROM orbit_leads ORDER BY createdAt DESC LIMIT 500`
           );
-          leads = (rows[0] as unknown as any[]);
+          leads = ((rows as any).rows as any[]);
         } catch { /* tabela pode não existir */ }
       }
 

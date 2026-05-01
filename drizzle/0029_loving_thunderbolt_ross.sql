@@ -1,1 +1,0 @@
-ALTER TABLE `appointments` ADD `serviceNames` text;

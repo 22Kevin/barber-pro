@@ -1,1 +1,0 @@
-ALTER TABLE `reviews` ADD `tenantId` int DEFAULT 0 NOT NULL;
