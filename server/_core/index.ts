@@ -16,6 +16,7 @@ import { createContext } from "./context";
 import { startReviewEmailJob } from "../review-job";
 import { startWhatsAppReminderJob } from "../whatsapp-reminder-job";
 import { startSubscriptionReminderJob } from "../subscription-reminder-job";
+import { startBackupJob } from "../backup-job";
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -559,6 +560,8 @@ async function startServer() {
     startWhatsAppReminderJob();
     // Iniciar job de lembretes de assinatura (3 dias antes)
     startSubscriptionReminderJob();
+    // Iniciar job de backup semanal do PostgreSQL (toda segunda-feira às 03:00)
+    startBackupJob();
   });
 }
 
