@@ -13,6 +13,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import * as db from "./db";
+import { eq } from "drizzle-orm";
+import { backofficeUsers } from "../drizzle/schema";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type BORoleType = "super_admin" | "admin" | "suporte";
@@ -304,52 +306,39 @@ function roleBadge(role: string): string {
   return map[role] ?? esc(role);
 }
 
-// ─── Funções de banco para backoffice_users ───────────────────────────────────
+// ─── Funções de banco para backoffice_users (Drizzle ORM / PostgreSQL) ──────────
 async function getBoUser(email: string): Promise<any | null> {
   const dbConn = await db.getDb();
   if (!dbConn) return null;
-  const rows = await dbConn.execute(
-    db.sqlRaw`SELECT id, name, email, passwordHash, role, isActive FROM backoffice_users WHERE email = ${email} LIMIT 1`
-  );
-  const list = ((rows as any).rows as any[]);
-  return list.length > 0 ? list[0] : null;
+  const rows = await dbConn
+    .select()
+    .from(backofficeUsers)
+    .where(eq(backofficeUsers.email, email.toLowerCase().trim()))
+    .limit(1);
+  return rows.length > 0 ? rows[0] : null;
 }
-
 async function getAllBoUsers(): Promise<any[]> {
   const dbConn = await db.getDb();
   if (!dbConn) return [];
-  const rows = await dbConn.execute(
-    db.sqlRaw`SELECT id, name, email, role, isActive, createdAt FROM backoffice_users ORDER BY createdAt DESC`
-  );
-  return ((rows as any).rows as any[]);
+  return dbConn.select().from(backofficeUsers).orderBy(backofficeUsers.createdAt);
 }
-
 async function createBoUser(name: string, email: string, passwordHash: string, role: BORoleType): Promise<void> {
   const dbConn = await db.getDb();
   if (!dbConn) throw new Error("DB unavailable");
-  await dbConn.execute(
-    db.sqlRaw`INSERT INTO backoffice_users (name, email, passwordHash, role) VALUES (${name}, ${email}, ${passwordHash}, ${role})`
-  );
+  await dbConn.insert(backofficeUsers).values({ name, email: email.toLowerCase().trim(), passwordHash, role });
 }
-
 async function updateBoUser(id: number, data: { name?: string; email?: string; passwordHash?: string; role?: string; isActive?: boolean }): Promise<void> {
   const dbConn = await db.getDb();
   if (!dbConn) throw new Error("DB unavailable");
-  const sets: string[] = [];
-  const vals: any[] = [];
-  if (data.name !== undefined) { sets.push("name = ?"); vals.push(data.name); }
-  if (data.email !== undefined) { sets.push("email = ?"); vals.push(data.email); }
-  if (data.passwordHash !== undefined) { sets.push("passwordHash = ?"); vals.push(data.passwordHash); }
-  if (data.role !== undefined) { sets.push("role = ?"); vals.push(data.role); }
-  if (data.isActive !== undefined) { sets.push("isActive = ?"); vals.push(data.isActive ? 1 : 0); }
-  if (sets.length === 0) return;
-  vals.push(id);
-  const pool = (dbConn as any).$client ?? (dbConn as any).client;
-  if (pool) {
-    await pool.execute(`UPDATE backoffice_users SET ${sets.join(", ")} WHERE id = ?`, vals);
-  }
+  const updateData: Record<string, any> = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.email !== undefined) updateData.email = data.email.toLowerCase().trim();
+  if (data.passwordHash !== undefined) updateData.passwordHash = data.passwordHash;
+  if (data.role !== undefined) updateData.role = data.role;
+  if (data.isActive !== undefined) updateData.isActive = data.isActive;
+  if (Object.keys(updateData).length === 0) return;
+  await dbConn.update(backofficeUsers).set(updateData).where(eq(backofficeUsers.id, id));
 }
-
 // ─── Registro das rotas ───────────────────────────────────────────────────────
 export function registerSuperAdminRoutes(app: Express): void {
 
@@ -455,8 +444,9 @@ export function registerSuperAdminRoutes(app: Express): void {
         try {
           const dbConn = await db.getDb();
           if (!dbConn) return 0;
-          const rows: any[] = await dbConn.execute(db.sqlRaw`SELECT COUNT(*) as cnt FROM orbit_leads`) as any;
-          return rows?.[0]?.[0]?.cnt ?? 0;
+          const { sql } = await import('drizzle-orm');
+          const rows = await dbConn.execute(sql`SELECT COUNT(*) as cnt FROM orbit_leads`);
+          return (rows.rows?.[0] as any)?.cnt ?? 0;
         } catch { return 0; }
       })();
 
@@ -835,10 +825,9 @@ export function registerSuperAdminRoutes(app: Express): void {
       let leads: any[] = [];
       if (dbConn) {
         try {
-          const rows = await dbConn.execute(
-            db.sqlRaw`SELECT id, name, email, phone, source, createdAt FROM orbit_leads ORDER BY createdAt DESC LIMIT 500`
-          );
-          leads = ((rows as any).rows as any[]);
+          const { orbitLeads: orbitLeadsTable } = await import("../drizzle/schema");
+          const { desc } = await import('drizzle-orm');
+          leads = await dbConn.select().from(orbitLeadsTable).orderBy(desc(orbitLeadsTable.loginAt)).limit(500);
         } catch { /* tabela pode não existir */ }
       }
 
@@ -1148,12 +1137,9 @@ export function registerSuperAdminRoutes(app: Express): void {
     try {
       const dbConn = await db.getDb();
       if (dbConn) {
-        await dbConn.execute(
-          db.sqlRaw`CREATE TABLE IF NOT EXISTS landing_testimonials (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100), shop VARCHAR(100), text TEXT, rating INT DEFAULT 5, isActive BOOLEAN DEFAULT true, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP)`
-        );
-        await dbConn.execute(
-          db.sqlRaw`INSERT INTO landing_testimonials (name, shop, text, rating) VALUES (${name}, ${shop}, ${text}, ${parseInt(rating) || 5})`
-        );
+        const { sql: sqlTag } = await import('drizzle-orm');
+        await dbConn.execute(sqlTag`CREATE TABLE IF NOT EXISTS landing_testimonials (id SERIAL PRIMARY KEY, name VARCHAR(100), shop VARCHAR(100), text TEXT, rating INT DEFAULT 5, "isActive" BOOLEAN DEFAULT true, "createdAt" TIMESTAMPTZ DEFAULT NOW())`);
+        await dbConn.execute(sqlTag`INSERT INTO landing_testimonials (name, shop, text, rating) VALUES (${name}, ${shop}, ${text}, ${parseInt(rating) || 5})`);
       }
     } catch (e) { console.error("[BO CMS Depoimento]", e); }
     res.redirect("/superadmin/cms?saved=1");

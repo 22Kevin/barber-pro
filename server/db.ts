@@ -55,6 +55,16 @@ import {
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
+
+// Reconexão automática: limpa o pool se houver erro de conexão SSL/timeout
+function resetPool() {
+  if (_pool) {
+    _pool.end().catch(() => {});
+    _pool = null;
+    _db = null;
+  }
+}
+
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: Pool | null = null;
 
@@ -68,6 +78,11 @@ export async function getDb() {
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 10000,
         ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      });
+      // Reconexão automática em erros de conexão SSL/timeout
+      _pool.on('error', (err: Error) => {
+        console.warn('[Database] Pool error, will reconnect on next request:', err.message);
+        resetPool();
       });
       _db = drizzle(_pool);
     } catch (error) {

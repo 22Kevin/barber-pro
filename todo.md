@@ -1803,3 +1803,16 @@
 - [ ] Investigar e corrigir erro 403 CloudFront no login com Google
 - [ ] Melhorar estética da tela de pagamento do plano de assinatura
 - [ ] Corrigir fluxo de assinatura de plano para seguir as mesmas etapas do app (seleção de serviços, barbeiro, horário, pagamento)
+
+## Pendências Críticas — Mai/2026
+- [ ] Investigar e corrigir erro 403 CloudFront no login com Google (página pública do cliente)
+- [ ] Corrigir layout quebrado dos cards de serviços na página pública (grid/imagens)
+- [ ] Corrigir fluxo de assinatura de plano (seguir etapas: serviços → barbeiro → horário → pagamento)
+- [ ] Melhorar estética da tela de pagamento do plano de assinatura
+- [ ] Alinhar foto de perfil da barbearia com o nome no painel de login do cliente
+
+## Infraestrutura e Segurança — Mai/2026
+- [ ] Configurar BACKUP_NOTIFY_EMAIL no Railway para notificações de backup semanal
+- [ ] Corrigir reconexão automática do pool SSL (erros intermitentes nos jobs em produção)
+- [ ] Auditar e aplicar runWithTenant() nas funções update/delete das tabelas com RLS
+- [ ] Implementar testes de isolamento multi-tenant (script que valida que dados não vazam entre tenants)
