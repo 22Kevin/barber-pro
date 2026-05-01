@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -19,7 +20,7 @@ import { exportCsv } from "@/hooks/use-csv-export";
 import { useBarberAuth } from "@/lib/auth-context";
 
 type Period = "week" | "month" | "year";
-type Tab = "financeiro" | "servicos" | "encomendas" | "barbeiros";
+type Tab = "financeiro" | "servicos" | "encomendas" | "barbeiros" | "inadimplencia";
 
 const CAT_COLORS = ["#EF4444", "#F59E0B", "#6366F1", "#10B981", "#EC4899", "#14B8A6", "#8B5CF6", "#F97316"];
 
@@ -196,7 +197,13 @@ export default function ReportsScreen() {
     { key: "servicos", label: "Serviços", emoji: "✂️" },
     { key: "encomendas", label: "Encomendas", emoji: "📦" },
     { key: "barbeiros", label: "Barbeiros", emoji: "👤" },
+    { key: "inadimplencia", label: "Inadimplência", emoji: "⚠️" },
   ];
+
+  const overdueQuery = trpc.asaasPayments.listOverdue.useQuery(
+    { tenantId: tenantId ?? 0 },
+    { enabled: !!tenantId && activeTab === "inadimplencia" }
+  );
 
   async function handleExportCsv() {
     try {
@@ -761,6 +768,46 @@ export default function ReportsScreen() {
           {activeTab === "servicos" && renderServicos()}
           {activeTab === "encomendas" && renderEncomendas()}
           {activeTab === "barbeiros" && renderBarbeiros()}
+          {activeTab === "inadimplencia" && (
+            <View style={{ paddingHorizontal: 16 }}>
+              <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700", marginBottom: 4 }}>⚠️ Cobranças Vencidas</Text>
+              <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 16 }}>Clientes com pagamentos Asaas em atraso</Text>
+              {overdueQuery.isLoading ? (
+                <ActivityIndicator color="#C9A84C" style={{ marginTop: 40 }} />
+              ) : !overdueQuery.data || overdueQuery.data.length === 0 ? (
+                <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                  <Text style={{ fontSize: 40, marginBottom: 12 }}>🎉</Text>
+                  <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700" }}>Nenhuma cobrança vencida</Text>
+                  <Text style={{ color: "#9CA3AF", fontSize: 13, marginTop: 4 }}>Todos os pagamentos estão em dia!</Text>
+                </View>
+              ) : (
+                (overdueQuery.data as any[]).map((pmt: any) => {
+                  const daysOverdue = pmt.dueDate ? Math.max(0, Math.floor((Date.now() - new Date(pmt.dueDate).getTime()) / 86400000)) : 0;
+                  const waMsg = encodeURIComponent(`Olá ${pmt.clientName}! Identificamos uma cobrança vencida de R$ ${pmt.amount?.toFixed(2).replace(".", ",")}. Regularize pelo link: ${pmt.invoiceUrl ?? ""}`);
+                  const waPhone = (pmt.clientPhone ?? "").replace(/\D/g, "");
+                  return (
+                    <View key={pmt.id} style={{ backgroundColor: "#1A1A1A", borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "#EF444433" }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 15 }}>{pmt.clientName}</Text>
+                        <Text style={{ color: "#EF4444", fontWeight: "800", fontSize: 15 }}>R$ {pmt.amount?.toFixed(2).replace(".", ",")}</Text>
+                      </View>
+                      <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 8 }}>
+                        Venceu em {pmt.dueDate ? new Date(pmt.dueDate).toLocaleDateString("pt-BR") : "—"} · {daysOverdue} dia(s) em atraso
+                      </Text>
+                      {waPhone ? (
+                        <Pressable
+                          onPress={() => Linking.openURL(`https://wa.me/55${waPhone}?text=${waMsg}`)}
+                          style={{ backgroundColor: "#064E3B", borderRadius: 8, padding: 10, alignItems: "center" }}
+                        >
+                          <Text style={{ color: "#4ADE80", fontWeight: "700", fontSize: 13 }}>📲 Cobrar via WhatsApp</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
     </ScreenContainer>

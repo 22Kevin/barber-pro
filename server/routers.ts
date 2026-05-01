@@ -12,7 +12,15 @@ import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import QRCode from "qrcode";
 import PDFDocument from "pdfkit";
 import { sendPasswordResetEmail } from "./email";
+import {
+  asaasEnabled,
+  asaasApi,
+  getOrCreateAsaasCustomer,
+  createAsaasCharge,
+  asaasDefaultDueDate,
+} from "./asaas";
 import bcrypt from "bcryptjs";
+import { sql } from "drizzle-orm";
 
 function getMpClient() {
   const accessToken = process.env.MP_ACCESS_TOKEN;
@@ -2168,6 +2176,233 @@ export const appRouter = router({
       }),
   }),
 
+  asaasPayments: router({
+    createPix: publicProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        clientId: z.number(),
+        clientName: z.string(),
+        clientEmail: z.string().optional().nullable(),
+        clientPhone: z.string().optional().nullable(),
+        clientCpf: z.string().optional().nullable(),
+        appointmentId: z.number().optional().nullable(),
+        amount: z.number(),
+        description: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        if (!asaasEnabled) throw new Error("Pagamento online não configurado. Configure ASAAS_API_KEY.");
+        const asaasCustomerId = await getOrCreateAsaasCustomer({
+          name: input.clientName,
+          email: input.clientEmail ?? undefined,
+          mobilePhone: input.clientPhone ?? undefined,
+          cpfCnpj: input.clientCpf ?? undefined,
+          externalReference: String(input.clientId),
+        });
+        const charge = await createAsaasCharge({
+          customer: asaasCustomerId,
+          billingType: "PIX",
+          value: input.amount,
+          dueDate: asaasDefaultDueDate(),
+          description: input.description || "Agendamento Barber Pro",
+          externalReference: input.appointmentId ? String(input.appointmentId) : undefined,
+        });
+        const dbConn = await db.getDb();
+        if (dbConn) {
+          await dbConn.execute(sql`
+            INSERT INTO online_payments (tenantId, clientId, chargeType, referenceId, asaasPaymentId, asaasCustomerId, billingType, amount, status, invoiceUrl, pixQrCode, pixCopyCola, dueDate)
+            VALUES (${input.tenantId}, ${input.clientId}, 'appointment', ${input.appointmentId ?? null}, ${charge.id}, ${asaasCustomerId}, 'PIX', ${input.amount}, 'pending', ${charge.invoiceUrl ?? null}, ${charge.pixQrCode ?? null}, ${charge.pixCopyCola ?? null}, ${charge.dueDate})
+          `);
+        }
+        return {
+          paymentId: charge.id,
+          pixQrCode: charge.pixQrCode ?? null,
+          pixCopyCola: charge.pixCopyCola ?? null,
+          invoiceUrl: charge.invoiceUrl ?? null,
+          value: charge.value,
+          dueDate: charge.dueDate,
+        };
+      }),
+    createCard: publicProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        clientId: z.number(),
+        clientName: z.string(),
+        clientEmail: z.string().optional().nullable(),
+        clientPhone: z.string().optional().nullable(),
+        clientCpf: z.string(),
+        clientAddressNumber: z.string(),
+        clientPostalCode: z.string(),
+        appointmentId: z.number().optional().nullable(),
+        amount: z.number(),
+        description: z.string().optional(),
+        cardHolderName: z.string(),
+        cardNumber: z.string(),
+        cardExpMonth: z.string(),
+        cardExpYear: z.string(),
+        cardCvv: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        if (!asaasEnabled) throw new Error("Pagamento online não configurado. Configure ASAAS_API_KEY.");
+        const asaasCustomerId = await getOrCreateAsaasCustomer({
+          name: input.clientName,
+          email: input.clientEmail ?? undefined,
+          mobilePhone: input.clientPhone ?? undefined,
+          cpfCnpj: input.clientCpf,
+          externalReference: String(input.clientId),
+          addressNumber: input.clientAddressNumber,
+          postalCode: input.clientPostalCode,
+        });
+        const charge = await createAsaasCharge({
+          customer: asaasCustomerId,
+          billingType: "CREDIT_CARD",
+          value: input.amount,
+          dueDate: asaasDefaultDueDate(),
+          description: input.description || "Agendamento Barber Pro",
+          externalReference: input.appointmentId ? String(input.appointmentId) : undefined,
+          creditCard: {
+            holderName: input.cardHolderName,
+            number: input.cardNumber.replace(/\s/g, ""),
+            expiryMonth: input.cardExpMonth,
+            expiryYear: input.cardExpYear,
+            ccv: input.cardCvv,
+          },
+          creditCardHolderInfo: {
+            name: input.cardHolderName,
+            email: input.clientEmail || "cliente@barberpro.com",
+            cpfCnpj: input.clientCpf.replace(/\D/g, ""),
+            postalCode: input.clientPostalCode.replace(/\D/g, ""),
+            addressNumber: input.clientAddressNumber,
+            phone: input.clientPhone?.replace(/\D/g, "") || "",
+          },
+        });
+        const dbConn = await db.getDb();
+        if (dbConn) {
+          await dbConn.execute(sql`
+            INSERT INTO online_payments (tenantId, clientId, chargeType, referenceId, asaasPaymentId, asaasCustomerId, billingType, amount, status, invoiceUrl, dueDate)
+            VALUES (${input.tenantId}, ${input.clientId}, 'appointment', ${input.appointmentId ?? null}, ${charge.id}, ${asaasCustomerId}, 'CREDIT_CARD', ${input.amount}, ${charge.status ?? 'pending'}, ${charge.invoiceUrl ?? null}, ${charge.dueDate})
+          `);
+        }
+        return {
+          paymentId: charge.id,
+          status: charge.status,
+          invoiceUrl: charge.invoiceUrl ?? null,
+          value: charge.value,
+        };
+      }),
+    checkStatus: publicProcedure
+      .input(z.object({ paymentId: z.string() }))
+      .query(async ({ input }) => {
+        const r = await asaasApi.get(`/payments/${input.paymentId}`);
+        return { status: r.data.status as string };
+      }),
+    listByTenant: publicProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        status: z.string().optional(),
+      }))
+      .query(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) return [];
+        const { tenantId, startDate, endDate, status } = input;
+        const rows = status && status !== "all"
+          ? await dbConn.execute(sql`
+              SELECT op.id, op.billingType, op.amount, op.status, op.dueDate, op.createdAt, op.paidAt,
+                     op.invoiceUrl, op.chargeType, op.referenceId, op.asaasPaymentId,
+                     c.name AS clientName, c.phone AS clientPhone
+              FROM online_payments op
+              LEFT JOIN clients c ON c.id = op.clientId
+              WHERE op.tenantId = ${tenantId}
+                AND (${startDate ?? null} IS NULL OR DATE(op.createdAt) >= ${startDate ?? null})
+                AND (${endDate ?? null} IS NULL OR DATE(op.createdAt) <= ${endDate ?? null})
+                AND op.status = ${status}
+              ORDER BY op.createdAt DESC LIMIT 200
+            `)
+          : await dbConn.execute(sql`
+              SELECT op.id, op.billingType, op.amount, op.status, op.dueDate, op.createdAt, op.paidAt,
+                     op.invoiceUrl, op.chargeType, op.referenceId, op.asaasPaymentId,
+                     c.name AS clientName, c.phone AS clientPhone
+              FROM online_payments op
+              LEFT JOIN clients c ON c.id = op.clientId
+              WHERE op.tenantId = ${tenantId}
+                AND (${startDate ?? null} IS NULL OR DATE(op.createdAt) >= ${startDate ?? null})
+                AND (${endDate ?? null} IS NULL OR DATE(op.createdAt) <= ${endDate ?? null})
+              ORDER BY op.createdAt DESC LIMIT 200
+            `);
+        return (rows as any[]).map((p: any) => ({
+          id: p.id,
+          billingType: p.billingType ?? "PIX",
+          amount: parseFloat(p.amount ?? "0"),
+          status: p.status ?? "pending",
+          dueDate: p.dueDate,
+          createdAt: p.createdAt,
+          paidAt: p.paidAt ?? null,
+          invoiceUrl: p.invoiceUrl ?? null,
+          asaasPaymentId: p.asaasPaymentId ?? null,
+          clientName: p.clientName ?? "—",
+          clientPhone: p.clientPhone ?? null,
+        }));
+      }),
+    listOverdue: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) return [];
+        const rows = await dbConn.execute(sql`
+          SELECT op.id, op.billingType, op.amount, op.status, op.dueDate, op.createdAt,
+                 op.invoiceUrl, op.asaasPaymentId,
+                 c.name AS clientName, c.phone AS clientPhone
+          FROM online_payments op
+          LEFT JOIN clients c ON c.id = op.clientId
+          WHERE op.tenantId = ${input.tenantId}
+            AND op.status = 'overdue'
+          ORDER BY op.dueDate ASC LIMIT 100
+        `);
+        return (rows as any[]).map((p: any) => ({
+          id: p.id,
+          billingType: p.billingType ?? "PIX",
+          amount: parseFloat(p.amount ?? "0"),
+          status: "overdue",
+          dueDate: p.dueDate,
+          createdAt: p.createdAt,
+          invoiceUrl: p.invoiceUrl ?? null,
+          asaasPaymentId: p.asaasPaymentId ?? null,
+          clientName: p.clientName ?? "—",
+          clientPhone: p.clientPhone ?? null,
+        }));
+      }),
+    cancelCharge: publicProcedure
+      .input(z.object({ asaasPaymentId: z.string(), tenantId: z.number() }))
+      .mutation(async ({ input }) => {
+        if (asaasEnabled) {
+          try { await asaasApi.delete(`/payments/${input.asaasPaymentId}`); } catch {}
+        }
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new Error("DB unavailable");
+        await dbConn.execute(sql`UPDATE online_payments SET status = 'cancelled', updatedAt = NOW() WHERE asaasPaymentId = ${input.asaasPaymentId} AND tenantId = ${input.tenantId}`);
+        return { ok: true };
+      }),
+    getPaymentLink: publicProcedure
+      .input(z.object({ appointmentId: z.number(), tenantId: z.number() }))
+      .query(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) return null;
+        const rows = await dbConn.execute(sql`
+          SELECT invoiceUrl, pixCopyCola, status
+          FROM online_payments
+          WHERE referenceId = ${String(input.appointmentId)} AND tenantId = ${input.tenantId}
+          ORDER BY createdAt DESC LIMIT 1
+        `);
+        const p = (rows as any[])[0];
+        if (!p) return null;
+        return {
+          invoiceUrl: p.invoiceUrl ?? null,
+          pixCopyCola: p.pixCopyCola ?? null,
+          status: p.status ?? "pending",
+        };
+      }),
+  }),
   suppliers: router({
     list: publicProcedure
       .input(z.object({ tenantId: z.number() }))

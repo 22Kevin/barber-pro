@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -11,6 +12,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -539,6 +541,18 @@ export default function AgendaScreen() {
                 onStatusChange={handleStatusChange}
                 onCompleted={handleAppointmentCompleted}
                 onCancelWithReason={handleCancelWithReason}
+                onResendPaymentLink={async (apptId) => {
+                  try {
+                    const tenantId = barber?.tenantId ?? 0;
+                    const link = await utils.asaasPayments.getPaymentLink.fetch({ appointmentId: apptId, tenantId });
+                    const phone = apt.clientPhone?.replace(/\D/g, "");
+                    if (!phone) { Alert.alert("Atenção", "Cliente sem telefone cadastrado."); return; }
+                    const url = link?.invoiceUrl ?? link?.pixCopyCola ?? null;
+                    if (!url) { Alert.alert("Atenção", "Nenhum link de pagamento encontrado para este agendamento."); return; }
+                    const msg = encodeURIComponent(`Olá ${apt.clientName}! Segue o link para pagamento do seu agendamento: ${url}`);
+                    Linking.openURL(`https://wa.me/55${phone}?text=${msg}`);
+                  } catch { Alert.alert("Erro", "Não foi possível buscar o link de pagamento."); }
+                }}
                 paymentPending={apt.status === "completed" ? (paymentPendingMap[apt.id] ?? true) : undefined}
               />
             ))}

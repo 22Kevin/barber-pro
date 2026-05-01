@@ -27,7 +27,7 @@ const ASAAS_BASE_URL = ASAAS_SANDBOX
 
 export const asaasEnabled = !!ASAAS_API_KEY;
 
-const asaasApi = axios.create({
+export const asaasApi = axios.create({
   baseURL: ASAAS_BASE_URL,
   headers: {
     "access_token": ASAAS_API_KEY,
@@ -47,6 +47,26 @@ export interface AsaasCustomerPayload {
   phone?: string;
   mobilePhone?: string;
   externalReference?: string; // clientId no nosso sistema
+  address?: string;
+  addressNumber?: string;
+  postalCode?: string;
+}
+
+export interface AsaasCreditCardInfo {
+  holderName: string;
+  number: string;
+  expiryMonth: string;
+  expiryYear: string;
+  ccv: string;
+}
+
+export interface AsaasCreditCardHolderInfo {
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  postalCode: string;
+  addressNumber: string;
+  phone?: string;
 }
 
 export interface AsaasChargePayload {
@@ -57,6 +77,8 @@ export interface AsaasChargePayload {
   description: string;
   externalReference?: string; // appointmentId ou orderId no nosso sistema
   postalService?: boolean;
+  creditCard?: AsaasCreditCardInfo;
+  creditCardHolderInfo?: AsaasCreditCardHolderInfo;
 }
 
 export interface AsaasSubscriptionPayload {

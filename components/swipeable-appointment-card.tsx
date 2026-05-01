@@ -42,8 +42,10 @@ interface Props {
   paymentPending?: boolean;
   /** Chamado ao cancelar com motivo (substitui o swipe de cancelar quando fornecido) */
   onCancelWithReason?: (id: number) => void;
+  /** Chamado para reenviar link de pagamento via WhatsApp */
+  onResendPaymentLink?: (id: number) => void;
 }
-export function SwipeableAppointmentCard({ appointment, client, service, onPress, onStatusChange, onCompleted, paymentPending, onCancelWithReason }: Props) {
+export function SwipeableAppointmentCard({ appointment, client, service, onPress, onStatusChange, onCompleted, paymentPending, onCancelWithReason, onResendPaymentLink }: Props) {
   // Suporta dados via JOIN (apt.clientName) ou via props legadas (client?.name)
   const resolvedClientName = appointment.clientName ?? client?.name ?? "Cliente não encontrado";
   const resolvedClientPhone = appointment.clientPhone ?? client?.phone;
@@ -188,6 +190,14 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
                 style={({ pressed }) => [styles.whatsappBtn, pressed && { opacity: 0.7 }]}
               >
                 <Text style={styles.whatsappBtnText}>📱 WhatsApp</Text>
+              </Pressable>
+            )}
+            {onResendPaymentLink && !isTerminal && (appointment.status === "scheduled" || appointment.status === "confirmed") && (
+              <Pressable
+                onPress={() => onResendPaymentLink(appointment.id)}
+                style={({ pressed }) => [styles.whatsappBtn, { backgroundColor: "#1D4ED822", borderColor: "#1D4ED8" }, pressed && { opacity: 0.7 }]}
+              >
+                <Text style={[styles.whatsappBtnText, { color: "#60A5FA" }]}>💳 Link Pgto</Text>
               </Pressable>
             )}
             {appointment.status === "completed" && paymentPending && (

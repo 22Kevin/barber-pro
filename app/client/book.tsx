@@ -237,44 +237,26 @@ export default function BookScreen() {
     );
   };
 
-  const handlePayOnline = async () => {
+  const handlePayOnline = () => {
     if (!pendingApptId || !client || !selectedService || !selectedBarber || !selectedDate || !selectedSlot) return;
-    setIsOpeningPayment(true);
-    try {
-      const result = await createPreference.mutateAsync({
-        appointmentId: pendingApptId,
-        serviceId: selectedService.id,
+    const tenantId = (servicesQuery.data?.[0] as any)?.tenantId ?? (selectedService as any)?.tenantId ?? 0;
+    router.push({
+      pathname: "/client/asaas-card-payment" as any,
+      params: {
+        appointmentId: String(pendingApptId),
+        serviceId: String(selectedService.id),
         serviceName: selectedService.name,
-        servicePrice: finalPrice,
+        servicePrice: String(finalPrice),
         clientName: client.name,
-        clientEmail: client.email ?? undefined,
-        barberId: selectedBarber.id,
-        clientId: client.id,
+        clientEmail: client.email ?? "",
+        clientPhone: (client as any).phone ?? "",
+        clientId: String(client.id),
+        tenantId: String(tenantId),
+        barberId: String(selectedBarber.id),
         date: formatDate(selectedDate),
         startTime: selectedSlot.startTime,
-      });
-
-      const url = result.initPoint ?? result.sandboxInitPoint;
-      if (url) {
-        if (Platform.OS === "web") {
-          window.open(url, "_blank");
-        } else {
-          await Linking.openURL(url);
-        }
-        Alert.alert(
-          "Pagamento iniciado",
-          "Complete o pagamento no navegador. Seu agendamento será confirmado automaticamente após a aprovação.",
-          [
-            { text: "Ver meus agendamentos", onPress: () => router.replace("/client/(tabs)/history" as any) },
-            { text: "Início", onPress: () => router.replace("/client/(tabs)/home" as any) },
-          ]
-        );
-      }
-    } catch (err: any) {
-      Alert.alert("Erro ao gerar pagamento", err.message ?? "Tente novamente.");
-    } finally {
-      setIsOpeningPayment(false);
-    }
+      },
+    });
   };
 
   const handlePayPix = () => {
@@ -404,24 +386,24 @@ export default function BookScreen() {
             ))}
           </View>
 
-          {/* Opção 1: Pagar online */}
+          {/* Opção 1: Pagar com cartão */}
           <TouchableOpacity
             onPress={handlePayOnline}
-            disabled={isOpeningPayment || createPreference.isPending}
+            disabled={isOpeningPayment}
             style={{
-              backgroundColor: "#009EE3",
+              backgroundColor: "#1D4ED8",
               borderRadius: 16,
               padding: 20,
               marginBottom: 12,
               alignItems: "center",
-              opacity: (isOpeningPayment || createPreference.isPending) ? 0.7 : 1,
+              opacity: isOpeningPayment ? 0.7 : 1,
             }}
           >
             <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16, marginBottom: 4 }}>
-              {(isOpeningPayment || createPreference.isPending) ? "Gerando link..." : "💳 Pagar agora (online)"}
+              💳 Pagar com cartão de crédito
             </Text>
             <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12 }}>
-              Pix, cartão de crédito ou débito via Mercado Pago
+              Visa, Mastercard, Elo e outros
             </Text>
           </TouchableOpacity>
 

@@ -20,7 +20,7 @@ import { trpc } from "@/lib/trpc";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 
-type Tab = "overview" | "sales" | "expenses";
+type Tab = "overview" | "sales" | "expenses" | "online";
 
 const PAYMENT_METHODS = [
   { key: "cash",         label: "Dinheiro",       icon: "banknote.fill" as const },
@@ -56,6 +56,7 @@ export default function FinancialScreen() {
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [pmtStatusFilter, setPmtStatusFilter] = useState("all");
   const [monthOffset, setMonthOffset] = useState(0);
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -149,6 +150,15 @@ export default function FinancialScreen() {
     });
   }
 
+  const onlinePaymentsQuery = trpc.asaasPayments.listByTenant.useQuery(
+    { tenantId: tenantId ?? 0, startDate: range.start, endDate: range.end, status: pmtStatusFilter === "all" ? undefined : pmtStatusFilter },
+    { enabled: !!tenantId && activeTab === "online" }
+  );
+  const cancelChargeMutation = trpc.asaasPayments.cancelCharge.useMutation({
+    onSuccess: () => { utils.asaasPayments.listByTenant.invalidate(); },
+    onError: (e: any) => Alert.alert("Erro", e.message),
+  });
+
   const sales = salesQuery.data ?? [];
   const expenses = expensesQuery.data ?? [];
 
@@ -192,15 +202,17 @@ export default function FinancialScreen() {
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabs}>
-        {(["overview", "sales", "expenses"] as Tab[]).map(tab => (
-          <Pressable key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)}>
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab === "overview" ? "Resumo" : tab === "sales" ? "Receitas" : "Despesas"}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44 }}>
+        <View style={[styles.tabs, { paddingHorizontal: 16 }]}>
+          {(["overview", "sales", "expenses", "online"] as Tab[]).map(tab => (
+            <Pressable key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)}>
+              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                {tab === "overview" ? "Resumo" : tab === "sales" ? "Receitas" : tab === "expenses" ? "Despesas" : "Pgto Online"}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: tabBarHeight }}>
         {/* Overview */}
@@ -307,6 +319,88 @@ export default function FinancialScreen() {
               ))
             )}
           </>
+        )}
+
+        {/* Pagamentos Online (Asaas) */}
+        {activeTab === "online" && (
+          <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+            {/* Filtro de status */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                {[
+                  { key: "all", label: "Todos" },
+                  { key: "RECEIVED", label: "✅ Pago" },
+                  { key: "PENDING", label: "⏳ Pendente" },
+                  { key: "OVERDUE", label: "⚠️ Vencido" },
+                  { key: "CANCELLED", label: "✖ Cancelado" },
+                ].map(opt => (
+                  <Pressable
+                    key={opt.key}
+                    onPress={() => setPmtStatusFilter(opt.key)}
+                    style={[styles.tab, pmtStatusFilter === opt.key && styles.tabActive, { paddingHorizontal: 12 }]}
+                  >
+                    <Text style={[styles.tabText, pmtStatusFilter === opt.key && styles.tabTextActive]}>{opt.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+
+            {onlinePaymentsQuery.isLoading ? (
+              <ActivityIndicator color="#C9A84C" style={{ marginTop: 40 }} />
+            ) : !onlinePaymentsQuery.data || onlinePaymentsQuery.data.length === 0 ? (
+              <EmptyState icon="creditcard.fill" text="Nenhum pagamento online encontrado" />
+            ) : (
+              <>
+                {/* Cards de resumo */}
+                <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
+                  <View style={[styles.transactionCard, { flex: 1, backgroundColor: "#064E3B22", borderColor: "#4CAF5044" }]}>
+                    <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 4 }}>Total Recebido</Text>
+                    <Text style={{ color: "#4CAF50", fontWeight: "800", fontSize: 16 }}>
+                      {formatCurrency((onlinePaymentsQuery.data as any[]).filter((p: any) => p.status === "RECEIVED" || p.status === "CONFIRMED").reduce((s: number, p: any) => s + p.amount, 0))}
+                    </Text>
+                  </View>
+                  <View style={[styles.transactionCard, { flex: 1, backgroundColor: "#78350F22", borderColor: "#F59E0B44" }]}>
+                    <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 4 }}>Pendente</Text>
+                    <Text style={{ color: "#F59E0B", fontWeight: "800", fontSize: 16 }}>
+                      {formatCurrency((onlinePaymentsQuery.data as any[]).filter((p: any) => p.status === "PENDING").reduce((s: number, p: any) => s + p.amount, 0))}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Lista de cobranças */}
+                {(onlinePaymentsQuery.data as any[]).map((pmt: any) => {
+                  const statusColor = pmt.status === "RECEIVED" || pmt.status === "CONFIRMED" ? "#4CAF50" : pmt.status === "PENDING" ? "#F59E0B" : pmt.status === "OVERDUE" ? "#EF4444" : "#6B7280";
+                  const statusLabel = pmt.status === "RECEIVED" || pmt.status === "CONFIRMED" ? "Pago" : pmt.status === "PENDING" ? "Pendente" : pmt.status === "OVERDUE" ? "Vencido" : "Cancelado";
+                  const methodLabel = pmt.billingType === "PIX" ? "Pix" : pmt.billingType === "CREDIT_CARD" ? "Cartão" : pmt.billingType;
+                  return (
+                    <View key={pmt.id} style={[styles.transactionCard, { marginBottom: 10 }]}>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                          <Text style={styles.transactionDesc} numberOfLines={1}>{pmt.clientName}</Text>
+                          <Text style={{ color: statusColor, fontSize: 12, fontWeight: "700" }}>{statusLabel}</Text>
+                        </View>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                          <Text style={styles.transactionMeta}>{methodLabel} · {pmt.createdAt ? new Date(pmt.createdAt).toLocaleDateString("pt-BR") : "—"}</Text>
+                          <Text style={{ color: "#EAB308", fontWeight: "800", fontSize: 15 }}>{formatCurrency(pmt.amount)}</Text>
+                        </View>
+                        {(pmt.status === "PENDING" || pmt.status === "OVERDUE") && (
+                          <Pressable
+                            onPress={() => Alert.alert("Cancelar cobrança?", "Esta ação não pode ser desfeita.", [
+                              { text: "Cancelar", style: "cancel" },
+                              { text: "Confirmar", style: "destructive", onPress: () => cancelChargeMutation.mutate({ asaasPaymentId: pmt.asaasPaymentId, tenantId: tenantId ?? 0 }) },
+                            ])}
+                            style={{ marginTop: 8, backgroundColor: "#1F2937", borderRadius: 8, padding: 8, alignItems: "center" }}
+                          >
+                            <Text style={{ color: "#EF4444", fontSize: 12, fontWeight: "700" }}>✖ Cancelar cobrança</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })}
+              </>
+            )}
+          </View>
         )}
       </ScrollView>
 
