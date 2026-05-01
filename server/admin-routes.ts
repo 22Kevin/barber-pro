@@ -4004,7 +4004,7 @@ export function registerAdminRoutes(app: Express): void {
   // ─── Cupons ────────────────────────────────────────────────────────────────
   app.get("/admin/cupons", requireAdminAuth, async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
-    const allCoupons = await db.getAllCoupons();
+    const allCoupons = await db.getAllCoupons(tenantId);
     const saved = req.query.saved === "1";
     const body = `
       ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE80;border-radius:10px;padding:12px 18px;margin-bottom:20px;color:#4ADE80;font-size:13px;">Salvo com sucesso.</div>` : ""}
@@ -4191,7 +4191,7 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/comissoes", requireAdminAuth, async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
     const tenantId = barber?.tenantId ?? null;
-    const configs = await db.listCommissionConfigs();
+    const configs = await db.listCommissionConfigs(tenantId);
     const allBarbers = await db.getAllBarbers(tenantId);
     const saved = req.query.saved === "1";
 
@@ -4804,7 +4804,7 @@ export function registerAdminRoutes(app: Express): void {
     const searchProd = ((req.query.q as string) || "").toLowerCase();
 
     // Buscar todos os produtos (incluindo inativos para histórico)
-    const allProducts = await db.getStockProducts();
+    const allProducts = await db.getStockProducts(tenantId);
     // Filtrar por tipo e busca
     let filteredProducts = allProducts;
     if (activeTab === "venda") filteredProducts = allProducts.filter((p: any) => p.productType === "sale");
@@ -5023,7 +5023,7 @@ export function registerAdminRoutes(app: Express): void {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
-    const configs = await db.listReturnMessageConfigs();
+    const configs = await db.listReturnMessageConfigs(tenantId);
     const allServices = await db.getAllServices(true, tenantId);
     const saved = req.query.saved === "1";
     const deleted = req.query.deleted === "1";
@@ -5131,7 +5131,7 @@ export function registerAdminRoutes(app: Express): void {
     const tenantId = barber?.tenantId ?? null;
     const allClients = await db.getAllClients(tenantId);
     const activeClients = allClients.filter((c: any) => c.isActive);
-    const promotionList = await db.listPromotions();
+    const promotionList = await db.listPromotions(tenantId);
     const sent = req.query.sent === "1";
     const AUDIENCE_OPTIONS = [
       { value: "all", label: "Todos os clientes ativos", icon: "👥" },
@@ -5263,7 +5263,7 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/conversao-promocoes", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
-    const report = await db.getPromotionConversionReport();
+    const report = await db.getPromotionConversionReport(tenantId);
     const totalSent = report.reduce((s, p) => s + (p.recipientCount ?? 0), 0);
     const totalConversions = report.reduce((s, p) => s + (p.conversions ?? 0), 0);
     const avgRate = report.length > 0 ? Math.round(report.reduce((s, p) => s + (p.conversionRate ?? 0), 0) / report.length) : 0;

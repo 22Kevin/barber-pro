@@ -1560,25 +1560,27 @@ export async function getAllRecurringAppointments(tenantId?: number | null) {
 }
 
 // ─── Conversão de Promoções ───────────────────────────────────────────────────
-export async function getPromotionConversionReport() {
+export async function getPromotionConversionReport(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  const promoList = await db.select().from(promotions).where(sql`${promotions.sentAt} IS NOT NULL`).orderBy(desc(promotions.sentAt));
-  const allClients = await db.select().from(clients);
-  const allAppointments = await db.select().from(appointments);
-
+  const promoConditions = tenantId != null
+    ? and(sql`${promotions.sentAt} IS NOT NULL`, eq(promotions.tenantId, tenantId))
+    : sql`${promotions.sentAt} IS NOT NULL`;
+  const promoList = await db.select().from(promotions).where(promoConditions).orderBy(desc(promotions.sentAt));
+  const apptConditions = tenantId != null ? eq(appointments.tenantId, tenantId) : undefined;
+  const allAppointments = apptConditions
+    ? await db.select().from(appointments).where(apptConditions)
+    : await db.select().from(appointments);
   return promoList.map((p) => {
     if (!p.sentAt) return { ...p, conversions: 0, conversionRate: 0 };
     const sentDate = new Date(p.sentAt);
     const windowEnd = new Date(sentDate.getTime() + 7 * 24 * 60 * 60 * 1000);
     const windowEndStr = windowEnd.toISOString().split("T")[0];
     const sentDateStr = sentDate.toISOString().split("T")[0];
-
     // Contar agendamentos criados nos 7 dias após o envio
     const conversions = allAppointments.filter((a) => {
       return a.date >= sentDateStr && a.date <= windowEndStr;
     }).length;
-
     const rate = p.recipientCount > 0 ? Math.round((conversions / p.recipientCount) * 100) : 0;
     return { ...p, conversions, conversionRate: rate };
   });
