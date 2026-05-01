@@ -4004,6 +4004,7 @@ export function registerAdminRoutes(app: Express): void {
   // ─── Cupons ────────────────────────────────────────────────────────────────
   app.get("/admin/cupons", requireAdminAuth, async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
+    const tenantId = barber?.tenantId ?? null;
     const allCoupons = await db.getAllCoupons(tenantId);
     const saved = req.query.saved === "1";
     const body = `
@@ -5263,6 +5264,7 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/conversao-promocoes", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
     const report = await db.getPromotionConversionReport(tenantId);
     const totalSent = report.reduce((s, p) => s + (p.recipientCount ?? 0), 0);
     const totalConversions = report.reduce((s, p) => s + (p.conversions ?? 0), 0);

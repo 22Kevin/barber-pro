@@ -1567,10 +1567,17 @@ export async function getPromotionConversionReport(tenantId?: number | null) {
     ? and(sql`${promotions.sentAt} IS NOT NULL`, eq(promotions.tenantId, tenantId))
     : sql`${promotions.sentAt} IS NOT NULL`;
   const promoList = await db.select().from(promotions).where(promoConditions).orderBy(desc(promotions.sentAt));
-  const apptConditions = tenantId != null ? eq(appointments.tenantId, tenantId) : undefined;
-  const allAppointments = apptConditions
-    ? await db.select().from(appointments).where(apptConditions)
-    : await db.select().from(appointments);
+  // appointments não tem tenantId diretamente — filtra via barberId (join com barbers)
+  let allAppointments: any[];
+  if (tenantId != null) {
+    const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
+    const barberIds = tenantBarbers.map((b: any) => b.id);
+    allAppointments = barberIds.length > 0
+      ? await db.select().from(appointments).where(inArray(appointments.barberId, barberIds))
+      : [];
+  } else {
+    allAppointments = await db.select().from(appointments);
+  }
   return promoList.map((p) => {
     if (!p.sentAt) return { ...p, conversions: 0, conversionRate: 0 };
     const sentDate = new Date(p.sentAt);
