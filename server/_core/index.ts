@@ -458,13 +458,18 @@ async function startServer() {
   );
 
   const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
+  // Em produção, usa a porta exata fornecida pelo host (Railway injeta $PORT)
+  // Em desenvolvimento, tenta portas alternativas se a preferida estiver ocupada
+  const port = process.env.NODE_ENV === "production"
+    ? preferredPort
+    : await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
+  // Escuta em 0.0.0.0 para aceitar conexões externas (obrigatório no Railway)
+  server.listen(port, "0.0.0.0", () => {
     console.log(`[api] server listening on port ${port}`);
     // Iniciar job de e-mail de avaliação pós-atendimento
     startReviewEmailJob();
