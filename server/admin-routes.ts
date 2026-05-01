@@ -4434,9 +4434,9 @@ export function registerAdminRoutes(app: Express): void {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
-    const allRecurring = await db.getAllRecurringAppointments();
-    const cancelledList = await db.getCancelledRecurringAppointments();
-    const stats = await db.getSubscriptionStats();
+    const allRecurring = await db.getAllRecurringAppointments(tenantId);
+    const cancelledList = await db.getCancelledRecurringAppointments(tenantId);
+    const stats = await db.getSubscriptionStats(tenantId);
     const allClients = await db.getAllClients(tenantId);
     const allBarbers = await db.getAllBarbers(tenantId);
     const allServices = await db.getAllServices(true, tenantId);
@@ -5967,11 +5967,17 @@ export function registerAdminRoutes(app: Express): void {
     const status = req.query.status as string || "all";
     const converted = status === "converted" ? true : status === "pending" ? false : undefined;
 
-    const [leads, stats, chartData] = await Promise.all([
-      db.listOrbitLeads(tenantId, filter as any, converted),
-      db.getOrbitStats(tenantId),
-      db.getOrbitDailyChart(tenantId, 30),
-    ]);
+    let leads: any[] = [], stats: any = { todayCount: 0, weekConverted: 0, conversionRate: 0, newLast24h: 0 }, chartData: any[] = [];
+    try {
+      [leads, stats, chartData] = await Promise.all([
+        db.listOrbitLeads(tenantId, filter as any, converted),
+        db.getOrbitStats(tenantId),
+        db.getOrbitDailyChart(tenantId, 30),
+      ]);
+    } catch (queryErr: any) {
+      console.error("[orbita] query error (tabela pode não existir ainda):", (queryErr as any)?.message);
+      // Continua com dados vazios — não derruba o servidor
+    }
 
     const body = `
       <div class="metrics-grid">
