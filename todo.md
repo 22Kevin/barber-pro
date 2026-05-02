@@ -1819,7 +1819,7 @@
 
 ## Problemas identificados no vídeo (01/05/2026)
 
-- [ ] Caracteres quebrados (quadradinhos) nos cards de planos e na seção "3 passos" da landing
-- [ ] Seleção de plano no modal de cadastro — plano fixado em "Equipe", cliente não consegue alterar
-- [ ] Botão "Entrar com Google" ausente no modal de cadastro (etapa de e-mail/senha)
-- [ ] Botão "Entrar com Google" ausente no modal de login rápido da landing page
+- [x] Caracteres quebrados (quadradinhos) nos cards de planos e na seção "3 passos" da landing
+- [x] Seleção de plano no modal de cadastro — plano fixado em "Equipe", cliente não consegue alterar
+- [x] Botão "Entrar com Google" ausente no modal de cadastro (etapa de e-mail/senha)
+- [x] Botão "Entrar com Google" ausente no modal de login rápido da landing page

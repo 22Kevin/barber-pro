@@ -310,7 +310,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
 }
 
 // ─── Página de Login ──────────────────────────────────────────────────────────
-function loginPage(error = false, errorMsg?: string): string {
+function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: string): string {
   const REMEMBER_COOKIE = "bp_admin_remember_email";
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -339,6 +339,7 @@ function loginPage(error = false, errorMsg?: string): string {
     button.btn-google:hover { background: #252525; border-color: #3A3A3A; }
     button.btn-google svg { flex-shrink: 0; }
     .error { background: #F8717122; border: 1px solid #F8717144; color: #F87171; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+    .info-banner { background: #C9A84C22; border: 1px solid #C9A84C44; color: #C9A84C; padding: 12px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
     .back { display: block; text-align: center; margin-top: 20px; font-size: 12px; color: #888880; text-decoration: none; }
     .back:hover { color: #C9A84C; }
     .loading { opacity: 0.6; pointer-events: none; }
@@ -349,6 +350,7 @@ function loginPage(error = false, errorMsg?: string): string {
   <div class="card">
     <div class="logo">BARBER PRO</div>
     <div class="subtitle">Painel Administrativo</div>
+    ${info === 'already_exists' ? `<div class="info-banner">&#128276; Este e-mail já possui uma conta no Barber Pro${infoEmail ? ` (<strong>${infoEmail}</strong>)` : ''}. Faça login abaixo para acessar seu painel.</div>` : ''}
     ${error ? `<div class="error">${errorMsg ?? "Email ou senha incorretos."}</div>` : ""}
     <form method="POST" action="/admin/login" id="loginForm">
       <label>Email</label>
@@ -3091,7 +3093,9 @@ export function registerAdminRoutes(app: Express): void {
     const token = (req as any).cookies?.[ADMIN_SESSION_COOKIE];
     if (token && decodeSession(token)) return res.redirect("/admin");
     const errorMsg = req.query.msg ? decodeURIComponent(req.query.msg as string) : undefined;
-    res.send(loginPage(req.query.error === "1", errorMsg));
+    const info = req.query.info as string | undefined;
+    const infoEmail = req.query.email ? decodeURIComponent(req.query.email as string) : undefined;
+    res.send(loginPage(req.query.error === "1", errorMsg, info, infoEmail));
   });
 
   // POST /admin/login
@@ -3250,6 +3254,7 @@ export function registerAdminRoutes(app: Express): void {
     button { width: 100%; padding: 14px; background: #C9A84C; color: #0C0C0C; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 8px; }
     button:hover { opacity: 0.9; }
     .error { background: #F8717122; border: 1px solid #F8717144; color: #F87171; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+    .info-banner { background: #C9A84C22; border: 1px solid #C9A84C44; color: #C9A84C; padding: 12px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
     .success { background: #22C55E22; border: 1px solid #22C55E44; color: #4ADE80; padding: 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; text-align: center; line-height: 1.6; }
     .back { display: block; text-align: center; margin-top: 20px; font-size: 12px; color: #888880; text-decoration: none; }
     .back:hover { color: #C9A84C; }
@@ -3315,6 +3320,7 @@ export function registerAdminRoutes(app: Express): void {
     button { width: 100%; padding: 14px; background: #C9A84C; color: #0C0C0C; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 8px; }
     button:hover { opacity: 0.9; }
     .error { background: #F8717122; border: 1px solid #F8717144; color: #F87171; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+    .info-banner { background: #C9A84C22; border: 1px solid #C9A84C44; color: #C9A84C; padding: 12px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
     .back { display: block; text-align: center; margin-top: 20px; font-size: 12px; color: #888880; text-decoration: none; }
     .back:hover { color: #C9A84C; }
   </style>

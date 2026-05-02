@@ -77,6 +77,10 @@ export async function getDb() {
         max: 10,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 10000,
+        // keepAlive mantém conexões TCP ativas e evita erros SSL intermitentes
+        // quando o Railway recicla conexões ociosas
+        keepAlive: true,
+        keepAliveInitialDelayMillis: 10000,
         ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
       });
       // Reconexão automática em erros de conexão SSL/timeout
