@@ -715,7 +715,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     if (dbConn) {
       const tenantIdVal = tenant.id;
       const plansResult = await dbConn.execute(
-        sql`SELECT * FROM subscription_plans WHERE tenantId = ${tenantIdVal} AND isActive = 1 ORDER BY price ASC`
+        sql`SELECT * FROM subscription_plans WHERE "tenantId" = ${tenantIdVal} AND "isActive" = true ORDER BY price ASC`
       ) as any;
       const plans = Array.isArray(plansResult) ? plansResult[0] : plansResult?.rows ?? [];
       if (plans && plans.length > 0) {
@@ -3179,7 +3179,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
     const dbConn = await db.getDb();
     if (dbConn) {
       const planResult = await dbConn.execute(
-        sql`SELECT * FROM subscription_plans WHERE id = ${planId} AND tenantId = ${tenant.id} AND isActive = 1 LIMIT 1`
+        sql`SELECT * FROM subscription_plans WHERE id = ${planId} AND "tenantId" = ${tenant.id} AND "isActive" = true LIMIT 1`
       ) as any;
       const plans = Array.isArray(planResult) ? planResult[0] : planResult?.rows ?? [];
       plan = plans?.[0] ?? null;
@@ -4648,7 +4648,7 @@ export function registerPublicRoutes(app: Express): void {
         const tenant = await db.getTenantBySlug(slug);
         if (tenant) {
           await dbConn.execute(sql`
-            INSERT INTO online_payments (tenantId, clientId, chargeType, referenceId, asaasPaymentId, asaasCustomerId, billingType, amount, status, invoiceUrl, pixQrCode, pixCopyCola, dueDate)
+            INSERT INTO online_payments ("tenantId", "clientId", "chargeType", "referenceId", "asaasPaymentId", "asaasCustomerId", "billingType", amount, status, "invoiceUrl", "pixQrCode", "pixCopyCola", "dueDate")
             VALUES (${tenant.id}, ${clientId}, 'appointment', ${appointmentId ?? null}, ${charge.id}, ${asaasCustomerId}, 'PIX', ${Number(amount)}, 'pending', ${charge.invoiceUrl ?? null}, ${charge.pixQrCode ?? null}, ${charge.pixCopyCola ?? null}, ${charge.dueDate})
           `);
         }
@@ -4723,7 +4723,7 @@ export function registerPublicRoutes(app: Express): void {
         const tenant = await db.getTenantBySlug(slug);
         if (tenant) {
           await dbConn.execute(sql`
-            INSERT INTO online_payments (tenantId, clientId, chargeType, referenceId, asaasPaymentId, asaasCustomerId, billingType, amount, status, invoiceUrl, dueDate)
+            INSERT INTO online_payments ("tenantId", "clientId", "chargeType", "referenceId", "asaasPaymentId", "asaasCustomerId", "billingType", amount, status, "invoiceUrl", "dueDate")
             VALUES (${tenant.id}, ${clientId}, 'appointment', ${appointmentId ?? null}, ${charge.id}, ${asaasCustomerId}, 'CREDIT_CARD', ${Number(amount)}, ${charge.status === 'CONFIRMED' ? 'paid' : 'pending'}, ${charge.invoiceUrl ?? null}, ${charge.dueDate})
           `);
         }
@@ -4755,9 +4755,9 @@ export function registerPublicRoutes(app: Express): void {
       if (paid) {
         const dbConn = await db.getDb();
         if (dbConn) {
-          await dbConn.execute(sql`UPDATE online_payments SET status = 'paid', paidAt = NOW() WHERE asaasPaymentId = ${paymentId} AND status = 'pending'`);
+          await dbConn.execute(sql`UPDATE online_payments SET status = 'paid', "paidAt" = NOW() WHERE "asaasPaymentId" = ${paymentId} AND status = 'pending'`);
           // Atualizar agendamento se existir
-          const pmtRows = await dbConn.execute(sql`SELECT referenceId, chargeType FROM online_payments WHERE asaasPaymentId = ${paymentId} LIMIT 1`) as any;
+          const pmtRows = await dbConn.execute(sql`SELECT "referenceId", "chargeType" FROM online_payments WHERE "asaasPaymentId" = ${paymentId} LIMIT 1`) as any;
           const pmtArr = Array.isArray(pmtRows) ? pmtRows[0] : pmtRows?.rows ?? [];
           const pmt = pmtArr?.[0];
           if (pmt?.referenceId && pmt?.chargeType === "appointment") {
@@ -4788,7 +4788,7 @@ export function registerPublicRoutes(app: Express): void {
       // Buscar plano
       const dbConn = await db.getDb();
       if (!dbConn) { res.status(500).json({ error: "Erro de banco de dados" }); return; }
-      const planResult = await dbConn.execute(sql`SELECT * FROM subscription_plans WHERE id = ${planId} AND tenantId = ${tenant.id} AND isActive = 1 LIMIT 1`) as any;
+      const planResult = await dbConn.execute(sql`SELECT * FROM subscription_plans WHERE id = ${planId} AND "tenantId" = ${tenant.id} AND "isActive" = true LIMIT 1`) as any;
       const plans = Array.isArray(planResult) ? planResult[0] : planResult?.rows ?? [];
       const plan = plans?.[0];
       if (!plan) { res.status(404).json({ error: "Plano não encontrado" }); return; }
@@ -4806,17 +4806,18 @@ export function registerPublicRoutes(app: Express): void {
       // Inserir assinatura
       const subResult = await dbConn.execute(sql`
         INSERT INTO client_subscriptions
-          (tenantId, planId, clientId, barberId, selectedServiceIds, selectedProductIds,
-           status, paymentMethod, price, cycleStart, cycleEnd, autoRenew)
+          ("tenantId", "planId", "clientId", "barberId", "selectedServiceIds", "selectedProductIds",
+           status, "paymentMethod", price, "cycleStart", "cycleEnd", "autoRenew")
         VALUES (
           ${tenant.id}, ${planId}, ${clientInfo.id}, ${barberIdVal},
           ${JSON.stringify(svcIds)}, ${JSON.stringify(prdIds)},
           'active', ${payMethod}, ${Number(plan.price)},
-          ${cycleStart}, ${cycleEnd}, 0
+          ${cycleStart}, ${cycleEnd}, false
         )
+        RETURNING id
       `) as any;
-      const subRows = Array.isArray(subResult) ? subResult[0] : subResult;
-      const subscriptionId = subRows?.insertId ?? subRows?.[0]?.insertId;
+      const subRows = Array.isArray(subResult) ? subResult[0] : subResult?.rows ?? subResult;
+      const subscriptionId = subRows?.[0]?.id ?? subRows?.id;
       // Inserir agendamentos
       const primaryServiceId = svcIds[0] ?? 0;
       let serviceDurationMinutes = 30;
@@ -4839,14 +4840,15 @@ export function registerPublicRoutes(app: Express): void {
         const startTime = appt.time.includes(":") && appt.time.split(":").length === 2 ? appt.time + ":00" : appt.time;
         const endTime = addMin(appt.time, serviceDurationMinutes);
         const apptResult = await dbConn.execute(sql`
-          INSERT INTO appointments (clientId, barberId, serviceId, date, startTime, endTime, status)
+          INSERT INTO appointments ("clientId", "barberId", "serviceId", date, "startTime", "endTime", status)
           VALUES (${clientInfo.id}, ${apptBarberId}, ${primaryServiceId}, ${appt.date}, ${startTime}, ${endTime}, 'confirmed')
+          RETURNING id
         `) as any;
-        const apptRows = Array.isArray(apptResult) ? apptResult[0] : apptResult;
-        const apptId = apptRows?.insertId ?? apptRows?.[0]?.insertId;
+        const apptRows = Array.isArray(apptResult) ? apptResult[0] : apptResult?.rows ?? apptResult;
+        const apptId = apptRows?.[0]?.id ?? apptRows?.id;
         if (apptId && subscriptionId) {
           await dbConn.execute(sql`
-            INSERT INTO subscription_appointments (subscriptionId, appointmentId, tenantId, recurrenceIndex)
+            INSERT INTO subscription_appointments ("subscriptionId", "appointmentId", "tenantId", "recurrenceIndex")
             VALUES (${subscriptionId}, ${apptId}, ${tenant.id}, ${i + 1})
           `);
           appointmentIds.push(apptId);
