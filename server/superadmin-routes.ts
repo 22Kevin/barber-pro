@@ -101,6 +101,7 @@ function layout(title: string, session: BOSession | null, body: string): string 
         <a href="/superadmin/tenants" class="${title === "Barbearias" ? "active" : ""}">Barbearias</a>
         <a href="/superadmin/erros" class="${title === "Erros" ? "active" : ""}">Erros</a>
         <a href="/superadmin/leads" class="${title === "Leads" ? "active" : ""}">Leads</a>
+        <a href="/superadmin/suporte" class="${title === "Suporte" ? "active" : ""}">Suporte</a>
         ${session.role === "super_admin" ? `<a href="/superadmin/usuarios" class="${title === "Usuários" ? "active" : ""}">Usuários</a>` : ""}
         ${session.role === "super_admin" ? `<a href="/superadmin/cms" class="${title.startsWith("CMS") ? "active" : ""}">CMS</a>` : ""}
         <div class="nav-user">
@@ -1146,5 +1147,139 @@ export function registerSuperAdminRoutes(app: Express): void {
   });
   app.post("/superadmin/cms/planos", requireAuth, requireRole("super_admin"), (_req: Request, res: Response) => {
     res.redirect("/superadmin/cms?saved=1");
+  });
+
+  // --- Suporte Interno ---
+  app.get("/superadmin/suporte", requireAuth, async (req: Request, res: Response) => {
+    const session = (req as any).boSession as BOSession;
+    const statusFilter = (req.query.status as string) || '';
+    const tickets = await db.getAllSupportTickets(statusFilter ? { status: statusFilter } : undefined);
+    const statusLabels: Record<string, string> = { open: 'Aberto', waiting_admin: 'Aguardando', answered: 'Respondido', closed: 'Fechado' };
+    const statusColors: Record<string, string> = { open: '#F87171', waiting_admin: '#FBBF24', answered: '#60A5FA', closed: '#4ADE80' };
+    const priorityLabels: Record<string, string> = { urgent: 'Urgente', high: 'Alta', normal: 'Normal', low: 'Baixa' };
+    const priorityColors: Record<string, string> = { urgent: '#F87171', high: '#FBBF24', normal: '#60A5FA', low: '#888' };
+    const openCount = tickets.filter((t: any) => ['open','waiting_admin'].includes(t.status)).length;
+    res.send(layout("Suporte", session, `
+      <div class="container">
+        <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div class="page-title">Suporte Interno</div>
+            <div class="page-sub">Tickets abertos pelos assinantes</div>
+          </div>
+          ${openCount > 0 ? `<span style="background:#F8717122;color:#F87171;border:1px solid #F8717144;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700">${openCount} aberto${openCount > 1 ? 's' : ''}</span>` : ''}
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+          ${['','open','waiting_admin','answered','closed'].map(s => `<a href="/superadmin/suporte${s ? '?status='+s : ''}" class="btn ${statusFilter === s ? 'btn-gold' : 'btn-gray'}">${s ? (statusLabels[s] || s) : 'Todos'}</a>`).join('')}
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>#</th><th>Barbearia</th><th>Titulo</th><th>Categoria</th>
+              <th>Status</th><th>Prioridade</th><th>Msgs</th><th>Atualizado</th><th>Acoes</th>
+            </tr></thead>
+            <tbody>
+              ${tickets.length === 0 ? `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:40px">Nenhum ticket encontrado</td></tr>` : ''}
+              ${tickets.map((t: any) => `
+                <tr>
+                  <td style="color:var(--muted);font-size:12px">#${t.id}</td>
+                  <td><strong>${esc(t.tenantName || 'N/A')}</strong></td>
+                  <td style="max-width:220px"><a href="/superadmin/suporte/${t.id}" style="color:var(--text);font-weight:600">${esc(t.title)}</a></td>
+                  <td><span class="badge" style="background:#C9A84C22;color:var(--gold)">${esc(t.category)}</span></td>
+                  <td><span class="badge" style="background:${statusColors[t.status] || '#888'}22;color:${statusColors[t.status] || '#888'}">${statusLabels[t.status] || t.status}</span></td>
+                  <td><span class="badge" style="background:${priorityColors[t.priority] || '#888'}22;color:${priorityColors[t.priority] || '#888'}">${priorityLabels[t.priority] || t.priority}</span></td>
+                  <td style="text-align:center">${t.messageCount}</td>
+                  <td style="color:var(--muted);font-size:12px">${new Date(t.updatedAt).toLocaleDateString('pt-BR')}</td>
+                  <td class="actions">
+                    <a href="/superadmin/suporte/${t.id}" class="btn btn-gold">Ver</a>
+                    ${t.status !== 'closed' ? `<a href="/superadmin/suporte/${t.id}/fechar" class="btn btn-gray">Fechar</a>` : ''}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `));
+  });
+
+  app.get("/superadmin/suporte/:id", requireAuth, async (req: Request, res: Response) => {
+    const session = (req as any).boSession as BOSession;
+    const ticketId = parseInt(req.params.id);
+    if (isNaN(ticketId)) return res.redirect("/superadmin/suporte");
+    const ticket = await db.getSupportTicketById(ticketId);
+    if (!ticket) return res.redirect("/superadmin/suporte");
+    const messages = await db.getSupportMessages(ticketId);
+    const statusLabels: Record<string, string> = { open: 'Aberto', waiting_admin: 'Aguardando', answered: 'Respondido', closed: 'Fechado' };
+    const statusColors: Record<string, string> = { open: '#F87171', waiting_admin: '#FBBF24', answered: '#60A5FA', closed: '#4ADE80' };
+    const saved = req.query.saved === '1';
+    res.send(layout("Suporte", session, `
+      <div class="container" style="max-width:800px">
+        <div style="margin-bottom:20px"><a href="/superadmin/suporte" class="btn btn-gray">Voltar</a></div>
+        ${saved ? `<div style="background:#4ADE8022;color:#4ADE80;border:1px solid #4ADE8044;border-radius:12px;padding:12px 18px;margin-bottom:16px">Resposta enviada!</div>` : ''}
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
+            <div>
+              <div style="font-size:18px;font-weight:800;margin-bottom:6px">${esc(ticket.title)}</div>
+              <div style="font-size:12px;color:var(--muted)">Barbearia: <strong style="color:var(--text)">${esc(ticket.tenantName || 'N/A')}</strong> &nbsp;|&nbsp; Categoria: ${esc(ticket.category)} &nbsp;|&nbsp; Prioridade: ${esc(ticket.priority)}</div>
+            </div>
+            <span class="badge" style="background:${statusColors[ticket.status] || '#888'}22;color:${statusColors[ticket.status] || '#888'};white-space:nowrap">${statusLabels[ticket.status] || ticket.status}</span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${ticket.status !== 'closed' ? `<a href="/superadmin/suporte/${ticketId}/fechar" class="btn btn-gray">Fechar Ticket</a>` : ''}
+            ${ticket.status === 'open' || ticket.status === 'waiting_admin' ? `<a href="/superadmin/suporte/${ticketId}/status/answered" class="btn btn-blue">Marcar Respondido</a>` : ''}
+          </div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px">
+          <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px">Conversa (${messages.length} mensagens)</div>
+          <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;max-height:500px;overflow-y:auto">
+            ${messages.map((m: any) => `
+              <div style="display:flex;flex-direction:column;align-items:${m.authorType === 'admin' ? 'flex-end' : 'flex-start'}">
+                <div style="font-size:10px;color:var(--muted);margin-bottom:4px">
+                  ${m.authorType === 'admin' ? 'Admin' : m.authorType === 'ai' ? 'IA' : 'Cliente: ' + esc(m.authorName || '')}
+                  &nbsp;|&nbsp; ${new Date(m.createdAt).toLocaleString('pt-BR')}
+                </div>
+                <div style="background:${m.authorType === 'admin' ? '#C9A84C22' : m.authorType === 'ai' ? '#60A5FA22' : 'var(--surface2)'};border:1px solid ${m.authorType === 'admin' ? '#C9A84C44' : m.authorType === 'ai' ? '#60A5FA44' : 'var(--border)'};border-radius:12px;padding:10px 14px;max-width:80%;font-size:13px;line-height:1.5;white-space:pre-wrap">${esc(m.content)}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ${ticket.status !== 'closed' ? `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px">Responder</div>
+          <form method="POST" action="/superadmin/suporte/${ticketId}/responder">
+            <textarea name="content" rows="4" placeholder="Digite sua resposta..." style="width:100%;resize:vertical" required></textarea>
+            <div style="margin-top:10px">
+              <button type="submit" class="btn btn-primary">Enviar Resposta</button>
+            </div>
+          </form>
+        </div>` : `<div style="text-align:center;padding:20px;color:var(--muted)">Ticket fechado.</div>`}
+      </div>
+    `));
+  });
+
+  app.post("/superadmin/suporte/:id/responder", requireAuth, async (req: Request, res: Response) => {
+    const session = (req as any).boSession as BOSession;
+    const ticketId = parseInt(req.params.id);
+    const { content } = req.body as { content: string };
+    if (!isNaN(ticketId) && content?.trim()) {
+      await db.addSupportMessage({ ticketId, authorType: 'admin', authorName: session.name, content: content.trim() });
+      await db.updateTicketStatus(ticketId, 'answered');
+    }
+    res.redirect(`/superadmin/suporte/${ticketId}?saved=1`);
+  });
+
+  app.get("/superadmin/suporte/:id/fechar", requireAuth, async (req: Request, res: Response) => {
+    const ticketId = parseInt(req.params.id);
+    if (!isNaN(ticketId)) await db.updateTicketStatus(ticketId, 'closed');
+    res.redirect("/superadmin/suporte");
+  });
+
+  app.get("/superadmin/suporte/:id/status/:status", requireAuth, async (req: Request, res: Response) => {
+    const ticketId = parseInt(req.params.id);
+    const status = req.params.status;
+    if (!isNaN(ticketId) && ['open','waiting_admin','answered','closed'].includes(status)) {
+      await db.updateTicketStatus(ticketId, status);
+    }
+    res.redirect(`/superadmin/suporte/${ticketId}`);
   });
 }

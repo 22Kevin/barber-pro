@@ -82,6 +82,12 @@ const DRAWER_GROUPS: DrawerGroup[] = [
     ],
   },
   {
+    label: "SUPORTE",
+    items: [
+      { label: "Suporte",         icon: "questionmark.circle.fill",    route: "/admin/(tabs)/suporte",           roles: ["super_admin"] },
+    ],
+  },
+  {
     label: "SISTEMA",
     items: [
       { label: "Barbearia",       icon: "building.2.fill",             route: "/admin/(tabs)/barbearia",         roles: ["super_admin"] },

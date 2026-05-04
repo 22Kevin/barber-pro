@@ -11,7 +11,8 @@ import crypto from "crypto";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import QRCode from "qrcode";
 import PDFDocument from "pdfkit";
-import { sendPasswordResetEmail } from "./email";
+import { sendPasswordResetEmail, sendSupportTicketNotificationEmail, sendSupportReplyNotificationEmail } from "./email";
+import { invokeLLM } from "./_core/llm";
 import {
   asaasEnabled,
   asaasApi,
@@ -2433,6 +2434,131 @@ export const appRouter = router({
     delete: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteSupplier(input.id)),
+  }),
+
+  // ─── Suporte Interno ─────────────────────────────────────────────────────────
+  support: router({
+    createTicket: publicProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        title: z.string().min(5).max(255),
+        category: z.string().default('other'),
+        priority: z.string().optional(),
+        firstMessage: z.string().min(10),
+        authorName: z.string().optional(),
+        authorEmail: z.string().email().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const ticketId = await db.createSupportTicket(input);
+
+        // IA de primeira resposta (assíncrono, não bloqueia o cliente)
+        (async () => {
+          try {
+            const KNOWLEDGE_BASE = `
+Você é o assistente de suporte do Barber Pro, sistema de gestão para barbearias.
+
+Base de conhecimento:
+- Agendamento: o app permite agendar, cancelar e reagendar. Conflitos são bloqueados automaticamente.
+- Financeiro: controle de caixa, comissões, relatórios de faturamento.
+- Estoque: controle de produtos para venda e uso interno.
+- Fidelidade: programa de pontos configurável.
+- WhatsApp: confirmações e lembretes automáticos via Z-API.
+- Planos: Solo (1 barbeiro), Equipe (5 barbeiros), Studio (ilimitado).
+- Pagamentos: Mercado Pago (cartão, Pix, boleto) e Asaas.
+- Suporte: responda de forma clara, objetiva e amigável em português.
+- Se não souber a resposta, diga que a equipe de suporte entrará em contato em breve.
+`;
+            const aiResp = await invokeLLM({
+              messages: [
+                { role: 'system', content: KNOWLEDGE_BASE },
+                { role: 'user', content: `Título: ${input.title}\nCategoria: ${input.category}\nMensagem: ${input.firstMessage}` },
+              ],
+            });
+            const aiText = typeof aiResp === 'string' ? aiResp : (aiResp as any)?.choices?.[0]?.message?.content ?? '';
+            if (aiText && aiText.length > 10) {
+              await db.addSupportMessage({
+                ticketId,
+                authorType: 'ai',
+                authorName: 'IA Assistente',
+                content: aiText,
+              });
+              await db.updateTicketStatus(ticketId, 'answered');
+              // Notificar cliente por e-mail se tiver e-mail
+              if (input.authorEmail) {
+                const ticket = await db.getSupportTicketById(ticketId);
+                await sendSupportReplyNotificationEmail({
+                  clientEmail: input.authorEmail,
+                  clientName: input.authorName ?? 'Cliente',
+                  ticketId,
+                  ticketTitle: ticket?.title ?? input.title,
+                  replyContent: aiText,
+                  isAI: true,
+                });
+              }
+            }
+          } catch (e) {
+            console.error('[support-ai] Erro na resposta automática:', e);
+          }
+
+          // Notificar admin por e-mail
+          try {
+            const tenant = await db.getTenantById(input.tenantId);
+            const adminEmail = process.env.SUPPORT_ADMIN_EMAIL ?? process.env.SMTP_USER;
+            if (adminEmail) {
+              await sendSupportTicketNotificationEmail({
+                adminEmail,
+                ticketId,
+                ticketTitle: input.title,
+                tenantName: tenant?.name ?? `Tenant #${input.tenantId}`,
+                category: input.category,
+                priority: input.priority ?? 'normal',
+                firstMessage: input.firstMessage,
+              });
+            }
+          } catch (e) {
+            console.error('[support-email] Erro ao notificar admin:', e);
+          }
+        })();
+
+        return { ticketId };
+      }),
+
+    getMyTickets: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(({ input }) => db.getSupportTicketsByTenant(input.tenantId)),
+
+    getTicketMessages: publicProcedure
+      .input(z.object({ ticketId: z.number() }))
+      .query(({ input }) => db.getSupportMessages(input.ticketId)),
+
+    getTicketById: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .query(({ input }) => db.getSupportTicketById(input.id)),
+
+    sendMessage: publicProcedure
+      .input(z.object({
+        ticketId: z.number(),
+        content: z.string().min(1),
+        authorName: z.string().optional(),
+        authorEmail: z.string().email().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.addSupportMessage({
+          ticketId: input.ticketId,
+          authorType: 'client',
+          authorName: input.authorName,
+          content: input.content,
+        });
+        await db.updateTicketStatus(input.ticketId, 'waiting_admin');
+        return { ok: true };
+      }),
+
+    closeTicket: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.updateTicketStatus(input.id, 'closed');
+        return { ok: true };
+      }),
   }),
 });
 export type AppRouter = typeof appRouter;

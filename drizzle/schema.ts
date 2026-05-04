@@ -666,6 +666,29 @@ export const clientConsents = pgTable("client_consents", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
+// ─── Support Tickets ────────────────────────────────────────────────────────
+export const supportTickets = pgTable("support_tickets", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull().default("other"),
+  status: varchar("status", { length: 30 }).notNull().default("open"),
+  priority: varchar("priority", { length: 20 }).notNull().default("normal"),
+  aiHandled: boolean("aiHandled").default(false).notNull(),
+  adminNotified: boolean("adminNotified").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export const supportMessages = pgTable("support_messages", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticketId").notNull(),
+  authorType: varchar("authorType", { length: 20 }).notNull(),
+  authorName: varchar("authorName", { length: 255 }),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 // ─── Tipos Exportados ─────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -723,3 +746,7 @@ export type Supplier = typeof suppliers.$inferSelect;
 export type InsertSupplier = typeof suppliers.$inferInsert;
 export type ErrorLog = typeof errorLogs.$inferSelect;
 export type InsertErrorLog = typeof errorLogs.$inferInsert;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertSupportTicket = typeof supportTickets.$inferInsert;
+export type SupportMessage = typeof supportMessages.$inferSelect;
+export type InsertSupportMessage = typeof supportMessages.$inferInsert;

@@ -15,6 +15,13 @@
       "when": 1777657000647,
       "tag": "0001_superb_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777924328009,
+      "tag": "0002_nasty_thunderball",
+      "breakpoints": true
     }
   ]
 }

@@ -501,3 +501,55 @@ export async function sendLeadNotificationEmail(opts: {
     console.error("[email] Erro ao enviar notificação de lead:", err);
   }
 }
+
+// --- E-mail de Suporte ---
+export async function sendSupportTicketNotificationEmail(opts: {
+  adminEmail: string;
+  ticketId: number;
+  ticketTitle: string;
+  tenantName: string;
+  category: string;
+  priority: string;
+  firstMessage: string;
+}): Promise<void> {
+  const transporter = createTransporter();
+  if (!transporter) return;
+  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "noreply@barberpro.app";
+  const priorityLabels: Record<string, string> = { urgent: "URGENTE", high: "ALTA", normal: "NORMAL", low: "BAIXA" };
+  const pLabel = priorityLabels[opts.priority] ?? "NORMAL";
+  try {
+    await transporter.sendMail({
+      from: `"Barber Pro Suporte" <${from}>`,
+      to: opts.adminEmail,
+      subject: `[${pLabel}] Novo Ticket #${opts.ticketId}: ${opts.ticketTitle}`,
+      text: `Novo ticket #${opts.ticketId} de ${opts.tenantName}: ${opts.ticketTitle}\n\n${opts.firstMessage}`,
+    });
+    console.log(`[email] Notificacao de ticket #${opts.ticketId} enviada para ${opts.adminEmail}`);
+  } catch (err) {
+    console.error("[email] Erro ao enviar notificacao de ticket:", err);
+  }
+}
+
+export async function sendSupportReplyNotificationEmail(opts: {
+  clientEmail: string;
+  clientName: string;
+  ticketId: number;
+  ticketTitle: string;
+  replyContent: string;
+  isAI?: boolean;
+}): Promise<void> {
+  const transporter = createTransporter();
+  if (!transporter) return;
+  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "noreply@barberpro.app";
+  try {
+    await transporter.sendMail({
+      from: `"Barber Pro Suporte" <${from}>`,
+      to: opts.clientEmail,
+      subject: `Re: Ticket #${opts.ticketId} - ${opts.ticketTitle}`,
+      text: `Ola ${opts.clientName},\n\nSeu ticket #${opts.ticketId} recebeu uma resposta${opts.isAI ? " da IA assistente" : ""}:\n\n${opts.replyContent}`,
+    });
+    console.log(`[email] Resposta ao ticket #${opts.ticketId} enviada para ${opts.clientEmail}`);
+  } catch (err) {
+    console.error("[email] Erro ao enviar resposta de ticket:", err);
+  }
+}

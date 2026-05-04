@@ -2636,3 +2636,151 @@ export async function clearErrorLogs(): Promise<void> {
   if (!db) return;
   await db.execute(sql`DELETE FROM error_logs WHERE "createdAt" < NOW() - INTERVAL '30 days'`);
 }
+
+// ─── Suporte Interno ──────────────────────────────────────────────────────────
+export async function createSupportTicket(data: {
+  tenantId: number;
+  title: string;
+  category: string;
+  priority?: string;
+  firstMessage: string;
+  authorName?: string;
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  return runWithTenant(data.tenantId, async (db) => {
+    const result = await db.execute(sql`
+      INSERT INTO support_tickets ("tenantId", title, category, priority, "aiHandled", "adminNotified", "createdAt", "updatedAt")
+      VALUES (${data.tenantId}, ${data.title}, ${data.category}, ${data.priority || 'normal'}, FALSE, FALSE, NOW(), NOW())
+      RETURNING id
+    `);
+    const ticketId = (result as any).rows[0].id as number;
+    await db.execute(sql`
+      INSERT INTO support_messages ("ticketId", "authorType", "authorName", content, "createdAt")
+      VALUES (${ticketId}, 'client', ${data.authorName || null}, ${data.firstMessage}, NOW())
+    `);
+    return ticketId;
+  });
+}
+
+export async function getSupportTicketsByTenant(tenantId: number): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.execute(sql`
+    SELECT t.id, t.title, t.category, t.status, t.priority, t."aiHandled", t."adminNotified",
+           t."createdAt", t."updatedAt",
+           (SELECT COUNT(*) FROM support_messages m WHERE m."ticketId" = t.id) AS "messageCount",
+           (SELECT content FROM support_messages m WHERE m."ticketId" = t.id ORDER BY m."createdAt" DESC LIMIT 1) AS "lastMessage",
+           (SELECT "createdAt" FROM support_messages m WHERE m."ticketId" = t.id ORDER BY m."createdAt" DESC LIMIT 1) AS "lastMessageAt"
+    FROM support_tickets t
+    WHERE t."tenantId" = ${tenantId}
+    ORDER BY t."updatedAt" DESC
+  `);
+  return (result as any).rows;
+}
+
+export async function getSupportTicketById(id: number): Promise<any | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.execute(sql`
+    SELECT t.*, ten.name AS "tenantName"
+    FROM support_tickets t
+    LEFT JOIN tenants ten ON ten.id = t."tenantId"
+    WHERE t.id = ${id}
+  `);
+  return (result as any).rows[0] || null;
+}
+
+export async function getSupportMessages(ticketId: number): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.execute(sql`
+    SELECT * FROM support_messages WHERE "ticketId" = ${ticketId} ORDER BY "createdAt" ASC
+  `);
+  return (result as any).rows;
+}
+
+export async function addSupportMessage(data: {
+  ticketId: number;
+  authorType: 'client' | 'admin' | 'ai';
+  authorName?: string;
+  content: string;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  await db.execute(sql`
+    INSERT INTO support_messages ("ticketId", "authorType", "authorName", content, "createdAt")
+    VALUES (${data.ticketId}, ${data.authorType}, ${data.authorName || null}, ${data.content}, NOW())
+  `);
+  await db.execute(sql`
+    UPDATE support_tickets SET "updatedAt" = NOW() WHERE id = ${data.ticketId}
+  `);
+}
+
+export async function updateTicketStatus(id: number, status: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(sql`
+    UPDATE support_tickets SET status = ${status}, "updatedAt" = NOW() WHERE id = ${id}
+  `);
+}
+
+export async function markTicketAdminNotified(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(sql`
+    UPDATE support_tickets SET "adminNotified" = TRUE, "updatedAt" = NOW() WHERE id = ${id}
+  `);
+}
+
+export async function markTicketAiHandled(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.execute(sql`
+    UPDATE support_tickets SET "aiHandled" = TRUE, "updatedAt" = NOW() WHERE id = ${id}
+  `);
+}
+
+export async function getAllSupportTickets(filters?: {
+  status?: string;
+  priority?: string;
+  tenantId?: number;
+}): Promise<any[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions: string[] = [];
+  const params: any[] = [];
+  let paramIdx = 1;
+  if (filters?.status) { conditions.push(`t.status = $${paramIdx++}`); params.push(filters.status); }
+  if (filters?.priority) { conditions.push(`t.priority = $${paramIdx++}`); params.push(filters.priority); }
+  if (filters?.tenantId) { conditions.push(`t."tenantId" = $${paramIdx++}`); params.push(filters.tenantId); }
+  const where = conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : '';
+  // Construir query com sql template para suportar parâmetros dinamicamente
+  let queryStr = `
+    SELECT t.id, t."tenantId", t.title, t.category, t.status, t.priority,
+           t."aiHandled", t."adminNotified", t."createdAt", t."updatedAt",
+           ten.name AS "tenantName",
+           (SELECT COUNT(*) FROM support_messages m WHERE m."ticketId" = t.id) AS "messageCount",
+           (SELECT content FROM support_messages m WHERE m."ticketId" = t.id ORDER BY m."createdAt" DESC LIMIT 1) AS "lastMessage",
+           (SELECT "createdAt" FROM support_messages m WHERE m."ticketId" = t.id ORDER BY m."createdAt" DESC LIMIT 1) AS "lastMessageAt"
+    FROM support_tickets t
+    LEFT JOIN tenants ten ON ten.id = t."tenantId"
+    WHERE 1=1 ${where}
+    ORDER BY t."updatedAt" DESC
+  `;
+  // Substituir $1, $2... pelos valores reais para compatibilidade
+  params.forEach((p, i) => {
+    queryStr = queryStr.replace(`$${i + 1}`, typeof p === 'string' ? `'${p.replace(/'/g, "''")}'` : String(p));
+  });
+  const result = await db.execute(sql.raw(queryStr));
+  return (result as any).rows;
+}
+
+export async function countOpenSupportTickets(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.execute(sql`
+    SELECT COUNT(*) AS cnt FROM support_tickets WHERE status IN ('open', 'waiting_admin')
+  `);
+  return parseInt((result as any).rows[0]?.cnt || '0', 10);
+}

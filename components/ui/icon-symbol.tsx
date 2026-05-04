@@ -132,6 +132,7 @@ const MAPPING = {
   "antenna.radiowaves.left.and.right": "wifi-tethering",
   "magnifyingglass.circle.fill": "manage-search",
   "location.circle.fill": "my-location",
+  "questionmark.circle.fill": "help",
 } as unknown as IconMapping;
 
 export function IconSymbol({

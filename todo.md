@@ -1823,3 +1823,17 @@
 - [x] Seleção de plano no modal de cadastro — plano fixado em "Equipe", cliente não consegue alterar
 - [x] Botão "Entrar com Google" ausente no modal de cadastro (etapa de e-mail/senha)
 - [x] Botão "Entrar com Google" ausente no modal de login rápido da landing page
+
+## Módulo de Suporte Interno — Mai/2026
+
+- [ ] Criar tabelas support_tickets e support_messages no schema Drizzle
+- [ ] Rodar migração do banco (db:push)
+- [ ] Criar rotas tRPC para cliente: createTicket, getMyTickets, getTicketMessages, sendMessage
+- [ ] Criar rotas Express para Superadmin: listar tickets, responder, mudar status
+- [ ] Criar tela Suporte no painel admin da barbearia (React Native)
+- [ ] Criar tela Suporte no Superadmin (HTML/Express)
+- [ ] Implementar IA de primeira resposta (LLM embutido do Manus)
+- [ ] Criar base de conhecimento server/support-kb.ts
+- [ ] E-mail automático para admin quando ticket aberto sem resposta da IA
+- [ ] E-mail automático para cliente quando admin responde
+- [ ] Badge com contador de tickets abertos no menu do Superadmin
