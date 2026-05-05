@@ -130,6 +130,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     "pagina-cliente": `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
     "meu-perfil": `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
     configuracoes: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+    planos: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
     suporte: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
   };
   const navGroups = [
@@ -141,6 +142,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/clientes", icon: svgIcons.clientes, label: "Clientes", id: "clientes" },
         { href: "/admin/lista-espera", icon: svgIcons["lista-espera"], label: "Lista de Espera", id: "lista-espera" },
         { href: "/admin/assinaturas", icon: svgIcons.assinaturas, label: "Assinaturas", id: "assinaturas" },
+        { href: "/admin/planos", icon: svgIcons.planos, label: "Planos de Assinatura", id: "planos" },
         { href: "/admin/orbita", icon: svgIcons.orbita, label: "Clientes em Órbita", id: "orbita" },
       ],
     },
@@ -773,6 +775,7 @@ async function renderDashboard(req: Request, res: Response) {
   const stats = await db.getDashboardStats(dateStr, tenantId);
   const appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
   const barbers = await db.getAllBarbers(tenantId);
+  const lowStockItems = await db.getLowStockProducts(tenantId);
 
   // Buscar slug para o card de link de agendamento
   const dashTenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
@@ -969,6 +972,49 @@ async function renderDashboard(req: Request, res: Response) {
       </div>
     </div>` : ''}
 
+
+    <!-- Ações Rápidas -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;">Ações Rápidas</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+        <a href="/admin/agenda/novo" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+          </div>
+          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Novo Agendamento</span>
+        </a>
+        <a href="/admin/clientes?new=1" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(33,150,243,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          </div>
+          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Novo Cliente</span>
+        </a>
+        <a href="/admin/financeiro?new=1" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(76,175,80,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Nova Venda</span>
+        </a>
+        <a href="/admin/servicos" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(156,39,176,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9C27B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3L8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
+          </div>
+          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Serviços</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Alerta de estoque baixo -->
+    ${lowStockItems.length > 0 ? `
+    <a href="/admin/estoque" style="text-decoration:none;display:flex;align-items:center;gap:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:14px 16px;margin-bottom:20px;transition:background .2s;" onmouseover="this.style.background='rgba(245,158,11,.14)'" onmouseout="this.style.background='rgba(245,158,11,.08)'">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:#F59E0B;">${lowStockItems.length} produto${lowStockItems.length !== 1 ? 's' : ''} com estoque baixo</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${lowStockItems.slice(0,3).map((p: any) => p.name + ' (' + (p.stockQuantity ?? 0) + ')').join(' · ')}${lowStockItems.length > 3 ? ' · ...' : ''}</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>` : ''}
+
     <div class="card">
       <div class="card-header">
         <div class="card-title">Agenda de Hoje &mdash; ${fmtDate(dateStr)}</div>
@@ -1032,31 +1078,51 @@ async function renderAgenda(req: Request, res: Response) {
   const nextDate = new Date(dateStr + "T12:00:00");
   nextDate.setDate(nextDate.getDate() + 1);
 
-  // Calendário mini: semana atual
+  // Calendário mensal completo (igual ao app)
   const selDate = new Date(dateStr + "T12:00:00");
-  const dayOfWeek = selDate.getDay(); // 0=Dom
-  const weekStart = new Date(selDate);
-  weekStart.setDate(selDate.getDate() - dayOfWeek);
-  const weekDays: string[] = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
-    weekDays.push(d.toISOString().split("T")[0]);
-  }
+  const calYear = selDate.getFullYear();
+  const calMonth = selDate.getMonth();
+  const firstDayOfMonth = new Date(calYear, calMonth, 1).getDay(); // 0=Dom
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const dayLabels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
   const todayStr = today();
-
+  // Gerar células do calendário
+  const calCells: string[] = [];
+  for (let i = 0; i < firstDayOfMonth; i++) calCells.push('');
+  for (let d = 1; d <= daysInMonth; d++) {
+    const mm = String(calMonth + 1).padStart(2, "0");
+    const dd = String(d).padStart(2, "0");
+    calCells.push(`${calYear}-${mm}-${dd}`);
+  }
+  // Mês anterior e próximo para navegação
+  const prevMonthDate = new Date(calYear, calMonth - 1, 1);
+  const nextMonthDate = new Date(calYear, calMonth + 1, 1);
+  const prevMonthStr = prevMonthDate.toISOString().split("T")[0].substring(0, 7) + "-01";
+  const nextMonthStr = nextMonthDate.toISOString().split("T")[0].substring(0, 7) + "-01";
   const calendarHtml = `
-    <div style="display:flex;gap:4px;margin-bottom:20px;background:var(--surface);border-radius:14px;padding:10px;border:1px solid var(--border);overflow-x:auto">
-      ${weekDays.map((d, i) => {
-        const isSelected = d === dateStr;
-        const isToday = d === todayStr;
-        const dayNum = new Date(d + "T12:00:00").getDate();
-        return `<a href="/admin/agenda?date=${d}${filterBarberId ? "&barberId=" + filterBarberId : ""}${filterSearch ? "&q=" + encodeURIComponent(filterSearch) : ""}" style="flex:1;min-width:44px;text-align:center;padding:8px 4px;border-radius:10px;text-decoration:none;background:${isSelected ? "var(--primary)" : "transparent"};border:${isToday && !isSelected ? "1px solid var(--primary)" : "1px solid transparent"};transition:background 0.15s">
-          <div style="font-size:11px;color:${isSelected ? "#fff" : "var(--muted)"};font-weight:500">${dayLabels[i]}</div>
-          <div style="font-size:16px;font-weight:700;color:${isSelected ? "#fff" : "var(--foreground)"};margin-top:2px">${dayNum}</div>
-        </a>`;
-      }).join("")}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <a href="/admin/agenda?date=${prevMonthStr}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;color:var(--primary);padding:6px;border-radius:8px;display:flex;align-items:center;" title="Mês anterior">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </a>
+        <span style="font-size:15px;font-weight:700;color:var(--foreground);">${monthNames[calMonth]} ${calYear}</span>
+        <a href="/admin/agenda?date=${nextMonthStr}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;color:var(--primary);padding:6px;border-radius:8px;display:flex;align-items:center;" title="Próximo mês">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
+        ${dayLabels.map(d => `<div style="text-align:center;font-size:11px;font-weight:600;color:var(--muted);padding:4px 0;">${d}</div>`).join("")}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">
+        ${calCells.map(d => {
+          if (!d) return `<div></div>`;
+          const isSelected = d === dateStr;
+          const isToday = d === todayStr;
+          const dayNum = parseInt(d.split("-")[2]);
+          return `<a href="/admin/agenda?date=${d}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-radius:8px;font-size:13px;font-weight:${isSelected || isToday ? '700' : '500'};color:${isSelected ? '#0A0A0A' : isToday ? 'var(--primary)' : 'var(--foreground)'};background:${isSelected ? 'var(--primary)' : 'transparent'};border:${isToday && !isSelected ? '1px solid var(--primary)' : '1px solid transparent'};transition:background .15s;">${dayNum}</a>`;
+        }).join("")}
+      </div>
     </div>`;
 
   // Filtros
@@ -1073,7 +1139,11 @@ async function renderAgenda(req: Request, res: Response) {
         <button type="submit" class="btn btn-primary" style="padding:8px 16px;font-size:13px">Buscar</button>
         ${filterSearch || filterBarberId ? `<a href="/admin/agenda?date=${dateStr}" class="btn btn-ghost" style="padding:8px 12px;font-size:13px"></a>` : ""}
       </div>
-      <a href="/admin/agenda/novo?date=${dateStr}" class="btn btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap">+ Novo Agendamento</a>
+      <a href="/admin/planos?from=agenda&date=${dateStr}" class="btn btn-ghost" style="padding:8px 16px;font-size:13px;white-space:nowrap;border:1px solid var(--primary);color:var(--primary);display:flex;align-items:center;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Plano
+      </a>
+      <a href="/admin/agenda/novo?date=${dateStr}" class="btn btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap">+ Novo</a>
     </form>`;
 
   // Navegação de dias
@@ -1287,7 +1357,7 @@ async function renderClientes(req: Request, res: Response) {
                     <td style="white-space:nowrap">
                        <a href="/admin/clientes/${c.id}" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">Ver</a>
                       ${c.phone ? `<a href="https://wa.me/${(c.phone).replace(/\D/g,'')}" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px;color:#25D366">WhatsApp</a>` : ''}
-                      <button onclick="openEditClient(${c.id},'${esc(c.name).replace(/'/g,"\\'")}',' ${esc(c.phone ?? '')}','${esc(c.email ?? '')}','${c.birthDate ?? ''}','${esc(c.notes ?? '')}'" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">Editar</button>
+                      <button onclick="openEditClient(${c.id},'${esc(c.name).replace(/'/g,"\\'")}','${esc(c.phone ?? '')}','${esc(c.email ?? '')}','${c.birthDate ?? ''}','${esc(c.notes ?? '')}'" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">Editar</button>
                       <form method="POST" action="/admin/clientes/${c.id}/excluir" style="display:inline" onsubmit="return confirm('Excluir ${esc(c.name).replace(/'/g,"\\'")}'? Esta ação não pode ser desfeita.')">
                         <button type="submit" class="btn" style="font-size:11px;padding:4px 10px;background:#EF444422;color:#F87171;border:none">Excluir</button>
                       </form>
@@ -4872,7 +4942,13 @@ export function registerAdminRoutes(app: Express): void {
           <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Assinaturas</h1>
           <p style="color:var(--muted);font-size:14px;margin-top:4px;">Clientes com agendamentos periódicos configurados</p>
         </div>
-        <button onclick="document.getElementById('newRecModal').style.display='flex'" class="btn btn-primary">+ Nova Assinatura</button>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <a href="/admin/planos" class="btn btn-ghost" style="border:1px solid var(--primary);color:var(--primary);display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Planos
+          </a>
+          <button onclick="document.getElementById('newRecModal').style.display='flex'" class="btn btn-primary">+ Nova Assinatura</button>
+        </div>
       </div>
       ${cancelledMsg ? '<div class="alert alert-success">Assinatura cancelada com sucesso.</div>' : ""}
       ${created ? '<div class="alert alert-success">Assinatura criada! Agendamentos gerados automaticamente.</div>' : ""}
@@ -5202,6 +5278,253 @@ export function registerAdminRoutes(app: Express): void {
     const { id, reason } = req.body;
     if (id) await db.cancelRecurringWithReason(parseInt(id), reason || undefined);
     res.redirect("/admin/assinaturas?cancelled=1");
+  });
+
+
+  // ─── Planos de Assinatura ────────────────────────────────────────────────────
+  app.get("/admin/planos", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    const saved = req.query.saved === "1";
+    const deleted = req.query.deleted === "1";
+    const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+    const errorMsg = req.query.error ? decodeURIComponent(req.query.error as string) : null;
+    let plans: any[] = [];
+    const allServices = await db.getAllServices(true, tenantId);
+    const allProducts = await db.getAllProducts(true, tenantId);
+    try {
+      const dbConn = await db.getDb();
+      if (dbConn && tenantId) {
+        const rawPlans = await dbConn.execute(sql`
+          SELECT sp.*,
+            (SELECT COUNT(*) FROM client_subscriptions WHERE "planId" = sp.id AND status = 'active') as "activeSubscribers"
+          FROM subscription_plans sp
+          WHERE sp."tenantId" = ${tenantId}
+          ORDER BY sp."createdAt" DESC
+        `) as any;
+        const planRows = Array.isArray(rawPlans) ? (rawPlans[0] as any[]) : (rawPlans?.rows ?? []);
+        for (const plan of planRows) {
+          const pid = parseInt(String(plan.id), 10);
+          const rawSvcs = await dbConn.execute(sql`
+            SELECT sps."serviceId", s.name FROM subscription_plan_services sps
+            JOIN services s ON s.id = sps."serviceId"
+            WHERE sps."planId" = ${pid}
+          `) as any;
+          const rawProds = await dbConn.execute(sql`
+            SELECT spp."productId", p.name FROM subscription_plan_products spp
+            JOIN products p ON p.id = spp."productId"
+            WHERE spp."planId" = ${pid}
+          `) as any;
+          plan.services = Array.isArray(rawSvcs) ? (rawSvcs[0] as any[]) : (rawSvcs?.rows ?? []);
+          plan.products = Array.isArray(rawProds) ? (rawProds[0] as any[]) : (rawProds?.rows ?? []);
+        }
+        plans = planRows;
+      }
+    } catch (e: any) {
+      console.error("[planos] Erro ao buscar planos:", e.message);
+    }
+    const editPlan = editId ? plans.find((p: any) => p.id === editId) : null;
+    const body = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+        <div>
+          <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Planos de Assinatura</h1>
+          <p style="color:var(--muted);font-size:14px;margin-top:4px;">Gerencie os planos disponíveis para seus clientes</p>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <a href="/admin/assinaturas" class="btn btn-ghost" style="font-size:13px;">Ver Assinaturas</a>
+          <button onclick="document.getElementById('planModal').style.display='flex'" class="btn btn-primary">+ Novo Plano</button>
+        </div>
+      </div>
+      ${saved ? '<div class="alert alert-success">Plano salvo com sucesso.</div>' : ""}
+      ${deleted ? '<div class="alert alert-success">Plano excluído com sucesso.</div>' : ""}
+      ${errorMsg ? `<div class="alert alert-error">${esc(errorMsg)}</div>` : ""}
+      ${plans.length === 0 ? `
+        <div class="card"><div class="card-body"><div class="empty">Nenhum plano criado ainda. Clique em "+ Novo Plano" para começar.</div></div></div>
+      ` : `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:24px;">
+          ${plans.map((plan: any) => `
+            <div style="background:var(--surface);border:1px solid ${plan.isActive ? 'var(--border)' : '#333'};border-radius:16px;padding:20px;opacity:${plan.isActive ? '1' : '0.6'};">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+                <div>
+                  <div style="font-size:16px;font-weight:700;color:var(--foreground);">${esc(plan.name)}</div>
+                  ${plan.description ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;">${esc(plan.description)}</div>` : ""}
+                </div>
+                <span style="background:${plan.isActive ? 'rgba(74,222,128,.12)' : 'rgba(122,120,112,.12)'};color:${plan.isActive ? '#4ADE80' : 'var(--muted)'};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">${plan.isActive ? 'Ativo' : 'Inativo'}</span>
+              </div>
+              <div style="font-size:28px;font-weight:900;color:var(--primary);margin-bottom:12px;">R$ ${parseFloat(plan.price).toFixed(2)}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+                <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center;">
+                  <div style="font-size:18px;font-weight:800;color:var(--foreground);">${plan.recurrences}</div>
+                  <div style="font-size:10px;color:var(--muted);font-weight:600;">Recorrências</div>
+                </div>
+                <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center;">
+                  <div style="font-size:18px;font-weight:800;color:var(--foreground);">${plan.maxServices}</div>
+                  <div style="font-size:10px;color:var(--muted);font-weight:600;">Serviços</div>
+                </div>
+                <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center;">
+                  <div style="font-size:18px;font-weight:800;color:#4ADE80;">${plan.activeSubscribers ?? 0}</div>
+                  <div style="font-size:10px;color:var(--muted);font-weight:600;">Assinantes</div>
+                </div>
+              </div>
+              ${(plan.services ?? []).length > 0 ? `<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Serviços: ${plan.services.map((s: any) => esc(s.name)).join(', ')}</div>` : ""}
+              <div style="display:flex;gap:8px;">
+                <a href="/admin/planos?edit=${plan.id}" class="btn btn-ghost" style="flex:1;text-align:center;font-size:12px;padding:6px;">Editar</a>
+                <form method="POST" action="/admin/planos/${plan.id}/toggle" style="flex:1;">
+                  <button type="submit" class="btn btn-ghost" style="width:100%;font-size:12px;padding:6px;">${plan.isActive ? 'Desativar' : 'Ativar'}</button>
+                </form>
+                ${(plan.activeSubscribers ?? 0) === 0 ? `
+                <form method="POST" action="/admin/planos/${plan.id}/excluir" onsubmit="return confirm('Excluir plano?')" style="flex:0;">
+                  <button type="submit" class="btn" style="font-size:12px;padding:6px 10px;background:#EF444422;color:#F87171;border:none;">Excluir</button>
+                </form>` : ""}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `}
+      <!-- Modal Novo/Editar Plano -->
+      <div id="planModal" style="display:${editPlan ? 'flex' : 'none'};position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+        <div style="background:var(--surface);border-radius:16px;padding:28px;width:560px;max-width:90vw;max-height:90vh;overflow-y:auto;border:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h2 style="font-size:18px;font-weight:700;color:var(--foreground);">${editPlan ? 'Editar Plano' : 'Novo Plano'}</h2>
+            <button onclick="document.getElementById('planModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">&#10005;</button>
+          </div>
+          <form method="POST" action="${editPlan ? '/admin/planos/' + editPlan.id + '/editar' : '/admin/planos'}">
+            <div class="form-group">
+              <label class="form-label">Nome do Plano *</label>
+              <input type="text" name="name" class="form-input" value="${esc(editPlan?.name ?? '')}" required placeholder="Ex: Plano Mensal Premium" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Descrição</label>
+              <input type="text" name="description" class="form-input" value="${esc(editPlan?.description ?? '')}" placeholder="Opcional" />
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="form-group">
+                <label class="form-label">Preço (R$) *</label>
+                <input type="number" name="price" class="form-input" value="${editPlan?.price ?? ''}" required min="0" step="0.01" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Recorrências *</label>
+                <input type="number" name="recurrences" class="form-input" value="${editPlan?.recurrences ?? 4}" required min="1" max="31" />
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div class="form-group">
+                <label class="form-label">Máx. Serviços</label>
+                <input type="number" name="maxServices" class="form-input" value="${editPlan?.maxServices ?? 1}" min="0" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Máx. Produtos</label>
+                <input type="number" name="maxProducts" class="form-input" value="${editPlan?.maxProducts ?? 0}" min="0" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Serviços incluídos</label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;background:var(--background);border:1px solid var(--border);border-radius:10px;padding:12px;max-height:160px;overflow-y:auto;">
+                ${allServices.map((s: any) => {
+                  const checked = editPlan?.services?.some((es: any) => es.serviceId === s.id) ? 'checked' : '';
+                  return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--foreground);cursor:pointer;min-width:140px;"><input type="checkbox" name="serviceIds" value="${s.id}" ${checked} style="accent-color:var(--primary);width:14px;height:14px;" />${esc(s.name)}</label>`;
+                }).join("")}
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Produtos incluídos</label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;background:var(--background);border:1px solid var(--border);border-radius:10px;padding:12px;max-height:120px;overflow-y:auto;">
+                ${allProducts.length === 0 ? '<span style="font-size:13px;color:var(--muted);">Nenhum produto cadastrado</span>' : allProducts.map((p: any) => {
+                  const checked = editPlan?.products?.some((ep: any) => ep.productId === p.id) ? 'checked' : '';
+                  return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--foreground);cursor:pointer;min-width:140px;"><input type="checkbox" name="productIds" value="${p.id}" ${checked} style="accent-color:var(--primary);width:14px;height:14px;" />${esc(p.name)}</label>`;
+                }).join("")}
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:20px;">
+              <button type="button" onclick="document.getElementById('planModal').style.display='none'" class="btn" style="flex:1;">Cancelar</button>
+              <button type="submit" class="btn btn-primary" style="flex:1;">${editPlan ? 'Salvar Alterações' : 'Criar Plano'}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+    res.send(adminLayout("Planos de Assinatura", "planos", body, barber?.name, _tp));
+  });
+
+  app.post("/admin/planos", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    if (!tenantId) { res.redirect("/admin/planos?error=Tenant+não+encontrado"); return; }
+    const { name, description, price, recurrences, maxServices, maxProducts } = req.body;
+    const serviceIds: number[] = Array.isArray(req.body.serviceIds) ? req.body.serviceIds.map(Number) : req.body.serviceIds ? [Number(req.body.serviceIds)] : [];
+    const productIds: number[] = Array.isArray(req.body.productIds) ? req.body.productIds.map(Number) : req.body.productIds ? [Number(req.body.productIds)] : [];
+    if (!name || !price) { res.redirect("/admin/planos?error=Preencha+nome+e+preço"); return; }
+    try {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new Error("DB indisponível");
+      const rawInsert = await dbConn.execute(sql`
+        INSERT INTO subscription_plans ("tenantId", name, description, recurrences, "maxServices", "maxProducts", price, "isActive", "createdAt", "updatedAt")
+        VALUES (${tenantId}, ${name}, ${description || null}, ${parseInt(recurrences) || 4}, ${parseInt(maxServices) || 1}, ${parseInt(maxProducts) || 0}, ${parseFloat(price)}, true, NOW(), NOW())
+        RETURNING id
+      `) as any;
+      const rows = Array.isArray(rawInsert) ? (rawInsert[0] as any[]) : (rawInsert?.rows ?? []);
+      const planId = rows[0]?.id;
+      if (planId) {
+        for (const sid of serviceIds) await dbConn.execute(sql`INSERT INTO subscription_plan_services ("planId", "serviceId", "tenantId") VALUES (${planId}, ${sid}, ${tenantId})`);
+        for (const pid of productIds) await dbConn.execute(sql`INSERT INTO subscription_plan_products ("planId", "productId", "tenantId") VALUES (${planId}, ${pid}, ${tenantId})`);
+      }
+      res.redirect("/admin/planos?saved=1");
+    } catch (e: any) { res.redirect(`/admin/planos?error=${encodeURIComponent(e.message)}`); }
+  });
+
+  app.post("/admin/planos/:id/editar", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    const planId = parseInt(req.params.id);
+    if (!tenantId) { res.redirect("/admin/planos?error=Tenant+não+encontrado"); return; }
+    const { name, description, price, recurrences, maxServices, maxProducts } = req.body;
+    const serviceIds: number[] = Array.isArray(req.body.serviceIds) ? req.body.serviceIds.map(Number) : req.body.serviceIds ? [Number(req.body.serviceIds)] : [];
+    const productIds: number[] = Array.isArray(req.body.productIds) ? req.body.productIds.map(Number) : req.body.productIds ? [Number(req.body.productIds)] : [];
+    try {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new Error("DB indisponível");
+      await dbConn.execute(sql`UPDATE subscription_plans SET name=${name}, description=${description || null}, recurrences=${parseInt(recurrences) || 4}, "maxServices"=${parseInt(maxServices) || 1}, "maxProducts"=${parseInt(maxProducts) || 0}, price=${parseFloat(price)}, "updatedAt"=NOW() WHERE id=${planId} AND "tenantId"=${tenantId}`);
+      await dbConn.execute(sql`DELETE FROM subscription_plan_services WHERE "planId"=${planId}`);
+      await dbConn.execute(sql`DELETE FROM subscription_plan_products WHERE "planId"=${planId}`);
+      for (const sid of serviceIds) await dbConn.execute(sql`INSERT INTO subscription_plan_services ("planId", "serviceId", "tenantId") VALUES (${planId}, ${sid}, ${tenantId})`);
+      for (const pid of productIds) await dbConn.execute(sql`INSERT INTO subscription_plan_products ("planId", "productId", "tenantId") VALUES (${planId}, ${pid}, ${tenantId})`);
+      res.redirect("/admin/planos?saved=1");
+    } catch (e: any) { res.redirect(`/admin/planos?error=${encodeURIComponent(e.message)}`); }
+  });
+
+  app.post("/admin/planos/:id/toggle", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    const planId = parseInt(req.params.id);
+    try {
+      const dbConn = await db.getDb();
+      if (dbConn && tenantId) await dbConn.execute(sql`UPDATE subscription_plans SET "isActive" = NOT "isActive", "updatedAt"=NOW() WHERE id=${planId} AND "tenantId"=${tenantId}`);
+      res.redirect("/admin/planos?saved=1");
+    } catch (e: any) { res.redirect(`/admin/planos?error=${encodeURIComponent(e.message)}`); }
+  });
+
+  app.post("/admin/planos/:id/excluir", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    const planId = parseInt(req.params.id);
+    try {
+      const dbConn = await db.getDb();
+      if (!dbConn || !tenantId) throw new Error("DB indisponível");
+      const rawCheck = await dbConn.execute(sql`SELECT COUNT(*) as cnt FROM client_subscriptions WHERE "planId"=${planId} AND status='active'`) as any;
+      const rows = Array.isArray(rawCheck) ? (rawCheck[0] as any[]) : (rawCheck?.rows ?? []);
+      const cnt = Number(rows[0]?.cnt ?? 0);
+      if (cnt > 0) { res.redirect(`/admin/planos?error=${encodeURIComponent('Não é possível excluir um plano com ' + cnt + ' assinatura(s) ativa(s).')}`); return; }
+      await dbConn.execute(sql`DELETE FROM subscription_plan_services WHERE "planId"=${planId}`);
+      await dbConn.execute(sql`DELETE FROM subscription_plan_products WHERE "planId"=${planId}`);
+      await dbConn.execute(sql`DELETE FROM subscription_plans WHERE id=${planId} AND "tenantId"=${tenantId}`);
+      res.redirect("/admin/planos?deleted=1");
+    } catch (e: any) { res.redirect(`/admin/planos?error=${encodeURIComponent(e.message)}`); }
   });
 
   // ─── Estoque ─────────────────────────────────────────────────────────────────
