@@ -1037,6 +1037,28 @@ async function renderAgenda(req: Request, res: Response) {
   const filterSearch = ((req.query.q as string) || "").toLowerCase().trim();
   const allAppointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
   const barbers = await db.getAllBarbers(tenantId);
+  const allClientsForModal = await db.getAllClients(tenantId);
+  let agendaPlans: any[] = [];
+  try {
+    const dbConn = await db.getDb();
+    if (dbConn && tenantId) {
+      const rawP = await dbConn.execute(sql`SELECT id, name, price, recurrences FROM subscription_plans WHERE "tenantId" = ${tenantId} AND "isActive" = true ORDER BY name`) as any;
+      agendaPlans = Array.isArray(rawP) ? (rawP[0] as any[]) : (rawP?.rows ?? []);
+    }
+  } catch(e) { /* planos indisponíveis */ }
+  // Buscar datas com agendamentos no mês para indicador visual
+  let datesWithAppointments: Set<string> = new Set();
+  try {
+    const dbConn2 = await db.getDb();
+    if (dbConn2 && tenantId) {
+      const selDate2 = new Date(dateStr + "T12:00:00");
+      const monthStart = `${selDate2.getFullYear()}-${String(selDate2.getMonth()+1).padStart(2,"0")}-01`;
+      const monthEnd = `${selDate2.getFullYear()}-${String(selDate2.getMonth()+1).padStart(2,"0")}-31`;
+      const rawDates = await dbConn2.execute(sql`SELECT DISTINCT date FROM appointments WHERE "tenantId" = ${tenantId} AND date >= ${monthStart} AND date <= ${monthEnd} AND status != 'cancelled'`) as any;
+      const dateRows = Array.isArray(rawDates) ? (rawDates[0] as any[]) : (rawDates?.rows ?? []);
+      datesWithAppointments = new Set(dateRows.map((r: any) => String(r.date).substring(0,10)));
+    }
+  } catch(e) { /* datas indisponíveis */ }
 
   // Carregar todos os clientes e serviços do dia
   const barberMap: Record<number, string> = Object.fromEntries(barbers.map((b) => [b.id, b.name]));
@@ -1120,7 +1142,7 @@ async function renderAgenda(req: Request, res: Response) {
           const isSelected = d === dateStr;
           const isToday = d === todayStr;
           const dayNum = parseInt(d.split("-")[2]);
-          return `<a href="/admin/agenda?date=${d}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-radius:8px;font-size:13px;font-weight:${isSelected || isToday ? '700' : '500'};color:${isSelected ? '#0A0A0A' : isToday ? 'var(--primary)' : 'var(--foreground)'};background:${isSelected ? 'var(--primary)' : 'transparent'};border:${isToday && !isSelected ? '1px solid var(--primary)' : '1px solid transparent'};transition:background .15s;">${dayNum}</a>`;
+          return `<a href="/admin/agenda?date=${d}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;aspect-ratio:1;border-radius:8px;font-size:13px;font-weight:${isSelected || isToday ? '700' : '500'};color:${isSelected ? '#0A0A0A' : isToday ? 'var(--primary)' : 'var(--foreground)'};background:${isSelected ? 'var(--primary)' : 'transparent'};border:${isToday && !isSelected ? '1px solid var(--primary)' : '1px solid transparent'};transition:background .15s;">${dayNum}<span style="width:5px;height:5px;border-radius:50%;background:${isSelected ? '#0A0A0A' : 'var(--primary)'};margin-top:2px;opacity:${datesWithAppointments.has(d) && !isSelected ? '1' : isSelected && datesWithAppointments.has(d) ? '0.6' : '0'};display:block;"></span></a>`;
         }).join("")}
       </div>
     </div>`;
@@ -1139,7 +1161,7 @@ async function renderAgenda(req: Request, res: Response) {
         <button type="submit" class="btn btn-primary" style="padding:8px 16px;font-size:13px">Buscar</button>
         ${filterSearch || filterBarberId ? `<a href="/admin/agenda?date=${dateStr}" class="btn btn-ghost" style="padding:8px 12px;font-size:13px"></a>` : ""}
       </div>
-      <a href="/admin/planos?from=agenda&date=${dateStr}" class="btn btn-ghost" style="padding:8px 16px;font-size:13px;white-space:nowrap;border:1px solid var(--primary);color:var(--primary);display:flex;align-items:center;gap:6px;">
+      <button onclick="document.getElementById('planModal').style.display='flex'" class="btn btn-ghost" style="padding:8px 16px;font-size:13px;white-space:nowrap;border:1px solid var(--primary);color:var(--primary);display:flex;align-items:center;gap:6px;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         Plano
       </a>
@@ -1156,6 +1178,66 @@ async function renderAgenda(req: Request, res: Response) {
       <a href="/admin/agenda?date=${todayStr}" class="btn btn-ghost" style="padding:8px 14px;font-size:13px">Hoje</a>
       <span style="color:var(--muted);font-size:13px;margin-left:auto">${appointments.length} agendamento(s)${filterSearch || filterBarberId ? " (filtrado)" : ""}</span>
     </div>`;
+
+  const planModalHtml = `
+    <!-- Modal Atribuir Plano -->
+    <div id="planModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+      <div style="background:var(--surface);border-radius:16px;padding:28px;width:520px;max-width:90vw;max-height:90vh;overflow-y:auto;border:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <div>
+            <h2 style="font-size:18px;font-weight:700;color:var(--foreground);">Atribuir Plano de Assinatura</h2>
+            <p style="font-size:13px;color:var(--muted);margin-top:4px;">Selecione o cliente e o plano para criar a assinatura</p>
+          </div>
+          <button onclick="document.getElementById('planModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">&#10005;</button>
+        </div>
+        ${agendaPlans.length === 0 ? '<div style="text-align:center;padding:24px;color:var(--muted);font-size:14px;">Nenhum plano ativo. <a href="/admin/planos" style="color:var(--primary);">Criar plano</a></div>' : `
+        <form method="POST" action="/admin/assinaturas/nova" id="planAssignForm">
+          <input type="hidden" name="fromAgenda" value="1" />
+          <input type="hidden" name="returnDate" value="${dateStr}" />
+          <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label" style="font-size:13px;font-weight:600;color:var(--foreground);margin-bottom:6px;display:block;">Cliente *</label>
+            <select name="clientId" class="form-input" required style="width:100%;padding:10px 12px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;">
+              <option value="">Selecione o cliente...</option>
+              ${allClientsForModal.map((c: any) => `<option value="${c.id}">${esc(c.name)}${c.phone ? ' — ' + esc(c.phone) : ''}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label" style="font-size:13px;font-weight:600;color:var(--foreground);margin-bottom:6px;display:block;">Plano *</label>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              ${agendaPlans.map((plan: any) => `
+              <label style="display:flex;align-items:center;gap:12px;background:var(--background);border:1px solid var(--border);border-radius:12px;padding:12px 16px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+                <input type="radio" name="planId" value="${plan.id}" required style="accent-color:var(--primary);width:16px;height:16px;flex-shrink:0;" />
+                <div style="flex:1;">
+                  <div style="font-size:14px;font-weight:700;color:var(--foreground);">${esc(plan.name)}</div>
+                  <div style="font-size:12px;color:var(--muted);margin-top:2px;">${plan.recurrences} recorrências</div>
+                </div>
+                <div style="font-size:18px;font-weight:900;color:var(--primary);">R$ ${parseFloat(plan.price).toFixed(2)}</div>
+              </label>`).join('')}
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="form-group">
+              <label class="form-label" style="font-size:13px;font-weight:600;color:var(--foreground);margin-bottom:6px;display:block;">Data de início *</label>
+              <input type="date" name="startDate" class="form-input" value="${dateStr}" required style="width:100%;padding:10px 12px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:13px;font-weight:600;color:var(--foreground);margin-bottom:6px;display:block;">Forma de pagamento</label>
+              <select name="paymentMethod" class="form-input" style="width:100%;padding:10px 12px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;">
+                <option value="cash">Dinheiro</option>
+                <option value="pix">Pix</option>
+                <option value="credit_card">Cartão de crédito</option>
+                <option value="debit_card">Cartão de débito</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:20px;">
+            <button type="button" onclick="document.getElementById('planModal').style.display='none'" class="btn" style="flex:1;padding:10px;">Cancelar</button>
+            <button type="submit" class="btn btn-primary" style="flex:1;padding:10px;">Confirmar Assinatura</button>
+          </div>
+        </form>`}
+      </div>
+    </div>
+  `;
 
   const body = `
     ${calendarHtml}
@@ -1250,8 +1332,8 @@ async function renderAgenda(req: Request, res: Response) {
         }
       </div>
     </div>
+    ${planModalHtml}
   `;
-
   const tenantObj = barber?.tenantId ? await db.getTenantById(barber.tenantId) : null;
   const _tp = (tenantObj as any)?.plan ?? "";
   const tenantSlug = (tenantObj as any)?.slug ?? "";
