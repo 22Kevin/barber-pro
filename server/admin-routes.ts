@@ -1950,24 +1950,24 @@ async function renderFinanceiro(req: Request, res: Response) {
     if (dbConn && tenantId) {
       const pmtStatusFilter = pmtStatus !== "all" ? pmtStatus : null;
       const pmtQueryObj = pmtStatusFilter
-        ? sql`SELECT op.id, op.billingType, op.amount, op.status, op.createdAt, op.paidAt, op.invoiceUrl,
-               op.chargeType, op.referenceId, op.asaasPaymentId,
+        ? sql`SELECT op.id, op."billingType", op.amount, op.status, op."createdAt", op."paidAt", op."invoiceUrl",
+               op."chargeType", op."referenceId", op."asaasPaymentId",
                c.name AS clientName
         FROM online_payments op
-        LEFT JOIN clients c ON c.id = op.clientId
-        WHERE op.tenantId = ${tenantId}
-          AND op.createdAt >= ${start} AND op.createdAt <= CONCAT(${end}, ' 23:59:59')
+        LEFT JOIN clients c ON c.id = op."clientId"
+        WHERE op."tenantId" = ${tenantId}
+          AND op."createdAt" >= ${start} AND op."createdAt" <= CONCAT(${end}, ' 23:59:59')
           AND op.status = ${pmtStatusFilter}
-        ORDER BY op.createdAt DESC
+        ORDER BY op."createdAt" DESC
         LIMIT 200`
-        : sql`SELECT op.id, op.billingType, op.amount, op.status, op.createdAt, op.paidAt, op.invoiceUrl,
-               op.chargeType, op.referenceId, op.asaasPaymentId,
+        : sql`SELECT op.id, op."billingType", op.amount, op.status, op."createdAt", op."paidAt", op."invoiceUrl",
+               op."chargeType", op."referenceId", op."asaasPaymentId",
                c.name AS clientName
         FROM online_payments op
-        LEFT JOIN clients c ON c.id = op.clientId
-        WHERE op.tenantId = ${tenantId}
-          AND op.createdAt >= ${start} AND op.createdAt <= CONCAT(${end}, ' 23:59:59')
-        ORDER BY op.createdAt DESC
+        LEFT JOIN clients c ON c.id = op."clientId"
+        WHERE op."tenantId" = ${tenantId}
+          AND op."createdAt" >= ${start} AND op."createdAt" <= CONCAT(${end}, ' 23:59:59')
+        ORDER BY op."createdAt" DESC
         LIMIT 200`;
       const raw = await dbConn.execute(pmtQueryObj) as any;
       pmtRows = Array.isArray(raw) ? (raw[0] as any[]) : (raw?.rows ?? []);
@@ -2738,13 +2738,13 @@ async function renderRelatorios(req: Request, res: Response) {
     const dbConn = await db.getDb();
     if (dbConn && tenantId) {
       const rawOverdue = await dbConn.execute(sql`
-        SELECT op.id, op.amount, op.dueDate, op.invoiceUrl, op.asaasPaymentId,
+        SELECT op.id, op.amount, op."dueDate", op."invoiceUrl", op."asaasPaymentId",
                c.name AS clientName, c.phone AS clientPhone
         FROM online_payments op
-        LEFT JOIN clients c ON c.id = op.clientId
-        WHERE op.tenantId = ${tenantId}
+        LEFT JOIN clients c ON c.id = op."clientId"
+        WHERE op."tenantId" = ${tenantId}
           AND op.status = 'overdue'
-        ORDER BY op.dueDate ASC
+        ORDER BY op."dueDate" ASC
         LIMIT 100
       `) as any;
       overdueRows = Array.isArray(rawOverdue) ? (rawOverdue[0] as any[]) : (rawOverdue?.rows ?? []);
@@ -6087,14 +6087,14 @@ export function registerAdminRoutes(app: Express): void {
     const startParam = (req.query.start as string) || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
     const endParam = (req.query.end as string) || new Date().toISOString().slice(0, 10);
     const raw = await dbConn.execute(sql`
-      SELECT op.id, op.billingType, op.amount, op.status, op.createdAt, op.paidAt, op.invoiceUrl,
-             op.chargeType, op.referenceId, op.asaasPaymentId,
+      SELECT op.id, op."billingType", op.amount, op.status, op."createdAt", op."paidAt", op."invoiceUrl",
+             op."chargeType", op."referenceId", op."asaasPaymentId",
              c.name AS clientName, c.phone AS clientPhone
       FROM online_payments op
-      LEFT JOIN clients c ON c.id = op.clientId
-      WHERE op.tenantId = ${tenantId}
-        AND op.createdAt >= ${startParam} AND op.createdAt <= CONCAT(${endParam}, ' 23:59:59')
-      ORDER BY op.createdAt DESC
+      LEFT JOIN clients c ON c.id = op."clientId"
+      WHERE op."tenantId" = ${tenantId}
+        AND op."createdAt" >= ${startParam} AND op."createdAt" <= CONCAT(${endParam}, ' 23:59:59')
+      ORDER BY op."createdAt" DESC
       LIMIT 1000
     `) as any;
     const rows = Array.isArray(raw) ? (raw[0] as any[]) : (raw?.rows ?? []);
