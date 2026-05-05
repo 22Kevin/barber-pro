@@ -25,13 +25,11 @@ export function Footer() {
           {/* Brand */}
           <div style={{ maxWidth: 280 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 9,
-                background: "linear-gradient(135deg, #C9A84C, #8B6914)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <span style={{ color: "#050505", fontWeight: 900, fontSize: 14 }}>B</span>
-              </div>
+              <img
+                src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/CHUXnjOFayrIGRtV.png"
+                alt="Barber Pro"
+                style={{ width: 36, height: 36, borderRadius: 9, objectFit: "cover" }}
+              />
               <span style={{ color: "#F0EEE8", fontWeight: 700, fontSize: 16 }}>
                 Barber <span style={{ color: "#C9A84C" }}>Pro</span>
               </span>

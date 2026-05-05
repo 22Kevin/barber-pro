@@ -38,14 +38,15 @@ export function Navbar() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
           {/* Logo */}
           <a href="#" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: "linear-gradient(135deg, #C9A84C, #8B6914)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 0 20px rgba(201,168,76,0.3)",
-            }}>
-              <span style={{ color: "#050505", fontWeight: 900, fontSize: 16, letterSpacing: -0.5 }}>B</span>
-            </div>
+            <img
+              src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/CHUXnjOFayrIGRtV.png"
+              alt="Barber Pro"
+              style={{
+                width: 40, height: 40, borderRadius: 10,
+                objectFit: "cover",
+                boxShadow: "0 0 20px rgba(201,168,76,0.3)",
+              }}
+            />
             <span style={{ color: "#F0EEE8", fontWeight: 700, fontSize: 17, letterSpacing: 0.5 }}>
               Barber <span style={{ color: "#C9A84C" }}>Pro</span>
             </span>
