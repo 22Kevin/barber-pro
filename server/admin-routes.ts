@@ -1034,6 +1034,7 @@ async function renderAgenda(req: Request, res: Response) {
   const tenantId = barber?.tenantId ?? null;
   const dateStr = (req.query.date as string) || today();
   const filterBarberId = req.query.barberId ? parseInt(req.query.barberId as string) : null;
+  const planSaved = req.query.planSaved === "1";
   const filterSearch = ((req.query.q as string) || "").toLowerCase().trim();
   const allAppointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
   const barbers = await db.getAllBarbers(tenantId);
@@ -1196,10 +1197,23 @@ async function renderAgenda(req: Request, res: Response) {
           <input type="hidden" name="returnDate" value="${dateStr}" />
           <div class="form-group" style="margin-bottom:16px;">
             <label class="form-label" style="font-size:13px;font-weight:600;color:var(--foreground);margin-bottom:6px;display:block;">Cliente *</label>
-            <select name="clientId" class="form-input" required style="width:100%;padding:10px 12px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;">
+            <input type="text" id="clientSearchInput" placeholder="Buscar por nome ou telefone..." oninput="filterClients(this.value)" autocomplete="off" style="width:100%;padding:10px 12px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;margin-bottom:8px;box-sizing:border-box;" />
+            <select name="clientId" id="clientSelect" class="form-input" required size="5" style="width:100%;padding:4px 0;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;max-height:160px;overflow-y:auto;">
               <option value="">Selecione o cliente...</option>
-              ${allClientsForModal.map((c: any) => `<option value="${c.id}">${esc(c.name)}${c.phone ? ' — ' + esc(c.phone) : ''}</option>`).join('')}
+              ${allClientsForModal.map((c: any) => `<option value="${c.id}" data-name="${esc(c.name).toLowerCase()}${c.phone ? ' ' + c.phone.replace(/\D/g,'') : ''}">${esc(c.name)}${c.phone ? ' — ' + esc(c.phone) : ''}</option>`).join('')}
             </select>
+            <script>
+              function filterClients(q) {
+                const sel = document.getElementById('clientSelect');
+                const opts = sel.querySelectorAll('option');
+                const lq = q.toLowerCase().replace(/\D/g, q.replace(/\d/g,'') ? '' : q.toLowerCase());
+                opts.forEach(function(opt) {
+                  if (!opt.value) { opt.style.display = ''; return; }
+                  const name = (opt.dataset.name || '').toLowerCase();
+                  opt.style.display = (!q || name.includes(q.toLowerCase())) ? '' : 'none';
+                });
+              }
+            </script>
           </div>
           <div class="form-group" style="margin-bottom:16px;">
             <label class="form-label" style="font-size:13px;font-weight:600;color:var(--foreground);margin-bottom:6px;display:block;">Plano *</label>
@@ -1333,6 +1347,7 @@ async function renderAgenda(req: Request, res: Response) {
       </div>
     </div>
     ${planModalHtml}
+    ${planSaved ? `<div id="planSavedToast" style="position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#22C55E;color:#fff;padding:14px 28px;border-radius:12px;font-size:14px;font-weight:700;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.25);display:flex;align-items:center;gap:10px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Assinatura criada com sucesso!</div><script>setTimeout(function(){var t=document.getElementById('planSavedToast');if(t)t.style.display='none';},4000);</script>` : ''}
   `;
   const tenantObj = barber?.tenantId ? await db.getTenantById(barber.tenantId) : null;
   const _tp = (tenantObj as any)?.plan ?? "";
@@ -5360,6 +5375,49 @@ export function registerAdminRoutes(app: Express): void {
     const { id, reason } = req.body;
     if (id) await db.cancelRecurringWithReason(parseInt(id), reason || undefined);
     res.redirect("/admin/assinaturas?cancelled=1");
+  });
+
+  // Rota para atribuir plano de assinatura diretamente da Agenda
+  app.post("/admin/assinaturas/nova", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number; role: string };
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId;
+    const { clientId, planId, startDate, paymentMethod, returnDate } = req.body;
+    if (!clientId || !planId || !startDate) {
+      const rd = returnDate || today();
+      res.redirect(`/admin/agenda?date=${rd}&error=Preencha+todos+os+campos`); return;
+    }
+    try {
+      const dbConn = await db.getDb();
+      if (!dbConn || !tenantId) throw new Error("Banco indisponível");
+      // Buscar dados do plano
+      const planRows = await dbConn.execute(sql`SELECT id, name, price, recurrences, "selectedServiceIds", "selectedProductIds" FROM subscription_plans WHERE id = ${parseInt(planId)} AND "tenantId" = ${tenantId} LIMIT 1`) as any;
+      const planData = Array.isArray(planRows) ? (planRows[0] as any[])[0] : (planRows?.rows ?? [])[0];
+      if (!planData) throw new Error("Plano não encontrado");
+      const price = parseFloat(planData.price) || 0;
+      const selectedServiceIds: number[] = (() => { try { return JSON.parse(planData.selectedServiceIds || "[]"); } catch { return []; } })();
+      const selectedProductIds: number[] = (() => { try { return JSON.parse(planData.selectedProductIds || "[]"); } catch { return []; } })();
+      const now = new Date();
+      const cycleEndDate = new Date(now);
+      cycleEndDate.setMonth(cycleEndDate.getMonth() + 1);
+      const cycleEnd = cycleEndDate.toISOString().split("T")[0];
+      await dbConn.execute(sql`
+        INSERT INTO client_subscriptions
+          ("tenantId", "planId", "clientId", "barberId", "selectedServiceIds", "selectedProductIds",
+           status, "paymentMethod", price, "cycleStart", "cycleEnd", "autoRenew")
+        VALUES (
+          ${tenantId}, ${parseInt(planId)}, ${parseInt(clientId)}, ${session.barberId},
+          ${JSON.stringify(selectedServiceIds)}, ${JSON.stringify(selectedProductIds)},
+          'active', ${paymentMethod || 'cash'}, ${price},
+          ${startDate}, ${cycleEnd}, ${false}
+        )
+      `);
+      const rd = returnDate || today();
+      res.redirect(`/admin/agenda?date=${rd}&planSaved=1`);
+    } catch (e: any) {
+      const rd = returnDate || today();
+      res.redirect(`/admin/agenda?date=${rd}&error=${encodeURIComponent(e.message)}`);
+    }
   });
 
 
