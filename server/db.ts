@@ -81,7 +81,7 @@ export async function getDb() {
         // quando o Railway recicla conexões ociosas
         keepAlive: true,
         keepAliveInitialDelayMillis: 10000,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+        ssl: { rejectUnauthorized: false },
       });
       // Reconexão automática em erros de conexão SSL/timeout
       _pool.on('error', (err: Error) => {

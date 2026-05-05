@@ -96,7 +96,17 @@ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
 
 // ─── Layout base do painel ────────────────────────────────────────────────────
 function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = ""): string {
-  // ─── Ícones SVG monocromáticos para sidebar ────────────────────────────────
+  const planBadge: Record<string, { label: string; color: string; bg: string }> = {
+    solo: { label: "Solo", color: "#9BA1A6", bg: "rgba(155,161,166,0.12)" },
+    team: { label: "Equipe", color: "#c9a84c", bg: "rgba(201,168,76,0.12)" },
+    studio: { label: "Estúdio", color: "#4ADE80", bg: "rgba(74,222,128,0.12)" },
+  };
+  const badge = tenantPlan ? planBadge[tenantPlan] : null;
+  // Iniciais do barbeiro para avatar
+  const initials = barberName
+    ? barberName.split(" ").slice(0, 2).map((w: string) => w[0]).join("").toUpperCase()
+    : "BP";
+  // Ícones SVG monocromáticos para sidebar
   const svgIcons: Record<string, string> = {
     dashboard: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
     agenda: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
@@ -120,73 +130,60 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     "pagina-cliente": `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
     "meu-perfil": `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
     configuracoes: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
-    chat: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="13" y2="14"/></svg>`,
     suporte: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
   };
-
-  const planBadge: Record<string, { label: string; color: string; bg: string }> = {
-    solo: { label: "Solo", color: "#9BA1A6", bg: "rgba(155,161,166,0.12)" },
-    team: { label: "Equipe", color: "#c9a84c", bg: "rgba(201,168,76,0.12)" },
-    studio: { label: "Estúdio", color: "#4ADE80", bg: "rgba(74,222,128,0.12)" },
-  };
-  const badge = tenantPlan ? planBadge[tenantPlan] : null;
-
-  // Iniciais do barbeiro para avatar
-  const initials = barberName
-    ? barberName.split(" ").slice(0, 2).map((w: string) => w[0]).join("").toUpperCase()
-    : "BP";
-
   const navGroups = [
     {
       label: "OPERACIONAL",
       items: [
-        { href: "/admin", icon: "dashboard", label: "Dashboard", id: "dashboard" },
-        { href: "/admin/agenda", icon: "agenda", label: "Agenda", id: "agenda" },
-        { href: "/admin/clientes", icon: "clientes", label: "Clientes", id: "clientes" },
-        { href: "/admin/lista-espera", icon: "lista-espera", label: "Lista de Espera", id: "lista-espera" },
-        { href: "/admin/assinaturas", icon: "assinaturas", label: "Assinaturas", id: "assinaturas" },
-        { href: "/admin/orbita", icon: "orbita", label: "Clientes em Órbita", id: "orbita" },
+        { href: "/admin", icon: svgIcons.dashboard, label: "Dashboard", id: "dashboard" },
+        { href: "/admin/agenda", icon: svgIcons.agenda, label: "Agenda", id: "agenda" },
+        { href: "/admin/clientes", icon: svgIcons.clientes, label: "Clientes", id: "clientes" },
+        { href: "/admin/lista-espera", icon: svgIcons["lista-espera"], label: "Lista de Espera", id: "lista-espera" },
+        { href: "/admin/assinaturas", icon: svgIcons.assinaturas, label: "Assinaturas", id: "assinaturas" },
+        { href: "/admin/orbita", icon: svgIcons.orbita, label: "Clientes em Órbita", id: "orbita" },
       ],
     },
     {
       label: "CATÁLOGO",
       items: [
-        { href: "/admin/servicos", icon: "servicos", label: "Serviços", id: "servicos" },
-        { href: "/admin/produtos", icon: "produtos", label: "Produtos", id: "produtos" },
-        { href: "/admin/estoque", icon: "estoque", label: "Estoque", id: "estoque" },
-        { href: "/admin/encomendas", icon: "encomendas", label: "Encomendas", id: "encomendas" },
+        { href: "/admin/servicos", icon: svgIcons.servicos, label: "Serviços", id: "servicos" },
+        { href: "/admin/produtos", icon: svgIcons.produtos, label: "Produtos", id: "produtos" },
+        { href: "/admin/estoque", icon: svgIcons.estoque, label: "Estoque", id: "estoque" },
+        { href: "/admin/encomendas", icon: svgIcons.encomendas, label: "Encomendas", id: "encomendas" },
       ],
     },
     {
       label: "FINANCEIRO",
       items: [
-        { href: "/admin/financeiro", icon: "financeiro", label: "Financeiro", id: "financeiro" },
-        { href: "/admin/relatorios", icon: "relatorios", label: "Relatórios", id: "relatorios" },
-        { href: "/admin/comissoes", icon: "comissoes", label: "Comissões", id: "comissoes" },
-        { href: "/admin/minhas-comissoes", icon: "minhas-comissoes", label: "Minhas Comissões", id: "minhas-comissoes" },
+        { href: "/admin/financeiro", icon: svgIcons.financeiro, label: "Financeiro", id: "financeiro" },
+        { href: "/admin/relatorios", icon: svgIcons.relatorios, label: "Relatórios", id: "relatorios" },
+        { href: "/admin/comissoes", icon: svgIcons.comissoes, label: "Comissões", id: "comissoes" },
+        { href: "/admin/minhas-comissoes", icon: svgIcons["minhas-comissoes"], label: "Minhas Comissões", id: "minhas-comissoes" },
       ],
     },
     {
       label: "MARKETING",
       items: [
-        { href: "/admin/fidelidade", icon: "fidelidade", label: "Fidelidade", id: "fidelidade" },
-        { href: "/admin/avaliacoes", icon: "avaliacoes", label: "Avaliações", id: "avaliacoes" },
-        { href: "/admin/retorno-automatico", icon: "retorno-automatico", label: "Retorno Automático", id: "retorno-automatico" },
-        { href: "/admin/promocoes", icon: "promocoes", label: "Promoções", id: "promocoes" },
-        { href: "/admin/conversao-promocoes", icon: "conversao-promocoes", label: "Conversão de Promoções", id: "conversao-promocoes" },
+        { href: "/admin/fidelidade", icon: svgIcons.fidelidade, label: "Fidelidade", id: "fidelidade" },
+        { href: "/admin/avaliacoes", icon: svgIcons.avaliacoes, label: "Avaliações", id: "avaliacoes" },
+        { href: "/admin/retorno-automatico", icon: svgIcons["retorno-automatico"], label: "Retorno Automático", id: "retorno-automatico" },
+        { href: "/admin/promocoes", icon: svgIcons.promocoes, label: "Promoções", id: "promocoes" },
+        { href: "/admin/conversao-promocoes", icon: svgIcons["conversao-promocoes"], label: "Conversão de Promoções", id: "conversao-promocoes" },
       ],
     },
     {
       label: "PÁGINA DO CLIENTE",
       items: [
-        { href: "/admin/pagina-cliente", icon: "pagina-cliente", label: "Página do Cliente", id: "pagina-cliente" },
+        { href: "/admin/pagina-cliente", icon: svgIcons["pagina-cliente"], label: "Página do Cliente", id: "pagina-cliente" },
       ],
     },
     {
       label: "SISTEMA",
       items: [
-        { href: "/admin/meu-perfil", icon: "meu-perfil", label: "Meu Perfil", id: "meu-perfil" },
-        { href: "/admin/configuracoes", icon: "configuracoes", label: "Configurações", id: "configuracoes" },
+        { href: "/admin/meu-perfil", icon: svgIcons["meu-perfil"], label: "Meu Perfil", id: "meu-perfil" },
+        { href: "/admin/configuracoes", icon: svgIcons.configuracoes, label: "Configurações", id: "configuracoes" },
+        { href: "/admin/suporte", icon: svgIcons.suporte, label: "Suporte", id: "suporte" },
       ],
     },
   ];
@@ -205,12 +202,12 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     :root {
       --gold: #C9A84C;
       --gold-dim: rgba(201,168,76,0.12);
-      --gold-glow: rgba(201,168,76,0.18);
+      --gold-glow: rgba(201,168,76,0.20);
       --bg: #080808;
       --surface: #111111;
       --surface2: #1A1A1A;
       --surface3: #222222;
-      --border: #242424;
+      --border: #222222;
       --border2: #2E2E2E;
       --text: #F2F0EA;
       --text2: #C8C4BC;
@@ -222,7 +219,6 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       --sidebar-w: 240px;
       --radius: 12px;
       --radius-sm: 8px;
-      --radius-lg: 16px;
     }
     html[data-theme="light"] {
       --bg: #F4F3EF;
@@ -235,242 +231,76 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       --text2: #4A4844;
       --muted: #7A7870;
     }
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      display: flex;
-      min-height: 100vh;
-      font-size: 14px;
-      line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* ── Scrollbar ── */
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
     /* ── Sidebar ── */
-    .sidebar {
-      width: var(--sidebar-w);
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      position: fixed;
-      top: 0; bottom: 0; left: 0;
-      z-index: 200;
-      transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
-    }
-    .sidebar-logo {
-      padding: 20px 18px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .sidebar-logo-icon {
-      width: 32px; height: 32px;
-      background: var(--gold-dim);
-      border: 1px solid rgba(201,168,76,0.25);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-    }
+    .sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0; z-index: 200; transition: transform 0.25s cubic-bezier(0.4,0,0.2,1); }
+    .sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .sidebar-logo-icon { width: 32px; height: 32px; background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.25); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
+    .sidebar-logo-icon img { width: 28px; height: 28px; object-fit: contain; }
     .sidebar-logo-text { flex: 1; min-width: 0; }
-    .sidebar-logo-title { font-size: 13px; font-weight: 800; color: var(--gold); letter-spacing: 1.5px; }
+    .sidebar-logo-title { font-size: 13px; font-weight: 800; color: var(--gold); letter-spacing: 1.5px; line-height: 1.2; }
     .sidebar-logo-sub { font-size: 10px; color: var(--muted); margin-top: 1px; letter-spacing: 0.3px; }
-    .sidebar-nav { flex: 1; padding: 8px 0 12px; overflow-y: auto; }
+    .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
     .nav-group { margin-bottom: 2px; }
-    .nav-group-label {
-      font-size: 9.5px; font-weight: 700; color: var(--muted);
-      letter-spacing: 1.4px; padding: 14px 18px 5px;
-      text-transform: uppercase; opacity: 0.55;
-    }
-    .nav-item {
-      display: flex; align-items: center; gap: 9px;
-      padding: 8px 18px; margin: 1px 8px;
-      font-size: 13px; font-weight: 500;
-      color: var(--muted);
-      text-decoration: none;
-      border-radius: var(--radius-sm);
-      transition: background 0.12s, color 0.12s;
-      cursor: pointer;
-    }
+    .nav-group-label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 1.5px; padding: 14px 18px 5px; opacity: 0.5; text-transform: uppercase; }
+    .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 18px; font-size: 13px; color: var(--muted); text-decoration: none; transition: all 0.15s ease; cursor: pointer; margin: 1px 8px; border-radius: var(--radius-sm); }
     .nav-item:hover { background: var(--surface2); color: var(--text2); }
-    .nav-item.active {
-      background: var(--gold-dim);
-      color: var(--gold);
-      font-weight: 600;
-      box-shadow: inset 2px 0 0 var(--gold);
-    }
-    .nav-icon {
-      width: 16px; height: 16px;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-      opacity: 0.75;
-    }
-    .nav-item.active .nav-icon { opacity: 1; }
-    .nav-item:hover .nav-icon { opacity: 0.9; }
-
-    /* Sidebar footer */
-    .sidebar-footer {
-      padding: 12px 8px;
-      border-top: 1px solid var(--border);
-    }
-    .sidebar-user-card {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px;
-      border-radius: var(--radius-sm);
-      background: var(--surface2);
-      margin-bottom: 8px;
-    }
-    .sidebar-avatar {
-      width: 32px; height: 32px;
-      background: var(--gold-dim);
-      border: 1px solid rgba(201,168,76,0.3);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 800; color: var(--gold);
-      flex-shrink: 0;
-    }
+    .nav-item.active { background: var(--gold-dim); color: var(--gold); font-weight: 600; box-shadow: inset 3px 0 0 var(--gold); }
+    .nav-icon { width: 16px; height: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .sidebar-footer { padding: 14px 18px; border-top: 1px solid var(--border); }
+    .sidebar-user-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .sidebar-avatar { width: 32px; height: 32px; background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.25); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--gold); flex-shrink: 0; }
     .sidebar-user-info { flex: 1; min-width: 0; }
-    .sidebar-user-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sidebar-user-role { font-size: 10px; color: var(--muted); margin-top: 1px; }
-    .sidebar-plan-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 3px 8px; border-radius: 6px;
-      font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
-      margin-bottom: 8px; margin-left: 2px;
-    }
-    .sidebar-logout {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 10px;
-      border-radius: var(--radius-sm);
-      font-size: 12px; font-weight: 500;
-      color: var(--muted);
-      text-decoration: none;
-      transition: background 0.12s, color 0.12s;
-    }
-    .sidebar-logout:hover { background: rgba(248,113,113,0.08); color: var(--error); }
+    .sidebar-user-name { font-size: 12px; font-weight: 600; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-logout { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); text-decoration: none; transition: color 0.12s; }
+    .sidebar-logout:hover { color: var(--error); }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 150; backdrop-filter: blur(2px); }
+    .sidebar-overlay.active { display: block; }
 
-    /* ── Topbar ── */
+    /* ── Main ── */
     .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
-    .topbar {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 28px;
-      height: 56px;
-      display: flex; align-items: center; justify-content: space-between;
-      position: sticky; top: 0; z-index: 100;
-      backdrop-filter: blur(12px);
-    }
-    .topbar-left { display: flex; align-items: center; gap: 8px; }
-    .topbar-hamburger {
-      display: none;
-      width: 36px; height: 36px;
-      background: none; border: none;
-      color: var(--muted); cursor: pointer;
-      align-items: center; justify-content: center;
-      border-radius: var(--radius-sm);
-      transition: background 0.12s, color 0.12s;
-    }
+    .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 100; }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .topbar-hamburger { display: none; background: none; border: none; cursor: pointer; color: var(--muted); padding: 6px; border-radius: 6px; }
     .topbar-hamburger:hover { background: var(--surface2); color: var(--text); }
-    .topbar-breadcrumb { display: flex; align-items: center; gap: 6px; }
-    .topbar-breadcrumb-home { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.12s; }
-    .topbar-breadcrumb-home:hover { color: var(--text); }
-    .topbar-breadcrumb-sep { font-size: 12px; color: var(--border2); }
-    .topbar-breadcrumb-current { font-size: 13px; font-weight: 600; color: var(--text); }
+    .topbar-title { font-size: 15px; font-weight: 700; color: var(--text); }
     .topbar-right { display: flex; align-items: center; gap: 10px; }
     .topbar-date { font-size: 12px; color: var(--muted); }
-    .topbar-avatar {
-      width: 32px; height: 32px;
-      background: var(--gold-dim);
-      border: 1.5px solid rgba(201,168,76,0.3);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 800; color: var(--gold);
-      cursor: pointer;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .topbar-avatar:hover { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
-    .topbar-plan-badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 3px 8px; border-radius: 6px;
-      font-size: 10px; font-weight: 700; letter-spacing: 0.4px;
-    }
-    .content { padding: 28px; flex: 1; max-width: 1400px; }
+    .topbar-avatar { width: 32px; height: 32px; background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--gold); cursor: pointer; transition: box-shadow 0.15s; }
+    .topbar-avatar:hover { box-shadow: 0 0 0 3px var(--gold-glow); }
+    .content { padding: 24px; flex: 1; }
 
     /* ── Cards de métrica ── */
-    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin-bottom: 28px; }
-    .metric-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 20px;
-      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
-      cursor: default;
-    }
-    .metric-card:hover {
-      border-color: rgba(201,168,76,0.3);
-      box-shadow: 0 0 0 1px rgba(201,168,76,0.1), 0 4px 20px rgba(0,0,0,0.3);
-      transform: translateY(-1px);
-    }
-    .metric-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
-    .metric-icon {
-      width: 36px; height: 36px;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-sm);
-      display: flex; align-items: center; justify-content: center;
-      color: var(--gold);
-      flex-shrink: 0;
-    }
-    .metric-trend { font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 3px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: border-color 0.15s, box-shadow 0.15s; }
+    .metric-card:hover { border-color: rgba(201,168,76,0.25); box-shadow: 0 0 0 1px rgba(201,168,76,0.08), 0 4px 16px rgba(0,0,0,0.3); }
+    .metric-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .metric-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+    .metric-label { font-size: 11px; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; font-weight: 500; }
+    .metric-value { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; margin-bottom: 6px; }
+    .metric-sub { font-size: 12px; color: var(--muted); }
+    .metric-trend { font-size: 11px; font-weight: 600; }
     .metric-trend.up { color: var(--success); }
     .metric-trend.down { color: var(--error); }
-    .metric-trend.neutral { color: var(--muted); }
-    .metric-label { font-size: 11px; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 6px; font-weight: 500; }
-    .metric-value { font-size: 26px; font-weight: 900; color: var(--text); letter-spacing: -0.5px; }
-    .metric-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
 
     /* ── Tabelas ── */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      margin-bottom: 20px;
-    }
-    .card-header {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .card-title { font-size: 14px; font-weight: 700; color: var(--text); }
     .card-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
     .card-body { padding: 0; }
     table { width: 100%; border-collapse: collapse; }
-    th {
-      padding: 10px 16px;
-      font-size: 10.5px; color: var(--muted);
-      letter-spacing: 0.8px; text-transform: uppercase;
-      text-align: left;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface2);
-      font-weight: 600;
-    }
-    td {
-      padding: 11px 16px;
-      font-size: 13px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: middle;
-      color: var(--text2);
-    }
+    th { padding: 10px 16px; font-size: 11px; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); font-weight: 600; }
+    td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text2); }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: var(--surface2); color: var(--text); }
+    .td-name { font-weight: 600; color: var(--text) !important; }
+    .cell-avatar { display: flex; align-items: center; gap: 10px; }
+    .avatar-initials { width: 30px; height: 30px; border-radius: 50%; background: var(--surface3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
 
     /* ── Badges ── */
     .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
@@ -482,15 +312,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     .badge-info { background: rgba(96,165,250,0.1); color: var(--info); }
 
     /* ── Botões ── */
-    .btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 8px 16px;
-      border-radius: var(--radius-sm);
-      font-size: 13px; font-weight: 600;
-      text-decoration: none; border: none; cursor: pointer;
-      transition: opacity 0.12s, transform 0.1s, box-shadow 0.12s;
-      font-family: inherit;
-    }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; transition: opacity 0.12s, transform 0.1s, box-shadow 0.12s; font-family: inherit; }
     .btn:hover { opacity: 0.88; transform: translateY(-1px); }
     .btn:active { transform: translateY(0); }
     .btn-primary { background: var(--gold); color: #0A0A0A; box-shadow: 0 2px 8px rgba(201,168,76,0.25); }
@@ -498,26 +320,18 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
     .btn-danger { background: rgba(248,113,113,0.1); color: var(--error); border: 1px solid rgba(248,113,113,0.2); }
     .btn-sm { padding: 5px 12px; font-size: 12px; }
-    .btn-icon { padding: 8px; }
+    .btn-icon { padding: 7px; }
 
     /* ── Empty state ── */
-    .empty { text-align: center; padding: 56px 24px; color: var(--muted); font-size: 14px; }
-    .empty-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
+    .empty { text-align: center; padding: 56px 24px; color: var(--muted); }
+    .empty-icon { margin-bottom: 12px; opacity: 0.3; }
     .empty-title { font-size: 15px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
     .empty-desc { font-size: 13px; color: var(--muted); }
 
     /* ── Formulários ── */
     .form-group { margin-bottom: 16px; }
     .form-label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.3px; }
-    .form-input {
-      width: 100%; padding: 10px 13px;
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-sm);
-      color: var(--text); font-size: 13px;
-      font-family: inherit;
-      transition: border-color 0.12s, box-shadow 0.12s;
-    }
+    .form-input { width: 100%; padding: 10px 13px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-family: inherit; transition: border-color 0.12s, box-shadow 0.12s; }
     .form-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
     .form-input::placeholder { color: var(--muted); }
     select.form-input { cursor: pointer; }
@@ -530,26 +344,12 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     .alert-success { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); color: var(--success); }
     .alert-error { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); color: var(--error); }
     .alert-warning { background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2); color: var(--warning); }
-    .alert-info { background: rgba(96,165,250,0.08); border: 1px solid rgba(96,165,250,0.2); color: var(--info); }
     .alert-gold { background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.25); color: var(--gold); }
 
     /* ── Section header ── */
-    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
     .section-title { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; }
     .section-subtitle { font-size: 13px; color: var(--muted); margin-top: 3px; }
-
-    /* ── Divider ── */
-    .divider { height: 1px; background: var(--border); margin: 20px 0; }
-
-    /* ── Overlay mobile ── */
-    .sidebar-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.6);
-      z-index: 150;
-      backdrop-filter: blur(2px);
-    }
-    .sidebar-overlay.active { display: block; }
 
     /* ── Responsivo ── */
     @media (max-width: 900px) {
@@ -564,7 +364,6 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     }
     @media (max-width: 480px) {
       .metrics-grid { grid-template-columns: 1fr; }
-      .topbar { padding: 0 16px; }
     }
   </style>
   <script>
@@ -580,7 +379,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <div class="sidebar-logo-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <img src="/assets/images/icon.png" alt="Barber Pro" onerror="this.style.display='none';this.parentElement.innerHTML='<svg width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23C9A84C\' stroke-width=\'2\'><path d=\'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z\'/></svg>'" />
       </div>
       <div class="sidebar-logo-text">
         <div class="sidebar-logo-title">BARBER PRO</div>
@@ -593,27 +392,24 @@ function adminLayout(title: string, activePage: string, body: string, barberName
           <div class="nav-group-label">${group.label}</div>
           ${group.items.map((n) => `
             <a href="${n.href}" class="nav-item ${activePage === n.id ? "active" : ""}">
-              <span class="nav-icon">${svgIcons[n.icon] ?? ""}</span>
-              ${n.label}
+              <span class="nav-icon">${n.icon}</span>
+              <span>${n.label}</span>
             </a>
           `).join("")}
         </div>
       `).join("")}
     </nav>
     <div class="sidebar-footer">
-      <div class="sidebar-user-card">
+      ${barberName ? `
+      <div class="sidebar-user-row">
         <div class="sidebar-avatar">${initials}</div>
         <div class="sidebar-user-info">
-          <div class="sidebar-user-name">${esc(barberName || "Administrador")}</div>
-          <div class="sidebar-user-role">Administrador</div>
+          <div class="sidebar-user-name">${esc(barberName)}</div>
+          ${badge ? `<div style="font-size:10px;color:${badge.color};font-weight:600;letter-spacing:0.5px">${badge.label}</div>` : ""}
         </div>
-      </div>
-      ${badge ? `<div class="sidebar-plan-badge" style="background:${badge.bg};border:1px solid ${badge.color}33;color:${badge.color}">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        Plano ${badge.label}
       </div>` : ""}
       <a href="/admin/logout" class="sidebar-logout">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         Sair da conta
       </a>
     </div>
@@ -622,19 +418,15 @@ function adminLayout(title: string, activePage: string, body: string, barberName
   <div class="main">
     <div class="topbar">
       <div class="topbar-left">
-        <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <button class="topbar-hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
-        <nav class="topbar-breadcrumb">
-          <a href="/admin" class="topbar-breadcrumb-home">Início</a>
-          <span class="topbar-breadcrumb-sep">/</span>
-          <span class="topbar-breadcrumb-current">${esc(title)}</span>
-        </nav>
+        <div class="topbar-title">${esc(title)}</div>
       </div>
       <div class="topbar-right">
-        <span class="topbar-date">${new Date().toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</span>
-        ${badge ? `<span class="topbar-plan-badge" style="background:${badge.bg};border:1px solid ${badge.color}33;color:${badge.color}">${badge.label}</span>` : ""}
-        <div class="topbar-avatar" title="${esc(barberName || "Administrador")}">${initials}</div>
+        <div class="topbar-date">${new Date().toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</div>
+        ${badge ? `<div style="display:inline-flex;align-items:center;gap:5px;background:${badge.bg};border:1px solid ${badge.color}33;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:${badge.color};letter-spacing:0.5px">${badge.label}</div>` : ""}
+        <div class="topbar-avatar" title="${esc(barberName)}">${initials}</div>
       </div>
     </div>
     <div class="content">
@@ -642,15 +434,31 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     </div>
   </div>
   <script>
+    // ─── Hambúrguer mobile ────────────────────────────────────────────────────
     function toggleSidebar() {
-      var s = document.getElementById('sidebar');
-      var o = document.getElementById('sidebarOverlay');
-      s.classList.toggle('open');
-      o.classList.toggle('active');
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
     }
     function closeSidebar() {
-      document.getElementById('sidebar').classList.remove('open');
-      document.getElementById('sidebarOverlay').classList.remove('active');
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.remove('open');
+      overlay.classList.remove('active');
+    }
+    // Fechar sidebar ao clicar em link de nav (mobile)
+    document.querySelectorAll('.nav-item').forEach(function(el) {
+      el.addEventListener('click', function() {
+        if (window.innerWidth < 900) closeSidebar();
+      });
+    });
+    // ─── Toggle de tema ────────────────────────────────────────────────────────
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('bp_theme', next);
     }
   </script>
 </body>
@@ -671,23 +479,35 @@ function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #C9A84C;
+      --gold-dim: rgba(201,168,76,0.12);
+      --gold-glow: rgba(201,168,76,0.20);
+      --bg: #080808;
+      --surface: #111111;
+      --surface2: #1A1A1A;
+      --border: #222222;
+      --border2: #2E2E2E;
+      --text: #F2F0EA;
+      --muted: #7A7870;
+    }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #080808;
-      color: #F2F0EA;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
       display: flex;
       -webkit-font-smoothing: antialiased;
     }
-
     /* ── Split layout ── */
     .login-left {
       flex: 1;
-      background: #0F0F0F;
-      border-right: 1px solid #1E1E1E;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      align-items: center;
+      justify-content: center;
       padding: 48px;
       position: relative;
       overflow: hidden;
@@ -695,209 +515,189 @@ function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: 
     .login-left::before {
       content: '';
       position: absolute;
-      top: -120px; left: -120px;
-      width: 500px; height: 500px;
-      background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 65%);
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(ellipse at center, rgba(201,168,76,0.10) 0%, transparent 65%);
       pointer-events: none;
     }
     .login-left::after {
       content: '';
       position: absolute;
-      bottom: -80px; right: -80px;
-      width: 350px; height: 350px;
-      background: radial-gradient(circle, rgba(201,168,76,0.07) 0%, transparent 65%);
+      bottom: -80px;
+      right: -80px;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(ellipse at center, rgba(201,168,76,0.06) 0%, transparent 70%);
       pointer-events: none;
     }
-    .login-brand { position: relative; z-index: 1; }
-    .login-brand-icon {
-      width: 44px; height: 44px;
-      background: rgba(201,168,76,0.12);
+    .brand-block {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      text-align: center;
+    }
+    .brand-logo-wrap {
+      width: 96px;
+      height: 96px;
+      background: var(--gold-dim);
       border: 1px solid rgba(201,168,76,0.25);
-      border-radius: 12px;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 16px;
-    }
-    .login-brand-name { font-size: 15px; font-weight: 800; color: #C9A84C; letter-spacing: 2px; }
-    .login-brand-tagline { font-size: 12px; color: #7A7870; margin-top: 3px; }
-    .login-hero { position: relative; z-index: 1; }
-    .login-hero-title {
-      font-size: 32px; font-weight: 900;
-      line-height: 1.2; letter-spacing: -0.5px;
-      color: #F2F0EA;
-      margin-bottom: 16px;
-    }
-    .login-hero-title span { color: #C9A84C; }
-    .login-hero-desc { font-size: 14px; color: #7A7870; line-height: 1.6; max-width: 340px; }
-    .login-testimonial {
-      position: relative; z-index: 1;
-      background: rgba(201,168,76,0.06);
-      border: 1px solid rgba(201,168,76,0.15);
-      border-radius: 14px;
-      padding: 20px 22px;
-    }
-    .login-testimonial-text { font-size: 13px; color: #C8C4BC; line-height: 1.6; font-style: italic; margin-bottom: 14px; }
-    .login-testimonial-author { display: flex; align-items: center; gap: 10px; }
-    .login-testimonial-avatar {
-      width: 32px; height: 32px;
-      background: rgba(201,168,76,0.15);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 800; color: #C9A84C;
-    }
-    .login-testimonial-name { font-size: 12px; font-weight: 700; color: #F2F0EA; }
-    .login-testimonial-role { font-size: 11px; color: #7A7870; }
-    .login-stats { display: flex; gap: 28px; position: relative; z-index: 1; }
-    .login-stat-value { font-size: 22px; font-weight: 900; color: #C9A84C; }
-    .login-stat-label { font-size: 11px; color: #7A7870; margin-top: 2px; }
-
-    /* ── Right panel ── */
-    .login-right {
-      width: 460px;
+      border-radius: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 0 40px rgba(201,168,76,0.12);
+      overflow: hidden;
+    }
+    .brand-logo-wrap img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+    }
+    .brand-name {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--gold);
+      letter-spacing: 3px;
+      line-height: 1;
+    }
+    .brand-tagline {
+      font-size: 14px;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+      line-height: 1.5;
+      max-width: 280px;
+    }
+    .brand-divider {
+      width: 40px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      border-radius: 2px;
+    }
+    .brand-stats {
+      display: flex;
+      gap: 32px;
+      margin-top: 8px;
+    }
+    .brand-stat {
+      text-align: center;
+    }
+    .brand-stat-value {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .brand-stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      letter-spacing: 0.3px;
+    }
+    /* ── Formulário ── */
+    .login-right {
+      width: 440px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       padding: 48px 40px;
-      background: #080808;
+      background: var(--bg);
     }
-    .login-form-wrap { width: 100%; max-width: 360px; }
-    .login-form-title { font-size: 22px; font-weight: 800; color: #F2F0EA; margin-bottom: 6px; letter-spacing: -0.3px; }
-    .login-form-sub { font-size: 13px; color: #7A7870; margin-bottom: 28px; }
-    .form-label { display: block; font-size: 12px; font-weight: 500; color: #7A7870; margin-bottom: 6px; }
-    .form-input {
-      width: 100%; padding: 11px 13px;
-      background: #111111;
-      border: 1px solid #242424;
-      border-radius: 10px;
-      color: #F2F0EA; font-size: 13px;
-      font-family: inherit;
-      transition: border-color 0.12s, box-shadow 0.12s;
-      margin-bottom: 14px;
+    .login-form-wrap {
+      width: 100%;
+      max-width: 360px;
     }
-    .form-input:focus { outline: none; border-color: #C9A84C; box-shadow: 0 0 0 3px rgba(201,168,76,0.12); }
-    .form-input::placeholder { color: #4A4844; }
-    .remember-row {
-      display: flex; align-items: center; gap: 8px;
-      margin-bottom: 18px; cursor: pointer;
-    }
-    .remember-row input[type=checkbox] { width: 15px; height: 15px; accent-color: #C9A84C; cursor: pointer; }
-    .remember-row span { font-size: 12px; color: #7A7870; }
-    .btn-login {
-      width: 100%; padding: 13px;
-      background: #C9A84C;
-      color: #080808;
-      border: none; border-radius: 10px;
-      font-size: 14px; font-weight: 800;
-      cursor: pointer; font-family: inherit;
-      transition: opacity 0.12s, transform 0.1s, box-shadow 0.12s;
-      box-shadow: 0 2px 12px rgba(201,168,76,0.3);
-      margin-bottom: 4px;
-    }
-    .btn-login:hover { opacity: 0.9; box-shadow: 0 4px 20px rgba(201,168,76,0.4); transform: translateY(-1px); }
-    .btn-login:active { transform: translateY(0); }
-    .divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; }
-    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #1E1E1E; }
-    .divider span { font-size: 11px; color: #4A4844; white-space: nowrap; }
-    .btn-google {
-      width: 100%; padding: 12px 14px;
-      background: #111111; color: #F2F0EA;
-      border: 1px solid #242424; border-radius: 10px;
-      font-size: 13px; font-weight: 600; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      font-family: inherit;
-      transition: background 0.12s, border-color 0.12s;
-    }
-    .btn-google:hover { background: #1A1A1A; border-color: #2E2E2E; }
-    .btn-google svg { flex-shrink: 0; }
+    .login-heading { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+    .login-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.3px; }
+    .form-input { width: 100%; padding: 11px 13px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 9px; color: var(--text); font-size: 14px; font-family: inherit; transition: border-color 0.12s, box-shadow 0.12s; }
+    .form-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
+    .form-input::placeholder { color: var(--muted); }
+    .remember-row { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; cursor: pointer; }
+    .remember-row input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--gold); cursor: pointer; }
+    .remember-row span { font-size: 13px; color: var(--muted); }
+    .btn-submit { width: 100%; padding: 13px; background: var(--gold); color: #0A0A0A; border: none; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity 0.12s, transform 0.1s, box-shadow 0.12s; box-shadow: 0 2px 12px rgba(201,168,76,0.25); }
+    .btn-submit:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(201,168,76,0.35); }
+    .btn-submit:active { transform: translateY(0); }
+    .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border2); }
+    .divider span { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .btn-google { width: 100%; padding: 12px 14px; background: var(--surface2); color: var(--text); border: 1px solid var(--border2); border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 9px; transition: background 0.12s, border-color 0.12s; }
+    .btn-google:hover { background: #222222; border-color: #3A3A3A; }
     .login-links { display: flex; justify-content: space-between; margin-top: 20px; }
-    .login-link { font-size: 12px; color: #7A7870; text-decoration: none; transition: color 0.12s; }
-    .login-link:hover { color: #C9A84C; }
-    .error-box {
-      background: rgba(248,113,113,0.08);
-      border: 1px solid rgba(248,113,113,0.2);
-      color: #F87171;
-      padding: 10px 14px; border-radius: 8px;
-      font-size: 13px; margin-bottom: 16px;
-      display: flex; align-items: flex-start; gap: 8px;
-    }
-    .info-box {
-      background: rgba(201,168,76,0.08);
-      border: 1px solid rgba(201,168,76,0.2);
-      color: #C9A84C;
-      padding: 12px 14px; border-radius: 8px;
-      font-size: 13px; margin-bottom: 16px; line-height: 1.5;
-    }
+    .login-link { font-size: 12px; color: var(--muted); text-decoration: none; transition: color 0.12s; }
+    .login-link:hover { color: var(--gold); }
+    .alert-error { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); color: #F87171; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .alert-gold { background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.25); color: var(--gold); padding: 12px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
     .loading { opacity: 0.6; pointer-events: none; }
-
-    /* ── Mobile: ocultar painel esquerdo ── */
-    @media (max-width: 800px) {
+    /* ── Responsivo ── */
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
       .login-left { display: none; }
-      .login-right { width: 100%; padding: 32px 24px; }
+      .login-right { width: 100%; min-height: 100vh; padding: 40px 24px; }
     }
   </style>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-  <!-- Painel esquerdo: marca + depoimento -->
+  <!-- Lado esquerdo: marca -->
   <div class="login-left">
-    <div class="login-brand">
-      <div class="login-brand-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+    <div class="brand-block">
+      <div class="brand-logo-wrap">
+        <img src="/assets/images/icon.png" alt="Barber Pro"
+          onerror="this.style.display='none';this.parentElement.innerHTML='<svg width=64 height=64 viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23C9A84C\' stroke-width=\'1.5\'><path d=\'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z\'/></svg>'" />
       </div>
-      <div class="login-brand-name">BARBER PRO</div>
-      <div class="login-brand-tagline">Painel Administrativo</div>
-    </div>
-
-    <div class="login-hero">
-      <div class="login-hero-title">Gerencie sua barbearia<br/>com <span>inteligência</span></div>
-      <div class="login-hero-desc">Agenda, financeiro, assinaturas e marketing em um único painel. Tudo que você precisa para crescer.</div>
-    </div>
-
-    <div>
-      <div class="login-testimonial" style="margin-bottom: 28px">
-        <div class="login-testimonial-text">&ldquo;Desde que comecei a usar o Barber Pro, minha receita mensal cresceu 40%. O sistema de assinaturas mudou tudo.&rdquo;</div>
-        <div class="login-testimonial-author">
-          <div class="login-testimonial-avatar">RS</div>
-          <div>
-            <div class="login-testimonial-name">Rafael Santos</div>
-            <div class="login-testimonial-role">Dono da Barbearia Santos, SP</div>
-          </div>
-        </div>
+      <div>
+        <div class="brand-name">BARBER PRO</div>
       </div>
-      <div class="login-stats">
-        <div>
-          <div class="login-stat-value">+500</div>
-          <div class="login-stat-label">Barbearias ativas</div>
+      <div class="brand-divider"></div>
+      <div class="brand-tagline">Gestão completa para barbearias.<br/>Agenda, financeiro e assinaturas em um único painel.</div>
+      <div class="brand-stats">
+        <div class="brand-stat">
+          <div class="brand-stat-value">500+</div>
+          <div class="brand-stat-label">Barbearias</div>
         </div>
-        <div>
-          <div class="login-stat-value">R$2.4k</div>
-          <div class="login-stat-label">Média de receita extra/mês</div>
+        <div class="brand-stat">
+          <div class="brand-stat-value">98%</div>
+          <div class="brand-stat-label">Satisfação</div>
         </div>
-        <div>
-          <div class="login-stat-value">14 dias</div>
-          <div class="login-stat-label">Grátis para testar</div>
+        <div class="brand-stat">
+          <div class="brand-stat-value">24/7</div>
+          <div class="brand-stat-label">Suporte</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Painel direito: formulário -->
+  <!-- Lado direito: formulário -->
   <div class="login-right">
     <div class="login-form-wrap">
-      <div class="login-form-title">Bem-vindo de volta</div>
-      <div class="login-form-sub">Entre com sua conta para acessar o painel</div>
-      ${info === 'already_exists' ? `<div class="info-box">&#128276; Este e-mail já possui uma conta no Barber Pro${infoEmail ? ` (<strong>${infoEmail}</strong>)` : ''}. Faça login abaixo para acessar seu painel.</div>` : ''}
-      ${error ? `<div class="error-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>${errorMsg ?? "Email ou senha incorretos."}</div>` : ""}
+      <div class="login-heading">Bem-vindo de volta</div>
+      <div class="login-sub">Entre com sua conta para acessar o painel</div>
+      ${info === 'already_exists' ? `<div class="alert-gold">Este e-mail já possui uma conta no Barber Pro${infoEmail ? ` (<strong>${infoEmail}</strong>)` : ''}. Faça login abaixo para acessar seu painel.</div>` : ''}
+      ${error ? `<div class="alert-error"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>${errorMsg ?? "Email ou senha incorretos."}</div>` : ""}
       <form method="POST" action="/admin/login" id="loginForm">
-        <label class="form-label">Email</label>
-        <input type="email" name="email" id="emailInput" class="form-input" placeholder="seu@email.com" required autofocus />
-        <label class="form-label">Senha</label>
-        <input type="password" name="password" class="form-input" placeholder="••••••••" required />
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" type="email" name="email" id="emailInput" placeholder="seu@email.com" required autofocus />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Senha</label>
+          <input class="form-input" type="password" name="password" placeholder="••••••••" required />
+        </div>
         <input type="hidden" name="remember" id="rememberInput" value="0" />
         <label class="remember-row" onclick="toggleRemember()">
           <input type="checkbox" id="rememberCheck" />
           <span>Lembrar meu e-mail neste dispositivo</span>
         </label>
-        <button type="submit" class="btn-login">Entrar no Painel</button>
+        <button type="submit" class="btn-submit">Entrar no Painel</button>
       </form>
       <div class="divider"><span>ou continue com</span></div>
       <button class="btn-google" id="googleBtn" onclick="startGoogleLogin()">
@@ -1035,23 +835,43 @@ async function renderDashboard(req: Request, res: Response) {
   const body = `
     <div class="metrics-grid">
       <div class="metric-card">
-        <div class="metric-label">Agendamentos Hoje</div>
+        <div class="metric-header">
+          <div class="metric-label">Agendamentos Hoje</div>
+          <div class="metric-icon" style="background:var(--gold-dim)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+        </div>
         <div class="metric-value" style="color:var(--gold)">${stats.appointmentsToday}</div>
         <div class="metric-sub">${stats.pendingAppointments} pendentes</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Faturamento Hoje</div>
+        <div class="metric-header">
+          <div class="metric-label">Faturamento Hoje</div>
+          <div class="metric-icon" style="background:rgba(74,222,128,0.1)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+        </div>
         <div class="metric-value" style="color:var(--success)">${fmtCurrency(stats.revenueToday)}</div>
         <div class="metric-sub">vendas pagas</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Clientes Atendidos</div>
-        <div class="metric-value">${stats.clientsToday}</div>
+        <div class="metric-header">
+          <div class="metric-label">Clientes Atendidos</div>
+          <div class="metric-icon" style="background:rgba(96,165,250,0.1)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+        </div>
+        <div class="metric-value" style="color:var(--info)">${stats.clientsToday}</div>
         <div class="metric-sub">hoje</div>
       </div>
       <div class="metric-card">
-        <div class="metric-label">Equipe Ativa</div>
-        <div class="metric-value">${barbers.length}</div>
+        <div class="metric-header">
+          <div class="metric-label">Equipe Ativa</div>
+          <div class="metric-icon" style="background:rgba(251,191,36,0.1)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+        </div>
+        <div class="metric-value" style="color:var(--warning)">${barbers.length}</div>
         <div class="metric-sub">profissionais</div>
       </div>
     </div>
@@ -1059,7 +879,7 @@ async function renderDashboard(req: Request, res: Response) {
     <!-- Card: Baixe o App (detecção de dispositivo via JS) -->
     <div class="card" id="download-app-card" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border:1px solid #3d5a8044;display:none">
       <div class="card-header">
-        <div class="card-title">📱 Baixe o App no Celular</div>
+        <div class="card-title">Baixe o App no Celular</div>
         <button onclick="document.getElementById('download-app-card').style.display='none';localStorage.setItem('hideAppCard','1')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px" title="Fechar">×</button>
       </div>
       <div class="card-body">
@@ -1082,12 +902,12 @@ async function renderDashboard(req: Request, res: Response) {
           <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Você está usando um iPhone. O app Barber Pro está disponível de duas formas:</p>
           <div style="display:flex;flex-direction:column;gap:12px">
             <div style="background:var(--surface2);border-radius:12px;padding:14px 16px;border:1px solid var(--border)">
-              <div style="font-weight:600;font-size:13px;margin-bottom:4px">🌐 Usar pelo navegador (recomendado)</div>
+              <div style="font-weight:600;font-size:13px;margin-bottom:4px">Usar pelo navegador (recomendado)</div>
               <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Acesse o painel completo pelo Safari — sem instalar nada. Toque em <strong>Compartilhar → Adicionar à Tela de Início</strong> para criar um atalho.</div>
               <a href="/admin" style="display:inline-flex;align-items:center;gap:6px;background:var(--primary);color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:600">Acessar painel →</a>
             </div>
             <div style="background:var(--surface2);border-radius:12px;padding:14px 16px;border:1px solid var(--border)">
-              <div style="font-weight:600;font-size:13px;margin-bottom:4px">📲 App nativo (em breve)</div>
+              <div style="font-weight:600;font-size:13px;margin-bottom:4px">App nativo (em breve)</div>
               <div style="font-size:12px;color:var(--muted)">O app para iPhone estará disponível na App Store em breve. Você será notificado por e-mail quando estiver disponível.</div>
             </div>
           </div>
@@ -1101,11 +921,11 @@ async function renderDashboard(req: Request, res: Response) {
             </div>
             <div style="flex:1;min-width:200px">
               <div style="margin-bottom:12px">
-                <div style="font-weight:600;font-size:13px;margin-bottom:4px">📱 Android</div>
+                <div style="font-weight:600;font-size:13px;margin-bottom:4px">Android</div>
                 <a id="play-store-link-desktop" href="https://play.google.com/store/apps/details?id=space.manus.barber.app" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:#01875f;color:#fff;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:600">Google Play →</a>
               </div>
               <div>
-                <div style="font-weight:600;font-size:13px;margin-bottom:4px">🍎 iPhone</div>
+                <div style="font-weight:600;font-size:13px;margin-bottom:4px">iPhone</div>
                 <span style="font-size:12px;color:var(--muted)">App Store — em breve</span>
               </div>
             </div>
@@ -1135,24 +955,24 @@ async function renderDashboard(req: Request, res: Response) {
     ${dashBookingUrl ? `
     <div class="card" style="background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);border:1px solid var(--gold)44">
       <div class="card-header">
-        <div class="card-title">🌐 Link de Agendamento Online</div>
-        <a href="/admin/pagina-cliente" class="btn btn-ghost" style="font-size:12px">Configurar página</a>
+        <div class="card-title">Link de Agendamento Online</div>
+        <a href="/admin/pagina-cliente" class="btn btn-ghost btn-sm">Configurar página</a>
       </div>
       <div class="card-body">
         <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Compartilhe este link com seus clientes para que eles possam agendar online:</p>
         <div style="display:flex;gap:8px;align-items:center">
           <input id="dash-booking-url" class="form-input" type="text" value="${esc(dashBookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
-          <button onclick="(function(btn){navigator.clipboard.writeText(document.getElementById('dash-booking-url').value).then(()=>{var o=btn.textContent;btn.textContent='✅ Copiado!';setTimeout(()=>btn.textContent=o,2000)});})(this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">📋 Copiar</button>
-          <a href="${esc(dashBookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">🔗 Abrir</a>
-          <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário: ' + dashBookingUrl)}" target="_blank" class="btn btn-primary" style="flex-shrink:0;padding:8px 14px;font-size:12px">📲 WhatsApp</a>
+          <button onclick="(function(btn){navigator.clipboard.writeText(document.getElementById('dash-booking-url').value).then(()=>{var o=btn.innerHTML;btn.innerHTML='Copiado!';setTimeout(()=>btn.innerHTML=o,2000)});})(this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Copiar</button>
+          <a href="${esc(dashBookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Abrir</a>
+          <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário: ' + dashBookingUrl)}" target="_blank" class="btn btn-primary" style="flex-shrink:0;padding:8px 14px;font-size:12px">WhatsApp</a>
         </div>
       </div>
     </div>` : ''}
 
     <div class="card">
       <div class="card-header">
-        <div class="card-title">📅 Agenda de Hoje — ${fmtDate(dateStr)}</div>
-        <a href="/admin/agenda" class="btn btn-ghost">Ver tudo</a>
+        <div class="card-title">Agenda de Hoje &mdash; ${fmtDate(dateStr)}</div>
+        <a href="/admin/agenda" class="btn btn-ghost btn-sm">Ver tudo</a>
       </div>
       <div class="card-body">${appointmentsHtml}</div>
     </div>
@@ -1251,7 +1071,7 @@ async function renderAgenda(req: Request, res: Response) {
         <input type="text" name="q" value="${esc(filterSearch)}" placeholder="Buscar por nome ou telefone..."
           style="flex:1;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px" />
         <button type="submit" class="btn btn-primary" style="padding:8px 16px;font-size:13px">Buscar</button>
-        ${filterSearch || filterBarberId ? `<a href="/admin/agenda?date=${dateStr}" class="btn btn-ghost" style="padding:8px 12px;font-size:13px">✕</a>` : ""}
+        ${filterSearch || filterBarberId ? `<a href="/admin/agenda?date=${dateStr}" class="btn btn-ghost" style="padding:8px 12px;font-size:13px"></a>` : ""}
       </div>
       <a href="/admin/agenda/novo?date=${dateStr}" class="btn btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap">+ Novo Agendamento</a>
     </form>`;
@@ -1294,7 +1114,7 @@ async function renderAgenda(req: Request, res: Response) {
                       ${a.status === "in_progress" || a.status === "confirmed" ? `<button onclick="updateStatus(${a.id},'completed')" style="background:#22C55E;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-right:4px">Concluir</button>` : ""}
                       ${a.status !== "cancelled" && a.status !== "completed" ? `<button onclick="updateStatus(${a.id},'cancelled')" style="background:#EF4444;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-right:4px">Cancelar</button>` : ""}
                       ${a.status === "confirmed" || a.status === "scheduled" ? `<button onclick="updateStatus(${a.id},'no_show')" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px">Não veio</button>` : ""}
-                      ${(a.status === "scheduled" || a.status === "confirmed") && tenantSlug ? `<button onclick="resendPaymentLink(${a.id},'${tenantSlug}',this)" style="background:#25D36622;color:#25D366;border:1px solid #25D36644;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-left:4px" title="Reenviar link de pagamento pelo WhatsApp">💳 Link Pgto</button>` : ""}
+                      ${(a.status === "scheduled" || a.status === "confirmed") && tenantSlug ? `<button onclick="resendPaymentLink(${a.id},'${tenantSlug}',this)" style="background:#25D36622;color:#25D366;border:1px solid #25D36644;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-left:4px" title="Reenviar link de pagamento pelo WhatsApp">Link Pgto</button>` : ""}
                     </td>
                   </tr>
                 `).join("")}
@@ -1350,10 +1170,10 @@ async function renderAgenda(req: Request, res: Response) {
                     ? "https://wa.me/55" + clientPhone + "?text=" + msg
                     : "https://wa.me/?text=" + msg;
                   window.open(waUrl, "_blank");
-                  btn.disabled = false; btn.textContent = "💳 Link Pgto";
+                  btn.disabled = false; btn.textContent = "Link Pgto";
                 } catch(e) {
                   alert("Erro: " + e.message);
-                  btn.disabled = false; btn.textContent = "💳 Link Pgto";
+                  btn.disabled = false; btn.textContent = "Link Pgto";
                 }
               }
             </script>`
@@ -1408,12 +1228,12 @@ async function renderClientes(req: Request, res: Response) {
   const birthdayToday = birthdayMonth.filter((c: any) => parseInt(c.birthDate.split("-")[2], 10) === todayDay);
 
   const body = `
-    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Cliente salvo com sucesso!</div>` : ""}
-    ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Cliente excluído com sucesso!</div>` : ""}
+    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Cliente salvo com sucesso!</div>` : ""}
+    ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Cliente excluído com sucesso!</div>` : ""}
 
     ${birthdayToday.length > 0 ? `
     <div style="background:linear-gradient(135deg,#C9A84C22,#C9A84C11);border:1px solid #C9A84C44;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px">
-      <span style="font-size:24px">🎂</span>
+      <span style="font-size:24px"></span>
       <div>
         <div style="font-weight:700;color:#C9A84C;font-size:14px">Aniversariantes de hoje!</div>
         <div style="font-size:13px;color:var(--foreground);margin-top:2px">${birthdayToday.map((c: any) => esc(c.name)).join(", ")}</div>
@@ -1426,7 +1246,7 @@ async function renderClientes(req: Request, res: Response) {
         <input type="text" name="q" value="${esc(search)}" placeholder="Buscar por nome ou telefone..."
           style="flex:1;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px" />
         <button type="submit" class="btn btn-primary" style="padding:8px 16px;font-size:13px">Buscar</button>
-        ${search ? `<a href="/admin/clientes" class="btn btn-ghost" style="padding:8px 12px;font-size:13px">✕</a>` : ""}
+        ${search ? `<a href="/admin/clientes" class="btn btn-ghost" style="padding:8px 12px;font-size:13px"></a>` : ""}
       </form>
       <select onchange="location.href='/admin/clientes?status='+this.value+'${search ? '&q=' + encodeURIComponent(search) : ''}'"
         style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px">
@@ -1435,7 +1255,7 @@ async function renderClientes(req: Request, res: Response) {
         <option value="inactive" ${filterStatus === 'inactive' ? 'selected' : ''}>Inativos</option>
       </select>
       <a href="/admin/clientes?aniversariantes=1" class="btn ${filterBirthday ? 'btn-primary' : 'btn-ghost'}" style="padding:8px 14px;font-size:13px">
-        🎂 Aniversariantes (${birthdayMonth.length})
+         Aniversariantes (${birthdayMonth.length})
       </a>
       <a href="/admin/export/clientes.csv" class="btn btn-ghost" style="padding:8px 12px;font-size:13px">↓ CSV</a>
       <button onclick="document.getElementById('newClientModal').style.display='flex'" class="btn btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap">+ Novo Cliente</button>
@@ -1443,7 +1263,7 @@ async function renderClientes(req: Request, res: Response) {
 
     <div class="card">
       <div class="card-header">
-        <div class="card-title">👥 ${filterBirthday ? `Aniversariantes de ${new Date().toLocaleString('pt-BR', {month:'long'})}` : 'Clientes'} (${filtered.length})</div>
+        <div class="card-title">${filterBirthday ? `Aniversariantes de ${new Date().toLocaleString('pt-BR', {month:'long'})}` : 'Clientes'} (${filtered.length})</div>
       </div>
       <div class="card-body">
         ${filtered.length === 0
@@ -1458,18 +1278,18 @@ async function renderClientes(req: Request, res: Response) {
                   <tr style="${isToday ? 'background:rgba(201,168,76,0.08)' : ''}">
                     <td>
                       <a href="/admin/clientes/${c.id}" style="color:var(--gold);text-decoration:none;font-weight:700">${esc(c.name)}</a>
-                      ${isToday ? '<span style="font-size:14px;margin-left:6px">🎂</span>' : ''}
+                      ${isToday ? '<span style="font-size:14px;margin-left:6px"></span>' : ''}
                     </td>
                     <td>${esc(c.phone ?? '—')}</td>
                     <td style="color:var(--muted);font-size:12px">${esc(c.email ?? '—')}</td>
                     <td>${filterBirthday ? `<strong style="color:#C9A84C">${bdFormatted}</strong>` : `<span class="badge badge-gold">${c.loyaltyPoints ?? c.totalPoints ?? 0} pts</span>`}</td>
                     <td>${c.isActive !== false ? '<span class="badge badge-success">Ativo</span>' : '<span class="badge badge-muted">Inativo</span>'}</td>
                     <td style="white-space:nowrap">
-                       <a href="/admin/clientes/${c.id}" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">👁 Ver</a>
-                      ${c.phone ? `<a href="https://wa.me/${(c.phone).replace(/\D/g,'')}" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px;color:#25D366">💬 WhatsApp</a>` : ''}
-                      <button onclick="openEditClient(${c.id},'${esc(c.name).replace(/'/g,"\\'")}',' ${esc(c.phone ?? '')}','${esc(c.email ?? '')}','${c.birthDate ?? ''}','${esc(c.notes ?? '')}'" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">✏️ Editar</button>
+                       <a href="/admin/clientes/${c.id}" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">Ver</a>
+                      ${c.phone ? `<a href="https://wa.me/${(c.phone).replace(/\D/g,'')}" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px;color:#25D366">WhatsApp</a>` : ''}
+                      <button onclick="openEditClient(${c.id},'${esc(c.name).replace(/'/g,"\\'")}',' ${esc(c.phone ?? '')}','${esc(c.email ?? '')}','${c.birthDate ?? ''}','${esc(c.notes ?? '')}'" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">Editar</button>
                       <form method="POST" action="/admin/clientes/${c.id}/excluir" style="display:inline" onsubmit="return confirm('Excluir ${esc(c.name).replace(/'/g,"\\'")}'? Esta ação não pode ser desfeita.')">
-                        <button type="submit" class="btn" style="font-size:11px;padding:4px 10px;background:#EF444422;color:#F87171;border:none">🗑 Excluir</button>
+                        <button type="submit" class="btn" style="font-size:11px;padding:4px 10px;background:#EF444422;color:#F87171;border:none">Excluir</button>
                       </form>
                     </td>
                   </tr>`;
@@ -1483,7 +1303,7 @@ async function renderClientes(req: Request, res: Response) {
     <!-- Modal Novo Cliente -->
     <div id="newClientModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
       <div style="background:var(--surface);border-radius:16px;padding:28px;width:480px;max-width:90vw;max-height:90vh;overflow-y:auto">
-        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">➕ Novo Cliente</h2>
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">Novo Cliente</h2>
         <form method="POST" action="/admin/clientes/novo">
           <div class="form-group">
             <label class="form-label">Nome *</label>
@@ -1516,7 +1336,7 @@ async function renderClientes(req: Request, res: Response) {
     <!-- Modal Editar Cliente -->
     <div id="editClientModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
       <div style="background:var(--surface);border-radius:16px;padding:28px;width:480px;max-width:90vw;max-height:90vh;overflow-y:auto">
-        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">✏️ Editar Cliente</h2>
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">Editar Cliente</h2>
         <form method="POST" id="editClientForm" action="">
           <input type="hidden" name="_method" value="PUT" />
           <div class="form-group">
@@ -1578,7 +1398,7 @@ async function renderServicos(req: Request, res: Response) {
   const formHtml = `
     <div class="card" style="margin-bottom:24px">
       <div class="card-header">
-        <div class="card-title">${editService ? "✏️ Editar Serviço" : "➕ Novo Serviço"}</div>
+        <div class="card-title">${editService ? "Editar Serviço" : "Novo Serviço"}</div>
       </div>
       <div class="card-body" style="padding:24px">
         <form method="POST" action="/admin/servicos${editService ? `?edit=${editService.id}` : ""}">
@@ -1609,10 +1429,10 @@ async function renderServicos(req: Request, res: Response) {
           </div>
           <!-- Upload de mídia -->
           <div class="form-group" style="margin-top:8px">
-            <label class="form-label">🖼️ Foto / Vídeo <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+            <label class="form-label">Foto / Vídeo <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
             <input type="file" id="svc-media-file" accept="image/*,video/*" style="display:none" onchange="svcPreviewMedia(this)" />
             <div style="display:flex;align-items:center;gap:12px">
-              <button type="button" onclick="document.getElementById('svc-media-file').click()" class="btn" style="padding:10px 18px;background:var(--surface2);color:var(--text)">📎 Selecionar arquivo</button>
+              <button type="button" onclick="document.getElementById('svc-media-file').click()" class="btn" style="padding:10px 18px;background:var(--surface2);color:var(--text)">Selecionar arquivo</button>
               <span id="svc-media-name" style="color:var(--muted);font-size:13px">Nenhum arquivo selecionado</span>
             </div>
             <div id="svc-media-preview" style="margin-top:10px;display:none">
@@ -1663,15 +1483,15 @@ async function renderServicos(req: Request, res: Response) {
               <td>${s.isActive ? `<span class="badge badge-success">Ativo</span>` : `<span class="badge badge-muted">Inativo</span>`}</td>
               <td>
                 <div style="display:flex;gap:8px">
-                  <a href="/admin/servicos?edit=${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">✏️ Editar</a>
+                  <a href="/admin/servicos?edit=${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">Editar</a>
                   <form method="POST" action="/admin/servicos/toggle" style="display:inline" onsubmit="return confirm('Alterar status?')">
                     <input type="hidden" name="id" value="${s.id}" />
                     <input type="hidden" name="isActive" value="${!s.isActive}" />
-                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">${s.isActive ? "⏸ Desativar" : "▶ Ativar"}</button>
+                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">${s.isActive ? "Desativar" : "Ativar"}</button>
                   </form>
                   <form method="POST" action="/admin/servicos/delete" style="display:inline" onsubmit="return confirm('Excluir este serviço? Esta ação não pode ser desfeita.')">
                     <input type="hidden" name="id" value="${s.id}" />
-                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:#EF444422;color:#F87171">🗑 Excluir</button>
+                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:#EF444422;color:#F87171">Excluir</button>
                   </form>
                 </div>
               </td>
@@ -1681,12 +1501,12 @@ async function renderServicos(req: Request, res: Response) {
       </table>`;
 
   const body = `
-    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Serviço salvo com sucesso!</div>` : ""}
-    ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Serviço excluído com sucesso!</div>` : ""}
+    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Serviço salvo com sucesso!</div>` : ""}
+    ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Serviço excluído com sucesso!</div>` : ""}
     ${formHtml}
     <div class="card">
       <div class="card-header" style="gap:12px">
-        <div class="card-title">✂️ Serviços Cadastrados (${services.length})</div>
+        <div class="card-title">Serviços Cadastrados (${services.length})</div>
         <input type="text" id="svc-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('svc-search').value.toLowerCase();document.querySelectorAll('#svc-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;min-width:200px" />
       </div>
       <div class="card-body"><div id="svc-table">${tableHtml}</div></div>
@@ -1709,7 +1529,7 @@ async function renderProdutos(req: Request, res: Response) {
   const formHtml = `
     <div class="card" style="margin-bottom:24px">
       <div class="card-header">
-        <div class="card-title">${editProduct ? "✏️ Editar Produto" : "➕ Novo Produto"}</div>
+        <div class="card-title">${editProduct ? "Editar Produto" : "Novo Produto"}</div>
       </div>
       <div class="card-body" style="padding:24px">
         <form method="POST" action="/admin/produtos${editProduct ? `?edit=${editProduct.id}` : ""}">
@@ -1751,10 +1571,10 @@ async function renderProdutos(req: Request, res: Response) {
           </div>
           <!-- Upload de mídia -->
           <div class="form-group" style="margin-top:8px">
-            <label class="form-label">🖼️ Foto / Vídeo <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
+            <label class="form-label">Foto / Vídeo <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
             <input type="file" id="prd-media-file" accept="image/*,video/*" style="display:none" onchange="prdPreviewMedia(this)" />
             <div style="display:flex;align-items:center;gap:12px">
-              <button type="button" onclick="document.getElementById('prd-media-file').click()" class="btn" style="padding:10px 18px;background:var(--surface2);color:var(--text)">📎 Selecionar arquivo</button>
+              <button type="button" onclick="document.getElementById('prd-media-file').click()" class="btn" style="padding:10px 18px;background:var(--surface2);color:var(--text)">Selecionar arquivo</button>
               <span id="prd-media-name" style="color:var(--muted);font-size:13px">Nenhum arquivo selecionado</span>
             </div>
             <div id="prd-media-preview" style="margin-top:10px;display:none">
@@ -1806,20 +1626,20 @@ async function renderProdutos(req: Request, res: Response) {
                 <span style="color:${p.stockQuantity <= p.minStockAlert ? "var(--error)" : "var(--success)"}">
                   ${p.stockQuantity} un.
                 </span>
-                ${p.stockQuantity <= p.minStockAlert ? `<br><small style="color:var(--error)">⚠ Estoque baixo</small>` : ""}
+                ${p.stockQuantity <= p.minStockAlert ? `<br><small style="color:var(--error)">Estoque baixo</small>` : ""}
               </td>
               <td>${p.isActive ? `<span class="badge badge-success">Ativo</span>` : `<span class="badge badge-muted">Inativo</span>`}</td>
               <td>
                 <div style="display:flex;gap:8px">
-                  <a href="/admin/produtos?edit=${p.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">✏️ Editar</a>
+                  <a href="/admin/produtos?edit=${p.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">Editar</a>
                   <form method="POST" action="/admin/produtos/toggle" style="display:inline" onsubmit="return confirm('Alterar status?')">
                     <input type="hidden" name="id" value="${p.id}" />
                     <input type="hidden" name="isActive" value="${!p.isActive}" />
-                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">${p.isActive ? "⏸ Desativar" : "▶ Ativar"}</button>
+                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">${p.isActive ? "Desativar" : "Ativar"}</button>
                   </form>
                   <form method="POST" action="/admin/produtos/delete" style="display:inline" onsubmit="return confirm('Excluir este produto?')">
                     <input type="hidden" name="id" value="${p.id}" />
-                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:#EF444422;color:#F87171">🗑 Excluir</button>
+                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:#EF444422;color:#F87171">Excluir</button>
                   </form>
                 </div>
               </td>
@@ -1829,12 +1649,12 @@ async function renderProdutos(req: Request, res: Response) {
       </table>`;
 
   const body = `
-    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Produto salvo com sucesso!</div>` : ""}
-    ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Produto excluído com sucesso!</div>` : ""}
+    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Produto salvo com sucesso!</div>` : ""}
+    ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Produto excluído com sucesso!</div>` : ""}
     ${formHtml}
     <div class="card">
       <div class="card-header" style="gap:12px">
-        <div class="card-title">📦 Produtos Cadastrados (${products.length})</div>
+        <div class="card-title">Produtos Cadastrados (${products.length})</div>
         <input type="text" id="prod-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('prod-search').value.toLowerCase();document.querySelectorAll('#prod-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;min-width:200px" />
       </div>
       <div class="card-body"><div id="prod-table">${tableHtml}</div></div>
@@ -1915,7 +1735,7 @@ async function renderFinanceiro(req: Request, res: Response) {
     </div>
     ${Object.keys(revenueByDay).length > 0 ? `
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">📊 Receita por Dia</div></div>
+      <div class="card-header"><div class="card-title">Receita por Dia</div></div>
       <div class="card-body" style="padding:20px">
         <div style="display:flex;align-items:flex-end;gap:4px;height:120px">
           ${Object.entries(revenueByDay).sort(([a], [b]) => a.localeCompare(b)).map(([day, val]) => `
@@ -1929,7 +1749,7 @@ async function renderFinanceiro(req: Request, res: Response) {
     </div>` : ""}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
       <div class="card">
-        <div class="card-header"><div class="card-title">👤 Por Barbeiro</div></div>
+        <div class="card-header"><div class="card-title">Por Barbeiro</div></div>
         <div class="card-body">
           <table>
             <thead><tr><th>Barbeiro</th><th style="text-align:right">Receita</th><th style="text-align:right">Vendas</th></tr></thead>
@@ -1944,7 +1764,7 @@ async function renderFinanceiro(req: Request, res: Response) {
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">💳 Formas de Pagamento</div></div>
+        <div class="card-header"><div class="card-title">Formas de Pagamento</div></div>
         <div class="card-body">
           <table>
             <thead><tr><th>Método</th><th style="text-align:right">Total</th></tr></thead>
@@ -1968,7 +1788,7 @@ async function renderFinanceiro(req: Request, res: Response) {
       <button onclick="document.getElementById('newSaleModal').style.display='flex'" class="btn btn-primary">+ Nova Venda</button>
     </div>
     <div class="card">
-      <div class="card-header"><div class="card-title">🧧 Vendas (${salesData.length})</div></div>
+      <div class="card-header"><div class="card-title">Vendas (${salesData.length})</div></div>
       <div class="card-body">
         ${salesData.length === 0
           ? `<div class="empty">Nenhuma venda no período.</div>`
@@ -1994,7 +1814,7 @@ async function renderFinanceiro(req: Request, res: Response) {
     <!-- Modal Nova Venda -->
     <div id="newSaleModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
       <div style="background:var(--surface);border-radius:16px;padding:28px;width:460px;max-width:90vw;max-height:90vh;overflow-y:auto">
-        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">🧧 Nova Venda</h2>
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">Nova Venda</h2>
         <form method="POST" action="/admin/financeiro/venda">
           <div class="form-group">
             <label class="form-label">Barbeiro *</label>
@@ -2045,7 +1865,7 @@ async function renderFinanceiro(req: Request, res: Response) {
       <button onclick="document.getElementById('newExpenseModal').style.display='flex'" class="btn btn-primary">+ Nova Despesa</button>
     </div>
     <div class="card">
-      <div class="card-header"><div class="card-title">💸 Despesas (${expenses.length})</div></div>
+      <div class="card-header"><div class="card-title">Despesas (${expenses.length})</div></div>
       <div class="card-body">
         ${expenses.length === 0
           ? `<div class="empty">Nenhuma despesa no período.</div>`
@@ -2060,7 +1880,7 @@ async function renderFinanceiro(req: Request, res: Response) {
                     <td style="color:var(--error);font-weight:700">${fmtCurrency(e.amount)}</td>
                     <td>
                       <form method="POST" action="/admin/financeiro/despesa/${e.id}/excluir" style="display:inline" onsubmit="return confirm('Excluir esta despesa?')">
-                        <button type="submit" class="btn" style="font-size:11px;padding:4px 10px;background:#EF444422;color:#F87171;border:none">🗑</button>
+                        <button type="submit" class="btn" style="font-size:11px;padding:4px 10px;background:#EF444422;color:#F87171;border:none"></button>
                       </form>
                     </td>
                   </tr>
@@ -2074,7 +1894,7 @@ async function renderFinanceiro(req: Request, res: Response) {
     <!-- Modal Nova Despesa -->
     <div id="newExpenseModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
       <div style="background:var(--surface);border-radius:16px;padding:28px;width:460px;max-width:90vw;max-height:90vh;overflow-y:auto">
-        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">💸 Nova Despesa</h2>
+        <h2 style="font-size:18px;font-weight:700;margin-bottom:20px">Nova Despesa</h2>
         <form method="POST" action="/admin/financeiro/despesa">
           <div class="form-group">
             <label class="form-label">Descrição *</label>
@@ -2154,13 +1974,13 @@ async function renderFinanceiro(req: Request, res: Response) {
     }
     const totalPaid = pmtRows.filter((p: any) => p.status === 'paid').reduce((s: number, p: any) => s + parseFloat(p.amount), 0);
     const totalPending = pmtRows.filter((p: any) => p.status === 'pending').reduce((s: number, p: any) => s + parseFloat(p.amount), 0);
-    const billingLabel = (bt: string) => bt === 'PIX' ? '📱 Pix' : bt === 'CREDIT_CARD' ? '💳 Cartão' : bt === 'BOLETO' ? '🧾 Boleto' : bt;
+    const billingLabel = (bt: string) => bt === 'PIX' ? 'Pix' : bt === 'CREDIT_CARD' ? 'Cartão' : bt === 'BOLETO' ? 'Boleto' : bt;
     const statusBadge = (s: string) => {
-      if (s === 'paid') return '<span style="background:#22C55E22;color:#4ADE80;border:1px solid #22C55E44;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✅ Pago</span>';
+      if (s === 'paid') return '<span style="background:#22C55E22;color:#4ADE80;border:1px solid #22C55E44;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700"> Pago</span>';
       if (s === 'pending') return '<span style="background:#F59E0B22;color:#FBBF24;border:1px solid #F59E0B44;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">⏳ Pendente</span>';
-      if (s === 'overdue') return '<span style="background:#EF444422;color:#F87171;border:1px solid #EF444444;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">⚠️ Vencido</span>';
+      if (s === 'overdue') return '<span style="background:#EF444422;color:#F87171;border:1px solid #EF444444;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700"> Vencido</span>';
       if (s === 'refunded') return '<span style="background:#6366F122;color:#818CF8;border:1px solid #6366F144;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">↩ Estornado</span>';
-      if (s === 'cancelled') return '<span style="background:#6B728022;color:#9BA1A6;border:1px solid #6B728044;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✖ Cancelado</span>';
+      if (s === 'cancelled') return '<span style="background:#6B728022;color:#9BA1A6;border:1px solid #6B728044;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">Cancelado</span>';
       return s;
     };
     const fmtDate = (d: any) => d ? new Date(d).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -2175,10 +1995,10 @@ async function renderFinanceiro(req: Request, res: Response) {
       const pmtRowsHtml = pmtRows.map((p: any, i: number) => {
         const payLink = tenantSlug && p.referenceId ? '/pub/' + tenantSlug + '/pagar/' + p.referenceId : (p.invoiceUrl || '');
         const cancelBtn = (p.status === 'pending' && p.asaasPaymentId)
-          ? '<button onclick="cancelAsaasCharge(\'' + p.asaasPaymentId + '\',this)" style="background:#EF444422;color:#F87171;border:1px solid #EF444444;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">✖ Cancelar</button>'
+          ? '<button onclick="cancelAsaasCharge(\'' + p.asaasPaymentId + '\',this)" style="background:#EF444422;color:#F87171;border:1px solid #EF444444;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">Cancelar</button>'
           : '';
         const resendBtn = (p.status === 'pending' && payLink)
-          ? '<a href="https://wa.me/?text=' + encodeURIComponent('Olá! Segue o link para pagamento do seu agendamento: ' + payLink) + '" target="_blank" rel="noopener" style="display:inline-block;background:#25D36622;color:#25D366;border:1px solid #25D36644;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;margin-right:4px">📲 WhatsApp</a>'
+          ? '<a href="https://wa.me/?text=' + encodeURIComponent('Olá! Segue o link para pagamento do seu agendamento: ' + payLink) + '" target="_blank" rel="noopener" style="display:inline-block;background:#25D36622;color:#25D366;border:1px solid #25D36644;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;margin-right:4px">WhatsApp</a>'
           : '';
         const rowBg = i % 2 === 0 ? 'transparent' : 'var(--surface2)';
         return '<tr id="pmt-row-' + p.asaasPaymentId + '" style="border-bottom:1px solid var(--border);background:' + rowBg + '">'
@@ -2214,9 +2034,9 @@ async function renderFinanceiro(req: Request, res: Response) {
         + '    const data = await r.json();'
         + '    if (!r.ok) throw new Error(data.error || "Erro ao cancelar");'
         + '    const statusCell = document.getElementById("pmt-status-" + asaasPaymentId);'
-        + '    if (statusCell) statusCell.innerHTML = "<span style=\"background:#6B728022;color:#9BA1A6;border:1px solid #6B728044;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700\">✖ Cancelado</span>";'
+        + '    if (statusCell) statusCell.innerHTML = "<span style=\"background:#6B728022;color:#9BA1A6;border:1px solid #6B728044;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700\">Cancelado</span>";'
         + '    btn.style.display = "none";'
-        + '  } catch(e) { alert("Erro: " + e.message); btn.disabled = false; btn.textContent = "✖ Cancelar"; }'
+        + '  } catch(e) { alert("Erro: " + e.message); btn.disabled = false; btn.textContent = "Cancelar"; }'
         + '}'
         + '</script>';
     }
@@ -2224,7 +2044,7 @@ async function renderFinanceiro(req: Request, res: Response) {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-width:240px">
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
-            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">💰 Total Recebido</div>
+            <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:6px">Total Recebido</div>
             <div style="font-size:22px;font-weight:900;color:#4ADE80">${fmtBRL(totalPaid)}</div>
           </div>
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
@@ -2244,10 +2064,10 @@ async function renderFinanceiro(req: Request, res: Response) {
     `;
   }
     const tabs = [
-    { id: "resumo", label: "📊 Resumo" },
-    { id: "receitas", label: "🧧 Receitas" },
-    { id: "despesas", label: "💸 Despesas" },
-    { id: "pagamentos", label: "💳 Pagamentos Online" },
+    { id: "resumo", label: "Resumo" },
+    { id: "receitas", label: "Receitas" },
+    { id: "despesas", label: "Despesas" },
+    { id: "pagamentos", label: "Pagamentos Online" },
   ];
   const tabNav = `
     <div style="display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:0">
@@ -2258,10 +2078,10 @@ async function renderFinanceiro(req: Request, res: Response) {
   `;
 
   const body = `
-    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Lançamento salvo com sucesso!</div>` : ""}
-    ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Lançamento excluído!</div>` : ""}
+    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Lançamento salvo com sucesso!</div>` : ""}
+    ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Lançamento excluído!</div>` : ""}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
-      <h2 style="font-size:20px;font-weight:700;margin:0">💰 Financeiro</h2>
+      <h2 style="font-size:20px;font-weight:700;margin:0">Financeiro</h2>
       <div style="display:flex;gap:8px;align-items:center">
         <select onchange="location.href='/admin/financeiro?tab=${activeTab}&period='+this.value"
           style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">${periodOptions}</select>
@@ -2356,7 +2176,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
         <label class="form-label">Chave Pix</label>
         <input class="form-input" type="text" name="pixKey" value="${esc(settings?.pixKey ?? "")}" placeholder="CPF, CNPJ, e-mail ou chave aleatória" />
       </div>
-      <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">✓ Salvar Dados</button>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">Salvar Dados</button>
     </form>
   `;
 
@@ -2392,7 +2212,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
         <textarea name="galleryUrls" class="form-input" rows="4" placeholder="https://...\nhttps://...">${esc(settings?.galleryUrls ?? "")}</textarea>
         <div style="font-size:11px;color:var(--muted);margin-top:6px">Fotos exibidas na galeria da página pública.</div>
       </div>
-      <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">✓ Salvar Visual</button>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">Salvar Visual</button>
     </form>
     <script>
       document.querySelector('input[type=color]').addEventListener('input', function() {
@@ -2416,7 +2236,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
         return `
           <div class="card" style="margin-bottom:20px">
             <div class="card-header">
-              <div class="card-title">💈 ${esc(b.name)}</div>
+              <div class="card-title"> ${esc(b.name)}</div>
               <span class="badge ${b.isActive ? 'badge-success' : 'badge-muted'}">${b.isActive ? 'Ativo' : 'Inativo'}</span>
             </div>
             <div class="card-body" style="padding:20px">
@@ -2450,7 +2270,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
                       </div>`;
                   }).join('')}
                 </div>
-                <button type="submit" class="btn btn-primary" style="margin-top:16px;padding:10px 24px">✓ Salvar Horários de ${esc(b.name)}</button>
+                <button type="submit" class="btn btn-primary" style="margin-top:16px;padding:10px 24px">Salvar Horários de ${esc(b.name)}</button>
               </form>
             </div>
           </div>`;
@@ -2460,7 +2280,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
   const tabEquipe = `
     <div class="card" style="margin-bottom:24px">
       <div class="card-header">
-        <div class="card-title">👥 Profissionais Cadastrados</div>
+        <div class="card-title">Profissionais Cadastrados</div>
         <a href="/admin/configuracoes?tab=equipe&novo=1" class="btn btn-primary" style="font-size:12px;padding:8px 16px">+ Novo Profissional</a>
       </div>
       <table>
@@ -2487,7 +2307,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
     </div>
     ${req.query.novo === '1' ? `
     <div class="card">
-      <div class="card-header"><div class="card-title">➕ Novo Profissional</div></div>
+      <div class="card-header"><div class="card-title">Novo Profissional</div></div>
       <div class="card-body" style="padding:24px">
         <form method="POST" action="/admin/configuracoes/equipe/novo">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -2517,12 +2337,12 @@ async function renderConfiguracoes(req: Request, res: Response) {
 
   // Aba: URL Pública
   const tabUrl = `
-    ${slugSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ URL atualizada com sucesso!</div>` : ""}
-    ${slugError ? `<div style="background:#EF444422;border:1px solid #EF444444;color:var(--error);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">❌ ${esc(slugError)}</div>` : ""}
+    ${slugSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> URL atualizada com sucesso!</div>` : ""}
+    ${slugError ? `<div style="background:#EF444422;border:1px solid #EF444444;color:var(--error);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> ${esc(slugError)}</div>` : ""}
 
     <!-- Card principal: link de agendamento -->
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">🔗 Link de Agendamento Online</div></div>
+      <div class="card-header"><div class="card-title">Link de Agendamento Online</div></div>
       <div class="card-body">
         <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Compartilhe este link com seus clientes para que eles possam agendar online diretamente pela página da sua barbearia.</div>
         ${bookingUrl ? `
@@ -2538,31 +2358,31 @@ async function renderConfiguracoes(req: Request, res: Response) {
                 <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:6px">PÁGINA PRINCIPAL</div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <input id="url-vitrine" class="form-input" type="text" value="${esc(publicUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
-                  <button onclick="copyUrl('url-vitrine')" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:12px">📋 Copiar</button>
-                  <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:12px">🔗 Abrir</a>
+                  <button onclick="copyUrl('url-vitrine')" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:12px">Copiar</button>
+                  <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:12px">Abrir</a>
                 </div>
               </div>
               <div style="margin-bottom:12px">
                 <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:6px">LINK DIRETO PARA AGENDAMENTO</div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <input id="url-booking" class="form-input" type="text" value="${esc(bookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
-                  <button onclick="copyUrl('url-booking')" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:12px">📋 Copiar</button>
-                  <a href="${esc(bookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:12px">🔗 Abrir</a>
+                  <button onclick="copyUrl('url-booking')" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:12px">Copiar</button>
+                  <a href="${esc(bookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 12px;font-size:12px">Abrir</a>
                 </div>
               </div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário online: ' + bookingUrl)}" target="_blank" class="btn btn-primary" style="font-size:12px;padding:8px 16px">📲 Compartilhar no WhatsApp</a>
+                <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário online: ' + bookingUrl)}" target="_blank" class="btn btn-primary" style="font-size:12px;padding:8px 16px">Compartilhar no WhatsApp</a>
                 ${qrDataUrl ? `<a href="${qrDataUrl}" download="qrcode-agendamento.png" class="btn btn-ghost" style="font-size:12px;padding:8px 16px">⬇️ Baixar QR Code</a>` : ""}
               </div>
             </div>
           </div>
-        ` : `<div style="color:var(--muted);font-size:13px">⚠️ Não foi possível gerar o link. Verifique as configurações do servidor.</div>`}
+        ` : `<div style="color:var(--muted);font-size:13px">Não foi possível gerar o link. Verifique as configurações do servidor.</div>`}
       </div>
     </div>
 
     <!-- Card: personalizar slug -->
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">⚙️ Personalizar URL</div></div>
+      <div class="card-header"><div class="card-title">Personalizar URL</div></div>
       <div class="card-body">
         <div style="font-size:13px;color:var(--muted);margin-bottom:16px">O identificador da URL (“slug”) é a parte final do link que identifica sua barbearia. Use apenas letras minúsculas, números e hífens.</div>
         <form method="POST" action="/admin/configuracoes/slug">
@@ -2570,7 +2390,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
             <div style="padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:12px;color:var(--muted);white-space:nowrap;font-family:monospace">usebarberpro.com/</div>
             <input class="form-input" type="text" name="slug" value="${esc(currentSlug)}" required pattern="[a-z0-9\\-]+" title="Apenas letras minúsculas, números e hífens" style="border-radius:0 8px 8px 0;font-family:monospace;font-size:14px" placeholder="nome-da-barbearia" />
           </div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:16px">⚠️ Ao alterar o slug, o link antigo deixará de funcionar. Atualize todos os locais onde o link foi compartilhado.</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:16px">Atenção: Ao alterar o slug, o link antigo deixará de funcionar. Atualize todos os locais onde o link foi compartilhado.</div>
           <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar Nova URL</button>
         </form>
       </div>
@@ -2582,16 +2402,16 @@ async function renderConfiguracoes(req: Request, res: Response) {
       if (!el) return;
       navigator.clipboard.writeText(el.value).then(() => {
         const btn = el.nextElementSibling;
-        if (btn) { const orig = btn.textContent; btn.textContent = '✅ Copiado!'; setTimeout(() => btn.textContent = orig, 2000); }
+        if (btn) { const orig = btn.textContent; btn.textContent = 'Copiado!'; setTimeout(() => btn.textContent = orig, 2000); }
       });
     }
     </script>
   `;
 
   const tabs = [
-    { id: 'dados', label: '🏦 Dados' },
-    { id: 'horarios', label: '🕒 Horários' },
-    { id: 'equipe', label: '👥 Equipe' },
+    { id: 'dados', label: 'Dados' },
+    { id: 'horarios', label: 'Horários' },
+    { id: 'equipe', label: 'Equipe' },
   ];
 
   const tabContent: Record<string, string> = {
@@ -2601,7 +2421,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
   };
 
   const body = `
-    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Configurações salvas com sucesso!</div>` : ""}
+    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações salvas com sucesso!</div>` : ""}
 
     <!-- Abas -->
     <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px">
@@ -2641,7 +2461,7 @@ async function renderNovoAgendamento(req: Request, res: Response) {
             <input type="text" id="clientSearch" class="form-input" placeholder="Buscar cliente por nome ou telefone..." autocomplete="off"
               oninput="filterClients(this.value)" onfocus="showClientList()" onblur="setTimeout(hideClientList,200)"
               style="padding-right:36px" />
-            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none">🔍</span>
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none"></span>
             <input type="hidden" name="clientId" id="clientId" required />
             <div id="clientDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-height:220px;overflow-y:auto;z-index:100;box-shadow:0 4px 16px #0004;margin-top:4px">
               ${clients.map((c: any) => `<div class="client-opt" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="selectClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--gold-dim)'" onmouseout="this.style.background=''"><strong>${esc(c.name)}</strong>${c.phone ? `<span style='color:var(--muted);margin-left:8px'>${esc(c.phone)}</span>` : ''}</div>`).join("")}
@@ -2935,12 +2755,12 @@ async function renderRelatorios(req: Request, res: Response) {
 
   const body = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
-      <h2 style="font-size:20px;font-weight:700;margin:0">📊 Relatórios</h2>
+      <h2 style="font-size:20px;font-weight:700;margin:0">Relatórios</h2>
       <form method="GET" style="display:flex;align-items:center;gap:8px">
         <label style="font-size:13px;color:var(--muted)">Período:</label>
         <select name="period" onchange="this.form.submit()" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">${periodOptions}</select>
         <a href="/admin/export/financeiro.csv?period=${period}" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a>
-        <a href="/admin/export/relatorio.pdf?period=${period}" class="btn btn-primary" style="font-size:12px;padding:6px 12px">📄 Exportar PDF</a>
+        <a href="/admin/export/relatorio.pdf?period=${period}" class="btn btn-primary" style="font-size:12px;padding:6px 12px"> Exportar PDF</a>
       </form>
     </div>
     <!-- KPIs -->
@@ -2964,22 +2784,22 @@ async function renderRelatorios(req: Request, res: Response) {
     </div>
     <!-- Gráfico de faturamento -->
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">📈 Faturamento por Dia</div></div>
+      <div class="card-header"><div class="card-title">Faturamento por Dia</div></div>
       <div class="card-body" style="overflow-x:auto">${chartSvg}</div>
     </div>
     <!-- Gráfico de linha (apenas para períodos curtos) -->
     ${lineSvg ? `<div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">📉 Tendência de Faturamento</div></div>
+      <div class="card-header"><div class="card-title">Tendência de Faturamento</div></div>
       <div class="card-body" style="overflow-x:auto">${lineSvg}</div>
     </div>` : ""}
     <!-- Grid ranking + barbeiros + pizza -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
       <div class="card">
-        <div class="card-header"><div class="card-title">✂️ Serviços Mais Vendidos</div></div>
+        <div class="card-header"><div class="card-title">Serviços Mais Vendidos</div></div>
         <div class="card-body">${rankingRows}</div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">👤 Desempenho por Barbeiro</div></div>
+        <div class="card-header"><div class="card-title">Desempenho por Barbeiro</div></div>
         <div class="card-body">
           <table>
             <thead><tr><th>Barbeiro</th><th style="text-align:right">Faturamento</th><th style="text-align:right">Concluídos</th></tr></thead>
@@ -2990,23 +2810,23 @@ async function renderRelatorios(req: Request, res: Response) {
     </div>
     <!-- Formas de pagamento -->
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">💳 Formas de Pagamento</div></div>
+      <div class="card-header"><div class="card-title">Formas de Pagamento</div></div>
       <div class="card-body">${pieSvg}</div>
     </div>
     <!-- Encomendas -->
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">📦 Encomendas de Produtos</div></div>
+      <div class="card-header"><div class="card-title">Encomendas de Produtos</div></div>
       <div class="card-body">${ordersReportHtml}</div>
     </div>
     <!-- Inadimplência -->
     <div class="card" style="margin-bottom:24px">
       <div class="card-header" style="justify-content:space-between">
-        <div class="card-title">⚠️ Cobranças Vencidas (Asaas)</div>
+        <div class="card-title"> Cobranças Vencidas (Asaas)</div>
         <span style="font-size:12px;color:var(--muted)">${overdueRows.length} cliente${overdueRows.length !== 1 ? 's' : ''}</span>
       </div>
       <div class="card-body">
         ${overdueRows.length === 0
-          ? '<div style="text-align:center;padding:32px;color:var(--muted);font-size:14px">✅ Nenhuma cobrança vencida no momento.</div>'
+          ? '<div style="text-align:center;padding:32px;color:var(--muted);font-size:14px"> Nenhuma cobrança vencida no momento.</div>'
           : (() => {
               const rows = overdueRows.map((o: any) => {
                 const daysOverdue = o.dueDate ? Math.floor((Date.now() - new Date(o.dueDate).getTime()) / 86400000) : '\u2014';
@@ -3014,7 +2834,7 @@ async function renderRelatorios(req: Request, res: Response) {
                 const fullPhone = phone.startsWith('55') ? phone : '55' + phone;
                 const payLink = o.invoiceUrl || '';
                 const waMsg = encodeURIComponent('Olá ' + (o.clientName || '') + '! Identificamos uma cobrança em aberto no valor de R$ ' + parseFloat(o.amount).toFixed(2).replace('.', ',') + '. Acesse o link para regularizar: ' + payLink);
-                const waBtn = phone ? '<a href="https://wa.me/' + fullPhone + '?text=' + waMsg + '" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:#25D366;border-color:#25D36644">📲 Cobrar</a>' : '';
+                const waBtn = phone ? '<a href="https://wa.me/' + fullPhone + '?text=' + waMsg + '" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:#25D366;border-color:#25D36644">Cobrar</a>' : '';
                 const dueDateFmt = o.dueDate ? new Date(o.dueDate + 'T12:00:00').toLocaleDateString('pt-BR') : '\u2014';
                 return '<tr><td style="font-weight:600">' + esc(o.clientName || '\u2014') + '</td><td style="color:var(--muted);font-size:12px">' + esc(o.clientPhone || '\u2014') + '</td><td style="text-align:right;font-weight:700;color:#F87171">R$ ' + parseFloat(o.amount).toFixed(2).replace('.', ',') + '</td><td style="color:var(--muted);font-size:12px">' + dueDateFmt + '</td><td style="text-align:center"><span style="background:#EF444422;color:#F87171;border:1px solid #EF444444;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">' + daysOverdue + ' dias</span></td><td>' + waBtn + '</td></tr>';
               }).join('');
@@ -3056,11 +2876,11 @@ async function renderPaginaCliente(req: Request, res: Response) {
 
   // ─── Aba: URL & QR Code ──────────────────────────────────────────────────
   const tabUrlQr = `
-    ${slugSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ URL atualizada com sucesso!</div>` : ""}
-    ${slugError ? `<div style="background:#EF444422;border:1px solid #EF444444;color:var(--error);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">❌ ${esc(slugError)}</div>` : ""}
+    ${slugSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> URL atualizada com sucesso!</div>` : ""}
+    ${slugError ? `<div style="background:#EF444422;border:1px solid #EF444444;color:var(--error);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> ${esc(slugError)}</div>` : ""}
 
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">🔗 Links de Agendamento</div></div>
+      <div class="card-header"><div class="card-title">Links de Agendamento</div></div>
       <div class="card-body">
         <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Compartilhe estes links com seus clientes para que eles possam agendar online diretamente pela página da sua barbearia.</p>
         ${bookingUrl ? `
@@ -3078,16 +2898,16 @@ async function renderPaginaCliente(req: Request, res: Response) {
                 <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">PÁGINA PRINCIPAL DA BARBEARIA</div>
                 <div style="display:flex;gap:8px">
                   <input id="url-vitrine" class="form-input" type="text" value="${esc(publicUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
-                  <button onclick="copyUrl('url-vitrine', this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">📋 Copiar</button>
-                  <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">🔗 Abrir</a>
+                  <button onclick="copyUrl('url-vitrine', this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Copiar</button>
+                  <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Abrir</a>
                 </div>
               </div>
               <div style="margin-bottom:20px">
                 <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">LINK DIRETO PARA AGENDAMENTO</div>
                 <div style="display:flex;gap:8px">
                   <input id="url-booking" class="form-input" type="text" value="${esc(bookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
-                  <button onclick="copyUrl('url-booking', this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">📋 Copiar</button>
-                  <a href="${esc(bookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">🔗 Abrir</a>
+                  <button onclick="copyUrl('url-booking', this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Copiar</button>
+                  <a href="${esc(bookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Abrir</a>
                 </div>
               </div>
               <!-- Compartilhamento -->
@@ -3102,19 +2922,19 @@ async function renderPaginaCliente(req: Request, res: Response) {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                     Facebook
                   </a>
-                  <button onclick="(function(){var msg='Agende seu horário comigo!\n\n✂️ Serviços, preços e disponibilidade:\n${esc(bookingUrl)}\n\nClique no link e escolha o melhor horário para você!';navigator.clipboard.writeText(msg).then(function(){var b=event.target.closest('button');var o=b.innerHTML;b.innerHTML='✅ Copiado!';setTimeout(function(){b.innerHTML=o;},2500);});})()" class="btn btn-ghost" style="font-size:12px;padding:8px 16px;display:flex;align-items:center;gap:6px">
-                    📝 Mensagem pronta
+                  <button onclick="(function(){var msg='Agende seu horário comigo!\n\nServiços, preços e disponibilidade:\n${esc(bookingUrl)}\n\nClique no link e escolha o melhor horário para você!';navigator.clipboard.writeText(msg).then(function(){var b=event.target.closest('button');var o=b.innerHTML;b.innerHTML='Copiado!';setTimeout(function(){b.innerHTML=o;},2500);});})()" class="btn btn-ghost" style="font-size:12px;padding:8px 16px;display:flex;align-items:center;gap:6px">
+                    Mensagem pronta
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        ` : `<div style="color:var(--muted);font-size:13px">⚠️ Não foi possível gerar o link. Configure o PUBLIC_BASE_URL no servidor.</div>`}
+        ` : `<div style="color:var(--muted);font-size:13px">Não foi possível gerar o link. Configure o PUBLIC_BASE_URL no servidor.</div>`}
       </div>
     </div>
 
     <div class="card">
-      <div class="card-header"><div class="card-title">⚙️ Personalizar URL</div></div>
+      <div class="card-header"><div class="card-title">Personalizar URL</div></div>
       <div class="card-body">
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px">O slug é a parte final do link que identifica sua barbearia. Use apenas letras minúsculas, números e hífens.</p>
         <form method="POST" action="/admin/pagina-cliente/slug">
@@ -3122,7 +2942,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
             <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:12px;color:var(--muted);white-space:nowrap;font-family:monospace">usebarberpro.com/</div>
             <input class="form-input" type="text" name="slug" value="${esc(currentSlug)}" required pattern="[a-z0-9\\-]+" title="Apenas letras minúsculas, números e hífens" style="border-radius:0 8px 8px 0;font-family:monospace;font-size:14px" placeholder="nome-da-barbearia" />
           </div>
-          <p style="font-size:11px;color:var(--muted);margin-bottom:16px">⚠️ Ao alterar o slug, o link antigo deixará de funcionar. Atualize todos os locais onde o link foi compartilhado.</p>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:16px">Atenção: Ao alterar o slug, o link antigo deixará de funcionar. Atualize todos os locais onde o link foi compartilhado.</p>
           <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar Nova URL</button>
         </form>
       </div>
@@ -3134,7 +2954,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
       if (!el) return;
       navigator.clipboard.writeText(el.value).then(() => {
         const orig = btn.textContent;
-        btn.textContent = '✅ Copiado!';
+        btn.textContent = 'Copiado!';
         setTimeout(() => btn.textContent = orig, 2000);
       });
     }
@@ -3143,7 +2963,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
 
   // ─── Aba: Personalização Visual ──────────────────────────────────────────────
   const tabVisual = `
-    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Configurações visuais salvas!</div>` : ""}
+    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações visuais salvas!</div>` : ""}
     <form method="POST" action="/admin/pagina-cliente/visual">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
         <div class="form-group">
@@ -3170,7 +2990,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
         <textarea name="galleryUrls" class="form-input" rows="4" placeholder="https://...\nhttps://...">${esc(settings?.galleryUrls ?? "")}</textarea>
         <div style="font-size:11px;color:var(--muted);margin-top:6px">Fotos exibidas na galeria da página pública.</div>
       </div>
-      <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">✓ Salvar Visual</button>
+      <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">Salvar Visual</button>
     </form>
     <script>
       document.querySelector('input[type=color]').addEventListener('input', function() {
@@ -3187,9 +3007,9 @@ async function renderPaginaCliente(req: Request, res: Response) {
   // ─── Aba: Domínio Customizado ──────────────────────────────────────────────
   const domainSaved = req.query.domainsaved === "1";
   const tabDominio = `
-    ${domainSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Domínio salvo com sucesso!</div>` : ""}
+    ${domainSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Domínio salvo com sucesso!</div>` : ""}
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">🌐 Domínio Personalizado</div></div>
+      <div class="card-header"><div class="card-title">Domínio Personalizado</div></div>
       <div class="card-body">
         <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Configure um domínio próprio para a página de agendamento da sua barbearia (ex: <code>agendamento.minhabarbearia.com.br</code>). O domínio precisa ser apontado para este servidor via registro DNS do tipo CNAME ou A.</p>
         <form method="POST" action="/admin/pagina-cliente/dominio">
@@ -3203,7 +3023,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
       </div>
     </div>
     <div class="card">
-      <div class="card-header"><div class="card-title">📍 Como configurar o DNS</div></div>
+      <div class="card-header"><div class="card-title">Como configurar o DNS</div></div>
       <div class="card-body">
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Após salvar o domínio acima, acesse o painel do seu provedor de DNS e adicione um dos registros abaixo:</p>
         <div style="background:var(--surface2);border-radius:8px;padding:16px;font-family:monospace;font-size:12px;margin-bottom:12px">
@@ -3218,7 +3038,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
           <div>Nome: <strong>@</strong> ou <strong>agendamento</strong></div>
           <div>Valor: <strong>[IP do servidor]</strong></div>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:12px">⚠️ A propagação do DNS pode levar até 48 horas. Entre em contato com o suporte após configurar.</p>
+        <p style="font-size:11px;color:var(--muted);margin-top:12px"> A propagação do DNS pode levar até 48 horas. Entre em contato com o suporte após configurar.</p>
       </div>
     </div>
   `;
@@ -3226,9 +3046,9 @@ async function renderPaginaCliente(req: Request, res: Response) {
   // ─── Aba: Rastreamento ──────────────────────────────────────────────────────
   const trackingSaved = req.query.trackingsaved === "1";
   const tabRastreamento = `
-    ${trackingSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Configurações de rastreamento salvas!</div>` : ""}
+    ${trackingSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações de rastreamento salvas!</div>` : ""}
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">📊 Google Analytics 4</div></div>
+      <div class="card-header"><div class="card-title">Google Analytics 4</div></div>
       <div class="card-body">
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Acompanhe as visitas e conversões da sua página de agendamento com o Google Analytics 4. Crie uma propriedade em <a href="https://analytics.google.com" target="_blank" style="color:var(--gold)">analytics.google.com</a> e cole o Measurement ID abaixo.</p>
         <form method="POST" action="/admin/pagina-cliente/rastreamento">
@@ -3252,11 +3072,11 @@ async function renderPaginaCliente(req: Request, res: Response) {
         <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Quando configurados, os scripts de rastreamento são injetados automaticamente em todas as páginas públicas da sua barbearia (vitrine, agendamento, pagamento). Você poderá acompanhar:</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div style="background:var(--surface2);border-radius:8px;padding:12px">
-            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">📊 Google Analytics 4</div>
+            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">Google Analytics 4</div>
             <div style="font-size:12px;color:var(--muted)">Visitas à página, origem do tráfego, taxa de conversão de agendamentos, dispositivos e localização dos visitantes.</div>
           </div>
           <div style="background:var(--surface2);border-radius:8px;padding:12px">
-            <div style="font-size:12px;font-weight:700;color:#1877F2;margin-bottom:6px">📰 Facebook Pixel</div>
+            <div style="font-size:12px;font-weight:700;color:#1877F2;margin-bottom:6px">Facebook Pixel</div>
             <div style="font-size:12px;color:var(--muted)">Rastreamento de conversões para anúncios no Facebook e Instagram, criação de públicos personalizados e retargeting.</div>
           </div>
         </div>
@@ -3269,11 +3089,11 @@ async function renderPaginaCliente(req: Request, res: Response) {
   const tabPreview = publicUrl ? `
     <div class="card">
       <div class="card-header">
-        <div class="card-title">👁️ Preview da Página Pública</div>
+        <div class="card-title">Preview da Página Pública</div>
         <div style="display:flex;gap:8px;align-items:center">
           <span id="preview-ts" style="font-size:11px;color:var(--muted)">Carregado às ${previewTimestamp}</span>
-          <button onclick="(function(){var f=document.getElementById('preview-iframe');var ts=document.getElementById('preview-ts');f.src=f.src.split('?')[0]+'?t='+Date.now();ts.textContent='Recarregado às '+new Date().toLocaleTimeString('pt-BR');})()" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">🔄 Recarregar</button>
-          <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">🔗 Abrir em nova aba</a>
+          <button onclick="(function(){var f=document.getElementById('preview-iframe');var ts=document.getElementById('preview-ts');f.src=f.src.split('?')[0]+'?t='+Date.now();ts.textContent='Recarregado às '+new Date().toLocaleTimeString('pt-BR');})()" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">Atualizar Recarregar</button>
+          <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">Abrir em nova aba</a>
         </div>
       </div>
       <div class="card-body" style="padding:0">
@@ -3284,7 +3104,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
     <div class="card">
       <div class="card-body">
         <div style="text-align:center;padding:40px;color:var(--muted)">
-          <div style="font-size:48px;margin-bottom:16px">🌐</div>
+          <div style="font-size:48px;margin-bottom:16px"></div>
           <div style="font-size:16px;font-weight:600;margin-bottom:8px">Página pública não disponível</div>
           <div style="font-size:13px">Configure o PUBLIC_BASE_URL no servidor para habilitar o preview.</div>
         </div>
@@ -3295,22 +3115,22 @@ async function renderPaginaCliente(req: Request, res: Response) {
   // ─── Aba: SEO ─────────────────────────────────────────────────────
   const tabSeo = `
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">🔍 SEO & Compartilhamento</div></div>
+      <div class="card-header"><div class="card-title">SEO & Compartilhamento</div></div>
       <div class="card-body">
         <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Configure como sua página aparece nos resultados do Google e quando compartilhada no WhatsApp, Facebook e Instagram. Estes dados são injetados automaticamente como meta tags na página pública.</p>
         <form method="POST" action="/admin/pagina-cliente/seo">
           <div class="form-group">
-            <label class="form-label">🏷️ Título da Página <span style="color:var(--muted);font-weight:400">(até 60 caracteres)</span></label>
+            <label class="form-label">Título da Página <span style="color:var(--muted);font-weight:400">(até 60 caracteres)</span></label>
             <input class="form-input" type="text" name="seoTitle" value="${esc(settings?.seoTitle ?? "")}" placeholder="Ex: Barbearia do João — Cortes modernos em São Paulo" maxlength="100" />
             <div style="font-size:11px;color:var(--muted);margin-top:6px">Aparece na aba do navegador e nos resultados de busca do Google. Se vazio, usa o nome da barbearia.</div>
           </div>
           <div class="form-group">
-            <label class="form-label">📝 Meta Descrição <span style="color:var(--muted);font-weight:400">(até 160 caracteres)</span></label>
+            <label class="form-label">Meta Descrição <span style="color:var(--muted);font-weight:400">(até 160 caracteres)</span></label>
             <textarea class="form-input" name="seoDescription" rows="3" placeholder="Ex: Agende seu corte online! Barbearia especializada em cortes modernos, barba e bigode. Atendimento rápido e sem espera." maxlength="300" style="resize:vertical">${esc(settings?.seoDescription ?? "")}</textarea>
             <div style="font-size:11px;color:var(--muted);margin-top:6px">Exibida nos resultados do Google abaixo do título. Impacta diretamente a taxa de cliques.</div>
           </div>
           <div class="form-group">
-            <label class="form-label">🖼️ Imagem Open Graph <span style="color:var(--muted);font-weight:400">(URL da imagem, 1200×630px ideal)</span></label>
+            <label class="form-label">Imagem Open Graph <span style="color:var(--muted);font-weight:400">(URL da imagem, 1200×630px ideal)</span></label>
             <input class="form-input" type="url" name="seoImageUrl" value="${esc(settings?.seoImageUrl ?? "")}" placeholder="https://exemplo.com/imagem-barbearia.jpg" />
             <div style="font-size:11px;color:var(--muted);margin-top:6px">Imagem exibida quando o link é compartilhado no WhatsApp, Facebook e Instagram. Recomendado: 1200×630px. Se vazio, usa o banner ou logo da barbearia.</div>
           </div>
@@ -3335,11 +3155,11 @@ async function renderPaginaCliente(req: Request, res: Response) {
       <div class="card-body">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div style="background:var(--surface2);border-radius:8px;padding:12px">
-            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">🔍 Google</div>
+            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">Google</div>
             <div style="font-size:12px;color:var(--muted)">Use palavras-chave como "barbearia", "corte de cabelo" e o nome da sua cidade no título e descrição para aparecer nas buscas locais.</div>
           </div>
           <div style="background:var(--surface2);border-radius:8px;padding:12px">
-            <div style="font-size:12px;font-weight:700;color:#25D366;margin-bottom:6px">📱 WhatsApp</div>
+            <div style="font-size:12px;font-weight:700;color:#25D366;margin-bottom:6px">WhatsApp</div>
             <div style="font-size:12px;color:var(--muted)">Quando você compartilha o link no WhatsApp, a imagem Open Graph é exibida automaticamente como prévia. Use uma foto atraente da barbearia.</div>
           </div>
         </div>
@@ -3362,11 +3182,11 @@ async function renderPaginaCliente(req: Request, res: Response) {
   const mkLocation = mkCity ? `${mkCity}${mkState ? ", " + mkState : ""}` : "";
   const mkLogo = esc(settings?.logoUrl ?? "");
   const tabMarketplace = `
-    ${marketplaceSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Configurações do Marketplace salvas!</div>` : ""}
+    ${marketplaceSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações do Marketplace salvas!</div>` : ""}
     <div style="display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start">
       <!-- Formulário -->
       <div class="card">
-        <div class="card-header"><h3>🏪 Marketplace Barber Pro</h3></div>
+        <div class="card-header"><h3>Marketplace Barber Pro</h3></div>
         <div class="card-body">
           <p style="font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.6">Aparecer no <a href="/marketplace" target="_blank" style="color:var(--gold)">Marketplace Barber Pro</a> permite que novos clientes descubram sua barbearia. Ative a visibilidade e preencha as informações abaixo.</p>
           <form method="POST" action="/admin/pagina-cliente/marketplace" id="mkForm">
@@ -3400,26 +3220,26 @@ async function renderPaginaCliente(req: Request, res: Response) {
                   <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Longitude</label>
                   <input id="mkLng" type="text" name="longitude" value="${esc(tenantMarketplace?.longitude ?? "")}" placeholder="-46.6333" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px" />
                 </div>
-                <button type="button" onclick="buscarCoordenadas()" style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;white-space:nowrap">📍 Buscar pelo endereço</button>
+                <button type="button" onclick="buscarCoordenadas()" style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;white-space:nowrap"> Buscar pelo endereço</button>
               </div>
               <div id="mkGeoStatus" style="font-size:11px;color:var(--muted);margin-top:4px">Preencha o endereço da barbearia em Configurações para usar a busca automática.</div>
             </div>
             <button type="submit" class="btn btn-primary">Salvar Marketplace</button>
-            <a href="/marketplace" target="_blank" class="btn btn-ghost" style="margin-left:8px">🔍 Ver Marketplace</a>
+            <a href="/marketplace" target="_blank" class="btn btn-ghost" style="margin-left:8px">Ver Marketplace</a>
           </form>
         </div>
       </div>
       <!-- Preview do Card -->
       <div>
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em">👁️ Preview do Card</div>
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em"> Preview do Card</div>
         <div id="mkPreviewCard" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
           <div id="mkPreviewCapa" style="height:140px;background:${tenantMarketplace?.fotoCapa ? `url('${esc(tenantMarketplace.fotoCapa)}') center/cover` : "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)"};position:relative">
-            ${tenantMarketplace?.fotoCapa ? "" : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;color:rgba(255,255,255,0.3)">✂️</div>`}
+            ${tenantMarketplace?.fotoCapa ? "" : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;color:rgba(255,255,255,0.3)"></div>`}
           </div>
           <div style="padding:14px">
-            ${mkLogo ? `<img src="${mkLogo}" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);margin-top:-30px;margin-bottom:8px;object-fit:cover;background:var(--surface)" />` : `<div style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);margin-top:-30px;margin-bottom:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px">✂️</div>`}
+            ${mkLogo ? `<img src="${mkLogo}" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);margin-top:-30px;margin-bottom:8px;object-fit:cover;background:var(--surface)" />` : `<div style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);margin-top:-30px;margin-bottom:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px"></div>`}
             <div id="mkPreviewName" style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">${mkName}</div>
-            ${mkLocation ? `<div style="font-size:12px;color:var(--muted);margin-bottom:6px">📍 ${mkLocation}</div>` : ""}
+            ${mkLocation ? `<div style="font-size:12px;color:var(--muted);margin-bottom:6px">${mkLocation}</div>` : ""}
             <div id="mkPreviewDesc" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px">${esc(tenantMarketplace?.descricao ?? "Adicione uma descrição para aparecer aqui...")}</div>
             <a style="display:inline-block;padding:7px 14px;background:var(--gold, #c9a84c);color:#000;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">Agendar</a>
           </div>
@@ -3448,14 +3268,14 @@ async function renderPaginaCliente(req: Request, res: Response) {
           if (data && data[0]) {
             document.getElementById('mkLat').value = parseFloat(data[0].lat).toFixed(7);
             document.getElementById('mkLng').value = parseFloat(data[0].lon).toFixed(7);
-            status.textContent = '✅ Coordenadas encontradas: ' + data[0].display_name.substring(0, 60) + '...';
+            status.textContent = 'Coordenadas encontradas: ' + data[0].display_name.substring(0, 60) + '...';
             status.style.color = 'var(--success)';
           } else {
-            status.textContent = '❌ Endereço não encontrado. Preencha latitude e longitude manualmente.';
+            status.textContent = 'Endereço não encontrado. Preencha latitude e longitude manualmente.';
             status.style.color = 'var(--error)';
           }
         } catch(e) {
-          status.textContent = '❌ Erro ao buscar. Preencha manualmente.';
+          status.textContent = 'Erro ao buscar. Preencha manualmente.';
           status.style.color = 'var(--error)';
         }
       }
@@ -3463,13 +3283,13 @@ async function renderPaginaCliente(req: Request, res: Response) {
   `;
 
   const tabs = [
-    { id: 'url', label: '🔗 URL & QR Code' },
-    { id: 'visual', label: '🎨 Visual' },
-    { id: 'dominio', label: '🌐 Domínio' },
-    { id: 'rastreamento', label: '📊 Rastreamento' },
-    { id: 'seo', label: '🔍 SEO' },
-    { id: 'marketplace', label: '🏪 Marketplace' },
-    { id: 'preview', label: '👁️ Preview' },
+    { id: 'url', label: 'URL & QR Code' },
+    { id: 'visual', label: 'Visual' },
+    { id: 'dominio', label: 'Domínio' },
+    { id: 'rastreamento', label: 'Rastreamento' },
+    { id: 'seo', label: 'SEO' },
+    { id: 'marketplace', label: 'Marketplace' },
+    { id: 'preview', label: 'Preview' },
   ];
 
   const tabContent: Record<string, string> = {
@@ -3542,7 +3362,7 @@ async function renderClienteDetalhe(req: Request, res: Response) {
         <div style="flex:1">
           <h2 style="font-size:22px;font-weight:800;margin:0 0 4px">${esc((client as any).name)}</h2>
           <div style="color:var(--muted);font-size:13px">${esc((client as any).phone ?? "")} ${(client as any).email ? "· " + esc((client as any).email) : ""}</div>
-          ${(client as any).birthdate ? `<div style="color:var(--muted);font-size:12px;margin-top:2px">🎂 ${new Date((client as any).birthdate + "T12:00:00").toLocaleDateString("pt-BR")}</div>` : ""}
+          ${(client as any).birthdate ? `<div style="color:var(--muted);font-size:12px;margin-top:2px"> ${new Date((client as any).birthdate + "T12:00:00").toLocaleDateString("pt-BR")}</div>` : ""}
         </div>
         <div style="display:flex;gap:16px;flex-wrap:wrap">
           <div style="text-align:center">
@@ -3563,7 +3383,7 @@ async function renderClienteDetalhe(req: Request, res: Response) {
     <!-- Grid histórico + pontos -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
       <div class="card">
-        <div class="card-header"><div class="card-title">📅 Histórico de Agendamentos</div></div>
+        <div class="card-header"><div class="card-title">Histórico de Agendamentos</div></div>
         <div class="card-body" style="overflow-x:auto">
           <table>
             <thead><tr><th>Data</th><th>Serviço</th><th>Barbeiro</th><th>Status</th><th style="text-align:right">Valor</th></tr></thead>
@@ -3802,7 +3622,7 @@ export function registerAdminRoutes(app: Express): void {
   <div class="card">
     <div class="logo">BARBER PRO</div>
     <div class="subtitle">Recuperar Senha</div>
-    ${sent ? `<div class="success">✅ E-mail enviado!<br>Verifique sua caixa de entrada e use o código para redefinir sua senha.<br><small style="color:#9BA1A6">(Verifique também a pasta de spam)</small></div>` : ""}
+    ${sent ? `<div class="success">E-mail enviado!<br>Verifique sua caixa de entrada e use o código para redefinir sua senha.<br><small style="color:#9BA1A6">(Verifique também a pasta de spam)</small></div>` : ""}
     ${error ? `<div class="error">E-mail não encontrado. Verifique e tente novamente.</div>` : ""}
     ${!sent ? `
     <div class="desc">Digite o e-mail da sua conta e enviaremos um código para redefinir sua senha.</div>
@@ -4373,8 +4193,8 @@ export function registerAdminRoutes(app: Express): void {
 
     const tabs = [
       { id: "programa", label: "⭐ Programa" },
-      { id: "recompensas", label: "🎁 Recompensas" },
-      { id: "cupons", label: "🏷️ Cupons" },
+      { id: "recompensas", label: "Recompensas" },
+      { id: "cupons", label: "Cupons" },
     ];
     const tabNav = `<div style="display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border)">
       ${tabs.map(t => `<a href="/admin/fidelidade?tab=${t.id}" style="padding:10px 18px;font-size:13px;font-weight:600;text-decoration:none;border-radius:8px 8px 0 0;border:1px solid ${activeTab === t.id ? 'var(--border)' : 'transparent'};border-bottom:${activeTab === t.id ? '1px solid var(--surface)' : '1px solid var(--border)'};background:${activeTab === t.id ? 'var(--surface)' : 'transparent'};color:${activeTab === t.id ? '#C9A84C' : 'var(--muted)'};margin-bottom:-1px">${t.label}</a>`).join("")}
@@ -4414,7 +4234,7 @@ export function registerAdminRoutes(app: Express): void {
     const tabRecompensas = `
       <div class="card">
         <div class="card-header">
-          <span class="card-title">🎁 Recompensas</span>
+          <span class="card-title">Recompensas</span>
           <button onclick="document.getElementById('new-reward-form').style.display='block';this.style.display='none'" class="btn btn-primary" style="font-size:12px;padding:6px 14px">+ Nova</button>
         </div>
         <div id="new-reward-form" style="display:none;padding:16px;border-bottom:1px solid var(--border)">
@@ -4471,7 +4291,7 @@ export function registerAdminRoutes(app: Express): void {
 
     const tabCupons = `
       <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-        <button onclick="document.getElementById('new-coupon-form').style.display='block';this.style.display='none'" class="btn btn-primary">🏷️ Novo Cupão</button>
+        <button onclick="document.getElementById('new-coupon-form').style.display='block';this.style.display='none'" class="btn btn-primary"> Novo Cupão</button>
       </div>
       <div id="new-coupon-form" style="display:none" class="card" style="margin-bottom:20px">
         <div class="card-header"><span class="card-title">Novo Cupão</span></div>
@@ -4527,7 +4347,7 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title">🏷️ Todos os Cupons</span><span style="color:var(--muted);font-size:12px">${allCoupons.length} cupons</span></div>
+        <div class="card-header"><span class="card-title">Todos os Cupons</span><span style="color:var(--muted);font-size:12px">${allCoupons.length} cupons</span></div>
         <table>
           <thead><tr><th>Código</th><th>Desconto</th><th>Usos</th><th>Validade</th><th>Status</th><th></th></tr></thead>
           <tbody>
@@ -4553,7 +4373,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>`;
 
     const body = `
-      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Salvo com sucesso!</div>` : ""}
+      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">Salvo com sucesso!</div>` : ""}
       ${tabNav}
       ${activeTab === "programa" ? tabPrograma : activeTab === "recompensas" ? tabRecompensas : tabCupons}
     `;
@@ -4599,7 +4419,7 @@ export function registerAdminRoutes(app: Express): void {
     const body = `
       ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE80;border-radius:10px;padding:12px 18px;margin-bottom:20px;color:#4ADE80;font-size:13px;">Salvo com sucesso.</div>` : ""}
       <div style="display:flex;justify-content:flex-end;margin-bottom:20px;">
-        <button onclick="document.getElementById('new-coupon-form').style.display='block';this.style.display='none';" class="btn btn-primary">🏷️ Novo Cupão</button>
+        <button onclick="document.getElementById('new-coupon-form').style.display='block';this.style.display='none';" class="btn btn-primary"> Novo Cupão</button>
       </div>
       <div id="new-coupon-form" style="display:none;" class="card">
         <div class="card-header"><span class="card-title">Novo Cupão</span></div>
@@ -4654,7 +4474,7 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title">🏷️ Todos os Cupons</span><span style="color:var(--muted);font-size:12px;">${allCoupons.length} cupons</span></div>
+        <div class="card-header"><span class="card-title">Todos os Cupons</span><span style="color:var(--muted);font-size:12px;">${allCoupons.length} cupons</span></div>
         <table>
           <thead><tr><th>Código</th><th>Desconto</th><th>Usos</th><th>Validade</th><th>Status</th><th></th></tr></thead>
           <tbody>
@@ -4755,7 +4575,7 @@ export function registerAdminRoutes(app: Express): void {
 
         <!-- Lista -->
         <div class="card">
-          <div class="card-header"><span class="card-title">💬 Avaliações Recentes</span></div>
+          <div class="card-header"><span class="card-title">Avaliações Recentes</span></div>
           <table>
             <thead><tr><th>Cliente</th><th>Serviço</th><th>Nota</th><th>Comentário</th><th>Data</th></tr></thead>
             <tbody>
@@ -4816,9 +4636,9 @@ export function registerAdminRoutes(app: Express): void {
       ...allBarbers.map((b: any) => `<option value="${b.id}" ${filterBarberId === b.id ? "selected" : ""}>${esc(b.name)}</option>`)].join("");
 
     const body = `
-      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Comissões atualizadas.</div>` : ""}
+      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Comissões atualizadas.</div>` : ""}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
-        <h2 style="font-size:20px;font-weight:700;margin:0">🤝 Comissões</h2>
+        <h2 style="font-size:20px;font-weight:700;margin:0">Comissões</h2>
         <form method="GET" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <select name="period" onchange="this.form.submit()"
             style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">${periodOptions}</select>
@@ -4845,7 +4665,7 @@ export function registerAdminRoutes(app: Express): void {
       <div style="display:grid;grid-template-columns:300px 1fr;gap:24px">
         <!-- Configurar taxas -->
         <div class="card">
-          <div class="card-header"><span class="card-title">⚙️ Taxas de Comissão</span></div>
+          <div class="card-header"><span class="card-title">Taxas de Comissão</span></div>
           <div class="card-body" style="padding:16px">
             <form method="POST" action="/admin/comissoes/config">
               ${configs.map((b: any) => `
@@ -4866,7 +4686,7 @@ export function registerAdminRoutes(app: Express): void {
         <!-- Resumo por barbeiro -->
         <div class="card">
           <div class="card-header">
-            <span class="card-title">🤝 Resumo por Funcionário</span>
+            <span class="card-title">Resumo por Funcionário</span>
             <span style="color:var(--muted);font-size:12px">${fmtDate(start)} a ${fmtDate(end)}</span>
           </div>
           <table>
@@ -5415,10 +5235,10 @@ export function registerAdminRoutes(app: Express): void {
     const typeColors: Record<string, string> = { in: "var(--success)", out: "var(--error)", adjustment: "#C9A84C" };
 
     const tabs = [
-      { id: "todos", label: "📦 Todos" },
-      { id: "venda", label: "💰 Venda" },
-      { id: "interno", label: "🔧 Uso Interno" },
-      { id: "historico", label: "📊 Histórico" },
+      { id: "todos", label: "Todos" },
+      { id: "venda", label: "Venda" },
+      { id: "interno", label: "Uso Interno" },
+      { id: "historico", label: "Histórico" },
     ];
     const tabNav = `<div style="display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border)">
       ${tabs.map(t => `<a href="/admin/estoque?tab=${t.id}" style="padding:10px 18px;font-size:13px;font-weight:600;text-decoration:none;border-radius:8px 8px 0 0;border:1px solid ${activeTab === t.id ? 'var(--border)' : 'transparent'};border-bottom:${activeTab === t.id ? '1px solid var(--surface)' : '1px solid var(--border)'};background:${activeTab === t.id ? 'var(--surface)' : 'transparent'};color:${activeTab === t.id ? '#C9A84C' : 'var(--muted)'};margin-bottom:-1px">${t.label}</a>`).join("")}
@@ -5430,7 +5250,7 @@ export function registerAdminRoutes(app: Express): void {
         <input type="text" name="q" value="${esc(searchProd)}" placeholder="Buscar produto..."
           style="flex:1;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px" />
         <button type="submit" class="btn btn-primary" style="padding:8px 16px">Buscar</button>
-        ${searchProd ? `<a href="/admin/estoque?tab=${activeTab}" class="btn btn-ghost" style="padding:8px 12px">✕</a>` : ""}
+        ${searchProd ? `<a href="/admin/estoque?tab=${activeTab}" class="btn btn-ghost" style="padding:8px 12px"></a>` : ""}
       </form>
       <div class="card">
         <table>
@@ -5446,7 +5266,7 @@ export function registerAdminRoutes(app: Express): void {
                 <td>${fmtCurrency(p.price)}</td>
                 <td style="white-space:nowrap">
                   <button onclick="openStockModal(${p.id}, '${esc(p.name).replace(/'/g, "\\'")}'  , ${p.stockQuantity})" class="btn btn-primary" style="font-size:12px;padding:4px 12px">+ Mov.</button>
-                  <a href="/admin/estoque/${p.id}/historico" class="btn btn-ghost" style="font-size:12px;padding:4px 10px">📊</a>
+                  <a href="/admin/estoque/${p.id}/historico" class="btn btn-ghost" style="font-size:12px;padding:4px 10px"></a>
                 </td>
               </tr>
             `).join("")}
@@ -5456,7 +5276,7 @@ export function registerAdminRoutes(app: Express): void {
 
     const histTable = `
       <div class="card">
-        <div class="card-header"><div class="card-title">📊 Últimas Movimentações</div></div>
+        <div class="card-header"><div class="card-title">Últimas Movimentações</div></div>
         <div class="card-body">
           ${recentMovements.length === 0 ? '<div class="empty">Nenhuma movimentação registrada.</div>' : `
           <table>
@@ -5484,10 +5304,10 @@ export function registerAdminRoutes(app: Express): void {
         </div>
         <a href="/admin/export/estoque.csv" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a>
       </div>
-      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Movimentação registrada!</div>` : ""}
+      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Movimentação registrada!</div>` : ""}
       ${lowStock.length > 0 ? `
         <div style="background:rgba(239,68,68,0.1);border:1px solid var(--error);color:var(--error);border-radius:8px;padding:12px 16px;margin-bottom:20px">
-          ⚠️ <strong>${lowStock.length} produto(s) com estoque baixo:</strong> ${lowStock.map((p: any) => esc(p.name)).join(", ")}
+          <strong>${lowStock.length} produto(s) com estoque baixo:</strong> ${lowStock.map((p: any) => esc(p.name)).join(", ")}
         </div>` : ""}
       ${tabNav}
       ${activeTab === "historico" ? histTable : prodTable}
@@ -5589,13 +5409,13 @@ export function registerAdminRoutes(app: Express): void {
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
         <a href="/admin/estoque" class="btn btn-ghost" style="padding:8px 14px;font-size:13px">← Voltar</a>
         <div>
-          <h1 style="font-size:22px;font-weight:700">📊 Histórico — ${esc(product.name)}</h1>
+          <h1 style="font-size:22px;font-weight:700">Histórico — ${esc(product.name)}</h1>
           <p style="color:var(--muted);font-size:13px;margin-top:2px">Estoque atual: <strong style="color:var(--gold)">${product.stockQuantity ?? 0} unid.</strong></p>
         </div>
       </div>
       <div class="card">
         <div class="card-header">
-          <span class="card-title">📆 Movimentações (últimas 50)</span>
+          <span class="card-title">Movimentações (últimas 50)</span>
           <span style="color:var(--muted);font-size:12px">${movements.length} registro(s)</span>
         </div>
         <table>
@@ -5635,7 +5455,7 @@ export function registerAdminRoutes(app: Express): void {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
         <!-- Adicionar nova config -->
         <div class="card">
-          <div class="card-header"><span class="card-title">➕ Nova Configuração</span></div>
+          <div class="card-header"><span class="card-title">Nova Configuração</span></div>
           <div class="card-body" style="padding:20px;">
             <form method="POST" action="/admin/retorno-automatico">
               <div class="form-group">
@@ -5652,7 +5472,7 @@ export function registerAdminRoutes(app: Express): void {
               </div>
               <div class="form-group">
                 <label class="form-label">Mensagem (use {nome} para o nome do cliente)</label>
-                <textarea name="messageTemplate" class="form-input" rows="4" required placeholder="Olá {nome}! Já faz um tempo desde o seu último {servico}. Que tal agendar uma visita? 😊"></textarea>
+                <textarea name="messageTemplate" class="form-input" rows="4" required placeholder="Olá {nome}! Já faz um tempo desde o seu último {servico}. Que tal agendar uma visita? :)"></textarea>
               </div>
               <div class="form-group" style="display:flex;align-items:center;gap:8px;">
                 <input type="checkbox" name="isActive" id="isActive" value="1" checked style="width:16px;height:16px;" />
@@ -5664,7 +5484,7 @@ export function registerAdminRoutes(app: Express): void {
         </div>
         <!-- Lista de configs -->
         <div class="card">
-          <div class="card-header"><span class="card-title">📨 Configurações Ativas</span></div>
+          <div class="card-header"><span class="card-title">Configurações Ativas</span></div>
           <div class="card-body" style="padding:0;">
             ${configsWithService.length === 0 ? `<p style="padding:20px;color:var(--muted);font-size:13px;">Nenhuma configuração de retorno cadastrada.</p>` : configsWithService.map(c => `
               <div style="padding:16px;border-bottom:1px solid var(--border);">
@@ -5724,17 +5544,17 @@ export function registerAdminRoutes(app: Express): void {
     const promotionList = await db.listPromotions(tenantId);
     const sent = req.query.sent === "1";
     const AUDIENCE_OPTIONS = [
-      { value: "all", label: "Todos os clientes ativos", icon: "👥" },
+      { value: "all", label: "Todos os clientes ativos", icon: "" },
       { value: "inactive_30", label: "Inativos há 30 dias", icon: "⏳" },
       { value: "inactive_60", label: "Inativos há 60 dias", icon: "⏰" },
-      { value: "birthday_month", label: "Aniversariantes do mês", icon: "🎂" },
+      { value: "birthday_month", label: "Aniversariantes do mês", icon: "" },
     ];
     const body = `
-      ${sent ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Promoção enviada com sucesso!</div>` : ""}
+      ${sent ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Promoção enviada com sucesso!</div>` : ""}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
         <!-- Formulário de envio -->
         <div class="card">
-          <div class="card-header"><div class="card-title">📣 Nova Promoção</div></div>
+          <div class="card-header"><div class="card-title">Nova Promoção</div></div>
           <div class="card-body" style="padding:20px">
             <form method="POST" action="/admin/promocoes">
               <div class="form-group">
@@ -5749,7 +5569,7 @@ export function registerAdminRoutes(app: Express): void {
                 <label class="form-label">Público-alvo</label>
                 <select class="form-input" name="targetAudience" id="audience-select" onchange="toggleClientSelect()">
                   ${AUDIENCE_OPTIONS.map(o => `<option value="${o.value}">${o.icon} ${o.label}</option>`).join("")}
-                  <option value="individual">👤 Cliente específico</option>
+                  <option value="individual">Cliente específico</option>
                 </select>
               </div>
               <div id="client-select-group" style="display:none" class="form-group">
@@ -5757,9 +5577,9 @@ export function registerAdminRoutes(app: Express): void {
                 <input type="text" id="client-search-input" class="form-input" placeholder="Digite o nome ou telefone..." oninput="filterClients()" autocomplete="off" style="margin-bottom:8px">
                 <input type="hidden" name="clientId" id="client-id-hidden">
                 <div id="client-selected-badge" style="display:none;background:var(--primary-10,rgba(10,126,164,0.1));border:1.5px solid var(--primary,#0a7ea4);border-radius:10px;padding:10px 14px;margin-bottom:8px;display:none;align-items:center;gap:10px">
-                  <span style="font-size:18px">👤</span>
+                  
                   <span id="client-selected-name" style="flex:1;font-weight:700;color:var(--primary,#0a7ea4);font-size:14px"></span>
-                  <button type="button" onclick="clearClientSelection()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted)">✕</button>
+                  <button type="button" onclick="clearClientSelection()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted)"></button>
                 </div>
                 <div id="client-dropdown" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;display:none;max-height:220px;overflow-y:auto">
                   ${activeClients.map((c: any) => `<div class="client-option" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? "")}" onclick="selectClient(this)" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''"><strong style="font-size:14px">${esc(c.name)}</strong>${c.phone ? `<br><small style="color:var(--muted)">${esc(c.phone)}</small>` : ""}</div>`).join("")}
@@ -5806,20 +5626,20 @@ export function registerAdminRoutes(app: Express): void {
                   document.getElementById('client-dropdown').style.display='none';
                 }
               </script>
-              <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;margin-top:8px">🚀 Enviar Promoção</button>
+              <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;margin-top:8px">Enviar Promoção</button>
             </form>
           </div>
         </div>
         <!-- Histórico -->
         <div class="card">
-          <div class="card-header"><div class="card-title">📜 Histórico de Promoções</div></div>
+          <div class="card-header"><div class="card-title">Histórico de Promoções</div></div>
           <div class="card-body">
             ${promotionList.length === 0
               ? `<div style="text-align:center;padding:40px;color:var(--muted)">Nenhuma promoção enviada ainda.</div>`
               : `<table class="table"><thead><tr><th>Título</th><th>Público</th><th>Destinatários</th><th>Data</th></tr></thead><tbody>
                 ${promotionList.map((p: any) => `<tr>
                   <td><strong>${esc(p.title)}</strong><br><small style="color:var(--muted)">${esc((p.message ?? "").substring(0, 60))}${(p.message ?? "").length > 60 ? "..." : ""}</small></td>
-                  <td>${p.targetAudience === 'specific_client' ? '👤 Cliente específico' : (AUDIENCE_OPTIONS.find(o => o.value === p.targetAudience)?.label ?? p.targetAudience)}</td>
+                  <td>${p.targetAudience === 'specific_client' ? 'Cliente específico' : (AUDIENCE_OPTIONS.find(o => o.value === p.targetAudience)?.label ?? p.targetAudience)}</td>
                   <td style="text-align:center;font-weight:700">${p.recipientCount ?? 0}</td>
                   <td style="color:var(--muted);font-size:12px">${p.sentAt ? new Date(p.sentAt).toLocaleDateString("pt-BR") : "—"}</td>
                 </tr>`).join("")}
@@ -5905,7 +5725,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>
       ${totalConversions > 0 ? `
         <div class="card" style="margin-top:20px;padding:20px;">
-          <p style="color:var(--muted);font-size:13px;">💡 <strong>Dica:</strong> Promoções para clientes inativos tendem a ter maior taxa de conversão. Considere segmentar seu público para melhores resultados.</p>
+          <p style="color:var(--muted);font-size:13px;"><strong>Dica:</strong> Promoções para clientes inativos tendem a ter maior taxa de conversão. Considere segmentar seu público para melhores resultados.</p>
         </div>
       ` : ""}
     `;
@@ -5932,7 +5752,7 @@ export function registerAdminRoutes(app: Express): void {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
         <!-- Dados pessoais -->
         <div class="card">
-          <div class="card-header"><span class="card-title">👤 Dados Pessoais</span></div>
+          <div class="card-header"><span class="card-title">Dados Pessoais</span></div>
           <div class="card-body" style="padding:20px;">
             <form method="POST" action="/admin/meu-perfil">
               <div class="form-group">
@@ -5961,7 +5781,7 @@ export function registerAdminRoutes(app: Express): void {
         </div>
         <!-- Alterar senha -->
         <div class="card">
-          <div class="card-header"><span class="card-title">🔐 Alterar Senha</span></div>
+          <div class="card-header"><span class="card-title">Alterar Senha</span></div>
           <div class="card-body" style="padding:20px;">
             <form method="POST" action="/admin/meu-perfil/senha">
               <div class="form-group">
@@ -5983,20 +5803,20 @@ export function registerAdminRoutes(app: Express): void {
        </div>
       <!-- Tema Visual -->
       <div class="card" style="margin-top:24px;">
-        <div class="card-header"><span class="card-title">🎨 Tema Visual</span></div>
+        <div class="card-header"><span class="card-title">Tema Visual</span></div>
         <div class="card-body" style="padding:20px;">
           <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Escolha o tema visual do painel administrativo. A preferência é salva no navegador.</p>
           <div style="display:flex;gap:12px;">
             <button onclick="setTheme('light')" id="theme-light" class="btn btn-ghost" style="flex:1;padding:12px;border:2px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;">
-              <span style="font-size:24px;">☀️</span>
+              <span style="font-size:24px;">Claro</span>
               <span style="font-size:12px;font-weight:600;">Claro</span>
             </button>
             <button onclick="setTheme('dark')" id="theme-dark" class="btn btn-ghost" style="flex:1;padding:12px;border:2px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;">
-              <span style="font-size:24px;">🌙</span>
+              <span style="font-size:24px;">Escuro</span>
               <span style="font-size:12px;font-weight:600;">Escuro</span>
             </button>
             <button onclick="setTheme('system')" id="theme-system" class="btn btn-ghost" style="flex:1;padding:12px;border:2px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;">
-              <span style="font-size:24px;">⚙️</span>
+              <span style="font-size:24px;">Auto</span>
               <span style="font-size:12px;font-weight:600;">Sistema</span>
             </button>
           </div>
@@ -6094,14 +5914,14 @@ export function registerAdminRoutes(app: Express): void {
 
     const body = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="font-size:20px;font-weight:700;margin:0">💬 Chat WhatsApp</h2>
+        <h2 style="font-size:20px;font-weight:700;margin:0">Chat WhatsApp</h2>
         <span style="font-size:12px;color:var(--muted)">${allChatClients.length} cliente(s)</span>
       </div>
       <form method="GET" style="display:flex;gap:8px;margin-bottom:16px">
         <input type="text" name="q" value="${esc(searchQ)}" placeholder="Buscar por nome ou telefone..."
           style="flex:1;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
         <button type="submit" class="btn btn-primary" style="padding:10px 18px">Buscar</button>
-        ${searchQ ? `<a href="/admin/chat" class="btn btn-ghost" style="padding:10px 14px">✕</a>` : ""}
+        ${searchQ ? `<a href="/admin/chat" class="btn btn-ghost" style="padding:10px 14px"></a>` : ""}
       </form>
       ${searchQ ? `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${chatClients.length} resultado(s) para "${esc(searchQ)}"</div>` : ""}
       <div class="card" style="padding:0;overflow:hidden">
@@ -6186,7 +6006,7 @@ export function registerAdminRoutes(app: Express): void {
     const waUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(message.trim())}`;
     // Redirecionar para o WhatsApp e depois voltar ao chat
     res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Abrindo WhatsApp...</title></head><body style="font-family:sans-serif;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column;gap:16px">
-      <div style="font-size:48px">💬</div>
+      <div style="font-size:48px;color:var(--muted)">&#9993;</div>
       <div style="font-size:18px;font-weight:600">Abrindo WhatsApp...</div>
       <div style="font-size:14px;color:#999">A mensagem foi salva no histórico.</div>
       <script>window.open('${waUrl}','_blank');setTimeout(()=>location.href='/admin/chat/${clientId}',1500);</script>
@@ -6522,7 +6342,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>
       <div class="card">
         <div class="card-header">
-          <span class="card-title">🤝 Minhas Comissões</span>
+          <span class="card-title">Minhas Comissões</span>
           <span style="color:var(--muted);font-size:12px;">${fmtDate(start)} a ${fmtDate(end)}</span>
           ${myData ? `<span class="badge badge-gold">${myData.commissionRate}% comissão</span>` : ""}
         </div>
@@ -6636,7 +6456,7 @@ export function registerAdminRoutes(app: Express): void {
                   <td style="font-weight:600;">${esc(l.clientName || "Sem nome")}</td>
                   <td>${esc(l.clientPhone || "—")}</td>
                   <td>${l.loginAt ? new Date(l.loginAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}</td>
-                  <td><span class="badge ${l.source === "geo" ? "badge-gold" : "badge-muted"}">${l.source === "geo" ? "📍 GPS" : "🔗 Link"}</span></td>
+                  <td><span class="badge ${l.source === "geo" ? "badge-gold" : "badge-muted"}">${l.source === "geo" ? "GPS" : "Link"}</span></td>
                   <td>${l.convertedAt ? '<span class="badge badge-success">Convertido</span>' : '<span class="badge badge-warning">Pendente</span>'}</td>
                   <td>${l.clientPhone ? `<a href="https://wa.me/55${(l.clientPhone || "").replace(/\\D/g, "")}?text=${encodeURIComponent("Olá " + (l.clientName || "") + "! Vi que você acessou nossa barbearia. Que tal agendar um horário?")}" target="_blank" class="btn btn-sm" style="background:#25D366;color:#fff;border:none;font-size:11px;">WhatsApp</a>` : "—"}</td>
                 </tr>
@@ -6746,12 +6566,12 @@ export function registerAdminRoutes(app: Express): void {
     const body = `
       <div style="padding:24px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-          <h1 style="font-size:24px;font-weight:700;color:var(--foreground)">🛒 Encomendas de Produtos</h1>
+          <h1 style="font-size:24px;font-weight:700;color:var(--foreground)">Encomendas de Produtos</h1>
           <div style="font-size:14px;color:var(--muted)">${enriched.length} pedido(s)</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">${filterBtns}</div>
         ${enriched.length === 0
-          ? `<div class="card" style="text-align:center;padding:48px"><div style="font-size:48px;margin-bottom:12px">📭</div><p style="color:var(--muted)">Nenhuma encomenda encontrada</p></div>`
+          ? `<div class="card" style="text-align:center;padding:48px"><div style="font-size:48px;margin-bottom:12px;color:var(--muted)">&#9993;</div><p style="color:var(--muted)">Nenhuma encomenda encontrada</p></div>`
           : `<div class="card" style="overflow-x:auto"><table class="table"><thead><tr><th>Cliente</th><th>Produto</th><th>Status</th><th>Data</th><th>A\u00e7\u00f5es</th></tr></thead><tbody>${orderRows}</tbody></table></div>`}
       </div>
       <script>
