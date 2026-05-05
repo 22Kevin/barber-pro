@@ -28,7 +28,7 @@ export function Navbar() {
         right: 0,
         zIndex: 100,
         transition: "background 0.3s, border-color 0.3s, backdrop-filter 0.3s",
-        background: scrolled ? "rgba(5,5,5,0.85)" : "transparent",
+        background: scrolled ? "rgba(5,5,5,0.9)" : "transparent",
         backdropFilter: scrolled ? "blur(20px)" : "none",
         WebkitBackdropFilter: scrolled ? "blur(20px)" : "none",
         borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "1px solid transparent",
@@ -52,8 +52,8 @@ export function Navbar() {
             </span>
           </a>
 
-          {/* Desktop links */}
-          <nav style={{ display: "flex", gap: 32, alignItems: "center" }} className="landing-desktop-nav">
+          {/* Desktop links — hidden on mobile/tablet via CSS class */}
+          <nav className="lp-nav-desktop" style={{ gap: 32, alignItems: "center" }}>
             {links.map((l) => (
               <a key={l.href} href={l.href} style={{
                 color: "#888880", fontSize: 14, fontWeight: 500, textDecoration: "none",
@@ -71,6 +71,7 @@ export function Navbar() {
               padding: "9px 20px", borderRadius: 8, textDecoration: "none",
               boxShadow: "0 0 24px rgba(201,168,76,0.25)",
               transition: "opacity 0.2s, transform 0.15s",
+              whiteSpace: "nowrap",
             }}
               onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}
@@ -79,13 +80,13 @@ export function Navbar() {
             </a>
           </nav>
 
-          {/* Mobile hamburger */}
+          {/* Mobile/tablet hamburger — shown via CSS class */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="landing-mobile-menu-btn"
+            className="lp-nav-mobile-btn"
             style={{
               background: "none", border: "none", cursor: "pointer",
-              padding: 8, display: "none", flexDirection: "column", gap: 5,
+              padding: 8, flexDirection: "column", gap: 5,
             }}
             aria-label="Menu"
           >
@@ -96,7 +97,7 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile/tablet dropdown menu */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
@@ -105,7 +106,7 @@ export function Navbar() {
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25 }}
             style={{
-              background: "rgba(10,10,10,0.98)",
+              background: "rgba(8,8,8,0.98)",
               borderTop: "1px solid rgba(255,255,255,0.06)",
               overflow: "hidden",
             }}

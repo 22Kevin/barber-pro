@@ -48,12 +48,9 @@ export function TestimonialsSection() {
     <section
       id="testimonials"
       aria-labelledby="testimonials-heading"
-      style={{
-        padding: "100px 24px",
-        background: "#050505",
-        position: "relative",
-      }}
+      style={{ background: "#050505" }}
     >
+      <div className="lp-section">
       {/* Section header */}
       <div style={{ textAlign: "center", maxWidth: 560, margin: "0 auto 64px" }}>
         <motion.p
@@ -85,15 +82,7 @@ export function TestimonialsSection() {
       </div>
 
       {/* Cards */}
-      <div
-        style={{
-          maxWidth: 1100,
-          margin: "0 auto",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: 20,
-        }}
-      >
+      <div className="lp-feature-grid">
         {testimonials.map((t, i) => (
           <motion.blockquote
             key={t.name}
@@ -141,6 +130,7 @@ export function TestimonialsSection() {
             </div>
           </motion.blockquote>
         ))}
+      </div>
       </div>
     </section>
   );

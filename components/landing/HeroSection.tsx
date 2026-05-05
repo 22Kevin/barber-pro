@@ -15,28 +15,14 @@ export function HeroSection() {
       id="hero"
       aria-labelledby="hero-heading"
       style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "120px 24px 80px",
         position: "relative",
         overflow: "hidden",
-        background: "#050505",
+        background: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(201,168,76,0.12) 0%, transparent 65%)",
       }}
     >
-      {/* Radial glow background */}
-      <div style={{
-        position: "absolute",
-        top: 0, left: "50%",
-        transform: "translateX(-50%)",
-        width: "min(900px, 100vw)",
-        height: 600,
-        background: "radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.13) 0%, transparent 70%)",
-        pointerEvents: "none",
-      }} />
 
+
+      <div className="lp-hero-inner">
       {/* Badge */}
       <motion.div
         variants={fadeUp}
@@ -69,16 +55,8 @@ export function HeroSection() {
         initial="initial"
         animate="animate"
         transition={{ duration: 0.6, delay: 0.2 }}
-        style={{
-          color: "#F0EEE8",
-          fontSize: "clamp(36px, 6vw, 72px)",
-          fontWeight: 900,
-          lineHeight: 1.1,
-          letterSpacing: -2,
-          textAlign: "center",
-          maxWidth: 820,
-          margin: "0 auto 20px",
-        }}
+        className="lp-hero-title"
+        style={{ margin: "0 auto 20px" }}
       >
         Sua barbearia fatura{" "}
         <span style={{
@@ -99,14 +77,7 @@ export function HeroSection() {
         initial="initial"
         animate="animate"
         transition={{ duration: 0.6, delay: 0.32 }}
-        style={{
-          color: "#888880",
-          fontSize: "clamp(16px, 2.2vw, 20px)",
-          lineHeight: 1.65,
-          textAlign: "center",
-          maxWidth: 580,
-          margin: "0 auto 40px",
-        }}
+        className="lp-hero-sub"
       >
         O Barber Pro automatiza agendamentos, cria planos de assinatura recorrente e
         entrega relatórios financeiros em tempo real — para você focar no que importa:
@@ -119,7 +90,8 @@ export function HeroSection() {
         initial="initial"
         animate="animate"
         transition={{ duration: 0.55, delay: 0.44 }}
-        style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center", marginBottom: 64 }}
+        className="lp-hero-ctas"
+        style={{ marginBottom: 64 }}
       >
         <a
           href="#pricing"
@@ -173,8 +145,8 @@ export function HeroSection() {
         initial="initial"
         animate="animate"
         transition={{ duration: 0.7, delay: 0.56 }}
+        className="lp-hero-video"
         style={{
-          width: "100%",
           maxWidth: 860,
           borderRadius: 20,
           overflow: "hidden",
@@ -183,6 +155,8 @@ export function HeroSection() {
           position: "relative",
           background: "#0A0A0A",
           aspectRatio: "16/9",
+          height: "auto",
+          display: "block",
         }}
       >
         {!videoActive ? (
@@ -240,8 +214,8 @@ export function HeroSection() {
         initial="initial"
         animate="animate"
         transition={{ duration: 0.55, delay: 0.7 }}
+        className="lp-hero-stats"
         style={{
-          display: "flex", gap: 48, flexWrap: "wrap", justifyContent: "center",
           marginTop: 56, paddingTop: 40,
           borderTop: "1px solid rgba(255,255,255,0.06)",
           width: "100%", maxWidth: 700,
@@ -260,6 +234,7 @@ export function HeroSection() {
           </div>
         ))}
       </motion.div>
+      </div>
     </section>
   );
 }

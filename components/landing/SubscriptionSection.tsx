@@ -79,26 +79,11 @@ export function SubscriptionSection() {
       id="subscription"
       ref={sectionRef}
       aria-labelledby="subscription-heading"
-      style={{
-        padding: "100px 24px",
-        background: "#080808",
-        position: "relative",
-        overflow: "hidden",
-      }}
+      style={{ background: "#030303" }}
     >
-      {/* Background accent */}
-      <div style={{
-        position: "absolute",
-        bottom: 0, left: "50%",
-        transform: "translateX(-50%)",
-        width: "min(800px, 100vw)",
-        height: 400,
-        background: "radial-gradient(ellipse at 50% 100%, rgba(201,168,76,0.08) 0%, transparent 70%)",
-        pointerEvents: "none",
-      }} />
-
+      <div className="lp-section">
       {/* Section header */}
-      <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 72px" }}>
+      <div style={{ textAlign: "center", maxWidth: 640, margin: "0 auto 64px" }}>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -146,146 +131,53 @@ export function SubscriptionSection() {
       </div>
 
       {/* Steps diagram */}
-      <div style={{ maxWidth: 1000, margin: "0 auto 64px" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "center",
-            gap: 0,
-            flexWrap: "wrap",
-          }}
-          className="subscription-steps"
-        >
-          {steps.map((step, i) => (
-            <div key={step.number} style={{ display: "flex", alignItems: "flex-start", flex: "1 1 260px", minWidth: 220 }}>
-              {/* Step card */}
-              <motion.div
-                initial={{ opacity: 0, y: 32 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.55, delay: i * 0.15 }}
-                style={{
-                  flex: 1,
-                  background: "#0D0D0D",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 16,
-                  padding: "28px 24px 32px",
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Number watermark */}
-                <div style={{
-                  position: "absolute", top: 16, right: 20,
-                  fontSize: 56, fontWeight: 900, color: "rgba(201,168,76,0.06)",
-                  lineHeight: 1, letterSpacing: -2, userSelect: "none",
-                }}>
-                  {step.number}
-                </div>
-
-                <div style={{
-                  width: 52, height: 52, borderRadius: 14,
-                  background: "rgba(201,168,76,0.08)",
-                  border: "1px solid rgba(201,168,76,0.18)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  marginBottom: 20,
-                }}>
-                  {step.icon}
-                </div>
-
-                <h3 style={{ color: "#F0EEE8", fontSize: 18, fontWeight: 700, marginBottom: 10, letterSpacing: -0.3 }}>
-                  {step.title}
-                </h3>
-                <p style={{ color: "#888880", fontSize: 14, lineHeight: 1.65, marginBottom: 16 }}>
-                  {step.description}
-                </p>
-                <div style={{
-                  background: "rgba(201,168,76,0.07)",
-                  border: "1px solid rgba(201,168,76,0.15)",
-                  borderRadius: 8,
-                  padding: "8px 12px",
-                  fontSize: 12, color: "#C9A84C", fontWeight: 600,
-                }}>
-                  {step.detail}
-                </div>
-              </motion.div>
-
-              {/* Arrow connector (hidden after last step) */}
-              {i < steps.length - 1 && (
-                <motion.div
-                  initial={{ opacity: 0, scaleX: 0 }}
-                  whileInView={{ opacity: 1, scaleX: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.15 + 0.3 }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "0 8px",
-                    marginTop: 52,
-                    flexShrink: 0,
-                  }}
-                  className="step-arrow-h"
-                >
-                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                    <path d="M6 16h20M20 10l6 6-6 6" stroke="#C9A84C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.6" />
-                  </svg>
-                </motion.div>
-              )}
-            </div>
-          ))}
-        </div>
+      <div className="lp-steps" style={{ marginBottom: 56 }}>
+        {steps.map((step, i) => (
+          <>
+            <motion.div
+              key={step.number}
+              className="lp-step-card"
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.12 }}
+            >
+              <span className="lp-step-num">{step.number}</span>
+              <div className="lp-step-icon">{step.icon}</div>
+              <h3 className="lp-step-title">{step.title}</h3>
+              <p className="lp-step-desc">{step.description}</p>
+              <span className="lp-step-tag">{step.detail}</span>
+            </motion.div>
+            {i < steps.length - 1 && (
+              <div className="lp-step-arrow" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                  <path d="M4 14h20M18 8l6 6-6 6" stroke="#C9A84C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeOpacity="0.5" />
+                </svg>
+              </div>
+            )}
+          </>
+        ))}
       </div>
 
       {/* Impact counter */}
       <motion.div
+        className="lp-revenue-box"
         initial={{ opacity: 0, y: 32 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6 }}
-        style={{
-          maxWidth: 720,
-          margin: "0 auto",
-          background: "linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.03) 100%)",
-          border: "1px solid rgba(201,168,76,0.2)",
-          borderRadius: 20,
-          padding: "40px 40px",
-          textAlign: "center",
-          position: "relative",
-          overflow: "hidden",
-        }}
       >
-        <div style={{
-          position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.1) 0%, transparent 60%)",
-          pointerEvents: "none",
-        }} />
-        <p style={{ color: "#888880", fontSize: 15, marginBottom: 12 }}>
-          Uma barbearia com apenas
-        </p>
-        <div style={{
-          fontSize: "clamp(48px, 8vw, 80px)",
-          fontWeight: 900,
-          letterSpacing: -3,
-          lineHeight: 1,
-          marginBottom: 8,
-          background: "linear-gradient(135deg, #C9A84C, #F0C060)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          backgroundClip: "text",
-        }}>
+        <p className="lp-revenue-label">Uma barbearia com apenas 20 assinantes tem</p>
+        <div className="lp-revenue-num">
           R$ {revenue.toLocaleString("pt-BR")}
         </div>
-        <p style={{ color: "#F0EEE8", fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
-          garantidos por mês
-        </p>
-        <p style={{ color: "#888880", fontSize: 14, lineHeight: 1.6 }}>
-          20 assinantes × R$ 120/mês — antes mesmo de abrir a porta.
-          <br />
-          <span style={{ color: "#C9A84C" }}>Isso é receita previsível, não sorte.</span>
+        <p className="lp-revenue-sub">garantidos por mês</p>
+        <p className="lp-revenue-note">
+          20 assinantes × R$ 120/mês — antes mesmo de abrir a porta.{" "}
+          <span className="lp-revenue-highlight">Isso é receita previsível, não sorte.</span>
         </p>
       </motion.div>
+      </div>
     </section>
   );
 }

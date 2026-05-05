@@ -78,12 +78,9 @@ export function FeatureGrid() {
     <section
       id="features"
       aria-labelledby="features-heading"
-      style={{
-        padding: "100px 24px",
-        background: "#050505",
-        position: "relative",
-      }}
+      style={{ background: "#050505" }}
     >
+      <div className="lp-section">
       {/* Section header */}
       <div style={{ textAlign: "center", maxWidth: 600, margin: "0 auto 64px" }}>
         <motion.p
@@ -125,15 +122,7 @@ export function FeatureGrid() {
       </div>
 
       {/* Grid */}
-      <div
-        style={{
-          maxWidth: 1100,
-          margin: "0 auto",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: 20,
-        }}
-      >
+      <div className="lp-feature-grid">
         {features.map((feature, i) => (
           <motion.article
             key={feature.title}
@@ -192,6 +181,7 @@ export function FeatureGrid() {
             </p>
           </motion.article>
         ))}
+      </div>
       </div>
     </section>
   );

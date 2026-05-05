@@ -19,24 +19,9 @@ export function PricingSection() {
     <section
       id="pricing"
       aria-labelledby="pricing-heading"
-      style={{
-        padding: "100px 24px 120px",
-        background: "#080808",
-        position: "relative",
-        overflow: "hidden",
-      }}
+      style={{ background: "#030303", position: "relative", overflow: "hidden" }}
     >
-      {/* Top glow */}
-      <div style={{
-        position: "absolute",
-        top: 0, left: "50%",
-        transform: "translateX(-50%)",
-        width: "min(700px, 100vw)",
-        height: 300,
-        background: "radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.1) 0%, transparent 70%)",
-        pointerEvents: "none",
-      }} />
-
+      <div className="lp-section">
       <div style={{ textAlign: "center", maxWidth: 560, margin: "0 auto 64px" }}>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
@@ -83,17 +68,7 @@ export function PricingSection() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6, delay: 0.15 }}
-        style={{
-          maxWidth: 520,
-          margin: "0 auto",
-          background: "linear-gradient(160deg, rgba(201,168,76,0.07) 0%, rgba(10,10,10,1) 60%)",
-          border: "1px solid rgba(201,168,76,0.25)",
-          borderRadius: 24,
-          padding: "40px 40px 48px",
-          position: "relative",
-          overflow: "hidden",
-          boxShadow: "0 40px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,168,76,0.08)",
-        }}
+        className="lp-pricing-card"
       >
         {/* Corner glow */}
         <div style={{
@@ -202,18 +177,7 @@ export function PricingSection() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.5, delay: 0.4 }}
-        style={{
-          maxWidth: 520,
-          margin: "32px auto 0",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 12,
-          padding: "16px 24px",
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid rgba(255,255,255,0.06)",
-          borderRadius: 12,
-        }}
+        className="lp-pwa-hint"
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
           <rect x="3" y="2" width="14" height="16" rx="3" stroke="#888880" strokeWidth="1.5" />
@@ -224,6 +188,7 @@ export function PricingSection() {
           <strong style={{ color: "#C8C4BC" }}>PWA-Ready:</strong> Instale como app no celular diretamente pelo navegador — sem App Store, sem Play Store.
         </p>
       </motion.div>
+      </div>
     </section>
   );
 }

@@ -9,19 +9,10 @@ export function Footer() {
       style={{
         background: "#030303",
         borderTop: "1px solid rgba(255,255,255,0.05)",
-        padding: "56px 24px 40px",
       }}
     >
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 40,
-            marginBottom: 48,
-          }}
-        >
+      <div className="lp-footer-inner">
+        <div className="lp-footer-top">
           {/* Brand */}
           <div style={{ maxWidth: 280 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
@@ -41,7 +32,7 @@ export function Footer() {
           </div>
 
           {/* Links */}
-          <div style={{ display: "flex", gap: 48, flexWrap: "wrap" }}>
+          <div className="lp-footer-links">
             <div>
               <p style={{ color: "#888880", fontSize: 12, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", marginBottom: 16 }}>
                 Produto
@@ -85,15 +76,7 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div style={{
-          paddingTop: 24,
-          borderTop: "1px solid rgba(255,255,255,0.05)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 12,
-        }}>
+        <div className="lp-footer-bottom">
           <p style={{ color: "#333330", fontSize: 13 }}>
             © {year} Barber Pro. Todos os direitos reservados.
           </p>
