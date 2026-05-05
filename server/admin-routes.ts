@@ -96,63 +96,97 @@ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
 
 // ─── Layout base do painel ────────────────────────────────────────────────────
 function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = ""): string {
+  // ─── Ícones SVG monocromáticos para sidebar ────────────────────────────────
+  const svgIcons: Record<string, string> = {
+    dashboard: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`,
+    agenda: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+    clientes: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    "lista-espera": `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+    assinaturas: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`,
+    orbita: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(45 12 12)"/></svg>`,
+    servicos: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
+    produtos: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>`,
+    estoque: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+    encomendas: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`,
+    financeiro: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+    relatorios: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`,
+    comissoes: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>`,
+    "minhas-comissoes": `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="2"/></svg>`,
+    fidelidade: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+    avaliacoes: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+    "retorno-automatico": `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
+    promocoes: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+    "conversao-promocoes": `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`,
+    "pagina-cliente": `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+    "meu-perfil": `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+    configuracoes: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+    chat: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="14" x2="13" y2="14"/></svg>`,
+    suporte: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  };
+
   const planBadge: Record<string, { label: string; color: string; bg: string }> = {
     solo: { label: "Solo", color: "#9BA1A6", bg: "rgba(155,161,166,0.12)" },
     team: { label: "Equipe", color: "#c9a84c", bg: "rgba(201,168,76,0.12)" },
     studio: { label: "Estúdio", color: "#4ADE80", bg: "rgba(74,222,128,0.12)" },
   };
   const badge = tenantPlan ? planBadge[tenantPlan] : null;
+
+  // Iniciais do barbeiro para avatar
+  const initials = barberName
+    ? barberName.split(" ").slice(0, 2).map((w: string) => w[0]).join("").toUpperCase()
+    : "BP";
+
   const navGroups = [
     {
       label: "OPERACIONAL",
       items: [
-        { href: "/admin", icon: "⊞", label: "Dashboard", id: "dashboard" },
-        { href: "/admin/agenda", icon: "📅", label: "Agenda", id: "agenda" },
-        { href: "/admin/clientes", icon: "👥", label: "Clientes", id: "clientes" },
-        { href: "/admin/lista-espera", icon: "⏳", label: "Lista de Espera", id: "lista-espera" },
-        { href: "/admin/assinaturas", icon: "🔄", label: "Assinaturas", id: "assinaturas" },
-        { href: "/admin/orbita", icon: "📡", label: "Clientes em Órbita", id: "orbita" },
+        { href: "/admin", icon: "dashboard", label: "Dashboard", id: "dashboard" },
+        { href: "/admin/agenda", icon: "agenda", label: "Agenda", id: "agenda" },
+        { href: "/admin/clientes", icon: "clientes", label: "Clientes", id: "clientes" },
+        { href: "/admin/lista-espera", icon: "lista-espera", label: "Lista de Espera", id: "lista-espera" },
+        { href: "/admin/assinaturas", icon: "assinaturas", label: "Assinaturas", id: "assinaturas" },
+        { href: "/admin/orbita", icon: "orbita", label: "Clientes em Órbita", id: "orbita" },
       ],
     },
     {
       label: "CATÁLOGO",
       items: [
-        { href: "/admin/servicos", icon: "✂️", label: "Serviços", id: "servicos" },
-        { href: "/admin/produtos", icon: "🛍️", label: "Produtos", id: "produtos" },
-        { href: "/admin/estoque", icon: "📦", label: "Estoque", id: "estoque" },
-        { href: "/admin/encomendas", icon: "🛒", label: "Encomendas", id: "encomendas" },
+        { href: "/admin/servicos", icon: "servicos", label: "Serviços", id: "servicos" },
+        { href: "/admin/produtos", icon: "produtos", label: "Produtos", id: "produtos" },
+        { href: "/admin/estoque", icon: "estoque", label: "Estoque", id: "estoque" },
+        { href: "/admin/encomendas", icon: "encomendas", label: "Encomendas", id: "encomendas" },
       ],
     },
     {
       label: "FINANCEIRO",
       items: [
-        { href: "/admin/financeiro", icon: "💰", label: "Financeiro", id: "financeiro" },
-        { href: "/admin/relatorios", icon: "📊", label: "Relatórios", id: "relatorios" },
-        { href: "/admin/comissoes", icon: "🤝", label: "Comissões", id: "comissoes" },
-        { href: "/admin/minhas-comissoes", icon: "💵", label: "Minhas Comissões", id: "minhas-comissoes" },
+        { href: "/admin/financeiro", icon: "financeiro", label: "Financeiro", id: "financeiro" },
+        { href: "/admin/relatorios", icon: "relatorios", label: "Relatórios", id: "relatorios" },
+        { href: "/admin/comissoes", icon: "comissoes", label: "Comissões", id: "comissoes" },
+        { href: "/admin/minhas-comissoes", icon: "minhas-comissoes", label: "Minhas Comissões", id: "minhas-comissoes" },
       ],
     },
     {
       label: "MARKETING",
       items: [
-        { href: "/admin/fidelidade", icon: "⭐", label: "Fidelidade", id: "fidelidade" },
-        { href: "/admin/avaliacoes", icon: "⭐", label: "Avaliações", id: "avaliacoes" },
-        { href: "/admin/retorno-automatico", icon: "📨", label: "Retorno Automático", id: "retorno-automatico" },
-        { href: "/admin/promocoes", icon: "📣", label: "Promoções", id: "promocoes" },
-        { href: "/admin/conversao-promocoes", icon: "📈", label: "Conversão de Promoções", id: "conversao-promocoes" },
+        { href: "/admin/fidelidade", icon: "fidelidade", label: "Fidelidade", id: "fidelidade" },
+        { href: "/admin/avaliacoes", icon: "avaliacoes", label: "Avaliações", id: "avaliacoes" },
+        { href: "/admin/retorno-automatico", icon: "retorno-automatico", label: "Retorno Automático", id: "retorno-automatico" },
+        { href: "/admin/promocoes", icon: "promocoes", label: "Promoções", id: "promocoes" },
+        { href: "/admin/conversao-promocoes", icon: "conversao-promocoes", label: "Conversão de Promoções", id: "conversao-promocoes" },
       ],
     },
     {
       label: "PÁGINA DO CLIENTE",
       items: [
-        { href: "/admin/pagina-cliente", icon: "🌐", label: "Página do Cliente", id: "pagina-cliente" },
+        { href: "/admin/pagina-cliente", icon: "pagina-cliente", label: "Página do Cliente", id: "pagina-cliente" },
       ],
     },
     {
       label: "SISTEMA",
       items: [
-        { href: "/admin/meu-perfil", icon: "👤", label: "Meu Perfil", id: "meu-perfil" },
-        { href: "/admin/configuracoes", icon: "⚙️", label: "Configurações", id: "configuracoes" },
+        { href: "/admin/meu-perfil", icon: "meu-perfil", label: "Meu Perfil", id: "meu-perfil" },
+        { href: "/admin/configuracoes", icon: "configuracoes", label: "Configurações", id: "configuracoes" },
       ],
     },
   ];
@@ -163,103 +197,374 @@ function adminLayout(title: string, activePage: string, body: string, barberName
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${esc(title)} — Barber Pro Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --gold: #C9A84C;
-      --gold-dim: #C9A84C22;
-      --bg: #0C0C0C;
-      --surface: #161616;
-      --surface2: #1E1E1E;
-      --border: #2A2A2A;
-      --text: #F0EEE8;
-      --muted: #888880;
+      --gold-dim: rgba(201,168,76,0.12);
+      --gold-glow: rgba(201,168,76,0.18);
+      --bg: #080808;
+      --surface: #111111;
+      --surface2: #1A1A1A;
+      --surface3: #222222;
+      --border: #242424;
+      --border2: #2E2E2E;
+      --text: #F2F0EA;
+      --text2: #C8C4BC;
+      --muted: #7A7870;
       --success: #4ADE80;
       --warning: #FBBF24;
       --error: #F87171;
-      --sidebar-w: 220px;
+      --info: #60A5FA;
+      --sidebar-w: 240px;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-lg: 16px;
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
-
-    /* Sidebar */
-    .sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; }
-    .sidebar-logo { padding: 24px 20px 16px; border-bottom: 1px solid var(--border); }
-    .sidebar-logo-title { font-size: 18px; font-weight: 900; color: var(--gold); letter-spacing: 1px; }
-    .sidebar-logo-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
-    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 14px; color: var(--muted); text-decoration: none; border-radius: 0; transition: all 0.15s; cursor: pointer; }
-    .nav-item:hover { background: var(--surface2); color: var(--text); }
-    .nav-item.active { background: var(--gold-dim); color: var(--gold); border-right: 3px solid var(--gold); font-weight: 600; }
-    .nav-icon { font-size: 16px; width: 20px; text-align: center; }
-    .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
-    .sidebar-user { font-size: 13px; color: var(--muted); margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sidebar-logout { display: block; font-size: 12px; color: var(--error); text-decoration: none; }
-    .sidebar-logout:hover { opacity: 0.8; }
-
-    /* Main */
-    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
-    .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
-    .topbar-title { font-size: 20px; font-weight: 800; }
-    .topbar-date { font-size: 13px; color: var(--muted); }
-    .content { padding: 28px; flex: 1; }
-
-    /* Cards de métrica */
-    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
-    .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
-    .metric-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
-    .metric-value { font-size: 28px; font-weight: 900; }
-    .metric-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
-
-    /* Tabelas */
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 24px; }
-    .card-header { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    .card-title { font-size: 15px; font-weight: 700; }
-    .card-body { padding: 0; }
-    table { width: 100%; border-collapse: collapse; }
-    th { padding: 12px 16px; font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); }
-    td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: var(--surface2); }
-
-    /* Badges */
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-    .badge-success { background: #4ADE8022; color: var(--success); }
-    .badge-warning { background: #FBBF2422; color: var(--warning); }
-    .badge-error { background: #F8717122; color: var(--error); }
-    .badge-muted { background: var(--surface2); color: var(--muted); }
-    .badge-gold { background: var(--gold-dim); color: var(--gold); }
-
-    /* Botões */
-    .btn { display: inline-block; padding: 8px 18px; border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; }
-    .btn-primary { background: var(--gold); color: #0C0C0C; }
-    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-
-    /* Empty state */
-    .empty { text-align: center; padding: 48px; color: var(--muted); font-size: 14px; }
-
-    /* Formulários */
-    .form-group { margin-bottom: 18px; }
-    .form-label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.5px; }
-    .form-input { width: 100%; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; }
-    .form-input:focus { outline: none; border-color: var(--gold); }
-
-    /* Nav groups */
-    .nav-group { margin-bottom: 4px; }
-    .nav-group-label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 1.2px; padding: 12px 20px 4px; opacity: 0.6; }
-
-    /* Responsivo mobile */
-    @media (max-width: 768px) {
-      .sidebar { transform: translateX(-100%); }
-      .main { margin-left: 0; }
-    }
-    /* Tema claro */
     html[data-theme="light"] {
-      --bg: #F5F5F0;
+      --bg: #F4F3EF;
       --surface: #FFFFFF;
       --surface2: #F0EEE8;
-      --border: #E5E3DC;
-      --text: #1A1A1A;
-      --muted: #6B6B65;
+      --surface3: #E8E6E0;
+      --border: #E0DDD6;
+      --border2: #D0CCC4;
+      --text: #1A1916;
+      --text2: #4A4844;
+      --muted: #7A7870;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; bottom: 0; left: 0;
+      z-index: 200;
+      transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+    .sidebar-logo {
+      padding: 20px 18px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sidebar-logo-icon {
+      width: 32px; height: 32px;
+      background: var(--gold-dim);
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .sidebar-logo-text { flex: 1; min-width: 0; }
+    .sidebar-logo-title { font-size: 13px; font-weight: 800; color: var(--gold); letter-spacing: 1.5px; }
+    .sidebar-logo-sub { font-size: 10px; color: var(--muted); margin-top: 1px; letter-spacing: 0.3px; }
+    .sidebar-nav { flex: 1; padding: 8px 0 12px; overflow-y: auto; }
+    .nav-group { margin-bottom: 2px; }
+    .nav-group-label {
+      font-size: 9.5px; font-weight: 700; color: var(--muted);
+      letter-spacing: 1.4px; padding: 14px 18px 5px;
+      text-transform: uppercase; opacity: 0.55;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 18px; margin: 1px 8px;
+      font-size: 13px; font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      border-radius: var(--radius-sm);
+      transition: background 0.12s, color 0.12s;
+      cursor: pointer;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--text2); }
+    .nav-item.active {
+      background: var(--gold-dim);
+      color: var(--gold);
+      font-weight: 600;
+      box-shadow: inset 2px 0 0 var(--gold);
+    }
+    .nav-icon {
+      width: 16px; height: 16px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      opacity: 0.75;
+    }
+    .nav-item.active .nav-icon { opacity: 1; }
+    .nav-item:hover .nav-icon { opacity: 0.9; }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      padding: 12px 8px;
+      border-top: 1px solid var(--border);
+    }
+    .sidebar-user-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      background: var(--surface2);
+      margin-bottom: 8px;
+    }
+    .sidebar-avatar {
+      width: 32px; height: 32px;
+      background: var(--gold-dim);
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; color: var(--gold);
+      flex-shrink: 0;
+    }
+    .sidebar-user-info { flex: 1; min-width: 0; }
+    .sidebar-user-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-role { font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .sidebar-plan-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 8px; border-radius: 6px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+      margin-bottom: 8px; margin-left: 2px;
+    }
+    .sidebar-logout {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 12px; font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      transition: background 0.12s, color 0.12s;
+    }
+    .sidebar-logout:hover { background: rgba(248,113,113,0.08); color: var(--error); }
+
+    /* ── Topbar ── */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .topbar-left { display: flex; align-items: center; gap: 8px; }
+    .topbar-hamburger {
+      display: none;
+      width: 36px; height: 36px;
+      background: none; border: none;
+      color: var(--muted); cursor: pointer;
+      align-items: center; justify-content: center;
+      border-radius: var(--radius-sm);
+      transition: background 0.12s, color 0.12s;
+    }
+    .topbar-hamburger:hover { background: var(--surface2); color: var(--text); }
+    .topbar-breadcrumb { display: flex; align-items: center; gap: 6px; }
+    .topbar-breadcrumb-home { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.12s; }
+    .topbar-breadcrumb-home:hover { color: var(--text); }
+    .topbar-breadcrumb-sep { font-size: 12px; color: var(--border2); }
+    .topbar-breadcrumb-current { font-size: 13px; font-weight: 600; color: var(--text); }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .topbar-date { font-size: 12px; color: var(--muted); }
+    .topbar-avatar {
+      width: 32px; height: 32px;
+      background: var(--gold-dim);
+      border: 1.5px solid rgba(201,168,76,0.3);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; color: var(--gold);
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .topbar-avatar:hover { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
+    .topbar-plan-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px; border-radius: 6px;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.4px;
+    }
+    .content { padding: 28px; flex: 1; max-width: 1400px; }
+
+    /* ── Cards de métrica ── */
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+      cursor: default;
+    }
+    .metric-card:hover {
+      border-color: rgba(201,168,76,0.3);
+      box-shadow: 0 0 0 1px rgba(201,168,76,0.1), 0 4px 20px rgba(0,0,0,0.3);
+      transform: translateY(-1px);
+    }
+    .metric-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+    .metric-icon {
+      width: 36px; height: 36px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+    .metric-trend { font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 3px; }
+    .metric-trend.up { color: var(--success); }
+    .metric-trend.down { color: var(--error); }
+    .metric-trend.neutral { color: var(--muted); }
+    .metric-label { font-size: 11px; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 6px; font-weight: 500; }
+    .metric-value { font-size: 26px; font-weight: 900; color: var(--text); letter-spacing: -0.5px; }
+    .metric-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Tabelas ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title { font-size: 14px; font-weight: 700; color: var(--text); }
+    .card-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .card-body { padding: 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      padding: 10px 16px;
+      font-size: 10.5px; color: var(--muted);
+      letter-spacing: 0.8px; text-transform: uppercase;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      font-weight: 600;
+    }
+    td {
+      padding: 11px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+      color: var(--text2);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); color: var(--text); }
+
+    /* ── Badges ── */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-success { background: rgba(74,222,128,0.1); color: var(--success); }
+    .badge-warning { background: rgba(251,191,36,0.1); color: var(--warning); }
+    .badge-error { background: rgba(248,113,113,0.1); color: var(--error); }
+    .badge-muted { background: var(--surface2); color: var(--muted); }
+    .badge-gold { background: var(--gold-dim); color: var(--gold); }
+    .badge-info { background: rgba(96,165,250,0.1); color: var(--info); }
+
+    /* ── Botões ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600;
+      text-decoration: none; border: none; cursor: pointer;
+      transition: opacity 0.12s, transform 0.1s, box-shadow 0.12s;
+      font-family: inherit;
+    }
+    .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: var(--gold); color: #0A0A0A; box-shadow: 0 2px 8px rgba(201,168,76,0.25); }
+    .btn-primary:hover { box-shadow: 0 4px 16px rgba(201,168,76,0.35); }
+    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
+    .btn-danger { background: rgba(248,113,113,0.1); color: var(--error); border: 1px solid rgba(248,113,113,0.2); }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-icon { padding: 8px; }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; padding: 56px 24px; color: var(--muted); font-size: 14px; }
+    .empty-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
+    .empty-title { font-size: 15px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+    .empty-desc { font-size: 13px; color: var(--muted); }
+
+    /* ── Formulários ── */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.3px; }
+    .form-input {
+      width: 100%; padding: 10px 13px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text); font-size: 13px;
+      font-family: inherit;
+      transition: border-color 0.12s, box-shadow 0.12s;
+    }
+    .form-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
+    .form-input::placeholder { color: var(--muted); }
+    select.form-input { cursor: pointer; }
+    textarea.form-input { resize: vertical; min-height: 80px; }
+    .form-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    /* ── Alertas ── */
+    .alert { padding: 12px 16px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; }
+    .alert-success { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.2); color: var(--success); }
+    .alert-error { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); color: var(--error); }
+    .alert-warning { background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2); color: var(--warning); }
+    .alert-info { background: rgba(96,165,250,0.08); border: 1px solid rgba(96,165,250,0.2); color: var(--info); }
+    .alert-gold { background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.25); color: var(--gold); }
+
+    /* ── Section header ── */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .section-title { font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; }
+    .section-subtitle { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+    /* ── Overlay mobile ── */
+    .sidebar-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 150;
+      backdrop-filter: blur(2px);
+    }
+    .sidebar-overlay.active { display: block; }
+
+    /* ── Responsivo ── */
+    @media (max-width: 900px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); box-shadow: 4px 0 32px rgba(0,0,0,0.5); }
+      .main { margin-left: 0; }
+      .topbar-hamburger { display: flex; }
+      .topbar-date { display: none; }
+      .content { padding: 16px; }
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .metrics-grid { grid-template-columns: 1fr; }
+      .topbar { padding: 0 16px; }
     }
   </style>
   <script>
@@ -271,10 +576,16 @@ function adminLayout(title: string, activePage: string, body: string, barberName
   </script>
 </head>
 <body>
-  <aside class="sidebar">
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <div class="sidebar-logo-title">BARBER PRO</div>
-      <div class="sidebar-logo-sub">Painel Administrativo</div>
+      <div class="sidebar-logo-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      </div>
+      <div class="sidebar-logo-text">
+        <div class="sidebar-logo-title">BARBER PRO</div>
+        <div class="sidebar-logo-sub">Painel Administrativo</div>
+      </div>
     </div>
     <nav class="sidebar-nav">
       ${navGroups.map((group) => `
@@ -282,7 +593,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
           <div class="nav-group-label">${group.label}</div>
           ${group.items.map((n) => `
             <a href="${n.href}" class="nav-item ${activePage === n.id ? "active" : ""}">
-              <span class="nav-icon">${n.icon}</span>
+              <span class="nav-icon">${svgIcons[n.icon] ?? ""}</span>
               ${n.label}
             </a>
           `).join("")}
@@ -290,21 +601,58 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       `).join("")}
     </nav>
     <div class="sidebar-footer">
-      ${barberName ? `<div class="sidebar-user">👤 ${esc(barberName)}</div>` : ""}
-      ${badge ? `<div style="display:inline-flex;align-items:center;gap:6px;background:${badge.bg};border:1px solid ${badge.color}33;border-radius:6px;padding:4px 10px;margin-bottom:10px;font-size:11px;font-weight:700;color:${badge.color};letter-spacing:0.5px">★ Plano ${badge.label}</div>` : ""}
-      <a href="/admin/logout" class="sidebar-logout">Sair da conta</a>
+      <div class="sidebar-user-card">
+        <div class="sidebar-avatar">${initials}</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name">${esc(barberName || "Administrador")}</div>
+          <div class="sidebar-user-role">Administrador</div>
+        </div>
+      </div>
+      ${badge ? `<div class="sidebar-plan-badge" style="background:${badge.bg};border:1px solid ${badge.color}33;color:${badge.color}">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Plano ${badge.label}
+      </div>` : ""}
+      <a href="/admin/logout" class="sidebar-logout">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sair da conta
+      </a>
     </div>
   </aside>
 
   <div class="main">
     <div class="topbar">
-      <div class="topbar-title">${esc(title)}</div>
-      <div class="topbar-date">${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
+      <div class="topbar-left">
+        <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <nav class="topbar-breadcrumb">
+          <a href="/admin" class="topbar-breadcrumb-home">Início</a>
+          <span class="topbar-breadcrumb-sep">/</span>
+          <span class="topbar-breadcrumb-current">${esc(title)}</span>
+        </nav>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-date">${new Date().toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</span>
+        ${badge ? `<span class="topbar-plan-badge" style="background:${badge.bg};border:1px solid ${badge.color}33;color:${badge.color}">${badge.label}</span>` : ""}
+        <div class="topbar-avatar" title="${esc(barberName || "Administrador")}">${initials}</div>
+      </div>
     </div>
     <div class="content">
       ${body}
     </div>
   </div>
+  <script>
+    function toggleSidebar() {
+      var s = document.getElementById('sidebar');
+      var o = document.getElementById('sidebarOverlay');
+      s.classList.toggle('open');
+      o.classList.toggle('active');
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebarOverlay').classList.remove('active');
+    }
+  </script>
 </body>
 </html>`;
 }
@@ -318,64 +666,254 @@ function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login — Barber Pro Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0C0C0C; color: #F0EEE8; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-    .card { background: #161616; border: 1px solid #2A2A2A; border-radius: 20px; padding: 40px; width: 100%; max-width: 380px; }
-    .logo { font-size: 22px; font-weight: 900; color: #C9A84C; letter-spacing: 2px; text-align: center; margin-bottom: 6px; }
-    .subtitle { font-size: 13px; color: #888880; text-align: center; margin-bottom: 32px; }
-    label { display: block; font-size: 12px; color: #888880; margin-bottom: 6px; }
-    input[type=email], input[type=password] { width: 100%; padding: 12px 14px; background: #0C0C0C; border: 1px solid #2A2A2A; border-radius: 10px; color: #F0EEE8; font-size: 14px; margin-bottom: 16px; }
-    input[type=email]:focus, input[type=password]:focus { outline: none; border-color: #C9A84C; }
-    .remember-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; cursor: pointer; }
-    .remember-row input[type=checkbox] { width: 16px; height: 16px; accent-color: #C9A84C; cursor: pointer; }
-    .remember-row span { font-size: 13px; color: #888880; }
-    button.btn-primary { width: 100%; padding: 14px; background: #C9A84C; color: #0C0C0C; border: none; border-radius: 12px; font-size: 15px; font-weight: 800; cursor: pointer; margin-top: 4px; }
-    button.btn-primary:hover { opacity: 0.9; }
-    .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
-    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #2A2A2A; }
-    .divider span { font-size: 12px; color: #555550; white-space: nowrap; }
-    button.btn-google { width: 100%; padding: 13px 14px; background: #1E1E1E; color: #F0EEE8; border: 1px solid #2A2A2A; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
-    button.btn-google:hover { background: #252525; border-color: #3A3A3A; }
-    button.btn-google svg { flex-shrink: 0; }
-    .error { background: #F8717122; border: 1px solid #F8717144; color: #F87171; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
-    .info-banner { background: #C9A84C22; border: 1px solid #C9A84C44; color: #C9A84C; padding: 12px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
-    .back { display: block; text-align: center; margin-top: 20px; font-size: 12px; color: #888880; text-decoration: none; }
-    .back:hover { color: #C9A84C; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #080808;
+      color: #F2F0EA;
+      min-height: 100vh;
+      display: flex;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Split layout ── */
+    .login-left {
+      flex: 1;
+      background: #0F0F0F;
+      border-right: 1px solid #1E1E1E;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .login-left::before {
+      content: '';
+      position: absolute;
+      top: -120px; left: -120px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .login-left::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; right: -80px;
+      width: 350px; height: 350px;
+      background: radial-gradient(circle, rgba(201,168,76,0.07) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .login-brand { position: relative; z-index: 1; }
+    .login-brand-icon {
+      width: 44px; height: 44px;
+      background: rgba(201,168,76,0.12);
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+    }
+    .login-brand-name { font-size: 15px; font-weight: 800; color: #C9A84C; letter-spacing: 2px; }
+    .login-brand-tagline { font-size: 12px; color: #7A7870; margin-top: 3px; }
+    .login-hero { position: relative; z-index: 1; }
+    .login-hero-title {
+      font-size: 32px; font-weight: 900;
+      line-height: 1.2; letter-spacing: -0.5px;
+      color: #F2F0EA;
+      margin-bottom: 16px;
+    }
+    .login-hero-title span { color: #C9A84C; }
+    .login-hero-desc { font-size: 14px; color: #7A7870; line-height: 1.6; max-width: 340px; }
+    .login-testimonial {
+      position: relative; z-index: 1;
+      background: rgba(201,168,76,0.06);
+      border: 1px solid rgba(201,168,76,0.15);
+      border-radius: 14px;
+      padding: 20px 22px;
+    }
+    .login-testimonial-text { font-size: 13px; color: #C8C4BC; line-height: 1.6; font-style: italic; margin-bottom: 14px; }
+    .login-testimonial-author { display: flex; align-items: center; gap: 10px; }
+    .login-testimonial-avatar {
+      width: 32px; height: 32px;
+      background: rgba(201,168,76,0.15);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; color: #C9A84C;
+    }
+    .login-testimonial-name { font-size: 12px; font-weight: 700; color: #F2F0EA; }
+    .login-testimonial-role { font-size: 11px; color: #7A7870; }
+    .login-stats { display: flex; gap: 28px; position: relative; z-index: 1; }
+    .login-stat-value { font-size: 22px; font-weight: 900; color: #C9A84C; }
+    .login-stat-label { font-size: 11px; color: #7A7870; margin-top: 2px; }
+
+    /* ── Right panel ── */
+    .login-right {
+      width: 460px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 40px;
+      background: #080808;
+    }
+    .login-form-wrap { width: 100%; max-width: 360px; }
+    .login-form-title { font-size: 22px; font-weight: 800; color: #F2F0EA; margin-bottom: 6px; letter-spacing: -0.3px; }
+    .login-form-sub { font-size: 13px; color: #7A7870; margin-bottom: 28px; }
+    .form-label { display: block; font-size: 12px; font-weight: 500; color: #7A7870; margin-bottom: 6px; }
+    .form-input {
+      width: 100%; padding: 11px 13px;
+      background: #111111;
+      border: 1px solid #242424;
+      border-radius: 10px;
+      color: #F2F0EA; font-size: 13px;
+      font-family: inherit;
+      transition: border-color 0.12s, box-shadow 0.12s;
+      margin-bottom: 14px;
+    }
+    .form-input:focus { outline: none; border-color: #C9A84C; box-shadow: 0 0 0 3px rgba(201,168,76,0.12); }
+    .form-input::placeholder { color: #4A4844; }
+    .remember-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 18px; cursor: pointer;
+    }
+    .remember-row input[type=checkbox] { width: 15px; height: 15px; accent-color: #C9A84C; cursor: pointer; }
+    .remember-row span { font-size: 12px; color: #7A7870; }
+    .btn-login {
+      width: 100%; padding: 13px;
+      background: #C9A84C;
+      color: #080808;
+      border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 800;
+      cursor: pointer; font-family: inherit;
+      transition: opacity 0.12s, transform 0.1s, box-shadow 0.12s;
+      box-shadow: 0 2px 12px rgba(201,168,76,0.3);
+      margin-bottom: 4px;
+    }
+    .btn-login:hover { opacity: 0.9; box-shadow: 0 4px 20px rgba(201,168,76,0.4); transform: translateY(-1px); }
+    .btn-login:active { transform: translateY(0); }
+    .divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #1E1E1E; }
+    .divider span { font-size: 11px; color: #4A4844; white-space: nowrap; }
+    .btn-google {
+      width: 100%; padding: 12px 14px;
+      background: #111111; color: #F2F0EA;
+      border: 1px solid #242424; border-radius: 10px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      font-family: inherit;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .btn-google:hover { background: #1A1A1A; border-color: #2E2E2E; }
+    .btn-google svg { flex-shrink: 0; }
+    .login-links { display: flex; justify-content: space-between; margin-top: 20px; }
+    .login-link { font-size: 12px; color: #7A7870; text-decoration: none; transition: color 0.12s; }
+    .login-link:hover { color: #C9A84C; }
+    .error-box {
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.2);
+      color: #F87171;
+      padding: 10px 14px; border-radius: 8px;
+      font-size: 13px; margin-bottom: 16px;
+      display: flex; align-items: flex-start; gap: 8px;
+    }
+    .info-box {
+      background: rgba(201,168,76,0.08);
+      border: 1px solid rgba(201,168,76,0.2);
+      color: #C9A84C;
+      padding: 12px 14px; border-radius: 8px;
+      font-size: 13px; margin-bottom: 16px; line-height: 1.5;
+    }
     .loading { opacity: 0.6; pointer-events: none; }
+
+    /* ── Mobile: ocultar painel esquerdo ── */
+    @media (max-width: 800px) {
+      .login-left { display: none; }
+      .login-right { width: 100%; padding: 32px 24px; }
+    }
   </style>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
-  <div class="card">
-    <div class="logo">BARBER PRO</div>
-    <div class="subtitle">Painel Administrativo</div>
-    ${info === 'already_exists' ? `<div class="info-banner">&#128276; Este e-mail já possui uma conta no Barber Pro${infoEmail ? ` (<strong>${infoEmail}</strong>)` : ''}. Faça login abaixo para acessar seu painel.</div>` : ''}
-    ${error ? `<div class="error">${errorMsg ?? "Email ou senha incorretos."}</div>` : ""}
-    <form method="POST" action="/admin/login" id="loginForm">
-      <label>Email</label>
-      <input type="email" name="email" id="emailInput" placeholder="seu@email.com" required autofocus />
-      <label>Senha</label>
-      <input type="password" name="password" placeholder="••••••••" required />
-      <input type="hidden" name="remember" id="rememberInput" value="0" />
-      <label class="remember-row" onclick="toggleRemember()">
-        <input type="checkbox" id="rememberCheck" />
-        <span>Lembrar meu e-mail neste dispositivo</span>
-      </label>
-      <button type="submit" class="btn-primary">Entrar</button>
-    </form>
-    <div class="divider"><span>ou</span></div>
-    <button class="btn-google" id="googleBtn" onclick="startGoogleLogin()">
-      <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-      </svg>
-      Entrar com Google
-    </button>
-    <a href="/admin/forgot-password" class="back" style="margin-top:20px;color:#C9A84C">Esqueci minha senha</a>
-    <a href="/" class="back">← Voltar ao app</a>
+  <!-- Painel esquerdo: marca + depoimento -->
+  <div class="login-left">
+    <div class="login-brand">
+      <div class="login-brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+      </div>
+      <div class="login-brand-name">BARBER PRO</div>
+      <div class="login-brand-tagline">Painel Administrativo</div>
+    </div>
+
+    <div class="login-hero">
+      <div class="login-hero-title">Gerencie sua barbearia<br/>com <span>inteligência</span></div>
+      <div class="login-hero-desc">Agenda, financeiro, assinaturas e marketing em um único painel. Tudo que você precisa para crescer.</div>
+    </div>
+
+    <div>
+      <div class="login-testimonial" style="margin-bottom: 28px">
+        <div class="login-testimonial-text">&ldquo;Desde que comecei a usar o Barber Pro, minha receita mensal cresceu 40%. O sistema de assinaturas mudou tudo.&rdquo;</div>
+        <div class="login-testimonial-author">
+          <div class="login-testimonial-avatar">RS</div>
+          <div>
+            <div class="login-testimonial-name">Rafael Santos</div>
+            <div class="login-testimonial-role">Dono da Barbearia Santos, SP</div>
+          </div>
+        </div>
+      </div>
+      <div class="login-stats">
+        <div>
+          <div class="login-stat-value">+500</div>
+          <div class="login-stat-label">Barbearias ativas</div>
+        </div>
+        <div>
+          <div class="login-stat-value">R$2.4k</div>
+          <div class="login-stat-label">Média de receita extra/mês</div>
+        </div>
+        <div>
+          <div class="login-stat-value">14 dias</div>
+          <div class="login-stat-label">Grátis para testar</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Painel direito: formulário -->
+  <div class="login-right">
+    <div class="login-form-wrap">
+      <div class="login-form-title">Bem-vindo de volta</div>
+      <div class="login-form-sub">Entre com sua conta para acessar o painel</div>
+      ${info === 'already_exists' ? `<div class="info-box">&#128276; Este e-mail já possui uma conta no Barber Pro${infoEmail ? ` (<strong>${infoEmail}</strong>)` : ''}. Faça login abaixo para acessar seu painel.</div>` : ''}
+      ${error ? `<div class="error-box"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>${errorMsg ?? "Email ou senha incorretos."}</div>` : ""}
+      <form method="POST" action="/admin/login" id="loginForm">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" id="emailInput" class="form-input" placeholder="seu@email.com" required autofocus />
+        <label class="form-label">Senha</label>
+        <input type="password" name="password" class="form-input" placeholder="••••••••" required />
+        <input type="hidden" name="remember" id="rememberInput" value="0" />
+        <label class="remember-row" onclick="toggleRemember()">
+          <input type="checkbox" id="rememberCheck" />
+          <span>Lembrar meu e-mail neste dispositivo</span>
+        </label>
+        <button type="submit" class="btn-login">Entrar no Painel</button>
+      </form>
+      <div class="divider"><span>ou continue com</span></div>
+      <button class="btn-google" id="googleBtn" onclick="startGoogleLogin()">
+        <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+          <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+          <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+          <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+          <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+        </svg>
+        Entrar com Google
+      </button>
+      <div class="login-links">
+        <a href="/admin/forgot-password" class="login-link">Esqueci minha senha</a>
+        <a href="/" class="login-link">← Voltar ao app</a>
+      </div>
+    </div>
   </div>
   <script>
     // ─── Lembrar e-mail ───────────────────────────────────────────────────────
