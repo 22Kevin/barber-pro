@@ -119,8 +119,8 @@ export const appRouter = router({
         const id = await db.createBarber({ name: input.name, email: input.email, passwordHash, role: "super_admin", isActive: true });
         return { id, name: input.name, email: input.email, role: "super_admin" as const };
       }),
-    checkSetup: publicProcedure.query(async () => {
-      const allBarbers = await db.getAllBarbers();
+    checkSetup: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      const allBarbers = await db.getAllBarbers(input?.tenantId);
       return { hasAdmin: allBarbers.some((b: any) => b.role === "super_admin") };
     }),
     forgotPassword: publicProcedure
@@ -499,7 +499,7 @@ export const appRouter = router({
         return { success: true };
       }),
     getPaymentStatus: publicProcedure
-      .input(z.object({ appointmentId: z.number() }))
+      .input(z.object({ appointmentId: z.number(), tenantId: z.number().optional().nullable() }))
       .query(async ({ input }) => {
         // Busca a venda vinculada ao agendamento
         const today = new Date();
@@ -509,7 +509,9 @@ export const appRouter = router({
         endDate.setFullYear(today.getFullYear() + 1);
         const allSales = await db.getSalesByDateRange(
           startDate.toISOString().split("T")[0],
-          endDate.toISOString().split("T")[0]
+          endDate.toISOString().split("T")[0],
+          undefined,
+          input.tenantId
         );
         const sale = (allSales as any[]).find((s) => s.appointmentId === input.appointmentId) ?? null;
         if (!sale) return { paid: false, sale: null };
@@ -570,7 +572,7 @@ export const appRouter = router({
   }),
 
   sales: router({
-    byDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), barberId: z.number().optional() })).query(({ input }) => db.getSalesByDateRange(input.startDate, input.endDate, input.barberId)),
+    byDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), barberId: z.number().optional(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getSalesByDateRange(input.startDate, input.endDate, input.barberId, input.tenantId)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getSaleById(input.id)),
     create: publicProcedure
       .input(z.object({ clientId: z.number().optional().nullable(), barberId: z.number(), appointmentId: z.number().optional().nullable(), subtotal: z.string(), discount: z.string().default("0"), total: z.string(), paymentMethod: z.enum(["cash", "credit_card", "debit_card", "pix", "mercado_pago", "other"]), paymentStatus: z.enum(["pending", "paid", "cancelled", "refunded"]).default("paid"), couponCode: z.string().optional().nullable(), notes: z.string().optional().nullable(), items: z.array(z.object({ itemType: z.enum(["service", "product"]), itemId: z.number(), itemName: z.string(), quantity: z.number().min(1), unitPrice: z.string(), total: z.string() })) }))
@@ -578,7 +580,7 @@ export const appRouter = router({
   }),
 
   expenses: router({
-    byDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string() })).query(({ input }) => db.getExpensesByDateRange(input.startDate, input.endDate)),
+    byDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getExpensesByDateRange(input.startDate, input.endDate, input.tenantId)),
     create: publicProcedure
       .input(z.object({ category: z.string().min(1), description: z.string().min(1), amount: z.string(), date: z.string(), paymentMethod: z.string().optional().nullable(), barberId: z.number().optional().nullable() }))
       .mutation(({ input }) => db.createExpense(input as any)),
@@ -610,10 +612,10 @@ export const appRouter = router({
       .input(z.object({ id: z.number(), isActive: z.boolean().optional(), description: z.string().optional(), maxUses: z.number().optional().nullable(), validUntil: z.string().optional().nullable() }))
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateCoupon(id, data as any); }),
     getAvailableForClient: publicProcedure
-      .input(z.object({ clientId: z.number().optional().nullable(), orderValue: z.number() }))
+      .input(z.object({ clientId: z.number().optional().nullable(), orderValue: z.number(), tenantId: z.number().optional().nullable() }))
       .query(async ({ input }) => {
         const today = new Date().toISOString().split("T")[0];
-        const allCoupons = await db.getAllCoupons();
+        const allCoupons = await db.getAllCoupons(input.tenantId);
         const validCoupons = allCoupons.filter((c: any) => {
           if (!c.isActive) return false;
           if (c.maxUses !== null && c.usedCount >= c.maxUses) return false;
@@ -625,8 +627,8 @@ export const appRouter = router({
         let redeemableRewards: any[] = [];
         if (input.clientId) {
           const client = await db.getClientById(input.clientId);
-          const rewards = await db.getLoyaltyRewards();
-          const config = await db.getLoyaltyConfig();
+          const rewards = await db.getLoyaltyRewards(input.tenantId);
+          const config = await db.getLoyaltyConfig(input.tenantId);
           if (config?.isActive && client) {
             redeemableRewards = (rewards as any[]).filter((r: any) => r.isActive && (client.totalPoints ?? 0) >= r.pointsRequired);
           }
@@ -670,14 +672,14 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return db.getShopSettings(input.tenantId);
       }),
-    openStatus: publicProcedure.query(() => db.getShopOpenStatus()),
+    openStatus: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getShopOpenStatus(input?.tenantId)),
     update: publicProcedure
       .input(z.object({ shopName: z.string().optional(), address: z.string().optional().nullable(), phone: z.string().optional().nullable(), whatsapp: z.string().optional().nullable(), mercadoPagoAccessToken: z.string().optional().nullable(), mercadoPagoPublicKey: z.string().optional().nullable(), whatsappMessageTemplate: z.string().optional().nullable(), reminderMessageTemplate: z.string().optional().nullable(), instagram: z.string().optional().nullable(), cnpj: z.string().optional().nullable(), googleMapsUrl: z.string().optional().nullable(), pixKey: z.string().optional().nullable(), galleryUrls: z.string().optional().nullable(), cep: z.string().optional().nullable(), addressNumber: z.string().optional().nullable(), addressComplement: z.string().optional().nullable(), logoUrl: z.string().optional().nullable(), primaryColor: z.string().optional().nullable(), bannerUrl: z.string().optional().nullable(), customDomain: z.string().optional().nullable(), ga4MeasurementId: z.string().optional().nullable(), facebookPixelId: z.string().optional().nullable(), seoTitle: z.string().optional().nullable(), seoDescription: z.string().optional().nullable(), seoImageUrl: z.string().optional().nullable(), fontStyle: z.string().optional().nullable(), tenantId: z.number().optional().nullable() }))
       .mutation(({ input }) => { const { tenantId, ...data } = input; return db.upsertShopSettings(data, tenantId); }),
   }),
 
   dashboard: router({
-    stats: publicProcedure.input(z.object({ date: z.string() })).query(({ input }) => db.getDashboardStats(input.date)),
+    stats: publicProcedure.input(z.object({ date: z.string(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getDashboardStats(input.date, input.tenantId)),
   }),
 
   // ─── Área do Cliente ────────────────────────────────────────────────────────
@@ -798,7 +800,7 @@ export const appRouter = router({
         return { id: client.id, tenantId: client.tenantId, preferredTenantId: client.preferredTenantId ?? null, name: client.name, email: client.email, phone: client.phone ?? "", totalPoints: client.totalPoints, birthDate: client.birthDate, photoUrl: input.photoUrl ?? client.photoUrl };
       }),
     getBirthdayCoupon: publicProcedure
-      .input(z.object({ birthDate: z.string() }))
+      .input(z.object({ birthDate: z.string(), tenantId: z.number().optional().nullable() }))
       .query(async ({ input }) => {
         // Verifica se o mês de nascimento é o mês atual
         if (!input.birthDate) return null;
@@ -806,7 +808,7 @@ export const appRouter = router({
         const currentMonth = new Date().getMonth() + 1;
         if (birthMonth !== currentMonth) return null;
         // Busca cupão de aniversário ativo (código começa com ANIV)
-        const allCoupons = await db.getAllCoupons();
+        const allCoupons = await db.getAllCoupons(input.tenantId);
         const birthdayCoupon = allCoupons.find((c: any) => c.isActive && c.code.startsWith("ANIV"));
         return birthdayCoupon ?? null;
       }),
@@ -1101,7 +1103,8 @@ export const appRouter = router({
       }),
 
     pendingList: publicProcedure
-      .query(async () => {
+      .input(z.object({ tenantId: z.number().optional().nullable() }).optional())
+      .query(async ({ input }) => {
         const today = new Date();
         const startDate = new Date(today);
         startDate.setDate(today.getDate() - 30);
@@ -1109,7 +1112,9 @@ export const appRouter = router({
         endDate.setDate(today.getDate() + 30);
         const allSales = await db.getSalesByDateRange(
           startDate.toISOString().split("T")[0],
-          endDate.toISOString().split("T")[0]
+          endDate.toISOString().split("T")[0],
+          undefined,
+          input?.tenantId
         );
         return (allSales as any[]).filter((s) =>
           s.paymentStatus === "pending" && s.paymentMethod === "mercado_pago"
@@ -1117,7 +1122,7 @@ export const appRouter = router({
       }),
 
     getSaleByAppointment: publicProcedure
-      .input(z.object({ appointmentId: z.number() }))
+      .input(z.object({ appointmentId: z.number(), tenantId: z.number().optional().nullable() }))
       .query(async ({ input }) => {
         const today = new Date();
         const startDate = new Date(today);
@@ -1126,7 +1131,9 @@ export const appRouter = router({
         endDate.setFullYear(today.getFullYear() + 1);
         const allSales = await db.getSalesByDateRange(
           startDate.toISOString().split("T")[0],
-          endDate.toISOString().split("T")[0]
+          endDate.toISOString().split("T")[0],
+          undefined,
+          input.tenantId
         );
         return (allSales as any[]).find((s) => s.appointmentId === input.appointmentId) ?? null;
       }),
@@ -1264,7 +1271,7 @@ export const appRouter = router({
   exportPdf: publicProcedure
     .input(z.object({ startDate: z.string(), endDate: z.string(), period: z.string().optional(), tenantId: z.number() }))
     .mutation(async ({ input }) => {
-      const settings = await db.getShopSettings().catch(() => null) as any;
+      const settings = await db.getShopSettings(input.tenantId).catch(() => null) as any;
       const shopName = settings?.shopName || "Barber Pro";
       const shopCnpj = settings?.cnpj || "";
       const shopAddress = settings?.address || "";
@@ -1461,7 +1468,7 @@ export const appRouter = router({
   exportOrdersPdf: publicProcedure
     .input(z.object({ tenantId: z.number(), startDate: z.string(), endDate: z.string() }))
     .mutation(async ({ input }) => {
-      const settings = await db.getShopSettings().catch(() => null) as any;
+      const settings = await db.getShopSettings(input.tenantId).catch(() => null) as any;
       const shopName = settings?.shopName || "Barber Pro";
       const orders = await db.getProductOrdersByTenant(input.tenantId);
       const filtered = (orders as any[]).filter((o) => {
@@ -1778,9 +1785,9 @@ export const appRouter = router({
   // ─── Lista de Espera ──────────────────────────────────────────────────────────
   waitlist: router({
     listByDate: publicProcedure
-      .input(z.object({ date: z.string() }))
+      .input(z.object({ date: z.string(), tenantId: z.number().optional().nullable() }))
       .query(async ({ input }) => {
-        return db.listWaitlistByDate(input.date);
+        return db.listWaitlistByDate(input.date, input.tenantId);
       }),
     join: publicProcedure
       .input(z.object({
@@ -1882,8 +1889,8 @@ export const appRouter = router({
   }),
 
   promotionConversion: router({
-    report: publicProcedure.query(async () => {
-      return db.getPromotionConversionReport();
+    report: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      return db.getPromotionConversionReport(input?.tenantId);
     }),
   }),
 

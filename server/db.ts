@@ -318,20 +318,26 @@ export async function createCategory(name: string, type: "service" | "product") 
 
 // ─── Serviços ─────────────────────────────────────────────────────────────────
 export async function getAllServices(activeOnly = false, tenantId?: number | null) {
-  return runWithTenant(tenantId, (db) => {
-    const conditions = [];
+  const db = await getDb();
+  if (!db) return [] as typeof services.$inferSelect[];
+  try {
+    const conditions: any[] = [];
     if (activeOnly) conditions.push(eq(services.isActive, true));
+    if (tenantId != null) conditions.push(eq(services.tenantId, tenantId));
     const where = conditions.length > 0 ? and(...conditions) : undefined;
     return where
-      ? db.select().from(services).where(where).orderBy(services.name)
-      : db.select().from(services).orderBy(services.name);
-  }).catch(() => [] as typeof services.$inferSelect[]);
+      ? await db.select().from(services).where(where).orderBy(services.name)
+      : await db.select().from(services).orderBy(services.name);
+  } catch { return [] as typeof services.$inferSelect[]; }
 }
 
 export async function getAllServicesWithMedia(activeOnly = false, tenantId?: number | null) {
-  return runWithTenant(tenantId, async (db) => {
-    const conditions = [];
+  const db = await getDb();
+  if (!db) return [] as (typeof services.$inferSelect & { thumbnailUrl: string | null })[];
+  try {
+    const conditions: any[] = [];
     if (activeOnly) conditions.push(eq(services.isActive, true));
+    if (tenantId != null) conditions.push(eq(services.tenantId, tenantId));
     const where = conditions.length > 0 ? and(...conditions) : undefined;
     const svcs = where
       ? await db.select().from(services).where(where).orderBy(services.name)
@@ -345,7 +351,7 @@ export async function getAllServicesWithMedia(activeOnly = false, tenantId?: num
       ...s,
       thumbnailUrl: media.find((m) => m.entityId === s.id)?.url ?? null,
     }));
-  }).catch(() => [] as (typeof services.$inferSelect & { thumbnailUrl: string | null })[]);
+  } catch { return [] as (typeof services.$inferSelect & { thumbnailUrl: string | null })[]; }
 }
 export async function getServiceById(id: number) {
   const db = await getDb();
@@ -375,9 +381,12 @@ export async function deleteService(id: number) {
 
 // ─── Produtos ─────────────────────────────────────────────────────────────────
 export async function getAllProductsWithMedia(activeOnly = false, tenantId?: number | null) {
-  return runWithTenant(tenantId, async (db) => {
-    const conditions = [];
+  const db = await getDb();
+  if (!db) return [] as (typeof products.$inferSelect & { thumbnailUrl: string | null; avgRating: number | null; reviewCount: number })[];
+  try {
+    const conditions: any[] = [];
     if (activeOnly) conditions.push(eq(products.isActive, true));
+    if (tenantId != null) conditions.push(eq(products.tenantId, tenantId));
     const where = conditions.length > 0 ? and(...conditions) : undefined;
     const prods = where
       ? await db.select().from(products).where(where).orderBy(products.name)
@@ -401,17 +410,20 @@ export async function getAllProductsWithMedia(activeOnly = false, tenantId?: num
         reviewCount: pReviews.length,
       };
     });
-  }).catch(() => [] as (typeof products.$inferSelect & { thumbnailUrl: string | null; avgRating: number | null; reviewCount: number })[]);
+  } catch { return [] as (typeof products.$inferSelect & { thumbnailUrl: string | null; avgRating: number | null; reviewCount: number })[]; }
 }
 export async function getAllProducts(activeOnly = false, tenantId?: number | null) {
-  return runWithTenant(tenantId, (db) => {
-    const conditions = [];
+  const db = await getDb();
+  if (!db) return [] as typeof products.$inferSelect[];
+  try {
+    const conditions: any[] = [];
     if (activeOnly) conditions.push(eq(products.isActive, true));
+    if (tenantId != null) conditions.push(eq(products.tenantId, tenantId));
     const where = conditions.length > 0 ? and(...conditions) : undefined;
     return where
       ? db.select().from(products).where(where).orderBy(products.name)
       : db.select().from(products).orderBy(products.name);
-  }).catch(() => [] as typeof products.$inferSelect[]);
+  } catch { return [] as typeof products.$inferSelect[]; }
 }
 
 export async function getProductById(id: number) {
@@ -463,7 +475,7 @@ export async function getWorkingHours(barberId: number) {
   return db.select().from(workingHours).where(eq(workingHours.barberId, barberId)).orderBy(workingHours.dayOfWeek);
 }
 
-export async function getShopOpenStatus() {
+export async function getShopOpenStatus(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return { isOpen: false, opensAt: null, closesAt: null, lunchStart: null, lunchEnd: null };
   // Usa o fuso de Brasília (UTC-3)
@@ -471,11 +483,20 @@ export async function getShopOpenStatus() {
   const dayOfWeek = nowBrasilia.getUTCDay();
   const currentMinute = nowBrasilia.getUTCHours() * 60 + nowBrasilia.getUTCMinutes();
   const toMinutes = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
-  // Busca todos os horários de trabalho do dia atual de todos os barbeiros ativos
+  // Busca barbeiros do tenant para filtrar working_hours
+  let barberIds: number[] = [];
+  if (tenantId != null) {
+    const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(and(eq(barbers.tenantId, tenantId), eq(barbers.isActive, true)));
+    barberIds = tenantBarbers.map(b => b.id);
+    if (barberIds.length === 0) return { isOpen: false, opensAt: null, closesAt: null, lunchStart: null, lunchEnd: null };
+  }
+  // Busca todos os horários de trabalho do dia atual dos barbeiros do tenant
+  const whConditions: any[] = [eq(workingHours.dayOfWeek, dayOfWeek), eq(workingHours.isWorking, true)];
+  if (barberIds.length > 0) whConditions.push(inArray(workingHours.barberId, barberIds));
   const allHours = await db
     .select({ startTime: workingHours.startTime, endTime: workingHours.endTime, lunchStart: workingHours.lunchStart, lunchEnd: workingHours.lunchEnd })
     .from(workingHours)
-    .where(and(eq(workingHours.dayOfWeek, dayOfWeek), eq(workingHours.isWorking, true)));
+    .where(and(...whConditions));
   if (!allHours.length) return { isOpen: false, opensAt: null, closesAt: null, lunchStart: null, lunchEnd: null };
   // Horário mais cedo de abertura e mais tarde de fechamento
   const earliestStart = allHours.reduce((min, h) => toMinutes(h.startTime) < toMinutes(min) ? h.startTime : min, allHours[0].startTime);
@@ -825,9 +846,15 @@ export async function deleteExpense(id: number) {
 
 // ─── Cupons ───────────────────────────────────────────────────────────────────
 export async function getAllCoupons(tenantId?: number | null) {
-  return runWithTenant(tenantId, (db) =>
-    db.select().from(coupons).orderBy(desc(coupons.createdAt))
-  ).catch(() => [] as typeof coupons.$inferSelect[]);
+  const db = await getDb();
+  if (!db) return [] as typeof coupons.$inferSelect[];
+  try {
+    const conditions: any[] = [];
+    if (tenantId != null) conditions.push(eq(coupons.tenantId, tenantId));
+    return conditions.length > 0
+      ? await db.select().from(coupons).where(and(...conditions)).orderBy(desc(coupons.createdAt))
+      : await db.select().from(coupons).orderBy(desc(coupons.createdAt));
+  } catch { return [] as typeof coupons.$inferSelect[]; }
 }
 
 export async function getCouponByCode(code: string) {
@@ -852,10 +879,14 @@ export async function updateCoupon(id: number, data: Partial<typeof coupons.$inf
 
 // ─── Fidelidade ───────────────────────────────────────────────────────────────
 export async function getLoyaltyConfig(tenantId?: number | null) {
-  return runWithTenant(tenantId, async (db) => {
-    const result = await db.select().from(loyaltyConfig).limit(1);
+  const db = await getDb();
+  if (!db) return null;
+  try {
+    const result = tenantId != null
+      ? await db.select().from(loyaltyConfig).where(eq(loyaltyConfig.tenantId, tenantId)).limit(1)
+      : await db.select().from(loyaltyConfig).limit(1);
     return result[0] ?? null;
-  }).catch(() => null);
+  } catch { return null; }
 }
 
 export async function upsertLoyaltyConfig(data: { isActive: boolean; pointsPerService: number; pointsPerReal: string; pointsExpireMonths: number; tenantId?: number | null }) {
@@ -870,9 +901,13 @@ export async function upsertLoyaltyConfig(data: { isActive: boolean; pointsPerSe
 }
 
 export async function getLoyaltyRewards(tenantId?: number | null) {
-  return runWithTenant(tenantId, (db) =>
-    db.select().from(loyaltyRewards).where(eq(loyaltyRewards.isActive, true)).orderBy(loyaltyRewards.pointsRequired)
-  ).catch(() => [] as typeof loyaltyRewards.$inferSelect[]);
+  const db = await getDb();
+  if (!db) return [] as typeof loyaltyRewards.$inferSelect[];
+  try {
+    const conditions: any[] = [eq(loyaltyRewards.isActive, true)];
+    if (tenantId != null) conditions.push(eq(loyaltyRewards.tenantId, tenantId));
+    return await db.select().from(loyaltyRewards).where(and(...conditions)).orderBy(loyaltyRewards.pointsRequired);
+  } catch { return [] as typeof loyaltyRewards.$inferSelect[]; }
 }
 
 export async function createLoyaltyReward(data: { name: string; description?: string; pointsRequired: number; rewardType: "free_service" | "discount_percent" | "discount_fixed" | "free_product"; rewardValue?: string; tenantId?: number | null }) {
@@ -898,22 +933,25 @@ export async function addClientPoints(clientId: number, points: number, type: "e
 
 // ─── Configurações da Barbearia ───────────────────────────────────────────────
 export async function getShopSettings(tenantId?: number | null) {
-  return runWithTenant(tenantId, async (db) => {
-    const result = await db.select().from(shopSettings).limit(1);
+  const db = await getDb();
+  if (!db) return null;
+  try {
+    const result = tenantId != null
+      ? await db.select().from(shopSettings).where(eq(shopSettings.tenantId, tenantId)).limit(1)
+      : await db.select().from(shopSettings).limit(1);
     return result[0] ?? null;
-  }).catch(() => null);
+  } catch { return null; }
 }
 export async function upsertShopSettings(data: Partial<typeof shopSettings.$inferInsert>, tenantId?: number | null) {
-  return runWithTenant(tenantId, async (db) => {
-    const existing = await getShopSettings(tenantId);
-    if (existing) {
-      await db.update(shopSettings).set(data).where(eq(shopSettings.id, existing.id));
-    } else {
-      await db.insert(shopSettings).values({ shopName: "Barber Pro", ...data, ...(tenantId != null ? { tenantId } : {}) }).$returningId();
-    }
-  });
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await getShopSettings(tenantId);
+  if (existing) {
+    await db.update(shopSettings).set(data).where(eq(shopSettings.id, existing.id));
+  } else {
+    await db.insert(shopSettings).values({ shopName: "Barber Pro", ...data, ...(tenantId != null ? { tenantId } : {}) }).$returningId();
+  }
 }
-
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export async function getDashboardStats(date: string, tenantId?: number | null) {
   const db = await getDb();
@@ -1010,7 +1048,9 @@ export async function getReviewsByClient(clientId: number, tenantId?: number | n
   return db.select().from(reviews).where(and(...conditions)).orderBy(desc(reviews.createdAt));
 }
 export async function getRecentReviews(limit = 5, tenantId?: number | null) {
-  return runWithTenant(tenantId, async (db) => {
+  const db = await getDb();
+  if (!db) return [];
+  try {
     const result = await db
       .select({
         id: reviews.id,
@@ -1036,7 +1076,7 @@ export async function getRecentReviews(limit = 5, tenantId?: number | null) {
       clientName: clientMap[r.clientId] ?? "Cliente",
       serviceName: r.serviceId != null ? (serviceMap[r.serviceId] ?? "Serviço") : "Produto",
     }));
-  }).catch(() => [] as { id: number; rating: number; comment: string | null; createdAt: Date; clientId: number; serviceId: number | null; clientName: string; serviceName: string }[]);
+  } catch { return [] as { id: number; rating: number; comment: string | null; createdAt: Date; clientId: number; serviceId: number | null; clientName: string; serviceName: string }[]; }
 }
 
 export async function createReview(data: { tenantId: number; clientId: number; serviceId?: number | null; appointmentId?: number | null; productId?: number | null; orderId?: number | null; rating: number; comment?: string }) {
@@ -1168,13 +1208,19 @@ export async function getAllServicesWithMediaAndRatings(activeOnly = false, tena
 // ─── Mensagens de Retorno Automáticas ────────────────────────────────────────
 
 export async function listReturnMessageConfigs(tenantId?: number | null) {
-  return runWithTenant(tenantId, async (db) => {
-    // With RLS active, services table is already filtered by tenant
-    const tenantServices = await db.select({ id: services.id }).from(services);
+  const db = await getDb();
+  if (!db) return [] as typeof returnMessageConfigs.$inferSelect[];
+  try {
+    // Filter services by tenantId to get only this tenant's services
+    const svcConditions: any[] = [];
+    if (tenantId != null) svcConditions.push(eq(services.tenantId, tenantId));
+    const tenantServices = svcConditions.length > 0
+      ? await db.select({ id: services.id }).from(services).where(and(...svcConditions))
+      : await db.select({ id: services.id }).from(services);
     const serviceIds = tenantServices.map((s) => s.id);
     if (serviceIds.length === 0) return [] as typeof returnMessageConfigs.$inferSelect[];
-    return db.select().from(returnMessageConfigs).where(inArray(returnMessageConfigs.serviceId, serviceIds)).orderBy(returnMessageConfigs.serviceId);
-  }).catch(() => [] as typeof returnMessageConfigs.$inferSelect[]);
+    return await db.select().from(returnMessageConfigs).where(inArray(returnMessageConfigs.serviceId, serviceIds)).orderBy(returnMessageConfigs.serviceId);
+  } catch { return [] as typeof returnMessageConfigs.$inferSelect[]; }
 }
 
 export async function upsertReturnMessageConfig(input: {
@@ -1208,9 +1254,15 @@ export async function deleteReturnMessageConfig(serviceId: number) {
 // ─── Promoções e Notícias ─────────────────────────────────────────────────────
 
 export async function listPromotions(tenantId?: number | null) {
-  return runWithTenant(tenantId, (db) =>
-    db.select().from(promotions).orderBy(desc(promotions.createdAt))
-  ).catch(() => [] as typeof promotions.$inferSelect[]);
+  const db = await getDb();
+  if (!db) return [] as typeof promotions.$inferSelect[];
+  try {
+    const conditions: any[] = [];
+    if (tenantId != null) conditions.push(eq(promotions.tenantId, tenantId));
+    return conditions.length > 0
+      ? await db.select().from(promotions).where(and(...conditions)).orderBy(desc(promotions.createdAt))
+      : await db.select().from(promotions).orderBy(desc(promotions.createdAt));
+  } catch { return [] as typeof promotions.$inferSelect[]; }
 }
 
 export async function getPromotionRecipientCount(
@@ -1272,7 +1324,7 @@ export async function createPromotion(input: {
 
 // ─── Lista de Espera ──────────────────────────────────────────────────────────
 
-export async function listWaitlistByDate(date: string) {
+export async function listWaitlistByDate(date: string, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
   const entries = await db.select().from(waitlist)
@@ -1280,11 +1332,18 @@ export async function listWaitlistByDate(date: string) {
     .orderBy(waitlist.createdAt);
   if (entries.length === 0) return [];
   const clientIds = Array.from(new Set(entries.map((e) => e.clientId)));
-  const clientList = await db.select().from(clients).where(inArray(clients.id, clientIds));
-  return entries.map((e) => ({
-    ...e,
-    client: clientList.find((c) => c.id === e.clientId) ?? null,
-  }));
+  // Filtrar apenas clientes do tenant
+  const clientConditions: any[] = [inArray(clients.id, clientIds)];
+  if (tenantId != null) clientConditions.push(eq(clients.tenantId, tenantId));
+  const clientList = await db.select().from(clients).where(and(...clientConditions));
+  // Retornar apenas entradas de clientes do tenant
+  const validClientIds = new Set(clientList.map(c => c.id));
+  return entries
+    .filter(e => validClientIds.has(e.clientId))
+    .map((e) => ({
+      ...e,
+      client: clientList.find((c) => c.id === e.clientId) ?? null,
+    }));
 }
 
 export async function joinWaitlist(input: {
@@ -1327,14 +1386,22 @@ export async function getWaitlistEntry(clientId: number, date: string) {
   return entry ?? null;
 }
 
-export async function notifyWaitlistOnCancellation(date: string) {
+export async function notifyWaitlistOnCancellation(date: string, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return null;
-  const [first] = await db.select().from(waitlist)
+  // Filtrar waitlist por clientes do tenant
+  let validClientIds: Set<number> | null = null;
+  if (tenantId != null) {
+    const tenantClients = await db.select({ id: clients.id }).from(clients).where(eq(clients.tenantId, tenantId));
+    validClientIds = new Set(tenantClients.map(c => c.id));
+  }
+  const allWaiting = await db.select().from(waitlist)
     .where(and(eq(waitlist.date, date), eq(waitlist.status, "waiting")))
-    .orderBy(waitlist.createdAt)
-    .limit(1);
+    .orderBy(waitlist.createdAt);
+  const filtered = validClientIds ? allWaiting.filter(w => validClientIds!.has(w.clientId)) : allWaiting;
+  const first = filtered[0];
   if (!first) return null;
+  // Original: update first entry
   await db.update(waitlist)
     .set({ status: "notified", notifiedAt: new Date() })
     .where(eq(waitlist.id, first.id));
@@ -1574,9 +1641,15 @@ export async function cancelRecurring(id: number) {
 }
 
 export async function getAllRecurringAppointments(tenantId?: number | null) {
-  return runWithTenant(tenantId, async (db) => {
-    // With RLS active, barbers table is already filtered by tenant
-    const tenantBarbers = await db.select({ id: barbers.id }).from(barbers);
+  const db = await getDb();
+  if (!db) return [] as (typeof recurringAppointments.$inferSelect & { clientName: string; barberName: string; serviceName: string })[];
+  try {
+    // Filter barbers by tenantId
+    const bConditions: any[] = [];
+    if (tenantId != null) bConditions.push(eq(barbers.tenantId, tenantId));
+    const tenantBarbers = bConditions.length > 0
+      ? await db.select({ id: barbers.id }).from(barbers).where(and(...bConditions))
+      : await db.select({ id: barbers.id }).from(barbers);
     const barberIds = tenantBarbers.map((b) => b.id);
     if (barberIds.length === 0) return [] as (typeof recurringAppointments.$inferSelect & { clientName: string; barberName: string; serviceName: string })[];
     const [list, clientList, barberList, svcList] = await Promise.all([
@@ -1591,7 +1664,7 @@ export async function getAllRecurringAppointments(tenantId?: number | null) {
       barberName: barberList.find((b) => b.id === r.barberId)?.name ?? "—",
       serviceName: svcList.find((s) => s.id === r.serviceId)?.name ?? "—",
     }));
-  }).catch(() => [] as (typeof recurringAppointments.$inferSelect & { clientName: string; barberName: string; serviceName: string })[]);
+  } catch { return [] as (typeof recurringAppointments.$inferSelect & { clientName: string; barberName: string; serviceName: string })[]; }
 }
 
 // ─── Conversão de Promoções ───────────────────────────────────────────────────
@@ -1630,8 +1703,12 @@ export async function getPromotionConversionReport(tenantId?: number | null) {
 
 // ─── Controle de Estoque ──────────────────────────────────────────────────────
 export async function getStockProducts(tenantId?: number | null) {
-  return runWithTenant(tenantId, async (db) => {
-    const prods = await db.select().from(products).where(eq(products.isActive, true)).orderBy(products.name);
+  const db = await getDb();
+  if (!db) return [];
+  try {
+    const conditions: any[] = [eq(products.isActive, true)];
+    if (tenantId != null) conditions.push(eq(products.tenantId, tenantId));
+    const prods = await db.select().from(products).where(and(...conditions)).orderBy(products.name);
     return prods.map((p) => ({
       ...p,
       price: parseFloat(p.price as any),
@@ -1639,7 +1716,7 @@ export async function getStockProducts(tenantId?: number | null) {
       minStockAlert: p.minStockAlert ?? 5,
       isLowStock: (p.stockQuantity ?? 0) <= (p.minStockAlert ?? 5),
     }));
-  }).catch(() => [] as (typeof products.$inferSelect & { price: number; stockQuantity: number; minStockAlert: number; isLowStock: boolean })[]);
+  } catch { return [] as (typeof products.$inferSelect & { price: number; stockQuantity: number; minStockAlert: number; isLowStock: boolean })[]; }
 }
 
 export async function addStockMovement(data: {

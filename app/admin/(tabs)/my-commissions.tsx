@@ -36,8 +36,9 @@ export default function MyCommissionsScreen() {
   const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
   const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${lastDay}`;
 
+  const tenantId = barber?.tenantId ?? undefined;
   const summaryQuery = trpc.commissions.summary.useQuery(
-    { startDate, endDate },
+    { startDate, endDate, tenantId },
     { enabled: !!barber }
   );
 

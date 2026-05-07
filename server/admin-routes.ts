@@ -2563,7 +2563,7 @@ async function renderFinanceiro(req: Request, res: Response) {
 async function renderConfiguracoes(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
-  const settings = await db.getShopSettings();
+  const settings = await db.getShopSettings(barber?.tenantId);
   const saved = req.query.saved === "1";
   const slugSaved = req.query.slugsaved === "1";
   const slugError = req.query.slugerror as string | undefined;
@@ -4187,15 +4187,18 @@ export function registerAdminRoutes(app: Express): void {
 
   // POST /admin/configuracoes (salvar)
   app.post("/admin/configuracoes", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
     const tab = (req.query.tab as string) ?? "dados";
     const body = req.body ?? {};
     if (tab === "visual") {
       const { primaryColor, bannerUrl, logoUrl, galleryUrls } = body;
-      await db.upsertShopSettings({ primaryColor, bannerUrl, logoUrl, galleryUrls });
+      await db.upsertShopSettings({ primaryColor, bannerUrl, logoUrl, galleryUrls }, tenantId);
     } else {
       // tab === "dados" (padrão)
       const { shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl, pixKey } = body;
-      await db.upsertShopSettings({ shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl, pixKey });
+      await db.upsertShopSettings({ shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl, pixKey }, tenantId);
     }
     res.redirect(`/admin/configuracoes?tab=${tab}&saved=1`);
   });
@@ -4239,6 +4242,9 @@ export function registerAdminRoutes(app: Express): void {
   // POST /admin/configuracoes/equipe/novo (criar novo profissional)
   app.post("/admin/configuracoes/equipe/novo", requireAdminAuth, async (req: Request, res: Response) => {
     try {
+      const session = (req as any).adminSession;
+      const currentBarber = await db.getBarberById(session.barberId);
+      const tenantId = currentBarber?.tenantId ?? null;
       const { name, email, password, phone } = req.body ?? {};
       if (!name || !email || !password) {
         res.redirect("/admin/configuracoes?tab=equipe&novo=1&error=Preencha+todos+os+campos"); return;
@@ -4247,7 +4253,7 @@ export function registerAdminRoutes(app: Express): void {
         res.redirect("/admin/configuracoes?tab=equipe&novo=1&error=Senha+deve+ter+m%C3%ADnimo+6+caracteres"); return;
       }
       const passwordHash = await bcrypt.hash(password, 10);
-      await db.createBarber({ name, email, phone: phone || null, passwordHash, role: "barber", isActive: true });
+      await db.createBarber({ name, email, phone: phone || null, passwordHash, role: "barber", isActive: true, tenantId });
       res.redirect("/admin/configuracoes?tab=equipe&saved=1");
     } catch (e: any) {
       const msg = e.message?.includes("Duplicate") ? "E-mail+j%C3%A1+cadastrado" : encodeURIComponent(e.message);
@@ -4683,10 +4689,11 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/fidelidade", requireAdminAuth, async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
     const activeTab = (req.query.tab as string) || "programa";
+    const tenantId = barber?.tenantId ?? null;
     const [config, rewards, allCoupons] = await Promise.all([
-      db.getLoyaltyConfig(),
-      db.getLoyaltyRewards(),
-      db.getAllCoupons(),
+      db.getLoyaltyConfig(tenantId),
+      db.getLoyaltyRewards(tenantId),
+      db.getAllCoupons(tenantId),
     ]);
     const saved = req.query.saved === "1";
     const rewardTypes: Record<string, string> = {
@@ -5128,7 +5135,7 @@ export function registerAdminRoutes(app: Express): void {
       const r = monthRange(); start = r.start; end = r.end;
     }
 
-    const summaryAll = await db.getCommissionSummary(start, end);
+    const summaryAll = await db.getCommissionSummary(start, end, barber?.tenantId);
     const summary = filterBarberId ? summaryAll.filter((s: any) => s.barberId === filterBarberId) : summaryAll;
     const totalCommission = summary.reduce((s: number, b: any) => s + b.totalCommission, 0);
     const totalGross = summary.reduce((s: number, b: any) => s + b.totalGross, 0);
@@ -5235,7 +5242,7 @@ export function registerAdminRoutes(app: Express): void {
     const barber = await db.getBarberById(session.barberId);
     const dateParam = (req.query.date as string) || today();
     const tenantId = barber?.tenantId ?? null;
-    const entries = await db.listWaitlistByDate(dateParam);
+    const entries = await db.listWaitlistByDate(dateParam, barber?.tenantId);
     const allClients = await db.getAllClients(tenantId);
     const allBarbers = await db.getAllBarbers(tenantId);
     const allServices = await db.getAllServices(true, tenantId);
@@ -7123,7 +7130,7 @@ export function registerAdminRoutes(app: Express): void {
     const session = (req as any).adminSession as { barberId: number; role: string };
     const barber = await db.getBarberById(session.barberId);
     const { start, end } = monthRange();
-    const allSummary = await db.getCommissionSummary(start, end);
+    const allSummary = await db.getCommissionSummary(start, end, barber?.tenantId);
     const myData = allSummary.find((s) => s.barberId === session.barberId);
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
     const body = `

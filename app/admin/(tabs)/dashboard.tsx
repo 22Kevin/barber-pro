@@ -48,10 +48,10 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const tenantId = barber?.tenantId ?? undefined;
-  const statsQuery = trpc.dashboard.stats.useQuery({ date: today });
+  const statsQuery = trpc.dashboard.stats.useQuery({ date: today, tenantId });
   const appointmentsQuery = trpc.appointments.allByDate.useQuery({ date: today, tenantId });
   const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
-  const pendingPaymentsQuery = trpc.payments.pendingList.useQuery();
+  const pendingPaymentsQuery = trpc.payments.pendingList.useQuery({ tenantId });
   const lowStockQuery = trpc.stock.lowStock.useQuery(
     { tenantId: tenantId ?? undefined },
     { enabled: !!tenantId, staleTime: 5 * 60 * 1000 }

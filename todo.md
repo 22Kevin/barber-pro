@@ -1902,3 +1902,13 @@
 - [x] Corrigir listCommissionEntries para filtrar entradas por barbeiros do tenant
 - [x] Corrigir payment-status-modal.tsx para usar padrão tRPC v11 (callbacks no mutate)
 - [x] Corrigir media-uploader.tsx para usar padrão tRPC v11 (callbacks no mutate)
+
+## Auditoria Completa Multi-Tenancy — App + Web (Mai/2026)
+
+- [x] Auditar todas as funções do db.ts que não filtram por tenantId
+- [x] Corrigir todas as funções do db.ts com vazamento de dados (getAllBarbers, getAllClients, getAllServices, getAllProducts, getShopSettings, getLoyaltyConfig, getLoyaltyRewards, getAllCoupons, listCommissionConfigs, getCommissionSummary, listCommissionEntries, getDashboardStats, getSalesByDateRange, getExpensesByDateRange)
+- [x] Auditar e corrigir o painel web (admin-routes Express) para filtrar por tenantId em todas as rotas (upsertShopSettings, createBarber com tenantId do admin logado)
+- [x] Auditar e corrigir os routers tRPC do app para filtrar por tenantId em todos os endpoints (dashboard.stats, payments.pendingList, commissions.summary, getBirthdayCoupon)
+- [x] Corrigir telas do mobile app para passar tenantId (dashboard.tsx, my-commissions.tsx)
+- [x] Garantir sincronia perfeita entre app e web (mesmos dados, mesmo tenantId)
+- [x] Verificar TypeScript e testar endpoints críticos (0 erros, isolamento confirmado via curl)
