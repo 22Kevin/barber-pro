@@ -1124,7 +1124,7 @@ async function renderAgenda(req: Request, res: Response) {
   const prevMonthStr = prevMonthDate.toISOString().split("T")[0].substring(0, 7) + "-01";
   const nextMonthStr = nextMonthDate.toISOString().split("T")[0].substring(0, 7) + "-01";
   const calendarHtml = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:20px;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;width:280px;flex-shrink:0;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <a href="/admin/agenda?date=${prevMonthStr}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;color:var(--primary);padding:6px;border-radius:8px;display:flex;align-items:center;" title="Mês anterior">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -1254,11 +1254,62 @@ async function renderAgenda(req: Request, res: Response) {
   `;
 
   const body = `
-    ${calendarHtml}
-    ${navHtml}
-    ${filtersHtml}
-    <div class="card">
-      <div class="card-body">
+    <!-- Header da Agenda -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap;">
+      <div>
+        <h1 style="font-size:22px;font-weight:800;color:var(--foreground);margin:0;">${fmtDate(dateStr)}</h1>
+        <p style="font-size:13px;color:var(--muted);margin:4px 0 0;">${appointments.length} agendamento(s)${filterSearch || filterBarberId ? " — filtrado" : ""}</p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button onclick="document.getElementById('planModal').style.display='flex'" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border:1.5px solid var(--primary);background:transparent;color:var(--primary);border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(201,168,76,0.1)'" onmouseout="this.style.background='transparent'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Plano
+        </button>
+        <a href="/admin/agenda/novo?date=${dateStr}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:var(--primary);color:#0A0A0A;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;transition:opacity .15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Novo
+        </a>
+      </div>
+    </div>
+
+    <!-- Layout dois painéis -->
+    <div style="display:flex;gap:20px;align-items:flex-start;">
+
+      <!-- Painel esquerdo: calendário + navegação de dia -->
+      <div style="display:flex;flex-direction:column;gap:12px;flex-shrink:0;">
+        ${calendarHtml}
+        <!-- Navegação de dia -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <a href="/admin/agenda?date=${prevDate.toISOString().split("T")[0]}${filterBarberId ? "&barberId=" + filterBarberId : ""}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--foreground);background:var(--background);font-size:16px;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">‹</a>
+            <input type="date" value="${dateStr}" onchange="location.href='/admin/agenda?date='+this.value+'${filterBarberId ? '&barberId=' + filterBarberId : ''}'"
+              style="flex:1;padding:7px 10px;background:var(--background);border:1px solid var(--border);border-radius:8px;color:var(--foreground);font-size:13px;text-align:center;" />
+            <a href="/admin/agenda?date=${nextDate.toISOString().split("T")[0]}${filterBarberId ? "&barberId=" + filterBarberId : ""}" style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--foreground);background:var(--background);font-size:16px;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">›</a>
+          </div>
+          <a href="/admin/agenda?date=${todayStr}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="display:block;text-align:center;padding:7px;background:var(--background);border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--muted);font-size:12px;font-weight:600;transition:color .15s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--muted)'">Hoje</a>
+        </div>
+      </div>
+
+      <!-- Painel direito: filtros + lista de agendamentos -->
+      <div style="flex:1;min-width:0;">
+        <!-- Filtros -->
+        <form method="GET" style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+          <input type="hidden" name="date" value="${dateStr}" />
+          <select name="barberId" onchange="this.form.submit()" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;min-width:160px;">
+            <option value="">Todos os profissionais</option>
+            ${barbers.map((b: any) => `<option value="${b.id}"${filterBarberId === b.id ? " selected" : ""}>${esc(b.name)}</option>`).join("")}
+          </select>
+          <div style="display:flex;flex:1;min-width:180px;gap:8px;">
+            <input type="text" name="q" value="${esc(filterSearch)}" placeholder="Buscar por nome ou telefone..."
+              style="flex:1;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;" />
+            <button type="submit" class="btn btn-primary" style="padding:8px 16px;font-size:13px;white-space:nowrap;">Buscar</button>
+            ${filterSearch || filterBarberId ? `<a href="/admin/agenda?date=${dateStr}" class="btn btn-ghost" style="padding:8px 12px;font-size:13px;">Limpar</a>` : ""}
+          </div>
+        </form>
+
+        <!-- Lista de agendamentos -->
+        <div class="card">
+          <div class="card-body">
         ${appointments.length === 0
           ? `<div class="empty">Nenhum agendamento para ${fmtDate(dateStr)}${filterSearch || filterBarberId ? " com os filtros aplicados" : ""}.</div>`
           : `<table>
@@ -1344,6 +1395,8 @@ async function renderAgenda(req: Request, res: Response) {
               }
             </script>`
         }
+          </div>
+        </div>
       </div>
     </div>
     ${planModalHtml}
