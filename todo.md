@@ -1855,3 +1855,10 @@
 ## Bug — Botões invisíveis na tela de Agenda (Mai/2026)
 
 - [x] Identificar e corrigir botões invisíveis na tela de Agenda do app (Plano, +Novo, Cards, Linha do Tempo)
+
+## Finalização da Agenda (Mai/2026)
+
+- [x] Aumentar o tamanho do calendário mensal
+- [x] Adicionar pontos indicadores nos dias com agendamentos no calendário
+- [x] Adicionar filtro de barbeiro na vista Linha do Tempo
+- [x] Push notification para super_admin quando agendamento pendente de aprovação é criado

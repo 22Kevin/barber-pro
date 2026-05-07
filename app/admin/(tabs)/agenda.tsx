@@ -168,6 +168,18 @@ export default function AgendaScreen() {
     { enabled: !!barber?.id }
   );
 
+  // Query para buscar datas com agendamentos no mês atual (pontos indicadores no calendário)
+  const monthStart = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-01`;
+  const monthEnd = (() => {
+    const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  const datesWithApptQuery = trpc.appointments.datesWithAppointments.useQuery(
+    { startDate: monthStart, endDate: monthEnd, tenantId },
+    { enabled: !!barber?.id }
+  );
+  const datesWithAppt = useMemo(() => new Set(datesWithApptQuery.data ?? []), [datesWithApptQuery.data]);
+
   const createMutation = trpc.appointments.create.useMutation({
     onSuccess: async (result: any) => {
       utils.appointments.byDate.invalidate();
@@ -368,6 +380,8 @@ export default function AgendaScreen() {
     : (appointmentsQuery.data ?? []);
   const [apptSearch, setApptSearch] = useState("");
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
+  // Filtro de barbeiro específico para a Linha do Tempo
+  const [timelineFilterBarberId, setTimelineFilterBarberId] = useState<number | null>(null);
   // Ref para o ScrollView principal (scroll automático para horário atual)
   const mainScrollRef = useRef<ScrollView>(null);
   // Horário atual para indicador na timeline
@@ -451,28 +465,40 @@ export default function AgendaScreen() {
           </View>
 
           <View style={styles.daysGrid}>
-            {daysInMonth().map((day, idx) => (
-              <Pressable
-                key={idx}
-                style={[
-                  styles.dayCell,
-                  day && isSelected(day) && styles.dayCellSelected,
-                  day && isToday(day) && !isSelected(day) && styles.dayCellToday,
-                ]}
-                onPress={() => day && setSelectedDate(day)}
-                disabled={!day}
-              >
-                {day ? (
-                  <Text style={[
-                    styles.dayText,
-                    isSelected(day) && styles.dayTextSelected,
-                    isToday(day) && !isSelected(day) && styles.dayTextToday,
-                  ]}>
-                    {day.getDate()}
-                  </Text>
-                ) : null}
-              </Pressable>
-            ))}
+            {daysInMonth().map((day, idx) => {
+              const dayStr = day ? dateToString(day) : null;
+              const hasAppt = dayStr ? datesWithAppt.has(dayStr) : false;
+              return (
+                <Pressable
+                  key={idx}
+                  style={[
+                    styles.dayCell,
+                    day && isSelected(day) && styles.dayCellSelected,
+                    day && isToday(day) && !isSelected(day) && styles.dayCellToday,
+                  ]}
+                  onPress={() => day && setSelectedDate(day)}
+                  disabled={!day}
+                >
+                  {day ? (
+                    <>
+                      <Text style={[
+                        styles.dayText,
+                        isSelected(day) && styles.dayTextSelected,
+                        isToday(day) && !isSelected(day) && styles.dayTextToday,
+                      ]}>
+                        {day.getDate()}
+                      </Text>
+                      {hasAppt && (
+                        <View style={[
+                          styles.dayDot,
+                          isSelected(day) && { backgroundColor: '#0A0A0A' },
+                        ]} />
+                      )}
+                    </>
+                  ) : null}
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -606,6 +632,26 @@ export default function AgendaScreen() {
         ) : (
           /* Vista de Timeline */
           <View style={styles.timelineContainer}>
+            {/* Filtro de barbeiro na Linha do Tempo (apenas para managers) */}
+            {isManager && (barbersQuery.data ?? []).length > 1 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 12, paddingHorizontal: 4 }}>
+                <Pressable
+                  style={[styles.barberFilterChip, timelineFilterBarberId === null && styles.barberFilterChipActive]}
+                  onPress={() => setTimelineFilterBarberId(null)}
+                >
+                  <Text style={[styles.barberFilterChipText, timelineFilterBarberId === null && styles.barberFilterChipTextActive]}>Todos</Text>
+                </Pressable>
+                {(barbersQuery.data ?? []).map((b: any) => (
+                  <Pressable
+                    key={b.id}
+                    style={[styles.barberFilterChip, timelineFilterBarberId === b.id && styles.barberFilterChipActive]}
+                    onPress={() => setTimelineFilterBarberId(timelineFilterBarberId === b.id ? null : b.id)}
+                  >
+                    <Text style={[styles.barberFilterChipText, timelineFilterBarberId === b.id && styles.barberFilterChipTextActive]}>{b.name.split(" ")[0]}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
             {Array.from({ length: 31 }, (_, i) => {
               const totalMinutes = 7 * 60 + i * 30; // 07:00 a 22:00 em slots de 30min
               const slotH = Math.floor(totalMinutes / 60);
@@ -620,8 +666,11 @@ export default function AgendaScreen() {
               const isCurrentSlot = isToday && nowMinutesTotal >= totalMinutes && nowMinutesTotal < slotEndMinutes;
               // Posição relativa do indicador dentro do slot (0-100%)
               const indicatorOffset = isCurrentSlot ? ((nowMinutesTotal - totalMinutes) / 30) : 0;
-              // Agendamentos que começam neste slot (HH:MM)
-              const slotAppts = appointments.filter((a: any) => {
+              // Agendamentos que começam neste slot (HH:MM), com filtro de barbeiro na timeline
+              const timelineAppts = isManager && timelineFilterBarberId !== null
+                ? appointments.filter((a: any) => a.barberId === timelineFilterBarberId)
+                : appointments;
+              const slotAppts = timelineAppts.filter((a: any) => {
                 const t = (a.startTime ?? "").substring(0, 5);
                 return t === slotLabel;
               });
@@ -1056,17 +1105,18 @@ const styles = StyleSheet.create({
   addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
   calendarCard: { marginHorizontal: 16, backgroundColor: "#141414", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#2A2A2A", marginBottom: 16 },
-  calendarHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  calendarTitle: { fontSize: 16, fontWeight: "700", color: "#F5F5F0" },
-  daysRow: { flexDirection: "row", marginBottom: 8 },
-  dayLabel: { flex: 1, textAlign: "center", fontSize: 11, color: "#888880", fontWeight: "600" },
+  calendarHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  calendarTitle: { fontSize: 17, fontWeight: "700", color: "#F5F5F0" },
+  daysRow: { flexDirection: "row", marginBottom: 10 },
+  dayLabel: { flex: 1, textAlign: "center", fontSize: 12, color: "#888880", fontWeight: "600" },
   daysGrid: { flexDirection: "row", flexWrap: "wrap" },
-  dayCell: { width: "14.28%", aspectRatio: 1, justifyContent: "center", alignItems: "center", borderRadius: 8 },
+  dayCell: { width: "14.28%", aspectRatio: 0.85, justifyContent: "center", alignItems: "center", borderRadius: 10, paddingBottom: 4 },
   dayCellSelected: { backgroundColor: "#C9A84C" },
-  dayCellToday: { borderWidth: 1, borderColor: "#C9A84C" },
-  dayText: { fontSize: 13, color: "#F5F5F0" },
+  dayCellToday: { borderWidth: 1.5, borderColor: "#C9A84C" },
+  dayText: { fontSize: 15, color: "#F5F5F0", lineHeight: 20 },
   dayTextSelected: { color: "#0A0A0A", fontWeight: "800" },
   dayTextToday: { color: "#C9A84C", fontWeight: "700" },
+  dayDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#C9A84C", marginTop: 2 },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 10 },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: "#F5F5F0" },
   sectionCount: { fontSize: 13, color: "#888880" },

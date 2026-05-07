@@ -4021,7 +4021,20 @@ export function registerPublicRoutes(app: Express): void {
       }
       const available = await db.checkSlotAvailability(barberId, date, startTime, endTime);
       if (!available) { res.status(409).json({ error: "Horário não disponível. Por favor, escolha outro horário." }); return; }
-      const apptId = await db.createAppointment({ clientId, barberId, serviceId, date, startTime, endTime, status: "confirmed" } as any);
+      // Verificar se o endTime ultrapassa o horário de fechamento (pending_approval)
+      const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+      const dayOfWeek = new Date(date + "T12:00:00").getDay();
+      const wh = await db.getWorkingHoursForDay(barberId, dayOfWeek);
+      let exceedsClosing = false;
+      let overtimeMins = 0;
+      let closingHHMM = "";
+      if (wh) {
+        const closeMin = toMin(wh.endTime);
+        const endMin = toMin(endTime);
+        if (endMin > closeMin) { exceedsClosing = true; overtimeMins = endMin - closeMin; closingHHMM = wh.endTime; }
+      }
+      const finalStatus = exceedsClosing ? "pending_approval" : "confirmed";
+      const apptId = await db.createAppointment({ clientId, barberId, serviceId, date, startTime, endTime, status: finalStatus } as any);
       // Buscar dados para notificações
       const client = await db.getClientById(clientId);
       const service = await db.getServiceById(serviceId);
@@ -4029,10 +4042,15 @@ export function registerPublicRoutes(app: Express): void {
       // Notificar barbeiro via push
       const pushToken = await db.getBarberPushToken(barberId);
       if (pushToken) {
+        const notifTitle = exceedsClosing ? "⚠️ Agendamento aguarda sua aprovação" : "📅 Novo agendamento online";
+        const extraStr = exceedsClosing ? (() => { const h = Math.floor(overtimeMins/60); const m = overtimeMins%60; return h > 0 ? `${h}h${m > 0 ? m+"min" : ""}` : `${m}min`; })() : "";
+        const notifBody = exceedsClosing
+          ? `${client?.name ?? "Cliente"} quer agendar ${service?.name ?? "Serviço"} às ${startTime.substring(0,5)} (término às ${endTime.substring(0,5)}, ${extraStr} após o fechamento às ${closingHHMM.substring(0,5)}). Abra a agenda para aprovar.`
+          : `${client?.name ?? "Cliente"} agendou ${service?.name ?? "Serviço"} para ${date} às ${startTime}`;
         await db.sendExpoPushNotification(
           pushToken,
-          "📅 Novo agendamento online",
-          `${client?.name ?? "Cliente"} agendou ${service?.name ?? "Serviço"} para ${date} às ${startTime}`,
+          notifTitle,
+          notifBody,
           { appointmentId: apptId, screen: "agenda", source: "web" },
           { channelId: "online-booking", badge: 1 }
         );
@@ -4070,7 +4088,28 @@ export function registerPublicRoutes(app: Express): void {
           endTime,
         });
       }
-      res.json({ id: apptId, success: true });
+      // Notificar super_admin quando agendamento precisa de aprovação (excede horário de fechamento)
+      if (exceedsClosing) {
+        try {
+          const tenantForNotif = slug ? await db.getTenantBySlug(slug) : null;
+          const allBarbers = await db.getAllBarbers(tenantForNotif?.id ?? null);
+          const admins = (allBarbers as any[]).filter((b: any) => b.role === "super_admin" && b.id !== barberId);
+          for (const admin of admins.slice(0, 3)) {
+            const adminToken = await db.getBarberPushToken(admin.id);
+            if (adminToken) {
+              const extraStr = (() => { const h = Math.floor(overtimeMins/60); const m = overtimeMins%60; return h > 0 ? `${h}h${m > 0 ? m+"min" : ""}` : `${m}min`; })();
+              await db.sendExpoPushNotification(
+                adminToken,
+                "⚠️ Agendamento aguarda aprovação",
+                `${client?.name ?? "Cliente"} quer agendar com ${barberData?.name ?? "barbeiro"} às ${startTime.substring(0,5)} (${extraStr} após fechamento). Abra a agenda para aprovar.`,
+                { appointmentId: apptId, screen: "agenda", type: "pending_approval" },
+                { channelId: "online-booking", badge: 1 }
+              );
+            }
+          }
+        } catch {}
+      }
+      res.json({ id: apptId, success: true, requiresApproval: exceedsClosing });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

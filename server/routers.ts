@@ -361,6 +361,7 @@ export const appRouter = router({
     allByDate: publicProcedure.input(z.object({ date: z.string(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllAppointmentsByDate(input.date, input.tenantId)),
     nextByClient: publicProcedure.input(z.object({ clientId: z.number() })).query(({ input }) => db.getNextClientAppointment(input.clientId)),
     byDateRange: publicProcedure.input(z.object({ barberId: z.number(), startDate: z.string(), endDate: z.string() })).query(({ input }) => db.getAppointmentsByDateRange(input.barberId, input.startDate, input.endDate)),
+    datesWithAppointments: publicProcedure.input(z.object({ barberId: z.number().optional(), startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllAppointmentsByDateRangeForTenant(input.startDate, input.endDate, input.tenantId)),
     checkAvailability: publicProcedure
       .input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), excludeId: z.number().optional() }))
       .query(({ input }) => db.checkSlotAvailability(input.barberId, input.date, input.startTime, input.endTime, input.excludeId)),
@@ -412,6 +413,23 @@ export const appRouter = router({
               `${clientName} quer agendar ${serviceName} às ${input.startTime.substring(0, 5)} (término às ${endHHMM}, ${extraStr} após o fechamento às ${closeHHMM}). Abra a agenda para aprovar.`,
               { appointmentId: apptId, screen: "agenda", type: "pending_approval" }
             );
+            // Notificar super_admins do tenant (exceto o próprio barbeiro)
+            try {
+              const barberForTenant = await db.getBarberById(input.barberId);
+              const allBarbers = await db.getAllBarbers(barberForTenant?.tenantId ?? null);
+              const admins = (allBarbers as any[]).filter((b: any) => b.role === "super_admin" && b.id !== input.barberId);
+              for (const admin of admins.slice(0, 3)) {
+                const adminToken = await db.getBarberPushToken(admin.id);
+                if (adminToken) {
+                  await db.sendExpoPushNotification(
+                    adminToken,
+                    "⚠️ Agendamento aguarda aprovação",
+                    `${clientName} quer agendar ${serviceName} às ${input.startTime.substring(0, 5)} (${extraStr} após fechamento). Abra a agenda para aprovar.`,
+                    { appointmentId: apptId, screen: "agenda", type: "pending_approval" }
+                  );
+                }
+              }
+            } catch {}
           } else {
             await db.sendExpoPushNotification(
               pushToken,
