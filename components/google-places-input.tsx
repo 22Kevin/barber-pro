@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useColors } from "@/hooks/use-colors";
 
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
@@ -35,6 +36,8 @@ export function GooglePlacesInput({
   onSelectAddress,
   placeholder = "Digite o endereço...",
 }: GooglePlacesInputProps) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -123,12 +126,13 @@ export function GooglePlacesInput({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   container: { position: "relative", zIndex: 100 },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#141414",
+    backgroundColor: c.surface,
     borderWidth: 1,
     borderColor: "#C9A84C44",
     borderRadius: 10,
@@ -139,16 +143,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 12,
     fontSize: 15,
-    color: "#F5F5F0",
+    color: c.foreground,
   },
   dropdown: {
     position: Platform.OS === "web" ? "absolute" : "relative",
     top: Platform.OS === "web" ? "100%" : undefined,
     left: 0,
     right: 0,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
     borderRadius: 10,
     marginTop: Platform.OS === "web" ? 4 : 0,
     overflow: "hidden",
@@ -162,8 +166,9 @@ const styles = StyleSheet.create({
   },
   predictionBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: "#2A2A2A",
+    borderBottomColor: c.border,
   },
-  predictionMain: { fontSize: 14, color: "#F5F5F0", fontWeight: "600" },
-  predictionSecondary: { fontSize: 12, color: "#888880", marginTop: 2 },
+  predictionMain: { fontSize: 14, color: c.foreground, fontWeight: "600" },
+  predictionSecondary: { fontSize: 12, color: c.muted, marginTop: 2 },
 });
+}

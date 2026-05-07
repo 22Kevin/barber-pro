@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { trpc } from "@/lib/trpc";
+import { useColors } from "@/hooks/use-colors";
 
 function maskCardNumber(v: string) {
   return v.replace(/\D/g, "").substring(0, 16).replace(/(.{4})/g, "$1 ").trim();
@@ -35,6 +36,8 @@ function maskCep(v: string) {
 }
 
 export default function AsaasCardPaymentScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const router = useRouter();
   const params = useLocalSearchParams<{
     appointmentId: string;
@@ -260,7 +263,8 @@ export default function AsaasCardPaymentScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0A0A0A" },
   content: { padding: 20, paddingBottom: 40 },
   header: { marginBottom: 20 },
@@ -268,12 +272,12 @@ const styles = StyleSheet.create({
   backText: { color: "#9CA3AF", fontSize: 14 },
   title: { color: "#FFFFFF", fontSize: 22, fontWeight: "800" },
   summaryCard: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.surface,
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
   },
   summaryService: { color: "#FFFFFF", fontSize: 16, fontWeight: "700", marginBottom: 4 },
   summaryDate: { color: "#9CA3AF", fontSize: 13, marginBottom: 8 },
@@ -282,9 +286,9 @@ const styles = StyleSheet.create({
   sectionTitle: { color: "#EAB308", fontSize: 13, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, marginTop: 8 },
   label: { color: "#9CA3AF", fontSize: 12, marginBottom: 4, marginTop: 8 },
   input: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
     borderRadius: 10,
     padding: 14,
     color: "#FFFFFF",
@@ -303,3 +307,4 @@ const styles = StyleSheet.create({
   submitText: { color: "#000000", fontWeight: "800", fontSize: 17 },
   secureNote: { color: "#4B5563", fontSize: 12, textAlign: "center", marginTop: 12 },
 });
+}

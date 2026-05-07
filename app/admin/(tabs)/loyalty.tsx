@@ -20,6 +20,7 @@ import { AdminHeader } from "@/components/admin-header";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { useBarberAuth } from "@/lib/auth-context";
+import { useColors } from "@/hooks/use-colors";
 
 type LoyaltyTab = "config" | "rewards" | "coupons";
 
@@ -31,6 +32,8 @@ const REWARD_TYPES = [
 ];
 
 export default function LoyaltyScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
@@ -426,60 +429,62 @@ export default function LoyaltyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, paddingBottom: 12 },
-  title: { fontSize: 24, fontWeight: "800", color: "#F5F5F0" },
+  title: { fontSize: 24, fontWeight: "800", color: c.foreground },
   addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
-  tabs: { flexDirection: "row", marginHorizontal: 16, backgroundColor: "#141414", borderRadius: 12, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: "#2A2A2A" },
+  tabs: { flexDirection: "row", marginHorizontal: 16, backgroundColor: c.surface, borderRadius: 12, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: c.border },
   tab: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: 8 },
   tabActive: { backgroundColor: "#C9A84C" },
-  tabText: { fontSize: 13, color: "#888880", fontWeight: "600" },
+  tabText: { fontSize: 13, color: c.muted, fontWeight: "600" },
   tabTextActive: { color: "#0A0A0A" },
   infoCard: { flexDirection: "row", gap: 10, backgroundColor: "#C9A84C22", borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: "#C9A84C44", alignItems: "flex-start" },
   infoText: { flex: 1, fontSize: 13, color: "#C9A84C", lineHeight: 18 },
-  card: { backgroundColor: "#141414", borderRadius: 14, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#2A2A2A" },
+  card: { backgroundColor: c.surface, borderRadius: 14, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: c.border },
   switchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  cardLabel: { fontSize: 15, fontWeight: "600", color: "#F5F5F0" },
-  cardSubLabel: { fontSize: 12, color: "#888880", marginTop: 2 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#F5F5F0", marginBottom: 10 },
-  fieldLabel: { fontSize: 13, color: "#888880", marginBottom: 6, fontWeight: "500" },
+  cardLabel: { fontSize: 15, fontWeight: "600", color: c.foreground },
+  cardSubLabel: { fontSize: 12, color: c.muted, marginTop: 2 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, marginBottom: 10 },
+  fieldLabel: { fontSize: 13, color: c.muted, marginBottom: 6, fontWeight: "500" },
   inputRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 0 },
-  input: { backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#F5F5F0", marginBottom: 0 },
-  inputUnit: { backgroundColor: "#1E1E1E", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 12, borderWidth: 1, borderColor: "#2A2A2A" },
-  inputUnitText: { color: "#888880", fontSize: 13 },
+  input: { backgroundColor: c.background, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.foreground, marginBottom: 0 },
+  inputUnit: { backgroundColor: c.background, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 12, borderWidth: 1, borderColor: c.border },
+  inputUnitText: { color: c.muted, fontSize: 13 },
   saveBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginTop: 8 },
   saveBtnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "800", letterSpacing: 1 },
   emptyCard: { alignItems: "center", paddingVertical: 60, gap: 10 },
-  emptyText: { color: "#888880", fontSize: 16, fontWeight: "600" },
-  emptySubText: { color: "#555", fontSize: 13, textAlign: "center" },
-  rewardCard: { backgroundColor: "#141414", borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "#2A2A2A", flexDirection: "row", alignItems: "center" },
+  emptyText: { color: c.muted, fontSize: 16, fontWeight: "600" },
+  emptySubText: { color: c.muted, fontSize: 13, textAlign: "center" },
+  rewardCard: { backgroundColor: c.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center" },
   rewardLeft: { flex: 1, flexDirection: "row", gap: 12 },
   rewardIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: "#C9A84C22", justifyContent: "center", alignItems: "center" },
-  rewardName: { fontSize: 15, fontWeight: "700", color: "#F5F5F0", marginBottom: 2 },
-  rewardDesc: { fontSize: 12, color: "#888880", marginBottom: 6 },
+  rewardName: { fontSize: 15, fontWeight: "700", color: c.foreground, marginBottom: 2 },
+  rewardDesc: { fontSize: 12, color: c.muted, marginBottom: 6 },
   rewardMeta: { flexDirection: "row", alignItems: "center", gap: 8 },
   pointsBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#C9A84C22", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   pointsText: { fontSize: 12, color: "#C9A84C", fontWeight: "600" },
-  rewardType: { fontSize: 12, color: "#888880" },
-  couponCard: { backgroundColor: "#141414", borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "#2A2A2A", flexDirection: "row", alignItems: "center" },
+  rewardType: { fontSize: 12, color: c.muted },
+  couponCard: { backgroundColor: c.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center" },
   couponLeft: { flex: 1, flexDirection: "row", gap: 12, alignItems: "flex-start" },
   couponCode: { backgroundColor: "#C9A84C22", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: "#C9A84C44" },
   couponCodeText: { fontSize: 14, fontWeight: "800", color: "#C9A84C", letterSpacing: 1 },
-  couponDesc: { fontSize: 13, color: "#F5F5F0", marginBottom: 6 },
+  couponDesc: { fontSize: 13, color: c.foreground, marginBottom: 6 },
   couponMeta: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
   discountBadge: { backgroundColor: "#4CAF5022", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   discountText: { fontSize: 12, color: "#4CAF50", fontWeight: "700" },
-  couponMetaText: { fontSize: 12, color: "#888880" },
+  couponMetaText: { fontSize: 12, color: c.muted },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: "#000000AA", justifyContent: "flex-end" },
-  modalCard: { backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "90%", borderWidth: 1, borderColor: "#2A2A2A" },
+  modalCard: { backgroundColor: c.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "90%", borderWidth: 1, borderColor: c.border },
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: "700", color: "#F5F5F0" },
+  modalTitle: { fontSize: 20, fontWeight: "700", color: c.foreground },
   textarea: { height: 80, textAlignVertical: "top" },
   typeRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
-  typeChip: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", alignItems: "center" },
+  typeChip: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: c.background, borderWidth: 1, borderColor: c.border, alignItems: "center" },
   typeChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
-  typeChipText: { fontSize: 13, color: "#888880", fontWeight: "600" },
+  typeChipText: { fontSize: 13, color: c.muted, fontWeight: "600" },
   typeChipTextActive: { color: "#C9A84C" },
 });
+}

@@ -17,8 +17,11 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useColors } from "@/hooks/use-colors";
 
 export default function AdminSetupScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const { login } = useBarberAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -154,22 +157,24 @@ export default function AdminSetupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: "center", padding: 24 },
   logoArea: { alignItems: "center", marginBottom: 32 },
   logo: { width: 80, height: 80, borderRadius: 18, marginBottom: 10 },
   brandName: { fontSize: 26, fontWeight: "800", color: "#C9A84C", letterSpacing: 4 },
-  brandSub: { fontSize: 12, color: "#888880", letterSpacing: 2, marginTop: 4 },
-  card: { backgroundColor: "#141414", borderRadius: 16, padding: 24, borderWidth: 1, borderColor: "#2A2A2A" },
-  cardTitle: { fontSize: 20, fontWeight: "700", color: "#F5F5F0", marginBottom: 8 },
-  cardDesc: { fontSize: 13, color: "#888880", marginBottom: 20, lineHeight: 18 },
+  brandSub: { fontSize: 12, color: c.muted, letterSpacing: 2, marginTop: 4 },
+  card: { backgroundColor: c.surface, borderRadius: 16, padding: 24, borderWidth: 1, borderColor: c.border },
+  cardTitle: { fontSize: 20, fontWeight: "700", color: c.foreground, marginBottom: 8 },
+  cardDesc: { fontSize: 13, color: c.muted, marginBottom: 20, lineHeight: 18 },
   field: { marginBottom: 14 },
-  label: { fontSize: 13, color: "#888880", marginBottom: 6, fontWeight: "500" },
-  input: { backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#F5F5F0" },
-  passwordRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14 },
+  label: { fontSize: 13, color: c.muted, marginBottom: 6, fontWeight: "500" },
+  input: { backgroundColor: c.background, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.foreground },
+  passwordRow: { flexDirection: "row", alignItems: "center", backgroundColor: c.background, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 14 },
   eyeBtn: { paddingVertical: 12, paddingLeft: 8 },
   btn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginTop: 8 },
   btnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "800", letterSpacing: 2 },
   backLink: { marginTop: 16, alignItems: "center" },
   backText: { color: "#C9A84C", fontSize: 13 },
 });
+}

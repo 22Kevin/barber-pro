@@ -19,6 +19,7 @@ import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { useColors } from "@/hooks/use-colors";
 
 type Tab = "overview" | "sales" | "expenses" | "online";
 
@@ -52,6 +53,8 @@ function getMonthRange(offset = 0) {
 }
 
 export default function FinancialScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
@@ -526,6 +529,8 @@ export default function FinancialScreen() {
 }
 
 function MetricCard({ label, value, color, icon }: { label: string; value: string; color: string; icon: any }) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   return (
     <View style={styles.metricCard}>
       <View style={[styles.metricIcon, { backgroundColor: color + "22" }]}>
@@ -538,6 +543,8 @@ function MetricCard({ label, value, color, icon }: { label: string; value: strin
 }
 
 function EmptyState({ icon, text }: { icon: any; text: string }) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   return (
     <View style={styles.emptyCard}>
       <IconSymbol name={icon} size={36} color="#2A2A2A" />
@@ -546,9 +553,10 @@ function EmptyState({ icon, text }: { icon: any; text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, paddingBottom: 12 },
-  title: { fontSize: 24, fontWeight: "800", color: "#F5F5F0" },
+  title: { fontSize: 24, fontWeight: "800", color: c.foreground },
   headerActions: { flexDirection: "row", gap: 8 },
   addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, gap: 4 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 13 },
@@ -556,54 +564,55 @@ const styles = StyleSheet.create({
   expenseBtnText: { color: "#F44336", fontWeight: "700", fontSize: 13 },
   monthSelector: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 12 },
   monthArrow: { padding: 8 },
-  monthLabel: { fontSize: 15, fontWeight: "700", color: "#F5F5F0", textTransform: "capitalize" },
-  tabs: { flexDirection: "row", marginHorizontal: 16, backgroundColor: "#141414", borderRadius: 12, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: "#2A2A2A" },
+  monthLabel: { fontSize: 15, fontWeight: "700", color: c.foreground, textTransform: "capitalize" },
+  tabs: { flexDirection: "row", marginHorizontal: 16, backgroundColor: c.surface, borderRadius: 12, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: c.border },
   tab: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: 8 },
   tabActive: { backgroundColor: "#C9A84C" },
-  tabText: { fontSize: 13, color: "#888880", fontWeight: "600" },
+  tabText: { fontSize: 13, color: c.muted, fontWeight: "600" },
   tabTextActive: { color: "#0A0A0A" },
-  profitCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: "#141414", borderRadius: 14, padding: 20, borderWidth: 1, borderColor: "#2A2A2A" },
-  profitLabel: { fontSize: 13, color: "#888880", marginBottom: 4 },
+  profitCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: c.surface, borderRadius: 14, padding: 20, borderWidth: 1, borderColor: c.border },
+  profitLabel: { fontSize: 13, color: c.muted, marginBottom: 4 },
   profitValue: { fontSize: 34, fontWeight: "800", marginBottom: 12 },
-  profitBar: { height: 4, backgroundColor: "#2A2A2A", borderRadius: 2, overflow: "hidden" },
+  profitBar: { height: 4, backgroundColor: c.border, borderRadius: 2, overflow: "hidden" },
   profitBarFill: { height: "100%", borderRadius: 2 },
   metricsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 12, gap: 10, marginBottom: 8 },
-  metricCard: { flex: 1, minWidth: "45%", backgroundColor: "#141414", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#2A2A2A" },
+  metricCard: { flex: 1, minWidth: "45%", backgroundColor: c.surface, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: c.border },
   metricIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center", marginBottom: 8 },
-  metricValue: { fontSize: 18, fontWeight: "800", color: "#F5F5F0", marginBottom: 2 },
-  metricLabel: { fontSize: 12, color: "#888880" },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#F5F5F0", paddingHorizontal: 20, marginTop: 16, marginBottom: 10 },
-  breakdownRow: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#2A2A2A" },
-  breakdownLabel: { fontSize: 14, color: "#888880" },
-  breakdownValue: { fontSize: 14, color: "#F5F5F0", fontWeight: "600" },
-  transactionCard: { flexDirection: "row", alignItems: "center", marginHorizontal: 16, marginBottom: 8, backgroundColor: "#141414", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#2A2A2A", gap: 12 },
+  metricValue: { fontSize: 18, fontWeight: "800", color: c.foreground, marginBottom: 2 },
+  metricLabel: { fontSize: 12, color: c.muted },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, paddingHorizontal: 20, marginTop: 16, marginBottom: 10 },
+  breakdownRow: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.border },
+  breakdownLabel: { fontSize: 14, color: c.muted },
+  breakdownValue: { fontSize: 14, color: c.foreground, fontWeight: "600" },
+  transactionCard: { flexDirection: "row", alignItems: "center", marginHorizontal: 16, marginBottom: 8, backgroundColor: c.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: c.border, gap: 12 },
   transactionIcon: { width: 40, height: 40, borderRadius: 10, justifyContent: "center", alignItems: "center" },
-  transactionDesc: { fontSize: 14, fontWeight: "600", color: "#F5F5F0", marginBottom: 2 },
-  transactionMeta: { fontSize: 12, color: "#888880" },
+  transactionDesc: { fontSize: 14, fontWeight: "600", color: c.foreground, marginBottom: 2 },
+  transactionMeta: { fontSize: 12, color: c.muted },
   transactionAmount: { fontSize: 15, fontWeight: "700", color: "#4CAF50" },
   emptyCard: { alignItems: "center", paddingVertical: 40, gap: 10 },
-  emptyText: { color: "#888880", fontSize: 14 },
+  emptyText: { color: c.muted, fontSize: 14 },
   modalOverlay: { flex: 1, backgroundColor: "#000000AA", justifyContent: "flex-end" },
-  modalCard: { backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "85%", borderWidth: 1, borderColor: "#2A2A2A" },
+  modalCard: { backgroundColor: c.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "85%", borderWidth: 1, borderColor: c.border },
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: "700", color: "#F5F5F0" },
-  fieldLabel: { fontSize: 13, color: "#888880", marginBottom: 6, fontWeight: "500" },
-  input: { backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#F5F5F0", marginBottom: 14 },
+  modalTitle: { fontSize: 20, fontWeight: "700", color: c.foreground },
+  fieldLabel: { fontSize: 13, color: c.muted, marginBottom: 6, fontWeight: "500" },
+  input: { backgroundColor: c.background, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.foreground, marginBottom: 14 },
   typeRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
-  typeChip: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", alignItems: "center" },
+  typeChip: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: c.background, borderWidth: 1, borderColor: c.border, alignItems: "center" },
   typeChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
-  typeChipText: { fontSize: 14, color: "#888880", fontWeight: "600" },
+  typeChipText: { fontSize: 14, color: c.muted, fontWeight: "600" },
   typeChipTextActive: { color: "#C9A84C" },
-  paymentChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A" },
+  paymentChip: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: c.background, borderWidth: 1, borderColor: c.border },
   paymentChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
-  paymentChipText: { fontSize: 12, color: "#888880", fontWeight: "600" },
+  paymentChipText: { fontSize: 12, color: c.muted, fontWeight: "600" },
   paymentChipTextActive: { color: "#C9A84C" },
-  itemPickerList: { borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, marginBottom: 12, overflow: "hidden" },
-  itemPickerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#2A2A2A" },
+  itemPickerList: { borderWidth: 1, borderColor: c.border, borderRadius: 10, marginBottom: 12, overflow: "hidden" },
+  itemPickerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border },
   itemPickerRowActive: { backgroundColor: "#C9A84C22" },
-  itemPickerName: { fontSize: 14, color: "#F5F5F0", fontWeight: "600" },
-  itemPickerMeta: { fontSize: 12, color: "#888880", marginTop: 2 },
+  itemPickerName: { fontSize: 14, color: c.foreground, fontWeight: "600" },
+  itemPickerMeta: { fontSize: 12, color: c.muted, marginTop: 2 },
   itemPickerPrice: { fontSize: 14, color: "#C9A84C", fontWeight: "700" },
   saveBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginBottom: 8 },
   saveBtnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "800", letterSpacing: 1 },
 });
+}

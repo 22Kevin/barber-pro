@@ -25,6 +25,7 @@ import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { exportCsv } from "@/hooks/use-csv-export";
 import { useBarberAuth } from "@/lib/auth-context";
+import { useColors } from "@/hooks/use-colors";
 
 type Client = {
   id: number;
@@ -64,6 +65,8 @@ const MONTH_NAMES = [
 ];
 
 export default function ClientsScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
@@ -496,45 +499,46 @@ export default function ClientsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, paddingBottom: 12 },
-  title: { fontSize: 24, fontWeight: "800", color: "#F5F5F0" },
+  title: { fontSize: 24, fontWeight: "800", color: c.foreground },
   addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
   birthdayBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: "#1A1000", borderWidth: 1, borderColor: "#C9A84C44", justifyContent: "center", alignItems: "center" },
   birthdayBadge: { position: "absolute", top: -4, right: -4, backgroundColor: "#EAB308", borderRadius: 8, minWidth: 16, height: 16, justifyContent: "center", alignItems: "center", paddingHorizontal: 3 },
   birthdayBadgeText: { color: "#000", fontSize: 10, fontWeight: "800" },
-  searchRow: { flexDirection: "row", alignItems: "center", marginHorizontal: 16, backgroundColor: "#141414", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: "#2A2A2A", gap: 8, marginBottom: 4 },
-  searchInput: { flex: 1, color: "#F5F5F0", fontSize: 14 },
-  countText: { fontSize: 13, color: "#888880", paddingHorizontal: 20, marginTop: 8, marginBottom: 4 },
+  searchRow: { flexDirection: "row", alignItems: "center", marginHorizontal: 16, backgroundColor: c.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: c.border, gap: 8, marginBottom: 4 },
+  searchInput: { flex: 1, color: c.foreground, fontSize: 14 },
+  countText: { fontSize: 13, color: c.muted, paddingHorizontal: 20, marginTop: 8, marginBottom: 4 },
   emptyCard: { alignItems: "center", paddingVertical: 60, gap: 10 },
-  emptyText: { color: "#888880", fontSize: 16, fontWeight: "600" },
-  card: { backgroundColor: "#141414", borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "#2A2A2A", flexDirection: "row", alignItems: "center", gap: 12 },
+  emptyText: { color: c.muted, fontSize: 16, fontWeight: "600" },
+  card: { backgroundColor: c.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center", gap: 12 },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: "#C9A84C22", justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: "#C9A84C44" },
   avatarBirthday: { backgroundColor: "#1A1000", borderColor: "#EAB308", borderWidth: 2 },
   avatarText: { color: "#C9A84C", fontSize: 20, fontWeight: "700" },
-  clientName: { fontSize: 15, fontWeight: "700", color: "#F5F5F0", marginBottom: 2 },
-  clientPhone: { fontSize: 13, color: "#888880" },
-  clientEmail: { fontSize: 12, color: "#555" },
+  clientName: { fontSize: 15, fontWeight: "700", color: c.foreground, marginBottom: 2 },
+  clientPhone: { fontSize: 13, color: c.muted },
+  clientEmail: { fontSize: 12, color: c.muted },
   cardRight: { alignItems: "flex-end", gap: 8 },
   pointsBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#C9A84C22", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   pointsText: { fontSize: 12, color: "#C9A84C", fontWeight: "600" },
   editBtn: { padding: 4 },
   // Birthday panel
-  birthdaySectionTitle: { fontSize: 14, fontWeight: "700", color: "#888880", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 },
-  birthdayEmpty: { color: "#555", fontSize: 14, textAlign: "center", paddingVertical: 12 },
-  birthdayCard: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#2A2A2A" },
+  birthdaySectionTitle: { fontSize: 14, fontWeight: "700", color: c.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 },
+  birthdayEmpty: { color: c.muted, fontSize: 14, textAlign: "center", paddingVertical: 12 },
+  birthdayCard: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.border },
   birthdayCardToday: { backgroundColor: "#1A1000", borderRadius: 12, paddingHorizontal: 10, borderBottomWidth: 0, marginBottom: 4, borderWidth: 1, borderColor: "#EAB30844" },
-  birthdayClientName: { fontSize: 15, fontWeight: "700", color: "#F5F5F0" },
-  birthdayClientPhone: { fontSize: 13, color: "#888880" },
+  birthdayClientName: { fontSize: 15, fontWeight: "700", color: c.foreground },
+  birthdayClientPhone: { fontSize: 13, color: c.muted },
   whatsappBtn: { padding: 8, backgroundColor: "#0D1F0D", borderRadius: 10, borderWidth: 1, borderColor: "#22C55E44" },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: "#000000AA", justifyContent: "flex-end" },
-  modalCard: { backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "92%", borderWidth: 1, borderColor: "#2A2A2A" },
+  modalCard: { backgroundColor: c.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "92%", borderWidth: 1, borderColor: c.border },
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: "700", color: "#F5F5F0" },
-  fieldLabel: { fontSize: 13, color: "#888880", marginBottom: 6, fontWeight: "500" },
-  input: { backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#F5F5F0" },
+  modalTitle: { fontSize: 20, fontWeight: "700", color: c.foreground },
+  fieldLabel: { fontSize: 13, color: c.muted, marginBottom: 6, fontWeight: "500" },
+  input: { backgroundColor: c.background, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.foreground },
   textarea: { height: 80, textAlignVertical: "top" },
   saveBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginBottom: 8, marginTop: 8 },
   saveBtnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "800", letterSpacing: 1 },
@@ -542,20 +546,21 @@ const styles = StyleSheet.create({
   clientDetailHeader: { flexDirection: "row", gap: 14, alignItems: "center", marginBottom: 16 },
   avatarLarge: { width: 64, height: 64, borderRadius: 32, backgroundColor: "#C9A84C22", justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#C9A84C44" },
   avatarLargeText: { color: "#C9A84C", fontSize: 28, fontWeight: "700" },
-  detailName: { fontSize: 18, fontWeight: "700", color: "#F5F5F0" },
-  detailPhone: { fontSize: 14, color: "#888880", marginTop: 2 },
-  detailEmail: { fontSize: 13, color: "#555", marginTop: 2 },
+  detailName: { fontSize: 18, fontWeight: "700", color: c.foreground },
+  detailPhone: { fontSize: 14, color: c.muted, marginTop: 2 },
+  detailEmail: { fontSize: 13, color: c.muted, marginTop: 2 },
   pointsCard: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#C9A84C22", borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: "#C9A84C44" },
   pointsCardText: { fontSize: 14, color: "#C9A84C", fontWeight: "600" },
   quickActions: { flexDirection: "row", gap: 10, marginBottom: 16 },
-  quickActionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#1E1E1E", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "#2A2A2A" },
+  quickActionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: c.background, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: c.border },
   quickActionText: { fontSize: 13, fontWeight: "600" },
-  historyTitle: { fontSize: 16, fontWeight: "700", color: "#F5F5F0", marginBottom: 10 },
-  historyEmpty: { color: "#888880", fontSize: 14, textAlign: "center", paddingVertical: 20 },
-  historyCard: { flexDirection: "row", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#2A2A2A" },
+  historyTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, marginBottom: 10 },
+  historyEmpty: { color: c.muted, fontSize: 14, textAlign: "center", paddingVertical: 20 },
+  historyCard: { flexDirection: "row", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border },
   historyLeft: { width: 80 },
-  historyDate: { fontSize: 12, color: "#888880" },
-  historyTime: { fontSize: 12, color: "#555" },
-  historyService: { fontSize: 14, fontWeight: "600", color: "#F5F5F0" },
-  historyStatus: { fontSize: 12, color: "#888880", marginTop: 2 },
+  historyDate: { fontSize: 12, color: c.muted },
+  historyTime: { fontSize: 12, color: c.muted },
+  historyService: { fontSize: 14, fontWeight: "600", color: c.foreground },
+  historyStatus: { fontSize: 12, color: c.muted, marginTop: 2 },
 });
+}

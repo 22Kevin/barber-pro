@@ -21,6 +21,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { useColors } from "@/hooks/use-colors";
 
 type OrderStatus = "received" | "confirmed" | "preparing" | "ready" | "delivered" | "cancelled";
 
@@ -97,6 +98,8 @@ function urgencyScore(order: Order): number {
 }
 
 export default function OrdersScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? 0;
@@ -665,9 +668,10 @@ export default function OrdersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
-  emptyText: { color: "#555", fontSize: 14, fontWeight: "600" },
+  emptyText: { color: c.muted, fontSize: 14, fontWeight: "600" },
   badgeContainer: {
     backgroundColor: "#EF4444",
     borderRadius: 10,
@@ -678,20 +682,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   badgeText: { color: "#FFF", fontSize: 11, fontWeight: "800" },
-  filterRow: { paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: "#1E1E1E" },
+  filterRow: { paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: c.background },
   filterChip: {
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
   },
   filterChipActive: { backgroundColor: "#C9A84C", borderColor: "#C9A84C" },
   filterChipText: { color: "#888", fontSize: 12, fontWeight: "600" },
   filterChipTextActive: { color: "#0A0A0A" },
   card: {
-    backgroundColor: "#141414",
+    backgroundColor: c.surface,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
@@ -706,11 +710,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statusText: { fontSize: 11, fontWeight: "700" },
-  cardDate: { fontSize: 11, color: "#555" },
+  cardDate: { fontSize: 11, color: c.muted },
   productRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
-  productThumb: { width: 44, height: 44, borderRadius: 8, backgroundColor: "#1E1E1E" },
-  productThumbPlaceholder: { width: 44, height: 44, borderRadius: 8, backgroundColor: "#1E1E1E", alignItems: "center", justifyContent: "center" },
-  productName: { fontSize: 15, fontWeight: "700", color: "#F5F5F0" },
+  productThumb: { width: 44, height: 44, borderRadius: 8, backgroundColor: c.background },
+  productThumbPlaceholder: { width: 44, height: 44, borderRadius: 8, backgroundColor: c.background, alignItems: "center", justifyContent: "center" },
+  productName: { fontSize: 15, fontWeight: "700", color: c.foreground },
   cardRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   cardMeta: { fontSize: 12, color: "#888" },
   cardMetaSep: { fontSize: 12, color: "#444" },
@@ -758,61 +762,61 @@ const styles = StyleSheet.create({
   // Modal de detalhe (bottom sheet)
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
   modalSheet: {
-    backgroundColor: "#141414",
+    backgroundColor: c.surface,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
     paddingBottom: 36,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: "#2A2A2A",
+    borderTopColor: c.border,
   },
   modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#333", alignSelf: "center", marginBottom: 4 },
-  modalTitle: { fontSize: 17, fontWeight: "800", color: "#F5F5F0" },
-  detailRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: "#1E1E1E" },
+  modalTitle: { fontSize: 17, fontWeight: "800", color: c.foreground },
+  detailRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 4, borderBottomWidth: 0.5, borderBottomColor: c.background },
   detailLabel: { fontSize: 13, color: "#888" },
-  detailValue: { fontSize: 13, color: "#F5F5F0", fontWeight: "600", flex: 1, textAlign: "right" },
+  detailValue: { fontSize: 13, color: c.foreground, fontWeight: "600", flex: 1, textAlign: "right" },
   timeline: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginVertical: 8 },
   timelineItem: { alignItems: "center", flex: 1, position: "relative" },
   timelineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#333", borderWidth: 1.5, borderColor: "#444" },
   timelineLine: { position: "absolute", top: 4, left: "50%", right: "-50%", height: 2, backgroundColor: "#222" },
-  timelineLabel: { fontSize: 9, color: "#555", marginTop: 4, textAlign: "center" },
+  timelineLabel: { fontSize: 9, color: c.muted, marginTop: 4, textAlign: "center" },
   modalActions: { flexDirection: "row", gap: 10, marginTop: 8 },
-  closeModalBtn: { flex: 1, backgroundColor: "#1A1A1A", borderRadius: 10, paddingVertical: 12, alignItems: "center", borderWidth: 1, borderColor: "#2A2A2A" },
+  closeModalBtn: { flex: 1, backgroundColor: c.surface, borderRadius: 10, paddingVertical: 12, alignItems: "center", borderWidth: 1, borderColor: c.border },
   closeModalBtnText: { color: "#888", fontSize: 14, fontWeight: "600" },
   // Modais flutuantes centralizados
   centeredOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center" },
   floatModalSheet: {
-    backgroundColor: "#141414",
+    backgroundColor: c.surface,
     borderRadius: 18,
     padding: 22,
     gap: 12,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
     width: "88%",
   },
-  floatModalTitle: { fontSize: 17, fontWeight: "800", color: "#F5F5F0", textAlign: "center" },
+  floatModalTitle: { fontSize: 17, fontWeight: "800", color: c.foreground, textAlign: "center" },
   floatModalSubtitle: { fontSize: 13, color: "#888", textAlign: "center" },
   floatInput: {
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.surface,
     borderWidth: 1,
     borderColor: "#333",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: "#F5F5F0",
+    color: c.foreground,
     fontSize: 15,
     textAlign: "center",
   },
   floatModalActions: { flexDirection: "row", gap: 10, marginTop: 4 },
   floatSkipBtn: {
     flex: 1,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.surface,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
   },
   floatSkipBtnText: { color: "#888", fontSize: 14, fontWeight: "600" },
   floatConfirmBtn: {
@@ -843,9 +847,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -876,7 +880,7 @@ const styles = StyleSheet.create({
     minHeight: 80,
     paddingTop: 12,
   },
-  cancelHint: { fontSize: 12, color: "#555", lineHeight: 18 },
+  cancelHint: { fontSize: 12, color: c.muted, lineHeight: 18 },
   cancelConfirmBtn: {
     flex: 2,
     backgroundColor: "#EF4444",
@@ -889,9 +893,10 @@ const styles = StyleSheet.create({
   cardUrgent: { borderColor: "#F5920066", borderWidth: 1.5 },
   urgencyBadge: { backgroundColor: "#EF444422", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
   urgencyBadgeText: { fontSize: 10, fontWeight: "700", color: "#EF4444" },
-  periodRow: { flexDirection: "row", paddingHorizontal: 14, paddingVertical: 8, gap: 8, borderBottomWidth: 0.5, borderBottomColor: "#1E1E1E" },
-  periodChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#2A2A2A" },
+  periodRow: { flexDirection: "row", paddingHorizontal: 14, paddingVertical: 8, gap: 8, borderBottomWidth: 0.5, borderBottomColor: c.background },
+  periodChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
   periodChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
   periodChipText: { fontSize: 12, color: "#666" },
   periodChipTextActive: { color: "#C9A84C", fontWeight: "700" },
 });
+}

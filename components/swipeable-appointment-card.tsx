@@ -8,6 +8,7 @@ import * as Haptics from "expo-haptics";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { cancelReviewNotification } from "@/lib/use-notifications";
 import { buildConfirmationMessage } from "@/lib/whatsapp";
+import { useColors } from "@/hooks/use-colors";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   scheduled:   { label: "Agendado",       color: "#C9A84C" },
@@ -46,6 +47,8 @@ interface Props {
   onResendPaymentLink?: (id: number) => void;
 }
 export function SwipeableAppointmentCard({ appointment, client, service, onPress, onStatusChange, onCompleted, paymentPending, onCancelWithReason, onResendPaymentLink }: Props) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   // Suporta dados via JOIN (apt.clientName) ou via props legadas (client?.name)
   const resolvedClientName = appointment.clientName ?? client?.name ?? "Cliente não encontrado";
   const resolvedClientPhone = appointment.clientPhone ?? client?.phone;
@@ -218,14 +221,15 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   aptCard: {
     marginHorizontal: 16,
     marginBottom: 8,
-    backgroundColor: "#141414",
+    backgroundColor: c.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
     flexDirection: "row",
     alignItems: "center",
     overflow: "hidden",
@@ -233,12 +237,12 @@ const styles = StyleSheet.create({
   aptStatusBar: { width: 4, alignSelf: "stretch" },
   aptContent: { flex: 1, padding: 14 },
   aptRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  aptTime: { fontSize: 15, fontWeight: "700", color: "#F5F5F0" },
+  aptTime: { fontSize: 15, fontWeight: "700", color: c.foreground },
   statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   statusText: { fontSize: 11, fontWeight: "600" },
-  aptClientName: { fontSize: 14, fontWeight: "600", color: "#F5F5F0" },
-  aptServiceName: { fontSize: 13, color: "#888880" },
-  aptNotes: { fontSize: 12, color: "#555", marginTop: 4, fontStyle: "italic" },
+  aptClientName: { fontSize: 14, fontWeight: "600", color: c.foreground },
+  aptServiceName: { fontSize: 13, color: c.muted },
+  aptNotes: { fontSize: 12, color: c.muted, marginTop: 4, fontStyle: "italic" },
   swipeHint: { fontSize: 10, color: "#444", marginTop: 6, fontStyle: "italic" },
   // Swipe actions
   swipeAction: {
@@ -294,3 +298,4 @@ const styles = StyleSheet.create({
   },
   whatsappBtnText: { fontSize: 10, fontWeight: "700", color: "#25D366" },
 });
+}

@@ -1870,3 +1870,11 @@
 ## Bug — Botões invisíveis no modo escuro (Mai/2026)
 
 - [x] Corrigir botões +Novo, Cards e outros na Agenda que ficam invisíveis no modo escuro (cores fixas incompatíveis com tema escuro)
+
+## Auditoria de Tema Claro/Escuro — Todas as Telas (Mai/2026)
+
+- [x] Auditar e corrigir cores fixas no Dashboard (admin)
+- [x] Auditar e corrigir cores fixas na tela de Clientes
+- [x] Auditar e corrigir cores fixas na tela Financeiro
+- [x] Auditar e corrigir cores fixas nas telas de Configurações
+- [x] Auditar e corrigir cores fixas nas demais telas do app (perfil, planos, etc.) — 39 arquivos corrigidos via createStyles(colors)

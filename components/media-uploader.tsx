@@ -13,6 +13,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { trpc } from "@/lib/trpc";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { useColors } from "@/hooks/use-colors";
 
 interface MediaFile {
   id?: number;
@@ -35,6 +36,8 @@ export function MediaUploader({
   onMediaChange,
   maxItems = 10,
 }: MediaUploaderProps) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const [media, setMedia] = useState<MediaFile[]>(existingMedia);
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -167,6 +170,8 @@ interface SingleImageUploaderProps {
 }
 
 export function SingleImageUploader({ value, onUpload, imageType, label = "Foto", size = 100 }: SingleImageUploaderProps) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const [uploading, setUploading] = useState(false);
 
   const uploadMutation = trpc.upload.shopImage.useMutation({
@@ -237,10 +242,11 @@ export function SingleImageUploader({ value, onUpload, imageType, label = "Foto"
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   scroll: { marginVertical: 8 },
   mediaItem: { marginRight: 10, position: "relative" },
-  thumbnail: { width: 90, height: 90, borderRadius: 10, backgroundColor: "#1A1A1A" },
+  thumbnail: { width: 90, height: 90, borderRadius: 10, backgroundColor: c.surface },
   videoOverlay: {
     position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
     alignItems: "center", justifyContent: "center",
@@ -256,10 +262,10 @@ const styles = StyleSheet.create({
   addBtn: {
     width: 90, height: 90, borderRadius: 10,
     borderWidth: 1.5, borderColor: "#C9A84C44", borderStyle: "dashed",
-    alignItems: "center", justifyContent: "center", backgroundColor: "#141414",
+    alignItems: "center", justifyContent: "center", backgroundColor: c.surface,
   },
   addIcon: { fontSize: 24, color: "#C9A84C" },
-  addText: { fontSize: 10, color: "#888880", marginTop: 2 },
+  addText: { fontSize: 10, color: c.muted, marginTop: 2 },
   modalOverlay: {
     flex: 1, backgroundColor: "rgba(0,0,0,0.95)",
     alignItems: "center", justifyContent: "center",
@@ -272,14 +278,14 @@ const styles = StyleSheet.create({
   },
   closeBtnText: { color: "#fff", fontSize: 18, fontWeight: "700" },
   singleUpload: {
-    backgroundColor: "#141414", borderWidth: 1.5,
+    backgroundColor: c.surface, borderWidth: 1.5,
     borderColor: "#C9A84C44", borderStyle: "dashed",
     alignItems: "center", justifyContent: "center",
     overflow: "hidden",
   },
   singleUploadPlaceholder: { alignItems: "center", gap: 4 },
   singleUploadIcon: { fontSize: 22 },
-  singleUploadLabel: { fontSize: 11, color: "#888880" },
+  singleUploadLabel: { fontSize: 11, color: c.muted },
   editBadge: {
     position: "absolute", bottom: 4, right: 4,
     backgroundColor: "#C9A84C", borderRadius: 10,
@@ -287,3 +293,4 @@ const styles = StyleSheet.create({
   },
   editBadgeText: { color: "#000", fontSize: 11, fontWeight: "700" },
 });
+}

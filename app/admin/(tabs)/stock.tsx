@@ -116,7 +116,7 @@ export default function StockScreen() {
         title="Controle de Estoque"
         rightElement={
           <Pressable
-            style={({ pressed }) => [{ padding: 8, borderRadius: 8, backgroundColor: "#1A1A1A", opacity: pressed ? 0.7 : 1 }]}
+            style={({ pressed }) => [{ padding: 8, borderRadius: 8, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
             onPress={handleExportCsv}
           >
             <Text style={{ fontSize: 14 }}>📥</Text>

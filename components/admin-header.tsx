@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAdminDrawer } from "@/lib/admin-drawer-context";
+import { useColors } from "@/hooks/use-colors";
 
 interface AdminHeaderProps {
   title: string;
@@ -9,6 +10,8 @@ interface AdminHeaderProps {
 }
 
 export function AdminHeader({ title, rightElement }: AdminHeaderProps) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const { toggleDrawer } = useAdminDrawer();
   const insets = useSafeAreaInsets();
 
@@ -34,7 +37,8 @@ export function AdminHeader({ title, rightElement }: AdminHeaderProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -42,7 +46,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     backgroundColor: "#0A0A0A",
     borderBottomWidth: 0.5,
-    borderBottomColor: "#2A2A2A",
+    borderBottomColor: c.border,
     gap: 12,
   },
   menuBtn: {
@@ -52,7 +56,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 5,
     borderRadius: 10,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.surface,
   },
   hamburgerLine: {
     width: 22,
@@ -73,3 +77,4 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
 });
+}

@@ -25,6 +25,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useClientAuth } from "@/lib/client-auth-context";
 import { trpc } from "@/lib/trpc";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { useColors } from "@/hooks/use-colors";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CAROUSEL_H = 220;
@@ -74,6 +75,8 @@ function WhatsAppIcon({ size = 26 }: { size?: number }) {
 
 // ─── Estrelas ─────────────────────────────────────────────────────────────────
 function Stars({ rating }: { rating: number }) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   return (
     <View style={styles.starsRow}>
       {[1, 2, 3, 4, 5].map((s) => (
@@ -86,6 +89,8 @@ function Stars({ rating }: { rating: number }) {
 // ─── Carrossel de fotos ───────────────────────────────────────────────────────
 const SLIDE_DURATION = 4000;
 function PhotoCarousel({ images }: { images: string[] }) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const [activeIndex, setActiveIndex] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -228,6 +233,8 @@ function PhotoCarousel({ images }: { images: string[] }) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function ClientHome() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useTabBarHeight();
@@ -688,7 +695,8 @@ export default function ClientHome() {
     </ScreenContainer>
   );
 }
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   // ── Header ──────────────────────────────────────────────────────────────────
   header: {
     flexDirection: "row",
@@ -1073,7 +1081,7 @@ const styles = StyleSheet.create({
   nextApptCard: {
     marginHorizontal: 20,
     marginBottom: 16,
-    backgroundColor: "#141414",
+    backgroundColor: c.surface,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: "#C9A84C33",
@@ -1119,36 +1127,36 @@ const styles = StyleSheet.create({
   nextApptDayNum: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#ECEDEE",
+    color: c.foreground,
     lineHeight: 22,
   },
   nextApptDayName: {
     fontSize: 11,
-    color: "#888880",
+    color: c.muted,
     textTransform: "capitalize",
     marginTop: 2,
   },
   nextApptDivider: {
     width: 1,
     height: 48,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: c.border,
   },
   nextApptService: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#ECEDEE",
+    color: c.foreground,
     lineHeight: 20,
   },
   nextApptMeta: {
     fontSize: 13,
-    color: "#888880",
+    color: c.muted,
     lineHeight: 18,
   },
   nextApptActions: {
     flexDirection: "row",
     gap: 8,
     borderTopWidth: 1,
-    borderTopColor: "#2A2A2A",
+    borderTopColor: c.border,
     marginTop: 4,
     paddingTop: 10,
   },
@@ -1193,7 +1201,7 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 40,
     borderTopWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
   },
   reviewHandle: {
     width: 40,
@@ -1206,13 +1214,13 @@ const styles = StyleSheet.create({
   reviewTitle: {
     fontSize: 20,
     fontWeight: "800",
-    color: "#F5F5F0",
+    color: c.foreground,
     textAlign: "center",
     marginBottom: 6,
   },
   reviewSubtitle: {
     fontSize: 14,
-    color: "#888880",
+    color: c.muted,
     textAlign: "center",
     marginBottom: 20,
   },
@@ -1226,14 +1234,14 @@ const styles = StyleSheet.create({
     fontSize: 40,
   },
   reviewInput: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: c.background,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: "#F5F5F0",
+    color: c.foreground,
     marginBottom: 20,
     minHeight: 80,
     textAlignVertical: "top",
@@ -1247,12 +1255,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
     alignItems: "center",
   },
   reviewBtnSkipText: {
     fontSize: 14,
-    color: "#888880",
+    color: c.muted,
     fontWeight: "600",
   },
   reviewBtnSend: {
@@ -1268,3 +1276,4 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 });
+}

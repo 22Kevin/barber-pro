@@ -107,6 +107,7 @@ function SectionBlock({
   children: React.ReactNode;
   colors: ReturnType<typeof useColors>;
 }) {
+  const styles = createStyles(colors);
   return (
     <View style={[styles.block, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.blockHeader}>
@@ -141,6 +142,7 @@ function FieldInput({
   multiline?: boolean;
   colors: ReturnType<typeof useColors>;
 }) {
+  const styles = createStyles(colors);
   return (
     <View style={{ marginBottom: 16 }}>
       <Text style={[styles.fieldLabel, { color: colors.muted }]}>{label}</Text>
@@ -189,6 +191,8 @@ function PagePreviewModal({
   bannerUrl: string | null;
   gallery: string[];
 }) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const font = FONT_STYLES.find((f) => f.id === fontStyleId) ?? FONT_STYLES[0];
   const dim = primaryColor + "22";
   const dimBorder = primaryColor + "55";
@@ -305,6 +309,7 @@ function PagePreviewModal({
 // ─── Tela principal ───────────────────────────────────────────────────────────
 export default function PaginaClienteScreen() {
   const colors = useColors();
+  const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
@@ -987,7 +992,8 @@ export default function PaginaClienteScreen() {
 }
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   block: {
     borderRadius: 16,
     borderWidth: 1,
@@ -1254,7 +1260,7 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     overflow: "hidden",
     borderWidth: 3,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.6,
@@ -1272,7 +1278,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: c.border,
   },
   previewHeroWrap: {
     height: 160,
@@ -1315,16 +1321,16 @@ const styles = StyleSheet.create({
   previewSvcCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#141414",
+    backgroundColor: c.surface,
     borderRadius: 10,
     padding: 10,
     marginBottom: 7,
     gap: 8,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
   },
   previewSvcName: { color: "#F0EEE8", fontSize: 12, fontWeight: "600", marginBottom: 2 },
-  previewSvcDur: { color: "#888880", fontSize: 10 },
+  previewSvcDur: { color: c.muted, fontSize: 10 },
   previewSvcPrice: { fontSize: 12, fontWeight: "800" },
   previewGalleryImg: { width: 80, height: 60, borderRadius: 8 },
   previewMetaRow: {
@@ -1344,3 +1350,4 @@ const styles = StyleSheet.create({
   },
   previewCloseCircleText: { fontWeight: "700", fontSize: 14 },
 });
+}

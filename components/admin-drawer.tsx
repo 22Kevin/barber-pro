@@ -16,6 +16,7 @@ import { useRouter, usePathname } from "expo-router";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
+import { useColors } from "@/hooks/use-colors";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.78, 320);
@@ -102,6 +103,8 @@ interface AdminDrawerProps {
 }
 
 export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -251,7 +254,8 @@ export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.65)" },
   drawer: {
     position: "absolute", left: 0, top: 0, bottom: 0,
@@ -275,19 +279,19 @@ const styles = StyleSheet.create({
   drawerAvatarText: { color: "#C9A84C", fontSize: 19, fontWeight: "800" },
   drawerAvatarImage: { width: 46, height: 46, borderRadius: 23 },
   drawerUserInfo: { flex: 1 },
-  drawerUserName: { fontSize: 15, fontWeight: "700", color: "#F5F5F0" },
+  drawerUserName: { fontSize: 15, fontWeight: "700", color: c.foreground },
   drawerUserRole: { fontSize: 11, color: "#C9A84C", marginTop: 1 },
   closeBtn: { padding: 6, borderRadius: 8, backgroundColor: "#1C1C1C" },
   profileRow: { paddingHorizontal: 12, paddingBottom: 10 },
   profileBtn: {
     flexDirection: "row", alignItems: "center", gap: 8,
     paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10,
-    backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#2A2A2A",
+    backgroundColor: c.surface, borderWidth: 1, borderColor: c.border,
   },
   profileBtnActive: { backgroundColor: "#C9A84C", borderColor: "#C9A84C" },
   profileBtnText: { fontSize: 13, fontWeight: "600", color: "#C9A84C" },
   profileBtnTextActive: { color: "#0A0A0A" },
-  divider: { height: 1, backgroundColor: "#1E1E1E", marginHorizontal: 14, marginBottom: 4 },
+  divider: { height: 1, backgroundColor: c.background, marginHorizontal: 14, marginBottom: 4 },
   drawerItems: { flex: 1, paddingHorizontal: 10, minHeight: 0 },
   group: { marginBottom: 2 },
   groupLabel: {
@@ -323,3 +327,4 @@ const styles = StyleSheet.create({
   },
   pendingBadgeText: { color: "#FFF", fontSize: 10, fontWeight: "800" },
 });
+}

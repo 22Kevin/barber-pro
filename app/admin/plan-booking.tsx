@@ -99,6 +99,7 @@ type SlotEntry = { date: string; time: string };
 
 export default function PlanBookingScreen() {
   const colors = useColors();
+  const styles = createStyles(colors);
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? 0;
   const router = useRouter();
@@ -738,7 +739,8 @@ function SummaryRow({ label, value, colors, bold }: { label: string; value: stri
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   sectionTitle: { fontSize: 14, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 },
   planCard: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 10 },
   clientRow: { flexDirection: "row", alignItems: "center", padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
@@ -753,9 +755,10 @@ const styles = StyleSheet.create({
   slotBadgeText: { color: "#0A0A0A", fontWeight: "700", fontSize: 12 },
   miniCalendar: { borderRadius: 10, borderWidth: 1, padding: 10 },
   miniDay: { width: "14.28%", height: 32, alignItems: "center", justifyContent: "center", borderRadius: 6 },
-  timeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, backgroundColor: "#1E1E1E" },
+  timeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, backgroundColor: c.background },
   summaryCard: { borderRadius: 14, borderWidth: 1, padding: 16, marginTop: 16 },
   toggle: { width: 42, height: 24, borderRadius: 12, justifyContent: "center" },
   toggleThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: "#fff" },
   emptyBox: { borderWidth: 1, borderRadius: 12, padding: 20, alignItems: "center", marginBottom: 16 },
 });
+}

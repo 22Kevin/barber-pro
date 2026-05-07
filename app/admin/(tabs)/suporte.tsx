@@ -20,6 +20,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { useColors } from "@/hooks/use-colors";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type TicketStatus = "open" | "waiting_admin" | "answered" | "closed";
@@ -56,6 +57,8 @@ const CATEGORIES = [
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function SuporteScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? 0;
@@ -494,7 +497,8 @@ export default function SuporteScreen() {
 }
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center" },
 
   listHeader: {
@@ -512,17 +516,17 @@ const styles = StyleSheet.create({
 
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 32 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: "#F0EEE8" },
-  emptySub: { fontSize: 13, color: "#888880", textAlign: "center" },
+  emptySub: { fontSize: 13, color: c.muted, textAlign: "center" },
 
   ticketCard: {
-    backgroundColor: "#141414", borderRadius: 14, padding: 14, marginBottom: 10,
-    borderWidth: 1, borderColor: "#2A2A2A",
+    backgroundColor: c.surface, borderRadius: 14, padding: 14, marginBottom: 10,
+    borderWidth: 1, borderColor: c.border,
   },
   ticketCardHighlight: { borderColor: "#60A5FA44", backgroundColor: "#60A5FA08" },
   ticketCardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 },
   ticketTitle: { flex: 1, fontSize: 14, fontWeight: "700", color: "#F0EEE8" },
   ticketCardMeta: { flexDirection: "row", justifyContent: "space-between" },
-  ticketMeta: { fontSize: 11, color: "#888880" },
+  ticketMeta: { fontSize: 11, color: c.muted },
 
   statusBadge: { borderRadius: 20, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
   statusText: { fontSize: 11, fontWeight: "700" },
@@ -534,15 +538,15 @@ const styles = StyleSheet.create({
   newResponseText: { fontSize: 11, color: "#60A5FA", fontWeight: "700" },
 
   // Formulário
-  fieldLabel: { fontSize: 12, color: "#888880", marginBottom: 6, marginTop: 16, fontWeight: "600", letterSpacing: 0.5 },
+  fieldLabel: { fontSize: 12, color: c.muted, marginBottom: 6, marginTop: 16, fontWeight: "600", letterSpacing: 0.5 },
   input: {
-    backgroundColor: "#0A0A0A", borderWidth: 1, borderColor: "#2A2A2A",
+    backgroundColor: "#0A0A0A", borderWidth: 1, borderColor: c.border,
     borderRadius: 10, padding: 12, color: "#F0EEE8", fontSize: 14,
   },
   textArea: { minHeight: 120, textAlignVertical: "top" },
   selectBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    backgroundColor: "#0A0A0A", borderWidth: 1, borderColor: "#2A2A2A",
+    backgroundColor: "#0A0A0A", borderWidth: 1, borderColor: c.border,
     borderRadius: 10, padding: 12,
   },
   selectBtnText: { fontSize: 14, color: "#F0EEE8" },
@@ -550,10 +554,10 @@ const styles = StyleSheet.create({
   priorityRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   priorityBtn: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
-    backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A",
+    backgroundColor: c.background, borderWidth: 1, borderColor: c.border,
   },
   priorityBtnActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C44" },
-  priorityBtnText: { fontSize: 12, color: "#888880", fontWeight: "600" },
+  priorityBtnText: { fontSize: 12, color: c.muted, fontWeight: "600" },
   priorityBtnTextActive: { color: "#C9A84C" },
 
   submitBtn: {
@@ -566,44 +570,44 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
   modalSheet: {
-    backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    backgroundColor: c.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
     padding: 20, paddingBottom: 40,
   },
   modalTitle: { fontSize: 16, fontWeight: "800", color: "#F0EEE8", marginBottom: 16 },
   modalOption: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#1E1E1E",
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.background,
   },
   modalOptionActive: {},
-  modalOptionText: { fontSize: 14, color: "#888880" },
+  modalOptionText: { fontSize: 14, color: c.muted },
   modalOptionTextActive: { color: "#C9A84C", fontWeight: "700" },
 
   // Detalhe
   ticketInfoCard: {
-    backgroundColor: "#141414", borderRadius: 14, padding: 16, marginBottom: 16,
-    borderWidth: 1, borderColor: "#2A2A2A",
+    backgroundColor: c.surface, borderRadius: 14, padding: 16, marginBottom: 16,
+    borderWidth: 1, borderColor: c.border,
   },
   ticketInfoTitle: { fontSize: 16, fontWeight: "800", color: "#F0EEE8", marginBottom: 8 },
   ticketInfoRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
-  ticketInfoMeta: { fontSize: 12, color: "#888880" },
+  ticketInfoMeta: { fontSize: 12, color: c.muted },
   closeTicketBtn: {
     alignSelf: "flex-start", paddingHorizontal: 12, paddingVertical: 6,
-    backgroundColor: "#1E1E1E", borderRadius: 8, borderWidth: 1, borderColor: "#2A2A2A",
+    backgroundColor: c.background, borderRadius: 8, borderWidth: 1, borderColor: c.border,
   },
-  closeTicketBtnText: { fontSize: 12, color: "#888880", fontWeight: "600" },
+  closeTicketBtnText: { fontSize: 12, color: c.muted, fontWeight: "600" },
 
-  sectionLabel: { fontSize: 11, color: "#888880", letterSpacing: 1.2, fontWeight: "700", marginBottom: 12, textTransform: "uppercase" },
+  sectionLabel: { fontSize: 11, color: c.muted, letterSpacing: 1.2, fontWeight: "700", marginBottom: 12, textTransform: "uppercase" },
 
   messageBubble: {
     borderRadius: 12, padding: 12, marginBottom: 10, maxWidth: "85%",
     borderWidth: 1,
   },
-  messageBubbleClient: { alignSelf: "flex-start", backgroundColor: "#1E1E1E", borderColor: "#2A2A2A" },
+  messageBubbleClient: { alignSelf: "flex-start", backgroundColor: c.background, borderColor: c.border },
   messageBubbleAdmin: { alignSelf: "flex-end", backgroundColor: "#C9A84C18", borderColor: "#C9A84C33" },
   messageBubbleAI: { alignSelf: "flex-start", backgroundColor: "#60A5FA18", borderColor: "#60A5FA33" },
-  messageAuthor: { fontSize: 10, color: "#888880", marginBottom: 4, fontWeight: "700" },
+  messageAuthor: { fontSize: 10, color: c.muted, marginBottom: 4, fontWeight: "700" },
   messageContent: { fontSize: 13, color: "#F0EEE8", lineHeight: 20 },
-  messageTime: { fontSize: 10, color: "#555", marginTop: 4, textAlign: "right" },
+  messageTime: { fontSize: 10, color: c.muted, marginTop: 4, textAlign: "right" },
 
   replyBox: { flexDirection: "row", gap: 10, alignItems: "flex-end", marginTop: 16 },
   replyInput: { flex: 1, minHeight: 60, textAlignVertical: "top" },
@@ -614,8 +618,9 @@ const styles = StyleSheet.create({
   sendBtnDisabled: { opacity: 0.4 },
 
   closedBanner: {
-    marginTop: 16, backgroundColor: "#1E1E1E", borderRadius: 12,
+    marginTop: 16, backgroundColor: c.background, borderRadius: 12,
     padding: 14, alignItems: "center",
   },
-  closedBannerText: { fontSize: 13, color: "#888880" },
+  closedBannerText: { fontSize: 13, color: c.muted },
 });
+}

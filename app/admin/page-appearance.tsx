@@ -22,6 +22,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { SingleImageUploader } from "@/components/media-uploader";
+import { useColors } from "@/hooks/use-colors";
 
 const PRESET_COLORS = [
   { label: "Dourado", value: "#C9A84C" },
@@ -35,6 +36,8 @@ const PRESET_COLORS = [
 ];
 
 export default function PageAppearanceScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const router = useRouter();
   const utils = trpc.useUtils();
 
@@ -180,33 +183,34 @@ export default function PageAppearanceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#2A2A2A" },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#1A1A1A", alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: "#F5F5F0" },
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: c.border },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: c.surface, alignItems: "center", justifyContent: "center" },
+  headerTitle: { fontSize: 17, fontWeight: "700", color: c.foreground },
 
   previewCard: { borderRadius: 16, borderWidth: 2, overflow: "hidden", marginBottom: 24 },
   previewHeader: { padding: 14 },
   previewHeaderText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  previewBody: { backgroundColor: "#141414", padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  previewBody: { backgroundColor: c.surface, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   previewBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10 },
   previewBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 13 },
   previewPrice: { fontSize: 20, fontWeight: "900" },
 
-  section: { backgroundColor: "#141414", borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: "#2A2A2A" },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#F5F5F0", marginBottom: 4 },
-  sectionSub: { fontSize: 13, color: "#888880", marginBottom: 16, lineHeight: 18 },
+  section: { backgroundColor: c.surface, borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: c.border },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, marginBottom: 4 },
+  sectionSub: { fontSize: 13, color: c.muted, marginBottom: 16, lineHeight: 18 },
 
   colorGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 16 },
   colorChip: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   colorChipActive: { borderWidth: 3, borderColor: "#fff" },
 
   customColorRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  customColorPreview: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: "#2A2A2A" },
-  customColorLabel: { fontSize: 11, color: "#888880", marginBottom: 4 },
-  customColorInput: { flexDirection: "row", alignItems: "center", backgroundColor: "#1A1A1A", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: "#2A2A2A" },
-  hashSymbol: { color: "#888880", fontSize: 15, marginRight: 4 },
-  customColorText: { color: "#F5F5F0", fontSize: 15, flex: 1 },
+  customColorPreview: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: c.border },
+  customColorLabel: { fontSize: 11, color: c.muted, marginBottom: 4 },
+  customColorInput: { flexDirection: "row", alignItems: "center", backgroundColor: c.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: c.border },
+  hashSymbol: { color: c.muted, fontSize: 15, marginRight: 4 },
+  customColorText: { color: c.foreground, fontSize: 15, flex: 1 },
 
   removeBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 },
   removeBtnText: { color: "#F87171", fontSize: 13 },
@@ -214,3 +218,4 @@ const styles = StyleSheet.create({
   saveBtn: { borderRadius: 14, paddingVertical: 16, alignItems: "center", marginTop: 8 },
   saveBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 16 },
 });
+}

@@ -20,6 +20,7 @@ import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
 import MaskInput, { Masks } from "react-native-mask-input";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { useColors } from "@/hooks/use-colors";
 
 const ROLES: Record<string, string> = {
   super_admin: "Super Admin",
@@ -30,6 +31,8 @@ const ROLES: Record<string, string> = {
 
 
 export default function MyProfileScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
   const { barber, logout, updateBarber } = useBarberAuth();
   const utils = trpc.useUtils();
@@ -266,7 +269,8 @@ export default function MyProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   avatarSection: { alignItems: "center", paddingVertical: 24, gap: 8 },
   avatarWrapper: { position: "relative", width: 96, height: 96 },
   avatarImage: { width: 96, height: 96, borderRadius: 48, borderWidth: 2, borderColor: "#C9A84C" },
@@ -275,14 +279,14 @@ const styles = StyleSheet.create({
   avatarOverlay: { position: "absolute", inset: 0, borderRadius: 48, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
   avatarEditBadge: { position: "absolute", bottom: 2, right: 2, width: 26, height: 26, borderRadius: 13, backgroundColor: "#C9A84C", justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#0A0A0A" },
   roleBadge: { backgroundColor: "#C9A84C22", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 4, borderWidth: 1, borderColor: "#C9A84C44", color: "#C9A84C", fontSize: 12, fontWeight: "700" },
-  emailText: { fontSize: 13, color: "#888880" },
-  photoHint: { fontSize: 11, color: "#555", marginTop: -2 },
-  card: { backgroundColor: "#141414", borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#2A2A2A", gap: 4 },
-  cardTitle: { fontSize: 15, fontWeight: "700", color: "#F5F5F0", marginBottom: 12 },
-  fieldLabel: { fontSize: 13, color: "#888880", marginBottom: 6, fontWeight: "500" },
-  input: { backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#F5F5F0", marginBottom: 4 },
-  inputDisabled: { backgroundColor: "#111", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  inputDisabledText: { fontSize: 15, color: "#555" },
+  emailText: { fontSize: 13, color: c.muted },
+  photoHint: { fontSize: 11, color: c.muted, marginTop: -2 },
+  card: { backgroundColor: c.surface, borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: c.border, gap: 4 },
+  cardTitle: { fontSize: 15, fontWeight: "700", color: c.foreground, marginBottom: 12 },
+  fieldLabel: { fontSize: 13, color: c.muted, marginBottom: 6, fontWeight: "500" },
+  input: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.foreground, marginBottom: 4 },
+  inputDisabled: { backgroundColor: "#111", borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  inputDisabledText: { fontSize: 15, color: c.muted },
   hintText: { fontSize: 11, color: "#444", marginBottom: 4 },
   passwordToggle: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   saveBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginBottom: 12 },
@@ -290,3 +294,4 @@ const styles = StyleSheet.create({
   logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 12, borderWidth: 1, borderColor: "#EF444444", backgroundColor: "#EF444411" },
   logoutText: { color: "#EF4444", fontSize: 15, fontWeight: "700" },
 });
+}

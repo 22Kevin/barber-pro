@@ -13,6 +13,7 @@ import * as Sharing from "expo-sharing";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import ViewShot from "react-native-view-shot";
+import { useColors } from "@/hooks/use-colors";
 
 // ─── Definição de temas ───────────────────────────────────────────────────────
 
@@ -122,6 +123,8 @@ export function AppointmentShareCard({
   clientPhotoUrl,
   clientName,
 }: AppointmentShareCardProps) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   // Resolve o nome do serviço: lista ou nome único
   const resolvedServiceName = serviceNames && serviceNames.length > 1
     ? serviceNames.join(" + ")
@@ -435,7 +438,8 @@ const detailStyles = StyleSheet.create({
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   wrapper: {
     alignItems: "center",
     gap: 16,
@@ -453,7 +457,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   instructionTitle: {
-    color: "#ECEDEE",
+    color: c.foreground,
     fontSize: 14,
     fontWeight: "800",
     textAlign: "center",
@@ -516,7 +520,7 @@ const styles = StyleSheet.create({
     borderColor: "#374151",
   },
   photoLabel: {
-    color: "#ECEDEE",
+    color: c.foreground,
     fontSize: 13,
     fontWeight: "700",
     marginBottom: 2,
@@ -751,3 +755,4 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 });
+}

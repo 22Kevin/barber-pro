@@ -18,6 +18,7 @@ import * as Sharing from "expo-sharing";
 import { AdminHeader } from "@/components/admin-header";
 import { exportCsv } from "@/hooks/use-csv-export";
 import { useBarberAuth } from "@/lib/auth-context";
+import { useColors } from "@/hooks/use-colors";
 
 type Period = "week" | "month" | "year";
 type Tab = "financeiro" | "servicos" | "encomendas" | "barbeiros" | "inadimplencia";
@@ -113,6 +114,8 @@ function BarChart({ labels, data }: { labels: string[]; data: number[] }) {
 
 // ─── Tela principal ───────────────────────────────────────────────────────────
 export default function ReportsScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? 0;
   const [period, setPeriod] = useState<Period>("month");
@@ -814,7 +817,8 @@ export default function ReportsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   periodRow: {
     flexDirection: "row",
     paddingHorizontal: 16,
@@ -825,16 +829,16 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: "#141414",
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
     alignItems: "center",
   },
   periodBtnActive: {
     backgroundColor: "#C9A84C22",
     borderColor: "#C9A84C",
   },
-  periodLabel: { fontSize: 13, color: "#888880", fontWeight: "600" },
+  periodLabel: { fontSize: 13, color: c.muted, fontWeight: "600" },
   periodLabelActive: { color: "#C9A84C" },
   tabsScroll: { marginBottom: 12 },
   tabsContainer: {
@@ -849,25 +853,25 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: "#141414",
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
   },
   tabBtnActive: {
     backgroundColor: "#C9A84C22",
     borderColor: "#C9A84C",
   },
   tabEmoji: { fontSize: 14 },
-  tabLabel: { fontSize: 13, color: "#888880", fontWeight: "600" },
+  tabLabel: { fontSize: 13, color: c.muted, fontWeight: "600" },
   tabLabelActive: { color: "#C9A84C" },
   card: {
     marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: "#141414",
+    backgroundColor: c.surface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
   },
   cardHeader: {
     flexDirection: "row",
@@ -878,27 +882,27 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#F5F5F0",
+    color: c.foreground,
     marginBottom: 12,
   },
   cardTotal: { fontSize: 18, fontWeight: "800", color: "#C9A84C" },
-  emptyText: { color: "#555", fontSize: 13, textAlign: "center", paddingVertical: 12 },
+  emptyText: { color: c.muted, fontSize: 13, textAlign: "center", paddingVertical: 12 },
   rankRow: { flexDirection: "row", alignItems: "center", marginBottom: 14 },
-  rankPos: { fontSize: 13, fontWeight: "700", color: "#555", width: 28 },
+  rankPos: { fontSize: 13, fontWeight: "700", color: c.muted, width: 28 },
   rankInfo: { flex: 1 },
   rankLabelRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
-  rankName: { fontSize: 14, fontWeight: "600", color: "#F5F5F0", flex: 1, marginRight: 8 },
+  rankName: { fontSize: 14, fontWeight: "600", color: c.foreground, flex: 1, marginRight: 8 },
   rankValue: { fontSize: 14, fontWeight: "700", color: "#C9A84C" },
-  barBg: { height: 6, backgroundColor: "#2A2A2A", borderRadius: 3, marginBottom: 3 },
+  barBg: { height: 6, backgroundColor: c.border, borderRadius: 3, marginBottom: 3 },
   barFill: { height: 6, backgroundColor: "#C9A84C", borderRadius: 3 },
-  rankCount: { fontSize: 11, color: "#555" },
+  rankCount: { fontSize: 11, color: c.muted },
   clientRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#1E1E1E",
+    borderBottomColor: c.background,
   },
   clientRank: {
     width: 32,
@@ -911,14 +915,14 @@ const styles = StyleSheet.create({
   },
   clientRankText: { fontSize: 12, fontWeight: "700", color: "#C9A84C" },
   clientInfo: { flex: 1 },
-  clientName: { fontSize: 14, fontWeight: "600", color: "#F5F5F0" },
-  clientSub: { fontSize: 12, color: "#555", marginTop: 2 },
+  clientName: { fontSize: 14, fontWeight: "600", color: c.foreground },
+  clientSub: { fontSize: 12, color: c.muted, marginTop: 2 },
   clientRevenue: { alignItems: "flex-end" },
   clientRevenueText: { fontSize: 14, fontWeight: "700", color: "#4CAF50" },
-  clientTicket: { fontSize: 10, color: "#555", marginTop: 2 },
+  clientTicket: { fontSize: 10, color: c.muted, marginTop: 2 },
   kpiBox: {
     flex: 1,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.surface,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#C9A84C33",
@@ -938,26 +942,27 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  exportBtnText: { fontSize: 13, fontWeight: "600", color: "#888880" },
-  dreDivider: { height: 1, backgroundColor: "#2A2A2A", marginVertical: 4 },
+  exportBtnText: { fontSize: 13, fontWeight: "600", color: c.muted },
+  dreDivider: { height: 1, backgroundColor: c.border, marginVertical: 4 },
   dreMetaRow: { flexDirection: "row", gap: 8, marginTop: 12 },
   dreMetaBox: {
     flex: 1,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.surface,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#2A2A2A",
+    borderColor: c.border,
     padding: 10,
     alignItems: "center",
   },
-  dreMetaLabel: { fontSize: 10, color: "#555", marginBottom: 4, textAlign: "center" },
-  dreMetaValue: { fontSize: 14, fontWeight: "700", color: "#F5F5F0" },
-  dreMetaChange: { fontSize: 10, color: "#555", marginTop: 2, textAlign: "center" },
-  projCompRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#2A2A2A" },
+  dreMetaLabel: { fontSize: 10, color: c.muted, marginBottom: 4, textAlign: "center" },
+  dreMetaValue: { fontSize: 14, fontWeight: "700", color: c.foreground },
+  dreMetaChange: { fontSize: 10, color: c.muted, marginTop: 2, textAlign: "center" },
+  projCompRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: c.border },
   catRow: { marginBottom: 12 },
   catLabelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
 });
+}

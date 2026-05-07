@@ -24,6 +24,7 @@ import { AdminHeader } from "@/components/admin-header";
 import { applyDocumentMask, applyCepMask, applyPhoneMask, stripMask, validateDocument } from "@/hooks/use-mask";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { useColors } from "@/hooks/use-colors";
 
 type BarbeariaTab = "dados" | "equipe" | "horarios" | "integracoes";
 
@@ -37,6 +38,8 @@ const ROLES = [
 ];
 
 export default function BarbeariaScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
@@ -927,67 +930,69 @@ export default function BarbeariaScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
   tabsScroll: { flexGrow: 0, marginBottom: 4, overflow: "visible" },
   tabsContent: { gap: 8, paddingVertical: 10, paddingHorizontal: 16, paddingRight: 24 },
-  tab: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: "#141414", borderWidth: 1, borderColor: "#2A2A2A" },
+  tab: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
   tabActive: { backgroundColor: "#C9A84C", borderColor: "#C9A84C" },
-  tabText: { fontSize: 13, color: "#888880", fontWeight: "600" },
+  tabText: { fontSize: 13, color: c.muted, fontWeight: "600" },
   tabTextActive: { color: "#0A0A0A" },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#F5F5F0", marginBottom: 12 },
-  fieldLabel: { fontSize: 13, color: "#888880", marginBottom: 6, fontWeight: "500" },
-  input: { backgroundColor: "#141414", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#F5F5F0" },
-  divider: { height: 1, backgroundColor: "#2A2A2A", marginVertical: 20 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, marginBottom: 12 },
+  fieldLabel: { fontSize: 13, color: c.muted, marginBottom: 6, fontWeight: "500" },
+  input: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.foreground },
+  divider: { height: 1, backgroundColor: c.border, marginVertical: 20 },
   infoCard: { flexDirection: "row", gap: 8, backgroundColor: "#2196F322", borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: "#2196F344", alignItems: "flex-start" },
   infoText: { flex: 1, fontSize: 12, color: "#2196F3", lineHeight: 17 },
   saveBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginTop: 8 },
   saveBtnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "800", letterSpacing: 1 },
   emptyCard: { alignItems: "center", paddingVertical: 60, gap: 10 },
-  emptyText: { color: "#888880", fontSize: 16, fontWeight: "600" },
-  emptySubtext: { color: "#555", fontSize: 13 },
-  barberCard: { backgroundColor: "#141414", borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "#2A2A2A", flexDirection: "row", alignItems: "center", gap: 12 },
+  emptyText: { color: c.muted, fontSize: 16, fontWeight: "600" },
+  emptySubtext: { color: c.muted, fontSize: 13 },
+  barberCard: { backgroundColor: c.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center", gap: 12 },
   barberAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: "#C9A84C22", justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: "#C9A84C44" },
   barberAvatarText: { color: "#C9A84C", fontSize: 20, fontWeight: "700" },
-  barberName: { fontSize: 15, fontWeight: "700", color: "#F5F5F0" },
+  barberName: { fontSize: 15, fontWeight: "700", color: c.foreground },
   barberRole: { fontSize: 12, color: "#C9A84C", marginTop: 2 },
-  barberEmail: { fontSize: 12, color: "#888880", marginTop: 2 },
-  barberSpecialties: { fontSize: 11, color: "#555", marginTop: 2 },
+  barberEmail: { fontSize: 12, color: c.muted, marginTop: 2 },
+  barberSpecialties: { fontSize: 11, color: c.muted, marginTop: 2 },
   barberActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   inactiveBadge: { backgroundColor: "#F4433622", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "#F4433644" },
   inactiveBadgeText: { fontSize: 11, color: "#F44336", fontWeight: "600" },
   editBtn: { padding: 6 },
-  barberChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: "#141414", borderWidth: 1, borderColor: "#2A2A2A" },
+  barberChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
   barberChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
-  barberChipText: { fontSize: 13, color: "#888880", fontWeight: "600" },
+  barberChipText: { fontSize: 13, color: c.muted, fontWeight: "600" },
   barberChipTextActive: { color: "#C9A84C" },
-  dayCard: { backgroundColor: "#141414", borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: "#2A2A2A" },
+  dayCard: { backgroundColor: c.surface, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: c.border },
   dayLeft: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  dayName: { fontSize: 15, fontWeight: "600", color: "#F5F5F0", flex: 1 },
+  dayName: { fontSize: 15, fontWeight: "600", color: c.foreground, flex: 1 },
   timeRow: { flexDirection: "row", alignItems: "center", marginTop: 10, gap: 8 },
-  timeBtn: { flex: 1, backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#C9A84C", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, alignItems: "center" },
-  timeBtnLabel: { fontSize: 10, color: "#888880", fontWeight: "600", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 },
+  timeBtn: { flex: 1, backgroundColor: c.surface, borderWidth: 1, borderColor: "#C9A84C", borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12, alignItems: "center" },
+  timeBtnLabel: { fontSize: 10, color: c.muted, fontWeight: "600", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 2 },
   timeBtnValue: { fontSize: 20, fontWeight: "700", color: "#C9A84C", letterSpacing: 1 },
-  timeSep: { fontSize: 18, color: "#555", fontWeight: "300" },
-  integrationCard: { backgroundColor: "#141414", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#2A2A2A", marginBottom: 4 },
+  timeSep: { fontSize: 18, color: c.muted, fontWeight: "300" },
+  integrationCard: { backgroundColor: c.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: c.border, marginBottom: 4 },
   integrationHeader: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
   integrationIcon: { width: 48, height: 48, borderRadius: 12, justifyContent: "center", alignItems: "center" },
-  integrationTitle: { fontSize: 16, fontWeight: "700", color: "#F5F5F0" },
-  integrationSubtitle: { fontSize: 12, color: "#888880", marginTop: 2 },
+  integrationTitle: { fontSize: 16, fontWeight: "700", color: c.foreground },
+  integrationSubtitle: { fontSize: 12, color: c.muted, marginTop: 2 },
   modalOverlay: { flex: 1, backgroundColor: "#000000AA", justifyContent: "flex-end" },
-  modalCard: { backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "90%", borderWidth: 1, borderColor: "#2A2A2A" },
+  modalCard: { backgroundColor: c.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "90%", borderWidth: 1, borderColor: c.border },
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: "700", color: "#F5F5F0" },
+  modalTitle: { fontSize: 20, fontWeight: "700", color: c.foreground },
   roleRow: { flexDirection: "row", gap: 8, marginBottom: 16, flexWrap: "wrap" },
-  roleChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A" },
+  roleChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: c.background, borderWidth: 1, borderColor: c.border },
   roleChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
-  roleChipText: { fontSize: 13, color: "#888880", fontWeight: "600" },
+  roleChipText: { fontSize: 13, color: c.muted, fontWeight: "600" },
   roleChipTextActive: { color: "#C9A84C" },
-  suggestionBox: { backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, marginTop: 4, overflow: "hidden", zIndex: 100 },
-  suggestionItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#2A2A2A" },
-  suggestionText: { flex: 1, fontSize: 13, color: "#F5F5F0", lineHeight: 18 },
+  suggestionBox: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: 10, marginTop: 4, overflow: "hidden", zIndex: 100 },
+  suggestionItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border },
+  suggestionText: { flex: 1, fontSize: 13, color: c.foreground, lineHeight: 18 },
 });
+}
 
 function BarberPasswordField({ label, value, onChangeText, placeholder }: { label: string; value: string; onChangeText: (v: string) => void; placeholder?: string }) {
   const [visible, setVisible] = useState(false);

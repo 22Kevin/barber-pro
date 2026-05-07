@@ -22,6 +22,7 @@ import { AdminHeader } from "@/components/admin-header";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { useBarberAuth } from "@/lib/auth-context";
+import { useColors } from "@/hooks/use-colors";
 
 type Product = {
   id: number;
@@ -34,6 +35,8 @@ type Product = {
 };
 
 export default function ProductsScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
@@ -425,6 +428,8 @@ export default function ProductsScreen() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   return (
     <View style={{ marginBottom: 14 }}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -433,25 +438,26 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, paddingBottom: 12 },
-  title: { fontSize: 24, fontWeight: "800", color: "#F5F5F0" },
+  title: { fontSize: 24, fontWeight: "800", color: c.foreground },
   addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
-  searchRow: { flexDirection: "row", alignItems: "center", marginHorizontal: 16, backgroundColor: "#141414", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: "#2A2A2A", gap: 8, marginBottom: 4 },
-  searchInput: { flex: 1, color: "#F5F5F0", fontSize: 14 },
+  searchRow: { flexDirection: "row", alignItems: "center", marginHorizontal: 16, backgroundColor: c.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: c.border, gap: 8, marginBottom: 4 },
+  searchInput: { flex: 1, color: c.foreground, fontSize: 14 },
   emptyCard: { alignItems: "center", paddingVertical: 60, gap: 10 },
-  emptyText: { color: "#888880", fontSize: 16, fontWeight: "600" },
-  emptySubText: { color: "#555", fontSize: 13 },
-  card: { backgroundColor: "#141414", borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "#2A2A2A", flexDirection: "row", alignItems: "flex-start" },
+  emptyText: { color: c.muted, fontSize: 16, fontWeight: "600" },
+  emptySubText: { color: c.muted, fontSize: 13 },
+  card: { backgroundColor: c.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "flex-start" },
   cardInactive: { opacity: 0.5 },
   cardLeft: { flex: 1, flexDirection: "row", gap: 12 },
   cardIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: "#C9A84C22", justifyContent: "center", alignItems: "center" },
   cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  cardName: { fontSize: 16, fontWeight: "700", color: "#F5F5F0", flex: 1 },
-  cardDesc: { fontSize: 13, color: "#888880", marginBottom: 8, lineHeight: 18 },
+  cardName: { fontSize: 16, fontWeight: "700", color: c.foreground, flex: 1 },
+  cardDesc: { fontSize: 13, color: c.muted, marginBottom: 8, lineHeight: 18 },
   cardMeta: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  metaChip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#1E1E1E", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  metaChip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: c.background, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
   priceChip: { backgroundColor: "#C9A84C22" },
   priceText: { fontSize: 13, color: "#C9A84C", fontWeight: "700" },
   stockText: { fontSize: 12, fontWeight: "600" },
@@ -460,20 +466,21 @@ const styles = StyleSheet.create({
   cardActions: { flexDirection: "column", gap: 8, marginLeft: 8 },
   actionBtn: { padding: 6 },
   modalOverlay: { flex: 1, backgroundColor: "#000000AA", justifyContent: "flex-end", alignItems: "center" },
-  modalCard: { backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, width: "100%", maxHeight: "90%", borderWidth: 1, borderColor: "#2A2A2A" },
+  modalCard: { backgroundColor: c.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, width: "100%", maxHeight: "90%", borderWidth: 1, borderColor: c.border },
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: "700", color: "#F5F5F0" },
-  fieldLabel: { fontSize: 13, color: "#888880", marginBottom: 6, fontWeight: "500" },
-  input: { backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#F5F5F0" },
+  modalTitle: { fontSize: 20, fontWeight: "700", color: c.foreground },
+  fieldLabel: { fontSize: 13, color: c.muted, marginBottom: 6, fontWeight: "500" },
+  input: { backgroundColor: c.background, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.foreground },
   textarea: { height: 80, textAlignVertical: "top" },
   switchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingVertical: 4 },
-  switchLabel: { fontSize: 15, color: "#F5F5F0" },
+  switchLabel: { fontSize: 15, color: c.foreground },
   saveBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginBottom: 8 },
   saveBtnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "800", letterSpacing: 1 },
-  mediaHint: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#1A1A1A", borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: "#2A2A2A", borderStyle: "dashed" },
-  mediaHintText: { flex: 1, fontSize: 12, color: "#888880", lineHeight: 17 },
+  mediaHint: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: c.surface, borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: c.border, borderStyle: "dashed" },
+  mediaHintText: { flex: 1, fontSize: 12, color: c.muted, lineHeight: 17 },
   createdBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#22C55E18", borderRadius: 8, padding: 10, marginBottom: 10, borderWidth: 1, borderColor: "#22C55E44" },
   createdBannerText: { flex: 1, fontSize: 12, color: "#22C55E", fontWeight: "600", lineHeight: 17 },
-  movRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#1E1E1E" },
+  movRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.background },
   movIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center" },
 });
+}

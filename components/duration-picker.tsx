@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from "react";
+import { useColors } from "@/hooks/use-colors";
 import {
   View,
   Text,
@@ -47,6 +48,9 @@ function WheelColumn({
     }, 50);
     return () => clearTimeout(timeout);
   }, [selectedIndex]);
+
+  const colors = useColors();
+  const styles = createStyles(colors);
 
   function handleScrollEnd(e: any) {
     const offsetY = e.nativeEvent.contentOffset.y;
@@ -97,6 +101,8 @@ export function DurationPicker({
   onConfirm,
   onCancel,
 }: DurationPickerProps) {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const totalMinutes = value || 30;
   const initHour = Math.floor(totalMinutes / 60);
   const initMin = totalMinutes % 60;
@@ -209,7 +215,8 @@ export function DurationPicker({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
@@ -333,7 +340,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#374151",
-    backgroundColor: "#1A1A1A",
+    backgroundColor: c.surface,
   },
   shortcutActive: {
     borderColor: "#C9A84C",
@@ -349,3 +356,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 });
+}

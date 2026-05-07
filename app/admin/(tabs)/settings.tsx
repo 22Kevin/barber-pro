@@ -13,6 +13,7 @@ import { useThemeContext } from "@/lib/theme-provider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+import { useColors } from "@/hooks/use-colors";
 
 type ThemeOption = "light" | "dark" | "system";
 
@@ -23,6 +24,8 @@ const THEME_OPTIONS: { key: ThemeOption; label: string; icon: string; descriptio
 ];
 
 export default function SettingsScreen() {
+  const colors = useColors();
+  const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
   const { setColorScheme } = useThemeContext();
   const [themeOption, setThemeOption] = useState<ThemeOption>("system");
@@ -96,20 +99,22 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  section: { backgroundColor: "#141414", borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: "#2A2A2A" },
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
+  section: { backgroundColor: c.surface, borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: c.border },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#F5F5F0" },
-  sectionSubtitle: { fontSize: 13, color: "#888880", marginBottom: 16, lineHeight: 18 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground },
+  sectionSubtitle: { fontSize: 13, color: c.muted, marginBottom: 16, lineHeight: 18 },
   themeGrid: { gap: 10 },
-  themeCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#1A1A1A", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#2A2A2A" },
+  themeCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: c.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: c.border },
   themeCardActive: { backgroundColor: "#C9A84C", borderColor: "#C9A84C" },
-  themeIconBox: { width: 40, height: 40, borderRadius: 10, backgroundColor: "#2A2A2A", justifyContent: "center", alignItems: "center" },
+  themeIconBox: { width: 40, height: 40, borderRadius: 10, backgroundColor: c.border, justifyContent: "center", alignItems: "center" },
   themeIconBoxActive: { backgroundColor: "#0A0A0A22" },
-  themeLabel: { fontSize: 15, fontWeight: "700", color: "#F5F5F0", flex: 1 },
+  themeLabel: { fontSize: 15, fontWeight: "700", color: c.foreground, flex: 1 },
   themeLabelActive: { color: "#0A0A0A" },
-  themeDescription: { fontSize: 11, color: "#888880", position: "absolute", bottom: 10, right: 50, maxWidth: 120, textAlign: "right" },
+  themeDescription: { fontSize: 11, color: c.muted, position: "absolute", bottom: 10, right: 50, maxWidth: 120, textAlign: "right" },
   themeCheck: { width: 24, height: 24, borderRadius: 12, backgroundColor: "#0A0A0A33", justifyContent: "center", alignItems: "center" },
   versionCard: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 20 },
   versionText: { fontSize: 12, color: "#444" },
 });
+}
