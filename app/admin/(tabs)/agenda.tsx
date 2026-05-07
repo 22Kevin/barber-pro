@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -368,6 +368,30 @@ export default function AgendaScreen() {
     : (appointmentsQuery.data ?? []);
   const [apptSearch, setApptSearch] = useState("");
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
+  // Ref para o ScrollView principal (scroll automático para horário atual)
+  const mainScrollRef = useRef<ScrollView>(null);
+  // Horário atual para indicador na timeline
+  const [currentTime, setCurrentTime] = useState(new Date());
+  // Atualiza o horário atual a cada minuto
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(new Date()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
+  // Scroll automático para o horário atual quando a timeline é ativada
+  useEffect(() => {
+    if (viewMode !== 'timeline') return;
+    const now = new Date();
+    const isToday = dateToString(selectedDate) === dateToString(now);
+    if (!isToday) return;
+    // Calcular posição do slot atual (cada slot tem ~40px de altura mínima)
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = 7 * 60; // 07:00
+    const slotIndex = Math.max(0, Math.floor((nowMinutes - startMinutes) / 30) - 1);
+    const estimatedY = slotIndex * 42 + 200; // ~42px por slot + offset do calendário
+    setTimeout(() => {
+      mainScrollRef.current?.scrollTo({ y: estimatedY, animated: true });
+    }, 300);
+  }, [viewMode, selectedDate]);
   const filteredByBarber = isManager && filterBarberId !== null
     ? rawAppointments.filter((a: any) => a.barberId === filterBarberId)
     : rawAppointments;
@@ -406,7 +430,7 @@ export default function AgendaScreen() {
           </View>
         }
       />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView ref={mainScrollRef} showsVerticalScrollIndicator={false}>
 
         {/* Calendário */}
         <View style={styles.calendarCard}>
@@ -585,6 +609,15 @@ export default function AgendaScreen() {
               const slotH = Math.floor(totalMinutes / 60);
               const slotM = totalMinutes % 60;
               const slotLabel = `${String(slotH).padStart(2, '0')}:${String(slotM).padStart(2, '0')}`;
+              // Verificar se o horário atual está neste slot
+              const isToday = dateToString(selectedDate) === dateToString(new Date());
+              const nowH = currentTime.getHours();
+              const nowM = currentTime.getMinutes();
+              const nowMinutesTotal = nowH * 60 + nowM;
+              const slotEndMinutes = totalMinutes + 30;
+              const isCurrentSlot = isToday && nowMinutesTotal >= totalMinutes && nowMinutesTotal < slotEndMinutes;
+              // Posição relativa do indicador dentro do slot (0-100%)
+              const indicatorOffset = isCurrentSlot ? ((nowMinutesTotal - totalMinutes) / 30) : 0;
               // Agendamentos que começam neste slot (HH:MM)
               const slotAppts = appointments.filter((a: any) => {
                 const t = (a.startTime ?? "").substring(0, 5);
@@ -592,8 +625,16 @@ export default function AgendaScreen() {
               });
               return (
                 <View key={slotLabel} style={styles.timelineRow}>
-                  <Text style={styles.timelineHour}>{slotLabel}</Text>
-                  <View style={styles.timelineLine} />
+                  <Text style={[styles.timelineHour, isCurrentSlot && { color: '#F44336', fontWeight: '700' }]}>{slotLabel}</Text>
+                  <View style={styles.timelineLineWrapper}>
+                    <View style={styles.timelineLine} />
+                    {isCurrentSlot && (
+                      <View style={[styles.timelineNowIndicator, { top: `${indicatorOffset * 100}%` as any }]}>
+                        <View style={styles.timelineNowDot} />
+                        <View style={styles.timelineNowLine} />
+                      </View>
+                    )}
+                  </View>
                   <View style={styles.timelineEvents}>
                     {slotAppts.map((apt: any) => {
                       const statusColor = STATUS_CONFIG[apt.status]?.color ?? "#888880";
@@ -1096,7 +1137,11 @@ const styles = StyleSheet.create({
   timelineContainer: { paddingHorizontal: 16, paddingBottom: 8 },
   timelineRow: { flexDirection: "row", alignItems: "flex-start", minHeight: 40, marginBottom: 2 },
   timelineHour: { width: 44, fontSize: 11, color: "#555", fontWeight: "600", paddingTop: 6, textAlign: "right", paddingRight: 8 },
-  timelineLine: { width: 1, backgroundColor: "#2A2A2A", alignSelf: "stretch", marginRight: 10, marginTop: 6 },
+  timelineLineWrapper: { width: 12, alignSelf: "stretch", alignItems: "center", marginRight: 6, position: "relative" },
+  timelineLine: { width: 1, backgroundColor: "#2A2A2A", flex: 1 },
+  timelineNowIndicator: { position: "absolute", left: 0, right: 0, flexDirection: "row", alignItems: "center" },
+  timelineNowDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#F44336", marginLeft: -3 },
+  timelineNowLine: { flex: 1, height: 1.5, backgroundColor: "#F44336" },
   timelineEvents: { flex: 1, gap: 4, paddingBottom: 4 },
   timelineCard: { backgroundColor: "#141414", borderRadius: 10, borderWidth: 1, borderColor: "#2A2A2A", borderLeftWidth: 4, padding: 10, marginBottom: 2 },
   timelineCardTime: { fontSize: 11, color: "#888880", fontWeight: "600", marginBottom: 2 },

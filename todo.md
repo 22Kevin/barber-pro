@@ -1844,3 +1844,10 @@
 - [x] Toggle de botões "Lista" / "Timeline" no header da seção de agendamentos
 - [x] Vista de timeline no app: slots de 30min das 07:00 às 22:00, agendamentos posicionados por horário com borda colorida por status, clicável para abrir modal de detalhes
 - [x] Ícone list.bullet.rectangle adicionado ao icon-symbol.tsx (view-agenda do Material Icons)
+
+## Melhorias da Timeline e Bugs — Mai/2026
+
+- [x] Indicador de horário atual (linha vermelha) na timeline do app
+- [x] Scroll automático para o horário atual ao abrir a timeline no app
+- [x] Corrigir layout quebrado dos cards de serviços na página pública do cliente
+- [x] Corrigir erro 403 CloudFront no login com Google na página pública
