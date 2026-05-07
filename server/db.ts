@@ -189,19 +189,16 @@ export async function getBarberById(id: number) {
 export async function getAllBarbers(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [] as typeof barbers.$inferSelect[];
-  const conditions: any[] = [eq(barbers.isActive, true)];
-  if (tenantId != null) conditions.push(eq(barbers.tenantId, tenantId));
-  return db.select().from(barbers).where(and(...conditions)).orderBy(barbers.name).catch(() => [] as typeof barbers.$inferSelect[]);
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento de dados
+  if (tenantId == null) return [] as typeof barbers.$inferSelect[];
+  return db.select().from(barbers).where(and(eq(barbers.isActive, true), eq(barbers.tenantId, tenantId))).orderBy(barbers.name).catch(() => [] as typeof barbers.$inferSelect[]);
 }
 export async function getAllBarbersIncludingInactive(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [] as typeof barbers.$inferSelect[];
-  const conditions: any[] = [];
-  if (tenantId != null) conditions.push(eq(barbers.tenantId, tenantId));
-  const query = conditions.length > 0
-    ? db.select().from(barbers).where(and(...conditions)).orderBy(barbers.name)
-    : db.select().from(barbers).orderBy(barbers.name);
-  return query.catch(() => [] as typeof barbers.$inferSelect[]);
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento de dados
+  if (tenantId == null) return [] as typeof barbers.$inferSelect[];
+  return db.select().from(barbers).where(eq(barbers.tenantId, tenantId)).orderBy(barbers.name).catch(() => [] as typeof barbers.$inferSelect[]);
 }
 export async function reactivateBarber(id: number) {
   const db = await getDb();
@@ -277,9 +274,9 @@ export async function deleteBarber(id: number) {
 export async function getAllClients(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [] as typeof clients.$inferSelect[];
-  const conditions: any[] = [eq(clients.isActive, true)];
-  if (tenantId != null) conditions.push(eq(clients.tenantId, tenantId));
-  return db.select().from(clients).where(and(...conditions)).orderBy(clients.name).catch(() => [] as typeof clients.$inferSelect[]);
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento de dados
+  if (tenantId == null) return [] as typeof clients.$inferSelect[];
+  return db.select().from(clients).where(and(eq(clients.isActive, true), eq(clients.tenantId, tenantId))).orderBy(clients.name).catch(() => [] as typeof clients.$inferSelect[]);
 }
 
 export async function getClientById(id: number) {
@@ -320,28 +317,24 @@ export async function createCategory(name: string, type: "service" | "product") 
 export async function getAllServices(activeOnly = false, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [] as typeof services.$inferSelect[];
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento de dados
+  if (tenantId == null) return [] as typeof services.$inferSelect[];
   try {
-    const conditions: any[] = [];
+    const conditions: any[] = [eq(services.tenantId, tenantId)];
     if (activeOnly) conditions.push(eq(services.isActive, true));
-    if (tenantId != null) conditions.push(eq(services.tenantId, tenantId));
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
-    return where
-      ? await db.select().from(services).where(where).orderBy(services.name)
-      : await db.select().from(services).orderBy(services.name);
+    return await db.select().from(services).where(and(...conditions)).orderBy(services.name);
   } catch { return [] as typeof services.$inferSelect[]; }
 }
 
 export async function getAllServicesWithMedia(activeOnly = false, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [] as (typeof services.$inferSelect & { thumbnailUrl: string | null })[];
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento de dados
+  if (tenantId == null) return [] as (typeof services.$inferSelect & { thumbnailUrl: string | null })[];
   try {
-    const conditions: any[] = [];
+    const conditions: any[] = [eq(services.tenantId, tenantId)];
     if (activeOnly) conditions.push(eq(services.isActive, true));
-    if (tenantId != null) conditions.push(eq(services.tenantId, tenantId));
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
-    const svcs = where
-      ? await db.select().from(services).where(where).orderBy(services.name)
-      : await db.select().from(services).orderBy(services.name);
+    const svcs = await db.select().from(services).where(and(...conditions)).orderBy(services.name);
     const ids = svcs.map((s) => s.id);
     if (ids.length === 0) return svcs.map((s) => ({ ...s, thumbnailUrl: null as string | null }));
     const media = await db.select().from(mediaFiles)
@@ -386,7 +379,7 @@ export async function getAllProductsWithMedia(activeOnly = false, tenantId?: num
   try {
     const conditions: any[] = [];
     if (activeOnly) conditions.push(eq(products.isActive, true));
-    if (tenantId != null) conditions.push(eq(products.tenantId, tenantId));
+    conditions.push(eq(products.tenantId, tenantId ?? -1));
     const where = conditions.length > 0 ? and(...conditions) : undefined;
     const prods = where
       ? await db.select().from(products).where(where).orderBy(products.name)
@@ -418,7 +411,7 @@ export async function getAllProducts(activeOnly = false, tenantId?: number | nul
   try {
     const conditions: any[] = [];
     if (activeOnly) conditions.push(eq(products.isActive, true));
-    if (tenantId != null) conditions.push(eq(products.tenantId, tenantId));
+    conditions.push(eq(products.tenantId, tenantId ?? -1));
     const where = conditions.length > 0 ? and(...conditions) : undefined;
     return where
       ? db.select().from(products).where(where).orderBy(products.name)
@@ -485,6 +478,8 @@ export async function getShopOpenStatus(tenantId?: number | null) {
   const toMinutes = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
   // Busca barbeiros do tenant para filtrar working_hours
   let barberIds: number[] = [];
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento
+  if (tenantId == null) return { isOpen: false, opensAt: null, closesAt: null, lunchStart: null, lunchEnd: null };
   if (tenantId != null) {
     const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(and(eq(barbers.tenantId, tenantId), eq(barbers.isActive, true)));
     barberIds = tenantBarbers.map(b => b.id);
@@ -607,6 +602,8 @@ export async function getAllAppointmentsByDateRange(barberId: number, startDate:
   const db = await getDb();
   if (!db) return [];
   // Se tenantId fornecido, verificar se o barbeiro pertence ao tenant
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento
+  if (tenantId == null) return [];
   if (tenantId != null) {
     const barberRow = await db.select({ id: barbers.id }).from(barbers)
       .where(and(eq(barbers.id, barberId), eq(barbers.tenantId, tenantId)))
@@ -626,6 +623,8 @@ export async function getAllAppointmentsByDateRange(barberId: number, startDate:
 export async function getAllAppointmentsByDateRangeForTenant(startDate: string, endDate: string, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [] as string[];
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento
+  if (tenantId == null) return [] as string[];
   if (tenantId != null) {
     const rows = await db.select({ date: appointments.date })
       .from(appointments)
@@ -651,6 +650,8 @@ export async function getAllAppointmentsByDateRangeForTenant(startDate: string, 
 export async function getAllAppointmentsByDate(date: string, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento
+  if (tenantId == null) return [];
   if (tenantId != null) {
     // Filtrar via join com barbeiros do tenant
     const rows = await db.select({
@@ -774,6 +775,8 @@ export async function getSalesByDateRange(startDate: string, endDate: string, ba
     lte(sales.createdAt, new Date(endDate + "T23:59:59")) as any,
   ];
   if (barberId) conditions.push(eq(sales.barberId, barberId) as any);
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento
+  if (tenantId == null) return [];
   if (tenantId != null) {
     // Filtrar via subquery: apenas vendas de barbeiros do tenant
     const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
@@ -815,6 +818,8 @@ export async function getExpensesByDateRange(startDate: string, endDate: string,
   const db = await getDb();
   if (!db) return [];
   const conditions: any[] = [gte(expenses.date, startDate), lte(expenses.date, endDate)];
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento
+  if (tenantId == null) return [];
   if (tenantId != null) {
     // Filtrar via subquery: apenas despesas de barbeiros do tenant
     const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
@@ -850,7 +855,7 @@ export async function getAllCoupons(tenantId?: number | null) {
   if (!db) return [] as typeof coupons.$inferSelect[];
   try {
     const conditions: any[] = [];
-    if (tenantId != null) conditions.push(eq(coupons.tenantId, tenantId));
+    conditions.push(eq(coupons.tenantId, tenantId ?? -1));
     return conditions.length > 0
       ? await db.select().from(coupons).where(and(...conditions)).orderBy(desc(coupons.createdAt))
       : await db.select().from(coupons).orderBy(desc(coupons.createdAt));
@@ -905,7 +910,7 @@ export async function getLoyaltyRewards(tenantId?: number | null) {
   if (!db) return [] as typeof loyaltyRewards.$inferSelect[];
   try {
     const conditions: any[] = [eq(loyaltyRewards.isActive, true)];
-    if (tenantId != null) conditions.push(eq(loyaltyRewards.tenantId, tenantId));
+    conditions.push(eq(loyaltyRewards.tenantId, tenantId ?? -1));
     return await db.select().from(loyaltyRewards).where(and(...conditions)).orderBy(loyaltyRewards.pointsRequired);
   } catch { return [] as typeof loyaltyRewards.$inferSelect[]; }
 }
@@ -958,6 +963,8 @@ export async function getDashboardStats(date: string, tenantId?: number | null) 
   if (!db) return { appointmentsToday: 0, revenueToday: 0, clientsToday: 0, pendingAppointments: 0 };
   // Obter IDs dos barbeiros do tenant para filtrar
   let barberIds: number[] | null = null;
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento
+  if (tenantId == null) return { appointmentsToday: 0, revenueToday: 0, clientsToday: 0, pendingAppointments: 0 };
   if (tenantId != null) {
     const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
     barberIds = tenantBarbers.map(b => b.id);
@@ -1020,14 +1027,14 @@ export async function getReviewsByService(serviceId: number, tenantId?: number |
   const db = await getDb();
   if (!db) return [];
   const conditions = [eq(reviews.serviceId, serviceId)];
-  if (tenantId != null) conditions.push(eq(reviews.tenantId, tenantId));
+  conditions.push(eq(reviews.tenantId, tenantId ?? -1));
   return db.select().from(reviews).where(and(...conditions)).orderBy(desc(reviews.createdAt));
 }
 export async function getReviewsByProduct(productId: number, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
   const conditions = [eq(reviews.productId, productId)];
-  if (tenantId != null) conditions.push(eq(reviews.tenantId, tenantId));
+  conditions.push(eq(reviews.tenantId, tenantId ?? -1));
   const result = await db
     .select({ id: reviews.id, rating: reviews.rating, comment: reviews.comment, createdAt: reviews.createdAt, clientId: reviews.clientId })
     .from(reviews)
@@ -1044,7 +1051,7 @@ export async function getReviewsByClient(clientId: number, tenantId?: number | n
   const db = await getDb();
   if (!db) return [];
   const conditions = [eq(reviews.clientId, clientId)];
-  if (tenantId != null) conditions.push(eq(reviews.tenantId, tenantId));
+  conditions.push(eq(reviews.tenantId, tenantId ?? -1));
   return db.select().from(reviews).where(and(...conditions)).orderBy(desc(reviews.createdAt));
 }
 export async function getRecentReviews(limit = 5, tenantId?: number | null) {
@@ -1180,7 +1187,7 @@ export async function getAllServicesWithMediaAndRatings(activeOnly = false, tena
   if (!db) return [];
   const conditions = [];
   if (activeOnly) conditions.push(eq(services.isActive, true));
-  if (tenantId != null) conditions.push(eq(services.tenantId, tenantId));
+  conditions.push(eq(services.tenantId, tenantId ?? -1));
   const where = conditions.length > 0 ? and(...conditions) : undefined;
   const svcs = where
     ? await db.select().from(services).where(where).orderBy(services.name)
@@ -1213,7 +1220,7 @@ export async function listReturnMessageConfigs(tenantId?: number | null) {
   try {
     // Filter services by tenantId to get only this tenant's services
     const svcConditions: any[] = [];
-    if (tenantId != null) svcConditions.push(eq(services.tenantId, tenantId));
+    svcConditions.push(eq(services.tenantId, tenantId ?? -1));
     const tenantServices = svcConditions.length > 0
       ? await db.select({ id: services.id }).from(services).where(and(...svcConditions))
       : await db.select({ id: services.id }).from(services);
@@ -1258,7 +1265,7 @@ export async function listPromotions(tenantId?: number | null) {
   if (!db) return [] as typeof promotions.$inferSelect[];
   try {
     const conditions: any[] = [];
-    if (tenantId != null) conditions.push(eq(promotions.tenantId, tenantId));
+    conditions.push(eq(promotions.tenantId, tenantId ?? -1));
     return conditions.length > 0
       ? await db.select().from(promotions).where(and(...conditions)).orderBy(desc(promotions.createdAt))
       : await db.select().from(promotions).orderBy(desc(promotions.createdAt));
@@ -1334,7 +1341,7 @@ export async function listWaitlistByDate(date: string, tenantId?: number | null)
   const clientIds = Array.from(new Set(entries.map((e) => e.clientId)));
   // Filtrar apenas clientes do tenant
   const clientConditions: any[] = [inArray(clients.id, clientIds)];
-  if (tenantId != null) clientConditions.push(eq(clients.tenantId, tenantId));
+  clientConditions.push(eq(clients.tenantId, tenantId ?? -1));
   const clientList = await db.select().from(clients).where(and(...clientConditions));
   // Retornar apenas entradas de clientes do tenant
   const validClientIds = new Set(clientList.map(c => c.id));
@@ -1391,6 +1398,8 @@ export async function notifyWaitlistOnCancellation(date: string, tenantId?: numb
   if (!db) return null;
   // Filtrar waitlist por clientes do tenant
   let validClientIds: Set<number> | null = null;
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento
+  if (tenantId == null) return null;
   if (tenantId != null) {
     const tenantClients = await db.select({ id: clients.id }).from(clients).where(eq(clients.tenantId, tenantId));
     validClientIds = new Set(tenantClients.map(c => c.id));
@@ -1424,7 +1433,7 @@ export async function listCommissionConfigs(tenantId?: number | null) {
   if (!db) return [] as (typeof barbers.$inferSelect & { commissionRate: number; hasConfig: boolean })[];
   try {
     const barberConditions: any[] = [eq(barbers.isActive, true)];
-    if (tenantId != null) barberConditions.push(eq(barbers.tenantId, tenantId));
+    barberConditions.push(eq(barbers.tenantId, tenantId ?? -1));
     const barberList = await db.select().from(barbers).where(and(...barberConditions));
     const barberIds = barberList.map((b) => b.id);
     const configs = barberIds.length > 0
@@ -1524,7 +1533,7 @@ export async function getCommissionSummary(startDate: string, endDate: string, t
   const db = await getDb();
   if (!db) return [];
   const barberConditions: any[] = [eq(barbers.isActive, true)];
-  if (tenantId != null) barberConditions.push(eq(barbers.tenantId, tenantId));
+  barberConditions.push(eq(barbers.tenantId, tenantId ?? -1));
   const barberList = await db.select().from(barbers).where(and(...barberConditions));
   const barberIds = barberList.map((b) => b.id);
   // Buscar entradas apenas dos barbeiros do tenant
@@ -1646,7 +1655,7 @@ export async function getAllRecurringAppointments(tenantId?: number | null) {
   try {
     // Filter barbers by tenantId
     const bConditions: any[] = [];
-    if (tenantId != null) bConditions.push(eq(barbers.tenantId, tenantId));
+    bConditions.push(eq(barbers.tenantId, tenantId ?? -1));
     const tenantBarbers = bConditions.length > 0
       ? await db.select({ id: barbers.id }).from(barbers).where(and(...bConditions))
       : await db.select({ id: barbers.id }).from(barbers);
@@ -1671,21 +1680,16 @@ export async function getAllRecurringAppointments(tenantId?: number | null) {
 export async function getPromotionConversionReport(tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  const promoConditions = tenantId != null
-    ? and(sql`${promotions.sentAt} IS NOT NULL`, eq(promotions.tenantId, tenantId))
-    : sql`${promotions.sentAt} IS NOT NULL`;
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento
+  if (tenantId == null) return [];
+  const promoConditions = and(sql`${promotions.sentAt} IS NOT NULL`, eq(promotions.tenantId, tenantId));
   const promoList = await db.select().from(promotions).where(promoConditions).orderBy(desc(promotions.sentAt));
   // appointments não tem tenantId diretamente — filtra via barberId (join com barbers)
-  let allAppointments: any[];
-  if (tenantId != null) {
-    const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
-    const barberIds = tenantBarbers.map((b: any) => b.id);
-    allAppointments = barberIds.length > 0
-      ? await db.select().from(appointments).where(inArray(appointments.barberId, barberIds))
-      : [];
-  } else {
-    allAppointments = await db.select().from(appointments);
-  }
+  const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
+  const barberIds = tenantBarbers.map((b: any) => b.id);
+  const allAppointments: any[] = barberIds.length > 0
+    ? await db.select().from(appointments).where(inArray(appointments.barberId, barberIds))
+    : [];
   return promoList.map((p) => {
     if (!p.sentAt) return { ...p, conversions: 0, conversionRate: 0 };
     const sentDate = new Date(p.sentAt);
@@ -1707,7 +1711,7 @@ export async function getStockProducts(tenantId?: number | null) {
   if (!db) return [];
   try {
     const conditions: any[] = [eq(products.isActive, true)];
-    if (tenantId != null) conditions.push(eq(products.tenantId, tenantId));
+    conditions.push(eq(products.tenantId, tenantId ?? -1));
     const prods = await db.select().from(products).where(and(...conditions)).orderBy(products.name);
     return prods.map((p) => ({
       ...p,
@@ -2296,6 +2300,8 @@ export async function getCancelledRecurringAppointments(tenantId?: number | null
   const db = await getDb();
   if (!db) return [];
   let list;
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento
+  if (tenantId == null) return [];
   if (tenantId != null) {
     const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
     const barberIds = tenantBarbers.map((b) => b.id);
@@ -2325,13 +2331,15 @@ export async function getSubscriptionStats(tenantId?: number | null) {
   if (!db) return { totalActive: 0, totalCancelled: 0, cancelRate: 0, estimatedMRR: 0 };
 
   let allRec;
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento
+  if (tenantId == null) return { totalActive: 0, totalCancelled: 0, cancelRate: 0, estimatedMRR: 0 };
   if (tenantId != null) {
     const tenantBarbers = await db.select({ id: barbers.id }).from(barbers).where(eq(barbers.tenantId, tenantId));
     const barberIds = tenantBarbers.map((b) => b.id);
     if (barberIds.length === 0) return { totalActive: 0, totalCancelled: 0, cancelRate: 0, estimatedMRR: 0 };
     allRec = await db.select().from(recurringAppointments).where(inArray(recurringAppointments.barberId, barberIds));
   } else {
-    allRec = await db.select().from(recurringAppointments);
+    return { totalActive: 0, totalCancelled: 0, cancelRate: 0, estimatedMRR: 0 };
   }
   const active = allRec.filter((r) => r.isActive);
   const cancelled = allRec.filter((r) => !r.isActive);

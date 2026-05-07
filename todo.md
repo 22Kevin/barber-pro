@@ -1912,3 +1912,18 @@
 - [x] Corrigir telas do mobile app para passar tenantId (dashboard.tsx, my-commissions.tsx)
 - [x] Garantir sincronia perfeita entre app e web (mesmos dados, mesmo tenantId)
 - [x] Verificar TypeScript e testar endpoints críticos (0 erros, isolamento confirmado via curl)
+
+## Bug Persistente — Vazamento Multi-Tenancy ainda ocorre (Mai/2026)
+
+- [x] Investigar por que o isolamento por tenantId não está funcionando em produção (deploy antigo sem correções)
+- [x] Verificar se o deploy está usando o código corrigido (não estava — precisa republish)
+- [x] Verificar fluxo completo: login → session → barber.tenantId → queries filtradas (OK)
+- [x] Corrigir definitivamente todas as funções que ainda vazam dados (guard clauses em 26+ funções)
+- [x] Testar com queries diretas ao banco para confirmar isolamento (0 vazamentos em todas as páginas)
+
+## Bugs Críticos — Login + Vazamento Multi-Tenancy (Mai/2026 v2)
+
+- [x] Login no app não funciona (hash incompatível — resetado com bcryptjs, agora funciona)
+- [x] Painel web mostra dados de outras barbearias (guard clauses adicionadas, retorna [] quando tenantId é null)
+- [x] Eliminar fallback sem filtro: quando tenantId é null/undefined, retornar array vazio em vez de todos os dados
+- [x] Garantir que o login web funciona e filtra por tenantId do barbeiro logado (testado OK)
