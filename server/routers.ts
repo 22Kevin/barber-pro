@@ -358,6 +358,7 @@ export const appRouter = router({
 
   appointments: router({
     byDate: publicProcedure.input(z.object({ barberId: z.number(), date: z.string() })).query(({ input }) => db.getAppointmentsByDate(input.barberId, input.date)),
+    byId: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getAppointmentById(input.id)),
     allByDate: publicProcedure.input(z.object({ date: z.string(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllAppointmentsByDate(input.date, input.tenantId)),
     nextByClient: publicProcedure.input(z.object({ clientId: z.number() })).query(({ input }) => db.getNextClientAppointment(input.clientId)),
     byDateRange: publicProcedure.input(z.object({ barberId: z.number(), startDate: z.string(), endDate: z.string() })).query(({ input }) => db.getAppointmentsByDateRange(input.barberId, input.startDate, input.endDate)),

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { router } from "expo-router";
 
 // Configura o handler global — notificações aparecem mesmo com o app aberto
 Notifications.setNotificationHandler({
@@ -60,9 +61,25 @@ export function useNotifications() {
 
     // Listener: usuário tocou na notificação
     responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (_response) => {
-        // Aqui poderíamos navegar para a tela de agendamentos
-        // Ex: router.push("/client/(tabs)/history")
+      (response) => {
+        const data = response.notification.request.content.data as Record<string, any>;
+        const appointmentId = data?.appointmentId;
+        const type = data?.type;
+        const screen = data?.screen;
+        if (appointmentId) {
+          // Navega para a Agenda do admin passando o appointmentId para abrir o modal
+          // O parâmetro highlightApproval indica que deve destacar os botões Aprovar/Recusar
+          const isPendingApproval = type === "pending_approval";
+          router.push({
+            pathname: "/admin/(tabs)/agenda",
+            params: {
+              openAppointmentId: String(appointmentId),
+              highlightApproval: isPendingApproval ? "1" : "0",
+            },
+          } as any);
+        } else if (screen) {
+          router.push(screen as any);
+        }
       }
     );
 

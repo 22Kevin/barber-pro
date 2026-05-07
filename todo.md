@@ -1862,3 +1862,7 @@
 - [x] Adicionar pontos indicadores nos dias com agendamentos no calendário
 - [x] Adicionar filtro de barbeiro na vista Linha do Tempo
 - [x] Push notification para super_admin quando agendamento pendente de aprovação é criado
+
+## Aprovação Rápida via Notificação (Mai/2026)
+
+- [x] Ao tocar na notificação de pending_approval, abrir a tela de Agenda com o modal de detalhes do agendamento aberto e botões Aprovar/Recusar em destaque

@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -105,11 +105,39 @@ function generateTimeSlots(
 export default function AgendaScreen() {
   const { barber } = useBarberAuth();
   const router = useRouter();
+  const params = useLocalSearchParams<{ openAppointmentId?: string; highlightApproval?: string }>();
 
   // Zera o badge do ícone do app ao abrir a tela de agenda
   useEffect(() => {
     clearAppBadge().catch(() => null);
   }, []);
+
+  // Controla se o modal de detalhes deve destacar os botões de aprovação
+  const [highlightApproval, setHighlightApproval] = useState(false);
+
+  // Query para buscar agendamento por ID (usado ao navegar via notificação)
+  const openApptId = params.openAppointmentId ? Number(params.openAppointmentId) : null;
+  const openApptQuery = trpc.appointments.byId.useQuery(
+    { id: openApptId ?? 0 },
+    { enabled: !!openApptId }
+  );
+
+  // Quando o agendamento é carregado via notificação, navega para a data e abre o modal
+  useEffect(() => {
+    if (!openApptQuery.data || !openApptId) return;
+    const apt = openApptQuery.data;
+    // Navega para a data do agendamento
+    if (apt.date) {
+      const [y, m, d] = (apt.date as string).split('-').map(Number);
+      setSelectedDate(new Date(y, m - 1, d));
+      setCurrentMonth(new Date(y, m - 1, d));
+    }
+    // Monta o objeto de agendamento para o modal
+    setSelectedAppointment(apt);
+    setEditServices([]);
+    setHighlightApproval(params.highlightApproval === '1');
+    setShowDetailModal(true);
+  }, [openApptQuery.data, openApptId]);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showNewModal, setShowNewModal] = useState(false);
@@ -896,6 +924,15 @@ export default function AgendaScreen() {
             </View>
             {selectedAppointment && (
               <ScrollView>
+                {/* Banner de ação necessária — exibido ao abrir via notificação */}
+                {highlightApproval && selectedAppointment.status === "pending_approval" && (
+                  <View style={{ backgroundColor: "#FF9800", borderRadius: 8, padding: 10, marginBottom: 12, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Text style={{ fontSize: 18 }}>🔔</Text>
+                    <Text style={{ color: "#0A0A0A", fontWeight: "700", fontSize: 13, flex: 1 }}>
+                      Ação necessária: este agendamento aguarda sua aprovação.
+                    </Text>
+                  </View>
+                )}
                 {/* Informações do agendamento */}
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Cliente</Text>
@@ -991,7 +1028,7 @@ export default function AgendaScreen() {
 
                 {/* Seção de aprovação de horário extra */}
                 {selectedAppointment.status === "pending_approval" && (
-                  <View style={{ backgroundColor: "#1A0D00", borderRadius: 12, padding: 16, marginTop: 16, marginBottom: 8, borderWidth: 1, borderColor: "#FF6B35" }}>
+                  <View style={{ backgroundColor: "#1A0D00", borderRadius: 12, padding: 16, marginTop: 16, marginBottom: 8, borderWidth: highlightApproval ? 2 : 1, borderColor: highlightApproval ? "#FF9800" : "#FF6B35", ...(highlightApproval && { shadowColor: "#FF9800", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 12, elevation: 8 }) }}>
                     <Text style={{ color: "#FF6B35", fontWeight: "700", fontSize: 15, marginBottom: 6 }}>
                       ⚠️ Agendamento fora do expediente
                     </Text>
