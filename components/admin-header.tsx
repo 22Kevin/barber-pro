@@ -66,9 +66,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#FFFFFF",
     letterSpacing: 0.3,
+    flexShrink: 1,
   },
   rightSlot: {
-    minWidth: 40,
+    flexShrink: 0,
     alignItems: "flex-end",
   },
 });

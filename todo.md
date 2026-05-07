@@ -1851,3 +1851,7 @@
 - [x] Scroll automático para o horário atual ao abrir a timeline no app
 - [x] Corrigir layout quebrado dos cards de serviços na página pública do cliente
 - [x] Corrigir erro 403 CloudFront no login com Google na página pública
+
+## Bug — Botões invisíveis na tela de Agenda (Mai/2026)
+
+- [x] Identificar e corrigir botões invisíveis na tela de Agenda do app (Plano, +Novo, Cards, Linha do Tempo)

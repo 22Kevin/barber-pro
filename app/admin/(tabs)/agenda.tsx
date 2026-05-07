@@ -525,27 +525,29 @@ export default function AgendaScreen() {
         </View>
         {/* Agendamentos do dia */}
         <View style={styles.sectionHeader}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.sectionTitle}>
               {DAYS_PT[selectedDate.getDay()]}, {selectedDate.getDate()} de {MONTHS_PT[selectedDate.getMonth()]}
             </Text>
             <Text style={styles.sectionCount}>{appointments.length} agendamento(s)</Text>
           </View>
-          {/* Toggle Lista / Timeline */}
+        </View>
+        {/* Toggle Cards / Linha do Tempo */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
           <View style={styles.viewToggle}>
             <Pressable
               style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
               onPress={() => setViewMode('list')}
             >
               <IconSymbol name="list.bullet" size={14} color={viewMode === 'list' ? '#C9A84C' : '#888880'} />
-              <Text style={[styles.viewToggleBtnText, viewMode === 'list' && styles.viewToggleBtnTextActive]}>Lista</Text>
+              <Text style={[styles.viewToggleBtnText, viewMode === 'list' && styles.viewToggleBtnTextActive]}>Cards</Text>
             </Pressable>
             <Pressable
               style={[styles.viewToggleBtn, viewMode === 'timeline' && styles.viewToggleBtnActive]}
               onPress={() => setViewMode('timeline')}
             >
               <IconSymbol name="list.bullet.rectangle" size={14} color={viewMode === 'timeline' ? '#C9A84C' : '#888880'} />
-              <Text style={[styles.viewToggleBtnText, viewMode === 'timeline' && styles.viewToggleBtnTextActive]}>Timeline</Text>
+              <Text style={[styles.viewToggleBtnText, viewMode === 'timeline' && styles.viewToggleBtnTextActive]}>Linha do Tempo</Text>
             </Pressable>
           </View>
         </View>
@@ -1128,8 +1130,8 @@ const styles = StyleSheet.create({
   barberFilterChipText: { fontSize: 13, color: "#888880", fontWeight: "600" },
   barberFilterChipTextActive: { color: "#C9A84C" },
   // Toggle de vista (Lista / Timeline)
-  viewToggle: { flexDirection: "row", backgroundColor: "#1A1A1A", borderRadius: 10, borderWidth: 1, borderColor: "#2A2A2A", overflow: "hidden" },
-  viewToggleBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7 },
+  viewToggle: { flexDirection: "row", backgroundColor: "#1A1A1A", borderRadius: 10, borderWidth: 1, borderColor: "#2A2A2A", overflow: "hidden", alignSelf: "stretch" },
+  viewToggleBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 9 },
   viewToggleBtnActive: { backgroundColor: "#C9A84C22" },
   viewToggleBtnText: { fontSize: 12, color: "#888880", fontWeight: "600" },
   viewToggleBtnTextActive: { color: "#C9A84C" },
