@@ -13,7 +13,7 @@
  * (não quebra o fluxo de agendamento).
  */
 
-import nodemailer from "nodemailer";
+import * as nodemailer from "nodemailer";
 
 function createTransporter() {
   const host = process.env.SMTP_HOST;

@@ -7,9 +7,9 @@ import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { storagePut } from "./storage";
-import crypto from "crypto";
+import * as crypto from "crypto";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
-import QRCode from "qrcode";
+import * as QRCode from "qrcode";
 import PDFDocument from "pdfkit";
 import { sendPasswordResetEmail, sendSupportTicketNotificationEmail, sendSupportReplyNotificationEmail } from "./email";
 import { invokeLLM } from "./_core/llm";
@@ -20,7 +20,7 @@ import {
   createAsaasCharge,
   asaasDefaultDueDate,
 } from "./asaas";
-import bcrypt from "bcryptjs";
+import * as bcrypt from "bcryptjs";
 import { sql } from "drizzle-orm";
 
 function getMpClient() {
@@ -1827,14 +1827,15 @@ export const appRouter = router({
         barberId: z.number().optional(),
         startDate: z.string(),
         endDate: z.string(),
+        tenantId: z.number().optional().nullable(),
       }))
       .query(async ({ input }) => {
         return db.listCommissionEntries(input);
       }),
     summary: publicProcedure
-      .input(z.object({ startDate: z.string(), endDate: z.string() }))
+      .input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() }))
       .query(async ({ input }) => {
-        return db.getCommissionSummary(input.startDate, input.endDate);
+        return db.getCommissionSummary(input.startDate, input.endDate, input.tenantId);
       }),
   }),
 

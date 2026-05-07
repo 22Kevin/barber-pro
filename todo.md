@@ -1889,3 +1889,16 @@
 - [x] Corrigir subscription-plan-router: colunas camelCase da tabela subscription_plans ficam em minúsculas no PostgreSQL (criada sem aspas) — queries ajustadas para tenantid, isactive, maxservices, maxproducts, suggestedprice, createdat, updatedat
 - [x] Corrigir INSERT com RETURNING id para PostgreSQL (substituiu insertId=0 do MySQL)
 - [x] Normalizar retorno da listPlans para camelCase consistente no app
+
+## Bug — Vazamento de Dados Multi-Tenancy (Mai/2026)
+
+- [x] Diagnosticar causa raiz: driver pg (PostgreSQL) sendo usado com banco TiDB/MySQL — todas as queries falhavam silenciosamente com erro SSL
+- [x] Migrar driver de banco de pg para mysql2 (drizzle-orm/mysql2)
+- [x] Migrar schema Drizzle de pg-core para mysql-core (mysqlTable, mysqlEnum inline)
+- [x] Corrigir getAllBarbers para filtrar por tenantId via WHERE direto (sem RLS)
+- [x] Corrigir getAllClients para filtrar por tenantId diretamente
+- [x] Corrigir listCommissionConfigs para filtrar configs apenas dos barbeiros do tenant
+- [x] Corrigir getCommissionSummary para filtrar entradas de comissão por barbeiros do tenant
+- [x] Corrigir listCommissionEntries para filtrar entradas por barbeiros do tenant
+- [x] Corrigir payment-status-modal.tsx para usar padrão tRPC v11 (callbacks no mutate)
+- [x] Corrigir media-uploader.tsx para usar padrão tRPC v11 (callbacks no mutate)

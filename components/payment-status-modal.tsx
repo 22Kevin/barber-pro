@@ -75,34 +75,11 @@ export function PaymentStatusModal({
 
   const paymentStatusQuery = trpc.appointments.getPaymentStatus.useQuery(
     { appointmentId: appointment?.id ?? 0 },
-    { enabled: visible && !!appointment?.id, staleTime: 0 }
+    { trpc: {}, enabled: visible && !!appointment?.id, staleTime: 0 } as any
   );
 
-  const registerPaymentMutation = trpc.appointments.registerPayment.useMutation({
-    onSuccess: () => {
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => null);
-      paymentStatusQuery.refetch();
-      onPaymentRegistered?.();
-      setView("status");
-    },
-    onError: (err) => Alert.alert("Erro ao registrar pagamento", err.message),
-  });
-
-  const createPixMutation = trpc.payments.createPixPayment.useMutation({
-    onSuccess: (data) => {
-      if (data.qrCode) {
-        setPixData({
-          qrCode: data.qrCode,
-          qrCodeBase64: data.qrCodeBase64 ?? "",
-          expiresAt: data.expiresAt ?? null,
-        });
-        setView("pix_qr");
-      } else {
-        Alert.alert("Erro", "Não foi possível gerar o QR Code Pix.");
-      }
-    },
-    onError: (err) => Alert.alert("Erro ao gerar Pix", err.message),
-  });
+  const registerPaymentMutation = trpc.appointments.registerPayment.useMutation();
+  const createPixMutation = trpc.payments.createPixPayment.useMutation();
 
   // Reset ao fechar
   useEffect(() => {
@@ -123,15 +100,26 @@ export function PaymentStatusModal({
         {
           text: "Confirmar",
           onPress: () =>
-            registerPaymentMutation.mutate({
-              appointmentId: appointment.id,
-              barberId: appointment.barberId,
-              clientId: appointment.clientId ?? null,
-              serviceId: appointment.serviceId,
-              serviceName: appointment.serviceName,
-              servicePrice: parseFloat(String(appointment.servicePrice)),
-              paymentMethod: method,
-            }),
+            registerPaymentMutation.mutate(
+              {
+                appointmentId: appointment.id,
+                barberId: appointment.barberId,
+                clientId: appointment.clientId ?? null,
+                serviceId: appointment.serviceId,
+                serviceName: appointment.serviceName,
+                servicePrice: parseFloat(String(appointment.servicePrice)),
+                paymentMethod: method,
+              },
+              {
+                onSuccess: () => {
+                  if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => null);
+                  paymentStatusQuery.refetch();
+                  onPaymentRegistered?.();
+                  setView("status");
+                },
+                onError: (err: any) => Alert.alert("Erro ao registrar pagamento", err.message),
+              }
+            ),
         },
       ]
     );
@@ -139,18 +127,35 @@ export function PaymentStatusModal({
 
   const handleGeneratePix = () => {
     if (!appointment) return;
-    createPixMutation.mutate({
-      serviceId: appointment.serviceId,
-      serviceName: appointment.serviceName,
-      servicePrice: parseFloat(String(appointment.servicePrice)),
-      clientName: appointment.clientName ?? "Cliente",
-      clientEmail: undefined,
-      clientId: appointment.clientId ?? 0,
-      barberId: appointment.barberId,
-      appointmentId: appointment.id,
-      date: appointment.date,
-      startTime: appointment.startTime,
-    });
+    createPixMutation.mutate(
+      {
+        serviceId: appointment.serviceId,
+        serviceName: appointment.serviceName,
+        servicePrice: parseFloat(String(appointment.servicePrice)),
+        clientName: appointment.clientName ?? "Cliente",
+        clientEmail: undefined,
+        clientId: appointment.clientId ?? 0,
+        barberId: appointment.barberId,
+        appointmentId: appointment.id,
+        date: appointment.date,
+        startTime: appointment.startTime,
+      },
+      {
+        onSuccess: (data: any) => {
+          if (data.qrCode) {
+            setPixData({
+              qrCode: data.qrCode,
+              qrCodeBase64: data.qrCodeBase64 ?? "",
+              expiresAt: data.expiresAt ?? null,
+            });
+            setView("pix_qr");
+          } else {
+            Alert.alert("Erro", "Não foi possível gerar o QR Code Pix.");
+          }
+        },
+        onError: (err: any) => Alert.alert("Erro ao gerar Pix", err.message),
+      }
+    );
   };
 
   const handleSendWhatsApp = () => {
@@ -175,15 +180,26 @@ export function PaymentStatusModal({
 
   const handleConfirmPixPaid = () => {
     if (!appointment) return;
-    registerPaymentMutation.mutate({
-      appointmentId: appointment.id,
-      barberId: appointment.barberId,
-      clientId: appointment.clientId ?? null,
-      serviceId: appointment.serviceId,
-      serviceName: appointment.serviceName,
-      servicePrice: parseFloat(String(appointment.servicePrice)),
-      paymentMethod: "pix",
-    });
+    registerPaymentMutation.mutate(
+      {
+        appointmentId: appointment.id,
+        barberId: appointment.barberId,
+        clientId: appointment.clientId ?? null,
+        serviceId: appointment.serviceId,
+        serviceName: appointment.serviceName,
+        servicePrice: parseFloat(String(appointment.servicePrice)),
+        paymentMethod: "pix",
+      },
+      {
+        onSuccess: () => {
+          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => null);
+          paymentStatusQuery.refetch();
+          onPaymentRegistered?.();
+          setView("status");
+        },
+        onError: (err: any) => Alert.alert("Erro ao confirmar pagamento Pix", err.message),
+      }
+    );
   };
 
   if (!appointment) return null;

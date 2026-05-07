@@ -11,7 +11,7 @@
  */
 
 import type { Express, Request, Response, NextFunction } from "express";
-import bcrypt from "bcryptjs";
+import * as bcrypt from "bcryptjs";
 import * as db from "./db";
 import { eq } from "drizzle-orm";
 import { backofficeUsers } from "../drizzle/schema";
@@ -446,8 +446,8 @@ export function registerSuperAdminRoutes(app: Express): void {
           const dbConn = await db.getDb();
           if (!dbConn) return 0;
           const { sql } = await import('drizzle-orm');
-          const rows = await dbConn.execute(sql`SELECT COUNT(*) as cnt FROM orbit_leads`);
-          return (rows.rows?.[0] as any)?.cnt ?? 0;
+          const [rows] = await dbConn.execute(sql`SELECT COUNT(*) as cnt FROM orbit_leads`) as any;
+          return (rows?.[0] as any)?.cnt ?? 0;
         } catch { return 0; }
       })();
 

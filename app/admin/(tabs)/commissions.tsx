@@ -50,7 +50,7 @@ export default function CommissionsScreen() {
   const lastDay = new Date(selectedYear, selectedMonth + 1, 0).getDate();
   const endDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${lastDay}`;
 
-  const summaryQuery = trpc.commissions.summary.useQuery({ startDate, endDate });
+  const summaryQuery = trpc.commissions.summary.useQuery({ startDate, endDate, tenantId });
   const configsQuery = trpc.commissions.listConfigs.useQuery({ tenantId });
   const saveConfigMutation = trpc.commissions.saveConfig.useMutation({
     onSuccess: () => {

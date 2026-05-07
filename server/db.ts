@@ -1,6 +1,6 @@
 import { and, count, desc, eq, gte, inArray, like, lte, notInArray, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/mysql2";
+import { createPool, type Pool as MySqlPool } from "mysql2/promise";
 
 // Re-export sql tagged template for use in other modules
 export { sql as sqlRaw };
@@ -56,39 +56,21 @@ import {
 import { ENV } from "./_core/env";
 
 
-// Reconexão automática: limpa o pool se houver erro de conexão SSL/timeout
-function resetPool() {
-  if (_pool) {
-    _pool.end().catch(() => {});
-    _pool = null;
-    _db = null;
-  }
-}
-
 let _db: ReturnType<typeof drizzle> | null = null;
-let _pool: Pool | null = null;
+let _pool: MySqlPool | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        max: 10,
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 10000,
-        // keepAlive mantém conexões TCP ativas e evita erros SSL intermitentes
-        // quando o Railway recicla conexões ociosas
-        keepAlive: true,
-        keepAliveInitialDelayMillis: 10000,
+      _pool = createPool({
+        uri: process.env.DATABASE_URL,
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
         ssl: { rejectUnauthorized: false },
       });
-      // Reconexão automática em erros de conexão SSL/timeout
-      _pool.on('error', (err: Error) => {
-        console.warn('[Database] Pool error, will reconnect on next request:', err.message);
-        resetPool();
-      });
-      _db = drizzle(_pool);
+      _db = drizzle(_pool as any);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -98,60 +80,14 @@ export async function getDb() {
 }
 
 /**
- * Executa uma função com o tenant_id configurado na sessão PostgreSQL.
- * Isso ativa as políticas RLS para isolar dados entre tenants.
- * 
- * @param tenantId - ID do tenant atual (null = sem restrição, para superadmin)
- * @param fn - Função a ser executada com o tenant configurado
- */
-export async function withTenant<T>(
-  tenantId: number | null | undefined,
-  fn: (db: ReturnType<typeof drizzle>) => Promise<T>
-): Promise<T> {
-  if (!_pool) await getDb();
-  if (!_pool || !_db) throw new Error("Database not available");
-
-  const client = await _pool.connect();
-  try {
-    const tenantDb = drizzle(client as any);
-    // SET LOCAL requer uma transação ativa para persistir entre queries
-    await client.query('BEGIN');
-    if (tenantId != null) {
-      // Usar role não-superuser para que RLS seja aplicado
-      await client.query('SET LOCAL ROLE barber_app');
-      await client.query(`SET LOCAL app.tenant_id = '${tenantId}'`);
-      await client.query(`SET LOCAL app.is_superadmin = 'false'`);
-    } else {
-      // Superadmin: sem restrição de tenant
-      await client.query(`SET LOCAL app.tenant_id = ''`);
-      await client.query(`SET LOCAL app.is_superadmin = 'true'`);
-    }
-    try {
-      const result = await fn(tenantDb);
-      await client.query('COMMIT');
-      return result;
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    }
-  } finally {
-    client.release();
-  }
-}
-
-/**
- * Helper que executa uma query com RLS ativado quando tenantId é fornecido.
- * Substitui o padrão: const db = await getDb(); if (tenantId != null) { ... }
- * 
- * Uso: return runWithTenant(tenantId, (db) => db.select().from(table)...)
+ * Executa uma função com o banco MySQL/TiDB.
+ * O isolamento multi-tenant é feito via WHERE tenantId nas queries.
+ * Este helper existe apenas para compatibilidade com o código existente.
  */
 export async function runWithTenant<T>(
-  tenantId: number | null | undefined,
+  _tenantId: number | null | undefined,
   fn: (db: ReturnType<typeof drizzle>) => Promise<T>
 ): Promise<T> {
-  if (tenantId != null) {
-    return withTenant(tenantId, fn);
-  }
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return fn(db);
@@ -207,8 +143,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onConflictDoUpdate({
-      target: users.openId,
+    await db.insert(users).values(values).onDuplicateKeyUpdate({
       set: updateSet,
     });
   } catch (error) {
@@ -252,14 +187,21 @@ export async function getBarberById(id: number) {
 }
 
 export async function getAllBarbers(tenantId?: number | null) {
-  return runWithTenant(tenantId, (db) =>
-    db.select().from(barbers).where(eq(barbers.isActive, true)).orderBy(barbers.name)
-  ).catch(() => [] as typeof barbers.$inferSelect[]);
+  const db = await getDb();
+  if (!db) return [] as typeof barbers.$inferSelect[];
+  const conditions: any[] = [eq(barbers.isActive, true)];
+  if (tenantId != null) conditions.push(eq(barbers.tenantId, tenantId));
+  return db.select().from(barbers).where(and(...conditions)).orderBy(barbers.name).catch(() => [] as typeof barbers.$inferSelect[]);
 }
 export async function getAllBarbersIncludingInactive(tenantId?: number | null) {
-  return runWithTenant(tenantId, (db) =>
-    db.select().from(barbers).orderBy(barbers.name)
-  ).catch(() => [] as typeof barbers.$inferSelect[]);
+  const db = await getDb();
+  if (!db) return [] as typeof barbers.$inferSelect[];
+  const conditions: any[] = [];
+  if (tenantId != null) conditions.push(eq(barbers.tenantId, tenantId));
+  const query = conditions.length > 0
+    ? db.select().from(barbers).where(and(...conditions)).orderBy(barbers.name)
+    : db.select().from(barbers).orderBy(barbers.name);
+  return query.catch(() => [] as typeof barbers.$inferSelect[]);
 }
 export async function reactivateBarber(id: number) {
   const db = await getDb();
@@ -314,7 +256,7 @@ export async function sendExpoPushNotification(
 }
 export async function createBarber(data: InsertBarber) {
   return runWithTenant(data.tenantId, async (db) => {
-    const result = await db.insert(barbers).values(data).returning({ id: barbers.id });
+    const result = await db.insert(barbers).values(data).$returningId();
     return result[0].id;
   });
 }
@@ -333,9 +275,11 @@ export async function deleteBarber(id: number) {
 
 // ─── Clientes ─────────────────────────────────────────────────────────────────
 export async function getAllClients(tenantId?: number | null) {
-  return runWithTenant(tenantId, (db) =>
-    db.select().from(clients).where(eq(clients.isActive, true)).orderBy(clients.name)
-  ).catch(() => [] as typeof clients.$inferSelect[]);
+  const db = await getDb();
+  if (!db) return [] as typeof clients.$inferSelect[];
+  const conditions: any[] = [eq(clients.isActive, true)];
+  if (tenantId != null) conditions.push(eq(clients.tenantId, tenantId));
+  return db.select().from(clients).where(and(...conditions)).orderBy(clients.name).catch(() => [] as typeof clients.$inferSelect[]);
 }
 
 export async function getClientById(id: number) {
@@ -347,7 +291,7 @@ export async function getClientById(id: number) {
 
 export async function createClient(data: InsertClient) {
   return runWithTenant(data.tenantId, async (db) => {
-    const result = await db.insert(clients).values(data).returning({ id: clients.id });
+    const result = await db.insert(clients).values(data).$returningId();
     return result[0].id;
   });
 }
@@ -368,7 +312,7 @@ export async function getCategoriesByType(type: "service" | "product") {
 export async function createCategory(name: string, type: "service" | "product") {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(categories).values({ name, type }).returning({ id: categories.id });
+  const result = await db.insert(categories).values({ name, type }).$returningId();
   return result[0].id;
 }
 
@@ -412,7 +356,7 @@ export async function getServiceById(id: number) {
 
 export async function createService(data: InsertService) {
   return runWithTenant(data.tenantId, async (db) => {
-    const result = await db.insert(services).values(data).returning({ id: services.id });
+    const result = await db.insert(services).values(data).$returningId();
     return result[0].id;
   });
 }
@@ -479,7 +423,7 @@ export async function getProductById(id: number) {
 
 export async function createProduct(data: InsertProduct) {
   return runWithTenant(data.tenantId, async (db) => {
-    const result = await db.insert(products).values(data).returning({ id: products.id });
+    const result = await db.insert(products).values(data).$returningId();
     return result[0].id;
   });
 }
@@ -502,7 +446,7 @@ export async function getMediaByEntity(entityType: "service" | "product", entity
 export async function addMediaFile(data: { entityType: "service" | "product"; entityId: number; url: string; type: "image" | "video"; order?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(mediaFiles).values({ ...data, order: data.order ?? 0 }).returning({ id: mediaFiles.id });
+  const result = await db.insert(mediaFiles).values({ ...data, order: data.order ?? 0 }).$returningId();
   return result[0].id;
 }
 
@@ -563,7 +507,7 @@ export async function upsertWorkingHours(barberId: number, dayOfWeek: number, da
   if (existing.length > 0) {
     await db.update(workingHours).set(data).where(and(eq(workingHours.barberId, barberId), eq(workingHours.dayOfWeek, dayOfWeek)));
   } else {
-    await db.insert(workingHours).values({ barberId, dayOfWeek, ...data }).returning({ id: workingHours.id });
+    await db.insert(workingHours).values({ barberId, dayOfWeek, ...data }).$returningId();
   }
 }
 
@@ -578,7 +522,7 @@ export async function getBlockedSlots(barberId: number, date: string) {
 export async function createBlockedSlot(data: { barberId: number; date: string; startTime: string; endTime: string; reason?: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(blockedSlots).values(data).returning({ id: blockedSlots.id });
+  const result = await db.insert(blockedSlots).values(data).$returningId();
   return result[0].id;
 }
 
@@ -776,7 +720,7 @@ export async function getNextClientAppointment(clientId: number) {
 export async function createAppointment(data: InsertAppointment) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(appointments).values(data).returning({ id: appointments.id });
+  const result = await db.insert(appointments).values(data).$returningId();
   return result[0].id;
 }
 
@@ -822,7 +766,7 @@ export async function getSalesByDateRange(startDate: string, endDate: string, ba
 export async function createSale(data: InsertSale, items: Array<{ itemType: "service" | "product"; itemId: number; itemName: string; quantity: number; unitPrice: string; total: string }>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const saleResult = await db.insert(sales).values(data).returning({ id: sales.id });
+  const saleResult = await db.insert(sales).values(data).$returningId();
   const saleId = saleResult[0].id;
   if (items.length > 0) {
     await db.insert(saleItems).values(items.map(item => ({ ...item, saleId })));
@@ -862,7 +806,7 @@ export async function getExpensesByDateRange(startDate: string, endDate: string,
 
 export async function createExpense(data: InsertExpense) {
   return runWithTenant(data.tenantId, async (db) => {
-    const result = await db.insert(expenses).values(data).returning({ id: expenses.id });
+    const result = await db.insert(expenses).values(data).$returningId();
     return result[0].id;
   });
 }
@@ -895,7 +839,7 @@ export async function getCouponByCode(code: string) {
 
 export async function createCoupon(data: { code: string; description?: string; discountType: "percent" | "fixed"; discountValue: string; minOrderValue?: string; maxUses?: number; validFrom?: string; validUntil?: string; tenantId?: number | null }) {
   return runWithTenant(data.tenantId, async (db) => {
-    const result = await db.insert(coupons).values({ ...data, code: data.code.toUpperCase() }).returning({ id: coupons.id });
+    const result = await db.insert(coupons).values({ ...data, code: data.code.toUpperCase() }).$returningId();
     return result[0].id;
   });
 }
@@ -920,7 +864,7 @@ export async function upsertLoyaltyConfig(data: { isActive: boolean; pointsPerSe
     if (existing) {
       await db.update(loyaltyConfig).set(data).where(eq(loyaltyConfig.id, existing.id));
     } else {
-      await db.insert(loyaltyConfig).values(data).returning({ id: loyaltyConfig.id });
+      await db.insert(loyaltyConfig).values(data).$returningId();
     }
   });
 }
@@ -933,7 +877,7 @@ export async function getLoyaltyRewards(tenantId?: number | null) {
 
 export async function createLoyaltyReward(data: { name: string; description?: string; pointsRequired: number; rewardType: "free_service" | "discount_percent" | "discount_fixed" | "free_product"; rewardValue?: string; tenantId?: number | null }) {
   return runWithTenant(data.tenantId, async (db) => {
-    const result = await db.insert(loyaltyRewards).values(data).returning({ id: loyaltyRewards.id });
+    const result = await db.insert(loyaltyRewards).values(data).$returningId();
     return result[0].id;
   });
 }
@@ -947,7 +891,7 @@ export async function updateLoyaltyReward(id: number, data: Partial<typeof loyal
 export async function addClientPoints(clientId: number, points: number, type: "earned" | "redeemed" | "expired" | "adjusted", description?: string, saleId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.insert(clientPoints).values({ clientId, points, type, description, saleId }).returning({ id: clientPoints.id });
+  await db.insert(clientPoints).values({ clientId, points, type, description, saleId }).$returningId();
   const delta = (type === "earned" || type === "adjusted") ? points : -Math.abs(points);
   await db.update(clients).set({ totalPoints: sql`totalPoints + ${delta}` }).where(eq(clients.id, clientId));
 }
@@ -965,7 +909,7 @@ export async function upsertShopSettings(data: Partial<typeof shopSettings.$infe
     if (existing) {
       await db.update(shopSettings).set(data).where(eq(shopSettings.id, existing.id));
     } else {
-      await db.insert(shopSettings).values({ shopName: "Barber Pro", ...data, ...(tenantId != null ? { tenantId } : {}) }).returning({ id: shopSettings.id });
+      await db.insert(shopSettings).values({ shopName: "Barber Pro", ...data, ...(tenantId != null ? { tenantId } : {}) }).$returningId();
     }
   });
 }
@@ -1013,7 +957,7 @@ export async function getClientAccountByClientId(clientId: number) {
 export async function createClientAccount(data: { clientId: number; email: string; passwordHash: string; googleId?: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(clientAccounts).values({ ...data, isActive: true }).returning({ id: clientAccounts.id });
+  const result = await db.insert(clientAccounts).values({ ...data, isActive: true }).$returningId();
   return result[0].id;
 }
 export async function updateClientAccount(id: number, data: Partial<typeof clientAccounts.$inferInsert>) {
@@ -1051,7 +995,7 @@ export async function getReviewsByProduct(productId: number, tenantId?: number |
     .from(reviews)
     .where(and(...conditions))
     .orderBy(desc(reviews.createdAt));
-  const clientIds = [...new Set(result.map(r => r.clientId))];
+  const clientIds = Array.from(new Set(result.map(r => r.clientId)));
   const clientList = clientIds.length > 0
     ? await db.select({ id: clients.id, name: clients.name }).from(clients).where(inArray(clients.id, clientIds))
     : [];
@@ -1079,8 +1023,8 @@ export async function getRecentReviews(limit = 5, tenantId?: number | null) {
       .from(reviews)
       .orderBy(desc(reviews.createdAt))
       .limit(limit);
-    const clientIds = [...new Set(result.map(r => r.clientId))];
-    const serviceIds = [...new Set(result.map(r => r.serviceId).filter((id): id is number => id != null))];
+    const clientIds = Array.from(new Set(result.map(r => r.clientId)));
+    const serviceIds = Array.from(new Set(result.map(r => r.serviceId).filter((id): id is number => id != null)));
     const [clientList, serviceList] = await Promise.all([
       clientIds.length > 0 ? db.select({ id: clients.id, name: clients.name }).from(clients).where(inArray(clients.id, clientIds)) : [],
       serviceIds.length > 0 ? db.select({ id: services.id, name: services.name }).from(services).where(inArray(services.id, serviceIds)) : [],
@@ -1097,7 +1041,7 @@ export async function getRecentReviews(limit = 5, tenantId?: number | null) {
 
 export async function createReview(data: { tenantId: number; clientId: number; serviceId?: number | null; appointmentId?: number | null; productId?: number | null; orderId?: number | null; rating: number; comment?: string }) {
   return runWithTenant(data.tenantId, async (db) => {
-    const result = await db.insert(reviews).values(data).returning({ id: reviews.id });
+    const result = await db.insert(reviews).values(data).$returningId();
     return result[0].id;
   });
 }
@@ -1164,7 +1108,7 @@ export async function createPasswordResetToken(email: string): Promise<string> {
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
   // Invalida tokens anteriores
   await db.update(passwordResetTokens).set({ used: true }).where(eq(passwordResetTokens.email, email));
-  await db.insert(passwordResetTokens).values({ email, token, expiresAt }).returning({ id: passwordResetTokens.id });
+  await db.insert(passwordResetTokens).values({ email, token, expiresAt }).$returningId();
   return token;
 }
 
@@ -1249,7 +1193,7 @@ export async function upsertReturnMessageConfig(input: {
       .set({ delayDays: input.delayDays, messageTemplate: input.messageTemplate, isActive: input.isActive })
       .where(eq(returnMessageConfigs.serviceId, input.serviceId));
   } else {
-    await db.insert(returnMessageConfigs).values(input).returning({ id: returnMessageConfigs.id });
+    await db.insert(returnMessageConfigs).values(input).$returningId();
   }
   return { success: true };
 }
@@ -1321,7 +1265,7 @@ export async function createPromotion(input: {
   tenantId?: number | null;
 }) {
   return runWithTenant(input.tenantId, async (db) => {
-    await db.insert(promotions).values({ ...input, sentAt: new Date() }).returning({ id: promotions.id });
+    await db.insert(promotions).values({ ...input, sentAt: new Date() }).$returningId();
     return { success: true, recipientCount: input.recipientCount };
   });
 }
@@ -1335,7 +1279,7 @@ export async function listWaitlistByDate(date: string) {
     .where(and(eq(waitlist.date, date), eq(waitlist.status, "waiting")))
     .orderBy(waitlist.createdAt);
   if (entries.length === 0) return [];
-  const clientIds = [...new Set(entries.map((e) => e.clientId))];
+  const clientIds = Array.from(new Set(entries.map((e) => e.clientId)));
   const clientList = await db.select().from(clients).where(inArray(clients.id, clientIds));
   return entries.map((e) => ({
     ...e,
@@ -1359,7 +1303,7 @@ export async function joinWaitlist(input: {
     ))
     .limit(1);
   if (existing.length > 0) return { success: true, alreadyInQueue: true };
-  await db.insert(waitlist).values({ ...input, status: "waiting" }).returning({ id: waitlist.id });
+  await db.insert(waitlist).values({ ...input, status: "waiting" }).$returningId();
   return { success: true, alreadyInQueue: false };
 }
 
@@ -1409,18 +1353,24 @@ export async function getCommissionConfig(barberId: number) {
 }
 
 export async function listCommissionConfigs(tenantId?: number | null) {
-  return runWithTenant(tenantId, async (db) => {
-    // With RLS active, barbers table is already filtered by tenant
-    const [configs, barberList] = await Promise.all([
-      db.select().from(commissionConfigs),
-      db.select().from(barbers).where(eq(barbers.isActive, true)),
-    ]);
+  const db = await getDb();
+  if (!db) return [] as (typeof barbers.$inferSelect & { commissionRate: number; hasConfig: boolean })[];
+  try {
+    const barberConditions: any[] = [eq(barbers.isActive, true)];
+    if (tenantId != null) barberConditions.push(eq(barbers.tenantId, tenantId));
+    const barberList = await db.select().from(barbers).where(and(...barberConditions));
+    const barberIds = barberList.map((b) => b.id);
+    const configs = barberIds.length > 0
+      ? await db.select().from(commissionConfigs).where(inArray(commissionConfigs.barberId, barberIds))
+      : [];
     return barberList.map((b) => ({
       ...b,
       commissionRate: parseFloat(configs.find((c) => c.barberId === b.id)?.defaultRate ?? "50"),
       hasConfig: configs.some((c) => c.barberId === b.id),
     }));
-  }).catch(() => [] as (typeof barbers.$inferSelect & { commissionRate: number; hasConfig: boolean })[]);
+  } catch {
+    return [] as (typeof barbers.$inferSelect & { commissionRate: number; hasConfig: boolean })[];
+  }
 }
 
 export async function upsertCommissionConfig(input: { barberId: number; defaultRate: number }) {
@@ -1437,7 +1387,7 @@ export async function upsertCommissionConfig(input: { barberId: number; defaultR
     await db.insert(commissionConfigs).values({
       barberId: input.barberId,
       defaultRate: String(input.defaultRate),
-    }).returning({ id: commissionConfigs.id });
+    }).$returningId();
   }
   return { success: true };
 }
@@ -1468,6 +1418,7 @@ export async function listCommissionEntries(input: {
   barberId?: number;
   startDate: string;
   endDate: string;
+  tenantId?: number | null;
 }) {
   const db = await getDb();
   if (!db) return [];
@@ -1476,11 +1427,24 @@ export async function listCommissionEntries(input: {
     lte(commissionEntries.date, input.endDate),
   ];
   if (input.barberId) conditions.push(eq(commissionEntries.barberId, input.barberId));
+  // Buscar barbeiros do tenant para filtrar entradas
+  const barberConditions: any[] = [];
+  if (input.tenantId != null) barberConditions.push(eq(barbers.tenantId, input.tenantId));
+  const barberList = barberConditions.length > 0
+    ? await db.select().from(barbers).where(and(...barberConditions))
+    : await db.select().from(barbers);
+  const barberIds = new Set(barberList.map((b) => b.id));
+  // Adicionar filtro de barbeiros do tenant nas condições
+  if (input.tenantId != null && barberIds.size > 0) {
+    conditions.push(inArray(commissionEntries.barberId, Array.from(barberIds)));
+  } else if (input.tenantId != null) {
+    return []; // Sem barbeiros no tenant, sem entradas
+  }
   const entries = await db.select().from(commissionEntries)
     .where(and(...conditions))
     .orderBy(desc(commissionEntries.date));
-  const barberList = await db.select().from(barbers);
-  return entries.map((e) => ({
+  const filteredEntries = entries;
+  return filteredEntries.map((e) => ({
     ...e,
     barberName: barberList.find((b) => b.id === e.barberId)?.name ?? "—",
     grossValue: parseFloat(e.grossValue),
@@ -1489,13 +1453,25 @@ export async function listCommissionEntries(input: {
   }));
 }
 
-export async function getCommissionSummary(startDate: string, endDate: string) {
+export async function getCommissionSummary(startDate: string, endDate: string, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
-  const entries = await db.select().from(commissionEntries)
-    .where(and(gte(commissionEntries.date, startDate), lte(commissionEntries.date, endDate)));
-  const barberList = await db.select().from(barbers).where(eq(barbers.isActive, true));
-  const configs = await db.select().from(commissionConfigs);
+  const barberConditions: any[] = [eq(barbers.isActive, true)];
+  if (tenantId != null) barberConditions.push(eq(barbers.tenantId, tenantId));
+  const barberList = await db.select().from(barbers).where(and(...barberConditions));
+  const barberIds = barberList.map((b) => b.id);
+  // Buscar entradas apenas dos barbeiros do tenant
+  const entryConditions: any[] = [
+    gte(commissionEntries.date, startDate),
+    lte(commissionEntries.date, endDate),
+  ];
+  if (barberIds.length > 0) entryConditions.push(inArray(commissionEntries.barberId, barberIds));
+  const entries = barberIds.length > 0
+    ? await db.select().from(commissionEntries).where(and(...entryConditions))
+    : [];
+  const configs = barberIds.length > 0
+    ? await db.select().from(commissionConfigs).where(inArray(commissionConfigs.barberId, barberIds))
+    : [];
   return barberList.map((b) => {
     const barberEntries = entries.filter((e) => e.barberId === b.id);
     const totalGross = barberEntries.reduce((s, e) => s + parseFloat(e.grossValue), 0);
@@ -1546,7 +1522,7 @@ export async function createRecurringAppointments(data: {
     occurrences: data.occurrences,
     notes: data.notes,
     isActive: true,
-  }).returning({ id: recurringAppointments.id });
+  }).$returningId();
   const recurringId = recResult[0].id;
 
   // Gerar os N agendamentos futuros
@@ -1569,7 +1545,7 @@ export async function createRecurringAppointments(data: {
       endTime: data.endTime,
       status: "scheduled",
       notes: data.notes ? `[Recorrente] ${data.notes}` : "[Recorrente]",
-    }).returning({ id: appointments.id });
+    }).$returningId();
     createdIds.push(apptResult[0].id);
   }
 
@@ -1678,7 +1654,7 @@ export async function addStockMovement(data: {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  await db.insert(stockMovements).values(data).returning({ id: stockMovements.id });
+  await db.insert(stockMovements).values(data).$returningId();
 
   // Atualizar stockQuantity do produto
   const prod = await db.select().from(products).where(eq(products.id, data.productId)).limit(1);
@@ -1747,7 +1723,7 @@ export async function getLowStockProducts(tenantId?: number | null) {
 export async function createTenant(data: InsertTenant): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(tenants).values(data).returning({ id: tenants.id });
+  const result = await db.insert(tenants).values(data).$returningId();
   return result[0].id;
 }
 
@@ -1814,7 +1790,7 @@ export async function createShopSettingsForTenant(tenantId: number, data: {
       address: data.address,
       addressNumber: data.addressNumber,
       addressComplement: data.addressComplement,
-    }).returning({ id: shopSettings.id });
+    }).$returningId();
   });
 }
 
@@ -1971,7 +1947,7 @@ export async function getChatHistory(tenantId: number, clientId: number): Promis
 export async function saveChatMessage(data: InsertWhatsappMessage): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(whatsappMessages).values(data).returning({ id: whatsappMessages.id });
+  const result = await db.insert(whatsappMessages).values(data).$returningId();
   return result[0].id;
 }
 
@@ -2076,7 +2052,7 @@ export async function upsertOrbitLead(clientId: number, tenantId: number, source
         .where(and(eq(orbitLeads.clientId, clientId), eq(orbitLeads.tenantId, tenantId)))
         .limit(1);
       if (existing.length === 0) {
-        await db.insert(orbitLeads).values({ clientId, tenantId, source, loginAt: new Date() }).returning({ id: orbitLeads.id });
+        await db.insert(orbitLeads).values({ clientId, tenantId, source, loginAt: new Date() }).$returningId();
       }
       // Se já existe, não atualiza (preserva o loginAt original)
     });
@@ -2368,7 +2344,7 @@ export async function createProductOrder(data: {
     quantity: data.quantity,
     note: data.note ?? null,
     status: "received",
-  }).returning({ id: productOrders.id });
+  }).$returningId();
 }
 
 export async function getProductOrdersByTenant(tenantId: number, status?: string) {
@@ -2602,7 +2578,7 @@ export async function getSupplierById(id: number): Promise<Supplier | null> {
 export async function createSupplier(data: InsertSupplier): Promise<number> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(suppliers).values(data).returning({ id: suppliers.id });
+  const result = await db.insert(suppliers).values(data).$returningId();
   return result[0].id;
 }
 

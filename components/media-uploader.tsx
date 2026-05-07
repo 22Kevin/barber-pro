@@ -42,19 +42,7 @@ export function MediaUploader({
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  const uploadMutation = trpc.upload.media.useMutation({
-    onSuccess: (data, variables) => {
-      const newFile: MediaFile = { url: data.url, type: variables.mediaType };
-      const updated = [...media, newFile];
-      setMedia(updated);
-      onMediaChange?.(updated);
-      setUploading(false);
-    },
-    onError: (err) => {
-      setUploading(false);
-      Alert.alert("Erro no upload", err.message);
-    },
-  });
+  const uploadMutation = trpc.upload.media.useMutation();
 
   const deleteMediaMutation = trpc.upload.media.useMutation();
 
@@ -86,14 +74,29 @@ export function MediaUploader({
       setUploading(true);
       const isVideo = asset.type === "video";
       const mimeType = isVideo ? "video/mp4" : (asset.mimeType ?? "image/jpeg");
-      uploadMutation.mutate({
-        entityType,
-        entityId,
-        fileBase64: asset.base64,
-        mimeType,
-        mediaType: isVideo ? "video" : "image",
-        order: media.length,
-      });
+      uploadMutation.mutate(
+        {
+          entityType,
+          entityId,
+          fileBase64: asset.base64,
+          mimeType,
+          mediaType: isVideo ? "video" : "image",
+          order: media.length,
+        },
+        {
+          onSuccess: (data: any, variables: any) => {
+            const newFile: MediaFile = { url: data.url, type: variables.mediaType };
+            const updated = [...media, newFile];
+            setMedia(updated);
+            onMediaChange?.(updated);
+            setUploading(false);
+          },
+          onError: (err: any) => {
+            setUploading(false);
+            Alert.alert("Erro no upload", err.message);
+          },
+        }
+      );
     }
   }
 
@@ -174,16 +177,7 @@ export function SingleImageUploader({ value, onUpload, imageType, label = "Foto"
   const styles = createStyles(colors);
   const [uploading, setUploading] = useState(false);
 
-  const uploadMutation = trpc.upload.shopImage.useMutation({
-    onSuccess: (data) => {
-      onUpload(data.url);
-      setUploading(false);
-    },
-    onError: (err) => {
-      setUploading(false);
-      Alert.alert("Erro no upload", err.message);
-    },
-  });
+  const uploadMutation = trpc.upload.shopImage.useMutation();
 
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -203,11 +197,23 @@ export function SingleImageUploader({ value, onUpload, imageType, label = "Foto"
     if (!result.canceled && result.assets[0]?.base64) {
       setUploading(true);
       const asset = result.assets[0];
-      uploadMutation.mutate({
-        fileBase64: asset.base64!,
-        mimeType: asset.mimeType ?? "image/jpeg",
-        imageType,
-      });
+      uploadMutation.mutate(
+        {
+          fileBase64: asset.base64!,
+          mimeType: asset.mimeType ?? "image/jpeg",
+          imageType,
+        },
+        {
+          onSuccess: (data: any) => {
+            onUpload(data.url);
+            setUploading(false);
+          },
+          onError: (err: any) => {
+            setUploading(false);
+            Alert.alert("Erro no upload", err.message);
+          },
+        }
+      );
     }
   }
 

@@ -1,63 +1,65 @@
 import {
   boolean,
   date,
-  integer,
-  numeric,
-  pgEnum,
-  pgTable,
+  int as integer,
+  decimal as numeric,
+  mysqlEnum,
+  mysqlTable,
   serial,
   text,
   time,
   timestamp,
   varchar,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/mysql-core";
+const pgEnum = mysqlEnum;
+const pgTable = mysqlTable;
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
-export const planEnum = pgEnum("plan", ["solo", "team", "studio"]);
-export const tenantStatusEnum = pgEnum("tenant_status", ["active", "trial", "suspended", "cancelled"]);
-export const userRoleEnum = pgEnum("user_role", ["user", "admin"]);
-export const barberRoleEnum = pgEnum("barber_role", ["super_admin", "barber", "receptionist"]);
-export const categoryTypeEnum = pgEnum("category_type", ["service", "product"]);
-export const productTypeEnum = pgEnum("product_type", ["sale", "internal"]);
-export const mediaEntityTypeEnum = pgEnum("media_entity_type", ["service", "product"]);
-export const mediaTypeEnum = pgEnum("media_type", ["image", "video"]);
-export const appointmentStatusEnum = pgEnum("appointment_status", [
+export const planEnum = mysqlEnum("plan", ["solo", "team", "studio"]);
+export const tenantStatusEnum = mysqlEnum("tenant_status", ["active", "trial", "suspended", "cancelled"]);
+export const userRoleEnum = mysqlEnum("user_role", ["user", "admin"]);
+export const barberRoleEnum = mysqlEnum("barber_role", ["super_admin", "barber", "receptionist"]);
+export const categoryTypeEnum = mysqlEnum("category_type", ["service", "product"]);
+export const productTypeEnum = mysqlEnum("product_type", ["sale", "internal"]);
+export const mediaEntityTypeEnum = mysqlEnum("media_entity_type", ["service", "product"]);
+export const mediaTypeEnum = mysqlEnum("media_type", ["image", "video"]);
+export const appointmentStatusEnum = mysqlEnum("appointment_status", [
   "scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "pending_approval"
 ]);
-export const paymentMethodEnum = pgEnum("payment_method", [
+export const paymentMethodEnum = mysqlEnum("payment_method", [
   "cash", "credit_card", "debit_card", "pix", "mercado_pago", "other"
 ]);
-export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "cancelled", "refunded"]);
-export const saleItemTypeEnum = pgEnum("sale_item_type", ["service", "product"]);
-export const rewardTypeEnum = pgEnum("reward_type", [
+export const paymentStatusEnum = mysqlEnum("payment_status", ["pending", "paid", "cancelled", "refunded"]);
+export const saleItemTypeEnum = mysqlEnum("sale_item_type", ["service", "product"]);
+export const rewardTypeEnum = mysqlEnum("reward_type", [
   "free_service", "discount_percent", "discount_fixed", "free_product"
 ]);
-export const clientPointTypeEnum = pgEnum("client_point_type", ["earned", "redeemed", "expired", "adjusted"]);
-export const couponDiscountTypeEnum = pgEnum("coupon_discount_type", ["percent", "fixed"]);
-export const targetAudienceEnum = pgEnum("target_audience", [
+export const clientPointTypeEnum = mysqlEnum("client_point_type", ["earned", "redeemed", "expired", "adjusted"]);
+export const couponDiscountTypeEnum = mysqlEnum("coupon_discount_type", ["percent", "fixed"]);
+export const targetAudienceEnum = mysqlEnum("target_audience", [
   "all", "inactive_30", "inactive_60", "birthday_month", "specific_client"
 ]);
-export const waitlistStatusEnum = pgEnum("waitlist_status", ["waiting", "notified", "booked", "cancelled"]);
-export const commissionTypeEnum = pgEnum("commission_type", ["service", "product"]);
-export const stockMovementTypeEnum = pgEnum("stock_movement_type", ["in", "out", "adjustment"]);
-export const whatsappDirectionEnum = pgEnum("whatsapp_direction", ["outgoing", "incoming"]);
-export const whatsappStatusEnum = pgEnum("whatsapp_status", ["sent", "delivered", "read"]);
-export const orbitSourceEnum = pgEnum("orbit_source", ["link", "geo"]);
-export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "cancelled", "expired"]);
-export const subscriptionPaymentMethodEnum = pgEnum("subscription_payment_method", [
+export const waitlistStatusEnum = mysqlEnum("waitlist_status", ["waiting", "notified", "booked", "cancelled"]);
+export const commissionTypeEnum = mysqlEnum("commission_type", ["service", "product"]);
+export const stockMovementTypeEnum = mysqlEnum("stock_movement_type", ["in", "out", "adjustment"]);
+export const whatsappDirectionEnum = mysqlEnum("whatsapp_direction", ["outgoing", "incoming"]);
+export const whatsappStatusEnum = mysqlEnum("whatsapp_status", ["sent", "delivered", "read"]);
+export const orbitSourceEnum = mysqlEnum("orbit_source", ["link", "geo"]);
+export const subscriptionStatusEnum = mysqlEnum("subscription_status", ["active", "cancelled", "expired"]);
+export const subscriptionPaymentMethodEnum = mysqlEnum("subscription_payment_method", [
   "credit_card", "pix", "cash", "debit_card"
 ]);
-export const chargeTypeEnum = pgEnum("charge_type", ["product", "appointment", "subscription"]);
-export const billingTypeEnum = pgEnum("billing_type", ["BOLETO", "CREDIT_CARD", "PIX", "STORE"]);
-export const onlinePaymentStatusEnum = pgEnum("online_payment_status", [
+export const chargeTypeEnum = mysqlEnum("charge_type", ["product", "appointment", "subscription"]);
+export const billingTypeEnum = mysqlEnum("billing_type", ["BOLETO", "CREDIT_CARD", "PIX", "STORE"]);
+export const onlinePaymentStatusEnum = mysqlEnum("online_payment_status", [
   "pending", "paid", "overdue", "refunded", "cancelled"
 ]);
-export const productOrderStatusEnum = pgEnum("product_order_status", [
+export const productOrderStatusEnum = mysqlEnum("product_order_status", [
   "received", "confirmed", "preparing", "ready", "delivered", "cancelled"
 ]);
 
 // ─── Tenants (Barbearias/Salões) ──────────────────────────────────────────────
-export const tenants = pgTable("tenants", {
+export const tenants = mysqlTable("tenants", {
   id: serial("id").primaryKey(),
   slug: varchar("slug", { length: 100 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
@@ -69,8 +71,8 @@ export const tenants = pgTable("tenants", {
   addressComplement: varchar("addressComplement", { length: 100 }),
   city: varchar("city", { length: 100 }),
   state: varchar("state", { length: 2 }),
-  plan: planEnum("plan").default("solo").notNull(),
-  status: tenantStatusEnum("status").default("trial").notNull(),
+  plan: mysqlEnum("plan", ["solo", "team", "studio"]).default("solo").notNull(),
+  status: mysqlEnum("status", ["active", "trial", "suspended", "cancelled"]).default("trial").notNull(),
   trialEndsAt: timestamp("trialEndsAt"),
   logoUrl: text("logoUrl"),
   latitude: numeric("latitude", { precision: 10, scale: 7 }),
@@ -83,27 +85,27 @@ export const tenants = pgTable("tenants", {
 });
 
 // ─── Usuários do Sistema ───────────────────────────────────────────────────────
-export const users = pgTable("users", {
+export const users = mysqlTable("users", {
   id: serial("id").primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: userRoleEnum("role").default("user").notNull(),
+  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
 // ─── Barbeiros / Funcionários ─────────────────────────────────────────────────
-export const barbers = pgTable("barbers", {
+export const barbers = mysqlTable("barbers", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId"),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 20 }),
   photoUrl: text("photoUrl"),
-  role: barberRoleEnum("role").default("barber").notNull(),
+  role: mysqlEnum("role", ["super_admin", "barber", "receptionist"]).default("barber").notNull(),
   specialties: text("specialties"),
   isActive: boolean("isActive").default(true).notNull(),
   passwordHash: varchar("passwordHash", { length: 255 }),
@@ -114,7 +116,7 @@ export const barbers = pgTable("barbers", {
 });
 
 // ─── Clientes da Barbearia ────────────────────────────────────────────────────
-export const clients = pgTable("clients", {
+export const clients = mysqlTable("clients", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId"),
   preferredTenantId: integer("preferredTenantId"),
@@ -131,15 +133,15 @@ export const clients = pgTable("clients", {
 });
 
 // ─── Categorias ───────────────────────────────────────────────────────────────
-export const categories = pgTable("categories", {
+export const categories = mysqlTable("categories", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
-  type: categoryTypeEnum("type").notNull(),
+  type: mysqlEnum("type", ["service", "product"]).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 // ─── Serviços ─────────────────────────────────────────────────────────────────
-export const services = pgTable("services", {
+export const services = mysqlTable("services", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId"),
   categoryId: integer("categoryId"),
@@ -153,7 +155,7 @@ export const services = pgTable("services", {
 });
 
 // ─── Produtos ─────────────────────────────────────────────────────────────────
-export const products = pgTable("products", {
+export const products = mysqlTable("products", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId"),
   categoryId: integer("categoryId"),
@@ -161,7 +163,7 @@ export const products = pgTable("products", {
   description: text("description"),
   price: numeric("price", { precision: 10, scale: 2 }).notNull(),
   stock: integer("stock").default(0).notNull(),
-  productType: productTypeEnum("productType").default("sale").notNull(),
+  productType: mysqlEnum("productType", ["sale", "internal"]).default("sale").notNull(),
   stockQuantity: integer("stockQuantity").default(0).notNull(),
   minStockAlert: integer("minStockAlert").default(5).notNull(),
   isActive: boolean("isActive").default(true).notNull(),
@@ -170,18 +172,18 @@ export const products = pgTable("products", {
 });
 
 // ─── Arquivos de Mídia ────────────────────────────────────────────────────────
-export const mediaFiles = pgTable("media_files", {
+export const mediaFiles = mysqlTable("media_files", {
   id: serial("id").primaryKey(),
-  entityType: mediaEntityTypeEnum("entityType").notNull(),
+  entityType: mysqlEnum("entityType", ["service", "product"]).notNull(),
   entityId: integer("entityId").notNull(),
   url: text("url").notNull(),
-  type: mediaTypeEnum("type").notNull(),
+  type: mysqlEnum("type", ["image", "video"]).notNull(),
   order: integer("order").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 // ─── Horários de Trabalho ─────────────────────────────────────────────────────
-export const workingHours = pgTable("working_hours", {
+export const workingHours = mysqlTable("working_hours", {
   id: serial("id").primaryKey(),
   barberId: integer("barberId").notNull(),
   dayOfWeek: integer("dayOfWeek").notNull(),
@@ -193,7 +195,7 @@ export const workingHours = pgTable("working_hours", {
 });
 
 // ─── Horários Bloqueados ──────────────────────────────────────────────────────
-export const blockedSlots = pgTable("blocked_slots", {
+export const blockedSlots = mysqlTable("blocked_slots", {
   id: serial("id").primaryKey(),
   barberId: integer("barberId").notNull(),
   date: varchar("date", { length: 10 }).notNull(),
@@ -204,7 +206,7 @@ export const blockedSlots = pgTable("blocked_slots", {
 });
 
 // ─── Agendamentos ─────────────────────────────────────────────────────────────
-export const appointments = pgTable("appointments", {
+export const appointments = mysqlTable("appointments", {
   id: serial("id").primaryKey(),
   clientId: integer("clientId").notNull(),
   barberId: integer("barberId").notNull(),
@@ -213,7 +215,9 @@ export const appointments = pgTable("appointments", {
   date: varchar("date", { length: 10 }).notNull(),
   startTime: time("startTime").notNull(),
   endTime: time("endTime").notNull(),
-  status: appointmentStatusEnum("status").default("scheduled").notNull(),
+  status: mysqlEnum("status", [
+  "scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "pending_approval"
+]).default("scheduled").notNull(),
   notes: text("notes"),
   cancelReason: text("cancelReason"),
   reminderSent: boolean("reminderSent").default(false).notNull(),
@@ -225,7 +229,7 @@ export const appointments = pgTable("appointments", {
 });
 
 // ─── Vendas ───────────────────────────────────────────────────────────────────
-export const sales = pgTable("sales", {
+export const sales = mysqlTable("sales", {
   id: serial("id").primaryKey(),
   clientId: integer("clientId"),
   barberId: integer("barberId").notNull(),
@@ -233,8 +237,10 @@ export const sales = pgTable("sales", {
   subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull(),
   discount: numeric("discount", { precision: 10, scale: 2 }).default("0").notNull(),
   total: numeric("total", { precision: 10, scale: 2 }).notNull(),
-  paymentMethod: paymentMethodEnum("paymentMethod").notNull(),
-  paymentStatus: paymentStatusEnum("paymentStatus").default("pending").notNull(),
+  paymentMethod: mysqlEnum("paymentMethod", [
+  "cash", "credit_card", "debit_card", "pix", "mercado_pago", "other"
+]).notNull(),
+  paymentStatus: mysqlEnum("paymentStatus", ["pending", "paid", "cancelled", "refunded"]).default("pending").notNull(),
   couponId: integer("couponId"),
   couponCode: varchar("couponCode", { length: 50 }),
   mercadoPagoPaymentId: varchar("mercadoPagoPaymentId", { length: 255 }),
@@ -244,10 +250,10 @@ export const sales = pgTable("sales", {
 });
 
 // ─── Itens de Venda ───────────────────────────────────────────────────────────
-export const saleItems = pgTable("sale_items", {
+export const saleItems = mysqlTable("sale_items", {
   id: serial("id").primaryKey(),
   saleId: integer("saleId").notNull(),
-  itemType: saleItemTypeEnum("itemType").notNull(),
+  itemType: mysqlEnum("itemType", ["service", "product"]).notNull(),
   itemId: integer("itemId").notNull(),
   itemName: varchar("itemName", { length: 255 }).notNull(),
   quantity: integer("quantity").default(1).notNull(),
@@ -256,7 +262,7 @@ export const saleItems = pgTable("sale_items", {
 });
 
 // ─── Despesas ─────────────────────────────────────────────────────────────────
-export const expenses = pgTable("expenses", {
+export const expenses = mysqlTable("expenses", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId"),
   barberId: integer("barberId"),
@@ -271,7 +277,7 @@ export const expenses = pgTable("expenses", {
 });
 
 // ─── Configuração de Fidelidade ───────────────────────────────────────────────
-export const loyaltyConfig = pgTable("loyalty_config", {
+export const loyaltyConfig = mysqlTable("loyalty_config", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId"),
   isActive: boolean("isActive").default(false).notNull(),
@@ -282,24 +288,26 @@ export const loyaltyConfig = pgTable("loyalty_config", {
 });
 
 // ─── Recompensas de Fidelidade ────────────────────────────────────────────────
-export const loyaltyRewards = pgTable("loyalty_rewards", {
+export const loyaltyRewards = mysqlTable("loyalty_rewards", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId"),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   pointsRequired: integer("pointsRequired").notNull(),
-  rewardType: rewardTypeEnum("rewardType").notNull(),
+  rewardType: mysqlEnum("rewardType", [
+  "free_service", "discount_percent", "discount_fixed", "free_product"
+]).notNull(),
   rewardValue: numeric("rewardValue", { precision: 10, scale: 2 }),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 // ─── Pontos dos Clientes ──────────────────────────────────────────────────────
-export const clientPoints = pgTable("client_points", {
+export const clientPoints = mysqlTable("client_points", {
   id: serial("id").primaryKey(),
   clientId: integer("clientId").notNull(),
   points: integer("points").notNull(),
-  type: clientPointTypeEnum("type").notNull(),
+  type: mysqlEnum("type", ["earned", "redeemed", "expired", "adjusted"]).notNull(),
   description: varchar("description", { length: 255 }),
   saleId: integer("saleId"),
   rewardId: integer("rewardId"),
@@ -308,12 +316,12 @@ export const clientPoints = pgTable("client_points", {
 });
 
 // ─── Cupons de Desconto ───────────────────────────────────────────────────────
-export const coupons = pgTable("coupons", {
+export const coupons = mysqlTable("coupons", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId"),
   code: varchar("code", { length: 50 }).notNull().unique(),
   description: varchar("description", { length: 255 }),
-  discountType: couponDiscountTypeEnum("discountType").notNull(),
+  discountType: mysqlEnum("discountType", ["percent", "fixed"]).notNull(),
   discountValue: numeric("discountValue", { precision: 10, scale: 2 }).notNull(),
   minOrderValue: numeric("minOrderValue", { precision: 10, scale: 2 }).default("0"),
   maxUses: integer("maxUses"),
@@ -325,7 +333,7 @@ export const coupons = pgTable("coupons", {
 });
 
 // ─── Configurações da Barbearia ───────────────────────────────────────────────
-export const shopSettings = pgTable("shop_settings", {
+export const shopSettings = mysqlTable("shop_settings", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId"),
   shopName: varchar("shopName", { length: 255 }).default("Barber Pro").notNull(),
@@ -358,7 +366,7 @@ export const shopSettings = pgTable("shop_settings", {
 });
 
 // ─── Tokens de Recuperação de Senha ────────────────────────────────────────
-export const passwordResetTokens = pgTable("password_reset_tokens", {
+export const passwordResetTokens = mysqlTable("password_reset_tokens", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 320 }).notNull(),
   token: varchar("token", { length: 6 }).notNull(),
@@ -368,7 +376,7 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 });
 
 // ─── Contas de Clientes (Área do Cliente) ────────────────────────────────────────
-export const clientAccounts = pgTable("client_accounts", {
+export const clientAccounts = mysqlTable("client_accounts", {
   id: serial("id").primaryKey(),
   clientId: integer("clientId").notNull().unique(),
   email: varchar("email", { length: 320 }).notNull().unique(),
@@ -381,7 +389,7 @@ export const clientAccounts = pgTable("client_accounts", {
 });
 
 // ─── Avaliações de Serviços ───────────────────────────────────────────────────
-export const reviews = pgTable("reviews", {
+export const reviews = mysqlTable("reviews", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull().default(0),
   clientId: integer("clientId").notNull(),
@@ -395,7 +403,7 @@ export const reviews = pgTable("reviews", {
 });
 
 // ─── Mensagens de Retorno Automáticas ───────────────────────────────────────
-export const returnMessageConfigs = pgTable("return_message_configs", {
+export const returnMessageConfigs = mysqlTable("return_message_configs", {
   id: serial("id").primaryKey(),
   serviceId: integer("serviceId").notNull().unique(),
   delayDays: integer("delayDays").notNull().default(21),
@@ -406,12 +414,14 @@ export const returnMessageConfigs = pgTable("return_message_configs", {
 });
 
 // ─── Promoções e Notícias ─────────────────────────────────────────────────────
-export const promotions = pgTable("promotions", {
+export const promotions = mysqlTable("promotions", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId"),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
-  targetAudience: targetAudienceEnum("targetAudience").notNull().default("all"),
+  targetAudience: mysqlEnum("targetAudience", [
+  "all", "inactive_30", "inactive_60", "birthday_month", "specific_client"
+]).notNull().default("all"),
   specificClientId: integer("specificClientId"),
   sentAt: timestamp("sentAt"),
   recipientCount: integer("recipientCount").default(0).notNull(),
@@ -420,19 +430,19 @@ export const promotions = pgTable("promotions", {
 });
 
 // ─── Lista de Espera ──────────────────────────────────────────────────────────
-export const waitlist = pgTable("waitlist", {
+export const waitlist = mysqlTable("waitlist", {
   id: serial("id").primaryKey(),
   clientId: integer("clientId").notNull(),
   barberId: integer("barberId"),
   serviceId: integer("serviceId"),
   date: varchar("date", { length: 10 }).notNull(),
   notifiedAt: timestamp("notifiedAt"),
-  status: waitlistStatusEnum("status").default("waiting").notNull(),
+  status: mysqlEnum("status", ["waiting", "notified", "booked", "cancelled"]).default("waiting").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 // ─── Configuração de Comissões por Barbeiro ───────────────────────────────────
-export const commissionConfigs = pgTable("commission_configs", {
+export const commissionConfigs = mysqlTable("commission_configs", {
   id: serial("id").primaryKey(),
   barberId: integer("barberId").notNull().unique(),
   defaultRate: numeric("defaultRate", { precision: 5, scale: 2 }).notNull().default("50.00"),
@@ -442,7 +452,7 @@ export const commissionConfigs = pgTable("commission_configs", {
 });
 
 // ─── Entradas de Comissão ─────────────────────────────────────────────────────
-export const commissionEntries = pgTable("commission_entries", {
+export const commissionEntries = mysqlTable("commission_entries", {
   id: serial("id").primaryKey(),
   barberId: integer("barberId").notNull(),
   appointmentId: integer("appointmentId"),
@@ -450,14 +460,14 @@ export const commissionEntries = pgTable("commission_entries", {
   grossValue: numeric("grossValue", { precision: 10, scale: 2 }).notNull(),
   commissionRate: numeric("commissionRate", { precision: 5, scale: 2 }).notNull(),
   commissionValue: numeric("commissionValue", { precision: 10, scale: 2 }).notNull(),
-  type: commissionTypeEnum("type").notNull().default("service"),
+  type: mysqlEnum("type", ["service", "product"]).notNull().default("service"),
   description: varchar("description", { length: 255 }),
   date: varchar("date", { length: 10 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 // ─── Agendamentos Recorrentes ────────────────────────────────────────────────
-export const recurringAppointments = pgTable("recurring_appointments", {
+export const recurringAppointments = mysqlTable("recurring_appointments", {
   id: serial("id").primaryKey(),
   clientId: integer("clientId").notNull(),
   barberId: integer("barberId").notNull(),
@@ -475,10 +485,10 @@ export const recurringAppointments = pgTable("recurring_appointments", {
 });
 
 // ─── Movimentações de Estoque ────────────────────────────────────────────────
-export const stockMovements = pgTable("stock_movements", {
+export const stockMovements = mysqlTable("stock_movements", {
   id: serial("id").primaryKey(),
   productId: integer("productId").notNull(),
-  type: stockMovementTypeEnum("type").notNull(),
+  type: mysqlEnum("type", ["in", "out", "adjustment"]).notNull(),
   quantity: integer("quantity").notNull(),
   reason: varchar("reason", { length: 255 }),
   barberId: integer("barberId"),
@@ -489,29 +499,29 @@ export const stockMovements = pgTable("stock_movements", {
 });
 
 // ─── WhatsApp Chat Messages ───────────────────────────────────────────────────
-export const whatsappMessages = pgTable("whatsapp_messages", {
+export const whatsappMessages = mysqlTable("whatsapp_messages", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
   clientId: integer("clientId").notNull(),
   barberId: integer("barberId").notNull(),
-  direction: whatsappDirectionEnum("direction").notNull().default("outgoing"),
+  direction: mysqlEnum("direction", ["outgoing", "incoming"]).notNull().default("outgoing"),
   message: text("message").notNull(),
   sentAt: timestamp("sentAt").defaultNow().notNull(),
-  status: whatsappStatusEnum("status").notNull().default("sent"),
+  status: mysqlEnum("status", ["sent", "delivered", "read"]).notNull().default("sent"),
 });
 
 // ─── Orbit Leads — Clientes em Órbita ────────────────────────────────────────
-export const orbitLeads = pgTable("orbit_leads", {
+export const orbitLeads = mysqlTable("orbit_leads", {
   id: serial("id").primaryKey(),
   clientId: integer("clientId").notNull(),
   tenantId: integer("tenantId").notNull(),
   loginAt: timestamp("loginAt").defaultNow().notNull(),
   convertedAt: timestamp("convertedAt"),
-  source: orbitSourceEnum("source").notNull().default("link"),
+  source: mysqlEnum("source", ["link", "geo"]).notNull().default("link"),
 });
 
 // ─── Subscription Plans (Planos de Assinatura) ─────────────────────────────────────────────
-export const subscriptionPlans = pgTable("subscription_plans", {
+export const subscriptionPlans = mysqlTable("subscription_plans", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
   name: varchar("name", { length: 100 }).notNull(),
@@ -527,7 +537,7 @@ export const subscriptionPlans = pgTable("subscription_plans", {
 });
 
 // ─── Subscription Plan Services (Serviços disponíveis no plano) ──────────────────
-export const subscriptionPlanServices = pgTable("subscription_plan_services", {
+export const subscriptionPlanServices = mysqlTable("subscription_plan_services", {
   id: serial("id").primaryKey(),
   planId: integer("planId").notNull(),
   serviceId: integer("serviceId").notNull(),
@@ -535,7 +545,7 @@ export const subscriptionPlanServices = pgTable("subscription_plan_services", {
 });
 
 // ─── Subscription Plan Products (Produtos disponíveis no plano) ──────────────────
-export const subscriptionPlanProducts = pgTable("subscription_plan_products", {
+export const subscriptionPlanProducts = mysqlTable("subscription_plan_products", {
   id: serial("id").primaryKey(),
   planId: integer("planId").notNull(),
   productId: integer("productId").notNull(),
@@ -543,7 +553,7 @@ export const subscriptionPlanProducts = pgTable("subscription_plan_products", {
 });
 
 // ─── Client Subscriptions (Assinaturas ativas de clientes) ───────────────────────
-export const clientSubscriptions = pgTable("client_subscriptions", {
+export const clientSubscriptions = mysqlTable("client_subscriptions", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
   planId: integer("planId").notNull(),
@@ -551,8 +561,10 @@ export const clientSubscriptions = pgTable("client_subscriptions", {
   barberId: integer("barberId"),
   selectedServiceIds: text("selectedServiceIds"),
   selectedProductIds: text("selectedProductIds"),
-  status: subscriptionStatusEnum("status").notNull().default("active"),
-  paymentMethod: subscriptionPaymentMethodEnum("paymentMethod").notNull().default("cash"),
+  status: mysqlEnum("status", ["active", "cancelled", "expired"]).notNull().default("active"),
+  paymentMethod: mysqlEnum("paymentMethod", [
+  "credit_card", "pix", "cash", "debit_card"
+]).notNull().default("cash"),
   price: numeric("price", { precision: 10, scale: 2 }).notNull(),
   cycleStart: date("cycleStart").notNull(),
   cycleEnd: date("cycleEnd").notNull(),
@@ -565,7 +577,7 @@ export const clientSubscriptions = pgTable("client_subscriptions", {
 });
 
 // ─── Subscription Appointments (Agendamentos vinculados a uma assinatura) ────────
-export const subscriptionAppointments = pgTable("subscription_appointments", {
+export const subscriptionAppointments = mysqlTable("subscription_appointments", {
   id: serial("id").primaryKey(),
   subscriptionId: integer("subscriptionId").notNull(),
   appointmentId: integer("appointmentId").notNull(),
@@ -574,18 +586,20 @@ export const subscriptionAppointments = pgTable("subscription_appointments", {
 });
 
 // ─── Online Payments — Asaas ──────────────────────────────────────────────────
-export const onlinePayments = pgTable("online_payments", {
+export const onlinePayments = mysqlTable("online_payments", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
   clientId: integer("clientId").notNull(),
-  chargeType: chargeTypeEnum("chargeType").notNull(),
+  chargeType: mysqlEnum("chargeType", ["product", "appointment", "subscription"]).notNull(),
   referenceId: integer("referenceId"),
   asaasPaymentId: varchar("asaasPaymentId", { length: 100 }),
   asaasSubscriptionId: varchar("asaasSubscriptionId", { length: 100 }),
   asaasCustomerId: varchar("asaasCustomerId", { length: 100 }),
-  billingType: billingTypeEnum("billingType").notNull().default("PIX"),
+  billingType: mysqlEnum("billingType", ["BOLETO", "CREDIT_CARD", "PIX", "STORE"]).notNull().default("PIX"),
   amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
-  status: onlinePaymentStatusEnum("status").notNull().default("pending"),
+  status: mysqlEnum("status", [
+  "pending", "paid", "overdue", "refunded", "cancelled"
+]).notNull().default("pending"),
   invoiceUrl: text("invoiceUrl"),
   pixQrCode: text("pixQrCode"),
   pixCopyCola: text("pixCopyCola"),
@@ -596,14 +610,16 @@ export const onlinePayments = pgTable("online_payments", {
 });
 
 // ─── Encomendas de Produtos ───────────────────────────────────────────────────
-export const productOrders = pgTable("product_orders", {
+export const productOrders = mysqlTable("product_orders", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
   clientId: integer("clientId").notNull(),
   productId: integer("productId").notNull(),
   quantity: integer("quantity").default(1).notNull(),
   note: text("note"),
-  status: productOrderStatusEnum("status").default("received").notNull(),
+  status: mysqlEnum("status", [
+  "received", "confirmed", "preparing", "ready", "delivered", "cancelled"
+]).default("received").notNull(),
   estimatedDays: integer("estimatedDays"),
   confirmedAt: timestamp("confirmedAt"),
   cancelledAt: timestamp("cancelledAt"),
@@ -617,7 +633,7 @@ export const productOrders = pgTable("product_orders", {
 });
 
 // ─── Fornecedores ─────────────────────────────────────────────────────────────
-export const suppliers = pgTable("suppliers", {
+export const suppliers = mysqlTable("suppliers", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
   name: varchar("name", { length: 120 }).notNull(),
@@ -631,7 +647,7 @@ export const suppliers = pgTable("suppliers", {
 });
 
 // ─── Error Logs (Monitoramento de Erros) ─────────────────────────────────────
-export const errorLogs = pgTable("error_logs", {
+export const errorLogs = mysqlTable("error_logs", {
   id: serial("id").primaryKey(),
   source: varchar("source", { length: 20 }).notNull().default("browser"),
   message: text("message").notNull(),
@@ -644,7 +660,7 @@ export const errorLogs = pgTable("error_logs", {
 });
 
 // ─── Backoffice Users ─────────────────────────────────────────────────────────
-export const backofficeUsers = pgTable("backoffice_users", {
+export const backofficeUsers = mysqlTable("backoffice_users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 320 }).notNull().unique(),
   passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
@@ -656,7 +672,7 @@ export const backofficeUsers = pgTable("backoffice_users", {
 });
 
 // ─── Client Consents ──────────────────────────────────────────────────────────
-export const clientConsents = pgTable("client_consents", {
+export const clientConsents = mysqlTable("client_consents", {
   id: serial("id").primaryKey(),
   clientId: integer("clientId").notNull(),
   tenantId: integer("tenantId").notNull(),
@@ -667,7 +683,7 @@ export const clientConsents = pgTable("client_consents", {
 });
 
 // ─── Support Tickets ────────────────────────────────────────────────────────
-export const supportTickets = pgTable("support_tickets", {
+export const supportTickets = mysqlTable("support_tickets", {
   id: serial("id").primaryKey(),
   tenantId: integer("tenantId").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
@@ -680,7 +696,7 @@ export const supportTickets = pgTable("support_tickets", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
-export const supportMessages = pgTable("support_messages", {
+export const supportMessages = mysqlTable("support_messages", {
   id: serial("id").primaryKey(),
   ticketId: integer("ticketId").notNull(),
   authorType: varchar("authorType", { length: 20 }).notNull(),
