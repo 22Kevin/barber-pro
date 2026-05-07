@@ -179,14 +179,14 @@ export default function CommissionsScreen() {
                   style={({ pressed }) => [
                     styles.monthBtn,
                     {
-                      backgroundColor: selectedMonth === m ? colors.primary : colors.surface,
-                      borderColor: selectedMonth === m ? colors.primary : colors.border,
+                      backgroundColor: selectedMonth === m ? "#C9A84C" : "#1A1A1A",
+                      borderColor: selectedMonth === m ? "#C9A84C" : "#C9A84C",
                       opacity: pressed ? 0.7 : 1,
                     },
                   ]}
                   onPress={() => setSelectedMonth(m)}
                 >
-                  <Text style={{ color: selectedMonth === m ? "#fff" : colors.foreground, fontWeight: "700", fontSize: 13 }}>
+                  <Text style={{ color: selectedMonth === m ? "#0A0A0A" : "#C9A84C", fontWeight: "700", fontSize: 13 }}>
                     {MONTH_NAMES[m]}
                   </Text>
                 </Pressable>
@@ -199,18 +199,18 @@ export default function CommissionsScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
               <View style={{ flexDirection: "row", gap: 6 }}>
                 <Pressable
-                  style={({ pressed }) => [styles.monthBtn, { backgroundColor: selectedBarberId === null ? colors.primary : colors.surface, borderColor: selectedBarberId === null ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                  style={({ pressed }) => [styles.monthBtn, { backgroundColor: selectedBarberId === null ? "#C9A84C" : "#1A1A1A", borderColor: "#C9A84C", opacity: pressed ? 0.7 : 1 }]}
                   onPress={() => setSelectedBarberId(null)}
                 >
-                  <Text style={{ color: selectedBarberId === null ? "#fff" : colors.foreground, fontWeight: "700", fontSize: 13 }}>Todos</Text>
+                  <Text style={{ color: selectedBarberId === null ? "#0A0A0A" : "#C9A84C", fontWeight: "700", fontSize: 13 }}>Todos</Text>
                 </Pressable>
                 {allSummary.map((b) => (
                   <Pressable
                     key={b.barberId}
-                    style={({ pressed }) => [styles.monthBtn, { backgroundColor: selectedBarberId === b.barberId ? colors.primary : colors.surface, borderColor: selectedBarberId === b.barberId ? colors.primary : colors.border, opacity: pressed ? 0.7 : 1 }]}
+                    style={({ pressed }) => [styles.monthBtn, { backgroundColor: selectedBarberId === b.barberId ? "#C9A84C" : "#1A1A1A", borderColor: "#C9A84C", opacity: pressed ? 0.7 : 1 }]}
                     onPress={() => setSelectedBarberId(b.barberId)}
                   >
-                    <Text style={{ color: selectedBarberId === b.barberId ? "#fff" : colors.foreground, fontWeight: "700", fontSize: 13 }}>{b.barberName}</Text>
+                    <Text style={{ color: selectedBarberId === b.barberId ? "#0A0A0A" : "#C9A84C", fontWeight: "700", fontSize: 13 }}>{b.barberName}</Text>
                   </Pressable>
                 ))}
               </View>

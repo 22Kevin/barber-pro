@@ -101,14 +101,14 @@ export default function MyCommissionsScreen() {
               style={({ pressed }) => [
                 styles.monthBtn,
                 {
-                  backgroundColor: selectedMonth === m ? colors.primary : colors.surface,
-                  borderColor: selectedMonth === m ? colors.primary : colors.border,
+                  backgroundColor: selectedMonth === m ? "#C9A84C" : "#1A1A1A",
+                  borderColor: selectedMonth === m ? "#C9A84C" : "#C9A84C",
                   opacity: pressed ? 0.7 : 1,
                 },
               ]}
               onPress={() => setSelectedMonth(m)}
             >
-              <Text style={{ color: selectedMonth === m ? "#fff" : colors.foreground, fontWeight: "700", fontSize: 13 }}>
+              <Text style={{ color: selectedMonth === m ? "#0A0A0A" : "#C9A84C", fontWeight: "700", fontSize: 13 }}>
                 {MONTH_SHORT[m]}
               </Text>
             </Pressable>

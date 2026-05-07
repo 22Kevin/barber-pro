@@ -1878,3 +1878,7 @@
 - [x] Auditar e corrigir cores fixas na tela Financeiro
 - [x] Auditar e corrigir cores fixas nas telas de Configurações
 - [x] Auditar e corrigir cores fixas nas demais telas do app (perfil, planos, etc.) — 39 arquivos corrigidos via createStyles(colors)
+
+## Padronização Visual de Botões (Mai/2026)
+
+- [x] Padronizar todos os botões do app com fundo dourado (#C9A84C) e texto escuro (#0A0A0A) para garantir visibilidade em qualquer tema

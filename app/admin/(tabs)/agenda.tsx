@@ -462,7 +462,7 @@ export default function AgendaScreen() {
         rightElement={
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable
-              style={({ pressed }) => [styles.addBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: "#C9A84C" }, pressed && { opacity: 0.8 }]}
+              style={({ pressed }) => [styles.addBtn, { backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#C9A84C" }, pressed && { opacity: 0.8 }]}
               onPress={() => router.push("/admin/plan-booking" as any)}
             >
               <IconSymbol name="star.fill" size={14} color="#C9A84C" />
@@ -473,7 +473,7 @@ export default function AgendaScreen() {
               onPress={() => setShowNewModal(true)}
             >
               <IconSymbol name="plus" size={20} color="#0A0A0A" />
-              <Text style={[styles.addBtnText, { color: "#0A0A0A" }]}>Novo</Text>
+              <Text style={[styles.addBtnText, { color: "#0A0A0A" }]}>+ Novo</Text>
             </Pressable>
           </View>
         }
@@ -594,20 +594,20 @@ export default function AgendaScreen() {
         </View>
         {/* Toggle Cards / Linha do Tempo */}
         <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
-          <View style={[styles.viewToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable
-              style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
+              style={({ pressed }) => [styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive, pressed && { opacity: 0.8 }]}
               onPress={() => setViewMode('list')}
             >
-              <IconSymbol name="list.bullet" size={14} color={viewMode === 'list' ? '#C9A84C' : colors.muted} />
-              <Text style={[styles.viewToggleBtnText, { color: colors.muted }, viewMode === 'list' && styles.viewToggleBtnTextActive]}>Cards</Text>
+              <IconSymbol name="list.bullet" size={14} color={viewMode === 'list' ? '#0A0A0A' : '#C9A84C'} />
+              <Text style={[styles.viewToggleBtnText, viewMode === 'list' ? { color: '#0A0A0A' } : { color: '#C9A84C' }]}>Cards</Text>
             </Pressable>
             <Pressable
-              style={[styles.viewToggleBtn, viewMode === 'timeline' && styles.viewToggleBtnActive]}
+              style={({ pressed }) => [styles.viewToggleBtn, viewMode === 'timeline' && styles.viewToggleBtnActive, pressed && { opacity: 0.8 }]}
               onPress={() => setViewMode('timeline')}
             >
-              <IconSymbol name="list.bullet.rectangle" size={14} color={viewMode === 'timeline' ? '#C9A84C' : colors.muted} />
-              <Text style={[styles.viewToggleBtnText, { color: colors.muted }, viewMode === 'timeline' && styles.viewToggleBtnTextActive]}>Linha do Tempo</Text>
+              <IconSymbol name="list.bullet.rectangle" size={14} color={viewMode === 'timeline' ? '#0A0A0A' : '#C9A84C'} />
+              <Text style={[styles.viewToggleBtnText, viewMode === 'timeline' ? { color: '#0A0A0A' } : { color: '#C9A84C' }]}>Linha do Tempo</Text>
             </Pressable>
           </View>
         </View>
@@ -1146,8 +1146,8 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   return StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, paddingBottom: 12 },
   title: { fontSize: 24, fontWeight: "800", color: c.foreground },
-  addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
-  addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
+  addBtn: { flexDirection: "row", alignItems: "center", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
+  addBtnText: { fontWeight: "700", fontSize: 14 },
   calendarCard: { marginHorizontal: 16, backgroundColor: c.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: c.border, marginBottom: 16 },
   calendarHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   calendarTitle: { fontSize: 17, fontWeight: "700", color: c.foreground },
@@ -1219,16 +1219,16 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   // Filtro de barbeiro
   barberFilterWrapper: { paddingHorizontal: 16, paddingBottom: 12 },
   barberFilterScroll: { flexDirection: "row", gap: 8, paddingVertical: 4 },
-  barberFilterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: c.background, borderWidth: 1, borderColor: c.border },
-  barberFilterChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
-  barberFilterChipText: { fontSize: 13, color: c.muted, fontWeight: "600" },
-  barberFilterChipTextActive: { color: "#C9A84C" },
+  barberFilterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#C9A84C" },
+  barberFilterChipActive: { backgroundColor: "#C9A84C", borderColor: "#C9A84C" },
+  barberFilterChipText: { fontSize: 13, color: "#C9A84C", fontWeight: "600" },
+  barberFilterChipTextActive: { color: "#0A0A0A" },
   // Toggle de vista (Lista / Timeline)
   viewToggle: { flexDirection: "row", backgroundColor: c.surface, borderRadius: 10, borderWidth: 1, borderColor: c.border, overflow: "hidden", alignSelf: "stretch" },
-  viewToggleBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 9 },
-  viewToggleBtnActive: { backgroundColor: "#C9A84C22" },
-  viewToggleBtnText: { fontSize: 12, color: c.muted, fontWeight: "600" },
-  viewToggleBtnTextActive: { color: "#C9A84C" },
+  viewToggleBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: "#C9A84C", backgroundColor: "#1A1A1A" },
+  viewToggleBtnActive: { backgroundColor: "#C9A84C", borderColor: "#C9A84C" },
+  viewToggleBtnText: { fontSize: 12, fontWeight: "600" },
+  viewToggleBtnTextActive: { color: "#0A0A0A" },
   // Timeline
   timelineContainer: { paddingHorizontal: 16, paddingBottom: 8 },
   timelineRow: { flexDirection: "row", alignItems: "flex-start", minHeight: 40, marginBottom: 2 },

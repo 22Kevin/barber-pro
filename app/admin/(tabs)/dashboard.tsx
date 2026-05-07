@@ -68,7 +68,7 @@ export default function DashboardScreen() {
     metricLabel:     { fontSize: 12, color: colors.muted },
     sectionTitle:    { fontSize: 17, fontWeight: "700", color: colors.foreground, paddingHorizontal: 20, marginTop: 16, marginBottom: 10 },
     seeAll:          { fontSize: 13, color: colors.primary },
-    quickActionBtn:  { flex: 1, minWidth: "45%", backgroundColor: colors.surface, borderRadius: 12, padding: 14, alignItems: "center", borderWidth: 1, borderColor: colors.border },
+    quickActionBtn:  { flex: 1, minWidth: "45%", backgroundColor: "#1A1A1A", borderRadius: 12, padding: 14, alignItems: "center", borderWidth: 1, borderColor: "#C9A84C" },
     quickActionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primary + "22", justifyContent: "center", alignItems: "center", marginBottom: 8 },
     quickActionLabel:{ fontSize: 12, color: colors.foreground, fontWeight: "600", textAlign: "center" },
     emptyCard:       { marginHorizontal: 20, backgroundColor: colors.surface, borderRadius: 12, padding: 20, alignItems: "center", borderWidth: 1, borderColor: colors.border },

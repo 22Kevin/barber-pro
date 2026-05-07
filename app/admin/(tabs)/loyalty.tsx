@@ -482,9 +482,9 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   modalTitle: { fontSize: 20, fontWeight: "700", color: c.foreground },
   textarea: { height: 80, textAlignVertical: "top" },
   typeRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
-  typeChip: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: c.background, borderWidth: 1, borderColor: c.border, alignItems: "center" },
+  typeChip: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#C9A84C", alignItems: "center" },
   typeChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
-  typeChipText: { fontSize: 13, color: c.muted, fontWeight: "600" },
-  typeChipTextActive: { color: "#C9A84C" },
+  typeChipText: { fontSize: 13, color: "#C9A84C", fontWeight: "600" },
+  typeChipTextActive: { color: "#0A0A0A" },
 });
 }

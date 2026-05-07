@@ -552,7 +552,7 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   pointsCard: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#C9A84C22", borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: "#C9A84C44" },
   pointsCardText: { fontSize: 14, color: "#C9A84C", fontWeight: "600" },
   quickActions: { flexDirection: "row", gap: 10, marginBottom: 16 },
-  quickActionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: c.background, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: c.border },
+  quickActionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#1A1A1A", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "#C9A84C" },
   quickActionText: { fontSize: 13, fontWeight: "600" },
   historyTitle: { fontSize: 16, fontWeight: "700", color: c.foreground, marginBottom: 10 },
   historyEmpty: { color: c.muted, fontSize: 14, textAlign: "center", paddingVertical: 20 },
