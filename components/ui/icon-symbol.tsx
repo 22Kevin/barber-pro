@@ -78,6 +78,7 @@ const MAPPING = {
   "square.and.arrow.up": "share",
   "doc.text.fill": "description",
   "list.bullet": "list",
+  "list.bullet.rectangle": "view-agenda",
   "calendar.badge.plus": "event",
   "person.badge.plus": "person-add",
   "minus.circle.fill": "remove-circle",

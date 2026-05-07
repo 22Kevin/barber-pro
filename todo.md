@@ -1837,3 +1837,10 @@
 - [ ] E-mail automático para admin quando ticket aberto sem resposta da IA
 - [ ] E-mail automático para cliente quando admin responde
 - [ ] Badge com contador de tickets abertos no menu do Superadmin
+
+## Agenda — Vista de Timeline no App (Mai/2026)
+
+- [x] Adicionar estado viewMode ('list' | 'timeline') na tela de Agenda do app
+- [x] Toggle de botões "Lista" / "Timeline" no header da seção de agendamentos
+- [x] Vista de timeline no app: slots de 30min das 07:00 às 22:00, agendamentos posicionados por horário com borda colorida por status, clicável para abrir modal de detalhes
+- [x] Ícone list.bullet.rectangle adicionado ao icon-symbol.tsx (view-agenda do Material Icons)

@@ -367,6 +367,7 @@ export default function AgendaScreen() {
     ? (allAppointmentsQuery.data ?? [])
     : (appointmentsQuery.data ?? []);
   const [apptSearch, setApptSearch] = useState("");
+  const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
   const filteredByBarber = isManager && filterBarberId !== null
     ? rawAppointments.filter((a: any) => a.barberId === filterBarberId)
     : rawAppointments;
@@ -500,10 +501,29 @@ export default function AgendaScreen() {
         </View>
         {/* Agendamentos do dia */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {DAYS_PT[selectedDate.getDay()]}, {selectedDate.getDate()} de {MONTHS_PT[selectedDate.getMonth()]}
-          </Text>
-          <Text style={styles.sectionCount}>{appointments.length} agendamento(s)</Text>
+          <View>
+            <Text style={styles.sectionTitle}>
+              {DAYS_PT[selectedDate.getDay()]}, {selectedDate.getDate()} de {MONTHS_PT[selectedDate.getMonth()]}
+            </Text>
+            <Text style={styles.sectionCount}>{appointments.length} agendamento(s)</Text>
+          </View>
+          {/* Toggle Lista / Timeline */}
+          <View style={styles.viewToggle}>
+            <Pressable
+              style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
+              onPress={() => setViewMode('list')}
+            >
+              <IconSymbol name="list.bullet" size={14} color={viewMode === 'list' ? '#C9A84C' : '#888880'} />
+              <Text style={[styles.viewToggleBtnText, viewMode === 'list' && styles.viewToggleBtnTextActive]}>Lista</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.viewToggleBtn, viewMode === 'timeline' && styles.viewToggleBtnActive]}
+              onPress={() => setViewMode('timeline')}
+            >
+              <IconSymbol name="list.bullet.rectangle" size={14} color={viewMode === 'timeline' ? '#C9A84C' : '#888880'} />
+              <Text style={[styles.viewToggleBtnText, viewMode === 'timeline' && styles.viewToggleBtnTextActive]}>Timeline</Text>
+            </Pressable>
+          </View>
         </View>
 
         {isLoadingAppointments ? (
@@ -513,7 +533,7 @@ export default function AgendaScreen() {
             <IconSymbol name="calendar" size={36} color="#2A2A2A" />
             <Text style={styles.emptyText}>Nenhum agendamento neste dia</Text>
           </View>
-        ) : (
+        ) : viewMode === 'list' ? (
           <GestureHandlerRootView>
             {appointments.map((apt) => (
               <SwipeableAppointmentCard
@@ -557,6 +577,66 @@ export default function AgendaScreen() {
               />
             ))}
           </GestureHandlerRootView>
+        ) : (
+          /* Vista de Timeline */
+          <View style={styles.timelineContainer}>
+            {Array.from({ length: 31 }, (_, i) => {
+              const totalMinutes = 7 * 60 + i * 30; // 07:00 a 22:00 em slots de 30min
+              const slotH = Math.floor(totalMinutes / 60);
+              const slotM = totalMinutes % 60;
+              const slotLabel = `${String(slotH).padStart(2, '0')}:${String(slotM).padStart(2, '0')}`;
+              // Agendamentos que começam neste slot (HH:MM)
+              const slotAppts = appointments.filter((a: any) => {
+                const t = (a.startTime ?? "").substring(0, 5);
+                return t === slotLabel;
+              });
+              return (
+                <View key={slotLabel} style={styles.timelineRow}>
+                  <Text style={styles.timelineHour}>{slotLabel}</Text>
+                  <View style={styles.timelineLine} />
+                  <View style={styles.timelineEvents}>
+                    {slotAppts.map((apt: any) => {
+                      const statusColor = STATUS_CONFIG[apt.status]?.color ?? "#888880";
+                      // Calcular altura proporcional à duração
+                      const [sh, sm] = (apt.startTime ?? "00:00").split(":").map(Number);
+                      const [eh, em] = (apt.endTime ?? "00:30").split(":").map(Number);
+                      const dur = Math.max((eh * 60 + em) - (sh * 60 + sm), 30);
+                      const cardHeight = Math.max(dur * 1.6, 52);
+                      return (
+                        <Pressable
+                          key={apt.id}
+                          style={({ pressed }) => [styles.timelineCard, { borderLeftColor: statusColor, minHeight: cardHeight, opacity: pressed ? 0.8 : 1 }]}
+                          onPress={() => {
+                            if (apt.status === "completed") {
+                              setPaymentAppointment({ ...apt, serviceName: apt.serviceName ?? "Serviço", servicePrice: apt.servicePrice ?? "0" });
+                              setShowPaymentModal(true);
+                            } else {
+                              setSelectedAppointment({ ...apt });
+                              const currentService = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
+                              setEditServices(currentService ? [currentService] : []);
+                              setShowDetailModal(true);
+                            }
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                            <Text style={styles.timelineCardTime}>{apt.startTime?.substring(0, 5)} – {apt.endTime?.substring(0, 5)}</Text>
+                            <View style={[styles.statusBadge, { backgroundColor: statusColor + '22' }]}>
+                              <Text style={[styles.statusText, { color: statusColor }]}>{STATUS_CONFIG[apt.status]?.label ?? apt.status}</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.timelineCardClient} numberOfLines={1}>{apt.clientName ?? '—'}</Text>
+                          <Text style={styles.timelineCardService} numberOfLines={1}>{apt.serviceNames ?? apt.serviceName ?? '—'}</Text>
+                          {apt.barberName && isManager && (
+                            <Text style={styles.timelineCardBarber} numberOfLines={1}>{apt.barberName}</Text>
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         )}
 
         <View style={{ height: 32 }} />
@@ -1006,4 +1086,21 @@ const styles = StyleSheet.create({
   barberFilterChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
   barberFilterChipText: { fontSize: 13, color: "#888880", fontWeight: "600" },
   barberFilterChipTextActive: { color: "#C9A84C" },
+  // Toggle de vista (Lista / Timeline)
+  viewToggle: { flexDirection: "row", backgroundColor: "#1A1A1A", borderRadius: 10, borderWidth: 1, borderColor: "#2A2A2A", overflow: "hidden" },
+  viewToggleBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7 },
+  viewToggleBtnActive: { backgroundColor: "#C9A84C22" },
+  viewToggleBtnText: { fontSize: 12, color: "#888880", fontWeight: "600" },
+  viewToggleBtnTextActive: { color: "#C9A84C" },
+  // Timeline
+  timelineContainer: { paddingHorizontal: 16, paddingBottom: 8 },
+  timelineRow: { flexDirection: "row", alignItems: "flex-start", minHeight: 40, marginBottom: 2 },
+  timelineHour: { width: 44, fontSize: 11, color: "#555", fontWeight: "600", paddingTop: 6, textAlign: "right", paddingRight: 8 },
+  timelineLine: { width: 1, backgroundColor: "#2A2A2A", alignSelf: "stretch", marginRight: 10, marginTop: 6 },
+  timelineEvents: { flex: 1, gap: 4, paddingBottom: 4 },
+  timelineCard: { backgroundColor: "#141414", borderRadius: 10, borderWidth: 1, borderColor: "#2A2A2A", borderLeftWidth: 4, padding: 10, marginBottom: 2 },
+  timelineCardTime: { fontSize: 11, color: "#888880", fontWeight: "600", marginBottom: 2 },
+  timelineCardClient: { fontSize: 14, fontWeight: "700", color: "#F5F5F0", marginBottom: 1 },
+  timelineCardService: { fontSize: 12, color: "#888880" },
+  timelineCardBarber: { fontSize: 11, color: "#555", marginTop: 2, fontStyle: "italic" },
 });

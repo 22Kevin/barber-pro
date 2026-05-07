@@ -1062,6 +1062,8 @@ async function renderAgenda(req: Request, res: Response) {
   } catch(e) { /* datas indisponíveis */ }
 
   // Carregar todos os clientes e serviços do dia
+  const services = await db.getAllServices(false, tenantId);
+  const clients = await db.getAllClients(tenantId);
   const barberMap: Record<number, string> = Object.fromEntries(barbers.map((b) => [b.id, b.name]));
   const clientIds = [...new Set(allAppointments.map((a: any) => a.clientId))];
   const clientMap: Record<number, any> = {};
@@ -1162,11 +1164,14 @@ async function renderAgenda(req: Request, res: Response) {
         <button type="submit" class="btn btn-primary" style="padding:8px 16px;font-size:13px">Buscar</button>
         ${filterSearch || filterBarberId ? `<a href="/admin/agenda?date=${dateStr}" class="btn btn-ghost" style="padding:8px 12px;font-size:13px"></a>` : ""}
       </div>
-      <button onclick="document.getElementById('planModal').style.display='flex'" class="btn btn-ghost" style="padding:8px 16px;font-size:13px;white-space:nowrap;border:1px solid var(--primary);color:var(--primary);display:flex;align-items:center;gap:6px;">
+      <button type="button" onclick="document.getElementById('planModal').style.display='flex'" class="btn btn-ghost" style="padding:8px 16px;font-size:13px;white-space:nowrap;border:1px solid var(--primary);color:var(--primary);display:inline-flex;align-items:center;gap:6px;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         Plano
-      </a>
-      <a href="/admin/agenda/novo?date=${dateStr}" class="btn btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap">+ Novo</a>
+      </button>
+      <button type="button" onclick="document.getElementById('newApptModal').style.display='flex'" class="btn btn-primary" style="padding:8px 18px;font-size:13px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Novo
+      </button>
     </form>`;
 
   // Navegação de dias
@@ -1197,21 +1202,42 @@ async function renderAgenda(req: Request, res: Response) {
           <input type="hidden" name="returnDate" value="${dateStr}" />
           <div class="form-group" style="margin-bottom:16px;">
             <label class="form-label" style="font-size:13px;font-weight:600;color:var(--foreground);margin-bottom:6px;display:block;">Cliente *</label>
-            <input type="text" id="clientSearchInput" placeholder="Buscar por nome ou telefone..." oninput="filterClients(this.value)" autocomplete="off" style="width:100%;padding:10px 12px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;margin-bottom:8px;box-sizing:border-box;" />
-            <select name="clientId" id="clientSelect" class="form-input" required size="5" style="width:100%;padding:4px 0;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;max-height:160px;overflow-y:auto;">
-              <option value="">Selecione o cliente...</option>
-              ${allClientsForModal.map((c: any) => `<option value="${c.id}" data-name="${esc(c.name).toLowerCase()}${c.phone ? ' ' + c.phone.replace(/\D/g,'') : ''}">${esc(c.name)}${c.phone ? ' — ' + esc(c.phone) : ''}</option>`).join('')}
-            </select>
+            <input type="hidden" name="clientId" id="planClientIdHidden" required />
+            <div style="position:relative;margin-bottom:8px;">
+              <input type="text" id="clientSearchInput" placeholder="Buscar por nome ou telefone..." autocomplete="off"
+                style="width:100%;padding:10px 12px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;box-sizing:border-box;"
+                oninput="filterClients(this.value)"
+                onfocus="document.getElementById('planClientList').style.display='block'"
+                onblur="setTimeout(()=>{document.getElementById('planClientList').style.display='none'},200)" />
+              <div id="planClientList" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-height:200px;overflow-y:auto;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,0.4);margin-top:4px;">
+                ${allClientsForModal.map((c: any) => `<div class="plan-client-item" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="choosePlanClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(201,168,76,0.08)'" onmouseout="this.style.background=''"><strong style="color:var(--foreground)">${esc(c.name)}</strong>${c.phone ? `<span style="color:var(--muted);font-size:12px">${esc(c.phone)}</span>` : ''}</div>`).join('')}
+              </div>
+            </div>
+            <div id="planClientChosen" style="display:none;padding:10px 14px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:10px;font-size:13px;color:var(--foreground);display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span id="planClientChosenName"></span>
+              <button type="button" onclick="clearPlanClientChoice()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:0 4px;line-height:1;">×</button>
+            </div>
             <script>
               function filterClients(q) {
-                const sel = document.getElementById('clientSelect');
-                const opts = sel.querySelectorAll('option');
-                const lq = q.toLowerCase().replace(/\D/g, q.replace(/\d/g,'') ? '' : q.toLowerCase());
-                opts.forEach(function(opt) {
-                  if (!opt.value) { opt.style.display = ''; return; }
-                  const name = (opt.dataset.name || '').toLowerCase();
-                  opt.style.display = (!q || name.includes(q.toLowerCase())) ? '' : 'none';
+                q = q.toLowerCase();
+                document.querySelectorAll('.plan-client-item').forEach(function(el) {
+                  const n = el.dataset.name.toLowerCase(), p = (el.dataset.phone || '').toLowerCase();
+                  el.style.display = (n.includes(q) || p.includes(q)) ? '' : 'none';
                 });
+                document.getElementById('planClientList').style.display = 'block';
+              }
+              function choosePlanClient(el) {
+                document.getElementById('planClientIdHidden').value = el.dataset.id;
+                document.getElementById('clientSearchInput').value = el.dataset.name + (el.dataset.phone ? ' — ' + el.dataset.phone : '');
+                document.getElementById('planClientList').style.display = 'none';
+                const chosen = document.getElementById('planClientChosen');
+                document.getElementById('planClientChosenName').textContent = el.dataset.name + (el.dataset.phone ? ' — ' + el.dataset.phone : '');
+                chosen.style.display = 'flex';
+              }
+              function clearPlanClientChoice() {
+                document.getElementById('planClientIdHidden').value = '';
+                document.getElementById('clientSearchInput').value = '';
+                document.getElementById('planClientChosen').style.display = 'none';
               }
             </script>
           </div>
@@ -1265,10 +1291,10 @@ async function renderAgenda(req: Request, res: Response) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           Plano
         </button>
-        <a href="/admin/agenda/novo?date=${dateStr}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:var(--primary);color:#0A0A0A;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;transition:opacity .15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+        <button type="button" onclick="document.getElementById('newApptModal').style.display='flex'" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:var(--primary);color:#0A0A0A;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;transition:opacity .15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Novo
-        </a>
+          + Novo
+        </button>
       </div>
     </div>
 
@@ -1307,98 +1333,315 @@ async function renderAgenda(req: Request, res: Response) {
           </div>
         </form>
 
-        <!-- Lista de agendamentos -->
-        <div class="card">
-          <div class="card-body">
+        <!-- Toggle de vista -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+          <button type="button" id="btnViewCards" onclick="setView('cards')" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--primary);color:#0A0A0A;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Cards
+          </button>
+          <button type="button" id="btnViewTimeline" onclick="setView('timeline')" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            Linha do Tempo
+          </button>
+        </div>
+        <!-- Vista Cards -->
+        <div id="viewCards">
         ${appointments.length === 0
-          ? `<div class="empty">Nenhum agendamento para ${fmtDate(dateStr)}${filterSearch || filterBarberId ? " com os filtros aplicados" : ""}.</div>`
-          : `<table>
-              <thead><tr><th>Horário</th><th>Cliente</th><th>Serviço</th><th>Barbeiro</th><th>Status</th><th>Ações</th></tr></thead>
-              <tbody>
-                ${appointments.map((a: any) => `
-                  <tr id="row-${a.id}">
-                    <td><strong>${a.startTime?.substring(0, 5) ?? "—"}</strong> – ${a.endTime?.substring(0, 5) ?? "—"}</td>
-                    <td>
-                      <div style="font-weight:600">${esc(clientMap[a.clientId]?.name ?? "—")}</div>
-                      ${clientMap[a.clientId]?.phone ? `<div style="font-size:11px;color:var(--muted)">${esc(clientMap[a.clientId].phone)}</div>` : ""}
-                    </td>
-                    <td>${esc(serviceMap[a.serviceId] ?? "—")}</td>
-                    <td>${esc(barberMap[a.barberId] ?? "—")}</td>
-                    <td id="status-${a.id}">${statusBadge(a.status)}</td>
-                    <td id="actions-${a.id}" style="white-space:nowrap">
-                      ${a.status === "scheduled" ? `<button onclick="updateStatus(${a.id},'confirmed')" style="background:#C9A84C;color:#000;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-right:4px">Confirmar</button>` : ""}
-                      ${a.status === "confirmed" || a.status === "scheduled" ? `<button onclick="updateStatus(${a.id},'in_progress')" style="background:#3B82F6;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-right:4px">Iniciar</button>` : ""}
-                      ${a.status === "in_progress" || a.status === "confirmed" ? `<button onclick="updateStatus(${a.id},'completed')" style="background:#22C55E;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-right:4px">Concluir</button>` : ""}
-                      ${a.status !== "cancelled" && a.status !== "completed" ? `<button onclick="updateStatus(${a.id},'cancelled')" style="background:#EF4444;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-right:4px">Cancelar</button>` : ""}
-                      ${a.status === "confirmed" || a.status === "scheduled" ? `<button onclick="updateStatus(${a.id},'no_show')" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px">Não veio</button>` : ""}
-                      ${(a.status === "scheduled" || a.status === "confirmed") && tenantSlug ? `<button onclick="resendPaymentLink(${a.id},'${tenantSlug}',this)" style="background:#25D36622;color:#25D366;border:1px solid #25D36644;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;margin-left:4px" title="Reenviar link de pagamento pelo WhatsApp">Link Pgto</button>` : ""}
-                    </td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
-            <script>
-              async function updateStatus(id, status) {
-                const labels = {confirmed:"Confirmado",in_progress:"Em andamento",completed:"Conclu\u00eddo",cancelled:"Cancelado",no_show:"N\u00e3o compareceu",scheduled:"Agendado"};
-                const colors = {scheduled:"badge-warning",confirmed:"badge-gold",in_progress:"badge-gold",completed:"badge-success",cancelled:"badge-error",no_show:"badge-muted"};
-                try {
-                  const r = await fetch("/admin-api/appointment-status", {
-                    method: "POST",
-                    headers: {"Content-Type":"application/json"},
-                    credentials: "include",
-                    body: JSON.stringify({id, status})
-                  });
-                  if (!r.ok) { const e = await r.json(); alert("Erro: " + e.error); return; }
-                  const data = await r.json();
-                  const cell = document.getElementById("status-" + id);
-                  if (cell) cell.innerHTML = "<span class=\"badge " + (colors[status]||"badge-muted") + "\">" + (labels[status]||status) + "</span>";
-                  // Se confirmado e tem WhatsApp, mostrar bot\u00e3o de envio
-                  if (status === "confirmed" && data.whatsapp?.waLink) {
-                    const wa = data.whatsapp;
-                    const btnRow = document.getElementById("actions-" + id);
-                    if (btnRow) {
-                      const waBtn = document.createElement("a");
-                      waBtn.href = wa.waLink;
-                      waBtn.target = "_blank";
-                      waBtn.rel = "noopener";
-                      waBtn.style.cssText = "display:inline-flex;align-items:center;gap:6px;background:#25D366;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:700;text-decoration:none;margin-right:4px";
-                      waBtn.innerHTML = "\ud83d\udcf2 WhatsApp";
-                      btnRow.prepend(waBtn);
-                    }
-                  }
-                  setTimeout(() => location.reload(), 2000);
-                } catch(e) { alert("Erro ao atualizar status"); }
-              }
-              async function resendPaymentLink(appointmentId, slug, btn) {
-                try {
-                  btn.disabled = true; btn.textContent = '⏳ Buscando...';
-                  const r = await fetch("/admin-api/payment-link", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify({ appointmentId, slug })
-                  });
-                  const data = await r.json();
-                  if (!r.ok) throw new Error(data.error || "Erro ao buscar link");
-                  const link = data.paymentUrl;
-                  const clientPhone = data.clientPhone ? data.clientPhone.replace(/\D/g, '') : '';
-                  const msg = encodeURIComponent("Olá, " + (data.clientName || "cliente") + "! Segue o link para pagamento do seu agendamento em " + (data.shopName || "nossa barbearia") + ":\n" + link);
-                  const waUrl = clientPhone
-                    ? "https://wa.me/55" + clientPhone + "?text=" + msg
-                    : "https://wa.me/?text=" + msg;
-                  window.open(waUrl, "_blank");
-                  btn.disabled = false; btn.textContent = "Link Pgto";
-                } catch(e) {
-                  alert("Erro: " + e.message);
-                  btn.disabled = false; btn.textContent = "Link Pgto";
-                }
-              }
-            </script>`
+          ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:40px;text-align:center;color:var(--muted);font-size:14px">
+               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 12px;display:block;opacity:0.3"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+               Nenhum agendamento para ${fmtDate(dateStr)}${filterSearch || filterBarberId ? " com os filtros aplicados" : ""}.
+             </div>`
+          : `<div style="display:flex;flex-direction:column;gap:10px">
+              ${appointments.map((a: any) => {
+                const statusColors: Record<string, {bg:string;border:string;text:string}> = {
+                  scheduled:        {bg:"rgba(201,168,76,0.08)",  border:"rgba(201,168,76,0.3)",  text:"#C9A84C"},
+                  confirmed:        {bg:"rgba(76,175,80,0.08)",   border:"rgba(76,175,80,0.3)",   text:"#4CAF50"},
+                  in_progress:      {bg:"rgba(33,150,243,0.08)",  border:"rgba(33,150,243,0.3)",  text:"#2196F3"},
+                  completed:        {bg:"rgba(136,136,128,0.08)", border:"rgba(136,136,128,0.3)", text:"#888880"},
+                  cancelled:        {bg:"rgba(244,67,54,0.08)",   border:"rgba(244,67,54,0.3)",   text:"#F44336"},
+                  no_show:          {bg:"rgba(255,152,0,0.08)",   border:"rgba(255,152,0,0.3)",   text:"#FF9800"},
+                  pending_approval: {bg:"rgba(255,107,53,0.08)",  border:"rgba(255,107,53,0.3)",  text:"#FF6B35"},
+                };
+                const statusLabels: Record<string,string> = {
+                  scheduled:"Agendado", confirmed:"Confirmado", in_progress:"Em andamento",
+                  completed:"Concluído", cancelled:"Cancelado", no_show:"Não compareceu",
+                  pending_approval:"Aguarda aprovação"
+                };
+                const sc = statusColors[a.status] ?? {bg:"rgba(136,136,128,0.08)",border:"rgba(136,136,128,0.3)",text:"#888880"};
+                const sl = statusLabels[a.status] ?? a.status;
+                const serviceNames = a.serviceNames ?? a.serviceName ?? "—";
+                return `<div id="appt-card-${a.id}" onclick="openEditModal(${JSON.stringify({id:a.id,clientName:a.clientName??'',clientPhone:a.clientPhone??'',serviceId:a.serviceId,serviceName:serviceNames,barberId:a.barberId,barberName:a.barberName??'',date:a.date,startTime:a.startTime??'',endTime:a.endTime??'',status:a.status,notes:a.notes??''})})" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s;display:flex;align-items:center;gap:16px" onmouseover="this.style.borderColor='rgba(201,168,76,0.4)';this.style.boxShadow='0 2px 12px rgba(0,0,0,0.2)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+                  <!-- Horário -->
+                  <div style="flex-shrink:0;text-align:center;min-width:52px">
+                    <div style="font-size:18px;font-weight:800;color:var(--foreground);line-height:1">${a.startTime?.substring(0,5) ?? "—"}</div>
+                    <div style="font-size:11px;color:var(--muted);margin-top:2px">${a.endTime?.substring(0,5) ?? ""}</div>
+                  </div>
+                  <!-- Barra colorida de status -->
+                  <div style="width:3px;height:44px;border-radius:2px;background:${sc.text};flex-shrink:0"></div>
+                  <!-- Info principal -->
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:14px;font-weight:700;color:var(--foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.clientName ?? "—")}</div>
+                    <div style="font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(serviceNames)} · ${esc(a.barberName ?? "—")}</div>
+                  </div>
+                  <!-- Badge de status -->
+                  <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${sc.bg};border:1px solid ${sc.border};color:${sc.text}">${sl}</div>
+                  <!-- Seta -->
+                  <div style="flex-shrink:0;color:var(--muted)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </div>`;
+              }).join("")}
+            </div>`
         }
+        </div>
+        <!-- Vista Linha do Tempo -->
+        <div id="viewTimeline" style="display:none">
+          ${(() => {
+            if (appointments.length === 0) return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:40px;text-align:center;color:var(--muted);font-size:14px">Nenhum agendamento para ${fmtDate(dateStr)}.</div>`;
+            // Gerar slots de 30min das 07:00 às 22:00
+            const slots: string[] = [];
+            for (let h = 7; h < 22; h++) {
+              slots.push(`${String(h).padStart(2,"0")}:00`);
+              slots.push(`${String(h).padStart(2,"0")}:30`);
+            }
+            const apptBySlot: Record<string, any[]> = {};
+            appointments.forEach((a: any) => {
+              const t = a.startTime?.substring(0,5);
+              if (t) {
+                if (!apptBySlot[t]) apptBySlot[t] = [];
+                apptBySlot[t].push(a);
+              }
+            });
+            const statusColors: Record<string, string> = {
+              scheduled:"#C9A84C", confirmed:"#4CAF50", in_progress:"#2196F3",
+              completed:"#888880", cancelled:"#F44336", no_show:"#FF9800", pending_approval:"#FF6B35"
+            };
+            return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">
+              ${slots.map(slot => {
+                const appts = apptBySlot[slot] ?? [];
+                const isHour = slot.endsWith(":00");
+                return `<div style="display:flex;align-items:stretch;border-bottom:1px solid ${isHour ? 'var(--border)' : 'rgba(255,255,255,0.04)'}">
+                  <div style="width:52px;flex-shrink:0;padding:${isHour ? '10px' : '4px'} 12px;font-size:${isHour ? '12' : '10'}px;font-weight:${isHour ? '700' : '400'};color:${isHour ? 'var(--muted)' : 'rgba(136,136,128,0.4)'};text-align:right;border-right:1px solid var(--border)">${slot}</div>
+                  <div style="flex:1;padding:4px 12px;min-height:${isHour ? '40' : '24'}px;display:flex;flex-direction:column;gap:4px">
+                    ${appts.map((a: any) => {
+                      const sc = statusColors[a.status] ?? "#888880";
+                      const serviceNames = a.serviceNames ?? a.serviceName ?? "—";
+                      return `<div onclick="openEditModal(${JSON.stringify({id:a.id,clientName:a.clientName??'',clientPhone:a.clientPhone??'',serviceId:a.serviceId,serviceName:serviceNames,barberId:a.barberId,barberName:a.barberName??'',date:a.date,startTime:a.startTime??'',endTime:a.endTime??'',status:a.status,notes:a.notes??''})})" style="background:${sc}18;border-left:3px solid ${sc};border-radius:0 8px 8px 0;padding:6px 10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px" onmouseover="this.style.background='${sc}30'" onmouseout="this.style.background='${sc}18'">
+                        <div>
+                          <div style="font-size:12px;font-weight:700;color:var(--foreground)">${esc(a.clientName ?? "—")}</div>
+                          <div style="font-size:11px;color:var(--muted)">${esc(serviceNames)} · ${a.startTime?.substring(0,5)} – ${a.endTime?.substring(0,5)}</div>
+                        </div>
+                        <div style="font-size:11px;font-weight:600;color:${sc}">${esc(a.barberName ?? "")}</div>
+                      </div>`;
+                    }).join("")}
+                  </div>
+                </div>`;
+              }).join("")}
+            </div>`;
+          })()}
+        </div>
+        <!-- Modal Editar/Reagendar Agendamento -->
+        <div id="editApptModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;position:relative">
+            <button type="button" onclick="closeEditModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">×</button>
+            <div style="font-size:18px;font-weight:800;color:var(--foreground);margin-bottom:4px">Editar Agendamento</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Altere os dados e salve para reagendar</div>
+            <form id="editApptForm" onsubmit="submitEditAppt(event)">
+              <input type="hidden" id="editApptId" name="id" />
+              <div style="margin-bottom:16px">
+                <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Cliente</label>
+                <div id="editApptClient" style="padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;font-size:14px;color:var(--foreground)"></div>
+              </div>
+              <div style="margin-bottom:16px">
+                <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Serviço</label>
+                <select id="editApptService" name="serviceId" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box">
+                  ${services.map((s: any) => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}
+                </select>
+              </div>
+              <div style="margin-bottom:16px">
+                <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Profissional</label>
+                <select id="editApptBarber" name="barberId" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box">
+                  ${barbers.map((b: any) => `<option value="${b.id}">${esc(b.name)}</option>`).join("")}
+                </select>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+                <div>
+                  <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Data</label>
+                  <input type="date" id="editApptDate" name="date" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box" />
+                </div>
+                <div>
+                  <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Horário</label>
+                  <input type="time" id="editApptTime" name="startTime" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box" />
+                </div>
+              </div>
+              <div style="margin-bottom:16px">
+                <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Status</label>
+                <select id="editApptStatus" name="status" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box">
+                  <option value="scheduled">Agendado</option>
+                  <option value="confirmed">Confirmado</option>
+                  <option value="in_progress">Em andamento</option>
+                  <option value="completed">Concluído</option>
+                  <option value="cancelled">Cancelado</option>
+                  <option value="no_show">Não compareceu</option>
+                </select>
+              </div>
+              <div style="margin-bottom:20px">
+                <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Observações</label>
+                <input type="text" id="editApptNotes" name="notes" placeholder="Observações opcionais" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box" />
+              </div>
+              <div id="editApptError" style="display:none;padding:10px 14px;background:rgba(244,67,54,0.1);border:1px solid rgba(244,67,54,0.3);border-radius:10px;color:#F44336;font-size:13px;margin-bottom:14px"></div>
+              <div style="display:flex;gap:12px">
+                <button type="button" onclick="closeEditModal()" style="flex:1;padding:12px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+                <button type="submit" id="editApptSubmitBtn" style="flex:1;padding:12px;background:var(--primary);border:none;border-radius:10px;color:#0A0A0A;font-size:14px;font-weight:700;cursor:pointer">Salvar Alterações</button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
-    </div>
+        <!-- Modal Novo Agendamento (overlay) -->
+        <div id="newApptModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;position:relative">
+            <button type="button" onclick="document.getElementById('newApptModal').style.display='none'" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">×</button>
+            <div style="font-size:18px;font-weight:800;color:var(--foreground);margin-bottom:4px">Novo Agendamento</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Crie um agendamento manualmente</div>
+            <form method="POST" action="/admin/agenda/novo">
+              <div style="margin-bottom:16px">
+                <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Cliente *</label>
+                <input type="hidden" name="clientId" id="newApptClientId" required />
+                <div style="position:relative">
+                  <input type="text" id="newApptClientSearch" placeholder="Buscar cliente por nome ou telefone..." autocomplete="off"
+                    style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box"
+                    oninput="filterNewClients(this.value)"
+                    onfocus="document.getElementById('newApptClientDropdown').style.display='block'"
+                    onblur="setTimeout(()=>{document.getElementById('newApptClientDropdown').style.display='none'},200)" />
+                  <div id="newApptClientDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-height:200px;overflow-y:auto;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.4);margin-top:4px">
+                    ${clients.map((c: any) => `<div class="new-appt-client-opt" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="selectNewApptClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='rgba(201,168,76,0.08)'" onmouseout="this.style.background=''"><strong style="color:var(--foreground)">${esc(c.name)}</strong>${c.phone ? `<span style="color:var(--muted);font-size:12px">${esc(c.phone)}</span>` : ''}</div>`).join("")}
+                  </div>
+                </div>
+              </div>
+              <div style="margin-bottom:16px">
+                <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Serviço *</label>
+                <select name="serviceId" required style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box">
+                  <option value="">Selecione o serviço</option>
+                  ${services.map((s: any) => `<option value="${s.id}">${esc(s.name)} — ${fmtCurrency(s.price)} (${s.duration ?? 30}min)</option>`).join("")}
+                </select>
+              </div>
+              <div style="margin-bottom:16px">
+                <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Profissional *</label>
+                <select name="barberId" required style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box">
+                  <option value="">Selecione o profissional</option>
+                  ${barbers.map((b: any) => `<option value="${b.id}"${b.id === session.barberId ? " selected" : ""}>${esc(b.name)}</option>`).join("")}
+                </select>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+                <div>
+                  <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Data *</label>
+                  <input type="date" name="date" value="${dateStr}" required style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box" />
+                </div>
+                <div>
+                  <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Horário *</label>
+                  <input type="time" name="startTime" required style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box" />
+                </div>
+              </div>
+              <div style="margin-bottom:20px">
+                <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Observações</label>
+                <input type="text" name="notes" placeholder="Observações opcionais" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box" />
+              </div>
+              <div style="display:flex;gap:12px">
+                <button type="button" onclick="document.getElementById('newApptModal').style.display='none'" style="flex:1;padding:12px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+                <button type="submit" style="flex:1;padding:12px;background:var(--primary);border:none;border-radius:10px;color:#0A0A0A;font-size:14px;font-weight:700;cursor:pointer">Criar Agendamento</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <script>
+          // Toggle de vista
+          function setView(v) {
+            document.getElementById('viewCards').style.display = v === 'cards' ? 'block' : 'none';
+            document.getElementById('viewTimeline').style.display = v === 'timeline' ? 'block' : 'none';
+            document.getElementById('btnViewCards').style.background = v === 'cards' ? 'var(--primary)' : 'var(--surface)';
+            document.getElementById('btnViewCards').style.color = v === 'cards' ? '#0A0A0A' : 'var(--muted)';
+            document.getElementById('btnViewCards').style.border = v === 'cards' ? 'none' : '1px solid var(--border)';
+            document.getElementById('btnViewTimeline').style.background = v === 'timeline' ? 'var(--primary)' : 'var(--surface)';
+            document.getElementById('btnViewTimeline').style.color = v === 'timeline' ? '#0A0A0A' : 'var(--muted)';
+            document.getElementById('btnViewTimeline').style.border = v === 'timeline' ? 'none' : '1px solid var(--border)';
+            localStorage.setItem('agendaView', v);
+          }
+          // Restaurar vista salva
+          (function() {
+            const saved = localStorage.getItem('agendaView');
+            if (saved === 'timeline') setView('timeline');
+          })();
+          // Modal Editar Agendamento
+          function openEditModal(data) {
+            document.getElementById('editApptId').value = data.id;
+            document.getElementById('editApptClient').textContent = data.clientName + (data.clientPhone ? ' — ' + data.clientPhone : '');
+            document.getElementById('editApptDate').value = data.date;
+            document.getElementById('editApptTime').value = data.startTime;
+            document.getElementById('editApptNotes').value = data.notes || '';
+            // Selecionar serviço
+            const svcSel = document.getElementById('editApptService');
+            for (let i = 0; i < svcSel.options.length; i++) {
+              if (svcSel.options[i].value == data.serviceId) { svcSel.selectedIndex = i; break; }
+            }
+            // Selecionar barbeiro
+            const barberSel = document.getElementById('editApptBarber');
+            for (let i = 0; i < barberSel.options.length; i++) {
+              if (barberSel.options[i].value == data.barberId) { barberSel.selectedIndex = i; break; }
+            }
+            // Selecionar status
+            const statusSel = document.getElementById('editApptStatus');
+            for (let i = 0; i < statusSel.options.length; i++) {
+              if (statusSel.options[i].value === data.status) { statusSel.selectedIndex = i; break; }
+            }
+            document.getElementById('editApptError').style.display = 'none';
+            document.getElementById('editApptModal').style.display = 'flex';
+          }
+          function closeEditModal() {
+            document.getElementById('editApptModal').style.display = 'none';
+          }
+          async function submitEditAppt(e) {
+            e.preventDefault();
+            const btn = document.getElementById('editApptSubmitBtn');
+            btn.disabled = true; btn.textContent = 'Salvando...';
+            const id = document.getElementById('editApptId').value;
+            const serviceId = document.getElementById('editApptService').value;
+            const barberId = document.getElementById('editApptBarber').value;
+            const date = document.getElementById('editApptDate').value;
+            const startTime = document.getElementById('editApptTime').value;
+            const status = document.getElementById('editApptStatus').value;
+            const notes = document.getElementById('editApptNotes').value;
+            try {
+              const r = await fetch('/admin-api/appointment-edit', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                credentials: 'include',
+                body: JSON.stringify({id: parseInt(id), serviceId: parseInt(serviceId), barberId: parseInt(barberId), date, startTime, status, notes})
+              });
+              if (!r.ok) { const e2 = await r.json(); throw new Error(e2.error || 'Erro ao salvar'); }
+              closeEditModal();
+              location.reload();
+            } catch(err) {
+              const errEl = document.getElementById('editApptError');
+              errEl.textContent = err.message;
+              errEl.style.display = 'block';
+              btn.disabled = false; btn.textContent = 'Salvar Alterações';
+            }
+          }
+          // Busca de cliente no modal Novo Agendamento
+          function filterNewClients(q) {
+            q = q.toLowerCase();
+            document.querySelectorAll('.new-appt-client-opt').forEach(el => {
+              const n = el.dataset.name.toLowerCase(), p = (el.dataset.phone || '').toLowerCase();
+              el.style.display = (n.includes(q) || p.includes(q)) ? '' : 'none';
+            });
+            document.getElementById('newApptClientDropdown').style.display = 'block';
+          }
+          function selectNewApptClient(el) {
+            document.getElementById('newApptClientId').value = el.dataset.id;
+            document.getElementById('newApptClientSearch').value = el.dataset.name + (el.dataset.phone ? ' — ' + el.dataset.phone : '');
+            document.getElementById('newApptClientDropdown').style.display = 'none';
+          }
+        </script>
     ${planModalHtml}
     ${planSaved ? `<div id="planSavedToast" style="position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#22C55E;color:#fff;padding:14px 28px;border-radius:12px;font-size:14px;font-weight:700;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.25);display:flex;align-items:center;gap:10px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Assinatura criada com sucesso!</div><script>setTimeout(function(){var t=document.getElementById('planSavedToast');if(t)t.style.display='none';},4000);</script>` : ''}
   `;
@@ -4110,6 +4353,48 @@ export function registerAdminRoutes(app: Express): void {
       res.status(500).json({ error: e.message });
     }
   });
+  // POST /admin-api/appointment-edit — Editar agendamento (data, horário, serviço, barbeiro, status)
+  app.post("/admin-api/appointment-edit", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const tenantId = barber?.tenantId ?? null;
+      const { id, serviceId, barberId: bId, date, startTime, status, notes } = req.body as {
+        id: number; serviceId: number; barberId: number; date: string;
+        startTime: string; status: "scheduled"|"confirmed"|"in_progress"|"completed"|"cancelled"|"no_show"|"pending_approval"; notes?: string;
+      };
+      if (!id || !serviceId || !bId || !date || !startTime) {
+        res.status(400).json({ error: "Preencha todos os campos obrigatórios" }); return;
+      }
+      // Verificar se o agendamento pertence ao tenant
+      if (tenantId != null) {
+        const appt = await db.getAppointmentById(id);
+        const apptBarber = appt ? await db.getBarberById(appt.barberId) : null;
+        if (!apptBarber || apptBarber.tenantId !== tenantId) {
+          res.status(403).json({ error: "Acesso negado" }); return;
+        }
+      }
+      // Calcular endTime baseado na duração do serviço
+      const svc = await db.getServiceById(serviceId);
+      const duration = svc?.durationMinutes ?? 30;
+      const [h, m] = startTime.split(":").map(Number);
+      const endTotal = h * 60 + m + duration;
+      const endTime = `${String(Math.floor(endTotal / 60) % 24).padStart(2, "0")}:${String(endTotal % 60).padStart(2, "0")}`;
+      await db.updateAppointment(id, {
+        serviceId: Number(serviceId),
+        barberId: Number(bId),
+        date,
+        startTime,
+        endTime,
+        status,
+        notes: notes ?? "",
+      });
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Rotas protegidas
   app.get("/admin", requireAdminAuth, (req, res) => renderDashboard(req, res));
   app.get("/admin/agenda", requireAdminAuth, (req, res) => renderAgenda(req, res));
