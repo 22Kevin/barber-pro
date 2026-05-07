@@ -1,0 +1,114 @@
+{
+  "query": "SELECT table_name, column_name FROM information_schema.columns WHERE table_name IN ('subscription_plan_services', 'subscription_plan_products', 'client_subscriptions') ORDER BY table_name, ordinal_position;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT table_name, column_name FROM information_schema.columns WHERE table_name IN ('subscription_plan_services', 'subscription_plan_products', 'client_subscriptions') ORDER BY table_name, ordinal_position;",
+  "rows": [
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "id"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "tenantId"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "planId"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "clientId"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "barberId"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "selectedServiceIds"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "selectedProductIds"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "status"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "paymentMethod"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "price"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "cycleStart"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "cycleEnd"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "usedRecurrences"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "cancelledAt"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "cancelReason"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "autoRenew"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "createdAt"
+    },
+    {
+      "table_name": "client_subscriptions",
+      "column_name": "updatedAt"
+    },
+    {
+      "table_name": "subscription_plan_products",
+      "column_name": "id"
+    },
+    {
+      "table_name": "subscription_plan_products",
+      "column_name": "planId"
+    },
+    {
+      "table_name": "subscription_plan_products",
+      "column_name": "productId"
+    },
+    {
+      "table_name": "subscription_plan_products",
+      "column_name": "tenantId"
+    },
+    {
+      "table_name": "subscription_plan_services",
+      "column_name": "id"
+    },
+    {
+      "table_name": "subscription_plan_services",
+      "column_name": "planId"
+    },
+    {
+      "table_name": "subscription_plan_services",
+      "column_name": "serviceId"
+    },
+    {
+      "table_name": "subscription_plan_services",
+      "column_name": "tenantId"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\tcolumn_name\nclient_subscriptions\tid\nclient_subscriptions\ttenantId\nclient_subscriptions\tplanId\nclient_subscriptions\tclientId\nclient_subscriptions\tbarberId\nclient_subscriptions\tselectedServiceIds\nclient_subscriptions\tselectedProductIds\nclient_subscriptions\tstatus\nclient_subscriptions\tpaymentMethod\nclient_subscriptions\tprice\nclient_subscriptions\tcycleStart\nclient_subscriptions\tcycleEnd\nclient_subscriptions\tusedRecurrences\nclient_subscriptions\tcancelledAt\nclient_subscriptions\tcancelReason\nclient_subscriptions\tautoRenew\nclient_subscriptions\tcreatedAt\nclient_subscriptions\tupdatedAt\nsubscription_plan_products\tid\nsubscription_plan_products\tplanId\nsubscription_plan_products\tproductId\nsubscription_plan_products\ttenantId\nsubscription_plan_services\tid\nsubscription_plan_services\tplanId\nsubscription_plan_services\tserviceId\nsubscription_plan_services\ttenantId\n",
+  "stderr": "",
+  "execution_time_ms": 2032
+}

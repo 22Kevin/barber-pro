@@ -1,0 +1,52 @@
+{
+  "query": "SELECT id, tenantId, name, isActive FROM subscription_plans LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT id, tenantId, name, isActive FROM subscription_plans LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "tenantId": "1",
+      "name": "Plano Ouro",
+      "isActive": "1"
+    },
+    {
+      "id": "2",
+      "tenantId": "1",
+      "name": "Plano Premium",
+      "isActive": "1"
+    },
+    {
+      "id": "3",
+      "tenantId": "1",
+      "name": "Debug Plan",
+      "isActive": "1"
+    },
+    {
+      "id": "4",
+      "tenantId": "1",
+      "name": "Plano Teste Final",
+      "isActive": "1"
+    },
+    {
+      "id": "5",
+      "tenantId": "180002",
+      "name": "Plano Ouro",
+      "isActive": "1"
+    },
+    {
+      "id": "6",
+      "tenantId": "180002",
+      "name": "Plano Prata",
+      "isActive": "1"
+    },
+    {
+      "id": "7",
+      "tenantId": "180002",
+      "name": "Plano Bronze",
+      "isActive": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttenantId\tname\tisActive\n1\t1\tPlano Ouro\t1\n2\t1\tPlano Premium\t1\n3\t1\tDebug Plan\t1\n4\t1\tPlano Teste Final\t1\n5\t180002\tPlano Ouro\t1\n6\t180002\tPlano Prata\t1\n7\t180002\tPlano Bronze\t1\n",
+  "stderr": "",
+  "execution_time_ms": 551
+}

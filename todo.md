@@ -1882,3 +1882,10 @@
 ## Padronização Visual de Botões (Mai/2026)
 
 - [x] Padronizar todos os botões do app com fundo dourado (#C9A84C) e texto escuro (#0A0A0A) para garantir visibilidade em qualquer tema
+
+## Bug — Planos de Assinatura não aparecendo no App (Mai/2026)
+
+- [x] Diagnosticar divergência: planos visíveis no web mas não no app
+- [x] Corrigir subscription-plan-router: colunas camelCase da tabela subscription_plans ficam em minúsculas no PostgreSQL (criada sem aspas) — queries ajustadas para tenantid, isactive, maxservices, maxproducts, suggestedprice, createdat, updatedat
+- [x] Corrigir INSERT com RETURNING id para PostgreSQL (substituiu insertId=0 do MySQL)
+- [x] Normalizar retorno da listPlans para camelCase consistente no app

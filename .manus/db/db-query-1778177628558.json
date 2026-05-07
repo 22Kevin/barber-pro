@@ -1,0 +1,42 @@
+{
+  "query": "SELECT table_name, column_name FROM information_schema.columns WHERE table_name IN ('subscription_plan_services', 'subscription_plan_products') ORDER BY table_name, ordinal_position;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT table_name, column_name FROM information_schema.columns WHERE table_name IN ('subscription_plan_services', 'subscription_plan_products') ORDER BY table_name, ordinal_position;",
+  "rows": [
+    {
+      "table_name": "subscription_plan_products",
+      "column_name": "id"
+    },
+    {
+      "table_name": "subscription_plan_products",
+      "column_name": "planId"
+    },
+    {
+      "table_name": "subscription_plan_products",
+      "column_name": "productId"
+    },
+    {
+      "table_name": "subscription_plan_products",
+      "column_name": "tenantId"
+    },
+    {
+      "table_name": "subscription_plan_services",
+      "column_name": "id"
+    },
+    {
+      "table_name": "subscription_plan_services",
+      "column_name": "planId"
+    },
+    {
+      "table_name": "subscription_plan_services",
+      "column_name": "serviceId"
+    },
+    {
+      "table_name": "subscription_plan_services",
+      "column_name": "tenantId"
+    }
+  ],
+  "messages": [],
+  "stdout": "table_name\tcolumn_name\nsubscription_plan_products\tid\nsubscription_plan_products\tplanId\nsubscription_plan_products\tproductId\nsubscription_plan_products\ttenantId\nsubscription_plan_services\tid\nsubscription_plan_services\tplanId\nsubscription_plan_services\tserviceId\nsubscription_plan_services\ttenantId\n",
+  "stderr": "",
+  "execution_time_ms": 256
+}

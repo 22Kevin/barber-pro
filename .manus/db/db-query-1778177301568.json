@@ -1,0 +1,45 @@
+{
+  "query": "SELECT id, name, email, role, \"tenantId\" FROM barbers WHERE role = 'super_admin' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT id, name, email, role, \"tenantId\" FROM barbers WHERE role = 'super_admin' LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Kevin Rayan",
+      "email": "kevin.rayan@hotmail.com",
+      "role": "super_admin",
+      "tenantId": "tenantId"
+    },
+    {
+      "id": "120001",
+      "name": "Admin Teste",
+      "email": "admin@teste.com",
+      "role": "super_admin",
+      "tenantId": "tenantId"
+    },
+    {
+      "id": "120002",
+      "name": "João Cléber",
+      "email": "joao.cleber@hotmail.com",
+      "role": "super_admin",
+      "tenantId": "tenantId"
+    },
+    {
+      "id": "150001",
+      "name": "Kevin Barbeiro",
+      "email": "kevin@barbeiro.com",
+      "role": "super_admin",
+      "tenantId": "tenantId"
+    },
+    {
+      "id": "180001",
+      "name": "Admin Teste",
+      "email": "admin_landing_test_001@test.com",
+      "role": "super_admin",
+      "tenantId": "tenantId"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\ttenantId\n1\tKevin Rayan\tkevin.rayan@hotmail.com\tsuper_admin\ttenantId\n120001\tAdmin Teste\tadmin@teste.com\tsuper_admin\ttenantId\n120002\tJoão Cléber\tjoao.cleber@hotmail.com\tsuper_admin\ttenantId\n150001\tKevin Barbeiro\tkevin@barbeiro.com\tsuper_admin\ttenantId\n180001\tAdmin Teste\tadmin_landing_test_001@test.com\tsuper_admin\ttenantId\n",
+  "stderr": "",
+  "execution_time_ms": 417
+}

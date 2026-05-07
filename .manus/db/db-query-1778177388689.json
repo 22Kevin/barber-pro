@@ -1,0 +1,28 @@
+{
+  "query": "SELECT b.id, b.name, b.email, b.tenantId FROM barbers b WHERE b.email IN ('kevin.rayan@hotmail.com', 'kevin.rayan25@gmail.com', 'kevin@barbeiro.com');",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT b.id, b.name, b.email, b.tenantId FROM barbers b WHERE b.email IN ('kevin.rayan@hotmail.com', 'kevin.rayan25@gmail.com', 'kevin@barbeiro.com');",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Kevin Rayan",
+      "email": "kevin.rayan@hotmail.com",
+      "tenantId": "NULL"
+    },
+    {
+      "id": "150001",
+      "name": "Kevin Barbeiro",
+      "email": "kevin@barbeiro.com",
+      "tenantId": "30001"
+    },
+    {
+      "id": "300002",
+      "name": "Kevin",
+      "email": "kevin.rayan25@gmail.com",
+      "tenantId": "180002"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\ttenantId\n1\tKevin Rayan\tkevin.rayan@hotmail.com\tNULL\n150001\tKevin Barbeiro\tkevin@barbeiro.com\t30001\n300002\tKevin\tkevin.rayan25@gmail.com\t180002\n",
+  "stderr": "",
+  "execution_time_ms": 258
+}

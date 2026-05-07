@@ -1,0 +1,64 @@
+{
+  "query": "SELECT column_name FROM information_schema.columns WHERE table_name = 'client_subscriptions' ORDER BY ordinal_position;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT column_name FROM information_schema.columns WHERE table_name = 'client_subscriptions' ORDER BY ordinal_position;",
+  "rows": [
+    {
+      "column_name": "id"
+    },
+    {
+      "column_name": "tenantId"
+    },
+    {
+      "column_name": "planId"
+    },
+    {
+      "column_name": "clientId"
+    },
+    {
+      "column_name": "barberId"
+    },
+    {
+      "column_name": "selectedServiceIds"
+    },
+    {
+      "column_name": "selectedProductIds"
+    },
+    {
+      "column_name": "status"
+    },
+    {
+      "column_name": "paymentMethod"
+    },
+    {
+      "column_name": "price"
+    },
+    {
+      "column_name": "cycleStart"
+    },
+    {
+      "column_name": "cycleEnd"
+    },
+    {
+      "column_name": "usedRecurrences"
+    },
+    {
+      "column_name": "cancelledAt"
+    },
+    {
+      "column_name": "cancelReason"
+    },
+    {
+      "column_name": "autoRenew"
+    },
+    {
+      "column_name": "createdAt"
+    },
+    {
+      "column_name": "updatedAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "column_name\nid\ntenantId\nplanId\nclientId\nbarberId\nselectedServiceIds\nselectedProductIds\nstatus\npaymentMethod\nprice\ncycleStart\ncycleEnd\nusedRecurrences\ncancelledAt\ncancelReason\nautoRenew\ncreatedAt\nupdatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 338
+}

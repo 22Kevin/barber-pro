@@ -1,0 +1,46 @@
+{
+  "query": "SELECT column_name FROM information_schema.columns WHERE table_name = 'subscription_plans' ORDER BY ordinal_position;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT column_name FROM information_schema.columns WHERE table_name = 'subscription_plans' ORDER BY ordinal_position;",
+  "rows": [
+    {
+      "column_name": "id"
+    },
+    {
+      "column_name": "tenantId"
+    },
+    {
+      "column_name": "name"
+    },
+    {
+      "column_name": "description"
+    },
+    {
+      "column_name": "recurrences"
+    },
+    {
+      "column_name": "maxServices"
+    },
+    {
+      "column_name": "maxProducts"
+    },
+    {
+      "column_name": "price"
+    },
+    {
+      "column_name": "suggestedPrice"
+    },
+    {
+      "column_name": "isActive"
+    },
+    {
+      "column_name": "createdAt"
+    },
+    {
+      "column_name": "updatedAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "column_name\nid\ntenantId\nname\ndescription\nrecurrences\nmaxServices\nmaxProducts\nprice\nsuggestedPrice\nisActive\ncreatedAt\nupdatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 879
+}

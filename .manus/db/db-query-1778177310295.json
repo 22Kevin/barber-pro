@@ -1,0 +1,136 @@
+{
+  "query": "SELECT id, name, email, role, tenantId FROM barbers ORDER BY id LIMIT 20;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT id, name, email, role, tenantId FROM barbers ORDER BY id LIMIT 20;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Kevin Rayan",
+      "email": "kevin.rayan@hotmail.com",
+      "role": "super_admin",
+      "tenantId": "NULL"
+    },
+    {
+      "id": "30001",
+      "name": "Felipe",
+      "email": "felipe.silva@hotmail.com",
+      "role": "barber",
+      "tenantId": "NULL"
+    },
+    {
+      "id": "60001",
+      "name": "Sabrina Stefani Alves Da Silva",
+      "email": "sasastefaniisilva@gmail.com",
+      "role": "receptionist",
+      "tenantId": "NULL"
+    },
+    {
+      "id": "90001",
+      "name": "Sabrina",
+      "email": "sabrina.stefani@hotmail.com",
+      "role": "receptionist",
+      "tenantId": "NULL"
+    },
+    {
+      "id": "120001",
+      "name": "Admin Teste",
+      "email": "admin@teste.com",
+      "role": "super_admin",
+      "tenantId": "1"
+    },
+    {
+      "id": "120002",
+      "name": "João Cléber",
+      "email": "joao.cleber@hotmail.com",
+      "role": "super_admin",
+      "tenantId": "2"
+    },
+    {
+      "id": "150001",
+      "name": "Kevin Barbeiro",
+      "email": "kevin@barbeiro.com",
+      "role": "super_admin",
+      "tenantId": "30001"
+    },
+    {
+      "id": "180001",
+      "name": "Admin Teste",
+      "email": "admin_landing_test_001@test.com",
+      "role": "super_admin",
+      "tenantId": "60001"
+    },
+    {
+      "id": "180002",
+      "name": "Carlos Barbeiro",
+      "email": "carlos.gold.test.003@barberpro.com",
+      "role": "super_admin",
+      "tenantId": "60002"
+    },
+    {
+      "id": "210001",
+      "name": "Fernando Silva",
+      "email": "fernando.silva@gmail.com",
+      "role": "super_admin",
+      "tenantId": "90001"
+    },
+    {
+      "id": "240001",
+      "name": "Marcelo Ferreira",
+      "email": "marcelo.ferreira@hotmail.com",
+      "role": "super_admin",
+      "tenantId": "120001"
+    },
+    {
+      "id": "270001",
+      "name": "Gabriel Silva",
+      "email": "gabriel.silva@hotmail.com",
+      "role": "super_admin",
+      "tenantId": "150001"
+    },
+    {
+      "id": "270002",
+      "name": "Heithor Silva",
+      "email": "heithor.silva@gmail.com",
+      "role": "super_admin",
+      "tenantId": "150002"
+    },
+    {
+      "id": "270003",
+      "name": "Karine Santos",
+      "email": "karine.santos@gmail.com",
+      "role": "super_admin",
+      "tenantId": "150003"
+    },
+    {
+      "id": "300001",
+      "name": "Admin Teste",
+      "email": "admin3_debug_1775750487@teste.com",
+      "role": "super_admin",
+      "tenantId": "180001"
+    },
+    {
+      "id": "300002",
+      "name": "Kevin",
+      "email": "kevin.rayan25@gmail.com",
+      "role": "super_admin",
+      "tenantId": "180002"
+    },
+    {
+      "id": "300003",
+      "name": "Admin Teste",
+      "email": "admin_test_xyz789@teste.com",
+      "role": "super_admin",
+      "tenantId": "180003"
+    },
+    {
+      "id": "330001",
+      "name": "Jota",
+      "email": "jota.barber@gmail.com",
+      "role": "super_admin",
+      "tenantId": "210001"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\ttenantId\n1\tKevin Rayan\tkevin.rayan@hotmail.com\tsuper_admin\tNULL\n30001\tFelipe\tfelipe.silva@hotmail.com\tbarber\tNULL\n60001\tSabrina Stefani Alves Da Silva\tsasastefaniisilva@gmail.com\treceptionist\tNULL\n90001\tSabrina\tsabrina.stefani@hotmail.com\treceptionist\tNULL\n120001\tAdmin Teste\tadmin@teste.com\tsuper_admin\t1\n120002\tJoão Cléber\tjoao.cleber@hotmail.com\tsuper_admin\t2\n150001\tKevin Barbeiro\tkevin@barbeiro.com\tsuper_admin\t30001\n180001\tAdmin Teste\tadmin_landing_test_001@test.com\tsuper_admin\t60001\n180002\tCarlos Barbeiro\tcarlos.gold.test.003@barberpro.com\tsuper_admin\t60002\n210001\tFernando Silva\tfernando.silva@gmail.com\tsuper_admin\t90001\n240001\tMarcelo Ferreira\tmarcelo.ferreira@hotmail.com\tsuper_admin\t120001\n270001\tGabriel Silva\tgabriel.silva@hotmail.com\tsuper_admin\t150001\n270002\tHeithor Silva\theithor.silva@gmail.com\tsuper_admin\t150002\n270003\tKarine Santos\tkarine.santos@gmail.com\tsuper_admin\t150003\n300001\tAdmin Teste\tadmin3_debug_1775750487@teste.com\tsuper_admin\t180001\n300002\tKevin\tkevin.rayan25@gmail.com\tsuper_admin\t180002\n300003\tAdmin Teste\tadmin_test_xyz789@teste.com\tsuper_admin\t180003\n330001\tJota\tjota.barber@gmail.com\tsuper_admin\t210001\n",
+  "stderr": "",
+  "execution_time_ms": 274
+}

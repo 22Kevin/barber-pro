@@ -1,0 +1,28 @@
+{
+  "query": "SELECT id, tenantId, name, isActive FROM subscription_plans WHERE tenantId = 180002;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT id, tenantId, name, isActive FROM subscription_plans WHERE tenantId = 180002;",
+  "rows": [
+    {
+      "id": "5",
+      "tenantId": "180002",
+      "name": "Plano Ouro",
+      "isActive": "1"
+    },
+    {
+      "id": "6",
+      "tenantId": "180002",
+      "name": "Plano Prata",
+      "isActive": "1"
+    },
+    {
+      "id": "7",
+      "tenantId": "180002",
+      "name": "Plano Bronze",
+      "isActive": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttenantId\tname\tisActive\n5\t180002\tPlano Ouro\t1\n6\t180002\tPlano Prata\t1\n7\t180002\tPlano Bronze\t1\n",
+  "stderr": "",
+  "execution_time_ms": 268
+}

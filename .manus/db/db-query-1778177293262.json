@@ -1,0 +1,59 @@
+{
+  "query": "SELECT id, \"tenantId\", name, \"isActive\", \"createdAt\" FROM subscription_plans ORDER BY \"createdAt\" DESC LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT id, \"tenantId\", name, \"isActive\", \"createdAt\" FROM subscription_plans ORDER BY \"createdAt\" DESC LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "tenantId": "tenantId",
+      "name": "Plano Ouro",
+      "isActive": "isActive",
+      "createdAt": "createdAt"
+    },
+    {
+      "id": "2",
+      "tenantId": "tenantId",
+      "name": "Plano Premium",
+      "isActive": "isActive",
+      "createdAt": "createdAt"
+    },
+    {
+      "id": "3",
+      "tenantId": "tenantId",
+      "name": "Debug Plan",
+      "isActive": "isActive",
+      "createdAt": "createdAt"
+    },
+    {
+      "id": "4",
+      "tenantId": "tenantId",
+      "name": "Plano Teste Final",
+      "isActive": "isActive",
+      "createdAt": "createdAt"
+    },
+    {
+      "id": "5",
+      "tenantId": "tenantId",
+      "name": "Plano Ouro",
+      "isActive": "isActive",
+      "createdAt": "createdAt"
+    },
+    {
+      "id": "6",
+      "tenantId": "tenantId",
+      "name": "Plano Prata",
+      "isActive": "isActive",
+      "createdAt": "createdAt"
+    },
+    {
+      "id": "7",
+      "tenantId": "tenantId",
+      "name": "Plano Bronze",
+      "isActive": "isActive",
+      "createdAt": "createdAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttenantId\tname\tisActive\tcreatedAt\n1\ttenantId\tPlano Ouro\tisActive\tcreatedAt\n2\ttenantId\tPlano Premium\tisActive\tcreatedAt\n3\ttenantId\tDebug Plan\tisActive\tcreatedAt\n4\ttenantId\tPlano Teste Final\tisActive\tcreatedAt\n5\ttenantId\tPlano Ouro\tisActive\tcreatedAt\n6\ttenantId\tPlano Prata\tisActive\tcreatedAt\n7\ttenantId\tPlano Bronze\tisActive\tcreatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 372
+}

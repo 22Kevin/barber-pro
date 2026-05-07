@@ -1,10 +1,17 @@
 /**
  * Router tRPC para Planos de Assinatura e Assinaturas de Clientes
- * Usa Drizzle ORM sql`` template literals para SQL raw com parâmetros seguros.
  *
- * Padrão Drizzle node-postgres para db.execute(sql`...`):
- *   SELECT → result.rows é o array de rows
- *   INSERT/UPDATE/DELETE → result.rowCount é o número de linhas afetadas
+ * IMPORTANTE — Nomes de colunas no PostgreSQL:
+ *
+ * subscription_plans → criada SEM aspas → colunas em minúsculas:
+ *   tenantid, isactive, maxservices, maxproducts, suggestedprice, createdat, updatedat
+ *
+ * subscription_plan_services / subscription_plan_products / client_subscriptions /
+ * subscription_appointments → criadas COM aspas → colunas preservadas em camelCase:
+ *   planId, serviceId, productId, tenantId, clientId, barberId, paymentMethod,
+ *   cycleStart, cycleEnd, selectedServiceIds, selectedProductIds, usedRecurrences,
+ *   cancelledAt, cancelReason, autoRenew, createdAt, updatedAt, subscriptionId,
+ *   appointmentId, recurrenceIndex
  */
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -23,12 +30,10 @@ async function getConn() {
 async function selectSql(query: ReturnType<typeof sql>): Promise<any[]> {
   const db = await getConn();
   const result = await db.execute(query);
-  // drizzle-orm/node-postgres: execute retorna QueryResult com .rows
-  const rows = (result as any).rows as any[];
-  return rows ?? [];
+  return ((result as any).rows as any[]) ?? [];
 }
 
-/** SELECT com string raw (para queries com IDs dinâmicos) */
+/** SELECT com string raw */
 async function selectRaw(queryStr: string): Promise<any[]> {
   const db = await getConn();
   const result = await db.execute(queryStr as any);
@@ -36,17 +41,27 @@ async function selectRaw(queryStr: string): Promise<any[]> {
 }
 
 /** INSERT/UPDATE/DELETE: retorna rowCount */
-async function mutateSql(query: ReturnType<typeof sql>): Promise<{ insertId: number; affectedRows: number }> {
+async function mutateSql(query: ReturnType<typeof sql>): Promise<{ affectedRows: number }> {
   const db = await getConn();
   const result = await db.execute(query);
-  return { insertId: 0, affectedRows: (result as any).rowCount ?? 0 };
+  return { affectedRows: (result as any).rowCount ?? 0 };
 }
 
-/** INSERT/UPDATE/DELETE com string raw */
-async function mutateRaw(queryStr: string): Promise<{ insertId: number; affectedRows: number }> {
+/**
+ * INSERT com RETURNING id — necessário no PostgreSQL.
+ * Retorna o id gerado.
+ */
+async function insertReturningId(query: ReturnType<typeof sql>): Promise<number> {
+  const rows = await selectSql(query);
+  return Number(rows[0]?.id ?? 0);
+}
+
+/** INSERT raw com RETURNING id */
+async function insertRawReturningId(queryStr: string): Promise<number> {
   const db = await getConn();
   const result = await db.execute(queryStr as any);
-  return { insertId: 0, affectedRows: (result as any).rowCount ?? 0 };
+  const rows = ((result as any).rows as any[]) ?? [];
+  return Number(rows[0]?.id ?? 0);
 }
 
 // ─── Router ──────────────────────────────────────────────────────────────────
@@ -58,61 +73,106 @@ export const subscriptionPlanRouter = router({
     .input(z.object({ tenantId: z.number() }))
     .query(async ({ input }) => {
       const tenantId = input.tenantId;
-      // Busca todos os planos do tenant
+      // subscription_plans: colunas em minúsculas (criada sem aspas)
+      // subscription_plan_services/products: colunas camelCase (criadas com aspas)
+      // client_subscriptions: colunas camelCase (criada com aspas)
       const plans = await selectRaw(
-        `SELECT sp.*, 
-          (SELECT COUNT(*) FROM subscription_plan_services WHERE planId = sp.id) as serviceCount,
-          (SELECT COUNT(*) FROM subscription_plan_products WHERE planId = sp.id) as productCount,
-          (SELECT COUNT(*) FROM client_subscriptions WHERE planId = sp.id AND status = 'active') as activeSubscribers
+        `SELECT sp.*,
+          (SELECT COUNT(*) FROM subscription_plan_services WHERE "planId" = sp.id) as "serviceCount",
+          (SELECT COUNT(*) FROM subscription_plan_products WHERE "planId" = sp.id) as "productCount",
+          (SELECT COUNT(*) FROM client_subscriptions WHERE "planId" = sp.id AND status = 'active') as "activeSubscribers"
         FROM subscription_plans sp
-        WHERE sp.tenantId = ${tenantId}
-        ORDER BY sp.createdAt DESC`
+        WHERE sp.tenantid = ${tenantId}
+        ORDER BY sp.createdat DESC`
       );
 
       if (plans.length === 0) return [];
 
-      // Busca todos os serviços dos planos em uma única query
-      const planIds = plans.map((p: any) => parseInt(String(p.id), 10)).join(',');
+      // Normaliza nomes de coluna para camelCase
+      const normalized = plans.map((p: any) => ({
+        id: Number(p.id),
+        tenantId: Number(p.tenantid ?? 0),
+        name: p.name,
+        description: p.description ?? null,
+        recurrences: Number(p.recurrences ?? 4),
+        maxServices: Number(p.maxservices ?? 1),
+        maxProducts: Number(p.maxproducts ?? 0),
+        price: p.price,
+        suggestedPrice: p.suggestedprice ?? null,
+        isActive: p.isactive === true || p.isactive === 1 || p.isactive === "1" || p.isactive === "true",
+        createdAt: p.createdat,
+        updatedAt: p.updatedat,
+        serviceCount: Number(p.serviceCount ?? 0),
+        productCount: Number(p.productCount ?? 0),
+        activeSubscribers: Number(p.activeSubscribers ?? 0),
+        services: [] as any[],
+        products: [] as any[],
+      }));
+
+      const planIds = normalized.map((p) => p.id).join(',');
+
+      // subscription_plan_services: colunas camelCase
       const allServices = await selectRaw(
-        `SELECT sps.planId, sps.serviceId, s.name, s.price, s.durationMinutes as duration
+        `SELECT sps."planId", sps."serviceId", s.name, s.price, s."durationMinutes" as duration
         FROM subscription_plan_services sps
-        JOIN services s ON s.id = sps.serviceId
-        WHERE sps.planId IN (${planIds})`
+        JOIN services s ON s.id = sps."serviceId"
+        WHERE sps."planId" IN (${planIds})`
       );
 
-      // Busca todos os produtos dos planos em uma única query
+      // subscription_plan_products: colunas camelCase
       const allProducts = await selectRaw(
-        `SELECT spp.planId, spp.productId, p.name, p.price
+        `SELECT spp."planId", spp."productId", p.name, p.price
         FROM subscription_plan_products spp
-        JOIN products p ON p.id = spp.productId
-        WHERE spp.planId IN (${planIds})`
+        JOIN products p ON p.id = spp."productId"
+        WHERE spp."planId" IN (${planIds})`
       );
 
-      // Agrupa serviços e produtos por planId
-      for (const plan of plans) {
-        const pid = parseInt(String(plan.id), 10);
-        plan.services = allServices.filter((s: any) => parseInt(String(s.planId), 10) === pid);
-        plan.products = allProducts.filter((p: any) => parseInt(String(p.planId), 10) === pid);
+      for (const plan of normalized) {
+        plan.services = allServices.filter((s: any) => Number(s.planId) === plan.id);
+        plan.products = allProducts.filter((p: any) => Number(p.planId) === plan.id);
       }
 
-      return plans;
+      return normalized;
     }),
 
   getPlan: publicProcedure
     .input(z.object({ id: z.number(), tenantId: z.number() }))
     .query(async ({ input }) => {
       const rows = await selectRaw(
-        `SELECT * FROM subscription_plans WHERE id = ${input.id} AND tenantId = ${input.tenantId}`
+        `SELECT * FROM subscription_plans WHERE id = ${input.id} AND tenantid = ${input.tenantId}`
       );
-      const plan = rows[0];
-      if (!plan) return null;
+      const p = rows[0];
+      if (!p) return null;
 
-      const planIdNum2 = parseInt(String(plan.id), 10);
+      const pid = Number(p.id);
+      const plan = {
+        id: pid,
+        tenantId: Number(p.tenantid ?? 0),
+        name: p.name,
+        description: p.description ?? null,
+        recurrences: Number(p.recurrences ?? 4),
+        maxServices: Number(p.maxservices ?? 1),
+        maxProducts: Number(p.maxproducts ?? 0),
+        price: p.price,
+        suggestedPrice: p.suggestedprice ?? null,
+        isActive: p.isactive === true || p.isactive === 1 || p.isactive === "1" || p.isactive === "true",
+        createdAt: p.createdat,
+        updatedAt: p.updatedat,
+        services: [] as any[],
+        products: [] as any[],
+      };
+
       plan.services = await selectRaw(
-        `SELECT sps.serviceId, s.name, s.price, s.durationMinutes as duration FROM subscription_plan_services sps JOIN services s ON s.id = sps.serviceId WHERE sps.planId = ${planIdNum2}`
+        `SELECT sps."serviceId", s.name, s.price, s."durationMinutes" as duration
+        FROM subscription_plan_services sps
+        JOIN services s ON s.id = sps."serviceId"
+        WHERE sps."planId" = ${pid}`
       );
       plan.products = await selectRaw(
-        `SELECT spp.productId, p.name, p.price FROM subscription_plan_products spp JOIN products p ON p.id = spp.productId WHERE spp.planId = ${planIdNum2}`
+        `SELECT spp."productId", p.name, p.price
+        FROM subscription_plan_products spp
+        JOIN products p ON p.id = spp."productId"
+        WHERE spp."planId" = ${pid}`
       );
       return plan;
     }),
@@ -131,25 +191,27 @@ export const subscriptionPlanRouter = router({
       productIds: z.array(z.number()),
     }))
     .mutation(async ({ input }) => {
-      const header = await mutateSql(sql`
-        INSERT INTO subscription_plans (tenantId, name, description, recurrences, maxServices, maxProducts, price, suggestedPrice)
+      // subscription_plans: colunas minúsculas, usar RETURNING id para PostgreSQL
+      const planId = await insertReturningId(sql`
+        INSERT INTO subscription_plans (tenantid, name, description, recurrences, maxservices, maxproducts, price, suggestedprice)
         VALUES (
           ${input.tenantId}, ${input.name}, ${input.description ?? null},
           ${input.recurrences}, ${input.maxServices}, ${input.maxProducts},
           ${input.price}, ${input.suggestedPrice ?? null}
         )
+        RETURNING id
       `);
-      const planId = header.insertId;
 
+      // subscription_plan_services: colunas camelCase
       for (const serviceId of input.serviceIds) {
         await mutateSql(sql`
-          INSERT INTO subscription_plan_services (planId, serviceId, tenantId)
+          INSERT INTO subscription_plan_services ("planId", "serviceId", "tenantId")
           VALUES (${planId}, ${serviceId}, ${input.tenantId})
         `);
       }
       for (const productId of input.productIds) {
         await mutateSql(sql`
-          INSERT INTO subscription_plan_products (planId, productId, tenantId)
+          INSERT INTO subscription_plan_products ("planId", "productId", "tenantId")
           VALUES (${planId}, ${productId}, ${input.tenantId})
         `);
       }
@@ -173,30 +235,32 @@ export const subscriptionPlanRouter = router({
       isActive: z.boolean().optional(),
     }))
     .mutation(async ({ input }) => {
-      const isActive = input.isActive !== false ? 1 : 0;
+      const isActiveVal = input.isActive !== false;
 
+      // subscription_plans: colunas minúsculas
       await mutateSql(sql`
         UPDATE subscription_plans
         SET name=${input.name}, description=${input.description ?? null},
-            recurrences=${input.recurrences}, maxServices=${input.maxServices},
-            maxProducts=${input.maxProducts}, price=${input.price},
-            suggestedPrice=${input.suggestedPrice ?? null}, isActive=${isActive},
-            updatedAt=NOW()
-        WHERE id=${input.id} AND tenantId=${input.tenantId}
+            recurrences=${input.recurrences}, maxservices=${input.maxServices},
+            maxproducts=${input.maxProducts}, price=${input.price},
+            suggestedprice=${input.suggestedPrice ?? null}, isactive=${isActiveVal},
+            updatedat=NOW()
+        WHERE id=${input.id} AND tenantid=${input.tenantId}
       `);
 
-      await mutateSql(sql`DELETE FROM subscription_plan_services WHERE planId=${input.id}`);
-      await mutateSql(sql`DELETE FROM subscription_plan_products WHERE planId=${input.id}`);
+      // subscription_plan_services/products: colunas camelCase
+      await mutateSql(sql`DELETE FROM subscription_plan_services WHERE "planId"=${input.id}`);
+      await mutateSql(sql`DELETE FROM subscription_plan_products WHERE "planId"=${input.id}`);
 
       for (const serviceId of input.serviceIds) {
         await mutateSql(sql`
-          INSERT INTO subscription_plan_services (planId, serviceId, tenantId)
+          INSERT INTO subscription_plan_services ("planId", "serviceId", "tenantId")
           VALUES (${input.id}, ${serviceId}, ${input.tenantId})
         `);
       }
       for (const productId of input.productIds) {
         await mutateSql(sql`
-          INSERT INTO subscription_plan_products (planId, productId, tenantId)
+          INSERT INTO subscription_plan_products ("planId", "productId", "tenantId")
           VALUES (${input.id}, ${productId}, ${input.tenantId})
         `);
       }
@@ -207,17 +271,18 @@ export const subscriptionPlanRouter = router({
   deletePlan: publicProcedure
     .input(z.object({ id: z.number(), tenantId: z.number() }))
     .mutation(async ({ input }) => {
+      // client_subscriptions: colunas camelCase
       const rows = await selectSql(sql`
-        SELECT COUNT(*) as cnt FROM client_subscriptions WHERE planId=${input.id} AND status='active'
+        SELECT COUNT(*) as cnt FROM client_subscriptions WHERE "planId"=${input.id} AND status='active'
       `);
       const cnt = Number(rows[0]?.cnt ?? 0);
       if (cnt > 0) {
         throw new Error("Não é possível excluir um plano com assinaturas ativas.");
       }
 
-      await mutateSql(sql`DELETE FROM subscription_plan_services WHERE planId=${input.id}`);
-      await mutateSql(sql`DELETE FROM subscription_plan_products WHERE planId=${input.id}`);
-      await mutateSql(sql`DELETE FROM subscription_plans WHERE id=${input.id} AND tenantId=${input.tenantId}`);
+      await mutateSql(sql`DELETE FROM subscription_plan_services WHERE "planId"=${input.id}`);
+      await mutateSql(sql`DELETE FROM subscription_plan_products WHERE "planId"=${input.id}`);
+      await mutateSql(sql`DELETE FROM subscription_plans WHERE id=${input.id} AND tenantid=${input.tenantId}`);
 
       return { ok: true };
     }),
@@ -225,10 +290,10 @@ export const subscriptionPlanRouter = router({
   togglePlanActive: publicProcedure
     .input(z.object({ id: z.number(), tenantId: z.number(), isActive: z.boolean() }))
     .mutation(async ({ input }) => {
-      const val = input.isActive ? 1 : 0;
+      // subscription_plans: colunas minúsculas
       await mutateSql(sql`
-        UPDATE subscription_plans SET isActive=${val}, updatedAt=NOW()
-        WHERE id=${input.id} AND tenantId=${input.tenantId}
+        UPDATE subscription_plans SET isactive=${input.isActive}, updatedat=NOW()
+        WHERE id=${input.id} AND tenantid=${input.tenantId}
       `);
       return { ok: true };
     }),
@@ -242,28 +307,29 @@ export const subscriptionPlanRouter = router({
       clientId: z.number().optional(),
     }))
     .query(async ({ input }) => {
-      // Construir query com condições opcionais
+      // client_subscriptions: colunas camelCase
+      // subscription_plans: colunas minúsculas (alias para camelCase no SELECT)
       const baseSelect = sql`
         SELECT cs.*,
-          sp.name as planName, sp.recurrences as planRecurrences,
-          c.name as clientName, c.phone as clientPhone,
-          b.name as barberName
+          sp.name as "planName", sp.recurrences as "planRecurrences",
+          c.name as "clientName", c.phone as "clientPhone",
+          b.name as "barberName"
         FROM client_subscriptions cs
-        JOIN subscription_plans sp ON sp.id = cs.planId
-        JOIN clients c ON c.id = cs.clientId
-        LEFT JOIN barbers b ON b.id = cs.barberId
-        WHERE cs.tenantId = ${input.tenantId}
+        JOIN subscription_plans sp ON sp.id = cs."planId"
+        JOIN clients c ON c.id = cs."clientId"
+        LEFT JOIN barbers b ON b.id = cs."barberId"
+        WHERE cs."tenantId" = ${input.tenantId}
       `;
 
       let finalQuery: ReturnType<typeof sql>;
       if (input.status !== "all" && input.clientId) {
-        finalQuery = sql`${baseSelect} AND cs.status = ${input.status} AND cs.clientId = ${input.clientId} ORDER BY cs.createdAt DESC`;
+        finalQuery = sql`${baseSelect} AND cs.status = ${input.status} AND cs."clientId" = ${input.clientId} ORDER BY cs."createdAt" DESC`;
       } else if (input.status !== "all") {
-        finalQuery = sql`${baseSelect} AND cs.status = ${input.status} ORDER BY cs.createdAt DESC`;
+        finalQuery = sql`${baseSelect} AND cs.status = ${input.status} ORDER BY cs."createdAt" DESC`;
       } else if (input.clientId) {
-        finalQuery = sql`${baseSelect} AND cs.clientId = ${input.clientId} ORDER BY cs.createdAt DESC`;
+        finalQuery = sql`${baseSelect} AND cs."clientId" = ${input.clientId} ORDER BY cs."createdAt" DESC`;
       } else {
-        finalQuery = sql`${baseSelect} ORDER BY cs.createdAt DESC`;
+        finalQuery = sql`${baseSelect} ORDER BY cs."createdAt" DESC`;
       }
 
       return selectSql(finalQuery);
@@ -274,24 +340,26 @@ export const subscriptionPlanRouter = router({
     .query(async ({ input }) => {
       const rows = await selectSql(sql`
         SELECT cs.*,
-          sp.name as planName, sp.recurrences as planRecurrences, sp.maxServices, sp.maxProducts,
-          c.name as clientName, c.phone as clientPhone, c.email as clientEmail,
-          b.name as barberName
+          sp.name as "planName", sp.recurrences as "planRecurrences",
+          sp.maxservices as "maxServices", sp.maxproducts as "maxProducts",
+          c.name as "clientName", c.phone as "clientPhone", c.email as "clientEmail",
+          b.name as "barberName"
         FROM client_subscriptions cs
-        JOIN subscription_plans sp ON sp.id = cs.planId
-        JOIN clients c ON c.id = cs.clientId
-        LEFT JOIN barbers b ON b.id = cs.barberId
-        WHERE cs.id = ${input.id} AND cs.tenantId = ${input.tenantId}
+        JOIN subscription_plans sp ON sp.id = cs."planId"
+        JOIN clients c ON c.id = cs."clientId"
+        LEFT JOIN barbers b ON b.id = cs."barberId"
+        WHERE cs.id = ${input.id} AND cs."tenantId" = ${input.tenantId}
       `);
       const sub = rows[0];
       if (!sub) return null;
 
+      // subscription_appointments: colunas camelCase
       sub.appointments = await selectSql(sql`
-        SELECT sa.recurrenceIndex, a.date, a.time, a.status, a.id as appointmentId
+        SELECT sa."recurrenceIndex", a.date, a."startTime" as time, a.status, a.id as "appointmentId"
         FROM subscription_appointments sa
-        JOIN appointments a ON a.id = sa.appointmentId
-        WHERE sa.subscriptionId = ${input.id}
-        ORDER BY sa.recurrenceIndex
+        JOIN appointments a ON a.id = sa."appointmentId"
+        WHERE sa."subscriptionId" = ${input.id}
+        ORDER BY sa."recurrenceIndex"
       `);
 
       return sub;
@@ -323,23 +391,22 @@ export const subscriptionPlanRouter = router({
 
       const selectedSvcJson = JSON.stringify(input.selectedServiceIds);
       const selectedProdJson = JSON.stringify(input.selectedProductIds);
-      const autoRenewVal = input.autoRenew ? 1 : 0;
       const barberIdVal = input.barberId ?? null;
 
-      const subHeader = await mutateSql(sql`
+      // client_subscriptions: colunas camelCase, RETURNING id para PostgreSQL
+      const subscriptionId = await insertReturningId(sql`
         INSERT INTO client_subscriptions
-          (tenantId, planId, clientId, barberId, selectedServiceIds, selectedProductIds,
-           status, paymentMethod, price, cycleStart, cycleEnd, autoRenew)
+          ("tenantId", "planId", "clientId", "barberId", "selectedServiceIds", "selectedProductIds",
+           status, "paymentMethod", price, "cycleStart", "cycleEnd", "autoRenew")
         VALUES (
           ${input.tenantId}, ${input.planId}, ${input.clientId}, ${barberIdVal},
           ${selectedSvcJson}, ${selectedProdJson},
           'active', ${input.paymentMethod}, ${input.price},
-          ${cycleStart}, ${cycleEnd}, ${autoRenewVal}
+          ${cycleStart}, ${cycleEnd}, ${input.autoRenew}
         )
+        RETURNING id
       `);
-      const subscriptionId = subHeader.insertId;
 
-      // Helper para calcular endTime (startTime + duração em minutos)
       function addMinutes(t: string, minutes: number): string {
         const [h, m] = t.split(":").map(Number);
         const total = h * 60 + m + minutes;
@@ -347,21 +414,19 @@ export const subscriptionPlanRouter = router({
       }
 
       const appointmentIds: number[] = [];
-      // serviceId: usar o primeiro serviço selecionado, ou 0 se nenhum
       const primaryServiceId = input.selectedServiceIds[0] ?? 0;
 
-      // Buscar a duração do serviço primário para calcular endTime corretamente
-      let serviceDurationMinutes = 30; // padrão: 30 min
+      let serviceDurationMinutes = 30;
       if (primaryServiceId > 0) {
         try {
           const svcRows = await selectRaw(
-            `SELECT durationMinutes FROM services WHERE id = ${primaryServiceId} LIMIT 1`
+            `SELECT "durationMinutes" FROM services WHERE id = ${primaryServiceId} LIMIT 1`
           ) as { durationMinutes: number }[];
           if (svcRows.length > 0 && svcRows[0].durationMinutes > 0) {
             serviceDurationMinutes = svcRows[0].durationMinutes;
           }
         } catch {
-          // manter padrão de 30 min se a query falhar
+          // manter padrão
         }
       }
 
@@ -369,7 +434,6 @@ export const subscriptionPlanRouter = router({
         const appt = input.appointments[i];
         const apptBarberId = appt.barberId ?? input.barberId ?? null;
         const dateEsc = String(appt.date).replace(/'/g, "''");
-        // Garantir formato HH:MM:SS para o campo TIME do MySQL
         const timeRaw = String(appt.time).replace(/'/g, "''");
         const startTimeEsc = timeRaw.includes(":") && timeRaw.split(":").length === 2
           ? timeRaw + ":00"
@@ -377,14 +441,13 @@ export const subscriptionPlanRouter = router({
         const endTimeEsc = addMinutes(appt.time, serviceDurationMinutes);
         const barberIdStr = apptBarberId !== null ? String(Number(apptBarberId)) : 'NULL';
 
-        const apptHeader = await mutateRaw(
-          `INSERT INTO appointments (clientId, barberId, serviceId, date, startTime, endTime, status) VALUES (${input.clientId}, ${barberIdStr}, ${primaryServiceId}, '${dateEsc}', '${startTimeEsc}', '${endTimeEsc}', 'confirmed')`
+        const appointmentId = await insertRawReturningId(
+          `INSERT INTO appointments ("clientId", "barberId", "serviceId", date, "startTime", "endTime", status) VALUES (${input.clientId}, ${barberIdStr}, ${primaryServiceId}, '${dateEsc}', '${startTimeEsc}', '${endTimeEsc}', 'confirmed') RETURNING id`
         );
-        const appointmentId = apptHeader.insertId;
         appointmentIds.push(appointmentId);
 
-        await mutateRaw(
-          `INSERT INTO subscription_appointments (subscriptionId, appointmentId, tenantId, recurrenceIndex) VALUES (${subscriptionId}, ${appointmentId}, ${input.tenantId}, ${i + 1})`
+        await insertRawReturningId(
+          `INSERT INTO subscription_appointments ("subscriptionId", "appointmentId", "tenantId", "recurrenceIndex") VALUES (${subscriptionId}, ${appointmentId}, ${input.tenantId}, ${i + 1}) RETURNING id`
         );
       }
 
@@ -399,10 +462,11 @@ export const subscriptionPlanRouter = router({
     }))
     .mutation(async ({ input }) => {
       const reason = input.reason ?? null;
+      // client_subscriptions: colunas camelCase
       await mutateSql(sql`
         UPDATE client_subscriptions
-        SET status='cancelled', cancelledAt=NOW(), cancelReason=${reason}, updatedAt=NOW()
-        WHERE id=${input.id} AND tenantId=${input.tenantId}
+        SET status='cancelled', "cancelledAt"=NOW(), "cancelReason"=${reason}, "updatedAt"=NOW()
+        WHERE id=${input.id} AND "tenantId"=${input.tenantId}
       `);
       return { ok: true };
     }),
@@ -412,15 +476,17 @@ export const subscriptionPlanRouter = router({
   stats: publicProcedure
     .input(z.object({ tenantId: z.number() }))
     .query(async ({ input }) => {
+      // client_subscriptions: colunas camelCase
       const activeRows = await selectSql(sql`
         SELECT COUNT(*) as cnt, COALESCE(SUM(price), 0) as mrr
-        FROM client_subscriptions WHERE tenantId=${input.tenantId} AND status='active'
+        FROM client_subscriptions WHERE "tenantId"=${input.tenantId} AND status='active'
       `);
       const cancelledRows = await selectSql(sql`
-        SELECT COUNT(*) as cnt FROM client_subscriptions WHERE tenantId=${input.tenantId} AND status='cancelled'
+        SELECT COUNT(*) as cnt FROM client_subscriptions WHERE "tenantId"=${input.tenantId} AND status='cancelled'
       `);
+      // subscription_plans: colunas minúsculas
       const plansRows = await selectSql(sql`
-        SELECT COUNT(*) as cnt FROM subscription_plans WHERE tenantId=${input.tenantId} AND isActive=1
+        SELECT COUNT(*) as cnt FROM subscription_plans WHERE tenantid=${input.tenantId} AND isactive=true
       `);
 
       const active = activeRows[0] ?? {};
@@ -444,18 +510,29 @@ export const subscriptionPlanRouter = router({
   listPublicPlans: publicProcedure
     .input(z.object({ tenantId: z.number() }))
     .query(async ({ input }) => {
+      // subscription_plans: colunas minúsculas com alias camelCase
       const plans = await selectSql(sql`
-        SELECT id, name, description, recurrences, maxServices, maxProducts, price, suggestedPrice
-        FROM subscription_plans WHERE tenantId=${input.tenantId} AND isActive=1 ORDER BY price ASC
+        SELECT id, name, description, recurrences,
+          maxservices as "maxServices", maxproducts as "maxProducts",
+          price, suggestedprice as "suggestedPrice"
+        FROM subscription_plans
+        WHERE tenantid=${input.tenantId} AND isactive=true
+        ORDER BY price ASC
       `);
 
       for (const plan of plans) {
         const pid = parseInt(String(plan.id), 10);
         plan.services = await selectRaw(
-          `SELECT sps.serviceId, s.name, s.price, s.durationMinutes as duration FROM subscription_plan_services sps JOIN services s ON s.id = sps.serviceId WHERE sps.planId = ${pid}`
+          `SELECT sps."serviceId", s.name, s.price, s."durationMinutes" as duration
+          FROM subscription_plan_services sps
+          JOIN services s ON s.id = sps."serviceId"
+          WHERE sps."planId" = ${pid}`
         );
         plan.products = await selectRaw(
-          `SELECT spp.productId, p.name, p.price FROM subscription_plan_products spp JOIN products p ON p.id = spp.productId WHERE spp.planId = ${pid}`
+          `SELECT spp."productId", p.name, p.price
+          FROM subscription_plan_products spp
+          JOIN products p ON p.id = spp."productId"
+          WHERE spp."planId" = ${pid}`
         );
       }
 

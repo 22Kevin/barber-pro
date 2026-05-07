@@ -1,0 +1,25 @@
+{
+  "query": "SELECT column_name FROM information_schema.columns WHERE table_name = 'subscription_appointments' ORDER BY ordinal_position;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT column_name FROM information_schema.columns WHERE table_name = 'subscription_appointments' ORDER BY ordinal_position;",
+  "rows": [
+    {
+      "column_name": "id"
+    },
+    {
+      "column_name": "subscriptionId"
+    },
+    {
+      "column_name": "appointmentId"
+    },
+    {
+      "column_name": "tenantId"
+    },
+    {
+      "column_name": "recurrenceIndex"
+    }
+  ],
+  "messages": [],
+  "stdout": "column_name\nid\nsubscriptionId\nappointmentId\ntenantId\nrecurrenceIndex\n",
+  "stderr": "",
+  "execution_time_ms": 267
+}

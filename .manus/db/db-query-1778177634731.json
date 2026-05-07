@@ -1,0 +1,61 @@
+{
+  "query": "SELECT sp.*, \n  (SELECT COUNT(*) FROM subscription_plan_services WHERE \"planId\" = sp.id) as \"serviceCount\",\n  (SELECT COUNT(*) FROM subscription_plan_products WHERE \"planId\" = sp.id) as \"productCount\",\n  (SELECT COUNT(*) FROM client_subscriptions WHERE \"planId\" = sp.id AND status = 'active') as \"activeSubscribers\"\nFROM subscription_plans sp\nWHERE sp.tenantid = 180002\nORDER BY sp.createdat DESC;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT sp.*, \n  (SELECT COUNT(*) FROM subscription_plan_services WHERE \"planId\" = sp.id) as \"serviceCount\",\n  (SELECT COUNT(*) FROM subscription_plan_products WHERE \"planId\" = sp.id) as \"productCount\",\n  (SELECT COUNT(*) FROM client_subscriptions WHERE \"planId\" = sp.id AND status = 'active') as \"activeSubscribers\"\nFROM subscription_plans sp\nWHERE sp.tenantid = 180002\nORDER BY sp.createdat DESC;",
+  "rows": [
+    {
+      "id": "7",
+      "tenantId": "180002",
+      "name": "Plano Bronze",
+      "description": "Plano ideal para você não se esquecer de que precisa cuidar de você durante o mês.",
+      "recurrences": "2",
+      "maxServices": "2",
+      "maxProducts": "0",
+      "price": "150.00",
+      "suggestedPrice": "280.50",
+      "isActive": "1",
+      "createdAt": "2026-04-09 18:54:28",
+      "updatedAt": "2026-04-09 18:54:28",
+      "serviceCount": "0",
+      "productCount": "0",
+      "activeSubscribers": "0"
+    },
+    {
+      "id": "6",
+      "tenantId": "180002",
+      "name": "Plano Prata",
+      "description": "Plano ideal para você manter sua beleza durante o mês inteiro",
+      "recurrences": "4",
+      "maxServices": "2",
+      "maxProducts": "1",
+      "price": "250.00",
+      "suggestedPrice": "663.00",
+      "isActive": "1",
+      "createdAt": "2026-04-09 18:53:23",
+      "updatedAt": "2026-04-09 18:53:23",
+      "serviceCount": "0",
+      "productCount": "0",
+      "activeSubscribers": "0"
+    },
+    {
+      "id": "5",
+      "tenantId": "180002",
+      "name": "Plano Ouro",
+      "description": "O Plano Ouro foi criado para você ficar bonito o mês inteiro.",
+      "recurrences": "4",
+      "maxServices": "3",
+      "maxProducts": "2",
+      "price": "350.00",
+      "suggestedPrice": "850.00",
+      "isActive": "1",
+      "createdAt": "2026-04-09 18:52:26",
+      "updatedAt": "2026-04-09 18:52:26",
+      "serviceCount": "0",
+      "productCount": "0",
+      "activeSubscribers": "0"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttenantId\tname\tdescription\trecurrences\tmaxServices\tmaxProducts\tprice\tsuggestedPrice\tisActive\tcreatedAt\tupdatedAt\tserviceCount\tproductCount\tactiveSubscribers\n7\t180002\tPlano Bronze\tPlano ideal para você não se esquecer de que precisa cuidar de você durante o mês.\t2\t2\t0\t150.00\t280.50\t1\t2026-04-09 18:54:28\t2026-04-09 18:54:28\t0\t0\t0\n6\t180002\tPlano Prata\tPlano ideal para você manter sua beleza durante o mês inteiro\t4\t2\t1\t250.00\t663.00\t1\t2026-04-09 18:53:23\t2026-04-09 18:53:23\t0\t0\t0\n5\t180002\tPlano Ouro\tO Plano Ouro foi criado para você ficar bonito o mês inteiro.\t4\t3\t2\t350.00\t850.00\t1\t2026-04-09 18:52:26\t2026-04-09 18:52:26\t0\t0\t0\n",
+  "stderr": "",
+  "execution_time_ms": 371
+}
