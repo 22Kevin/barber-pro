@@ -26,6 +26,8 @@ import { PaymentStatusModal } from "@/components/payment-status-modal";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { trpc } from "@/lib/trpc";
 import { scheduleAppointmentReminder, cancelAppointmentReminder, clearAppBadge } from "@/lib/use-notifications";
+import { useColors } from "@/hooks/use-colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
 const DAYS_PT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MONTHS_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -106,6 +108,10 @@ export default function AgendaScreen() {
   const { barber } = useBarberAuth();
   const router = useRouter();
   const params = useLocalSearchParams<{ openAppointmentId?: string; highlightApproval?: string }>();
+  const colors = useColors();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const styles = createStyles(colors);
 
   // Zera o badge do ícone do app ao abrir a tela de agenda
   useEffect(() => {
@@ -456,18 +462,18 @@ export default function AgendaScreen() {
         rightElement={
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable
-              style={({ pressed }) => [styles.addBtn, { backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#C9A84C" }, pressed && { opacity: 0.8 }]}
+              style={({ pressed }) => [styles.addBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: "#C9A84C" }, pressed && { opacity: 0.8 }]}
               onPress={() => router.push("/admin/plan-booking" as any)}
             >
               <IconSymbol name="star.fill" size={14} color="#C9A84C" />
               <Text style={[styles.addBtnText, { color: "#C9A84C" }]}>Plano</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]}
+              style={({ pressed }) => [styles.addBtn, { backgroundColor: "#C9A84C" }, pressed && { opacity: 0.8 }]}
               onPress={() => setShowNewModal(true)}
             >
               <IconSymbol name="plus" size={20} color="#0A0A0A" />
-              <Text style={styles.addBtnText}>Novo</Text>
+              <Text style={[styles.addBtnText, { color: "#0A0A0A" }]}>Novo</Text>
             </Pressable>
           </View>
         }
@@ -588,20 +594,20 @@ export default function AgendaScreen() {
         </View>
         {/* Toggle Cards / Linha do Tempo */}
         <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
-          <View style={styles.viewToggle}>
+          <View style={[styles.viewToggle, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Pressable
               style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
               onPress={() => setViewMode('list')}
             >
-              <IconSymbol name="list.bullet" size={14} color={viewMode === 'list' ? '#C9A84C' : '#888880'} />
-              <Text style={[styles.viewToggleBtnText, viewMode === 'list' && styles.viewToggleBtnTextActive]}>Cards</Text>
+              <IconSymbol name="list.bullet" size={14} color={viewMode === 'list' ? '#C9A84C' : colors.muted} />
+              <Text style={[styles.viewToggleBtnText, { color: colors.muted }, viewMode === 'list' && styles.viewToggleBtnTextActive]}>Cards</Text>
             </Pressable>
             <Pressable
               style={[styles.viewToggleBtn, viewMode === 'timeline' && styles.viewToggleBtnActive]}
               onPress={() => setViewMode('timeline')}
             >
-              <IconSymbol name="list.bullet.rectangle" size={14} color={viewMode === 'timeline' ? '#C9A84C' : '#888880'} />
-              <Text style={[styles.viewToggleBtnText, viewMode === 'timeline' && styles.viewToggleBtnTextActive]}>Linha do Tempo</Text>
+              <IconSymbol name="list.bullet.rectangle" size={14} color={viewMode === 'timeline' ? '#C9A84C' : colors.muted} />
+              <Text style={[styles.viewToggleBtnText, { color: colors.muted }, viewMode === 'timeline' && styles.viewToggleBtnTextActive]}>Linha do Tempo</Text>
             </Pressable>
           </View>
         </View>
@@ -1136,105 +1142,107 @@ export default function AgendaScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
+  return StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, paddingBottom: 12 },
-  title: { fontSize: 24, fontWeight: "800", color: "#F5F5F0" },
+  title: { fontSize: 24, fontWeight: "800", color: c.foreground },
   addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
-  calendarCard: { marginHorizontal: 16, backgroundColor: "#141414", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#2A2A2A", marginBottom: 16 },
+  calendarCard: { marginHorizontal: 16, backgroundColor: c.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: c.border, marginBottom: 16 },
   calendarHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
-  calendarTitle: { fontSize: 17, fontWeight: "700", color: "#F5F5F0" },
+  calendarTitle: { fontSize: 17, fontWeight: "700", color: c.foreground },
   daysRow: { flexDirection: "row", marginBottom: 10 },
-  dayLabel: { flex: 1, textAlign: "center", fontSize: 12, color: "#888880", fontWeight: "600" },
+  dayLabel: { flex: 1, textAlign: "center", fontSize: 12, color: c.muted, fontWeight: "600" },
   daysGrid: { flexDirection: "row", flexWrap: "wrap" },
   dayCell: { width: "14.28%", aspectRatio: 0.85, justifyContent: "center", alignItems: "center", borderRadius: 10, paddingBottom: 4 },
   dayCellSelected: { backgroundColor: "#C9A84C" },
   dayCellToday: { borderWidth: 1.5, borderColor: "#C9A84C" },
-  dayText: { fontSize: 15, color: "#F5F5F0", lineHeight: 20 },
+  dayText: { fontSize: 15, color: c.foreground, lineHeight: 20 },
   dayTextSelected: { color: "#0A0A0A", fontWeight: "800" },
   dayTextToday: { color: "#C9A84C", fontWeight: "700" },
   dayDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#C9A84C", marginTop: 2 },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 10 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#F5F5F0" },
-  sectionCount: { fontSize: 13, color: "#888880" },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: c.foreground },
+  sectionCount: { fontSize: 13, color: c.muted },
   emptyCard: { alignItems: "center", paddingVertical: 40, gap: 10 },
-  emptyText: { color: "#888880", fontSize: 14 },
-  aptCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: "#141414", borderRadius: 12, borderWidth: 1, borderColor: "#2A2A2A", flexDirection: "row", alignItems: "center", overflow: "hidden" },
+  emptyText: { color: c.muted, fontSize: 14 },
+  aptCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: c.surface, borderRadius: 12, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center", overflow: "hidden" },
   aptStatusBar: { width: 4, alignSelf: "stretch" },
   aptContent: { flex: 1, padding: 14 },
   aptRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  aptTime: { fontSize: 15, fontWeight: "700", color: "#F5F5F0" },
+  aptTime: { fontSize: 15, fontWeight: "700", color: c.foreground },
   statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   statusText: { fontSize: 11, fontWeight: "600" },
-  aptClientName: { fontSize: 14, fontWeight: "600", color: "#F5F5F0" },
-  aptServiceName: { fontSize: 13, color: "#888880" },
-  aptNotes: { fontSize: 12, color: "#555", marginTop: 4, fontStyle: "italic" },
+  aptClientName: { fontSize: 14, fontWeight: "600", color: c.foreground },
+  aptServiceName: { fontSize: 13, color: c.muted },
+  aptNotes: { fontSize: 12, color: c.muted, marginTop: 4, fontStyle: "italic" },
   // Modal
   modalOverlay: { flex: 1, backgroundColor: "#000000AA", justifyContent: "flex-end" },
-  modalCard: { backgroundColor: "#141414", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "92%", borderWidth: 1, borderColor: "#2A2A2A" },
+  modalCard: { backgroundColor: c.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, maxHeight: "92%", borderWidth: 1, borderColor: c.border },
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: "700", color: "#F5F5F0" },
-  fieldLabel: { fontSize: 13, color: "#888880", marginBottom: 6, fontWeight: "500" },
-  infoBox: { backgroundColor: "#1E1E1E", borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: "#2A2A2A" },
-  infoText: { color: "#F5F5F0", fontSize: 14 },
-  selectorBtn: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#1E1E1E", borderRadius: 10, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "#2A2A2A" },
-  selectorText: { color: "#F5F5F0", fontSize: 14 },
-  selectorPlaceholder: { color: "#555", fontSize: 14 },
-  serviceChip: { padding: 12, borderRadius: 10, backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", minWidth: 120, alignItems: "center" },
+  modalTitle: { fontSize: 20, fontWeight: "700", color: c.foreground },
+  fieldLabel: { fontSize: 13, color: c.muted, marginBottom: 6, fontWeight: "500" },
+  infoBox: { backgroundColor: c.background, borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: c.border },
+  infoText: { color: c.foreground, fontSize: 14 },
+  selectorBtn: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: c.background, borderRadius: 10, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: c.border },
+  selectorText: { color: c.foreground, fontSize: 14 },
+  selectorPlaceholder: { color: c.muted, fontSize: 14 },
+  serviceChip: { padding: 12, borderRadius: 10, backgroundColor: c.background, borderWidth: 1, borderColor: c.border, minWidth: 120, alignItems: "center" },
   serviceChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
-  serviceChipText: { fontSize: 13, color: "#888880", fontWeight: "600", marginBottom: 4 },
+  serviceChipText: { fontSize: 13, color: c.muted, fontWeight: "600", marginBottom: 4 },
   serviceChipTextActive: { color: "#C9A84C" },
-  serviceChipPrice: { fontSize: 12, color: "#555" },
-  timeSlot: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A" },
+  serviceChipPrice: { fontSize: 12, color: c.muted },
+  timeSlot: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, backgroundColor: c.background, borderWidth: 1, borderColor: c.border },
   timeSlotActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
-  timeSlotBooked: { backgroundColor: "#1E1E1E", borderColor: "#F4433633", opacity: 0.4 },
-  timeSlotText: { fontSize: 13, color: "#F5F5F0", fontWeight: "600" },
+  timeSlotBooked: { backgroundColor: c.background, borderColor: "#F4433633", opacity: 0.4 },
+  timeSlotText: { fontSize: 13, color: c.foreground, fontWeight: "600" },
   timeSlotTextActive: { color: "#C9A84C" },
   timeSlotTextBooked: { color: "#F44336" },
-  input: { backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#F5F5F0", marginBottom: 14 },
+  input: { backgroundColor: c.background, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.foreground, marginBottom: 14 },
   textarea: { height: 80, textAlignVertical: "top" },
   saveBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 15, alignItems: "center", marginBottom: 8 },
   saveBtnText: { color: "#0A0A0A", fontSize: 15, fontWeight: "800", letterSpacing: 1 },
   // Cliente picker
-  searchRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#1E1E1E", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: "#2A2A2A", gap: 8, marginBottom: 12 },
-  searchInput: { flex: 1, color: "#F5F5F0", fontSize: 14 },
-  clientItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#2A2A2A" },
+  searchRow: { flexDirection: "row", alignItems: "center", backgroundColor: c.background, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: c.border, gap: 8, marginBottom: 12 },
+  searchInput: { flex: 1, color: c.foreground, fontSize: 14 },
+  clientItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border },
   clientAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#C9A84C22", justifyContent: "center", alignItems: "center" },
   clientAvatarText: { color: "#C9A84C", fontSize: 16, fontWeight: "700" },
-  clientName: { fontSize: 15, fontWeight: "600", color: "#F5F5F0" },
-  clientPhone: { fontSize: 13, color: "#888880" },
+  clientName: { fontSize: 15, fontWeight: "600", color: c.foreground },
+  clientPhone: { fontSize: 13, color: c.muted },
   // Detalhe
-  detailRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#2A2A2A" },
-  detailLabel: { fontSize: 13, color: "#888880" },
-  detailValue: { fontSize: 14, color: "#F5F5F0", fontWeight: "600", flex: 1, textAlign: "right" },
+  detailRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border },
+  detailLabel: { fontSize: 13, color: c.muted },
+  detailValue: { fontSize: 14, color: c.foreground, fontWeight: "600", flex: 1, textAlign: "right" },
   statusChangeBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1 },
   statusChangeBtnText: { fontSize: 12, fontWeight: "600" },
   // Filtro de barbeiro
   barberFilterWrapper: { paddingHorizontal: 16, paddingBottom: 12 },
   barberFilterScroll: { flexDirection: "row", gap: 8, paddingVertical: 4 },
-  barberFilterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: "#1E1E1E", borderWidth: 1, borderColor: "#2A2A2A" },
+  barberFilterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: c.background, borderWidth: 1, borderColor: c.border },
   barberFilterChipActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
-  barberFilterChipText: { fontSize: 13, color: "#888880", fontWeight: "600" },
+  barberFilterChipText: { fontSize: 13, color: c.muted, fontWeight: "600" },
   barberFilterChipTextActive: { color: "#C9A84C" },
   // Toggle de vista (Lista / Timeline)
-  viewToggle: { flexDirection: "row", backgroundColor: "#1A1A1A", borderRadius: 10, borderWidth: 1, borderColor: "#2A2A2A", overflow: "hidden", alignSelf: "stretch" },
+  viewToggle: { flexDirection: "row", backgroundColor: c.surface, borderRadius: 10, borderWidth: 1, borderColor: c.border, overflow: "hidden", alignSelf: "stretch" },
   viewToggleBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 9 },
   viewToggleBtnActive: { backgroundColor: "#C9A84C22" },
-  viewToggleBtnText: { fontSize: 12, color: "#888880", fontWeight: "600" },
+  viewToggleBtnText: { fontSize: 12, color: c.muted, fontWeight: "600" },
   viewToggleBtnTextActive: { color: "#C9A84C" },
   // Timeline
   timelineContainer: { paddingHorizontal: 16, paddingBottom: 8 },
   timelineRow: { flexDirection: "row", alignItems: "flex-start", minHeight: 40, marginBottom: 2 },
-  timelineHour: { width: 44, fontSize: 11, color: "#555", fontWeight: "600", paddingTop: 6, textAlign: "right", paddingRight: 8 },
+  timelineHour: { width: 44, fontSize: 11, color: c.muted, fontWeight: "600", paddingTop: 6, textAlign: "right", paddingRight: 8 },
   timelineLineWrapper: { width: 12, alignSelf: "stretch", alignItems: "center", marginRight: 6, position: "relative" },
-  timelineLine: { width: 1, backgroundColor: "#2A2A2A", flex: 1 },
+  timelineLine: { width: 1, backgroundColor: c.border, flex: 1 },
   timelineNowIndicator: { position: "absolute", left: 0, right: 0, flexDirection: "row", alignItems: "center" },
   timelineNowDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#F44336", marginLeft: -3 },
   timelineNowLine: { flex: 1, height: 1.5, backgroundColor: "#F44336" },
   timelineEvents: { flex: 1, gap: 4, paddingBottom: 4 },
-  timelineCard: { backgroundColor: "#141414", borderRadius: 10, borderWidth: 1, borderColor: "#2A2A2A", borderLeftWidth: 4, padding: 10, marginBottom: 2 },
-  timelineCardTime: { fontSize: 11, color: "#888880", fontWeight: "600", marginBottom: 2 },
-  timelineCardClient: { fontSize: 14, fontWeight: "700", color: "#F5F5F0", marginBottom: 1 },
-  timelineCardService: { fontSize: 12, color: "#888880" },
-  timelineCardBarber: { fontSize: 11, color: "#555", marginTop: 2, fontStyle: "italic" },
-});
+  timelineCard: { backgroundColor: c.surface, borderRadius: 10, borderWidth: 1, borderColor: c.border, borderLeftWidth: 4, padding: 10, marginBottom: 2 },
+  timelineCardTime: { fontSize: 11, color: c.muted, fontWeight: "600", marginBottom: 2 },
+  timelineCardClient: { fontSize: 14, fontWeight: "700", color: c.foreground, marginBottom: 1 },
+  timelineCardService: { fontSize: 12, color: c.muted },
+  timelineCardBarber: { fontSize: 11, color: c.muted, marginTop: 2, fontStyle: "italic" },
+  });
+}

@@ -1866,3 +1866,7 @@
 ## Aprovação Rápida via Notificação (Mai/2026)
 
 - [x] Ao tocar na notificação de pending_approval, abrir a tela de Agenda com o modal de detalhes do agendamento aberto e botões Aprovar/Recusar em destaque
+
+## Bug — Botões invisíveis no modo escuro (Mai/2026)
+
+- [x] Corrigir botões +Novo, Cards e outros na Agenda que ficam invisíveis no modo escuro (cores fixas incompatíveis com tema escuro)
