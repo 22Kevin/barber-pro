@@ -1927,3 +1927,10 @@
 - [x] Painel web mostra dados de outras barbearias (guard clauses adicionadas, retorna [] quando tenantId é null)
 - [x] Eliminar fallback sem filtro: quando tenantId é null/undefined, retornar array vazio em vez de todos os dados
 - [x] Garantir que o login web funciona e filtra por tenantId do barbeiro logado (testado OK)
+
+## Bug Crítico — Vazamento na Tela de Comissões (Mai/2026 v3)
+
+- [ ] Corrigir getCommissionSummary no db.ts — ainda retorna barbeiros de todos os tenants
+- [ ] Corrigir rota de comissões no admin-routes.ts (web) para filtrar por tenantId
+- [ ] Corrigir rota tRPC commissions.summary (app) para filtrar por tenantId
+- [ ] Testar isolamento na tela de comissões (web + app)

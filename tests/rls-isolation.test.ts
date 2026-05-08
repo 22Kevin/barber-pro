@@ -6,13 +6,13 @@
  *
  * Execução: pnpm test tests/rls-isolation.test.ts
  *
- * NOTA: Estes testes requerem DATABASE_URL configurado.
+ * NOTA: Estes testes requerem DATABASE_URL configurado (PostgreSQL).
  * Em CI/CD, o banco de produção não é acessível — os testes são marcados
  * como "skip" automaticamente quando DATABASE_URL não está disponível.
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { drizzle } from "drizzle-orm/mysql2";
-import { createPool } from "mysql2/promise";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { eq } from "drizzle-orm";
 import {
   tenants,
@@ -25,7 +25,7 @@ import {
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
-let pool: ReturnType<typeof createPool> | null = null;
+let pool: Pool | null = null;
 let db: ReturnType<typeof drizzle> | null = null;
 
 const TENANT_A_ID = 9991;
@@ -36,18 +36,21 @@ const skipIfNoDb = !process.env.DATABASE_URL;
 beforeAll(async () => {
   if (skipIfNoDb) return;
 
-  pool = createPool(process.env.DATABASE_URL!);
-  db = drizzle(pool as any);
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL!,
+    ssl: { rejectUnauthorized: false },
+  });
+  db = drizzle(pool);
 
   // Criar tenants de teste
   await db
     .insert(tenants)
     .values({ id: TENANT_A_ID, name: "Tenant A (Teste)", slug: "tenant-a-test", plan: "solo" as any, status: "trial" as any })
-    .onDuplicateKeyUpdate({ set: { name: "Tenant A (Teste)" } });
+    .onConflictDoUpdate({ target: tenants.id, set: { name: "Tenant A (Teste)" } });
   await db
     .insert(tenants)
     .values({ id: TENANT_B_ID, name: "Tenant B (Teste)", slug: "tenant-b-test", plan: "solo" as any, status: "trial" as any })
-    .onDuplicateKeyUpdate({ set: { name: "Tenant B (Teste)" } });
+    .onConflictDoUpdate({ target: tenants.id, set: { name: "Tenant B (Teste)" } });
 
   // Criar dados de teste para Tenant A
   await db
@@ -56,7 +59,7 @@ beforeAll(async () => {
       { name: "Cliente A1", phone: "11900000001", tenantId: TENANT_A_ID },
       { name: "Cliente A2", phone: "11900000002", tenantId: TENANT_A_ID },
     ])
-    .onDuplicateKeyUpdate({ set: { name: "Cliente A1" } });
+    .onConflictDoNothing();
 
   // Criar dados de teste para Tenant B
   await db
@@ -64,7 +67,7 @@ beforeAll(async () => {
     .values([
       { name: "Cliente B1", phone: "11900000003", tenantId: TENANT_B_ID },
     ])
-    .onDuplicateKeyUpdate({ set: { name: "Cliente B1" } });
+    .onConflictDoNothing();
 
   // Criar serviços para Tenant A
   await db
@@ -72,7 +75,7 @@ beforeAll(async () => {
     .values([
       { name: "Serviço A1", price: "30.00", durationMinutes: 30, tenantId: TENANT_A_ID },
     ])
-    .onDuplicateKeyUpdate({ set: { name: "Serviço A1" } });
+    .onConflictDoNothing();
 
   // Criar serviços para Tenant B
   await db
@@ -80,7 +83,7 @@ beforeAll(async () => {
     .values([
       { name: "Serviço B1", price: "40.00", durationMinutes: 45, tenantId: TENANT_B_ID },
     ])
-    .onDuplicateKeyUpdate({ set: { name: "Serviço B1" } });
+    .onConflictDoNothing();
 });
 
 afterAll(async () => {
@@ -94,7 +97,7 @@ afterAll(async () => {
   await db.delete(tenants).where(eq(tenants.id, TENANT_A_ID));
   await db.delete(tenants).where(eq(tenants.id, TENANT_B_ID));
 
-  await (pool as any)?.end();
+  await pool?.end();
 });
 
 // ─── Testes de Isolamento ─────────────────────────────────────────────────────
