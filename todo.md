@@ -1930,7 +1930,12 @@
 
 ## Bug Crítico — Vazamento na Tela de Comissões (Mai/2026 v3)
 
-- [ ] Corrigir getCommissionSummary no db.ts — ainda retorna barbeiros de todos os tenants
-- [ ] Corrigir rota de comissões no admin-routes.ts (web) para filtrar por tenantId
-- [ ] Corrigir rota tRPC commissions.summary (app) para filtrar por tenantId
-- [ ] Testar isolamento na tela de comissões (web + app)
+- [x] Corrigir getCommissionSummary no db.ts — guard clause adicionada (retorna [] quando tenantId é null)
+- [x] Corrigir rota de comissões no admin-routes.ts (web) para filtrar por tenantId
+- [x] Corrigir rota tRPC commissions.summary (app) para filtrar por tenantId
+- [x] Reverter driver de mysql2 para pg (PostgreSQL) para compatibilidade com Railway
+- [x] Corrigir schema Drizzle de mysql-core para pg-core
+- [x] Corrigir onDuplicateKeyUpdate para onConflictDoUpdate (sintaxe PostgreSQL)
+- [x] Corrigir .returning() para PostgreSQL (sem $returningId)
+- [x] Deploy bem-sucedido no Railway (usebarberpro.com)
+- [x] Testar isolamento em produção: commissions.summary sem tenantId retorna [], com tenantId=180002 retorna apenas Kevin
