@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
@@ -20,9 +21,10 @@ type Supplier = {
   id: number;
   tenantId: number;
   name: string;
-  contact: string | null;
   phone: string | null;
   email: string | null;
+  cnpj: string | null;
+  address: string | null;
   notes: string | null;
   isActive: boolean;
   createdAt: Date;
@@ -31,13 +33,14 @@ type Supplier = {
 
 type FormData = {
   name: string;
-  contact: string;
   phone: string;
   email: string;
+  cnpj: string;
+  address: string;
   notes: string;
 };
 
-const EMPTY_FORM: FormData = { name: "", contact: "", phone: "", email: "", notes: "" };
+const EMPTY_FORM: FormData = { name: "", phone: "", email: "", cnpj: "", address: "", notes: "" };
 
 export default function SuppliersScreen() {
   const colors = useColors();
@@ -78,9 +81,10 @@ export default function SuppliersScreen() {
     setEditingId(s.id);
     setForm({
       name: s.name,
-      contact: s.contact ?? "",
       phone: s.phone ?? "",
       email: s.email ?? "",
+      cnpj: s.cnpj ?? "",
+      address: s.address ?? "",
       notes: s.notes ?? "",
     });
     setShowModal(true);
@@ -99,9 +103,10 @@ export default function SuppliersScreen() {
     }
     const payload = {
       name: form.name.trim(),
-      contact: form.contact.trim() || undefined,
       phone: form.phone.trim() || undefined,
       email: form.email.trim() || undefined,
+      cnpj: form.cnpj.trim() || undefined,
+      address: form.address.trim() || undefined,
       notes: form.notes.trim() || undefined,
     };
     if (editingId) {
@@ -126,28 +131,31 @@ export default function SuppliersScreen() {
 
   return (
     <ScreenContainer>
-      <AdminHeader title="Fornecedores" />
+      <AdminHeader
+        title="Fornecedores"
+        rightElement={
+          <TouchableOpacity
+            style={[styles.headerBtn, { backgroundColor: "#C9A84C" }]}
+            onPress={openCreate}
+          >
+            <Text style={styles.headerBtnText}>+ Novo</Text>
+          </TouchableOpacity>
+        }
+      />
       <View style={styles.container}>
-        <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: colors.primary }]}
-          onPress={openCreate}
-        >
-          <Text style={[styles.addBtnText, { color: colors.background }]}>+ Novo Fornecedor</Text>
-        </TouchableOpacity>
-
         {isLoading ? (
           <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} />
         ) : suppliers.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={[styles.emptyIcon]}>🏪</Text>
+            <Text style={styles.emptyIcon}>🏪</Text>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Nenhum fornecedor cadastrado</Text>
             <Text style={[styles.emptyText, { color: colors.muted }]}>
-              Cadastre fornecedores para vincular às reposições de estoque e rastrear suas compras.
+              Cadastre fornecedores para vincular aos produtos e facilitar o controle de estoque.
             </Text>
           </View>
         ) : (
           <FlatList
-            data={suppliers as Supplier[]}
+            data={suppliers as unknown as Supplier[]}
             keyExtractor={(item) => String(item.id)}
             contentContainerStyle={{ paddingBottom: 24 }}
             renderItem={({ item }) => (
@@ -155,13 +163,16 @@ export default function SuppliersScreen() {
                 <View style={styles.cardHeader}>
                   <View style={styles.cardTitleRow}>
                     <Text style={[styles.cardName, { color: colors.foreground }]}>{item.name}</Text>
+                    {item.cnpj ? (
+                      <Text style={[styles.cardCnpj, { color: colors.muted }]}>CNPJ: {item.cnpj}</Text>
+                    ) : null}
                   </View>
                   <View style={styles.cardActions}>
                     <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: colors.primary + "20" }]}
+                      style={[styles.actionBtn, { backgroundColor: "#C9A84C20" }]}
                       onPress={() => openEdit(item)}
                     >
-                      <Text style={[styles.actionBtnText, { color: colors.primary }]}>Editar</Text>
+                      <Text style={[styles.actionBtnText, { color: "#C9A84C" }]}>Editar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.actionBtn, { backgroundColor: colors.error + "20" }]}
@@ -171,14 +182,14 @@ export default function SuppliersScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
-                {item.contact ? (
-                  <Text style={[styles.cardInfo, { color: colors.muted }]}>👤 {item.contact}</Text>
-                ) : null}
                 {item.phone ? (
                   <Text style={[styles.cardInfo, { color: colors.muted }]}>📞 {item.phone}</Text>
                 ) : null}
                 {item.email ? (
                   <Text style={[styles.cardInfo, { color: colors.muted }]}>✉️ {item.email}</Text>
+                ) : null}
+                {item.address ? (
+                  <Text style={[styles.cardInfo, { color: colors.muted }]}>📍 {item.address}</Text>
                 ) : null}
                 {item.notes ? (
                   <Text style={[styles.cardNotes, { color: colors.muted }]}>{item.notes}</Text>
@@ -197,73 +208,85 @@ export default function SuppliersScreen() {
               {editingId ? "Editar Fornecedor" : "Novo Fornecedor"}
             </Text>
 
-            <Text style={[styles.label, { color: colors.muted }]}>Nome *</Text>
-            <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              value={form.name}
-              onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
-              placeholder="Nome do fornecedor"
-              placeholderTextColor={colors.muted}
-            />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={[styles.label, { color: colors.muted }]}>Nome *</Text>
+              <TextInput
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                value={form.name}
+                onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
+                placeholder="Nome do fornecedor"
+                placeholderTextColor={colors.muted}
+              />
 
-            <Text style={[styles.label, { color: colors.muted }]}>Contato (pessoa responsável)</Text>
-            <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              value={form.contact}
-              onChangeText={(v) => setForm((f) => ({ ...f, contact: v }))}
-              placeholder="Nome do responsável"
-              placeholderTextColor={colors.muted}
-            />
+              <Text style={[styles.label, { color: colors.muted }]}>CNPJ</Text>
+              <TextInput
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                value={form.cnpj}
+                onChangeText={(v) => setForm((f) => ({ ...f, cnpj: v }))}
+                placeholder="00.000.000/0000-00"
+                placeholderTextColor={colors.muted}
+                keyboardType="numeric"
+              />
 
-            <Text style={[styles.label, { color: colors.muted }]}>Telefone / WhatsApp</Text>
-            <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              value={form.phone}
-              onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))}
-              placeholder="(00) 00000-0000"
-              placeholderTextColor={colors.muted}
-              keyboardType="phone-pad"
-            />
+              <Text style={[styles.label, { color: colors.muted }]}>Telefone / WhatsApp</Text>
+              <TextInput
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                value={form.phone}
+                onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))}
+                placeholder="(00) 00000-0000"
+                placeholderTextColor={colors.muted}
+                keyboardType="phone-pad"
+              />
 
-            <Text style={[styles.label, { color: colors.muted }]}>E-mail</Text>
-            <TextInput
-              style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              value={form.email}
-              onChangeText={(v) => setForm((f) => ({ ...f, email: v }))}
-              placeholder="email@fornecedor.com"
-              placeholderTextColor={colors.muted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+              <Text style={[styles.label, { color: colors.muted }]}>E-mail</Text>
+              <TextInput
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                value={form.email}
+                onChangeText={(v) => setForm((f) => ({ ...f, email: v }))}
+                placeholder="email@fornecedor.com"
+                placeholderTextColor={colors.muted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
 
-            <Text style={[styles.label, { color: colors.muted }]}>Observações</Text>
-            <TextInput
-              style={[styles.input, styles.textarea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
-              value={form.notes}
-              onChangeText={(v) => setForm((f) => ({ ...f, notes: v }))}
-              placeholder="Produtos fornecidos, condições, etc."
-              placeholderTextColor={colors.muted}
-              multiline
-              numberOfLines={3}
-            />
+              <Text style={[styles.label, { color: colors.muted }]}>Endereço</Text>
+              <TextInput
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                value={form.address}
+                onChangeText={(v) => setForm((f) => ({ ...f, address: v }))}
+                placeholder="Rua, número, cidade"
+                placeholderTextColor={colors.muted}
+              />
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: colors.border }]}
-                onPress={closeModal}
-              >
-                <Text style={[styles.modalBtnText, { color: colors.foreground }]}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: colors.primary, opacity: isSaving ? 0.6 : 1 }]}
-                onPress={handleSave}
-                disabled={isSaving}
-              >
-                <Text style={[styles.modalBtnText, { color: colors.background }]}>
-                  {isSaving ? "Salvando..." : "Salvar"}
-                </Text>
-              </TouchableOpacity>
-            </View>
+              <Text style={[styles.label, { color: colors.muted }]}>Observações</Text>
+              <TextInput
+                style={[styles.input, styles.textarea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                value={form.notes}
+                onChangeText={(v) => setForm((f) => ({ ...f, notes: v }))}
+                placeholder="Produtos fornecidos, condições, etc."
+                placeholderTextColor={colors.muted}
+                multiline
+                numberOfLines={3}
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: colors.border }]}
+                  onPress={closeModal}
+                >
+                  <Text style={[styles.modalBtnText, { color: colors.foreground }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalBtn, { backgroundColor: "#C9A84C", opacity: isSaving ? 0.6 : 1 }]}
+                  onPress={handleSave}
+                  disabled={isSaving}
+                >
+                  <Text style={[styles.modalBtnText, { color: "#0A0A0A" }]}>
+                    {isSaving ? "Salvando..." : "Salvar"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -273,8 +296,8 @@ export default function SuppliersScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  addBtn: { borderRadius: 10, paddingVertical: 12, alignItems: "center", marginBottom: 16 },
-  addBtnText: { fontWeight: "700", fontSize: 15 },
+  headerBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8 },
+  headerBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyTitle: { fontSize: 18, fontWeight: "700", marginBottom: 8, textAlign: "center" },
@@ -283,13 +306,14 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 },
   cardTitleRow: { flex: 1 },
   cardName: { fontSize: 16, fontWeight: "700" },
+  cardCnpj: { fontSize: 12, marginTop: 2 },
   cardActions: { flexDirection: "row", gap: 8 },
   actionBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
   actionBtnText: { fontSize: 13, fontWeight: "600" },
   cardInfo: { fontSize: 13, marginTop: 2 },
   cardNotes: { fontSize: 12, marginTop: 6, fontStyle: "italic" },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modal: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 },
+  modal: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40, maxHeight: "90%" },
   modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
   label: { fontSize: 12, fontWeight: "600", marginBottom: 4, marginTop: 10 },
   input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15 },

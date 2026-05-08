@@ -132,6 +132,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     configuracoes: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
     planos: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
     suporte: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+    fornecedores: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg>`,
   };
   const navGroups = [
     {
@@ -153,6 +154,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/produtos", icon: svgIcons.produtos, label: "Produtos", id: "produtos" },
         { href: "/admin/estoque", icon: svgIcons.estoque, label: "Estoque", id: "estoque" },
         { href: "/admin/encomendas", icon: svgIcons.encomendas, label: "Encomendas", id: "encomendas" },
+        { href: "/admin/fornecedores", icon: svgIcons.fornecedores, label: "Fornecedores", id: "fornecedores" },
       ],
     },
     {
@@ -1984,6 +1986,7 @@ async function renderProdutos(req: Request, res: Response) {
   const barber = await db.getBarberById(session.barberId);
   const tenantId = barber?.tenantId ?? null;
   const products = await db.getAllProductsWithMedia(false, tenantId);
+  const suppliers = tenantId ? await db.getSuppliersByTenant(tenantId) : [];
   const saved = req.query.saved === "1";
   const deleted = req.query.deleted === "1";
   const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
@@ -2011,6 +2014,16 @@ async function renderProdutos(req: Request, res: Response) {
                 <option value="sale" ${!editProduct || editProduct.productType === "sale" ? "selected" : ""}>Venda</option>
                 <option value="internal" ${editProduct?.productType === "internal" ? "selected" : ""}>Uso interno</option>
               </select>
+            </div>
+            <div class="form-group" style="grid-column:1/-1">
+              <label class="form-label">Fornecedor *</label>
+              ${suppliers.length === 0
+                ? `<div style="padding:10px;background:var(--surface2);border-radius:8px;font-size:13px;color:var(--muted)">Nenhum fornecedor cadastrado. <a href="/admin/fornecedores" style="color:var(--primary)">Cadastre um fornecedor primeiro</a>.</div><input type="hidden" name="supplierId" value="" />`
+                : `<select class="form-input" name="supplierId" required>
+                    <option value="">Selecione o fornecedor...</option>
+                    ${suppliers.map((s: any) => `<option value="${s.id}" ${(editProduct as any)?.supplierId === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}
+                  </select>`
+              }
             </div>
             <div class="form-group">
               <label class="form-label">Estoque atual</label>
@@ -4648,14 +4661,15 @@ export function registerAdminRoutes(app: Express): void {
   // ─── CRUD Produtos ────────────────────────────────────────────────────────
   app.get("/admin/produtos", requireAdminAuth, (req, res) => renderProdutos(req, res));
   app.post("/admin/produtos", requireAdminAuth, async (req: Request, res: Response) => {
-    const { name, description, price, productType, stockQuantity, minStockAlert, isActive, mediaBase64, mediaMime } = req.body;
+    const { name, description, price, productType, stockQuantity, minStockAlert, isActive, mediaBase64, mediaMime, supplierId } = req.body;
     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+    const supplierIdNum = supplierId ? parseInt(supplierId) : null;
     let productId: number;
     if (editId) {
-      await db.updateProduct(editId, { name, description, price, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true" });
+      await db.updateProduct(editId, { name, description, price, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true", supplierId: supplierIdNum } as any);
       productId = editId;
     } else {
-      const newProduct = await db.createProduct({ name, description, price, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true" });
+      const newProduct = await db.createProduct({ name, description, price, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true", supplierId: supplierIdNum } as any);
       productId = (newProduct as any).insertId ?? (newProduct as any).id ?? 0;
     }
     // Processar upload de mídia
@@ -7510,5 +7524,122 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/download-apk", requireAdminAuth, (req: Request, res: Response) => {
     const apkUrl = process.env.APK_DOWNLOAD_URL ?? process.env.PLAY_STORE_URL ?? "https://play.google.com/store/apps/details?id=space.manus.barber.app";
     res.redirect(apkUrl);
+  });
+
+  // ─── Fornecedores ─────────────────────────────────────────────────────────
+  app.get("/admin/fornecedores", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number; role: string };
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    const _tp = tenantId ? (await db.getTenantById(tenantId))?.plan ?? "" : "";
+    const suppliers = tenantId ? await db.getSuppliersByTenant(tenantId) : [];
+    const saved = req.query.saved === "1";
+    const deleted = req.query.deleted === "1";
+    const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+    const editSupplier = editId ? suppliers.find((s: any) => s.id === editId) : null;
+
+    const formHtml = `
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header">
+          <div class="card-title">${editSupplier ? "Editar Fornecedor" : "Novo Fornecedor"}</div>
+        </div>
+        <div class="card-body" style="padding:24px">
+          <form method="POST" action="/admin/fornecedores${editSupplier ? `?edit=${editSupplier.id}` : ""}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div class="form-group">
+                <label class="form-label">Nome do Fornecedor *</label>
+                <input class="form-input" type="text" name="name" value="${esc((editSupplier as any)?.name ?? "")}" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">CNPJ</label>
+                <input class="form-input" type="text" name="cnpj" value="${esc((editSupplier as any)?.cnpj ?? "")}" placeholder="00.000.000/0000-00" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Telefone / WhatsApp</label>
+                <input class="form-input" type="text" name="phone" value="${esc((editSupplier as any)?.phone ?? "")}" placeholder="(00) 00000-0000" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">E-mail</label>
+                <input class="form-input" type="email" name="email" value="${esc((editSupplier as any)?.email ?? "")}" placeholder="email@fornecedor.com" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Endereço</label>
+              <input class="form-input" type="text" name="address" value="${esc((editSupplier as any)?.address ?? "")}" placeholder="Rua, número, cidade" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Observações</label>
+              <textarea class="form-input" name="notes" rows="3" style="resize:vertical">${esc((editSupplier as any)?.notes ?? "")}</textarea>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:8px">
+              <button type="submit" class="btn btn-primary" style="padding:12px 28px">${editSupplier ? "Salvar Alterações" : "Criar Fornecedor"}</button>
+              ${editSupplier ? `<a href="/admin/fornecedores" class="btn" style="padding:12px 20px;background:var(--surface2);color:var(--text)">Cancelar</a>` : ""}
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    const tableHtml = suppliers.length === 0
+      ? `<div style="text-align:center;padding:40px;color:var(--muted)">Nenhum fornecedor cadastrado ainda.</div>`
+      : `<table class="table">
+          <thead><tr><th>Nome</th><th>CNPJ</th><th>Telefone / WhatsApp</th><th>E-mail</th><th>Endereço</th><th>Ações</th></tr></thead>
+          <tbody>
+            ${suppliers.map((s: any) => `
+              <tr>
+                <td><strong>${esc(s.name)}</strong>${s.notes ? `<br><small style="color:var(--muted)">${esc(s.notes.substring(0, 60))}${s.notes.length > 60 ? "..." : ""}</small>` : ""}</td>
+                <td style="color:var(--muted);font-size:13px">${esc(s.cnpj ?? "—")}</td>
+                <td>${s.phone ? `<a href="https://wa.me/55${s.phone.replace(/\D/g,"")}" target="_blank" style="color:var(--primary);text-decoration:none">📱 ${esc(s.phone)}</a>` : `<span style="color:var(--muted)">—</span>`}</td>
+                <td style="color:var(--muted);font-size:13px">${esc(s.email ?? "—")}</td>
+                <td style="color:var(--muted);font-size:13px">${esc(s.address ?? "—")}</td>
+                <td>
+                  <div style="display:flex;gap:8px">
+                    <a href="/admin/fornecedores?edit=${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">Editar</a>
+                    <form method="POST" action="/admin/fornecedores/delete" style="display:inline" onsubmit="return confirm('Excluir este fornecedor?')">
+                      <input type="hidden" name="id" value="${s.id}" />
+                      <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:#EF444422;color:#F87171">Excluir</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>`;
+
+    const body = `
+      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✓ Fornecedor salvo com sucesso!</div>` : ""}
+      ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✓ Fornecedor excluído com sucesso!</div>` : ""}
+      ${formHtml}
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Fornecedores Cadastrados (${suppliers.length})</div>
+        </div>
+        <div class="card-body" style="padding:0">
+          ${tableHtml}
+        </div>
+      </div>
+    `;
+    res.send(adminLayout("Fornecedores", "fornecedores", body, barber?.name, _tp));
+  });
+
+  app.post("/admin/fornecedores", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number; role: string };
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    if (!tenantId) { res.redirect("/admin/fornecedores"); return; }
+    const { name, cnpj, phone, email, address, notes } = req.body;
+    const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+    if (editId) {
+      await db.updateSupplier(editId, { name, cnpj: cnpj || null, phone: phone || null, email: email || null, address: address || null, notes: notes || null });
+    } else {
+      await db.createSupplier({ tenantId, name, cnpj: cnpj || null, phone: phone || null, email: email || null, address: address || null, notes: notes || null, isActive: true });
+    }
+    res.redirect("/admin/fornecedores?saved=1");
+  });
+
+  app.post("/admin/fornecedores/delete", requireAdminAuth, async (req: Request, res: Response) => {
+    const { id } = req.body;
+    await db.deleteSupplier(parseInt(id));
+    res.redirect("/admin/fornecedores?deleted=1");
   });
 }

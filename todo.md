@@ -1939,3 +1939,16 @@
 - [x] Corrigir .returning() para PostgreSQL (sem $returningId)
 - [x] Deploy bem-sucedido no Railway (usebarberpro.com)
 - [x] Testar isolamento em produção: commissions.summary sem tenantId retorna [], com tenantId=180002 retorna apenas Kevin
+
+## Módulo de Fornecedores (Produtos)
+
+- [x] Adicionar tabela `suppliers` no schema Drizzle (nome, telefone, email, cnpj, endereço, observações, tenantId)
+- [x] Adicionar campo `supplierId` (FK) na tabela `products`
+- [x] Rodar migração do banco (ALTER TABLE via SQL direto)
+- [x] Criar funções CRUD de fornecedores no db.ts com guard clauses de tenantId
+- [x] Adicionar endpoints tRPC de fornecedores no routers.ts (getAll, create, update, delete, getById)
+- [x] Adicionar página de Fornecedores no painel web admin (listagem + CRUD completo)
+- [x] Atualizar cadastro de produto no painel web para campo obrigatório de fornecedor
+- [x] Atualizar tela de produtos no app mobile para exibir/selecionar fornecedor
+- [x] Alerta de estoque baixo no app com botão de contato WhatsApp para o fornecedor
+- [x] Push para GitHub e verificar deploy no Railway

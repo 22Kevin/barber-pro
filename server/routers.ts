@@ -2439,9 +2439,10 @@ export const appRouter = router({
       .input(z.object({
         tenantId: z.number(),
         name: z.string().min(1),
-        contact: z.string().optional(),
         phone: z.string().optional(),
         email: z.string().optional(),
+        cnpj: z.string().optional(),
+        address: z.string().optional(),
         notes: z.string().optional(),
       }))
       .mutation(({ input }) => db.createSupplier(input as any)),
@@ -2449,9 +2450,10 @@ export const appRouter = router({
       .input(z.object({
         id: z.number(),
         name: z.string().min(1).optional(),
-        contact: z.string().optional(),
         phone: z.string().optional(),
         email: z.string().optional(),
+        cnpj: z.string().optional(),
+        address: z.string().optional(),
         notes: z.string().optional(),
       }))
       .mutation(({ input }) => {

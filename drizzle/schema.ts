@@ -164,6 +164,22 @@ export const products = pgTable("products", {
   productType: productTypeEnum("productType").default("sale").notNull(),
   stockQuantity: integer("stockQuantity").default(0).notNull(),
   minStockAlert: integer("minStockAlert").default(5).notNull(),
+  supplierId: integer("supplierId"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+// ─── Fornecedores ────────────────────────────────────────────────────────────
+export const suppliers = pgTable("suppliers", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenantId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 30 }),
+  email: varchar("email", { length: 255 }),
+  cnpj: varchar("cnpj", { length: 20 }),
+  address: text("address"),
+  notes: text("notes"),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
@@ -615,21 +631,6 @@ export const productOrders = pgTable("product_orders", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
-
-// ─── Fornecedores ─────────────────────────────────────────────────────────────
-export const suppliers = pgTable("suppliers", {
-  id: serial("id").primaryKey(),
-  tenantId: integer("tenantId").notNull(),
-  name: varchar("name", { length: 120 }).notNull(),
-  contact: varchar("contact", { length: 120 }),
-  phone: varchar("phone", { length: 30 }),
-  email: varchar("email", { length: 120 }),
-  notes: text("notes"),
-  isActive: boolean("isActive").default(true).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
-
 // ─── Error Logs (Monitoramento de Erros) ─────────────────────────────────────
 export const errorLogs = pgTable("error_logs", {
   id: serial("id").primaryKey(),

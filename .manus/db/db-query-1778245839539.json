@@ -1,0 +1,13 @@
+{
+  "query": "SHOW TABLES LIKE 'suppliers';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SHOW TABLES LIKE 'suppliers';",
+  "rows": [
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP (suppliers)": "suppliers"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_9fdXPX6chg63KWfUcPP4iP (suppliers)\nsuppliers\n",
+  "stderr": "",
+  "execution_time_ms": 402
+}

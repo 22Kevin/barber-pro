@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS cnpj VARCHAR(20) NULL AFTER email; ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS address TEXT NULL AFTER cnpj; ALTER TABLE products ADD COLUMN IF NOT EXISTS supplierId INT NULL AFTER categoryId;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS cnpj VARCHAR(20) NULL AFTER email; ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS address TEXT NULL AFTER cnpj; ALTER TABLE products ADD COLUMN IF NOT EXISTS supplierId INT NULL AFTER categoryId;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 872
+}

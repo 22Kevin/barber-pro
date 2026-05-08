@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -19,10 +20,19 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { MediaUploader } from "@/components/media-uploader";
 import { AdminHeader } from "@/components/admin-header";
-import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useColors } from "@/hooks/use-colors";
+
+type Supplier = {
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  cnpj: string | null;
+  address: string | null;
+  notes: string | null;
+};
 
 type Product = {
   id: number;
@@ -32,6 +42,8 @@ type Product = {
   stock: number;
   isActive: boolean;
   categoryId: number | null;
+  supplierId: number | null;
+  minStockAlert?: number | null;
 };
 
 export default function ProductsScreen() {
@@ -53,25 +65,33 @@ export default function ProductsScreen() {
   const [restockNote, setRestockNote] = useState("");
   const [restockSupplierId, setRestockSupplierId] = useState<number | null>(null);
 
+  // Formulário de produto
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [stock, setStock] = useState("0");
+  const [isActive, setIsActive] = useState(true);
+  const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
+  const [savedProductId, setSavedProductId] = useState<number | null>(null);
+
+  const utils = trpc.useUtils();
+
   const movementsQuery = trpc.stock.movements.useQuery(
     { productId: historyProduct?.id ?? 0 },
     { enabled: !!historyProduct }
   );
   const movements = movementsQuery.data ?? [];
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [stock, setStock] = useState("0");
-  const [isActive, setIsActive] = useState(true);
-  const [savedProductId, setSavedProductId] = useState<number | null>(null);
-
-  const utils = trpc.useUtils();
   const productsQuery = trpc.products.list.useQuery({ activeOnly: false, tenantId });
+  const suppliersQuery = trpc.suppliers.list.useQuery(
+    { tenantId: tenantId ?? 0 },
+    { enabled: (tenantId ?? 0) > 0 }
+  );
+  const suppliersList = (suppliersQuery.data ?? []) as Supplier[];
+
   const createMutation = trpc.products.create.useMutation({
     onSuccess: (newId) => {
       utils.products.list.invalidate();
-      // Não fecha o modal: atualiza o ID para mostrar o MediaUploader imediatamente
       setSavedProductId(newId as any);
     },
     onError: (e) => Alert.alert("Erro", e.message),
@@ -80,12 +100,6 @@ export default function ProductsScreen() {
     onSuccess: () => { utils.products.list.invalidate(); closeModal(); },
     onError: (e) => Alert.alert("Erro", e.message),
   });
-
-  const suppliersQuery = trpc.suppliers.list.useQuery(
-    { tenantId: tenantId ?? 0 },
-    { enabled: (tenantId ?? 0) > 0 }
-  );
-  const suppliersList = (suppliersQuery.data ?? []) as { id: number; name: string }[];
 
   const restockMutation = trpc.stock.restock.useMutation({
     onSuccess: () => {
@@ -104,6 +118,8 @@ export default function ProductsScreen() {
     setRestockCost("");
     setRestockPayment("cash");
     setRestockNote("");
+    // Pré-selecionar o fornecedor do produto
+    setRestockSupplierId(p.supplierId ?? null);
     setShowRestockModal(true);
   }
 
@@ -128,6 +144,7 @@ export default function ProductsScreen() {
     setEditing(null);
     setSavedProductId(null);
     setName(""); setDescription(""); setPrice(""); setStock("0"); setIsActive(true);
+    setSelectedSupplierId(null);
     setShowModal(true);
   }
 
@@ -135,6 +152,7 @@ export default function ProductsScreen() {
     setEditing(p);
     setSavedProductId(p.id);
     setName(p.name); setDescription(p.description ?? ""); setPrice(p.price); setStock(String(p.stock)); setIsActive(p.isActive);
+    setSelectedSupplierId(p.supplierId ?? null);
     setShowModal(true);
   }
 
@@ -144,22 +162,47 @@ export default function ProductsScreen() {
     if (!name.trim()) { Alert.alert("Atenção", "Informe o nome do produto."); return; }
     const priceNum = parseFloat(price.replace(",", "."));
     if (isNaN(priceNum) || priceNum <= 0) { Alert.alert("Atenção", "Informe um preço válido."); return; }
+    if (!selectedSupplierId) { Alert.alert("Atenção", "Selecione o fornecedor do produto."); return; }
     const stockNum = parseInt(stock) || 0;
-    const data = { name: name.trim(), description: description.trim() || null, price: priceNum.toFixed(2), stock: stockNum, isActive };
+    const data = { name: name.trim(), description: description.trim() || null, price: priceNum.toFixed(2), stock: stockNum, isActive, supplierId: selectedSupplierId };
     if (editing) {
-      updateMutation.mutate({ id: editing.id, ...data });
+      updateMutation.mutate({ id: editing.id, ...data } as any);
     } else {
       createMutation.mutate({ ...data, tenantId } as any);
     }
   }
 
+  function handleWhatsAppAlert(product: Product) {
+    const supplier = suppliersList.find(s => s.id === product.supplierId);
+    if (!supplier) {
+      Alert.alert("Sem fornecedor", "Este produto não tem fornecedor vinculado.");
+      return;
+    }
+    if (!supplier.phone) {
+      Alert.alert("Sem telefone", `O fornecedor "${supplier.name}" não tem telefone cadastrado. Acesse o painel web para adicionar.`);
+      return;
+    }
+    const phone = supplier.phone.replace(/\D/g, "");
+    const phoneWithCountry = phone.startsWith("55") ? phone : `55${phone}`;
+    const msg = encodeURIComponent(
+      `Olá ${supplier.name}! 👋\n\nEstamos com o estoque baixo do produto *${product.name}* (${product.stock} unidade${product.stock !== 1 ? "s" : ""} restante${product.stock !== 1 ? "s" : ""}).\n\nPoderia nos enviar uma cotação para reposição?\n\nObrigado!`
+    );
+    Linking.openURL(`https://wa.me/${phoneWithCountry}?text=${msg}`);
+  }
+
   const products = (productsQuery.data ?? []).filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase())
-  );
+  ) as Product[];
 
-  const getStockColor = (stock: number) => {
+  const lowStockProducts = products.filter(p => {
+    const minAlert = (p as any).minStockAlert ?? 5;
+    return p.isActive && p.stock <= minAlert && p.stock >= 0;
+  });
+
+  const getStockColor = (stock: number, minAlert?: number | null) => {
+    const threshold = minAlert ?? 5;
     if (stock === 0) return "#F44336";
-    if (stock <= 5) return "#FF9800";
+    if (stock <= threshold) return "#FF9800";
     return "#4CAF50";
   };
 
@@ -174,6 +217,44 @@ export default function ProductsScreen() {
           </Pressable>
         }
       />
+
+      {/* Banner de alertas de estoque baixo */}
+      {lowStockProducts.length > 0 && (
+        <View style={styles.alertBanner}>
+          <View style={styles.alertBannerHeader}>
+            <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#FF9800" />
+            <Text style={styles.alertBannerTitle}>
+              {lowStockProducts.length} produto{lowStockProducts.length > 1 ? "s" : ""} com estoque baixo
+            </Text>
+          </View>
+          {lowStockProducts.map(p => {
+            const supplier = suppliersList.find(s => s.id === p.supplierId);
+            return (
+              <View key={p.id} style={styles.alertItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.alertProductName}>{p.name}</Text>
+                  <Text style={styles.alertStockText}>
+                    {p.stock === 0 ? "Sem estoque" : `${p.stock} unidade${p.stock !== 1 ? "s" : ""}`}
+                    {supplier ? ` · ${supplier.name}` : ""}
+                  </Text>
+                </View>
+                {supplier?.phone ? (
+                  <Pressable
+                    style={({ pressed }) => [styles.whatsappBtn, pressed && { opacity: 0.7 }]}
+                    onPress={() => handleWhatsAppAlert(p)}
+                  >
+                    <Text style={styles.whatsappBtnText}>📱 WhatsApp</Text>
+                  </Pressable>
+                ) : (
+                  <View style={styles.whatsappBtnDisabled}>
+                    <Text style={styles.whatsappBtnDisabledText}>Sem telefone</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       <View style={styles.searchRow}>
         <IconSymbol name="magnifyingglass" size={18} color="#888880" />
@@ -194,46 +275,65 @@ export default function ProductsScreen() {
               <Text style={styles.emptySubText}>Toque em "Novo" para adicionar</Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <View style={[styles.card, !item.isActive && styles.cardInactive]}>
-              <View style={styles.cardLeft}>
-                <View style={styles.cardIconBox}>
-                  <IconSymbol name="cube.box.fill" size={20} color="#C9A84C" />
+          renderItem={({ item }) => {
+            const supplier = suppliersList.find(s => s.id === item.supplierId);
+            const minAlert = (item as any).minStockAlert ?? 5;
+            const isLowStock = item.isActive && item.stock <= minAlert;
+            return (
+              <View style={[styles.card, !item.isActive && styles.cardInactive]}>
+                <View style={styles.cardLeft}>
+                  <View style={styles.cardIconBox}>
+                    <IconSymbol name="cube.box.fill" size={20} color="#C9A84C" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.cardTitleRow}>
+                      <Text style={styles.cardName}>{item.name}</Text>
+                      {!item.isActive && <View style={styles.inactiveBadge}><Text style={styles.inactiveText}>Inativo</Text></View>}
+                      {isLowStock && item.isActive && (
+                        <View style={styles.lowStockBadge}>
+                          <Text style={styles.lowStockBadgeText}>⚠ Baixo</Text>
+                        </View>
+                      )}
+                    </View>
+                    {item.description ? <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text> : null}
+                    {supplier && (
+                      <Text style={styles.supplierLabel} numberOfLines={1}>🏭 {supplier.name}</Text>
+                    )}
+                    <View style={styles.cardMeta}>
+                      <View style={[styles.metaChip, styles.priceChip]}>
+                        <Text style={styles.priceText}>R$ {parseFloat(item.price).toFixed(2).replace(".", ",")}</Text>
+                      </View>
+                      <View style={[styles.metaChip, { backgroundColor: getStockColor(item.stock, minAlert) + "22" }]}>
+                        <Text style={[styles.stockText, { color: getStockColor(item.stock, minAlert) }]}>
+                          Estoque: {item.stock}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.cardTitleRow}>
-                    <Text style={styles.cardName}>{item.name}</Text>
-                    {!item.isActive && <View style={styles.inactiveBadge}><Text style={styles.inactiveText}>Inativo</Text></View>}
-                  </View>
-                  {item.description ? <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text> : null}
-                  <View style={styles.cardMeta}>
-                    <View style={[styles.metaChip, styles.priceChip]}>
-                      <Text style={styles.priceText}>R$ {parseFloat(item.price).toFixed(2).replace(".", ",")}</Text>
-                    </View>
-                    <View style={[styles.metaChip, { backgroundColor: getStockColor(item.stock) + "22" }]}>
-                      <Text style={[styles.stockText, { color: getStockColor(item.stock) }]}>
-                        Estoque: {item.stock}
-                      </Text>
-                    </View>
-                  </View>
+                <View style={styles.cardActions}>
+                  {isLowStock && item.isActive && supplier?.phone && (
+                    <Pressable onPress={() => handleWhatsAppAlert(item)} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
+                      <Text style={{ fontSize: 16 }}>📱</Text>
+                    </Pressable>
+                  )}
+                  <Pressable onPress={() => { setHistoryProduct(item); setShowHistoryModal(true); }} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
+                    <IconSymbol name="chart.bar.fill" size={18} color="#3B82F6" />
+                  </Pressable>
+                  <Pressable onPress={() => openRestock(item)} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
+                    <IconSymbol name="plus.circle.fill" size={18} color="#22C55E" />
+                  </Pressable>
+                  <Pressable onPress={() => openEdit(item)} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
+                    <IconSymbol name="pencil" size={18} color="#C9A84C" />
+                  </Pressable>
                 </View>
               </View>
-              <View style={styles.cardActions}>
-                <Pressable onPress={() => { setHistoryProduct(item); setShowHistoryModal(true); }} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
-                  <IconSymbol name="chart.bar.fill" size={18} color="#3B82F6" />
-                </Pressable>
-                <Pressable onPress={() => openRestock(item)} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
-                  <IconSymbol name="plus.circle.fill" size={18} color="#22C55E" />
-                </Pressable>
-                <Pressable onPress={() => openEdit(item)} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
-                  <IconSymbol name="pencil" size={18} color="#C9A84C" />
-                </Pressable>
-              </View>
-            </View>
-          )}
+            );
+          }}
         />
       )}
 
+      {/* Modal de Criação/Edição de Produto */}
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
@@ -262,6 +362,47 @@ export default function ProductsScreen() {
                     </Field>
                   </View>
                 </View>
+
+                {/* Seletor de Fornecedor — obrigatório */}
+                <Field label="Fornecedor *">
+                  {suppliersQuery.isLoading ? (
+                    <ActivityIndicator color="#C9A84C" style={{ marginVertical: 8 }} />
+                  ) : suppliersList.length === 0 ? (
+                    <View style={styles.noSupplierBox}>
+                      <Text style={styles.noSupplierText}>
+                        Nenhum fornecedor cadastrado. Acesse o painel web para cadastrar fornecedores antes de criar produtos.
+                      </Text>
+                    </View>
+                  ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        {suppliersList.map((s) => (
+                          <Pressable
+                            key={s.id}
+                            onPress={() => setSelectedSupplierId(s.id)}
+                            style={{
+                              paddingHorizontal: 14,
+                              paddingVertical: 9,
+                              borderRadius: 20,
+                              backgroundColor: selectedSupplierId === s.id ? "#C9A84C22" : "#1E1E1E",
+                              borderWidth: 1,
+                              borderColor: selectedSupplierId === s.id ? "#C9A84C" : "#2A2A2A",
+                            }}
+                          >
+                            <Text style={{
+                              color: selectedSupplierId === s.id ? "#C9A84C" : "#888880",
+                              fontSize: 13,
+                              fontWeight: selectedSupplierId === s.id ? "700" : "400",
+                            }}>
+                              {s.name}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  )}
+                </Field>
+
                 {/* Upload de Fotos e Vídeos */}
                 {(savedProductId || editing) ? (
                   <Field label="Fotos e Vídeos">
@@ -376,6 +517,10 @@ export default function ProductsScreen() {
                 <View style={{ backgroundColor: "#1E1E1E", borderRadius: 10, padding: 12, marginBottom: 16 }}>
                   <Text style={{ color: "#C9A84C", fontWeight: "700", fontSize: 15 }}>{restockProduct.name}</Text>
                   <Text style={{ color: "#888880", fontSize: 13, marginTop: 2 }}>Estoque atual: {restockProduct.stock} unidades</Text>
+                  {restockProduct.supplierId && (() => {
+                    const s = suppliersList.find(x => x.id === restockProduct.supplierId);
+                    return s ? <Text style={{ color: "#888880", fontSize: 12, marginTop: 2 }}>Fornecedor: {s.name}</Text> : null;
+                  })()}
                 </View>
               )}
               <Field label="Quantidade a Repor *">
@@ -394,7 +539,7 @@ export default function ProductsScreen() {
                   ))}
                 </View>
               </Field>
-              <Field label="Fornecedor — opcional">
+              <Field label="Fornecedor">
                 <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
                   <Pressable
                     onPress={() => setRestockSupplierId(null)}
@@ -453,9 +598,10 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   cardInactive: { opacity: 0.5 },
   cardLeft: { flex: 1, flexDirection: "row", gap: 12 },
   cardIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: "#C9A84C22", justifyContent: "center", alignItems: "center" },
-  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  cardTitleRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" },
   cardName: { fontSize: 16, fontWeight: "700", color: c.foreground, flex: 1 },
-  cardDesc: { fontSize: 13, color: c.muted, marginBottom: 8, lineHeight: 18 },
+  cardDesc: { fontSize: 13, color: c.muted, marginBottom: 6, lineHeight: 18 },
+  supplierLabel: { fontSize: 12, color: c.muted, marginBottom: 6 },
   cardMeta: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   metaChip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: c.background, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
   priceChip: { backgroundColor: "#C9A84C22" },
@@ -463,8 +609,22 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   stockText: { fontSize: 12, fontWeight: "600" },
   inactiveBadge: { backgroundColor: "#F4433622", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   inactiveText: { fontSize: 10, color: "#F44336", fontWeight: "600" },
+  lowStockBadge: { backgroundColor: "#FF980022", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  lowStockBadgeText: { fontSize: 10, color: "#FF9800", fontWeight: "700" },
   cardActions: { flexDirection: "column", gap: 8, marginLeft: 8 },
   actionBtn: { padding: 6 },
+  // Alerta de estoque baixo
+  alertBanner: { marginHorizontal: 16, marginBottom: 8, backgroundColor: "#FF980012", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#FF980044" },
+  alertBannerHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
+  alertBannerTitle: { fontSize: 14, fontWeight: "700", color: "#FF9800" },
+  alertItem: { flexDirection: "row", alignItems: "center", paddingVertical: 8, borderTopWidth: 1, borderTopColor: "#FF980022", gap: 10 },
+  alertProductName: { fontSize: 13, fontWeight: "700", color: c.foreground },
+  alertStockText: { fontSize: 12, color: c.muted, marginTop: 2 },
+  whatsappBtn: { backgroundColor: "#25D36622", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: "#25D36644" },
+  whatsappBtnText: { fontSize: 12, fontWeight: "700", color: "#25D366" },
+  whatsappBtnDisabled: { backgroundColor: "#2A2A2A", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
+  whatsappBtnDisabledText: { fontSize: 11, color: "#555" },
+  // Modal
   modalOverlay: { flex: 1, backgroundColor: "#000000AA", justifyContent: "flex-end", alignItems: "center" },
   modalCard: { backgroundColor: c.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, width: "100%", maxHeight: "90%", borderWidth: 1, borderColor: c.border },
   modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
@@ -480,6 +640,8 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   mediaHintText: { flex: 1, fontSize: 12, color: c.muted, lineHeight: 17 },
   createdBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#22C55E18", borderRadius: 8, padding: 10, marginBottom: 10, borderWidth: 1, borderColor: "#22C55E44" },
   createdBannerText: { flex: 1, fontSize: 12, color: "#22C55E", fontWeight: "600", lineHeight: 17 },
+  noSupplierBox: { backgroundColor: "#FF980012", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "#FF980044" },
+  noSupplierText: { fontSize: 13, color: "#FF9800", lineHeight: 18 },
   movRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.background },
   movIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center" },
 });

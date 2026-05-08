@@ -1,0 +1,139 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "appointments"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "backoffice_users"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "barbers"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "blocked_slots"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "categories"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "client_accounts"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "client_consents"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "client_points"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "client_subscriptions"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "clients"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "commission_configs"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "commission_entries"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "coupons"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "error_logs"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "expenses"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "loyalty_config"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "loyalty_rewards"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "media_files"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "online_payments"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "orbit_leads"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "password_reset_tokens"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "product_orders"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "products"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "promotions"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "recurring_appointments"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "return_message_configs"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "reviews"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "sale_items"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "sales"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "services"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "shop_settings"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "stock_movements"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "subscription_appointments"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "subscription_plan_products"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "subscription_plan_services"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "subscription_plans"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "suppliers"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "tenants"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "users"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "waitlist"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "whatsapp_messages"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP": "working_hours"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_9fdXPX6chg63KWfUcPP4iP\n__drizzle_migrations\nappointments\nbackoffice_users\nbarbers\nblocked_slots\ncategories\nclient_accounts\nclient_consents\nclient_points\nclient_subscriptions\nclients\ncommission_configs\ncommission_entries\ncoupons\nerror_logs\nexpenses\nloyalty_config\nloyalty_rewards\nmedia_files\nonline_payments\norbit_leads\npassword_reset_tokens\nproduct_orders\nproducts\npromotions\nrecurring_appointments\nreturn_message_configs\nreviews\nsale_items\nsales\nservices\nshop_settings\nstock_movements\nsubscription_appointments\nsubscription_plan_products\nsubscription_plan_services\nsubscription_plans\nsuppliers\ntenants\nusers\nwaitlist\nwhatsapp_messages\nworking_hours\n",
+  "stderr": "",
+  "execution_time_ms": 261
+}
