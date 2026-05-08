@@ -7656,14 +7656,29 @@ export function registerAdminRoutes(app: Express): void {
     const supplier = await db.getSupplierById(supplierId);
     if (!supplier) { res.redirect("/admin/fornecedores"); return; }
 
-    const [supplierProducts, supplierHistory] = await Promise.all([
+    // Período padrão: últimos 12 meses e ano atual
+    const now = new Date();
+    const startDate12m = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString().slice(0, 10);
+    const endDate = now.toISOString().slice(0, 10);
+    const startDateThisYear = `${now.getFullYear()}-01-01`;
+
+    const [supplierProducts, supplierHistory, financialData12m, financialDataYear] = await Promise.all([
       db.getProductsBySupplier(supplierId, tenantId),
       tenantId ? db.getStockMovementsBySupplier(supplierId, tenantId, 50) : Promise.resolve([]),
+      tenantId ? db.getExpensesBySupplier(tenantId, startDate12m, endDate) : Promise.resolve([]),
+      tenantId ? db.getExpensesBySupplier(tenantId, startDateThisYear, endDate) : Promise.resolve([]),
     ]);
 
     const totalEntradas = supplierHistory.reduce((s: number, m: any) => s + (m.quantity > 0 ? m.quantity : 0), 0);
     const totalProdutos = supplierProducts.length;
     const lowStockCount = supplierProducts.filter((p: any) => p.isActive && (p.stockQuantity ?? p.stock ?? 0) <= (p.minStockAlert ?? 5)).length;
+
+    // Dados financeiros deste fornecedor específico
+    const finData12m = (financialData12m as any[]).find((f: any) => f.id === supplierId);
+    const finDataYear = (financialDataYear as any[]).find((f: any) => f.id === supplierId);
+    const totalCompras12m: number = finData12m?.totalReplenishments ?? 0;
+    const totalComprasYear: number = finDataYear?.totalReplenishments ?? 0;
+    const totalPedidos12m: number = finData12m?.replenishmentCount ?? 0;
 
     const infoCard = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
@@ -7743,6 +7758,32 @@ export function registerAdminRoutes(app: Express): void {
         ${supplier.phone ? `<a href="https://wa.me/55${supplier.phone.replace(/\D/g,"")}" target="_blank" class="btn" style="padding:8px 18px;font-size:13px;background:#25D36622;color:#25D366;border:1px solid #25D36644">📱 WhatsApp</a>` : ""}
       </div>
       ${infoCard}
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header">
+          <div class="card-title">💰 Resumo Financeiro de Compras</div>
+          <span style="font-size:12px;color:var(--muted)">Valor estimado: qtd. recebida × preço do produto</span>
+        </div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+            <div style="text-align:center;padding:16px;background:var(--surface2);border-radius:12px">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Últimos 12 meses</div>
+              <div style="font-size:24px;font-weight:800;color:var(--primary)">R$ ${totalCompras12m.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">${totalPedidos12m} reposição${totalPedidos12m !== 1 ? "s" : ""}</div>
+            </div>
+            <div style="text-align:center;padding:16px;background:var(--surface2);border-radius:12px">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Ano atual (${now.getFullYear()})</div>
+              <div style="font-size:24px;font-weight:800;color:var(--success)">R$ ${totalComprasYear.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">${finDataYear?.replenishmentCount ?? 0} reposição${(finDataYear?.replenishmentCount ?? 0) !== 1 ? "s" : ""}</div>
+            </div>
+            <div style="text-align:center;padding:16px;background:var(--surface2);border-radius:12px">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Ticket médio / pedido</div>
+              <div style="font-size:24px;font-weight:800;color:var(--warning)">${totalPedidos12m > 0 ? `R$ ${(totalCompras12m / totalPedidos12m).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">média por entrada</div>
+            </div>
+          </div>
+          ${totalCompras12m === 0 ? `<div style="margin-top:16px;padding:12px;background:#F59E0B11;border:1px solid #F59E0B33;border-radius:8px;font-size:13px;color:var(--muted)">Nenhuma compra registrada nos últimos 12 meses. Ao repor estoque, selecione o fornecedor para que os valores apareçam aqui.</div>` : ""}
+        </div>
+      </div>
       <div class="card" style="margin-bottom:24px">
         <div class="card-header">
           <div class="card-title">Produtos Vinculados (${totalProdutos})</div>

@@ -66,6 +66,13 @@ export default function StockScreen() {
   const [movType, setMovType] = useState<MovementType>("in");
   const [movQty, setMovQty] = useState("1");
   const [movReason, setMovReason] = useState("");
+  const [movSupplierId, setMovSupplierId] = useState<number | null>(null);
+
+  const suppliersQuery = trpc.suppliers.list.useQuery(
+    { tenantId: tenantId ?? 0 },
+    { enabled: (tenantId ?? 0) > 0 }
+  );
+  const suppliersList = (suppliersQuery.data ?? []) as Array<{ id: number; name: string; phone: string | null }>;
 
   const stockQuery = trpc.stock.list.useQuery({ tenantId });
   const movementsQuery = trpc.stock.movements.useQuery(
@@ -83,6 +90,7 @@ export default function StockScreen() {
       setShowMovementModal(false);
       setMovQty("1");
       setMovReason("");
+      setMovSupplierId(null);
     },
     onError: (e) => Alert.alert("Erro", e.message),
   });
@@ -107,7 +115,8 @@ export default function StockScreen() {
       quantity: qty,
       reason: movReason || undefined,
       date: today(),
-    });
+      supplierId: movType === "in" && movSupplierId ? movSupplierId : undefined,
+    } as any);
   }
 
   return (
@@ -307,6 +316,42 @@ export default function StockScreen() {
               placeholder="Ex: 10"
               placeholderTextColor={colors.muted}
             />
+
+            {/* Fornecedor — só para entradas */}
+            {movType === "in" && suppliersList.length > 0 && (
+              <>
+                <Text style={[styles.fieldLabel, { color: colors.muted }]}>Fornecedor (opcional)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <Pressable
+                      style={({ pressed }) => ({
+                        paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                        backgroundColor: movSupplierId === null ? colors.primary + "22" : colors.background,
+                        borderWidth: 1, borderColor: movSupplierId === null ? colors.primary : colors.border,
+                        opacity: pressed ? 0.7 : 1,
+                      })}
+                      onPress={() => setMovSupplierId(null)}
+                    >
+                      <Text style={{ color: movSupplierId === null ? colors.primary : colors.muted, fontSize: 13, fontWeight: movSupplierId === null ? "700" : "400" }}>Nenhum</Text>
+                    </Pressable>
+                    {suppliersList.map((s) => (
+                      <Pressable
+                        key={s.id}
+                        style={({ pressed }) => ({
+                          paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                          backgroundColor: movSupplierId === s.id ? colors.primary + "22" : colors.background,
+                          borderWidth: 1, borderColor: movSupplierId === s.id ? colors.primary : colors.border,
+                          opacity: pressed ? 0.7 : 1,
+                        })}
+                        onPress={() => setMovSupplierId(s.id)}
+                      >
+                        <Text style={{ color: movSupplierId === s.id ? colors.primary : colors.muted, fontSize: 13, fontWeight: movSupplierId === s.id ? "700" : "400" }}>{s.name}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            )}
 
             {/* Motivo */}
             <Text style={[styles.fieldLabel, { color: colors.muted }]}>Motivo (opcional)</Text>

@@ -1963,3 +1963,11 @@
 - [x] Painel web: link "Ver detalhes" na listagem de fornecedores
 - [x] App mobile: tela de detalhes do fornecedor com lista de produtos e histórico de entradas
 - [x] App mobile: botão "Ver detalhes" no card do fornecedor abre modal com produtos e histórico
+
+## Sugestões 3, 4 e 5 — Melhorias no Módulo de Fornecedores
+
+- [x] Vincular supplierId ao registrar entrada de estoque no app mobile (tela de Estoque)
+- [x] Seletor de fornecedor no modal de movimentação de estoque (visível apenas para entradas)
+- [x] Endpoint tRPC stock.addMovement já aceitava supplierId (confirmado)
+- [x] Painel web: card de resumo financeiro na página de detalhes do fornecedor (últimos 12 meses, ano atual, ticket médio)
+- [x] App mobile: filtro de produtos por fornecedor na tela de Produtos (chips horizontais no topo da lista)

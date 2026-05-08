@@ -64,6 +64,7 @@ export default function ProductsScreen() {
   const [restockPayment, setRestockPayment] = useState("cash");
   const [restockNote, setRestockNote] = useState("");
   const [restockSupplierId, setRestockSupplierId] = useState<number | null>(null);
+  const [filterSupplierId, setFilterSupplierId] = useState<number | null>(null);
 
   // Formulário de produto
   const [name, setName] = useState("");
@@ -191,7 +192,8 @@ export default function ProductsScreen() {
   }
 
   const products = (productsQuery.data ?? []).filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase())
+    p.name.toLowerCase().includes(search.toLowerCase()) &&
+    (filterSupplierId === null || p.supplierId === filterSupplierId)
   ) as Product[];
 
   const lowStockProducts = products.filter(p => {
@@ -260,6 +262,42 @@ export default function ProductsScreen() {
         <IconSymbol name="magnifyingglass" size={18} color="#888880" />
         <TextInput style={styles.searchInput} value={search} onChangeText={setSearch} placeholder="Buscar produto..." placeholderTextColor="#555" />
       </View>
+
+      {/* Filtro por fornecedor */}
+      {suppliersList.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ maxHeight: 44 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8, gap: 8, flexDirection: "row" }}
+        >
+          <Pressable
+            style={({ pressed }) => ({
+              paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+              backgroundColor: filterSupplierId === null ? "#C9A84C22" : "#1E1E1E",
+              borderWidth: 1, borderColor: filterSupplierId === null ? "#C9A84C" : "#2A2A2A",
+              opacity: pressed ? 0.7 : 1,
+            })}
+            onPress={() => setFilterSupplierId(null)}
+          >
+            <Text style={{ color: filterSupplierId === null ? "#C9A84C" : "#888880", fontSize: 13, fontWeight: filterSupplierId === null ? "700" : "400" }}>Todos</Text>
+          </Pressable>
+          {suppliersList.map((s) => (
+            <Pressable
+              key={s.id}
+              style={({ pressed }) => ({
+                paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+                backgroundColor: filterSupplierId === s.id ? "#C9A84C22" : "#1E1E1E",
+                borderWidth: 1, borderColor: filterSupplierId === s.id ? "#C9A84C" : "#2A2A2A",
+                opacity: pressed ? 0.7 : 1,
+              })}
+              onPress={() => setFilterSupplierId(s.id)}
+            >
+              <Text style={{ color: filterSupplierId === s.id ? "#C9A84C" : "#888880", fontSize: 13, fontWeight: filterSupplierId === s.id ? "700" : "400" }}>{s.name}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
 
       {productsQuery.isLoading ? (
         <ActivityIndicator color="#C9A84C" style={{ marginTop: 40 }} />
