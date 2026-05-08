@@ -7594,6 +7594,7 @@ export function registerAdminRoutes(app: Express): void {
                 <td style="color:var(--muted);font-size:13px">${esc(s.address ?? "—")}</td>
                 <td>
                   <div style="display:flex;gap:8px">
+                    <a href="/admin/fornecedores/${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--primary);color:#0A0A0A">Ver detalhes</a>
                     <a href="/admin/fornecedores?edit=${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">Editar</a>
                     <form method="POST" action="/admin/fornecedores/delete" style="display:inline" onsubmit="return confirm('Excluir este fornecedor?')">
                       <input type="hidden" name="id" value="${s.id}" />
@@ -7641,5 +7642,121 @@ export function registerAdminRoutes(app: Express): void {
     const { id } = req.body;
     await db.deleteSupplier(parseInt(id));
     res.redirect("/admin/fornecedores?deleted=1");
+  });
+
+  // ─── Detalhes do Fornecedor (/admin/fornecedores/:id) ─────────────────────────
+  app.get("/admin/fornecedores/:id", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number; role: string };
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    const _tp = tenantId ? (await db.getTenantById(tenantId))?.plan ?? "" : "";
+    const supplierId = parseInt(req.params.id);
+    if (isNaN(supplierId)) { res.redirect("/admin/fornecedores"); return; }
+
+    const supplier = await db.getSupplierById(supplierId);
+    if (!supplier) { res.redirect("/admin/fornecedores"); return; }
+
+    const [supplierProducts, supplierHistory] = await Promise.all([
+      db.getProductsBySupplier(supplierId, tenantId),
+      tenantId ? db.getStockMovementsBySupplier(supplierId, tenantId, 50) : Promise.resolve([]),
+    ]);
+
+    const totalEntradas = supplierHistory.reduce((s: number, m: any) => s + (m.quantity > 0 ? m.quantity : 0), 0);
+    const totalProdutos = supplierProducts.length;
+    const lowStockCount = supplierProducts.filter((p: any) => p.isActive && (p.stockQuantity ?? p.stock ?? 0) <= (p.minStockAlert ?? 5)).length;
+
+    const infoCard = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+        <div class="card" style="padding:20px">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:4px">Fornecedor</div>
+          <div style="font-size:22px;font-weight:800;color:var(--text)">${esc(supplier.name)}</div>
+          ${supplier.cnpj ? `<div style="font-size:13px;color:var(--muted);margin-top:4px">CNPJ: ${esc(supplier.cnpj)}</div>` : ""}
+          ${supplier.phone ? `<div style="margin-top:8px"><a href="https://wa.me/55${supplier.phone.replace(/\D/g,"")}" target="_blank" style="color:#25D366;font-size:13px;text-decoration:none">📱 ${esc(supplier.phone)}</a></div>` : ""}
+          ${supplier.email ? `<div style="font-size:13px;color:var(--muted);margin-top:4px">✉ ${esc(supplier.email)}</div>` : ""}
+          ${supplier.address ? `<div style="font-size:13px;color:var(--muted);margin-top:4px">📍 ${esc(supplier.address)}</div>` : ""}
+          ${supplier.notes ? `<div style="font-size:13px;color:var(--muted);margin-top:8px;font-style:italic">${esc(supplier.notes)}</div>` : ""}
+        </div>
+        <div style="display:grid;grid-template-rows:1fr 1fr;gap:12px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="card" style="padding:16px;text-align:center">
+              <div style="font-size:28px;font-weight:800;color:var(--primary)">${totalProdutos}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">Produtos vinculados</div>
+            </div>
+            <div class="card" style="padding:16px;text-align:center">
+              <div style="font-size:28px;font-weight:800;color:var(--success)">${totalEntradas}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">Unidades recebidas</div>
+            </div>
+          </div>
+          <div class="card" style="padding:16px;text-align:center;background:${lowStockCount > 0 ? "#FF980012" : "var(--surface)"};border-color:${lowStockCount > 0 ? "#FF980044" : "var(--border)"}">
+            <div style="font-size:28px;font-weight:800;color:${lowStockCount > 0 ? "#FF9800" : "var(--success)"}">⚠ ${lowStockCount}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">Produtos com estoque baixo</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const productsTable = supplierProducts.length === 0
+      ? `<div style="text-align:center;padding:32px;color:var(--muted)">Nenhum produto vinculado a este fornecedor.</div>`
+      : `<table class="table">
+          <thead><tr><th>Produto</th><th>Tipo</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody>
+            ${supplierProducts.map((p: any) => {
+              const stock = p.stockQuantity ?? p.stock ?? 0;
+              const minAlert = p.minStockAlert ?? 5;
+              const isLow = p.isActive && stock <= minAlert;
+              const stockColor = stock === 0 ? "#F44336" : isLow ? "#FF9800" : "#4CAF50";
+              return `<tr>
+                <td><strong>${esc(p.name)}</strong>${p.description ? `<br><small style="color:var(--muted)">${esc(p.description.substring(0,60))}${p.description.length>60?"...":""}</small>` : ""}</td>
+                <td><span style="background:${p.productType==="sale"?"#0a7ea422":"#C9A84C22"};color:${p.productType==="sale"?"#0a7ea4":"#C9A84C"};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">${p.productType==="sale"?"Venda":"Uso Interno"}</span></td>
+                <td style="font-weight:700;color:var(--primary)">R$ ${parseFloat(p.price).toFixed(2).replace(".",",")}</td>
+                <td><span style="color:${stockColor};font-weight:700">${stock}</span>${isLow?` <span style="font-size:11px;color:#FF9800">⚠ baixo</span>`:""}</td>
+                <td><span style="background:${p.isActive?"#4ADE8022":"#EF444422"};color:${p.isActive?"#4ADE80":"#F87171"};padding:3px 10px;border-radius:20px;font-size:12px">${p.isActive?"Ativo":"Inativo"}</span></td>
+                <td><a href="/admin/produtos?edit=${p.id}" class="btn" style="padding:5px 12px;font-size:12px;background:var(--surface2);color:var(--text)">Editar</a></td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>`;
+
+    const historyTable = supplierHistory.length === 0
+      ? `<div style="text-align:center;padding:32px;color:var(--muted)">Nenhuma entrada de estoque registrada para este fornecedor.</div>`
+      : `<table class="table">
+          <thead><tr><th>Data</th><th>Produto</th><th>Qtd. Recebida</th><th>Responsável</th><th>Observação</th></tr></thead>
+          <tbody>
+            ${supplierHistory.map((m: any) => `
+              <tr>
+                <td style="color:var(--muted);font-size:13px">${m.date ? new Date(m.date + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</td>
+                <td><strong>${esc(m.productName ?? "—")}</strong></td>
+                <td><span style="color:#4ADE80;font-weight:700">+${m.quantity}</span></td>
+                <td style="color:var(--muted);font-size:13px">${esc(m.barberName ?? "—")}</td>
+                <td style="color:var(--muted);font-size:13px">${esc(m.reason ?? "—")}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>`;
+
+    const body = `
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <a href="/admin/fornecedores" style="color:var(--muted);text-decoration:none;font-size:13px">← Fornecedores</a>
+        <span style="color:var(--border)">/</span>
+        <span style="font-size:13px;color:var(--text)">${esc(supplier.name)}</span>
+        <a href="/admin/fornecedores?edit=${supplier.id}" class="btn" style="margin-left:auto;padding:8px 18px;font-size:13px;background:var(--surface2);color:var(--text)">Editar fornecedor</a>
+        ${supplier.phone ? `<a href="https://wa.me/55${supplier.phone.replace(/\D/g,"")}" target="_blank" class="btn" style="padding:8px 18px;font-size:13px;background:#25D36622;color:#25D366;border:1px solid #25D36644">📱 WhatsApp</a>` : ""}
+      </div>
+      ${infoCard}
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-header">
+          <div class="card-title">Produtos Vinculados (${totalProdutos})</div>
+          <a href="/admin/produtos" class="btn" style="padding:6px 14px;font-size:12px;background:var(--primary);color:#0A0A0A">+ Novo produto</a>
+        </div>
+        <div class="card-body" style="padding:0">${productsTable}</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Histórico de Entradas de Estoque (${supplierHistory.length})</div>
+        </div>
+        <div class="card-body" style="padding:0">${historyTable}</div>
+      </div>
+    `;
+    res.send(adminLayout(`${esc(supplier.name)} — Fornecedor`, "fornecedores", body, barber?.name, _tp));
   });
 }

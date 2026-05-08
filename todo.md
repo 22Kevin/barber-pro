@@ -1952,3 +1952,14 @@
 - [x] Atualizar tela de produtos no app mobile para exibir/selecionar fornecedor
 - [x] Alerta de estoque baixo no app com botão de contato WhatsApp para o fornecedor
 - [x] Push para GitHub e verificar deploy no Railway
+
+## Sugestões 1 e 2 — Detalhes do Fornecedor
+
+- [x] Função db.getProductsBySupplier(supplierId) — listar produtos vinculados a um fornecedor
+- [x] Função db.getStockMovementsBySupplier(supplierId, tenantId) — histórico de entradas de estoque por fornecedor
+- [x] Endpoint tRPC suppliers.products — listar produtos de um fornecedor
+- [x] Endpoint tRPC suppliers.history — histórico de movimentações de estoque por fornecedor
+- [x] Painel web: página de detalhes do fornecedor (/admin/fornecedores/:id) com produtos vinculados e histórico de pedidos
+- [x] Painel web: link "Ver detalhes" na listagem de fornecedores
+- [x] App mobile: tela de detalhes do fornecedor com lista de produtos e histórico de entradas
+- [x] App mobile: botão "Ver detalhes" no card do fornecedor abre modal com produtos e histórico

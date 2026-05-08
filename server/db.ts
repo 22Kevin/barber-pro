@@ -2715,6 +2715,50 @@ export async function deleteSupplier(id: number): Promise<void> {
   await db.update(suppliers).set({ isActive: false, updatedAt: new Date() }).where(eq(suppliers.id, id));
 }
 
+export async function getProductsBySupplier(supplierId: number, tenantId?: number | null) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(products.supplierId, supplierId)];
+  if (tenantId) conditions.push(eq(products.tenantId, tenantId));
+  return db.select().from(products)
+    .where(and(...conditions))
+    .orderBy(products.name);
+}
+
+export async function getStockMovementsBySupplier(
+  supplierId: number,
+  tenantId: number,
+  limit = 50
+) {
+  const db = await getDb();
+  if (!db) return [];
+  // Buscar movimentações de entrada (type='in') vinculadas a este fornecedor
+  const moves = await db.select().from(stockMovements)
+    .where(and(
+      eq(stockMovements.supplierId, supplierId),
+      eq(stockMovements.type, "in")
+    ))
+    .orderBy(desc(stockMovements.createdAt))
+    .limit(limit);
+  if (moves.length === 0) return [];
+  // Enriquecer com nome do produto
+  const productIds = [...new Set(moves.map((m) => m.productId))];
+  const productList = await db.select({ id: products.id, name: products.name, tenantId: products.tenantId })
+    .from(products)
+    .where(and(
+      inArray(products.id, productIds),
+      eq(products.tenantId, tenantId)
+    ));
+  const barberList = await db.select({ id: barbers.id, name: barbers.name }).from(barbers);
+  return moves
+    .filter((m) => productList.some((p) => p.id === m.productId))
+    .map((m) => ({
+      ...m,
+      productName: productList.find((p) => p.id === m.productId)?.name ?? "—",
+      barberName: m.barberId ? barberList.find((b) => b.id === m.barberId)?.name ?? "—" : null,
+    }));
+}
+
 // ─── Error Logs ───────────────────────────────────────────────────────────────
 export async function insertErrorLog(data: {
   source?: string;

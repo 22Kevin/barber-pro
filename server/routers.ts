@@ -2463,6 +2463,12 @@ export const appRouter = router({
     delete: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteSupplier(input.id)),
+    products: publicProcedure
+      .input(z.object({ supplierId: z.number(), tenantId: z.number().optional() }))
+      .query(({ input }) => db.getProductsBySupplier(input.supplierId, input.tenantId)),
+    history: publicProcedure
+      .input(z.object({ supplierId: z.number(), tenantId: z.number(), limit: z.number().optional() }))
+      .query(({ input }) => db.getStockMovementsBySupplier(input.supplierId, input.tenantId, input.limit)),
   }),
 
   // ─── Suporte Interno ─────────────────────────────────────────────────────────
