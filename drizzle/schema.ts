@@ -1,6 +1,7 @@
 import {
   boolean,
   date,
+  index,
   integer,
   numeric,
   pgEnum,
@@ -238,7 +239,12 @@ export const appointments = pgTable("appointments", {
   whatsappReminder1hSent: boolean("whatsappReminder1hSent").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => [
+  index("idx_appointments_barber_date_status").on(t.barberId, t.date, t.status),
+  index("idx_appointments_client_id").on(t.clientId),
+  index("idx_appointments_date").on(t.date),
+  index("idx_appointments_status_date").on(t.status, t.date),
+]);
 
 // ─── Vendas ───────────────────────────────────────────────────────────────────
 export const sales = pgTable("sales", {
@@ -257,7 +263,11 @@ export const sales = pgTable("sales", {
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (t) => [
+  index("idx_sales_barber_date").on(t.barberId, t.createdAt),
+  index("idx_sales_client_id").on(t.clientId),
+  index("idx_sales_payment_status").on(t.paymentStatus),
+]);
 
 // ─── Itens de Venda ───────────────────────────────────────────────────────────
 export const saleItems = pgTable("sale_items", {

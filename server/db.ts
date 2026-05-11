@@ -72,14 +72,22 @@ function createPool(): Pool {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     max: 10,
-    min: 2,                          // manter mínimo 2 conexões abertas
-    idleTimeoutMillis: 60000,        // manter conexões ociosas por 60s
-    connectionTimeoutMillis: 10000,  // timeout de conexão de 10s
-    query_timeout: 20000,            // mata queries travadas após 20s
-    statement_timeout: 20000,        // mata statements travados após 20s
+    min: 0,                          // não manter conexões ociosas abertas
+    idleTimeoutMillis: 30000,        // liberar conexões ociosas após 30s
+    connectionTimeoutMillis: 15000,  // timeout de conexão de 15s
+    query_timeout: 30000,            // mata queries travadas após 30s
+    statement_timeout: 30000,        // mata statements travados após 30s
+    // keepAlive TCP: envia pacotes a cada 30s para manter o proxy do Railway ativo
+    // O proxy Railway fecha conexões ociosas após ~5min; keepAlive de 30s previne isso
     keepAlive: true,
     keepAliveInitialDelayMillis: 10000,
     ssl: { rejectUnauthorized: false },
+  });
+  // Configurar keepAlive TCP no nível do socket para cada nova conexão
+  pool.on('connect', (client: any) => {
+    if (client.connection?.stream?.setKeepAlive) {
+      client.connection.stream.setKeepAlive(true, 30000); // keepAlive a cada 30s
+    }
   });
   pool.on('error', (err: Error) => {
     console.warn('[Database] Pool error, reconectando:', err.message);
@@ -110,7 +118,7 @@ export async function getDb() {
           // Reconectar após 3 segundos
           setTimeout(() => getDb().catch(() => {}), 3000);
         }
-      }, 2 * 60 * 1000); // 2 minutos — bem antes do timeout SSL do banco
+      }, 90 * 1000); // 90 segundos — bem antes do timeout do proxy Railway (~5min)
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
