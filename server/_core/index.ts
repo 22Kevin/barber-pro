@@ -17,7 +17,7 @@ import { startReviewEmailJob } from "../review-job";
 import { startWhatsAppReminderJob } from "../whatsapp-reminder-job";
 import { startSubscriptionReminderJob } from "../subscription-reminder-job";
 import { startBackupJob } from "../backup-job";
-import { runAutoMigrate } from "../auto-migrate";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -560,17 +560,19 @@ async function startServer() {
   // Escuta em 0.0.0.0 para aceitar conexões externas (obrigatório no Railway)
   server.listen(port, "0.0.0.0", async () => {
     console.log(`[api] server listening on port ${port}`);
-    // ─── Migração automática: garante que todas as tabelas/colunas existam no banco ───
+    // ─── Migração Drizzle: aplica automaticamente todas as migrations pendentes no boot ───
     try {
       const { getDb } = await import("../db");
       const dbConn = await getDb();
       if (dbConn) {
-        await runAutoMigrate(dbConn);
+        const migrationsFolder = path.join(__dirname, "../../drizzle");
+        await migrate(dbConn, { migrationsFolder });
+        console.log("[drizzle-migrate] Migrations aplicadas com sucesso");
       } else {
-        console.warn("[auto-migrate] Banco não disponível no boot — migração adiada");
+        console.warn("[drizzle-migrate] Banco não disponível no boot — migração adiada");
       }
     } catch (migrateErr: any) {
-      console.error("[auto-migrate] Erro durante migração automática:", migrateErr?.message ?? migrateErr);
+      console.error("[drizzle-migrate] Erro durante migração:", migrateErr?.message ?? migrateErr);
       // Não encerra o servidor — continua mesmo se a migração falhar
     }
     // Iniciar job de e-mail de avaliação pós-atendimento
