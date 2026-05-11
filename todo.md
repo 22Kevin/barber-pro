@@ -1988,3 +1988,11 @@
 - [x] Aplicar barberProcedure nas mutations críticas do routers.ts
 - [x] Atualizar cliente tRPC no app mobile para enviar token JWT no header
 - [x] Atualizar hook useBarberAuth para armazenar JWT no SecureStore (via saveBarberJwt no login.tsx e removeBarberJwt no logout)
+
+## Melhorias de Segurança — Round 2
+
+- [ ] Proteger settings.update, sales.create, appointments.update/delete com barberProcedure
+- [ ] Implementar refresh token JWT: endpoint /api/auth/refresh no servidor
+- [ ] Lógica de renovação automática no cliente tRPC (interceptar erro 401 e renovar)
+- [ ] Adicionar rate limiting (express-rate-limit) no endpoint /api/trpc
+- [ ] Rate limiting mais restrito nas rotas de login (5 tentativas por minuto por IP)
