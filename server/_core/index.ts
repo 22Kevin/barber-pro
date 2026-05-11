@@ -565,4 +565,16 @@ async function startServer() {
   });
 }
 
+// ─── Handlers globais de erro — evitam que o processo caia por erros não tratados ───
+process.on("uncaughtException", (err) => {
+  console.error("[FATAL] uncaughtException — erro não tratado:", err?.message ?? err);
+  console.error(err?.stack ?? "");
+  // Não encerra o processo: o servidor continua respondendo
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("[FATAL] unhandledRejection — Promise rejeitada sem handler:", reason);
+  // Não encerra o processo: o servidor continua respondendo
+});
+
 startServer().catch(console.error);

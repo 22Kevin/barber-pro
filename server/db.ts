@@ -84,6 +84,18 @@ export async function getDb() {
         console.warn('[Database] Pool error, will reconnect on next request:', err.message);
         resetPool();
       });
+      // Verificar conectividade do pool a cada 5 minutos para evitar conexões mortas
+      setInterval(async () => {
+        if (!_pool) return;
+        try {
+          const client = await _pool.connect();
+          await client.query('SELECT 1');
+          client.release();
+        } catch (pingErr: any) {
+          console.warn('[Database] Ping falhou, reconectando:', pingErr?.message);
+          resetPool();
+        }
+      }, 5 * 60 * 1000);
       _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);

@@ -770,6 +770,7 @@ function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: 
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 async function renderDashboard(req: Request, res: Response) {
+  try {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
   const dateStr = today();
@@ -777,7 +778,10 @@ async function renderDashboard(req: Request, res: Response) {
   const stats = await db.getDashboardStats(dateStr, tenantId);
   const appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
   const barbers = await db.getAllBarbers(tenantId);
-  const lowStockItems = await db.getLowStockProducts(tenantId);
+  const lowStockItems = await db.getLowStockProducts(tenantId).catch((err) => {
+    console.error("[Dashboard] Erro ao buscar produtos com estoque baixo:", err?.message ?? err);
+    return [];
+  });
 
   // Buscar slug para o card de link de agendamento
   const dashTenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
@@ -1027,6 +1031,10 @@ async function renderDashboard(req: Request, res: Response) {
   `;
 
   res.send(adminLayout("Dashboard", "dashboard", body, barber?.name, dashTenant?.plan ?? ""));
+  } catch (dashErr: any) {
+    console.error("[Dashboard] Erro ao renderizar:", dashErr?.message ?? dashErr);
+    res.status(500).send(`<h2>Erro ao carregar o dashboard. <a href="/admin">Tentar novamente</a></h2>`);
+  }
 }
 
 // ─── Agenda ───────────────────────────────────────────────────────────────────
