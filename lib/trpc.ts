@@ -7,6 +7,36 @@ import * as Auth from "@/lib/_core/auth";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
+/**
+ * Decodifica o payload de um JWT sem verificar a assinatura.
+ * Retorna null se o token for inválido.
+ */
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = parts[1];
+    // Base64url → Base64 → JSON
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const json = typeof atob !== "undefined"
+      ? atob(base64)
+      : Buffer.from(base64, "base64").toString("utf8");
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verifica se um JWT está expirado ou prestes a expirar (margem de 60s).
+ */
+function isJwtExpiredOrExpiringSoon(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  if (!payload?.exp) return false; // sem exp = não expira
+  const nowSec = Math.floor(Date.now() / 1000);
+  return payload.exp - nowSec < 60; // expira nos próximos 60 segundos
+}
+
 export const BARBER_REFRESH_JWT_KEY = "barber_refresh_jwt_token";
 
 /**
@@ -129,7 +159,8 @@ export async function tryRefreshBarberToken(): Promise<string | null> {
 
 /**
  * Creates the tRPC client with proper configuration.
- * Call this once in your app's root layout.
+ * Inclui renovação automática do access token JWT quando ele está expirado
+ * ou prestes a expirar (margem de 60 segundos).
  */
 export function createTRPCClient() {
   return trpc.createClient({
@@ -140,10 +171,22 @@ export function createTRPCClient() {
         transformer: superjson,
         async headers() {
           // Prioridade: JWT do barbeiro > token de sessão OAuth
-          const barberToken = await getBarberJwt();
+          let barberToken = await getBarberJwt();
+
           if (barberToken) {
+            // Verificar se o token está expirado ou prestes a expirar
+            if (isJwtExpiredOrExpiringSoon(barberToken)) {
+              // Tentar renovar silenciosamente usando o refresh token
+              const newToken = await tryRefreshBarberToken();
+              if (newToken) {
+                barberToken = newToken;
+              }
+              // Se a renovação falhar, envia o token antigo e deixa o servidor
+              // retornar 401 (o app redirecionará para o login)
+            }
             return { Authorization: `Bearer ${barberToken}` };
           }
+
           const oauthToken = await Auth.getSessionToken();
           return oauthToken ? { Authorization: `Bearer ${oauthToken}` } : {};
         },

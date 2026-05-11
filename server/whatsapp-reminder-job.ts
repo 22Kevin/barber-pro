@@ -16,6 +16,7 @@
  * pode exibir um badge "Lembrete pendente" para o barbeiro enviar manualmente.
  */
 import * as db from "./db";
+import { withRetry } from "./db";
 
 const JOB_INTERVAL_MS = 10 * 60 * 1000; // 10 minutos
 
@@ -53,7 +54,7 @@ async function runWhatsAppReminderJob() {
     const fmtTime = (d: Date) => d.toTimeString().slice(0, 5);
 
     // Buscar todos os agendamentos futuros ativos
-    const upcomingAppts = await db.getUpcomingAppointmentsForReminder();
+    const upcomingAppts = await withRetry(() => db.getUpcomingAppointmentsForReminder());
     if (upcomingAppts.length === 0) return;
 
     let sent24h = 0;
@@ -162,8 +163,9 @@ async function runWhatsAppReminderJob() {
 
 export function startWhatsAppReminderJob() {
   console.log("[whatsapp-reminder] Job de lembretes WhatsApp iniciado (intervalo: 10 min)");
-  // Executar com delay de 60s para o servidor estar pronto
-  setTimeout(runWhatsAppReminderJob, 60_000);
+  // Executar com delay de 120s para garantir que a pool do banco esteja pronta
+  // (o getDb() é lazy e pode não estar inicializado nos primeiros 60s)
+  setTimeout(runWhatsAppReminderJob, 120_000);
   // Depois executar a cada 10 minutos
   setInterval(runWhatsAppReminderJob, JOB_INTERVAL_MS);
 }

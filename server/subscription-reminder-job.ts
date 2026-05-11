@@ -4,6 +4,7 @@
  * e envia push notification + gera link WhatsApp para o cliente
  */
 import * as db from "./db";
+import { withRetry } from "./db";
 
 const JOB_INTERVAL_MS = 30 * 60 * 1000; // 30 minutos
 const DAYS_AHEAD = 3;
@@ -28,7 +29,7 @@ async function runSubscriptionReminderJob() {
   try {
     resetSentDaily();
 
-    const reminders = await db.getUpcomingSubscriptionReminders(DAYS_AHEAD);
+    const reminders = await withRetry(() => db.getUpcomingSubscriptionReminders(DAYS_AHEAD));
     if (reminders.length === 0) return;
 
     let sentCount = 0;

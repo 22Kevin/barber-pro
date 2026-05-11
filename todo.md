@@ -1998,3 +1998,9 @@
 - [x] Funções tryRefreshBarberToken, saveBarberRefreshJwt, getBarberRefreshJwt no lib/trpc.ts
 - [x] Adicionar rate limiting (express-rate-limit) no endpoint /api/trpc (200 req/min por IP)
 - [x] Rate limiting mais restrito nas rotas de login (10 tentativas por minuto por IP+email)
+
+## Melhorias de Segurança e Qualidade — Round 3
+
+- [x] Corrigir job whatsapp-reminder com erro SSL na conexão ao banco: usar withRetry na query principal e aumentar delay inicial para 120s
+- [x] Implementar renovação automática do token JWT no cliente tRPC: verificar expiração via decodeJwtPayload antes de cada requisição e renovar silenciosamente com tryRefreshBarberToken
+- [x] Corrigir erro TypeScript TS1252 em public-routes.ts: converter function declaration para const arrow function

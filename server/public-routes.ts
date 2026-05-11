@@ -4882,7 +4882,7 @@ export function registerPublicRoutes(app: Express): void {
           if (svcRows?.[0]?.durationMinutes) serviceDurationMinutes = svcRows[0].durationMinutes;
         } catch {}
       }
-      function addMin(t: string, mins: number): string {
+      const addMin = (t: string, mins: number): string => {
         const [h, m] = t.split(":").map(Number);
         const total = h * 60 + m + mins;
         return `${Math.floor(total / 60).toString().padStart(2, "0")}:${(total % 60).toString().padStart(2, "00")}:00`;
