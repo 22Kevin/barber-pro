@@ -3,11 +3,14 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Create pnpm store directory (required by .npmrc store-dir=/pnpm/store)
+RUN mkdir -p /pnpm/store
+
 # Install pnpm
 RUN npm install -g pnpm@9.12.0
 
-# Copy package files
-COPY package.json pnpm-lock.yaml* ./
+# Copy package files (including .npmrc so pnpm uses /pnpm/store)
+COPY package.json pnpm-lock.yaml* .npmrc ./
 
 # Install ALL dependencies (including devDependencies for build)
 RUN pnpm install --frozen-lockfile
@@ -28,11 +31,14 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
+# Create pnpm store directory (required by .npmrc store-dir=/pnpm/store)
+RUN mkdir -p /pnpm/store
+
 # Install pnpm
 RUN npm install -g pnpm@9.12.0
 
-# Copy package files
-COPY package.json pnpm-lock.yaml* ./
+# Copy package files (including .npmrc so pnpm uses /pnpm/store)
+COPY package.json pnpm-lock.yaml* .npmrc ./
 
 # Install only production dependencies
 RUN pnpm install --frozen-lockfile --prod
