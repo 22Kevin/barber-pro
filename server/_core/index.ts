@@ -5,6 +5,7 @@ import net from "net";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { rateLimit } from "express-rate-limit";
 import { registerOAuthRoutes } from "./oauth";
 import { registerMercadoPagoRoutes } from "../mp-routes";
 import { registerSuperAdminRoutes } from "../superadmin-routes";
@@ -18,6 +19,46 @@ import { startWhatsAppReminderJob } from "../whatsapp-reminder-job";
 import { startSubscriptionReminderJob } from "../subscription-reminder-job";
 import { startBackupJob } from "../backup-job";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+
+// ─── Rate Limiters ────────────────────────────────────────────────────────────
+/**
+ * Rate limiter geral para /api/trpc — 200 req/min por IP.
+ * Protege contra abuso de API e scraping.
+ */
+const trpcRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 200,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { ok: false, error: "Muitas requisições. Aguarde um momento e tente novamente." },
+  skip: (req) => {
+    // Não limitar requisições de leitura (queries) — apenas mutations e rotas sensíveis
+    // O tRPC usa GET para queries e POST para mutations
+    return req.method === "GET";
+  },
+});
+
+/**
+ * Rate limiter estrito para login — 10 tentativas/min por IP.
+ * Protege contra ataques de força bruta.
+ */
+const loginRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { ok: false, error: "Muitas tentativas de login. Aguarde 1 minuto e tente novamente." },
+  keyGenerator: (req) => {
+    // Usar IP + email como chave para evitar bloqueio de IPs compartilhados
+    try {
+      const body = req.body as Record<string, Record<string, Record<string, string>>>;
+      const email = body?.["0"]?.json?.email ?? "";
+      return `${req.ip ?? "unknown"}:${email}`;
+    } catch {
+      return req.ip ?? "unknown";
+    }
+  },
+});
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -513,6 +554,14 @@ async function startServer() {
       return res.redirect(301, `/pub/${slug}/${subPath}${qs}`);
     } catch { return next(); }
   });
+
+  // ─── Rate Limiting ────────────────────────────────────────────────────────────
+  // Rate limiter estrito para rotas de login (10 tentativas/min por IP+email)
+  app.use("/api/trpc/admin.login", loginRateLimiter);
+  app.use("/api/trpc/admin.refreshToken", loginRateLimiter);
+  app.use("/api/trpc/clientAuth.login", loginRateLimiter);
+  // Rate limiter geral para todas as mutations tRPC (200 req/min por IP)
+  app.use("/api/trpc", trpcRateLimiter);
 
   app.use(
     "/api/trpc",

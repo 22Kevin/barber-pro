@@ -1991,8 +1991,10 @@
 
 ## Melhorias de Segurança — Round 2
 
-- [ ] Proteger settings.update, sales.create, appointments.update/delete com barberProcedure
-- [ ] Implementar refresh token JWT: endpoint /api/auth/refresh no servidor
-- [ ] Lógica de renovação automática no cliente tRPC (interceptar erro 401 e renovar)
-- [ ] Adicionar rate limiting (express-rate-limit) no endpoint /api/trpc
-- [ ] Rate limiting mais restrito nas rotas de login (5 tentativas por minuto por IP)
+- [x] Proteger settings.update, sales.create, appointments.update/delete, workingHours.upsert, coupons.create/update, loyalty.updateConfig/rewards.create/update, appointments.approveOvertime/cancelWithReason/registerPayment com barberProcedure
+- [x] Implementar refresh token JWT: endpoint admin.refreshToken no servidor (30 dias de validade)
+- [x] Access token com curta duração (1 hora) + refresh token salvo no SecureStore
+- [x] Salvar refreshToken no SecureStore após login (login.tsx e googleLogin)
+- [x] Funções tryRefreshBarberToken, saveBarberRefreshJwt, getBarberRefreshJwt no lib/trpc.ts
+- [x] Adicionar rate limiting (express-rate-limit) no endpoint /api/trpc (200 req/min por IP)
+- [x] Rate limiting mais restrito nas rotas de login (10 tentativas por minuto por IP+email)

@@ -5,7 +5,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { TRPCError } from "@trpc/server";
 import { publicProcedure, router, barberProcedure } from "./_core/trpc";
-import { signBarberToken } from "./barber-jwt.js";
+import { signBarberToken, signBarberRefreshToken, verifyBarberRefreshToken } from "./barber-jwt.js";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import * as crypto from "crypto";
@@ -109,8 +109,9 @@ export const appRouter = router({
         if (!barber.passwordHash) throw new Error("Senha não configurada");
         const valid = await comparePassword(input.password, barber.passwordHash);
         if (!valid) throw new Error("Credenciais inválidas");
-        const token = await signBarberToken({ barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any });
-        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, token };
+        const payload = { barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any };
+        const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
+        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, token, refreshToken };
       }),
     setup: publicProcedure
       .input(z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(6) }))
@@ -155,6 +156,20 @@ export const appRouter = router({
         return { success: true, message: "Senha redefinida com sucesso!" };
       }),
 
+    // Renova o access token usando um refresh token válido
+    refreshToken: publicProcedure
+      .input(z.object({ refreshToken: z.string() }))
+      .mutation(async ({ input }) => {
+        const decoded = await verifyBarberRefreshToken(input.refreshToken);
+        if (!decoded) throw new TRPCError({ code: "UNAUTHORIZED", message: "Refresh token inválido ou expirado. Faça login novamente." });
+        // Verificar se o barbeiro ainda está ativo
+        const barber = await db.getBarberById(decoded.barberId);
+        if (!barber || !(barber as any).isActive) throw new TRPCError({ code: "UNAUTHORIZED", message: "Conta inativa. Faça login novamente." });
+        const payload = { barberId: decoded.barberId, tenantId: decoded.tenantId, role: decoded.role };
+        const [newToken, newRefreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
+        return { token: newToken, refreshToken: newRefreshToken };
+      }),
+
     // Login com Google — autentica barbeiro via Google ID
     googleLogin: publicProcedure
       .input(z.object({
@@ -189,7 +204,8 @@ export const appRouter = router({
           await db.updateBarber(barber.id, { photoUrl: input.photoUrl } as any);
         }
 
-        const token = await signBarberToken({ barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any });
+        const payload = { barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any };
+        const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
         return {
           id: barber.id,
           name: barber.name,
@@ -200,6 +216,7 @@ export const appRouter = router({
           specialties: barber.specialties,
           tenantId: barber.tenantId,
           token,
+          refreshToken,
         };
       }),
   }),

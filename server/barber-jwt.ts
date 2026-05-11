@@ -22,7 +22,9 @@ export interface BarberJwtPayload {
 
 const BARBER_JWT_ISSUER = "barber-pro-app";
 const BARBER_JWT_AUDIENCE = "barber-mobile";
-const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+const BARBER_REFRESH_AUDIENCE = "barber-refresh";
+const ACCESS_TOKEN_TTL_SECONDS = 60 * 60; // 1 hora
+const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 dias
 
 function getBarberSecret(): Uint8Array {
   // Usa JWT_SECRET do servidor — mesma chave, namespace diferente via issuer/audience
@@ -31,13 +33,12 @@ function getBarberSecret(): Uint8Array {
 }
 
 /**
- * Gera um JWT assinado para um barbeiro autenticado.
- * Retornado pelo endpoint de login e googleLogin.
+ * Gera um access token JWT (curta duração: 1 hora) para um barbeiro autenticado.
+ * Retornado pelo endpoint de login, googleLogin e refreshToken.
  */
 export async function signBarberToken(payload: BarberJwtPayload): Promise<string> {
   const secretKey = getBarberSecret();
-  const issuedAt = Date.now();
-  const expirationSeconds = Math.floor((issuedAt + ONE_YEAR_MS) / 1000);
+  const now = Math.floor(Date.now() / 1000);
 
   return new SignJWT({
     barberId: payload.barberId,
@@ -47,9 +48,61 @@ export async function signBarberToken(payload: BarberJwtPayload): Promise<string
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuer(BARBER_JWT_ISSUER)
     .setAudience(BARBER_JWT_AUDIENCE)
-    .setIssuedAt(Math.floor(issuedAt / 1000))
-    .setExpirationTime(expirationSeconds)
+    .setIssuedAt(now)
+    .setExpirationTime(now + ACCESS_TOKEN_TTL_SECONDS)
     .sign(secretKey);
+}
+
+/**
+ * Gera um refresh token JWT (longa duração: 30 dias).
+ * Armazenado no SecureStore junto com o access token.
+ * Usado para renovar o access token sem novo login.
+ */
+export async function signBarberRefreshToken(payload: BarberJwtPayload): Promise<string> {
+  const secretKey = getBarberSecret();
+  const now = Math.floor(Date.now() / 1000);
+
+  return new SignJWT({
+    barberId: payload.barberId,
+    tenantId: payload.tenantId,
+    role: payload.role,
+    type: "refresh",
+  })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuer(BARBER_JWT_ISSUER)
+    .setAudience(BARBER_REFRESH_AUDIENCE)
+    .setIssuedAt(now)
+    .setExpirationTime(now + REFRESH_TOKEN_TTL_SECONDS)
+    .sign(secretKey);
+}
+
+/**
+ * Verifica e decodifica um refresh token de barbeiro.
+ * Retorna null se inválido, expirado ou malformado.
+ */
+export async function verifyBarberRefreshToken(token: string): Promise<BarberJwtPayload | null> {
+  try {
+    const secretKey = getBarberSecret();
+    const { payload } = await jwtVerify(token, secretKey, {
+      algorithms: ["HS256"],
+      issuer: BARBER_JWT_ISSUER,
+      audience: BARBER_REFRESH_AUDIENCE,
+    });
+
+    const { barberId, tenantId, role, type } = payload as Record<string, unknown>;
+
+    if (typeof barberId !== "number" || typeof role !== "string" || type !== "refresh") {
+      return null;
+    }
+
+    return {
+      barberId,
+      tenantId: typeof tenantId === "number" ? tenantId : null,
+      role: role as BarberJwtPayload["role"],
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
