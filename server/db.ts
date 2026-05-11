@@ -2544,8 +2544,8 @@ export async function getProductOrdersByTenant(tenantId: number, status?: string
       clientName: clients.name,
       clientPhone: clients.phone,
       productName: products.name,
-      totalPrice: sql<string>`CAST(${products.price} * ${productOrders.quantity} AS CHAR)`,
-      productImageUrl: sql<string | null>`(SELECT url FROM media_files WHERE entityType = 'product' AND entityId = ${productOrders.productId} AND type = 'image' ORDER BY \`order\` ASC LIMIT 1)`,
+      totalPrice: sql<string>`(${products.price} * ${productOrders.quantity})::text`,
+      productImageUrl: sql<string | null>`(SELECT url FROM media_files WHERE "entityType" = 'product' AND "entityId" = ${productOrders.productId} AND type = 'image' ORDER BY "order" ASC LIMIT 1)`,
     })
     .from(productOrders)
     .leftJoin(clients, eq(productOrders.clientId, clients.id))
@@ -2575,8 +2575,8 @@ export async function getProductOrdersByClient(clientId: number, tenantId: numbe
       updatedAt: productOrders.updatedAt,
       productName: products.name,
       productPrice: products.price,
-      totalPrice: sql<string>`CAST(${products.price} * ${productOrders.quantity} AS CHAR)`,
-      productImageUrl: sql<string | null>`(SELECT url FROM media_files WHERE entityType = 'product' AND entityId = ${productOrders.productId} AND type = 'image' ORDER BY \`order\` ASC LIMIT 1)`,
+      totalPrice: sql<string>`(${products.price} * ${productOrders.quantity})::text`,
+      productImageUrl: sql<string | null>`(SELECT url FROM media_files WHERE "entityType" = 'product' AND "entityId" = ${productOrders.productId} AND type = 'image' ORDER BY "order" ASC LIMIT 1)`,
     })
     .from(productOrders)
     .leftJoin(products, eq(productOrders.productId, products.id))
@@ -2663,8 +2663,8 @@ export async function getProductOrderById(id: number) {
       clientName: clients.name,
       clientPhone: clients.phone,
       productName: products.name,
-      totalPrice: sql<string>`CAST(${products.price} * ${productOrders.quantity} AS CHAR)`,
-      productImageUrl: sql<string | null>`(SELECT url FROM media_files WHERE entityType = 'product' AND entityId = ${productOrders.productId} AND type = 'image' ORDER BY \`order\` ASC LIMIT 1)`,
+      totalPrice: sql<string>`(${products.price} * ${productOrders.quantity})::text`,
+      productImageUrl: sql<string | null>`(SELECT url FROM media_files WHERE "entityType" = 'product' AND "entityId" = ${productOrders.productId} AND type = 'image' ORDER BY "order" ASC LIMIT 1)`,
     })
     .from(productOrders)
     .leftJoin(clients, eq(productOrders.clientId, clients.id))
