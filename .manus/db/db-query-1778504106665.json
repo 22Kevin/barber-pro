@@ -1,0 +1,28 @@
+{
+  "query": "SHOW TABLES LIKE 'subscription%'; SHOW TABLES LIKE 'product_orders';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SHOW TABLES LIKE 'subscription%'; SHOW TABLES LIKE 'product_orders';",
+  "rows": [
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP (subscription%)": "subscription_appointments"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP (subscription%)": "subscription_plan_products"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP (subscription%)": "subscription_plan_services"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP (subscription%)": "subscription_plans"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP (subscription%)": "Tables_in_9fdXPX6chg63KWfUcPP4iP (product_orders)"
+    },
+    {
+      "Tables_in_9fdXPX6chg63KWfUcPP4iP (subscription%)": "product_orders"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_9fdXPX6chg63KWfUcPP4iP (subscription%)\nsubscription_appointments\nsubscription_plan_products\nsubscription_plan_services\nsubscription_plans\nTables_in_9fdXPX6chg63KWfUcPP4iP (product_orders)\nproduct_orders\n",
+  "stderr": "",
+  "execution_time_ms": 348
+}

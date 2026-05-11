@@ -1971,3 +1971,11 @@
 - [x] Endpoint tRPC stock.addMovement já aceitava supplierId (confirmado)
 - [x] Painel web: card de resumo financeiro na página de detalhes do fornecedor (últimos 12 meses, ano atual, ticket médio)
 - [x] App mobile: filtro de produtos por fornecedor na tela de Produtos (chips horizontais no topo da lista)
+
+## Correções de Páginas com Carregamento Infinito
+
+- [x] Diagnosticar e corrigir carregamento infinito na página Planos de Assinatura (/admin/planos)
+- [x] Diagnosticar e corrigir carregamento infinito na página Produtos (/admin/produtos)
+- [x] Diagnosticar e corrigir carregamento infinito na página Encomendas (/admin/encomendas)
+- [x] Diagnosticar e corrigir carregamento infinito na página Fornecedores (/admin/fornecedores)
+- [x] Diagnosticar e corrigir carregamento infinito na página Relatórios (/admin/relatorios)

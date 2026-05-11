@@ -1990,6 +1990,7 @@ async function renderServicos(req: Request, res: Response) {
 }
 
 async function renderProdutos(req: Request, res: Response) {
+  try {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
   const tenantId = barber?.tenantId ?? null;
@@ -2146,6 +2147,10 @@ async function renderProdutos(req: Request, res: Response) {
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Produtos", "produtos", body, barber?.name, _tp));
+  } catch (err: any) {
+    console.error('[renderProdutos] Erro:', err?.message);
+    res.send(adminLayout("Produtos", "produtos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/produtos" class="btn btn-primary">Tentar novamente</a></div>`));
+  }
 }
 
 // ─── Financeiro ───────────────────────────────────────────────────────────────
@@ -3017,6 +3022,7 @@ async function renderNovoAgendamento(req: Request, res: Response) {
 
 // ─── Relatórios ───────────────────────────────────────────────────────────────
 async function renderRelatorios(req: Request, res: Response) {
+  try {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
   // Período: últimos 30 dias por padrão
@@ -3330,6 +3336,10 @@ async function renderRelatorios(req: Request, res: Response) {
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Relatórios", "relatorios", body, barber?.name, _tp));
+  } catch (err: any) {
+    console.error('[renderRelatorios] Erro:', err?.message);
+    res.send(adminLayout("Relatórios", "relatorios", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/relatorios" class="btn btn-primary">Tentar novamente</a></div>`));
+  }
 }
 
 // ──// ─── Página do Cliente ───────────────────────────────────────────
@@ -5790,6 +5800,7 @@ export function registerAdminRoutes(app: Express): void {
 
   // ─── Planos de Assinatura ────────────────────────────────────────────────────
   app.get("/admin/planos", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -5953,6 +5964,10 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
     res.send(adminLayout("Planos de Assinatura", "planos", body, barber?.name, _tp));
+    } catch (err: any) {
+      console.error('[/admin/planos] Erro:', err?.message);
+      res.send(adminLayout("Planos de Assinatura", "planos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/planos" class="btn btn-primary">Tentar novamente</a></div>`));
+    }
   });
 
   app.post("/admin/planos", requireAdminAuth, async (req: Request, res: Response) => {
@@ -7347,7 +7362,9 @@ export function registerAdminRoutes(app: Express): void {
 
   // ─── Encomendas de Produtos ────────────────────────────────────────────────
   app.get("/admin/encomendas", requireAdminAuth, async (req: Request, res: Response) => {
-    const barber = (req as any).barber;
+    try {
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
     const statusFilter = (req.query.status as string) || "all";
     const orders = await db.getProductOrdersByTenant(tenantId ?? 0, statusFilter);
@@ -7419,6 +7436,10 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp2 = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
     res.send(adminLayout("Encomendas", "encomendas", body, barber?.name, _tp2));
+    } catch (err: any) {
+      console.error('[/admin/encomendas] Erro:', err?.message);
+      res.send(adminLayout("Encomendas", "encomendas", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/encomendas" class="btn btn-primary">Tentar novamente</a></div>`));
+    }
   });
 
   app.post("/admin-api/order-status", requireAdminAuth, async (req: Request, res: Response) => {
@@ -7536,6 +7557,7 @@ export function registerAdminRoutes(app: Express): void {
 
   // ─── Fornecedores ─────────────────────────────────────────────────────────
   app.get("/admin/fornecedores", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
     const session = (req as any).adminSession as { barberId: number; role: string };
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -7629,6 +7651,10 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     res.send(adminLayout("Fornecedores", "fornecedores", body, barber?.name, _tp));
+    } catch (err: any) {
+      console.error('[/admin/fornecedores] Erro:', err?.message);
+      res.send(adminLayout("Fornecedores", "fornecedores", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/fornecedores" class="btn btn-primary">Tentar novamente</a></div>`));
+    }
   });
 
   app.post("/admin/fornecedores", requireAdminAuth, async (req: Request, res: Response) => {

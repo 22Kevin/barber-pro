@@ -74,17 +74,19 @@ export async function getDb() {
       _pool = new Pool({
         connectionString: process.env.DATABASE_URL,
         max: 10,
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 10000,
+        idleTimeoutMillis: 20000,
+        connectionTimeoutMillis: 8000,
+        query_timeout: 15000,        // mata queries travadas após 15s
+        statement_timeout: 15000,    // mata statements travados após 15s
         keepAlive: true,
-        keepAliveInitialDelayMillis: 10000,
+        keepAliveInitialDelayMillis: 5000,
         ssl: { rejectUnauthorized: false },
       });
       _pool.on('error', (err: Error) => {
         console.warn('[Database] Pool error, will reconnect on next request:', err.message);
         resetPool();
       });
-      // Verificar conectividade do pool a cada 5 minutos para evitar conexões mortas
+      // Verificar conectividade do pool a cada 4 minutos para evitar conexões mortas
       setInterval(async () => {
         if (!_pool) return;
         try {
@@ -95,7 +97,7 @@ export async function getDb() {
           console.warn('[Database] Ping falhou, reconectando:', pingErr?.message);
           resetPool();
         }
-      }, 8 * 60 * 1000); // 8 minutos — antes do timeout SSL do banco (tipicamente 10 min)
+      }, 4 * 60 * 1000); // 4 minutos — bem antes do timeout SSL do banco
       _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
