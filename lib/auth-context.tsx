@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { removeBarberJwt } from "@/lib/trpc";
 
 export type BarberRole = "super_admin" | "barber" | "receptionist";
 
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function logout() {
     setBarber(null);
     await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+    await removeBarberJwt();
   }
 
   async function updateBarber(data: Partial<AuthBarber>) {

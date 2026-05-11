@@ -1979,3 +1979,12 @@
 - [x] Diagnosticar e corrigir carregamento infinito na página Encomendas (/admin/encomendas)
 - [x] Diagnosticar e corrigir carregamento infinito na página Fornecedores (/admin/fornecedores)
 - [x] Diagnosticar e corrigir carregamento infinito na página Relatórios (/admin/relatorios)
+
+## Segurança JWT — App Mobile
+
+- [x] Criar server/barber-jwt.ts com geração e validação de JWT para barbeiros
+- [x] Atualizar login e googleLogin para retornar JWT assinado
+- [x] Criar barberProcedure no server/_core/trpc.ts com validação de JWT
+- [x] Aplicar barberProcedure nas mutations críticas do routers.ts
+- [x] Atualizar cliente tRPC no app mobile para enviar token JWT no header
+- [x] Atualizar hook useBarberAuth para armazenar JWT no SecureStore (via saveBarberJwt no login.tsx e removeBarberJwt no logout)

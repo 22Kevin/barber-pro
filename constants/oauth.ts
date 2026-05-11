@@ -129,3 +129,5 @@ export async function startOAuthLogin(): Promise<string | null> {
   // The OAuth callback will reopen the app via deep link.
   return null;
 }
+
+export const BARBER_JWT_KEY = "barber_jwt_token";

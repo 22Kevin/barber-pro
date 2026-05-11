@@ -15,7 +15,7 @@ import {
 import { router } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useBarberAuth } from "@/lib/auth-context";
-import { trpc } from "@/lib/trpc";
+import { trpc, saveBarberJwt } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { getExpoPushToken } from "@/lib/use-notifications";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -85,6 +85,8 @@ export default function AdminLoginScreen() {
         REMEMBER_ME_KEY,
         JSON.stringify({ email: rememberMe ? email.trim() : "", remember: rememberMe })
       );
+      // Salvar JWT para autenticar mutations protegidas
+      if ((data as any).token) await saveBarberJwt((data as any).token);
       await login(data as any);
       getExpoPushToken()
         .then((token) => {
@@ -100,6 +102,8 @@ export default function AdminLoginScreen() {
 
   const googleLoginMutation = trpc.admin.googleLogin.useMutation({
     onSuccess: async (data) => {
+      // Salvar JWT para autenticar mutations protegidas
+      if ((data as any).token) await saveBarberJwt((data as any).token);
       await login(data as any);
       getExpoPushToken()
         .then((token) => {

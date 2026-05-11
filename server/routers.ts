@@ -4,7 +4,8 @@ import { subscriptionPlanRouter } from "./subscription-plan-router";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { TRPCError } from "@trpc/server";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, router, barberProcedure } from "./_core/trpc";
+import { signBarberToken } from "./barber-jwt.js";
 import * as db from "./db";
 import { storagePut } from "./storage";
 import * as crypto from "crypto";
@@ -108,7 +109,8 @@ export const appRouter = router({
         if (!barber.passwordHash) throw new Error("Senha não configurada");
         const valid = await comparePassword(input.password, barber.passwordHash);
         if (!valid) throw new Error("Credenciais inválidas");
-        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId };
+        const token = await signBarberToken({ barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any });
+        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, token };
       }),
     setup: publicProcedure
       .input(z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(6) }))
@@ -187,6 +189,7 @@ export const appRouter = router({
           await db.updateBarber(barber.id, { photoUrl: input.photoUrl } as any);
         }
 
+        const token = await signBarberToken({ barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any });
         return {
           id: barber.id,
           name: barber.name,
@@ -196,6 +199,7 @@ export const appRouter = router({
           role: barber.role,
           specialties: barber.specialties,
           tenantId: barber.tenantId,
+          token,
         };
       }),
   }),
@@ -203,8 +207,8 @@ export const appRouter = router({
   barbers: router({
     list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getAllBarbers(input?.tenantId)),
     listAll: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getAllBarbersIncludingInactive(input?.tenantId)),
-    reactivate: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.reactivateBarber(input.id)),
-    create: publicProcedure
+    reactivate: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.reactivateBarber(input.id)),
+    create: barberProcedure
       .input(z.object({ name: z.string().min(2), email: z.string().email().optional(), phone: z.string().optional(), password: z.string().min(6), role: z.enum(["super_admin", "barber", "receptionist"]).default("barber"), specialties: z.string().optional(), tenantId: z.number().optional().nullable() }))
       .mutation(async ({ input }) => {
         // Validação de limite de barbeiros por plano
@@ -229,7 +233,7 @@ export const appRouter = router({
         const passwordHash = await hashPassword(input.password);
         return db.createBarber({ ...input, passwordHash, isActive: true });
       }),
-    update: publicProcedure
+    update: barberProcedure
       .input(z.object({ id: z.number(), name: z.string().min(2).optional(), email: z.string().email().optional().nullable(), phone: z.string().optional().nullable(), photoUrl: z.string().optional().nullable(), role: z.enum(["super_admin", "barber", "receptionist"]).optional(), specialties: z.string().optional().nullable(), isActive: z.boolean().optional(), password: z.string().min(6).optional() }))
       .mutation(async ({ input }) => {
         const { id, password, ...data } = input;
@@ -238,7 +242,7 @@ export const appRouter = router({
         await db.updateBarber(id, updateData as any);
         return { success: true };
       }),
-    delete: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBarber(input.id)),
+    delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBarber(input.id)),
     savePushToken: publicProcedure
       .input(z.object({ barberId: z.number(), pushToken: z.string() }))
       .mutation(({ input }) => db.saveBarberPushToken(input.barberId, input.pushToken)),
@@ -288,7 +292,7 @@ export const appRouter = router({
 
   categories: router({
     list: publicProcedure.input(z.object({ type: z.enum(["service", "product"]) })).query(({ input }) => db.getCategoriesByType(input.type)),
-    create: publicProcedure.input(z.object({ name: z.string().min(1), type: z.enum(["service", "product"]) })).mutation(({ input }) => db.createCategory(input.name, input.type)),
+    create: barberProcedure.input(z.object({ name: z.string().min(1), type: z.enum(["service", "product"]) })).mutation(({ input }) => db.createCategory(input.name, input.type)),
   }),
 
   services: router({
@@ -296,16 +300,16 @@ export const appRouter = router({
     listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllServicesWithMedia(input.activeOnly, input.tenantId)),
     listWithMediaAndRatings: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllServicesWithMediaAndRatings(input.activeOnly, input.tenantId)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getServiceById(input.id)),
-    create: publicProcedure
+    create: barberProcedure
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), durationMinutes: z.number().min(5), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true), tenantId: z.number().optional().nullable() }))
       .mutation(({ input }) => db.createService(input as any)),
-    update: publicProcedure
+    update: barberProcedure
       .input(z.object({ id: z.number(), name: z.string().min(1).optional(), description: z.string().optional().nullable(), price: z.string().optional(), durationMinutes: z.number().min(5).optional(), categoryId: z.number().optional().nullable(), isActive: z.boolean().optional() }))
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateService(id, data as any); }),
-    delete: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteService(input.id)),
+    delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteService(input.id)),
     media: router({
       list: publicProcedure.input(z.object({ serviceId: z.number() })).query(({ input }) => db.getMediaByEntity("service", input.serviceId)),
-      delete: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteMediaFile(input.id)),
+      delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteMediaFile(input.id)),
     }),
   }),
 
@@ -313,15 +317,15 @@ export const appRouter = router({
     list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllProducts(input.activeOnly, input.tenantId)),
     listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getAllProductsWithMedia(input.activeOnly, input.tenantId)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getProductById(input.id)),
-    create: publicProcedure
+    create: barberProcedure
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), stock: z.number().min(0).default(0), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true), tenantId: z.number().optional().nullable() }))
       .mutation(({ input }) => db.createProduct(input as any)),
-    update: publicProcedure
+    update: barberProcedure
       .input(z.object({ id: z.number(), name: z.string().min(1).optional(), description: z.string().optional().nullable(), price: z.string().optional(), stock: z.number().min(0).optional(), categoryId: z.number().optional().nullable(), isActive: z.boolean().optional() }))
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateProduct(id, data as any); }),
     media: router({
       list: publicProcedure.input(z.object({ productId: z.number() })).query(({ input }) => db.getMediaByEntity("product", input.productId)),
-      delete: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteMediaFile(input.id)),
+      delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteMediaFile(input.id)),
     }),
   }),
 
@@ -566,8 +570,8 @@ export const appRouter = router({
       }),
     blockedSlots: router({
       get: publicProcedure.input(z.object({ barberId: z.number(), date: z.string() })).query(({ input }) => db.getBlockedSlots(input.barberId, input.date)),
-      create: publicProcedure.input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), reason: z.string().optional() })).mutation(({ input }) => db.createBlockedSlot(input)),
-      delete: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBlockedSlot(input.id)),
+      create: barberProcedure.input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), reason: z.string().optional() })).mutation(({ input }) => db.createBlockedSlot(input)),
+      delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBlockedSlot(input.id)),
     }),
   }),
 
@@ -581,13 +585,13 @@ export const appRouter = router({
 
   expenses: router({
     byDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getExpensesByDateRange(input.startDate, input.endDate, input.tenantId)),
-    create: publicProcedure
+    create: barberProcedure
       .input(z.object({ category: z.string().min(1), description: z.string().min(1), amount: z.string(), date: z.string(), paymentMethod: z.string().optional().nullable(), barberId: z.number().optional().nullable() }))
       .mutation(({ input }) => db.createExpense(input as any)),
-    update: publicProcedure
+    update: barberProcedure
       .input(z.object({ id: z.number(), category: z.string().optional(), description: z.string().optional(), amount: z.string().optional(), date: z.string().optional() }))
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateExpense(id, data as any); }),
-    delete: publicProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteExpense(input.id)),
+    delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteExpense(input.id)),
   }),
 
   coupons: router({
