@@ -95,7 +95,7 @@ export async function getDb() {
           console.warn('[Database] Ping falhou, reconectando:', pingErr?.message);
           resetPool();
         }
-      }, 5 * 60 * 1000);
+      }, 8 * 60 * 1000); // 8 minutos — antes do timeout SSL do banco (tipicamente 10 min)
       _db = drizzle(_pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
