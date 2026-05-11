@@ -66,28 +66,39 @@ function resetPool() {
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _pool: Pool | null = null;
+let _pingInterval: ReturnType<typeof setInterval> | null = null;
+
+function createPool(): Pool {
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 10,
+    min: 2,                          // manter mínimo 2 conexões abertas
+    idleTimeoutMillis: 60000,        // manter conexões ociosas por 60s
+    connectionTimeoutMillis: 10000,  // timeout de conexão de 10s
+    query_timeout: 20000,            // mata queries travadas após 20s
+    statement_timeout: 20000,        // mata statements travados após 20s
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
+    ssl: { rejectUnauthorized: false },
+  });
+  pool.on('error', (err: Error) => {
+    console.warn('[Database] Pool error, reconectando:', err.message);
+    resetPool();
+    // Reconectar após 2 segundos
+    setTimeout(() => getDb().catch(() => {}), 2000);
+  });
+  return pool;
+}
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        max: 10,
-        idleTimeoutMillis: 20000,
-        connectionTimeoutMillis: 8000,
-        query_timeout: 15000,        // mata queries travadas após 15s
-        statement_timeout: 15000,    // mata statements travados após 15s
-        keepAlive: true,
-        keepAliveInitialDelayMillis: 5000,
-        ssl: { rejectUnauthorized: false },
-      });
-      _pool.on('error', (err: Error) => {
-        console.warn('[Database] Pool error, will reconnect on next request:', err.message);
-        resetPool();
-      });
-      // Verificar conectividade do pool a cada 4 minutos para evitar conexões mortas
-      setInterval(async () => {
+      _pool = createPool();
+      _db = drizzle(_pool);
+      // Verificar conectividade do pool a cada 2 minutos para evitar conexões mortas
+      if (_pingInterval) clearInterval(_pingInterval);
+      _pingInterval = setInterval(async () => {
         if (!_pool) return;
         try {
           const client = await _pool.connect();
@@ -96,15 +107,42 @@ export async function getDb() {
         } catch (pingErr: any) {
           console.warn('[Database] Ping falhou, reconectando:', pingErr?.message);
           resetPool();
+          // Reconectar após 3 segundos
+          setTimeout(() => getDb().catch(() => {}), 3000);
         }
-      }, 4 * 60 * 1000); // 4 minutos — bem antes do timeout SSL do banco
-      _db = drizzle(_pool);
+      }, 2 * 60 * 1000); // 2 minutos — bem antes do timeout SSL do banco
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
     }
   }
   return _db;
+}
+
+/**
+ * Executa uma query com retry automático em caso de erro de conexão SSL.
+ * Tenta até 2 vezes antes de lançar o erro.
+ */
+export async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+  let lastErr: any;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastErr = err;
+      const msg = (err?.message ?? "").toLowerCase();
+      const isConnectionError = msg.includes("ssl") || msg.includes("connection") || msg.includes("econnreset") || msg.includes("etimedout") || msg.includes("socket");
+      if (isConnectionError && attempt < retries) {
+        console.warn(`[Database] Erro de conexão (tentativa ${attempt + 1}/${retries}), reconectando...`);
+        resetPool();
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        await getDb(); // reconectar
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
 }
 
 /**

@@ -57,6 +57,51 @@ function today(): string {
   return new Date().toISOString().split("T")[0];
 }
 
+/**
+ * Envolve qualquer handler de rota GET com try/catch global.
+ * Em caso de erro de banco ou erro inesperado, exibe uma página de erro amigável
+ * em vez de deixar a requisição travar ou retornar um erro 500 sem corpo.
+ */
+function withErrorPage(
+  pageName: string,
+  activeMenu: string,
+  fn: (req: Request, res: Response) => Promise<void>
+) {
+  return async (req: Request, res: Response) => {
+    try {
+      await fn(req, res);
+    } catch (err: any) {
+      console.error(`[${pageName}] Erro ao renderizar:`, err?.message ?? err);
+      let barberName = "";
+      let tenantPlan = "";
+      try {
+        const session = (req as any).adminSession as { barberId: number } | undefined;
+        if (session?.barberId) {
+          const b = await db.getBarberById(session.barberId);
+          barberName = b?.name ?? "";
+          if (b?.tenantId) {
+            const t = await db.getTenantById(b.tenantId);
+            tenantPlan = (t as any)?.plan ?? "";
+          }
+        }
+      } catch { /* ignora */ }
+      const retryUrl = req.originalUrl;
+      const errorBody = `
+        <div style="padding:60px 24px;text-align:center;max-width:480px;margin:0 auto">
+          <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+          <h2 style="color:var(--foreground);margin-bottom:8px;font-size:20px">Erro ao carregar página</h2>
+          <p style="color:var(--muted);margin-bottom:24px;font-size:14px;line-height:1.6">
+            Ocorreu um problema de conexão com o banco de dados.<br>
+            Aguarde alguns segundos e tente novamente.
+          </p>
+          <a href="${retryUrl}" class="btn btn-primary" style="display:inline-block;padding:12px 28px;background:var(--primary);color:#0C0C0C;border-radius:10px;font-weight:700;text-decoration:none;font-size:14px">Tentar novamente</a>
+        </div>
+      `;
+      res.status(503).send(adminLayout(pageName, activeMenu, errorBody, barberName, tenantPlan));
+    }
+  };
+}
+
 function monthRange(): { start: string; end: string } {
   const now = new Date();
   const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
@@ -4318,7 +4363,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // Criar agendamento (admin web)
-  app.get("/admin/agenda/novo", requireAdminAuth, (req, res) => renderNovoAgendamento(req, res));
+  app.get("/admin/agenda/novo", requireAdminAuth, withErrorPage("Novo Agendamento", "agenda", renderNovoAgendamento));
   app.post("/admin/agenda/novo", requireAdminAuth, async (req: Request, res: Response) => {
     try {
       const { clientId, serviceId, barberId, date, startTime, notes } = req.body ?? {};
@@ -4433,9 +4478,9 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // Rotas protegidas
-  app.get("/admin", requireAdminAuth, (req, res) => renderDashboard(req, res));
-  app.get("/admin/agenda", requireAdminAuth, (req, res) => renderAgenda(req, res));
-  app.get("/admin/clientes", requireAdminAuth, (req, res) => renderClientes(req, res));
+  app.get("/admin", requireAdminAuth, withErrorPage("Dashboard", "dashboard", renderDashboard));
+  app.get("/admin/agenda", requireAdminAuth, withErrorPage("Agenda", "agenda", renderAgenda));
+  app.get("/admin/clientes", requireAdminAuth, withErrorPage("Clientes", "clientes", renderClientes));
 
   // POST /admin/clientes/novo — Criar novo cliente
   app.post("/admin/clientes/novo", requireAdminAuth, async (req: Request, res: Response) => {
@@ -4488,8 +4533,8 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
-  app.get("/admin/servicos", requireAdminAuth, (req, res) => renderServicos(req, res));
-  app.get("/admin/financeiro", requireAdminAuth, (req, res) => renderFinanceiro(req, res));
+  app.get("/admin/servicos", requireAdminAuth, withErrorPage("Serviços", "servicos", renderServicos));
+  app.get("/admin/financeiro", requireAdminAuth, withErrorPage("Financeiro", "financeiro", renderFinanceiro));
 
   // POST /admin/financeiro/despesa — Criar despesa
   app.post("/admin/financeiro/despesa", requireAdminAuth, async (req: Request, res: Response) => {
@@ -4538,9 +4583,9 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
-  app.get("/admin/configuracoes", requireAdminAuth, (req, res) => renderConfiguracoes(req, res));
-  app.get("/admin/relatorios", requireAdminAuth, (req, res) => renderRelatorios(req, res));
-  app.get("/admin/pagina-cliente", requireAdminAuth, (req, res) => renderPaginaCliente(req, res));
+  app.get("/admin/configuracoes", requireAdminAuth, withErrorPage("Configurações", "configuracoes", renderConfiguracoes));
+  app.get("/admin/relatorios", requireAdminAuth, withErrorPage("Relatórios", "relatorios", renderRelatorios));
+  app.get("/admin/pagina-cliente", requireAdminAuth, withErrorPage("Página do Cliente", "pagina-cliente", renderPaginaCliente));
 
   // POST /admin/pagina-cliente/slug — Alterar slug
   app.post("/admin/pagina-cliente/slug", requireAdminAuth, async (req: Request, res: Response) => {
@@ -4715,10 +4760,10 @@ export function registerAdminRoutes(app: Express): void {
     res.redirect("/admin/produtos?deleted=1");
   });
 
-  app.get("/admin/clientes/:id", requireAdminAuth, (req, res) => renderClienteDetalhe(req, res));
+  app.get("/admin/clientes/:id", requireAdminAuth, withErrorPage("Detalhe do Cliente", "clientes", renderClienteDetalhe));
 
   // ─── Fidelidade ────────────────────────────────────────────────────────────
-  app.get("/admin/fidelidade", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/fidelidade", requireAdminAuth, withErrorPage("Fidelidade", "fidelidade", async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
     const activeTab = (req.query.tab as string) || "programa";
     const tenantId = barber?.tenantId ?? null;
@@ -4923,7 +4968,7 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Fidelidade", "fidelidade", body, barber?.name, _tp));
-  });
+  }));
 
   app.post("/admin/fidelidade/config", requireAdminAuth, async (req: Request, res: Response) => {
     const { isActive, pointsPerService, pointsPerReal, pointsExpireMonths } = req.body;
@@ -4955,7 +5000,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ─── Cupons ────────────────────────────────────────────────────────────────
-  app.get("/admin/cupons", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/cupons", requireAdminAuth, withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
     const tenantId = barber?.tenantId ?? null;
     const allCoupons = await db.getAllCoupons(tenantId);
@@ -5044,7 +5089,7 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Cupons", "cupons", body, barber?.name, _tp));
-  });
+  }));
 
   app.post("/admin/cupons", requireAdminAuth, async (req: Request, res: Response) => {
     const { code, description, discountType, discountValue, minOrderValue, maxUses, validFrom, validUntil } = req.body;
@@ -5068,7 +5113,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ─── Avaliações ─────────────────────────────────────────────────────────────
-  app.get("/admin/avaliacoes", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/avaliacoes", requireAdminAuth, withErrorPage("Avaliações", "avaliacoes", async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
     const tenantId = barber?.tenantId ?? null;
     const recentReviews = await db.getRecentReviews(100, tenantId);
@@ -5139,10 +5184,10 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Avaliações", "avaliacoes", body, barber?.name, _tp));
-  });
+  }));
 
   // ─── Comissões ────────────────────────────────────────────────────────────
-  app.get("/admin/comissoes", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/comissoes", requireAdminAuth, withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
     const tenantId = barber?.tenantId ?? null;
     const configs = await db.listCommissionConfigs(tenantId);
@@ -5253,7 +5298,7 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Comissões", "comissoes", body, barber?.name, _tp));
-  });
+  }));
 
   app.post("/admin/comissoes/config", requireAdminAuth, async (req: Request, res: Response) => {
     const session2 = (req as any).adminSession;
@@ -5269,7 +5314,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ─── Lista de Espera ────────────────────────────────────────────────────────
-  app.get("/admin/lista-espera", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/lista-espera", requireAdminAuth, withErrorPage("Lista de Espera", "lista-espera", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const dateParam = (req.query.date as string) || today();
@@ -5363,7 +5408,7 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Lista de Espera", "lista-espera", body, barber?.name, _tp));
-  });
+  }));
 
   app.post("/admin/lista-espera", requireAdminAuth, async (req: Request, res: Response) => {
     const { clientId, date, barberId, serviceId } = req.body;
@@ -5384,7 +5429,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ─── Assinaturas ────────────────────────────────────────────────────────────
-  app.get("/admin/assinaturas", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/assinaturas", requireAdminAuth, withErrorPage("Assinaturas", "assinaturas", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -5723,7 +5768,7 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
     res.send(adminLayout("Assinaturas", "assinaturas", body, barber?.name, _tp));
-  });
+  }));
 
     app.post("/admin/assinaturas", requireAdminAuth, async (req: Request, res: Response) => {
     const { clientId, barberId, serviceId, startDate, startTime, endTime, intervalWeeks, occurrences, notes } = req.body;
@@ -5799,7 +5844,7 @@ export function registerAdminRoutes(app: Express): void {
 
 
   // ─── Planos de Assinatura ────────────────────────────────────────────────────
-  app.get("/admin/planos", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/planos", requireAdminAuth, withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
     try {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
@@ -5968,7 +6013,7 @@ export function registerAdminRoutes(app: Express): void {
       console.error('[/admin/planos] Erro:', err?.message);
       res.send(adminLayout("Planos de Assinatura", "planos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/planos" class="btn btn-primary">Tentar novamente</a></div>`));
     }
-  });
+  }));
 
   app.post("/admin/planos", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
@@ -6050,7 +6095,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ─── Estoque ─────────────────────────────────────────────────────────────────
-  app.get("/admin/estoque", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/estoque", requireAdminAuth, withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -6201,7 +6246,7 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Estoque", "estoque", body, barber?.name, _tp));
-  });
+  }));
 
   app.post("/admin/estoque/movimentacao", requireAdminAuth, async (req: Request, res: Response) => {
     const { productId, type, quantity, reason, date } = req.body;
@@ -6217,7 +6262,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
     // ─── Histórico de Estoque ─────────────────────────────────────────────
-  app.get("/admin/estoque/:id/historico", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/estoque/:id/historico", requireAdminAuth, withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -6271,10 +6316,10 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
     res.send(adminLayout(`Histórico — ${esc(product.name)}`, "estoque", body, barber?.name, _tp));
-  });
+  }));
 
   // ─── Retorno Automático ─────────────────────────────────────────────
-  app.get("/admin/retorno-automatico", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/retorno-automatico", requireAdminAuth, withErrorPage("Retorno Automático", "retorno-automatico", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -6359,7 +6404,7 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Retorno Automático", "retorno-automatico", body, barber?.name, _tp));
-  });
+  }));
 
   app.post("/admin/retorno-automatico", requireAdminAuth, async (req: Request, res: Response) => {
     const { serviceId, delayDays, messageTemplate, isActive } = req.body;
@@ -6380,7 +6425,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ─  // ─── Promoções (envio segmentado) ───────────────────────────────────────
-  app.get("/admin/promocoes", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/promocoes", requireAdminAuth, withErrorPage("Promoções", "promocoes", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -6496,7 +6541,7 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
     res.send(adminLayout("Promoções", "promocoes", body, barber?.name, _tp));
-  });
+  }));
 
   app.post("/admin/promocoes", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
@@ -6515,7 +6560,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ─── Conversão de Promoções ──────────────────────────────────────────
-  app.get("/admin/conversao-promocoes", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/conversao-promocoes", requireAdminAuth, withErrorPage("Conversão de Promoções", "conversao-promocoes", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -6576,10 +6621,10 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Conversão de Promoções", "conversao-promocoes", body, barber?.name, _tp));
-  });
+  }));
 
   // ─── Meu Perfil ──────────────────────────────────────────────────────────────
-  app.get("/admin/meu-perfil", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/meu-perfil", requireAdminAuth, withErrorPage("Meu Perfil", "meu-perfil", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     if (!barber) { res.redirect("/admin/login"); return; }
@@ -6688,7 +6733,7 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Meu Perfil", "meu-perfil", body, barber?.name, _tp));
-  });
+  }));
   app.post("/admin/meu-perfil", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const { name, email, phone, specialties } = req.body;
@@ -6719,7 +6764,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ─── Chat WhatsApp ────────────────────────────────────────────────────────────
-  app.get("/admin/chat", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/chat", requireAdminAuth, withErrorPage("Chat", "chat", async (req: Request, res: Response) => {
     const session = (req as any).adminSession as { barberId: number; role: string };
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? 1;
@@ -6775,9 +6820,9 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Chat WhatsApp", "chat", body, barber?.name, _tp));
-  });
+  }));
 
-  app.get("/admin/chat/:clientId", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/chat/:clientId", requireAdminAuth, withErrorPage("Chat", "chat", async (req: Request, res: Response) => {
     const session = (req as any).adminSession as { barberId: number; role: string };
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? 1;
@@ -6833,7 +6878,7 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout(`Chat — ${client.name}`, "chat", body, barber?.name, _tp));
-  });
+  }));
 
   app.post("/admin/chat/:clientId", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession as { barberId: number; role: string };
@@ -7163,7 +7208,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ─── Minhas Comissões (role barber) ────────────────────────────────────────
-  app.get("/admin/minhas-comissoes", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/minhas-comissoes", requireAdminAuth, withErrorPage("Minhas Comissões", "minhas-comissoes", async (req: Request, res: Response) => {
     const session = (req as any).adminSession as { barberId: number; role: string };
     const barber = await db.getBarberById(session.barberId);
     const { start, end } = monthRange();
@@ -7209,11 +7254,11 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     res.send(adminLayout("Minhas Comissões", "minhas-comissoes", body, barber?.name, _tp));
-  });
+  }));
 
 
   // ─── Clientes em Órbita ──────────────────────────────────────────────────────
-  app.get("/admin/orbita", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/orbita", requireAdminAuth, withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -7358,10 +7403,10 @@ export function registerAdminRoutes(app: Express): void {
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
     res.send(adminLayout("Clientes em Órbita", "orbita", body, barber?.name, _tp));
-  });
+  }));
 
   // ─── Encomendas de Produtos ────────────────────────────────────────────────
-  app.get("/admin/encomendas", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/encomendas", requireAdminAuth, withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
     try {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
@@ -7440,7 +7485,7 @@ export function registerAdminRoutes(app: Express): void {
       console.error('[/admin/encomendas] Erro:', err?.message);
       res.send(adminLayout("Encomendas", "encomendas", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/encomendas" class="btn btn-primary">Tentar novamente</a></div>`));
     }
-  });
+  }));
 
   app.post("/admin-api/order-status", requireAdminAuth, async (req: Request, res: Response) => {
     try {
@@ -7556,7 +7601,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ─── Fornecedores ─────────────────────────────────────────────────────────
-  app.get("/admin/fornecedores", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/fornecedores", requireAdminAuth, withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
     try {
     const session = (req as any).adminSession as { barberId: number; role: string };
     const barber = await db.getBarberById(session.barberId);
@@ -7655,7 +7700,7 @@ export function registerAdminRoutes(app: Express): void {
       console.error('[/admin/fornecedores] Erro:', err?.message);
       res.send(adminLayout("Fornecedores", "fornecedores", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/fornecedores" class="btn btn-primary">Tentar novamente</a></div>`));
     }
-  });
+  }));
 
   app.post("/admin/fornecedores", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession as { barberId: number; role: string };
@@ -7679,7 +7724,7 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // ─── Detalhes do Fornecedor (/admin/fornecedores/:id) ─────────────────────────
-  app.get("/admin/fornecedores/:id", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/fornecedores/:id", requireAdminAuth, withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
     const session = (req as any).adminSession as { barberId: number; role: string };
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -7833,5 +7878,5 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     res.send(adminLayout(`${esc(supplier.name)} — Fornecedor`, "fornecedores", body, barber?.name, _tp));
-  });
+  }));
 }

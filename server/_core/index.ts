@@ -17,6 +17,7 @@ import { startReviewEmailJob } from "../review-job";
 import { startWhatsAppReminderJob } from "../whatsapp-reminder-job";
 import { startSubscriptionReminderJob } from "../subscription-reminder-job";
 import { startBackupJob } from "../backup-job";
+import { runAutoMigrate } from "../auto-migrate";
 
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -557,8 +558,21 @@ async function startServer() {
   }
 
   // Escuta em 0.0.0.0 para aceitar conexões externas (obrigatório no Railway)
-  server.listen(port, "0.0.0.0", () => {
+  server.listen(port, "0.0.0.0", async () => {
     console.log(`[api] server listening on port ${port}`);
+    // ─── Migração automática: garante que todas as tabelas/colunas existam no banco ───
+    try {
+      const { getDb } = await import("../db");
+      const dbConn = await getDb();
+      if (dbConn) {
+        await runAutoMigrate(dbConn);
+      } else {
+        console.warn("[auto-migrate] Banco não disponível no boot — migração adiada");
+      }
+    } catch (migrateErr: any) {
+      console.error("[auto-migrate] Erro durante migração automática:", migrateErr?.message ?? migrateErr);
+      // Não encerra o servidor — continua mesmo se a migração falhar
+    }
     // Iniciar job de e-mail de avaliação pós-atendimento
     startReviewEmailJob();
     // Iniciar job de lembretes WhatsApp (24h e 1h antes do agendamento)
