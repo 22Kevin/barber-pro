@@ -71,10 +71,13 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
     color: "#FFFFFF",
     letterSpacing: 0.3,
     flexShrink: 1,
+    minWidth: 0,
   },
   rightSlot: {
     flexShrink: 0,
+    flexGrow: 0,
     alignItems: "flex-end",
+    minWidth: 160,
   },
 });
 }

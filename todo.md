@@ -2004,3 +2004,9 @@
 - [x] Corrigir job whatsapp-reminder com erro SSL na conexão ao banco: usar withRetry na query principal e aumentar delay inicial para 120s
 - [x] Implementar renovação automática do token JWT no cliente tRPC: verificar expiração via decodeJwtPayload antes de cada requisição e renovar silenciosamente com tryRefreshBarberToken
 - [x] Corrigir erro TypeScript TS1252 em public-routes.ts: converter function declaration para const arrow function
+
+## Correções Agenda — Painel Web
+
+- [x] Calendário da Agenda com tamanho maior (aumentar escala visual)
+- [x] Botão "Novo Agendamento" sumindo — corrigir visibilidade e padronizar estilo dourado
+- [x] Botões "Cards" e "Linha do Tempo" sumindo — corrigir visibilidade
