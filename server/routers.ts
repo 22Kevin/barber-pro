@@ -11,7 +11,9 @@ import { storagePut } from "./storage";
 import * as crypto from "crypto";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import * as QRCode from "qrcode";
-import PDFDocument = require("pdfkit");
+import { createRequire } from "module";
+const _require = createRequire(import.meta.url);
+const PDFDocument = _require("pdfkit") as typeof import("pdfkit");
 import { sendPasswordResetEmail, sendSupportTicketNotificationEmail, sendSupportReplyNotificationEmail } from "./email";
 import { invokeLLM } from "./_core/llm";
 import {
@@ -2099,6 +2101,18 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const existing = await db.getTenantBySlug(input.slug);
         return { available: !existing };
+      }),
+    updateSlug: barberProcedure
+      .input(z.object({ slug: z.string().min(2).max(60).regex(/^[a-z0-9-]+$/, "Use apenas letras minúsculas, números e hifens") }))
+      .mutation(async ({ ctx, input }) => {
+        const tenantId = ctx.barber.tenantId;
+        if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant não encontrado." });
+        const existing = await db.getTenantBySlug(input.slug);
+        if (existing && existing.id !== tenantId) {
+          throw new TRPCError({ code: "CONFLICT", message: "Este slug já está em uso por outra barbearia." });
+        }
+        await db.updateTenant(tenantId, { slug: input.slug });
+        return { success: true, slug: input.slug };
       }),
     listTenants: publicProcedure.query(async () => {
       return db.getAllTenants();

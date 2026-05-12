@@ -2013,9 +2013,9 @@
 
 ## Sincronização Página do Cliente — Web = App
 
-- [ ] Remover layout de abas (URL & QR Code, Visual, Domínio, Rastreamento, SEO, Marketplace, Preview) da versão web
-- [ ] Implementar layout de blocos verticais com scroll (igual ao app)
-- [ ] Seção 1: Compartilhar — link da página + botões WhatsApp, Compartilhar, Abrir minha página
-- [ ] Seção 2: QR Code da Barbearia — QR Code grande + botão Baixar QR Code
-- [ ] Seção 3: Aparência — cor principal (paleta + hex), estilo de texto (5 opções), logo, banner, galeria + pré-visualização ao vivo + botão "Salvar Aparência"
-- [ ] Seção 4: Configurações Extras (collapsible) — título da página, descrição, imagem de compartilhamento (upload), Google Analytics, Facebook Pixel + botão "Salvar Configurações"
+- [x] Confirmar que o layout de blocos verticais com scroll já estava correto no sandbox (versão em produção estava desatualizada)
+- [x] Adicionar link direto para agendamento (/agendar) na seção Compartilhar
+- [x] Adicionar botão Facebook (compartilhar página no Facebook)
+- [x] Adicionar botão e modal Mensagem Pronta (mensagem pré-formatada para copiar)
+- [x] Adicionar seção Personalizar URL com campo slug + endpoint updateSlug + confirmação de alteração
+- [x] Corrigir erro de deploy pdfkit (Dynamic require em ESM) usando createRequire

@@ -345,6 +345,15 @@ export default function PaginaClienteScreen() {
   const [gallery, setGallery] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
 
+  // ── Estados: URL personalizada ──────────────────────────────────────────────
+  const [slugInput, setSlugInput] = useState("");
+  const [showMensagemPronta, setShowMensagemPronta] = useState(false);
+
+  // Preencher slug ao carregar tenant
+  useEffect(() => {
+    if (tenant?.slug) setSlugInput(tenant.slug);
+  }, [tenant?.slug]);
+
   // ── Estados: Configurações Extras ──────────────────────────────────────────
   const [showExtras, setShowExtras] = useState(false);
   const [pageTitle, setPageTitle] = useState("");
@@ -378,6 +387,15 @@ export default function PaginaClienteScreen() {
     onError: (err) => Alert.alert("Erro", err.message),
   });
 
+  // Mutation de update do slug
+  const updateSlugMutation = trpc.onboarding.updateSlug.useMutation({
+    onSuccess: (data) => {
+      utils.onboarding.getById.invalidate({ id: tenantId ?? 0 });
+      Alert.alert("URL atualizada!", `Sua nova URL é: ${apiBase}/pub/${data.slug}`);
+    },
+    onError: (err) => Alert.alert("Erro", err.message),
+  });
+
   // ── Cor ativa ───────────────────────────────────────────────────────────────
   const isValidHex = /^#[0-9A-Fa-f]{6}$/.test(customHex.startsWith("#") ? customHex : `#${customHex}`);
   const activeColor = isValidHex ? (customHex.startsWith("#") ? customHex : `#${customHex}`) : primaryColor;
@@ -403,6 +421,26 @@ export default function PaginaClienteScreen() {
         title: "Agendar na Barbearia",
       });
     } catch {}
+  }
+
+  async function handleShareFacebook() {
+    const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}`;
+    Linking.openURL(fbUrl).catch(() => Alert.alert("Erro", "Não foi possível abrir o Facebook."));
+  }
+
+  function handleSaveSlug() {
+    const trimmed = slugInput.trim().toLowerCase();
+    if (!trimmed) return Alert.alert("Erro", "O slug não pode ser vazio.");
+    if (!/^[a-z0-9-]+$/.test(trimmed)) return Alert.alert("Erro", "Use apenas letras minúsculas, números e hifens.");
+    if (trimmed === slug) return Alert.alert("Aviso", "A URL já é essa.");
+    Alert.alert(
+      "Confirmar alteração",
+      `Ao alterar o slug, o link antigo deixará de funcionar.\n\nNova URL: ${apiBase}/pub/${trimmed}`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Confirmar", style: "destructive", onPress: () => updateSlugMutation.mutate({ slug: trimmed }) },
+      ]
+    );
   }
 
   async function handleDownloadQr() {
@@ -493,8 +531,8 @@ export default function PaginaClienteScreen() {
         >
           {publicUrl ? (
             <View>
-              {/* Link da página */}
-              <Text style={[styles.fieldLabel, { color: colors.muted }]}>Link da sua página</Text>
+              {/* Link da página principal */}
+              <Text style={[styles.fieldLabel, { color: colors.muted }]}>Página principal da barbearia</Text>
               <View style={[styles.urlBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
                 <Text style={[styles.urlText, { color: colors.muted }]} numberOfLines={1}>
                   {publicUrl}
@@ -507,7 +545,21 @@ export default function PaginaClienteScreen() {
                 </Pressable>
               </View>
 
-              {/* Botões de ação redesenhados */}
+              {/* Link direto para agendamento */}
+              <Text style={[styles.fieldLabel, { color: colors.muted, marginTop: 10 }]}>Link direto para agendamento</Text>
+              <View style={[styles.urlBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[styles.urlText, { color: colors.muted }]} numberOfLines={1}>
+                  {publicUrl}/agendar
+                </Text>
+                <Pressable
+                  style={({ pressed }) => [styles.urlCopyBtn, pressed && { opacity: 0.6 }]}
+                  onPress={() => handleCopy(`${publicUrl}/agendar`, "Link de agendamento")}
+                >
+                  <IconSymbol name="doc.on.doc" size={15} color="#C9A84C" />
+                </Pressable>
+              </View>
+
+              {/* Botões de ação */}
               <View style={styles.shareButtonsRow}>
                 {/* WhatsApp */}
                 <Pressable
@@ -524,22 +576,94 @@ export default function PaginaClienteScreen() {
                   </View>
                 </Pressable>
 
-                {/* Compartilhar */}
+                {/* Facebook */}
                 <Pressable
-                  style={({ pressed }) => [
-                    styles.shareGenericBtn,
-                    { borderColor: colors.border, backgroundColor: colors.background },
-                    pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-                  ]}
-                  onPress={handleShareLink}
+                  style={({ pressed }) => [{
+                    flex: 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderRadius: 12,
+                    backgroundColor: "#1877F2",
+                    opacity: pressed ? 0.85 : 1,
+                    transform: pressed ? [{ scale: 0.97 }] : [],
+                  }]}
+                  onPress={handleShareFacebook}
                 >
-                  <Text style={styles.shareGenericIcon}>📤</Text>
-                  <View style={styles.shareGenericTextWrap}>
-                    <Text style={[styles.shareGenericTitle, { color: colors.foreground }]} numberOfLines={1}>Compartilhar</Text>
-                    <Text style={[styles.shareGenericSub, { color: colors.muted }]} numberOfLines={1}>Outros apps</Text>
+                  <Text style={{ fontSize: 18 }}>👤</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: "#fff" }} numberOfLines={1}>Facebook</Text>
+                    <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }} numberOfLines={1}>Compartilhar página</Text>
                   </View>
                 </Pressable>
               </View>
+
+              {/* Botão Mensagem Pronta */}
+              <Pressable
+                style={({ pressed }) => [{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  borderRadius: 12,
+                  borderWidth: 1.5,
+                  borderColor: colors.border,
+                  backgroundColor: colors.surface,
+                  marginBottom: 12,
+                  opacity: pressed ? 0.75 : 1,
+                  transform: pressed ? [{ scale: 0.97 }] : [],
+                }]}
+                onPress={() => setShowMensagemPronta(true)}
+              >
+                <Text style={{ fontSize: 16 }}>📝</Text>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Mensagem pronta</Text>
+              </Pressable>
+
+              {/* Modal Mensagem Pronta */}
+              <Modal visible={showMensagemPronta} transparent animationType="fade" onRequestClose={() => setShowMensagemPronta(false)}>
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+                  <View style={{ width: "100%", maxWidth: 400, backgroundColor: colors.surface, borderRadius: 16, padding: 20 }}>
+                    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>Mensagem Pronta</Text>
+                    <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16, lineHeight: 20 }}>
+                      Copie e envie para seus clientes:
+                    </Text>
+                    <View style={{ backgroundColor: colors.background, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
+                      <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 20 }}>
+                        {`Olá! Agora você pode agendar seu horário online diretamente pelo nosso site! É rápido e fácil.
+
+💇 Agende agora: ${publicUrl}
+
+📅 Escolha o dia e horário que preferir
+✅ Confirmação instantânea
+
+Te esperamos!`}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <Pressable
+                        style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: "#C9A84C", alignItems: "center", opacity: pressed ? 0.8 : 1 }]}
+                        onPress={async () => {
+                          await Clipboard.setStringAsync(`Olá! Agora você pode agendar seu horário online diretamente pelo nosso site! É rápido e fácil.\n\n💇 Agende agora: ${publicUrl}\n\n📅 Escolha o dia e horário que preferir\n✅ Confirmação instantânea\n\nTe esperamos!`);
+                          Alert.alert("Copiado!", "Mensagem copiada para a área de transferência.");
+                          setShowMensagemPronta(false);
+                        }}
+                      >
+                        <Text style={{ color: "#0A0A0A", fontWeight: "700", fontSize: 14 }}>Copiar</Text>
+                      </Pressable>
+                      <Pressable
+                        style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}
+                        onPress={() => setShowMensagemPronta(false)}
+                      >
+                        <Text style={{ color: colors.muted, fontSize: 14 }}>Fechar</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
 
               {/* Botão Abrir minha página */}
               <Pressable
@@ -604,9 +728,52 @@ export default function PaginaClienteScreen() {
           )}
         </SectionBlock>
 
-        {/* ══════════════════════════════════════════════════════════════════
+        {/* ══════════════════════════════════════════════════════════════
+            BLOCO 1.5 — PERSONALIZAR URL
+        ══════════════════════════════════════════════════════════════ */}
+        <SectionBlock
+          icon="🔗"
+          title="Personalizar URL"
+          subtitle="O slug é a parte final do link que identifica sua barbearia. Use apenas letras minúsculas, números e hifens."
+          colors={colors}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 0, marginBottom: 8 }}>
+            <View style={[styles.urlBox, { flex: 1, backgroundColor: colors.background, borderColor: colors.border, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}>
+              <Text style={{ fontSize: 13, color: colors.muted, paddingHorizontal: 10 }} numberOfLines={1}>
+                {apiBase.replace(/^https?:\/\//, "")}/pub/
+              </Text>
+              <TextInput
+                style={[styles.urlText, { flex: 1, color: colors.foreground, paddingVertical: 0 }]}
+                value={slugInput}
+                onChangeText={setSlugInput}
+                placeholder={slug || "minha-barbearia"}
+                placeholderTextColor={colors.muted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={handleSaveSlug}
+              />
+            </View>
+          </View>
+          <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>
+            Atenção: Ao alterar o slug, o link antigo deixará de funcionar. Atualize todos os locais onde o link foi compartilhado.
+          </Text>
+          <Pressable
+            style={({ pressed }) => [styles.saveBtn, { backgroundColor: activeColor }, pressed && { opacity: 0.85 }]}
+            onPress={handleSaveSlug}
+            disabled={updateSlugMutation.isPending}
+          >
+            {updateSlugMutation.isPending ? (
+              <ActivityIndicator color="#0A0A0A" size="small" />
+            ) : (
+              <Text style={styles.saveBtnText}>Salvar Nova URL</Text>
+            )}
+          </Pressable>
+        </SectionBlock>
+
+        {/* ══════════════════════════════════════════════════════════════
             BLOCO 2 — APARÊNCIA
-        ══════════════════════════════════════════════════════════════════ */}
+        ══════════════════════════════════════════════════════════════ */}
         <SectionBlock
           icon="🎨"
           title="Aparência"
