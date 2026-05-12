@@ -2019,3 +2019,9 @@
 - [x] Adicionar botão e modal Mensagem Pronta (mensagem pré-formatada para copiar)
 - [x] Adicionar seção Personalizar URL com campo slug + endpoint updateSlug + confirmação de alteração
 - [x] Corrigir erro de deploy pdfkit (Dynamic require em ESM) usando createRequire
+
+## Melhorias Página do Cliente — Round 2
+
+- [x] Corrigir erros do LSP no servidor: criar tsconfig.server.json com esModuleInterop + module esnext; excluir server/ do tsconfig.json principal (0 erros reais)
+- [x] Pré-visualização ao vivo já estava implementada (mini-preview com hero, logo, banner, botão Agendar em tempo real)
+- [x] Adicionar botão "Copiar link" ao lado do botão "Baixar QR Code" na seção QR Code

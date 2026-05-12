@@ -704,13 +704,22 @@ Te esperamos!`}
                         resizeMode="contain"
                       />
                     </View>
-                    <Pressable
-                      style={({ pressed }) => [styles.downloadQrBtn, pressed && { opacity: 0.75 }]}
-                      onPress={handleDownloadQr}
-                    >
-                      <IconSymbol name="arrow.down.circle.fill" size={16} color="#C9A84C" />
-                      <Text style={styles.downloadQrText}>Baixar QR Code</Text>
-                    </Pressable>
+                    <View style={{ flexDirection: "row", gap: 10, marginTop: 0 }}>
+                      <Pressable
+                        style={({ pressed }) => [styles.downloadQrBtn, pressed && { opacity: 0.75 }]}
+                        onPress={handleDownloadQr}
+                      >
+                        <IconSymbol name="arrow.down.circle.fill" size={16} color="#C9A84C" />
+                        <Text style={styles.downloadQrText}>Baixar QR Code</Text>
+                      </Pressable>
+                      <Pressable
+                        style={({ pressed }) => [styles.downloadQrBtn, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.75 }]}
+                        onPress={() => handleCopy(publicUrl)}
+                      >
+                        <IconSymbol name="doc.on.doc" size={16} color={colors.muted} />
+                        <Text style={[styles.downloadQrText, { color: colors.muted }]}>Copiar link</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 ) : (
                   <View style={styles.qrPlaceholder}>
