@@ -5,7 +5,7 @@
  * Execução: pnpm test tests/smtp-resend.test.ts
  */
 import { describe, it, expect } from "vitest";
-import nodemailer from "nodemailer";
+import * as nodemailer from "nodemailer";
 
 const skipIfNoSmtp = !process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS;
 

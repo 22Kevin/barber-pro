@@ -11,7 +11,7 @@ import { storagePut } from "./storage";
 import * as crypto from "crypto";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import * as QRCode from "qrcode";
-import PDFDocument from "pdfkit";
+import PDFDocument = require("pdfkit");
 import { sendPasswordResetEmail, sendSupportTicketNotificationEmail, sendSupportReplyNotificationEmail } from "./email";
 import { invokeLLM } from "./_core/llm";
 import {

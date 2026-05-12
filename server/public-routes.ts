@@ -486,7 +486,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   const serviceMap = Object.fromEntries(serviceList.map((s) => [s.id, s.name]));
 
   // Mapa clientId → nome
-  const clientIds = [...new Set(recentReviews.map((r) => r.clientId))];
+  const clientIds = Array.from(new Set(recentReviews.map((r) => r.clientId)));
   const clientMap: Record<number, string> = {};
   for (const cid of clientIds) {
     const c = await db.getClientById(cid);

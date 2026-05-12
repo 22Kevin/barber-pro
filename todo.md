@@ -2010,3 +2010,12 @@
 - [x] Calendário da Agenda com tamanho maior (aumentar escala visual)
 - [x] Botão "Novo Agendamento" sumindo — corrigir visibilidade e padronizar estilo dourado
 - [x] Botões "Cards" e "Linha do Tempo" sumindo — corrigir visibilidade
+
+## Sincronização Página do Cliente — Web = App
+
+- [ ] Remover layout de abas (URL & QR Code, Visual, Domínio, Rastreamento, SEO, Marketplace, Preview) da versão web
+- [ ] Implementar layout de blocos verticais com scroll (igual ao app)
+- [ ] Seção 1: Compartilhar — link da página + botões WhatsApp, Compartilhar, Abrir minha página
+- [ ] Seção 2: QR Code da Barbearia — QR Code grande + botão Baixar QR Code
+- [ ] Seção 3: Aparência — cor principal (paleta + hex), estilo de texto (5 opções), logo, banner, galeria + pré-visualização ao vivo + botão "Salvar Aparência"
+- [ ] Seção 4: Configurações Extras (collapsible) — título da página, descrição, imagem de compartilhamento (upload), Google Analytics, Facebook Pixel + botão "Salvar Configurações"
