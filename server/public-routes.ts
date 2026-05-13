@@ -1014,14 +1014,14 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       <div class="hero-content">
         ${settings?.logoUrl ? `<img class="hero-logo" src="${escapeHtml(settings.logoUrl)}" alt="${escapeHtml(settings?.shopName ?? tenant.name)}" />` : `<div style="width:90px;height:90px;border-radius:22px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 16px;border:3px solid var(--primary)">💈</div>`}
         <div class="hero-name">${escapeHtml(settings?.shopName ?? tenant.name)}</div>
-        ${shopOpenStatus.isOpen
+        <div id="shop-status-badge">${shopOpenStatus.isOpen
           ? `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,0.18);border:1px solid rgba(34,197,94,0.4);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#4ade80;margin-bottom:8px;letter-spacing:0.3px"><span style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;animation:pulse-green 2s infinite"></span>Aberto agora${shopOpenStatus.closesAt ? ` · fecha às ${shopOpenStatus.closesAt}` : ""}</div>`
           : shopOpenStatus.isLunch && shopOpenStatus.lunchEnd
             ? `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.4);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:8px;letter-spacing:0.3px"><span style="width:7px;height:7px;border-radius:50%;background:#fbbf24;display:inline-block"></span>Horário de almoço · volta às ${shopOpenStatus.lunchEnd}</div>`
             : shopOpenStatus.opensAt
               ? `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#f87171;margin-bottom:8px;letter-spacing:0.3px"><span style="width:7px;height:7px;border-radius:50%;background:#f87171;display:inline-block"></span>Fechado · abre às ${shopOpenStatus.opensAt}</div>`
               : ""
-        }
+        }</div>
         ${address ? `<div class="hero-address">📍 ${escapeHtml(address)}</div>` : ""}
         <a href="${agendamentoUrl}" class="hero-cta">Agendar Horário</a>
       </div>
@@ -1095,6 +1095,30 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     <div class="cta-fixed">
       <a href="${agendamentoUrl}" class="cta-fixed-btn">Agendar Horário</a>
     </div>
+    <script>
+      // Atualização automática do badge Aberto/Fechado a cada 60s
+      (function() {
+        function renderBadge(d) {
+          if (d.isOpen) {
+            return '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,0.18);border:1px solid rgba(34,197,94,0.4);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#4ade80;margin-bottom:8px"><span style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;animation:pulse-green 2s infinite"></span>Aberto agora' + (d.closesAt ? ' · fecha às ' + d.closesAt : '') + '</div>';
+          } else if (d.isLunch && d.lunchEnd) {
+            return '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.4);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:8px"><span style="width:7px;height:7px;border-radius:50%;background:#fbbf24;display:inline-block"></span>Horário de almoço · volta às ' + d.lunchEnd + '</div>';
+          } else if (d.opensAt) {
+            return '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#f87171;margin-bottom:8px"><span style="width:7px;height:7px;border-radius:50%;background:#f87171;display:inline-block"></span>Fechado · abre às ' + d.opensAt + '</div>';
+          }
+          return '';
+        }
+        function refreshBadge() {
+          var badge = document.getElementById('shop-status-badge');
+          if (!badge) return;
+          fetch('/pub-api/shop-status?slug=${slug}')
+            .then(function(r) { return r.json(); })
+            .then(function(d) { badge.innerHTML = renderBadge(d); })
+            .catch(function() { /* silencioso */ });
+        }
+        setInterval(refreshBadge, 60000);
+      })();
+    </script>
   `;
 
    res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings, slug));
@@ -3989,6 +4013,19 @@ export function registerPublicRoutes(app: Express): void {
     await renderPlanDetailPage(req.params.slug, parseInt(req.params.planId), res, req);
   });
 
+  // ─── Endpoint JSON: status de abertura da barbearia ─────────────────────
+  app.get("/pub-api/shop-status", async (req: Request, res: Response) => {
+    try {
+      const slug = req.query.slug as string;
+      if (!slug) { res.status(400).json({ error: "slug obrigatorio" }); return; }
+      const tenant = await db.getTenantBySlug(slug);
+      if (!tenant) { res.status(404).json({ error: "nao encontrado" }); return; }
+      const status = await db.getShopOpenStatus(tenant.id);
+      res.json(status);
+    } catch (e) {
+      res.status(500).json({ error: "erro interno" });
+    }
+  });
   app.post("/pub-api/order-product", async (req: Request, res: Response) => {
     try {
       const { productId, quantity, slug } = req.body;

@@ -2104,3 +2104,9 @@
 - [x] Badge com três estados: Aberto, Horário de almoço, Fechado (horas sem segundos)
 - [x] Botão WhatsApp com mensagem completa incluindo nome da barbearia
 - [x] Aviso de horários não cadastrados na página do cliente (admin)
+
+## Melhoria Round 5 (13/05/2026)
+- [x] Atualização automática do badge Aberto/Fechado via endpoint JSON + setInterval 60s
+
+## Melhoria Round 5 (13/05/2026)
+- [x] Atualização automática do badge Aberto/Fechado via endpoint JSON + setInterval 60s
