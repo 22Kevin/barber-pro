@@ -2043,3 +2043,13 @@
 - [x] Criar Bloco 3: Aparência (cor, banner, logo, galeria)
 - [x] Criar Bloco 4: Configurações Extras recolhido (SEO, Rastreamento, Domínio)
 - [x] Corrigir redirects dos POSTs para apontar para /admin/pagina-cliente sem ?tab=
+
+## Bloco Aparência — Melhorias (Painel Web)
+- [x] Cores pré-definidas com swatches visuais (11 opções)
+- [x] Cor personalizada via color picker + campo hex
+- [x] Seleção de estilo de texto (6 fontes: Moderno, Clássico, Elegante, Bold, Minimalista, Urbano)
+- [x] Upload de logo via arquivo (base64 → S3)
+- [x] Upload de banner/capa via arquivo (base64 → S3)
+- [x] Galeria de fotos com upload múltiplo, preview e remoção individual
+- [x] Preview em tempo real (cor, fonte, logo, banner, galeria)
+- [x] Botão Salvar Aparência com processamento de uploads no servidor

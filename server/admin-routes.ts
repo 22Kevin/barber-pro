@@ -3498,6 +3498,14 @@ async function renderPaginaCliente(req: Request, res: Response) {
   `;
 
   // ─── Bloco 3: Aparência ──────────────────────────────────────────────────────
+  const currentColor = esc(settings?.primaryColor ?? "#C9A84C");
+  const currentFont = esc(settings?.fontStyle ?? "moderno");
+  const currentLogo = esc(settings?.logoUrl ?? "");
+  const currentBanner = esc(settings?.bannerUrl ?? "");
+  const currentGallery = esc(settings?.galleryUrls ?? "");
+  const shopNameDisplay = esc(settings?.shopName ?? "Minha Barbearia");
+  const galleryList = (settings?.galleryUrls ?? "").split("\n").map(u => u.trim()).filter(Boolean);
+
   const blocoAparencia = `
     <div class="card" style="margin-bottom:24px">
       <div class="card-header">
@@ -3506,47 +3514,276 @@ async function renderPaginaCliente(req: Request, res: Response) {
           <div class="card-title">Aparência</div>
         </div>
       </div>
-      <div class="card-body">
-        ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações visuais salvas!</div>` : ""}
-        <form method="POST" action="/admin/pagina-cliente/visual">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
-            <div class="form-group" style="margin-bottom:0">
-              <label class="form-label">Cor Principal da Página</label>
-              <div style="display:flex;align-items:center;gap:12px">
-                <input type="color" name="primaryColor" value="${esc(settings?.primaryColor ?? "#C9A84C")}" id="pcColorPicker" style="width:48px;height:40px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;padding:2px" />
-                <input class="form-input" type="text" id="pcColorHex" value="${esc(settings?.primaryColor ?? "#C9A84C")}" style="flex:1" placeholder="#C9A84C" />
+      <div class="card-body" style="padding-bottom:0">
+        ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações visuais salvas com sucesso!</div>` : ""}
+        <div style="display:grid;grid-template-columns:1fr 420px;gap:28px;align-items:start">
+
+          <!-- Coluna Esquerda: Formulário -->
+          <form id="visualForm" method="POST" action="/admin/pagina-cliente/visual" onsubmit="prepareVisualSubmit()">
+            <input type="hidden" name="primaryColor" id="fPrimaryColor" value="${currentColor}" />
+            <input type="hidden" name="fontStyle" id="fFontStyle" value="${currentFont}" />
+            <input type="hidden" name="logoUrl" id="fLogoUrl" value="${currentLogo}" />
+            <input type="hidden" name="bannerUrl" id="fBannerUrl" value="${currentBanner}" />
+            <input type="hidden" name="galleryUrls" id="fGalleryUrls" value="${currentGallery}" />
+            <input type="hidden" name="logoBase64" id="fLogoBase64" value="" />
+            <input type="hidden" name="logoMime" id="fLogoMime" value="" />
+            <input type="hidden" name="bannerBase64" id="fBannerBase64" value="" />
+            <input type="hidden" name="bannerMime" id="fBannerMime" value="" />
+            <input type="hidden" name="galleryBase64List" id="fGalleryBase64List" value="" />
+            <input type="hidden" name="galleryMimeList" id="fGalleryMimeList" value="" />
+
+            <!-- Cor Principal -->
+            <div class="form-group">
+              <label class="form-label">Cor Principal</label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px" id="colorSwatches">
+                ${["#C9A84C","#E63946","#2196F3","#4CAF50","#9C27B0","#FF5722","#00BCD4","#FF9800","#607D8B","#000000","#FFFFFF"].map(c =>
+                  `<button type="button" onclick="selectColor('${c}')" title="${c}" style="width:32px;height:32px;border-radius:50%;background:${c};border:3px solid ${c === (settings?.primaryColor ?? '#C9A84C') ? '#fff' : 'transparent'};box-shadow:${c === (settings?.primaryColor ?? '#C9A84C') ? '0 0 0 2px var(--gold)' : '0 0 0 1px var(--border)'};cursor:pointer;transition:all 0.15s" id="swatch-${c.replace('#','')}"></button>`
+                ).join('')}
               </div>
-              <div style="font-size:11px;color:var(--muted);margin-top:6px">Cor dos botões e destaques da página.</div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <label style="font-size:12px;color:var(--muted);white-space:nowrap">Cor personalizada (Hex):</label>
+                <input type="color" id="pcColorPicker" value="${currentColor}" oninput="selectColor(this.value)" style="width:40px;height:36px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;padding:2px" />
+                <input class="form-input" type="text" id="pcColorHex" value="${currentColor}" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)){selectColor(this.value)}" placeholder="#C9A84C" style="width:110px;font-family:monospace" />
+              </div>
             </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label class="form-label">URL do Banner</label>
-              <input class="form-input" type="text" name="bannerUrl" value="${esc(settings?.bannerUrl ?? "")}" placeholder="https://..." />
-              <div style="font-size:11px;color:var(--muted);margin-top:6px">Imagem de fundo do hero (1200×400px).</div>
+
+            <!-- Estilo de Texto -->
+            <div class="form-group">
+              <label class="form-label">Estilo de Texto</label>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="fontOptions">
+                ${[
+                  {id:"moderno", label:"Moderno", css:"'Inter', sans-serif"},
+                  {id:"classico", label:"Clássico", css:"'Georgia', serif"},
+                  {id:"elegante", label:"Elegante", css:"'Playfair Display', serif"},
+                  {id:"bold", label:"Bold", css:"'Oswald', sans-serif"},
+                  {id:"minimalista", label:"Minimalista", css:"'Raleway', sans-serif"},
+                  {id:"urbano", label:"Urbano", css:"'Bebas Neue', cursive"},
+                ].map(f =>
+                  `<button type="button" onclick="selectFont('${f.id}')" id="font-${f.id}" style="padding:10px 8px;border-radius:10px;border:2px solid ${(settings?.fontStyle ?? 'moderno') === f.id ? 'var(--gold)' : 'var(--border)'};background:${(settings?.fontStyle ?? 'moderno') === f.id ? 'rgba(201,168,76,0.12)' : 'var(--surface2)'};cursor:pointer;font-family:${f.css};font-size:13px;color:var(--text);transition:all 0.15s">${f.label}</button>`
+                ).join('')}
+              </div>
             </div>
+
+            <!-- Logo -->
+            <div class="form-group">
+              <label class="form-label">Logo da Barbearia</label>
+              <div style="display:flex;align-items:center;gap:14px">
+                <div id="logoPreviewWrap" style="width:72px;height:72px;border-radius:50%;border:2px solid var(--border);overflow:hidden;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  ${currentLogo ? `<img id="logoPreviewImg" src="${currentLogo}" style="width:100%;height:100%;object-fit:cover" />` : `<span id="logoPreviewImg" style="font-size:28px;color:var(--muted)">✂️</span>`}
+                </div>
+                <div style="flex:1">
+                  <label for="logoFileInput" class="btn btn-ghost" style="cursor:pointer;display:inline-block;margin-bottom:6px">📷 Escolher foto</label>
+                  <input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="handleLogoUpload(this)" />
+                  ${currentLogo ? `<div style="font-size:11px;color:var(--muted)">Logo atual salvo. Escolha outro para substituir.</div>` : `<div style="font-size:11px;color:var(--muted)">JPG, PNG ou WebP. Recomendado: 400×400px.</div>`}
+                </div>
+              </div>
+            </div>
+
+            <!-- Banner / Capa -->
+            <div class="form-group">
+              <label class="form-label">Imagem de Capa (Banner)</label>
+              <div id="bannerPreviewWrap" style="width:100%;height:120px;border-radius:12px;border:2px dashed var(--border);overflow:hidden;background:${currentBanner ? `url('${currentBanner}') center/cover` : 'var(--surface2)'};display:flex;align-items:center;justify-content:center;margin-bottom:8px;cursor:pointer;position:relative" onclick="document.getElementById('bannerFileInput').click()">
+                ${currentBanner ? `` : `<div style="text-align:center;color:var(--muted)"><div style="font-size:28px">🖼️</div><div style="font-size:12px;margin-top:4px">Clique para escolher</div></div>`}
+                <div id="bannerOverlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.4);display:${currentBanner ? 'flex' : 'none'};align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;opacity:0;transition:opacity 0.2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">📷 Trocar imagem</div>
+              </div>
+              <input type="file" id="bannerFileInput" accept="image/*" style="display:none" onchange="handleBannerUpload(this)" />
+              <div style="font-size:11px;color:var(--muted)">Recomendado: 1200×400px. Aparece no topo da página.</div>
+            </div>
+
+            <!-- Galeria de Fotos -->
+            <div class="form-group">
+              <label class="form-label">Galeria de Fotos</label>
+              <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+                ${galleryList.map((url, i) => `
+                  <div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
+                    <img src="${esc(url)}" style="width:100%;height:100%;object-fit:cover" />
+                    <button type="button" onclick="removeGalleryItem(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;line-height:1">×</button>
+                  </div>`).join('')}
+                <label for="galleryFileInput" style="aspect-ratio:1;border-radius:8px;border:2px dashed var(--border);background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:12px;gap:4px">
+                  <span style="font-size:22px">+</span>
+                  <span>Adicionar</span>
+                </label>
+              </div>
+              <input type="file" id="galleryFileInput" accept="image/*" multiple style="display:none" onchange="handleGalleryUpload(this)" />
+              <div style="font-size:11px;color:var(--muted)">Selecione várias fotos de uma vez. Máximo recomendado: 12 fotos.</div>
+            </div>
+
+            <div style="padding-bottom:24px">
+              <button type="submit" class="btn btn-primary" style="padding:13px 32px;font-size:15px">💾 Salvar Aparência</button>
+            </div>
+          </form>
+
+          <!-- Coluna Direita: Preview em Tempo Real -->
+          <div style="position:sticky;top:20px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:10px;text-transform:uppercase">Preview em Tempo Real</div>
+            <div id="livePreview" style="border-radius:16px;overflow:hidden;border:1px solid var(--border);box-shadow:0 4px 24px rgba(0,0,0,0.2);background:#fff;max-width:380px">
+              <!-- Banner -->
+              <div id="pvBanner" style="height:110px;background:${currentBanner ? `url('${currentBanner}') center/cover` : 'linear-gradient(135deg,#1a1a1a,#2d2d2d)'};position:relative;display:flex;align-items:flex-end;padding:12px">
+                <div id="pvLogo" style="width:56px;height:56px;border-radius:50%;border:3px solid #fff;overflow:hidden;background:#222;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  ${currentLogo ? `<img src="${currentLogo}" style="width:100%;height:100%;object-fit:cover" id="pvLogoImg" />` : `<span id="pvLogoImg" style="font-size:22px">✂️</span>`}
+                </div>
+              </div>
+              <!-- Info -->
+              <div style="padding:14px 16px">
+                <div id="pvName" style="font-size:17px;font-weight:700;color:#111;margin-bottom:4px;font-family:'Inter',sans-serif">${shopNameDisplay}</div>
+                <div style="font-size:12px;color:#666;margin-bottom:14px">Barbearia &bull; Agendamento Online</div>
+                <!-- Botão de amostra -->
+                <div id="pvBtn" style="display:inline-block;padding:9px 20px;background:${currentColor};color:#fff;border-radius:8px;font-size:13px;font-weight:700;font-family:'Inter',sans-serif">Agendar Agora</div>
+              </div>
+              <!-- Galeria mini -->
+              <div id="pvGallery" style="display:flex;gap:4px;padding:0 16px 14px;overflow:hidden">
+                ${galleryList.slice(0,4).map(url => `<img src="${esc(url)}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0" />`).join('')}
+                ${galleryList.length === 0 ? `<div style="font-size:11px;color:#999">Galeria vazia</div>` : ''}
+              </div>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Assim seus clientes verão a página</div>
           </div>
-          <div class="form-group">
-            <label class="form-label">URL do Logo</label>
-            <input class="form-input" type="text" name="logoUrl" value="${esc(settings?.logoUrl ?? "")}" placeholder="https://..." />
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">Logo exibido na página pública e nos e-mails.</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">URLs da Galeria <span style="color:var(--muted);font-weight:400">(uma por linha)</span></label>
-            <textarea name="galleryUrls" class="form-input" rows="4" placeholder="https://...\nhttps://...">${esc(settings?.galleryUrls ?? "")}</textarea>
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">Fotos exibidas na galeria da página pública.</div>
-          </div>
-          <button type="submit" class="btn btn-primary" style="padding:12px 28px">Salvar Aparência</button>
-        </form>
+        </div>
       </div>
     </div>
+
+    <!-- Fontes do Google para preview -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Oswald:wght@600&family=Raleway:wght@600&family=Bebas+Neue&display=swap" rel="stylesheet">
+
     <script>
-      document.getElementById('pcColorPicker').addEventListener('input', function() {
-        document.getElementById('pcColorHex').value = this.value;
+    // Estado atual
+    var _color = '${currentColor}';
+    var _font = '${currentFont}';
+    var _logoUrl = '${currentLogo}';
+    var _bannerUrl = '${currentBanner}';
+    var _galleryUrls = ${JSON.stringify(galleryList)};
+    var _newGalleryFiles = []; // {base64, mime, previewUrl}
+
+    var fontCssMap = {
+      moderno: "'Inter', sans-serif",
+      classico: "'Georgia', serif",
+      elegante: "'Playfair Display', serif",
+      bold: "'Oswald', sans-serif",
+      minimalista: "'Raleway', sans-serif",
+      urbano: "'Bebas Neue', cursive"
+    };
+
+    function selectColor(c) {
+      _color = c;
+      document.getElementById('fPrimaryColor').value = c;
+      document.getElementById('pcColorHex').value = c;
+      try { document.getElementById('pcColorPicker').value = c; } catch(e){}
+      // Atualizar swatches
+      document.querySelectorAll('#colorSwatches button').forEach(function(btn) {
+        var bc = btn.title;
+        btn.style.border = '3px solid ' + (bc === c ? '#fff' : 'transparent');
+        btn.style.boxShadow = bc === c ? '0 0 0 2px var(--gold)' : '0 0 0 1px var(--border)';
       });
-      document.getElementById('pcColorHex').addEventListener('input', function() {
-        if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
-          document.getElementById('pcColorPicker').value = this.value;
-        }
+      // Preview
+      document.getElementById('pvBtn').style.background = c;
+    }
+
+    function selectFont(id) {
+      _font = id;
+      document.getElementById('fFontStyle').value = id;
+      document.querySelectorAll('#fontOptions button').forEach(function(btn) {
+        var sel = btn.id === 'font-' + id;
+        btn.style.borderColor = sel ? 'var(--gold)' : 'var(--border)';
+        btn.style.background = sel ? 'rgba(201,168,76,0.12)' : 'var(--surface2)';
       });
+      var css = fontCssMap[id] || fontCssMap.moderno;
+      document.getElementById('pvName').style.fontFamily = css;
+      document.getElementById('pvBtn').style.fontFamily = css;
+    }
+
+    function handleLogoUpload(input) {
+      var file = input.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var dataUrl = e.target.result;
+        var base64 = dataUrl.split(',')[1];
+        document.getElementById('fLogoBase64').value = base64;
+        document.getElementById('fLogoMime').value = file.type;
+        // Preview
+        var wrap = document.getElementById('logoPreviewWrap');
+        wrap.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover" />';
+        // Live preview
+        document.getElementById('pvLogo').innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover" />';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleBannerUpload(input) {
+      var file = input.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var dataUrl = e.target.result;
+        var base64 = dataUrl.split(',')[1];
+        document.getElementById('fBannerBase64').value = base64;
+        document.getElementById('fBannerMime').value = file.type;
+        // Preview wrap
+        var wrap = document.getElementById('bannerPreviewWrap');
+        wrap.style.background = "url('" + dataUrl + "') center/cover";
+        wrap.innerHTML = '<div id="bannerOverlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;opacity:0;transition:opacity 0.2s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0">📷 Trocar imagem</div>';
+        // Live preview
+        document.getElementById('pvBanner').style.background = "url('" + dataUrl + "') center/cover";
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleGalleryUpload(input) {
+      var files = Array.from(input.files);
+      files.forEach(function(file) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var dataUrl = e.target.result;
+          _newGalleryFiles.push({ base64: dataUrl.split(',')[1], mime: file.type, previewUrl: dataUrl });
+          renderGalleryGrid();
+          updateGalleryPreview();
+        };
+        reader.readAsDataURL(file);
+      });
+      input.value = '';
+    }
+
+    function removeGalleryItem(idx) {
+      // idx < _galleryUrls.length: remove URL existente; else: remove novo arquivo
+      if (idx < _galleryUrls.length) {
+        _galleryUrls.splice(idx, 1);
+      } else {
+        _newGalleryFiles.splice(idx - _galleryUrls.length, 1);
+      }
+      renderGalleryGrid();
+      updateGalleryPreview();
+    }
+
+    function renderGalleryGrid() {
+      var grid = document.getElementById('galleryGrid');
+      var allItems = _galleryUrls.map(function(url, i) {
+        return '<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--border)"><img src="' + url + '" style="width:100%;height:100%;object-fit:cover" /><button type="button" onclick="removeGalleryItem(' + i + ')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;line-height:1">×</button></div>';
+      }).concat(_newGalleryFiles.map(function(f, j) {
+        var idx = _galleryUrls.length + j;
+        return '<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:2px solid var(--gold)"><img src="' + f.previewUrl + '" style="width:100%;height:100%;object-fit:cover" /><button type="button" onclick="removeGalleryItem(' + idx + ')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;line-height:1">×</button></div>';
+      }));
+      grid.innerHTML = allItems.join('') + '<label for="galleryFileInput" style="aspect-ratio:1;border-radius:8px;border:2px dashed var(--border);background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:12px;gap:4px"><span style="font-size:22px">+</span><span>Adicionar</span></label>';
+    }
+
+    function updateGalleryPreview() {
+      var pvGallery = document.getElementById('pvGallery');
+      var allUrls = _galleryUrls.concat(_newGalleryFiles.map(function(f){ return f.previewUrl; }));
+      if (allUrls.length === 0) {
+        pvGallery.innerHTML = '<div style="font-size:11px;color:#999">Galeria vazia</div>';
+      } else {
+        pvGallery.innerHTML = allUrls.slice(0,4).map(function(url) {
+          return '<img src="' + url + '" style="width:60px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0" />';
+        }).join('');
+      }
+    }
+
+    function prepareVisualSubmit() {
+      // Atualizar galleryUrls (existentes) e listas de novos arquivos
+      document.getElementById('fGalleryUrls').value = _galleryUrls.join('\n');
+      document.getElementById('fGalleryBase64List').value = _newGalleryFiles.map(function(f){ return f.base64; }).join('||');
+      document.getElementById('fGalleryMimeList').value = _newGalleryFiles.map(function(f){ return f.mime; }).join('||');
+    }
     </script>
   `;
 
@@ -4383,10 +4620,74 @@ export function registerAdminRoutes(app: Express): void {
     try {
       const session = (req as any).adminSession as { barberId: number; role: string };
       const barber = await db.getBarberById(session.barberId);
-      const { primaryColor, bannerUrl, logoUrl, galleryUrls } = req.body ?? {};
-      await db.upsertShopSettings({ primaryColor, bannerUrl, logoUrl, galleryUrls }, barber?.tenantId);
+      const {
+        primaryColor, fontStyle,
+        logoUrl: logoUrlRaw, bannerUrl: bannerUrlRaw, galleryUrls: galleryUrlsRaw,
+        logoBase64, logoMime,
+        bannerBase64, bannerMime,
+        galleryBase64List, galleryMimeList,
+      } = req.body ?? {};
+
+      const { storagePut } = await import("./storage");
+      const tenantId = barber?.tenantId;
+
+      // Upload do logo
+      let finalLogoUrl = logoUrlRaw || null;
+      if (logoBase64 && logoMime) {
+        try {
+          const buf = Buffer.from(logoBase64, "base64");
+          const ext = logoMime.includes("png") ? "png" : logoMime.includes("webp") ? "webp" : "jpg";
+          const key = `shop/${tenantId ?? 0}/logo-${Date.now()}.${ext}`;
+          const { url } = await storagePut(key, buf, logoMime);
+          finalLogoUrl = url;
+        } catch (e) { console.error("Erro upload logo:", e); }
+      }
+
+      // Upload do banner
+      let finalBannerUrl = bannerUrlRaw || null;
+      if (bannerBase64 && bannerMime) {
+        try {
+          const buf = Buffer.from(bannerBase64, "base64");
+          const ext = bannerMime.includes("png") ? "png" : bannerMime.includes("webp") ? "webp" : "jpg";
+          const key = `shop/${tenantId ?? 0}/banner-${Date.now()}.${ext}`;
+          const { url } = await storagePut(key, buf, bannerMime);
+          finalBannerUrl = url;
+        } catch (e) { console.error("Erro upload banner:", e); }
+      }
+
+      // Upload das fotos novas da galeria
+      let finalGalleryUrls = galleryUrlsRaw || "";
+      if (galleryBase64List && galleryMimeList) {
+        const base64Arr = galleryBase64List.split("||").filter(Boolean);
+        const mimeArr = galleryMimeList.split("||").filter(Boolean);
+        const newUrls: string[] = [];
+        for (let i = 0; i < base64Arr.length; i++) {
+          try {
+            const buf = Buffer.from(base64Arr[i], "base64");
+            const mime = mimeArr[i] || "image/jpeg";
+            const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+            const key = `shop/${tenantId ?? 0}/gallery-${Date.now()}-${i}.${ext}`;
+            const { url } = await storagePut(key, buf, mime);
+            newUrls.push(url);
+          } catch (e) { console.error("Erro upload galeria:", e); }
+        }
+        if (newUrls.length > 0) {
+          const existing = (finalGalleryUrls || "").split("\n").map((u: string) => u.trim()).filter(Boolean);
+          finalGalleryUrls = [...existing, ...newUrls].join("\n");
+        }
+      }
+
+      await db.upsertShopSettings({
+        primaryColor: primaryColor || null,
+        fontStyle: fontStyle || "moderno",
+        logoUrl: finalLogoUrl,
+        bannerUrl: finalBannerUrl,
+        galleryUrls: finalGalleryUrls || null,
+      }, tenantId);
+
       res.redirect("/admin/pagina-cliente?saved=1");
     } catch (e: any) {
+      console.error("Erro ao salvar visual:", e);
       res.redirect("/admin/pagina-cliente");
     }
   });
