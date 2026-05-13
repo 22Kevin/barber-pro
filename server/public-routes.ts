@@ -512,7 +512,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     }
   } catch {}
   // Status de abertura da barbearia (Aberto/Fechado agora)
-  let shopOpenStatus: { isOpen: boolean; opensAt: string | null; closesAt: string | null; lunchStart: string | null; lunchEnd: string | null } = { isOpen: false, opensAt: null, closesAt: null, lunchStart: null, lunchEnd: null };
+  let shopOpenStatus: { isOpen: boolean; isLunch?: boolean; opensAt: string | null; closesAt: string | null; lunchStart: string | null; lunchEnd: string | null } = { isOpen: false, isLunch: false, opensAt: null, closesAt: null, lunchStart: null, lunchEnd: null };
   try { shopOpenStatus = await db.getShopOpenStatus(tenant.id); } catch {}
 
   // Verificar se o cliente está logado via cookie de sessão
@@ -1016,9 +1016,11 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
         <div class="hero-name">${escapeHtml(settings?.shopName ?? tenant.name)}</div>
         ${shopOpenStatus.isOpen
           ? `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,0.18);border:1px solid rgba(34,197,94,0.4);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#4ade80;margin-bottom:8px;letter-spacing:0.3px"><span style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;animation:pulse-green 2s infinite"></span>Aberto agora${shopOpenStatus.closesAt ? ` · fecha às ${shopOpenStatus.closesAt}` : ""}</div>`
-          : shopOpenStatus.opensAt
-            ? `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#f87171;margin-bottom:8px;letter-spacing:0.3px"><span style="width:7px;height:7px;border-radius:50%;background:#f87171;display:inline-block"></span>Fechado · abre às ${shopOpenStatus.opensAt}</div>`
-            : ""
+          : shopOpenStatus.isLunch && shopOpenStatus.lunchEnd
+            ? `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.4);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#fbbf24;margin-bottom:8px;letter-spacing:0.3px"><span style="width:7px;height:7px;border-radius:50%;background:#fbbf24;display:inline-block"></span>Horário de almoço · volta às ${shopOpenStatus.lunchEnd}</div>`
+            : shopOpenStatus.opensAt
+              ? `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#f87171;margin-bottom:8px;letter-spacing:0.3px"><span style="width:7px;height:7px;border-radius:50%;background:#f87171;display:inline-block"></span>Fechado · abre às ${shopOpenStatus.opensAt}</div>`
+              : ""
         }
         ${address ? `<div class="hero-address">📍 ${escapeHtml(address)}</div>` : ""}
         <a href="${agendamentoUrl}" class="hero-cta">Agendar Horário</a>

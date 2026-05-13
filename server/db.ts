@@ -600,7 +600,9 @@ export async function getShopOpenStatus(tenantId?: number | null) {
   const lunchEndMin = lunchEnd ? toMinutes(lunchEnd) : null;
   const inLunch = lunchStartMin !== null && lunchEndMin !== null && currentMinute >= lunchStartMin && currentMinute < lunchEndMin;
   const isOpen = currentMinute >= startMin && currentMinute < endMin && !inLunch;
-  return { isOpen, opensAt: earliestStart, closesAt: latestEnd, lunchStart, lunchEnd };
+  // Formatar horas sem segundos (HH:MM)
+  const fmt = (t: string | null) => t ? t.slice(0, 5) : null;
+  return { isOpen, isLunch: inLunch, opensAt: fmt(earliestStart), closesAt: fmt(latestEnd), lunchStart: fmt(lunchStart), lunchEnd: fmt(lunchEnd) };
 }
 
 export async function getWorkingHoursForDay(barberId: number, dayOfWeek: number) {

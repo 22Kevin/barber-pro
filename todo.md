@@ -2099,3 +2099,8 @@
 - [x] Badge "Aberto agora" / "Fechado" na página pública baseado nos horários cadastrados
 - [x] Página 404 personalizada para slugs inválidos com logo BarberPro
 - [x] Botão "Visualizar minha página" no bloco Aparência do painel web
+
+## Melhorias Round 4 (13/05/2026)
+- [x] Badge com três estados: Aberto, Horário de almoço, Fechado (horas sem segundos)
+- [x] Botão WhatsApp com mensagem completa incluindo nome da barbearia
+- [x] Aviso de horários não cadastrados na página do cliente (admin)

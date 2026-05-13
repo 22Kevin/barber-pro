@@ -2646,6 +2646,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "";
   const publicUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}` : "";
   const bookingUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}/agendar` : "";
+  const shopNameForShare = settings?.shopName ?? "Minha Barbearia";
 
   // Gerar QR Code como data URL
   let qrDataUrl = "";
@@ -2905,7 +2906,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
                 </div>
               </div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário online: ' + bookingUrl)}" target="_blank" class="btn btn-primary" style="font-size:12px;padding:8px 16px">Compartilhar no WhatsApp</a>
+                <a href="https://wa.me/?text=${encodeURIComponent('Olá! Agende seu horário na ' + shopNameForShare + ' pelo link abaixo:\n\n' + bookingUrl + '\n\nEscolha o dia, horário e serviço diretamente pelo site. É rápido e fácil!')}" target="_blank" class="btn btn-primary" style="font-size:12px;padding:8px 16px">Compartilhar no WhatsApp</a>
                 ${qrDataUrl ? `<a href="${qrDataUrl}" download="qrcode-agendamento.png" class="btn btn-ghost" style="font-size:12px;padding:8px 16px">⬇️ Baixar QR Code</a>` : ""}
               </div>
             </div>
@@ -3401,6 +3402,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
   const currentSlug = tenant?.slug ?? "";
   const publicUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}` : "";
   const bookingUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}/agendar` : "";
+  const shopNameForShare = settings?.shopName ?? "Minha Barbearia";
 
   // Gerar QR Code
   let qrDataUrl = "";
@@ -3411,6 +3413,23 @@ async function renderPaginaCliente(req: Request, res: Response) {
     } catch { /* sem QR Code */ }
   }
 
+  // ─── Verificar se a barbearia tem horários cadastrados ─────────────────────
+  let hasWorkingHours = false;
+  try {
+    if (barber?.id) {
+      const wh = await db.getWorkingHours(barber.id);
+      hasWorkingHours = wh.some((h: any) => h.isWorking);
+    }
+  } catch { /* ignora */ }
+  const blocoAvisoHorarios = !hasWorkingHours ? `
+    <div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.4);border-radius:12px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:flex-start;gap:12px">
+      <span style="font-size:20px;flex-shrink:0;margin-top:1px">⚠️</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:4px">Horários de funcionamento não cadastrados</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.5">Sem horários cadastrados, o badge <strong>Aberto/Fechado</strong> não aparece na sua página pública e os clientes não conseguem visualizar quando a barbearia está aberta. <a href="/admin/configuracoes?tab=horarios" style="color:#fbbf24;text-decoration:underline">Cadastrar horários agora →</a></div>
+      </div>
+    </div>
+  ` : "";
   // ─── Bloco 1: Compartilhar sua Página ─────────────────────────────────────
   const blocoCompartilhar = `
     <div class="card" style="margin-bottom:24px">
@@ -3450,8 +3469,8 @@ async function renderPaginaCliente(req: Request, res: Response) {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                 Facebook
               </a>
-              <button onclick="(function(){var msg='Agende seu horário comigo!\n\nServiços, preços e disponibilidade:\n${esc(bookingUrl)}\n\nClique no link e escolha o melhor horário para você!';navigator.clipboard.writeText(msg).then(function(){var b=event.target.closest('button');var o=b.innerHTML;b.innerHTML='Copiado!';setTimeout(function(){b.innerHTML=o;},2500);});})()" class="btn btn-ghost" style="font-size:13px;padding:10px 18px;display:flex;align-items:center;gap:6px">
-                Mensagem pronta
+              <button onclick="(function(){var msg='Olá! Agende seu horário na ${esc(shopNameForShare)} pelo link abaixo:\n\n${esc(bookingUrl)}\n\nEscolha o dia, horário e serviço diretamente pelo site. É rápido e fácil!';navigator.clipboard.writeText(msg).then(function(){var b=event.target.closest('button');var o=b.innerHTML;b.innerHTML='✔ Copiado!';setTimeout(function(){b.innerHTML=o;},2500);}).catch(function(){prompt('Copie a mensagem abaixo:',msg);});})()" class="btn btn-ghost" style="font-size:13px;padding:10px 18px;display:flex;align-items:center;gap:6px">
+                📲 Mensagem pronta
               </button>
             </div>
           </div>
@@ -4067,7 +4086,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
   `;
 
   // ─── Montar body final sem abas ──────────────────────────────────────────────
-  const body = blocoCompartilhar + blocoQrCode + blocoAparencia + blocoExtras;
+  const body = blocoAvisoHorarios + blocoCompartilhar + blocoQrCode + blocoAparencia + blocoExtras;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Página do Cliente", "pagina-cliente", body, barber?.name, _tp));
