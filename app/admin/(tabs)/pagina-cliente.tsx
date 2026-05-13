@@ -1,12 +1,13 @@
 /**
  * Tela: Minha Página
  *
- * Configuração da página pública da barbearia em 3 blocos:
- *   1. Compartilhar — link + botões redesenhados + QR Code
- *   2. Aparência    — cor, estilo de texto, logo, banner, galeria + pré-visualização ao vivo
- *   3. Configurações extras — SEO simplificado (sem domínio personalizado)
+ * 4 blocos bem organizados:
+ *   1. Compartilhar — link + botões de compartilhamento + mensagem pronta
+ *   2. QR Code      — QR Code da barbearia + baixar
+ *   3. Aparência    — cor, estilo de texto, logo, banner, galeria + pré-visualização ao vivo
+ *   4. Configurações Extras — título, descrição, imagem de compartilhamento, rastreamento
  */
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -205,21 +206,13 @@ function PagePreviewModal({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      {/* Fundo escurecido */}
       <View style={styles.previewOverlay}>
         {/* Moldura de smartphone */}
         <View style={styles.previewPhoneFrame}>
-          {/* Notch */}
           <View style={styles.previewNotch}>
             <View style={styles.previewNotchDot} />
           </View>
-
-          {/* Conteúdo da tela */}
-          <ScrollView
-            style={{ flex: 1 }}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-          >
+          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} bounces={false}>
             {/* Hero com banner */}
             <View style={styles.previewHeroWrap}>
               {bannerUrl ? (
@@ -227,9 +220,7 @@ function PagePreviewModal({
               ) : (
                 <View style={[StyleSheet.absoluteFillObject, { backgroundColor: primaryColor + "33" }]} />
               )}
-              {/* Gradiente simulado */}
               <View style={styles.previewHeroGradient} />
-              {/* Logo */}
               {logoUrl ? (
                 <Image source={{ uri: logoUrl }} style={[styles.previewHeroLogo, { borderColor: primaryColor }]} resizeMode="cover" />
               ) : (
@@ -244,14 +235,12 @@ function PagePreviewModal({
                 <Text style={[styles.previewHeroBadgeText, { color: primaryColor }]}>⭐ 5.0 · Aberto agora</Text>
               </View>
             </View>
-
             {/* Botão CTA */}
             <View style={{ paddingHorizontal: 14, marginTop: 12 }}>
               <View style={[styles.previewCtaBtn, { backgroundColor: primaryColor }]}>
                 <Text style={[styles.previewCtaBtnText, { fontFamily: font.fontFamily }]}>Agendar Agora</Text>
               </View>
             </View>
-
             {/* Serviços */}
             <View style={{ paddingHorizontal: 14, marginTop: 18 }}>
               <Text style={[styles.previewSecTitle, { color: "#F0EEE8", fontFamily: font.fontFamily, fontWeight: font.fontWeight }]}>
@@ -268,7 +257,6 @@ function PagePreviewModal({
                 </View>
               ))}
             </View>
-
             {/* Galeria */}
             {gallery.length > 0 && (
               <View style={{ paddingHorizontal: 14, marginTop: 18 }}>
@@ -284,11 +272,9 @@ function PagePreviewModal({
                 </ScrollView>
               </View>
             )}
-
             <View style={{ height: 32 }} />
           </ScrollView>
         </View>
-
         {/* Etiqueta de estilo e cor */}
         <View style={styles.previewMetaRow}>
           <View style={[styles.previewMetaDot, { backgroundColor: primaryColor }]} />
@@ -296,7 +282,6 @@ function PagePreviewModal({
             {font.label} · {primaryColor.toUpperCase()}
           </Text>
         </View>
-
         {/* Botão fechar */}
         <TouchableOpacity style={[styles.previewCloseCircle, { borderColor: primaryColor }]} onPress={onClose}>
           <Text style={[styles.previewCloseCircleText, { color: primaryColor }]}>✕ Fechar</Text>
@@ -329,7 +314,7 @@ export default function PaginaClienteScreen() {
   const apiBase = getApiBaseUrl();
   const publicUrl = slug ? `${apiBase}/pub/${slug}` : "";
 
-  // QR Code — aponta para a página principal (não mais para /agendar)
+  // QR Code
   const qrQuery = trpc.settings.generateQr.useQuery(
     { url: publicUrl },
     { enabled: !!publicUrl }
@@ -345,14 +330,8 @@ export default function PaginaClienteScreen() {
   const [gallery, setGallery] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
 
-  // ── Estados: URL personalizada ──────────────────────────────────────────────
-  const [slugInput, setSlugInput] = useState("");
+  // ── Estados: Compartilhar ───────────────────────────────────────────────────
   const [showMensagemPronta, setShowMensagemPronta] = useState(false);
-
-  // Preencher slug ao carregar tenant
-  useEffect(() => {
-    if (tenant?.slug) setSlugInput(tenant.slug);
-  }, [tenant?.slug]);
 
   // ── Estados: Configurações Extras ──────────────────────────────────────────
   const [showExtras, setShowExtras] = useState(false);
@@ -387,23 +366,14 @@ export default function PaginaClienteScreen() {
     onError: (err) => Alert.alert("Erro", err.message),
   });
 
-  // Mutation de update do slug
-  const updateSlugMutation = trpc.onboarding.updateSlug.useMutation({
-    onSuccess: (data) => {
-      utils.onboarding.getById.invalidate({ id: tenantId ?? 0 });
-      Alert.alert("URL atualizada!", `Sua nova URL é: ${apiBase}/pub/${data.slug}`);
-    },
-    onError: (err) => Alert.alert("Erro", err.message),
-  });
-
   // ── Cor ativa ───────────────────────────────────────────────────────────────
   const isValidHex = /^#[0-9A-Fa-f]{6}$/.test(customHex.startsWith("#") ? customHex : `#${customHex}`);
   const activeColor = isValidHex ? (customHex.startsWith("#") ? customHex : `#${customHex}`) : primaryColor;
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
-  async function handleCopy(text: string, label: string) {
+  async function handleCopy(text: string, label?: string) {
     await Clipboard.setStringAsync(text);
-    Alert.alert("Copiado!", `${label} copiado para a área de transferência.`);
+    Alert.alert("Copiado!", `${label ?? "Link"} copiado para a área de transferência.`);
   }
 
   async function handleShareWhatsApp() {
@@ -426,21 +396,6 @@ export default function PaginaClienteScreen() {
   async function handleShareFacebook() {
     const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(publicUrl)}`;
     Linking.openURL(fbUrl).catch(() => Alert.alert("Erro", "Não foi possível abrir o Facebook."));
-  }
-
-  function handleSaveSlug() {
-    const trimmed = slugInput.trim().toLowerCase();
-    if (!trimmed) return Alert.alert("Erro", "O slug não pode ser vazio.");
-    if (!/^[a-z0-9-]+$/.test(trimmed)) return Alert.alert("Erro", "Use apenas letras minúsculas, números e hifens.");
-    if (trimmed === slug) return Alert.alert("Aviso", "A URL já é essa.");
-    Alert.alert(
-      "Confirmar alteração",
-      `Ao alterar o slug, o link antigo deixará de funcionar.\n\nNova URL: ${apiBase}/pub/${trimmed}`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Confirmar", style: "destructive", onPress: () => updateSlugMutation.mutate({ slug: trimmed }) },
-      ]
-    );
   }
 
   async function handleDownloadQr() {
@@ -514,6 +469,43 @@ export default function PaginaClienteScreen() {
         gallery={gallery}
       />
 
+      {/* Modal Mensagem Pronta */}
+      <Modal visible={showMensagemPronta} transparent animationType="fade" onRequestClose={() => setShowMensagemPronta(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Mensagem Pronta</Text>
+            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
+              Copie e envie para seus clientes:
+            </Text>
+            <View style={[styles.modalTextBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+              <Text style={[styles.modalText, { color: colors.foreground }]}>
+                {`Olá! Agora você pode agendar seu horário online diretamente pelo nosso site! É rápido e fácil.\n\n💇 Agende agora: ${publicUrl}\n\n📅 Escolha o dia e horário que preferir\n✅ Confirmação instantânea\n\nTe esperamos!`}
+              </Text>
+            </View>
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+              <Pressable
+                style={({ pressed }) => [styles.modalBtnPrimary, { backgroundColor: "#C9A84C", opacity: pressed ? 0.8 : 1 }]}
+                onPress={async () => {
+                  await Clipboard.setStringAsync(
+                    `Olá! Agora você pode agendar seu horário online diretamente pelo nosso site! É rápido e fácil.\n\n💇 Agende agora: ${publicUrl}\n\n📅 Escolha o dia e horário que preferir\n✅ Confirmação instantânea\n\nTe esperamos!`
+                  );
+                  Alert.alert("Copiado!", "Mensagem copiada para a área de transferência.");
+                  setShowMensagemPronta(false);
+                }}
+              >
+                <Text style={styles.modalBtnPrimaryText}>Copiar</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.modalBtnSecondary, { borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}
+                onPress={() => setShowMensagemPronta(false)}
+              >
+                <Text style={[styles.modalBtnSecondaryText, { color: colors.muted }]}>Fechar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: 16, paddingBottom: tabBarHeight }}
@@ -521,7 +513,7 @@ export default function PaginaClienteScreen() {
       >
 
         {/* ══════════════════════════════════════════════════════════════════
-            BLOCO 1 — COMPARTILHAR
+            BLOCO 1 — COMPARTILHAR SUA PÁGINA
         ══════════════════════════════════════════════════════════════════ */}
         <SectionBlock
           icon="🔗"
@@ -559,7 +551,7 @@ export default function PaginaClienteScreen() {
                 </Pressable>
               </View>
 
-              {/* Botões de ação */}
+              {/* Botões de compartilhamento */}
               <View style={styles.shareButtonsRow}>
                 {/* WhatsApp */}
                 <Pressable
@@ -580,8 +572,8 @@ export default function PaginaClienteScreen() {
                 <Pressable
                   style={({ pressed }) => [{
                     flex: 1,
-                    flexDirection: "row",
-                    alignItems: "center",
+                    flexDirection: "row" as const,
+                    alignItems: "center" as const,
                     gap: 8,
                     paddingVertical: 12,
                     paddingHorizontal: 14,
@@ -600,133 +592,33 @@ export default function PaginaClienteScreen() {
                 </Pressable>
               </View>
 
+              {/* Botão Compartilhar link */}
+              <Pressable
+                style={({ pressed }) => [styles.shareGenericFullBtn, { borderColor: colors.border, backgroundColor: colors.background }, pressed && { opacity: 0.75 }]}
+                onPress={handleShareLink}
+              >
+                <Text style={{ fontSize: 16 }}>📤</Text>
+                <Text style={[styles.shareGenericFullText, { color: colors.foreground }]}>Compartilhar link</Text>
+              </Pressable>
+
               {/* Botão Mensagem Pronta */}
               <Pressable
-                style={({ pressed }) => [{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  borderRadius: 12,
-                  borderWidth: 1.5,
-                  borderColor: colors.border,
-                  backgroundColor: colors.surface,
-                  marginBottom: 12,
-                  opacity: pressed ? 0.75 : 1,
-                  transform: pressed ? [{ scale: 0.97 }] : [],
-                }]}
+                style={({ pressed }) => [styles.shareGenericFullBtn, { borderColor: colors.border, backgroundColor: colors.background }, pressed && { opacity: 0.75 }]}
                 onPress={() => setShowMensagemPronta(true)}
               >
                 <Text style={{ fontSize: 16 }}>📝</Text>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Mensagem pronta</Text>
+                <Text style={[styles.shareGenericFullText, { color: colors.foreground }]}>Mensagem pronta</Text>
               </Pressable>
-
-              {/* Modal Mensagem Pronta */}
-              <Modal visible={showMensagemPronta} transparent animationType="fade" onRequestClose={() => setShowMensagemPronta(false)}>
-                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 }}>
-                  <View style={{ width: "100%", maxWidth: 400, backgroundColor: colors.surface, borderRadius: 16, padding: 20 }}>
-                    <Text style={{ fontSize: 16, fontWeight: "700", color: colors.foreground, marginBottom: 12 }}>Mensagem Pronta</Text>
-                    <Text style={{ fontSize: 13, color: colors.muted, marginBottom: 16, lineHeight: 20 }}>
-                      Copie e envie para seus clientes:
-                    </Text>
-                    <View style={{ backgroundColor: colors.background, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 16 }}>
-                      <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 20 }}>
-                        {`Olá! Agora você pode agendar seu horário online diretamente pelo nosso site! É rápido e fácil.
-
-💇 Agende agora: ${publicUrl}
-
-📅 Escolha o dia e horário que preferir
-✅ Confirmação instantânea
-
-Te esperamos!`}
-                      </Text>
-                    </View>
-                    <View style={{ flexDirection: "row", gap: 10 }}>
-                      <Pressable
-                        style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: "#C9A84C", alignItems: "center", opacity: pressed ? 0.8 : 1 }]}
-                        onPress={async () => {
-                          await Clipboard.setStringAsync(`Olá! Agora você pode agendar seu horário online diretamente pelo nosso site! É rápido e fácil.\n\n💇 Agende agora: ${publicUrl}\n\n📅 Escolha o dia e horário que preferir\n✅ Confirmação instantânea\n\nTe esperamos!`);
-                          Alert.alert("Copiado!", "Mensagem copiada para a área de transferência.");
-                          setShowMensagemPronta(false);
-                        }}
-                      >
-                        <Text style={{ color: "#0A0A0A", fontWeight: "700", fontSize: 14 }}>Copiar</Text>
-                      </Pressable>
-                      <Pressable
-                        style={({ pressed }) => [{ flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: "center", opacity: pressed ? 0.8 : 1 }]}
-                        onPress={() => setShowMensagemPronta(false)}
-                      >
-                        <Text style={{ color: colors.muted, fontSize: 14 }}>Fechar</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                </View>
-              </Modal>
 
               {/* Botão Abrir minha página */}
               <Pressable
-                style={({ pressed }) => [{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  borderRadius: 12,
-                  borderWidth: 1.5,
-                  borderColor: activeColor,
-                  backgroundColor: `${activeColor}18`,
-                  marginBottom: 16,
-                  opacity: pressed ? 0.75 : 1,
-                  transform: pressed ? [{ scale: 0.97 }] : [],
-                }]}
+                style={({ pressed }) => [styles.openPageBtn, { borderColor: activeColor, backgroundColor: `${activeColor}18` }, pressed && { opacity: 0.75 }]}
                 onPress={() => Linking.openURL(publicUrl).catch(() => Alert.alert("Erro", "Não foi possível abrir a página."))}
               >
                 <Text style={{ fontSize: 16 }}>🌐</Text>
-                <Text style={{ fontSize: 14, fontWeight: "700", color: activeColor }}>Abrir minha página</Text>
+                <Text style={[styles.openPageBtnText, { color: activeColor }]}>Abrir minha página</Text>
                 <Text style={{ fontSize: 12, color: activeColor, opacity: 0.7 }}>↗</Text>
               </Pressable>
-
-              {/* QR Code */}
-              <View style={[styles.qrContainer, { borderTopColor: colors.border }]}>
-                <Text style={[styles.qrLabel, { color: colors.foreground }]}>QR Code da Barbearia</Text>
-                <Text style={[styles.qrHint, { color: colors.muted }]}>
-                  Imprima e coloque na barbearia para que os clientes acessem a página pelo celular.
-                </Text>
-                {qrDataUrl ? (
-                  <View style={{ alignItems: "center", marginTop: 16 }}>
-                    <View style={styles.qrImageWrapper}>
-                      <Image
-                        source={{ uri: qrDataUrl }}
-                        style={styles.qrImage}
-                        resizeMode="contain"
-                      />
-                    </View>
-                    <View style={{ flexDirection: "row", gap: 10, marginTop: 0 }}>
-                      <Pressable
-                        style={({ pressed }) => [styles.downloadQrBtn, pressed && { opacity: 0.75 }]}
-                        onPress={handleDownloadQr}
-                      >
-                        <IconSymbol name="arrow.down.circle.fill" size={16} color="#C9A84C" />
-                        <Text style={styles.downloadQrText}>Baixar QR Code</Text>
-                      </Pressable>
-                      <Pressable
-                        style={({ pressed }) => [styles.downloadQrBtn, { borderColor: colors.border, backgroundColor: colors.surface }, pressed && { opacity: 0.75 }]}
-                        onPress={() => handleCopy(publicUrl)}
-                      >
-                        <IconSymbol name="doc.on.doc" size={16} color={colors.muted} />
-                        <Text style={[styles.downloadQrText, { color: colors.muted }]}>Copiar link</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.qrPlaceholder}>
-                    <ActivityIndicator color="#C9A84C" size="small" />
-                  </View>
-                )}
-              </View>
             </View>
           ) : (
             <View style={[styles.emptyBox, { borderColor: colors.border }]}>
@@ -737,52 +629,58 @@ Te esperamos!`}
           )}
         </SectionBlock>
 
-        {/* ══════════════════════════════════════════════════════════════
-            BLOCO 1.5 — PERSONALIZAR URL
-        ══════════════════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════════════
+            BLOCO 2 — QR CODE DA BARBEARIA
+        ══════════════════════════════════════════════════════════════════ */}
         <SectionBlock
-          icon="🔗"
-          title="Personalizar URL"
-          subtitle="O slug é a parte final do link que identifica sua barbearia. Use apenas letras minúsculas, números e hifens."
+          icon="📱"
+          title="QR Code da Barbearia"
+          subtitle="Imprima e coloque na barbearia para que os clientes acessem a página pelo celular."
           colors={colors}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 0, marginBottom: 8 }}>
-            <View style={[styles.urlBox, { flex: 1, backgroundColor: colors.background, borderColor: colors.border, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}>
-              <Text style={{ fontSize: 13, color: colors.muted, paddingHorizontal: 10 }} numberOfLines={1}>
-                {apiBase.replace(/^https?:\/\//, "")}/pub/
-              </Text>
-              <TextInput
-                style={[styles.urlText, { flex: 1, color: colors.foreground, paddingVertical: 0 }]}
-                value={slugInput}
-                onChangeText={setSlugInput}
-                placeholder={slug || "minha-barbearia"}
-                placeholderTextColor={colors.muted}
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="done"
-                onSubmitEditing={handleSaveSlug}
-              />
+          {qrDataUrl ? (
+            <View style={{ alignItems: "center" }}>
+              <View style={styles.qrImageWrapper}>
+                <Image
+                  source={{ uri: qrDataUrl }}
+                  style={styles.qrImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.qrBtnsRow}>
+                <Pressable
+                  style={({ pressed }) => [styles.qrActionBtn, { borderColor: "#C9A84C44", backgroundColor: "#C9A84C18" }, pressed && { opacity: 0.75 }]}
+                  onPress={handleDownloadQr}
+                >
+                  <IconSymbol name="arrow.down.circle.fill" size={16} color="#C9A84C" />
+                  <Text style={[styles.qrActionBtnText, { color: "#C9A84C" }]}>Baixar QR Code</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.qrActionBtn, { borderColor: colors.border, backgroundColor: colors.background }, pressed && { opacity: 0.75 }]}
+                  onPress={() => handleCopy(publicUrl, "Link da página")}
+                >
+                  <IconSymbol name="doc.on.doc" size={16} color={colors.muted} />
+                  <Text style={[styles.qrActionBtnText, { color: colors.muted }]}>Copiar link</Text>
+                </Pressable>
+              </View>
             </View>
-          </View>
-          <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 12 }}>
-            Atenção: Ao alterar o slug, o link antigo deixará de funcionar. Atualize todos os locais onde o link foi compartilhado.
-          </Text>
-          <Pressable
-            style={({ pressed }) => [styles.saveBtn, { backgroundColor: activeColor }, pressed && { opacity: 0.85 }]}
-            onPress={handleSaveSlug}
-            disabled={updateSlugMutation.isPending}
-          >
-            {updateSlugMutation.isPending ? (
-              <ActivityIndicator color="#0A0A0A" size="small" />
-            ) : (
-              <Text style={styles.saveBtnText}>Salvar Nova URL</Text>
-            )}
-          </Pressable>
+          ) : publicUrl ? (
+            <View style={styles.qrPlaceholder}>
+              <ActivityIndicator color="#C9A84C" size="small" />
+              <Text style={[{ fontSize: 12, marginTop: 8 }, { color: colors.muted }]}>Gerando QR Code...</Text>
+            </View>
+          ) : (
+            <View style={[styles.emptyBox, { borderColor: colors.border }]}>
+              <Text style={[styles.emptyText, { color: colors.muted }]}>
+                Configure a URL da barbearia para gerar o QR Code.
+              </Text>
+            </View>
+          )}
         </SectionBlock>
 
-        {/* ══════════════════════════════════════════════════════════════
-            BLOCO 2 — APARÊNCIA
-        ══════════════════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════════════
+            BLOCO 3 — APARÊNCIA
+        ══════════════════════════════════════════════════════════════════ */}
         <SectionBlock
           icon="🎨"
           title="Aparência"
@@ -807,7 +705,6 @@ Te esperamos!`}
           {/* Miniatura de pré-visualização em tempo real */}
           <View style={[styles.livePreviewCard, { borderColor: activeColor + "44" }]}>
             <Text style={[styles.livePreviewLabel, { color: colors.muted }]}>Pré-visualização ao vivo</Text>
-            {/* Hero miniatura */}
             <View style={[styles.livePreviewHero, { backgroundColor: "#0A0A0A" }]}>
               {bannerUrl ? (
                 <Image source={{ uri: bannerUrl }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
@@ -841,16 +738,13 @@ Te esperamos!`}
                 <Text
                   style={[
                     styles.livePreviewCtaText,
-                    {
-                      fontFamily: FONT_STYLES.find(f => f.id === fontStyleId)?.fontFamily,
-                    },
+                    { fontFamily: FONT_STYLES.find(f => f.id === fontStyleId)?.fontFamily },
                   ]}
                 >
                   Agendar Horário
                 </Text>
               </View>
             </View>
-            {/* Rodapé com cor e estilo */}
             <View style={[styles.livePreviewFooter, { backgroundColor: colors.surface }]}>
               <View style={[styles.livePreviewColorDot, { backgroundColor: activeColor }]} />
               <Text style={[styles.livePreviewFooterText, { color: colors.muted }]}>
@@ -901,7 +795,7 @@ Te esperamos!`}
             </View>
           </View>
 
-          {/* ── Estilo de Texto ─────────────────────────────────────────── */}
+          {/* Estilo de Texto */}
           <Text style={[styles.sectionFieldLabel, { color: colors.muted, marginTop: 8 }]}>
             Estilo de Texto
           </Text>
@@ -1028,7 +922,7 @@ Te esperamos!`}
         </SectionBlock>
 
         {/* ══════════════════════════════════════════════════════════════════
-            BLOCO 3 — CONFIGURAÇÕES EXTRAS (recolhido por padrão)
+            BLOCO 4 — CONFIGURAÇÕES EXTRAS (recolhido por padrão)
         ══════════════════════════════════════════════════════════════════ */}
         <View style={[styles.block, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Pressable
@@ -1053,8 +947,7 @@ Te esperamos!`}
 
           {showExtras && (
             <View style={{ paddingTop: 8 }}>
-
-              {/* Aparência no Google e redes sociais */}
+              {/* Como aparece no Google e redes sociais */}
               <Text style={[styles.extrasGroupTitle, { color: colors.foreground }]}>
                 Como aparece no Google e redes sociais
               </Text>
@@ -1080,7 +973,7 @@ Te esperamos!`}
                 colors={colors}
               />
 
-              {/* Imagem de compartilhamento — uploader direto */}
+              {/* Imagem de compartilhamento */}
               <View style={{ marginBottom: 16 }}>
                 <Text style={[styles.fieldLabel, { color: colors.muted }]}>Imagem de Compartilhamento</Text>
                 <Text style={[styles.fieldHint, { color: colors.muted }]}>
@@ -1170,360 +1063,395 @@ Te esperamos!`}
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
   return StyleSheet.create({
-  block: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 16,
-  },
-  blockHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 16,
-  },
-  blockIcon: { fontSize: 22, marginTop: 1 },
-  blockTitle: { fontSize: 16, fontWeight: "700", marginBottom: 2 },
-  blockSubtitle: { fontSize: 13, lineHeight: 18 },
+    block: {
+      borderRadius: 16,
+      borderWidth: 1,
+      padding: 16,
+      marginBottom: 16,
+    },
+    blockHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+      marginBottom: 16,
+    },
+    blockIcon: { fontSize: 22, marginTop: 1 },
+    blockTitle: { fontSize: 16, fontWeight: "700", marginBottom: 2 },
+    blockSubtitle: { fontSize: 13, lineHeight: 18 },
 
-  // URL
-  fieldLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 },
-  fieldHint: { fontSize: 12, lineHeight: 17, marginBottom: 6 },
-  sectionFieldLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 },
-  urlBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-    marginBottom: 16,
-  },
-  urlText: { flex: 1, fontSize: 13, fontFamily: Platform.OS === "ios" ? "Courier" : "monospace" },
-  urlCopyBtn: { padding: 4 },
+    // URL
+    fieldLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 },
+    fieldHint: { fontSize: 12, lineHeight: 17, marginBottom: 6 },
+    sectionFieldLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 },
+    urlBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: 10,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      gap: 8,
+      marginBottom: 4,
+    },
+    urlText: { flex: 1, fontSize: 13, fontFamily: Platform.OS === "ios" ? "Courier" : "monospace" },
+    urlCopyBtn: { padding: 4 },
 
-  // Botões de compartilhamento redesenhados
-  shareButtonsRow: { flexDirection: "row", gap: 10, marginBottom: 16 },
-  shareWhatsAppBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: "#075E54",
-    overflow: "hidden",
-  },
-  shareWhatsAppIcon: { fontSize: 20, flexShrink: 0 },
-  shareWhatsAppTextWrap: { flex: 1, minWidth: 0 },
-  shareWhatsAppTitle: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  shareWhatsAppSub: { color: "rgba(255,255,255,0.7)", fontSize: 11, marginTop: 1 },
-  shareGenericBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  shareGenericIcon: { fontSize: 20, flexShrink: 0 },
-  shareGenericTextWrap: { flex: 1, minWidth: 0 },
-  shareGenericTitle: { fontWeight: "700", fontSize: 13 },
-  shareGenericSub: { fontSize: 11, marginTop: 1 },
+    // Botões de compartilhamento
+    shareButtonsRow: { flexDirection: "row", gap: 10, marginTop: 14, marginBottom: 10 },
+    shareWhatsAppBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 14,
+      borderRadius: 12,
+      backgroundColor: "#075E54",
+      overflow: "hidden",
+    },
+    shareWhatsAppIcon: { fontSize: 20, flexShrink: 0 },
+    shareWhatsAppTextWrap: { flex: 1, minWidth: 0 },
+    shareWhatsAppTitle: { color: "#fff", fontWeight: "700", fontSize: 13 },
+    shareWhatsAppSub: { color: "rgba(255,255,255,0.7)", fontSize: 11, marginTop: 1 },
 
-  // QR Code
-  qrContainer: { borderTopWidth: 1, paddingTop: 16, marginTop: 4 },
-  qrLabel: { fontSize: 14, fontWeight: "700", marginBottom: 6 },
-  qrHint: { fontSize: 12, lineHeight: 17 },
-  qrImageWrapper: {
-    backgroundColor: "#fff",
-    padding: 14,
-    borderRadius: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  qrImage: { width: 200, height: 200 },
-  qrPlaceholder: { height: 200, alignItems: "center", justifyContent: "center" },
-  downloadQrBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#C9A84C44",
-    backgroundColor: "#C9A84C18",
-  },
-  downloadQrText: { fontSize: 13, fontWeight: "700", color: "#C9A84C" },
+    // Botões genéricos largura total
+    shareGenericFullBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      marginBottom: 10,
+    },
+    shareGenericFullText: { fontSize: 14, fontWeight: "600" },
 
-  // Botão de pré-visualização
-  previewBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    marginBottom: 16,
-    justifyContent: "center",
-  },
-  previewBtnIcon: { fontSize: 18 },
-  previewBtnText: { fontWeight: "700", fontSize: 14 },
+    // Botão abrir página
+    openPageBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      marginTop: 4,
+    },
+    openPageBtnText: { fontSize: 14, fontWeight: "700" },
 
-  // Aparência
-  colorPreview: { borderRadius: 12, borderWidth: 2, overflow: "hidden", marginBottom: 16 },
-  colorPreviewHeader: { padding: 12 },
-  colorPreviewTitle: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  colorPreviewBody: {
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  colorPreviewBtn: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 9 },
-  colorPreviewBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 13 },
-  colorPreviewPrice: { fontSize: 20, fontWeight: "900" },
+    // QR Code
+    qrImageWrapper: {
+      backgroundColor: "#fff",
+      padding: 14,
+      borderRadius: 18,
+      shadowColor: "#000",
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+      marginBottom: 16,
+    },
+    qrImage: { width: 200, height: 200 },
+    qrPlaceholder: { height: 200, alignItems: "center", justifyContent: "center" },
+    qrBtnsRow: { flexDirection: "row", gap: 10 },
+    qrActionBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    qrActionBtnText: { fontSize: 13, fontWeight: "700" },
 
-  colorGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 16 },
-  colorChip: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  colorChipActive: { borderWidth: 3, borderColor: "#fff" },
+    // Botão de pré-visualização
+    previewBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      marginBottom: 16,
+      justifyContent: "center",
+    },
+    previewBtnIcon: { fontSize: 18 },
+    previewBtnText: { fontWeight: "700", fontSize: 14 },
 
-  hexRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
-  hexPreview: { width: 44, height: 44, borderRadius: 22, borderWidth: 1 },
-  hexLabel: { fontSize: 11, marginBottom: 4 },
-  hexInputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  hexHash: { fontSize: 15, marginRight: 4 },
-  hexInput: { flex: 1, fontSize: 15 },
+    // Aparência
+    colorGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 16 },
+    colorChip: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+    colorChipActive: { borderWidth: 3, borderColor: "#fff" },
 
-  // Estilo de texto
-  fontStyleCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    gap: 12,
-  },
-  fontStyleSample: { fontSize: 20, marginBottom: 2 },
-  fontStyleDesc: { fontSize: 12 },
-  fontStyleName: { fontSize: 12, fontWeight: "700" },
-  fontStyleActiveBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  fontStyleActiveBadgeText: { color: "#0A0A0A", fontSize: 11, fontWeight: "800" },
+    hexRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
+    hexPreview: { width: 44, height: 44, borderRadius: 22, borderWidth: 1 },
+    hexLabel: { fontSize: 11, marginBottom: 4 },
+    hexInputWrapper: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: 10,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    hexHash: { fontSize: 15, marginRight: 4 },
+    hexInput: { flex: 1, fontSize: 15 },
 
-  uploadHint: { fontSize: 12, lineHeight: 17 },
-  removeBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
-  removeBtnText: { color: "#F87171", fontSize: 13 },
+    // Estilo de texto
+    fontStyleCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      gap: 12,
+    },
+    fontStyleSample: { fontSize: 20, marginBottom: 2 },
+    fontStyleDesc: { fontSize: 12 },
+    fontStyleName: { fontSize: 12, fontWeight: "700" },
+    fontStyleActiveBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+    fontStyleActiveBadgeText: { color: "#0A0A0A", fontSize: 11, fontWeight: "800" },
 
-  // Live preview miniatura
-  livePreviewCard: {
-    borderRadius: 16,
-    borderWidth: 1.5,
-    overflow: "hidden",
-    marginBottom: 20,
-  },
-  livePreviewLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 6,
-  },
-  livePreviewHero: {
-    height: 160,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    gap: 6,
-  },
-  livePreviewLogo: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    borderWidth: 2,
-  },
-  livePreviewShopName: {
-    fontSize: 16,
-    color: "#F0EEE8",
-    textAlign: "center",
-    paddingHorizontal: 16,
-  },
-  livePreviewCta: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  livePreviewCtaText: {
-    color: "#0A0A0A",
-    fontWeight: "800",
-    fontSize: 12,
-  },
-  livePreviewFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  livePreviewColorDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  livePreviewFooterText: {
-    fontSize: 12,
-  },
+    uploadHint: { fontSize: 12, lineHeight: 17 },
+    removeBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
+    removeBtnText: { color: "#F87171", fontSize: 13 },
 
-  saveBtn: { borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 16 },
-  saveBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 15 },
+    // Live preview miniatura
+    livePreviewCard: {
+      borderRadius: 16,
+      borderWidth: 1.5,
+      overflow: "hidden",
+      marginBottom: 20,
+    },
+    livePreviewLabel: {
+      fontSize: 11,
+      fontWeight: "600",
+      letterSpacing: 0.8,
+      textTransform: "uppercase",
+      paddingHorizontal: 14,
+      paddingTop: 10,
+      paddingBottom: 6,
+    },
+    livePreviewHero: {
+      height: 160,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      gap: 6,
+    },
+    livePreviewLogo: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      borderWidth: 2,
+    },
+    livePreviewShopName: {
+      fontSize: 16,
+      color: "#F0EEE8",
+      textAlign: "center",
+      paddingHorizontal: 16,
+    },
+    livePreviewCta: {
+      paddingHorizontal: 18,
+      paddingVertical: 8,
+      borderRadius: 20,
+    },
+    livePreviewCtaText: {
+      color: "#0A0A0A",
+      fontWeight: "800",
+      fontSize: 12,
+    },
+    livePreviewFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    livePreviewColorDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+    },
+    livePreviewFooterText: { fontSize: 12 },
 
-  // Avançado / Extras
-  advancedToggle: { marginBottom: 0 },
-  extrasGroupTitle: { fontSize: 14, fontWeight: "700", marginBottom: 6 },
-  extrasGroupHint: { fontSize: 12, lineHeight: 17, marginBottom: 14 },
-  fieldInputBox: {
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-  },
+    saveBtn: { borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 16 },
+    saveBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 15 },
 
-  // OG Image preview
-  ogImagePreview: {
-    width: "100%",
-    height: 160,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
+    // Avançado / Extras
+    advancedToggle: { marginBottom: 0 },
+    extrasGroupTitle: { fontSize: 14, fontWeight: "700", marginBottom: 6 },
+    extrasGroupHint: { fontSize: 12, lineHeight: 17, marginBottom: 14 },
+    fieldInputBox: {
+      borderRadius: 10,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 14,
+    },
 
-  // Empty
-  emptyBox: { borderRadius: 10, borderWidth: 1, padding: 16, alignItems: "center" },
-  emptyText: { fontSize: 13, textAlign: "center", lineHeight: 18 },
+    // OG Image preview
+    ogImagePreview: {
+      width: "100%",
+      height: 160,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
 
-  // Preview Modal — redesenhado
-  previewOverlay: {
-    flex: 1,
-    backgroundColor: "#000000CC",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 24,
-  },
-  previewPhoneFrame: {
-    width: 280,
-    height: 520,
-    backgroundColor: "#0A0A0A",
-    borderRadius: 36,
-    overflow: "hidden",
-    borderWidth: 3,
-    borderColor: c.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.6,
-    shadowRadius: 24,
-    elevation: 20,
-  },
-  previewNotch: {
-    height: 22,
-    backgroundColor: "#0A0A0A",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 10,
-  },
-  previewNotchDot: {
-    width: 60,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: c.border,
-  },
-  previewHeroWrap: {
-    height: 160,
-    alignItems: "center",
-    justifyContent: "flex-end",
-    paddingBottom: 14,
-    overflow: "hidden",
-    gap: 4,
-  },
-  previewHeroGradient: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#00000077",
-  },
-  previewHeroLogo: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 2,
-  },
-  previewHeroName: {
-    color: "#F0EEE8",
-    fontSize: 16,
-    textAlign: "center",
-    paddingHorizontal: 12,
-  },
-  previewHeroBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  previewHeroBadgeText: { fontSize: 10, fontWeight: "700" },
-  previewCtaBtn: {
-    borderRadius: 10,
-    paddingVertical: 11,
-    alignItems: "center",
-  },
-  previewCtaBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 13 },
-  previewSecTitle: { fontSize: 13, fontWeight: "800", marginBottom: 8 },
-  previewSvcCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: c.surface,
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 7,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: c.border,
-  },
-  previewSvcName: { color: "#F0EEE8", fontSize: 12, fontWeight: "600", marginBottom: 2 },
-  previewSvcDur: { color: c.muted, fontSize: 10 },
-  previewSvcPrice: { fontSize: 12, fontWeight: "800" },
-  previewGalleryImg: { width: 80, height: 60, borderRadius: 8 },
-  previewMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 14,
-  },
-  previewMetaDot: { width: 10, height: 10, borderRadius: 5 },
-  previewMetaText: { color: "#9CA3AF", fontSize: 12, fontWeight: "600" },
-  previewCloseCircle: {
-    marginTop: 14,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1.5,
-  },
-  previewCloseCircleText: { fontWeight: "700", fontSize: 14 },
-});
+    // Empty
+    emptyBox: { borderRadius: 10, borderWidth: 1, padding: 16, alignItems: "center" },
+    emptyText: { fontSize: 13, textAlign: "center", lineHeight: 18 },
+
+    // Modal Mensagem Pronta
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+    },
+    modalCard: {
+      width: "100%",
+      maxWidth: 400,
+      borderRadius: 16,
+      padding: 20,
+    },
+    modalTitle: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
+    modalSubtitle: { fontSize: 13, marginBottom: 14, lineHeight: 20 },
+    modalTextBox: {
+      borderRadius: 10,
+      padding: 14,
+      borderWidth: 1,
+      marginBottom: 16,
+    },
+    modalText: { fontSize: 13, lineHeight: 20 },
+    modalBtnPrimary: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 10,
+      alignItems: "center",
+    },
+    modalBtnPrimaryText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
+    modalBtnSecondary: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      alignItems: "center",
+    },
+    modalBtnSecondaryText: { fontSize: 14 },
+
+    // Preview Modal
+    previewOverlay: {
+      flex: 1,
+      backgroundColor: "#000000CC",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 24,
+    },
+    previewPhoneFrame: {
+      width: 280,
+      height: 520,
+      backgroundColor: "#0A0A0A",
+      borderRadius: 36,
+      overflow: "hidden",
+      borderWidth: 3,
+      borderColor: c.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.6,
+      shadowRadius: 24,
+      elevation: 20,
+    },
+    previewNotch: {
+      height: 22,
+      backgroundColor: "#0A0A0A",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 10,
+    },
+    previewNotchDot: {
+      width: 60,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: c.border,
+    },
+    previewHeroWrap: {
+      height: 160,
+      alignItems: "center",
+      justifyContent: "flex-end",
+      paddingBottom: 14,
+      overflow: "hidden",
+      gap: 4,
+    },
+    previewHeroGradient: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "#00000077",
+    },
+    previewHeroLogo: {
+      width: 52,
+      height: 52,
+      borderRadius: 14,
+      borderWidth: 2,
+    },
+    previewHeroName: {
+      color: "#F0EEE8",
+      fontSize: 16,
+      textAlign: "center",
+      paddingHorizontal: 12,
+    },
+    previewHeroBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    previewHeroBadgeText: { fontSize: 10, fontWeight: "700" },
+    previewCtaBtn: {
+      borderRadius: 10,
+      paddingVertical: 11,
+      alignItems: "center",
+    },
+    previewCtaBtnText: { color: "#0A0A0A", fontWeight: "800", fontSize: 13 },
+    previewSecTitle: { fontSize: 13, fontWeight: "800", marginBottom: 8 },
+    previewSvcCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: c.surface,
+      borderRadius: 10,
+      padding: 10,
+      marginBottom: 7,
+      gap: 8,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    previewSvcName: { color: "#F0EEE8", fontSize: 12, fontWeight: "600", marginBottom: 2 },
+    previewSvcDur: { color: c.muted, fontSize: 10 },
+    previewSvcPrice: { fontSize: 12, fontWeight: "800" },
+    previewGalleryImg: { width: 80, height: 60, borderRadius: 8 },
+    previewMetaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 14,
+    },
+    previewMetaDot: { width: 10, height: 10, borderRadius: 5 },
+    previewMetaText: { color: "#9CA3AF", fontSize: 12, fontWeight: "600" },
+    previewCloseCircle: {
+      marginTop: 14,
+      paddingHorizontal: 24,
+      paddingVertical: 10,
+      borderRadius: 20,
+      borderWidth: 1.5,
+    },
+    previewCloseCircleText: { fontWeight: "700", fontSize: 14 },
+  });
 }

@@ -2025,3 +2025,8 @@
 - [x] Corrigir erros do LSP no servidor: criar tsconfig.server.json com esModuleInterop + module esnext; excluir server/ do tsconfig.json principal (0 erros reais)
 - [x] Pré-visualização ao vivo já estava implementada (mini-preview com hero, logo, banner, botão Agendar em tempo real)
 - [x] Adicionar botão "Copiar link" ao lado do botão "Baixar QR Code" na seção QR Code
+
+## Reorganização Página do Cliente — Round 3
+- [x] Remover seção "Personalizar URL" da tela pagina-cliente.tsx (APP e WEB)
+- [x] Reorganizar em 4 blocos bem definidos: Compartilhar, QR Code, Aparência, Configurações Extras
+- [x] QR Code como bloco separado (não dentro de Compartilhar)
