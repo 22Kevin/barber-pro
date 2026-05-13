@@ -3502,9 +3502,17 @@ async function renderPaginaCliente(req: Request, res: Response) {
   const currentFont = esc(settings?.fontStyle ?? "moderno");
   const currentLogo = esc(settings?.logoUrl ?? "");
   const currentBanner = esc(settings?.bannerUrl ?? "");
-  const currentGallery = esc(settings?.galleryUrls ?? "");
   const shopNameDisplay = esc(settings?.shopName ?? "Minha Barbearia");
-  const galleryList = (settings?.galleryUrls ?? "").split("\n").map(u => u.trim()).filter(Boolean);
+  // Suporte a ambos os formatos: JSON (APP) e texto com \n (WEB legado)
+  function parseGalleryUrls(raw: string | null | undefined): string[] {
+    if (!raw) return [];
+    const s = raw.trim();
+    if (s.startsWith('[')) {
+      try { return (JSON.parse(s) as string[]).filter(Boolean); } catch {}
+    }
+    return s.split('\n').map(u => u.trim()).filter(Boolean);
+  }
+  const galleryList = parseGalleryUrls(settings?.galleryUrls);
 
   const blocoAparencia = `
     <div class="card" style="margin-bottom:24px">
@@ -3514,17 +3522,19 @@ async function renderPaginaCliente(req: Request, res: Response) {
           <div class="card-title">Aparência</div>
         </div>
       </div>
-      <div class="card-body" style="padding-bottom:0">
-        ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações visuais salvas com sucesso!</div>` : ""}
-        <div style="display:grid;grid-template-columns:1fr 420px;gap:28px;align-items:start">
+      <div class="card-body">
+        ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:24px;font-size:14px">✔ Configurações visuais salvas com sucesso!</div>` : ""}
 
-          <!-- Coluna Esquerda: Formulário -->
+        <!-- Layout: Formulário + Preview lado a lado -->
+        <div style="display:grid;grid-template-columns:1fr 360px;gap:32px;align-items:start">
+
+          <!-- ===== COLUNA ESQUERDA: FORMULÁRIO ===== -->
           <form id="visualForm" method="POST" action="/admin/pagina-cliente/visual" onsubmit="prepareVisualSubmit()">
             <input type="hidden" name="primaryColor" id="fPrimaryColor" value="${currentColor}" />
             <input type="hidden" name="fontStyle" id="fFontStyle" value="${currentFont}" />
             <input type="hidden" name="logoUrl" id="fLogoUrl" value="${currentLogo}" />
             <input type="hidden" name="bannerUrl" id="fBannerUrl" value="${currentBanner}" />
-            <input type="hidden" name="galleryUrls" id="fGalleryUrls" value="${currentGallery}" />
+            <input type="hidden" name="galleryUrls" id="fGalleryUrls" value="" />
             <input type="hidden" name="logoBase64" id="fLogoBase64" value="" />
             <input type="hidden" name="logoMime" id="fLogoMime" value="" />
             <input type="hidden" name="bannerBase64" id="fBannerBase64" value="" />
@@ -3532,117 +3542,135 @@ async function renderPaginaCliente(req: Request, res: Response) {
             <input type="hidden" name="galleryBase64List" id="fGalleryBase64List" value="" />
             <input type="hidden" name="galleryMimeList" id="fGalleryMimeList" value="" />
 
-            <!-- Cor Principal -->
-            <div class="form-group">
-              <label class="form-label">Cor Principal</label>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px" id="colorSwatches">
-                ${["#C9A84C","#E63946","#2196F3","#4CAF50","#9C27B0","#FF5722","#00BCD4","#FF9800","#607D8B","#000000","#FFFFFF"].map(c =>
-                  `<button type="button" onclick="selectColor('${c}')" title="${c}" style="width:32px;height:32px;border-radius:50%;background:${c};border:3px solid ${c === (settings?.primaryColor ?? '#C9A84C') ? '#fff' : 'transparent'};box-shadow:${c === (settings?.primaryColor ?? '#C9A84C') ? '0 0 0 2px var(--gold)' : '0 0 0 1px var(--border)'};cursor:pointer;transition:all 0.15s" id="swatch-${c.replace('#','')}"></button>`
-                ).join('')}
+            <!-- SEÇÃO 1: Cores -->
+            <div style="margin-bottom:28px">
+              <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">🎨 Cor Principal</div>
+
+              <div style="margin-bottom:14px">
+                <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Escolha uma cor pré-definida:</div>
+                <div style="display:flex;flex-wrap:wrap;gap:10px" id="colorSwatches">
+                  ${["#C9A84C","#E63946","#2196F3","#4CAF50","#9C27B0","#FF5722","#00BCD4","#FF9800","#607D8B","#000000","#FFFFFF"].map(c =>
+                    `<button type="button" onclick="selectColor('${c}')" title="${c}" style="width:36px;height:36px;border-radius:50%;background:${c};border:3px solid ${c === (settings?.primaryColor ?? '#C9A84C') ? '#fff' : 'transparent'};box-shadow:${c === (settings?.primaryColor ?? '#C9A84C') ? '0 0 0 3px var(--gold)' : '0 0 0 1px var(--border)'};cursor:pointer;transition:all 0.15s" id="swatch-${c.replace('#','')}"></button>`
+                  ).join('')}
+                </div>
               </div>
-              <div style="display:flex;align-items:center;gap:10px">
-                <label style="font-size:12px;color:var(--muted);white-space:nowrap">Cor personalizada (Hex):</label>
-                <input type="color" id="pcColorPicker" value="${currentColor}" oninput="selectColor(this.value)" style="width:40px;height:36px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;padding:2px" />
-                <input class="form-input" type="text" id="pcColorHex" value="${currentColor}" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)){selectColor(this.value)}" placeholder="#C9A84C" style="width:110px;font-family:monospace" />
+
+              <div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid var(--border)">
+                <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Ou escolha uma cor personalizada:</div>
+                <div style="display:flex;align-items:center;gap:12px">
+                  <input type="color" id="pcColorPicker" value="${currentColor}" oninput="selectColor(this.value)" style="width:48px;height:48px;border:2px solid var(--border);border-radius:10px;background:none;cursor:pointer;padding:3px" />
+                  <div style="flex:1">
+                    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Código Hex</div>
+                    <input class="form-input" type="text" id="pcColorHex" value="${currentColor}" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)){selectColor(this.value)}" placeholder="#C9A84C" style="font-family:monospace;font-size:14px;letter-spacing:1px" />
+                  </div>
+                  <div id="colorPreviewBox" style="width:48px;height:48px;border-radius:10px;background:${currentColor};border:1px solid var(--border);flex-shrink:0"></div>
+                </div>
               </div>
             </div>
 
-            <!-- Estilo de Texto -->
-            <div class="form-group">
-              <label class="form-label">Estilo de Texto</label>
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="fontOptions">
+            <!-- SEÇÃO 2: Estilo de Texto -->
+            <div style="margin-bottom:28px">
+              <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">🔤 Estilo de Texto</div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="fontOptions">
                 ${[
-                  {id:"moderno", label:"Moderno", css:"'Inter', sans-serif"},
-                  {id:"classico", label:"Clássico", css:"'Georgia', serif"},
-                  {id:"elegante", label:"Elegante", css:"'Playfair Display', serif"},
-                  {id:"bold", label:"Bold", css:"'Oswald', sans-serif"},
-                  {id:"minimalista", label:"Minimalista", css:"'Raleway', sans-serif"},
-                  {id:"urbano", label:"Urbano", css:"'Bebas Neue', cursive"},
+                  {id:"moderno", label:"Moderno", css:"'Inter', sans-serif", desc:"Limpo e moderno"},
+                  {id:"classico", label:"Clássico", css:"'Georgia', serif", desc:"Tradicional"},
+                  {id:"elegante", label:"Elegante", css:"'Playfair Display', serif", desc:"Sofisticado"},
+                  {id:"bold", label:"Bold", css:"'Oswald', sans-serif", desc:"Forte e marcante"},
+                  {id:"minimalista", label:"Minimalista", css:"'Raleway', sans-serif", desc:"Sutil e clean"},
+                  {id:"urbano", label:"Urbano", css:"'Bebas Neue', cursive", desc:"Street style"},
                 ].map(f =>
-                  `<button type="button" onclick="selectFont('${f.id}')" id="font-${f.id}" style="padding:10px 8px;border-radius:10px;border:2px solid ${(settings?.fontStyle ?? 'moderno') === f.id ? 'var(--gold)' : 'var(--border)'};background:${(settings?.fontStyle ?? 'moderno') === f.id ? 'rgba(201,168,76,0.12)' : 'var(--surface2)'};cursor:pointer;font-family:${f.css};font-size:13px;color:var(--text);transition:all 0.15s">${f.label}</button>`
+                  `<button type="button" onclick="selectFont('${f.id}')" id="font-${f.id}" style="padding:12px 8px;border-radius:10px;border:2px solid ${(settings?.fontStyle ?? 'moderno') === f.id ? 'var(--gold)' : 'var(--border)'};background:${(settings?.fontStyle ?? 'moderno') === f.id ? 'rgba(201,168,76,0.12)' : 'var(--surface2)'};cursor:pointer;text-align:center;transition:all 0.15s">
+                    <div style="font-family:${f.css};font-size:15px;color:var(--text);margin-bottom:3px">${f.label}</div>
+                    <div style="font-size:10px;color:var(--muted)">${f.desc}</div>
+                  </button>`
                 ).join('')}
               </div>
             </div>
 
-            <!-- Logo -->
-            <div class="form-group">
-              <label class="form-label">Logo da Barbearia</label>
-              <div style="display:flex;align-items:center;gap:14px">
-                <div id="logoPreviewWrap" style="width:72px;height:72px;border-radius:50%;border:2px solid var(--border);overflow:hidden;background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                  ${currentLogo ? `<img id="logoPreviewImg" src="${currentLogo}" style="width:100%;height:100%;object-fit:cover" />` : `<span id="logoPreviewImg" style="font-size:28px;color:var(--muted)">✂️</span>`}
+            <!-- SEÇÃO 3: Logo -->
+            <div style="margin-bottom:28px">
+              <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">📷 Logo da Barbearia</div>
+              <div style="display:flex;align-items:center;gap:16px;background:var(--surface2);border-radius:12px;padding:16px;border:1px solid var(--border)">
+                <div id="logoPreviewWrap" style="width:80px;height:80px;border-radius:50%;border:3px solid var(--border);overflow:hidden;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  ${currentLogo ? `<img src="${currentLogo}" style="width:100%;height:100%;object-fit:cover" />` : `<span style="font-size:32px">✂️</span>`}
                 </div>
                 <div style="flex:1">
-                  <div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap">
-                    <label for="logoFileInput" class="btn btn-ghost" style="cursor:pointer;display:inline-block">📷 Escolher foto</label>
-                    ${currentLogo ? `<button type="button" onclick="removeLogo()" class="btn" style="background:#EF444422;color:#EF4444;border:1px solid #EF444444;font-size:12px;padding:6px 12px">× Remover logo</button>` : ''}
+                  <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">${currentLogo ? 'Logo atual' : 'Nenhum logo adicionado'}</div>
+                  <div style="font-size:11px;color:var(--muted);margin-bottom:12px">${currentLogo ? 'Escolha outro para substituir.' : 'JPG, PNG ou WebP. Recomendado: 400×400px.'}</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <label for="logoFileInput" class="btn btn-ghost" style="cursor:pointer;font-size:13px">📷 Escolher foto</label>
+                    ${currentLogo ? `<button type="button" onclick="removeLogo()" style="background:#EF444422;color:#EF4444;border:1px solid #EF444444;border-radius:8px;font-size:12px;padding:6px 14px;cursor:pointer">× Remover</button>` : ''}
                   </div>
                   <input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="handleLogoUpload(this)" />
-                  ${currentLogo ? `<div style="font-size:11px;color:var(--muted)">Logo atual salvo. Escolha outro para substituir.</div>` : `<div style="font-size:11px;color:var(--muted)">JPG, PNG ou WebP. Recomendado: 400×400px.</div>`}
                 </div>
               </div>
             </div>
 
-            <!-- Banner / Capa -->
-            <div class="form-group">
-              <label class="form-label">Imagem de Capa (Banner)</label>
-              <div id="bannerPreviewWrap" style="width:100%;height:120px;border-radius:12px;border:2px dashed var(--border);overflow:hidden;background:${currentBanner ? `url('${currentBanner}') center/cover` : 'var(--surface2)'};display:flex;align-items:center;justify-content:center;margin-bottom:8px;cursor:pointer;position:relative" onclick="document.getElementById('bannerFileInput').click()">
-                ${currentBanner ? `` : `<div style="text-align:center;color:var(--muted)"><div style="font-size:28px">🖼️</div><div style="font-size:12px;margin-top:4px">Clique para escolher</div></div>`}
-                <div id="bannerOverlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.4);display:${currentBanner ? 'flex' : 'none'};align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;opacity:0;transition:opacity 0.2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">📷 Trocar imagem</div>
+            <!-- SEÇÃO 4: Banner -->
+            <div style="margin-bottom:28px">
+              <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">🖼️ Imagem de Capa (Banner)</div>
+              <div id="bannerPreviewWrap" style="width:100%;height:140px;border-radius:12px;border:2px dashed var(--border);overflow:hidden;background:${currentBanner ? `url('${currentBanner}') center/cover` : 'var(--surface2)'};display:flex;align-items:center;justify-content:center;margin-bottom:10px;cursor:pointer;position:relative" onclick="document.getElementById('bannerFileInput').click()">
+                ${currentBanner ? `` : `<div style="text-align:center;color:var(--muted)"><div style="font-size:36px">🖼️</div><div style="font-size:13px;margin-top:6px;font-weight:500">Clique para escolher a imagem de capa</div><div style="font-size:11px;margin-top:4px">Recomendado: 1200×400px</div></div>`}
+                <div id="bannerOverlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.5);display:${currentBanner ? 'flex' : 'none'};align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:600;opacity:0;transition:opacity 0.2s;gap:8px" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">📷 Trocar imagem</div>
               </div>
               <input type="file" id="bannerFileInput" accept="image/*" style="display:none" onchange="handleBannerUpload(this)" />
               <div style="display:flex;align-items:center;justify-content:space-between">
-                <div style="font-size:11px;color:var(--muted)">Recomendado: 1200×400px. Aparece no topo da página.</div>
-                ${currentBanner ? `<button type="button" onclick="removeBanner()" style="background:none;border:none;color:#EF4444;font-size:12px;cursor:pointer;padding:0">× Remover banner</button>` : ''}
+                <div style="font-size:11px;color:var(--muted)">Aparece no topo da página do cliente.</div>
+                ${currentBanner ? `<button type="button" onclick="removeBanner()" style="background:none;border:none;color:#EF4444;font-size:12px;cursor:pointer;padding:0;font-weight:500">× Remover banner</button>` : ''}
               </div>
             </div>
 
-            <!-- Galeria de Fotos -->
-            <div class="form-group">
-              <label class="form-label">Galeria de Fotos</label>
-              <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+            <!-- SEÇÃO 5: Galeria -->
+            <div style="margin-bottom:28px">
+              <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">🖼️ Galeria de Fotos</div>
+              <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
                 ${galleryList.map((url, i) => `
-                  <div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
+                  <div style="position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--border)">
                     <img src="${esc(url)}" style="width:100%;height:100%;object-fit:cover" />
-                    <button type="button" onclick="removeGalleryItem(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;line-height:1">×</button>
+                    <button type="button" onclick="removeGalleryItem(${i})" style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.75);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:13px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center">×</button>
                   </div>`).join('')}
-                <label for="galleryFileInput" style="aspect-ratio:1;border-radius:8px;border:2px dashed var(--border);background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:12px;gap:4px">
-                  <span style="font-size:22px">+</span>
-                  <span>Adicionar</span>
+                <label for="galleryFileInput" style="aspect-ratio:1;border-radius:10px;border:2px dashed var(--border);background:var(--surface2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);gap:4px">
+                  <span style="font-size:28px">+</span>
+                  <span style="font-size:12px;font-weight:500">Adicionar</span>
                 </label>
               </div>
               <input type="file" id="galleryFileInput" accept="image/*" multiple style="display:none" onchange="handleGalleryUpload(this)" />
               <div style="font-size:11px;color:var(--muted)">Selecione várias fotos de uma vez. Máximo recomendado: 12 fotos.</div>
             </div>
 
-            <div style="padding-bottom:24px">
-              <button type="submit" class="btn btn-primary" style="padding:13px 32px;font-size:15px">💾 Salvar Aparência</button>
+            <!-- Botão Salvar -->
+            <div style="padding-top:4px;padding-bottom:8px">
+              <button type="submit" class="btn btn-primary" style="width:100%;padding:14px 32px;font-size:15px;font-weight:700">💾 Salvar Aparência</button>
             </div>
           </form>
 
-          <!-- Coluna Direita: Preview em Tempo Real -->
+          <!-- ===== COLUNA DIREITA: PREVIEW ===== -->
           <div style="position:sticky;top:20px">
-            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:10px;text-transform:uppercase">Preview em Tempo Real</div>
-            <div id="livePreview" style="border-radius:16px;overflow:hidden;border:1px solid var(--border);box-shadow:0 4px 24px rgba(0,0,0,0.2);background:#fff;max-width:380px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:12px;text-transform:uppercase">Preview em Tempo Real</div>
+            <div id="livePreview" style="border-radius:16px;overflow:hidden;border:1px solid var(--border);box-shadow:0 4px 24px rgba(0,0,0,0.25);background:#fff">
               <!-- Banner -->
-              <div id="pvBanner" style="height:110px;background:${currentBanner ? `url('${currentBanner}') center/cover` : 'linear-gradient(135deg,#1a1a1a,#2d2d2d)'};position:relative;display:flex;align-items:flex-end;padding:12px">
-                <div id="pvLogo" style="width:56px;height:56px;border-radius:50%;border:3px solid #fff;overflow:hidden;background:#222;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                  ${currentLogo ? `<img src="${currentLogo}" style="width:100%;height:100%;object-fit:cover" id="pvLogoImg" />` : `<span id="pvLogoImg" style="font-size:22px">✂️</span>`}
+              <div id="pvBanner" style="height:120px;background:${currentBanner ? `url('${currentBanner}') center/cover` : 'linear-gradient(135deg,#1a1a1a,#2d2d2d)'};position:relative;display:flex;align-items:flex-end;padding:14px">
+                <div id="pvLogo" style="width:60px;height:60px;border-radius:50%;border:3px solid #fff;overflow:hidden;background:#222;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.4)">
+                  ${currentLogo ? `<img src="${currentLogo}" style="width:100%;height:100%;object-fit:cover" />` : `<span style="font-size:24px">✂️</span>`}
                 </div>
               </div>
               <!-- Info -->
-              <div style="padding:14px 16px">
-                <div id="pvName" style="font-size:17px;font-weight:700;color:#111;margin-bottom:4px;font-family:'Inter',sans-serif">${shopNameDisplay}</div>
-                <div style="font-size:12px;color:#666;margin-bottom:14px">Barbearia &bull; Agendamento Online</div>
-                <!-- Botão de amostra -->
-                <div id="pvBtn" style="display:inline-block;padding:9px 20px;background:${currentColor};color:#fff;border-radius:8px;font-size:13px;font-weight:700;font-family:'Inter',sans-serif">Agendar Agora</div>
+              <div style="padding:16px">
+                <div id="pvName" style="font-size:18px;font-weight:700;color:#111;margin-bottom:3px;font-family:'Inter',sans-serif">${shopNameDisplay}</div>
+                <div style="font-size:12px;color:#888;margin-bottom:14px">Barbearia &bull; Agendamento Online</div>
+                <div id="pvBtn" style="display:inline-block;padding:10px 22px;background:${currentColor};color:#fff;border-radius:8px;font-size:13px;font-weight:700;font-family:'Inter',sans-serif">Agendar Agora</div>
               </div>
               <!-- Galeria mini -->
-              <div id="pvGallery" style="display:flex;gap:4px;padding:0 16px 14px;overflow:hidden">
-                ${galleryList.slice(0,4).map(url => `<img src="${esc(url)}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0" />`).join('')}
-                ${galleryList.length === 0 ? `<div style="font-size:11px;color:#999">Galeria vazia</div>` : ''}
-              </div>
+              ${galleryList.length > 0 ? `
+              <div style="padding:0 16px 16px">
+                <div style="font-size:11px;color:#999;margin-bottom:8px;font-weight:600">GALERIA</div>
+                <div id="pvGallery" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+                  ${galleryList.slice(0,4).map(url => `<img src="${esc(url)}" style="aspect-ratio:1;width:100%;object-fit:cover;border-radius:6px" />`).join('')}
+                </div>
+              </div>` : `<div id="pvGallery" style="padding:0 16px 16px"><div style="font-size:11px;color:#bbb">Galeria vazia</div></div>`}
             </div>
-            <div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Assim seus clientes verão a página</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center">Assim seus clientes verão a página</div>
           </div>
         </div>
       </div>
@@ -3675,13 +3703,16 @@ async function renderPaginaCliente(req: Request, res: Response) {
       document.getElementById('fPrimaryColor').value = c;
       document.getElementById('pcColorHex').value = c;
       try { document.getElementById('pcColorPicker').value = c; } catch(e){}
+      // Atualizar caixa de preview da cor
+      var cpb = document.getElementById('colorPreviewBox');
+      if (cpb) cpb.style.background = c;
       // Atualizar swatches
       document.querySelectorAll('#colorSwatches button').forEach(function(btn) {
         var bc = btn.title;
         btn.style.border = '3px solid ' + (bc === c ? '#fff' : 'transparent');
-        btn.style.boxShadow = bc === c ? '0 0 0 2px var(--gold)' : '0 0 0 1px var(--border)';
+        btn.style.boxShadow = bc === c ? '0 0 0 3px var(--gold)' : '0 0 0 1px var(--border)';
       });
-      // Preview
+      // Preview ao vivo
       document.getElementById('pvBtn').style.background = c;
     }
 
@@ -3809,7 +3840,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
       // Sincronizar URLs atuais (podem ter sido removidas)
       document.getElementById('fLogoUrl').value = _logoUrl;
       document.getElementById('fBannerUrl').value = _bannerUrl;
-      // Atualizar galleryUrls (existentes) e listas de novos arquivos
+      // Atualizar galleryUrls como JSON (compatível com APP)
       document.getElementById('fGalleryUrls').value = _galleryUrls.join('\n');
       document.getElementById('fGalleryBase64List').value = _newGalleryFiles.map(function(f){ return f.base64; }).join('||');
       document.getElementById('fGalleryMimeList').value = _newGalleryFiles.map(function(f){ return f.mime; }).join('||');
@@ -4747,12 +4778,19 @@ export function registerAdminRoutes(app: Express): void {
         }
       }
 
+      // Converter galleryUrls para formato JSON (compatível com APP)
+      let finalGalleryJson: string | null = null;
+      if (finalGalleryUrls) {
+        const urls = finalGalleryUrls.split('\n').map((u: string) => u.trim()).filter(Boolean);
+        finalGalleryJson = urls.length > 0 ? JSON.stringify(urls) : null;
+      }
+
       await db.upsertShopSettings({
         primaryColor: primaryColor || null,
         fontStyle: fontStyle || "moderno",
         logoUrl: finalLogoUrl,
         bannerUrl: finalBannerUrl,
-        galleryUrls: finalGalleryUrls || null,
+        galleryUrls: finalGalleryJson,
       }, tenantId);
 
       res.redirect("/admin/pagina-cliente?saved=1");

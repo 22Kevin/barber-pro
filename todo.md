@@ -2060,3 +2060,14 @@
 - [x] Upload de imagem de compartilhamento (sem precisar colar URL) em Configurações Extras
 - [x] Botão "Remover" para imagem de compartilhamento
 - [x] POST /admin/pagina-cliente/seo atualizado para processar upload via base64 → S3
+
+## Aparência — Reorganização Visual e Sincronização Galeria
+- [x] Redesenhar bloco Aparência com 5 seções separadas por divisores (Cor, Texto, Logo, Banner, Galeria)
+- [x] Cor personalizada com color picker, campo hex e caixa de preview da cor selecionada
+- [x] Botões de fonte com descrição (Limpo e moderno, Tradicional, etc.)
+- [x] Logo com card de fundo, tamanho maior (80px) e botão Remover integrado
+- [x] Banner com área clicável maior (140px) e hover overlay
+- [x] Galeria com grid 4 colunas e botão + Adicionar integrado
+- [x] Botão "Salvar Aparência" com largura total
+- [x] Corrigir sincronização galeria APP↔WEB: APP salva JSON, WEB agora lê JSON e salva JSON
+- [x] parseGalleryUrls() suporta ambos os formatos (JSON e texto com \n)
