@@ -3631,6 +3631,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
                     ${currentLogo ? `<button type="button" onclick="removeLogo()" style="background:#EF444422;color:#EF4444;border:1px solid #EF444444;border-radius:8px;font-size:12px;padding:6px 14px;cursor:pointer">× Remover</button>` : ''}
                   </div>
                   <input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="handleLogoUpload(this)" />
+                  <div id="logoFileName" style="font-size:11px;color:var(--success);margin-top:6px;min-height:16px"></div>
                 </div>
               </div>
             </div>
@@ -3643,6 +3644,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
                 <div id="bannerOverlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.5);display:${currentBanner ? 'flex' : 'none'};align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:600;opacity:0;transition:opacity 0.2s;gap:8px" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">📷 Trocar imagem</div>
               </div>
               <input type="file" id="bannerFileInput" accept="image/*" style="display:none" onchange="handleBannerUpload(this)" />
+              <div id="bannerFileName" style="font-size:11px;color:var(--success);margin-top:4px;min-height:16px"></div>
               <div style="display:flex;align-items:center;justify-content:space-between">
                 <div style="font-size:11px;color:var(--muted)">Aparece no topo da página do cliente.</div>
                 ${currentBanner ? `<button type="button" onclick="removeBanner()" style="background:none;border:none;color:#EF4444;font-size:12px;cursor:pointer;padding:0;font-weight:500">× Remover banner</button>` : ''}
@@ -3994,6 +3996,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
                   </div>
                 </div>
                 <input type="file" id="seoImageFileInput" accept="image/*" style="display:none" onchange="handleSeoImageUpload(this)" />
+                <div id="seoImageFileName" style="font-size:11px;color:var(--success);margin-top:4px;min-height:16px"></div>
                 <div style="font-size:11px;color:var(--muted)">Imagem exibida quando o link é compartilhado no WhatsApp, Facebook e Instagram.</div>
               </div>
               <button type="submit" class="btn btn-primary" style="padding:10px 24px" onclick="prepareSeoSubmit()">Salvar</button>
@@ -4009,6 +4012,8 @@ async function renderPaginaCliente(req: Request, res: Response) {
                 document.getElementById('fSeoImageMime').value = file.type;
                 var wrap = document.getElementById('seoImgPreviewWrap') || document.getElementById('seoImgPreview');
                 if (wrap) { wrap.outerHTML = '<img id="seoImgPreview" src="' + dataUrl + '" style="width:80px;height:42px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" />'; }
+                var seoNameEl = document.getElementById('seoImageFileName');
+                if (seoNameEl) seoNameEl.textContent = '✓ ' + file.name;
               };
               reader.readAsDataURL(file);
             }

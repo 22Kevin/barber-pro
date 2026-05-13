@@ -2089,3 +2089,8 @@
 - [x] Aplicar backgroundColor na página pública do cliente (public-routes.ts) com contraste automático de texto
 - [x] Adicionar seletor de cor de fundo no APP (BG_PRESET_COLORS, estado bgColor, salvamento)
 - [x] Melhorar preview da galeria no painel web (grid 4 colunas, aspect-ratio, ocultar quando vazio)
+
+## Três melhorias Round 2 (13/05/2026)
+- [x] Campo hex de cor de fundo personalizada no APP
+- [x] Exibir nome do arquivo ao fazer upload no painel web (logo, banner, imagem de compartilhamento)
+- [x] Seção de horários de funcionamento na página pública do cliente

@@ -458,6 +458,13 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   const barberList = await db.getAllBarbers(tenant.id);
   const serviceList = await db.getAllServicesWithMediaAndRatings(true, tenant.id);
   const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
+  // Horários de funcionamento — usa o primeiro barbeiro ativo como referência da barbearia
+  let shopWorkingHours: any[] = [];
+  try {
+    if (barberList.length > 0) {
+      shopWorkingHours = await db.getWorkingHours(barberList[0].id);
+    }
+  } catch {}
 
   // Verificar se o cliente está logado via cookie de sessão
   const clientSessionRaw = req?.cookies?.[`client_session_${slug}`] ?? req?.cookies?.["client_session"];
@@ -704,6 +711,28 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       </div>
     </div>
   `;
+
+
+  // ── Seção: Horários de Funcionamento ────────────────────────────────────────
+  const workingDays = shopWorkingHours.filter((h: any) => h.isWorking);
+  const hoursHtml = workingDays.length === 0 ? "" : (() => {
+    const dayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const fmt = (t: string) => t ? t.slice(0, 5) : "";
+    const rows = workingDays.map((h: any) => {
+      const lunch = h.lunchStart && h.lunchEnd
+        ? ` <span style="font-size:11px;color:var(--muted)">(almoço ${fmt(h.lunchStart)}–${fmt(h.lunchEnd)})</span>`
+        : "";
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:14px;font-weight:600">${dayNames[h.dayOfWeek]}</span>
+        <span style="font-size:13px;color:var(--muted)">${fmt(h.startTime)} – ${fmt(h.endTime)}${lunch}</span>
+      </div>`;
+    }).join("");
+    return `
+    <div class="section">
+      <div class="section-title">⏰ Horários de Funcionamento</div>
+      <div style="background:var(--surface2);border-radius:14px;padding:4px 16px">${rows}</div>
+    </div>`;
+  })();
 
   const agendamentoUrl = `/pub/${slug}/agendar`;
 
@@ -997,6 +1026,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     <\/script>
 
     ${teamHtml}
+    ${hoursHtml}
     ${reviewsHtml}
     ${infoHtml}
 

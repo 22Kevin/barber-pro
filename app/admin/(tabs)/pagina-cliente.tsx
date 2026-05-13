@@ -336,6 +336,7 @@ export default function PaginaClienteScreen() {
   // ── Estados: Aparência ──────────────────────────────────────────────────────
   const [primaryColor, setPrimaryColor] = useState("#C9A84C");
   const [bgColor, setBgColor] = useState("#0A0A0A");
+  const [customBgHex, setCustomBgHex] = useState("");
   const [customHex, setCustomHex] = useState("");
   const [fontStyleId, setFontStyleId] = useState("moderno");
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
@@ -358,7 +359,10 @@ export default function PaginaClienteScreen() {
   useEffect(() => {
     if (settings) {
       setPrimaryColor((settings as any).primaryColor ?? "#C9A84C");
-      setBgColor((settings as any).backgroundColor ?? "#0A0A0A");
+      const savedBg = (settings as any).backgroundColor ?? "#0A0A0A";
+      setBgColor(savedBg);
+      const BG_PRESETS = ["#0A0A0A","#111827","#1a1a2e","#0f172a","#1c1c1c","#18181b","#1e1b4b","#ffffff","#f8f9fa","#f1f5f9"];
+      if (!BG_PRESETS.includes(savedBg)) setCustomBgHex(savedBg.replace("#",""));
       setFontStyleId((settings as any).fontStyle ?? "moderno");
       setBannerUrl((settings as any).bannerUrl ?? null);
       setLogoUrl((settings as any).logoUrl ?? null);
@@ -383,6 +387,8 @@ export default function PaginaClienteScreen() {
   // ── Cor ativa ───────────────────────────────────────────────────────────────
   const isValidHex = /^#[0-9A-Fa-f]{6}$/.test(customHex.startsWith("#") ? customHex : `#${customHex}`);
   const activeColor = isValidHex ? (customHex.startsWith("#") ? customHex : `#${customHex}`) : primaryColor;
+  const isValidBgHex = /^#[0-9A-Fa-f]{6}$/.test(customBgHex.startsWith("#") ? customBgHex : `#${customBgHex}`);
+  const activeBgColor = isValidBgHex ? (customBgHex.startsWith("#") ? customBgHex : `#${customBgHex}`) : bgColor;
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   async function handleCopy(text: string, label?: string) {
@@ -434,7 +440,7 @@ export default function PaginaClienteScreen() {
   function handleSaveAppearance() {
     updateMutation.mutate({
       primaryColor: activeColor,
-      backgroundColor: bgColor,
+      backgroundColor: activeBgColor,
       fontStyle: fontStyleId,
       bannerUrl: bannerUrl ?? null,
       logoUrl: logoUrl ?? null,
@@ -831,6 +837,27 @@ export default function PaginaClienteScreen() {
                 )}
               </Pressable>
             ))}
+          </View>
+
+          {/* Cor de fundo personalizada */}
+          <View style={styles.hexRow}>
+            <View style={[styles.hexPreview, { backgroundColor: isValidBgHex ? activeBgColor : colors.border }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.hexLabel, { color: colors.muted }]}>Cor personalizada (hex)</Text>
+              <View style={[styles.hexInputWrapper, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[styles.hexHash, { color: colors.muted }]}>#</Text>
+                <TextInput
+                  value={customBgHex.replace("#", "")}
+                  onChangeText={(v) => { setCustomBgHex(v.startsWith("#") ? v : `#${v}`); }}
+                  placeholder="0A0A0A"
+                  placeholderTextColor={colors.muted}
+                  maxLength={7}
+                  autoCapitalize="characters"
+                  returnKeyType="done"
+                  style={[styles.hexInput, { color: colors.foreground }]}
+                />
+              </View>
+            </View>
           </View>
 
           {/* Estilo de Texto */}
