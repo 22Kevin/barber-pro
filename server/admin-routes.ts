@@ -3499,6 +3499,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
 
   // ─── Bloco 3: Aparência ──────────────────────────────────────────────────────
   const currentColor = esc(settings?.primaryColor ?? "#C9A84C");
+  const currentBgColor = esc((settings as any)?.backgroundColor ?? "#0A0A0A");
   const currentFont = esc(settings?.fontStyle ?? "moderno");
   const currentLogo = esc(settings?.logoUrl ?? "");
   const currentBanner = esc(settings?.bannerUrl ?? "");
@@ -3529,8 +3530,9 @@ async function renderPaginaCliente(req: Request, res: Response) {
         <div style="display:grid;grid-template-columns:1fr 360px;gap:32px;align-items:start">
 
           <!-- ===== COLUNA ESQUERDA: FORMULÁRIO ===== -->
-          <form id="visualForm" method="POST" action="/admin/pagina-cliente/visual" onsubmit="prepareVisualSubmit()">
+          <form id="visualForm" method="POST" action="/admin/pagina-cliente/visual" onsubmit="return handleVisualSubmit(event)">
             <input type="hidden" name="primaryColor" id="fPrimaryColor" value="${currentColor}" />
+            <input type="hidden" name="backgroundColor" id="fBackgroundColor" value="${currentBgColor}" />
             <input type="hidden" name="fontStyle" id="fFontStyle" value="${currentFont}" />
             <input type="hidden" name="logoUrl" id="fLogoUrl" value="${currentLogo}" />
             <input type="hidden" name="bannerUrl" id="fBannerUrl" value="${currentBanner}" />
@@ -3564,6 +3566,32 @@ async function renderPaginaCliente(req: Request, res: Response) {
                     <input class="form-input" type="text" id="pcColorHex" value="${currentColor}" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)){selectColor(this.value)}" placeholder="#C9A84C" style="font-family:monospace;font-size:14px;letter-spacing:1px" />
                   </div>
                   <div id="colorPreviewBox" style="width:48px;height:48px;border-radius:10px;background:${currentColor};border:1px solid var(--border);flex-shrink:0"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SEÇÃO 1b: Cor de Fundo -->
+            <div style="margin-bottom:28px">
+              <div style="font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">🌑 Cor de Fundo da Página</div>
+
+              <div style="margin-bottom:14px">
+                <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Escolha uma cor pré-definida:</div>
+                <div style="display:flex;flex-wrap:wrap;gap:10px" id="bgSwatches">
+                  ${["#0A0A0A","#111827","#1a1a2e","#0f172a","#1c1c1c","#18181b","#1e1b4b","#0c0a09","#ffffff","#f8f9fa","#f1f5f9"].map(c =>
+                    `<button type="button" onclick="selectBgColor('${c}')" title="${c}" style="width:36px;height:36px;border-radius:50%;background:${c};border:3px solid ${c === ((settings as any)?.backgroundColor ?? '#0A0A0A') ? '#fff' : 'transparent'};box-shadow:${c === ((settings as any)?.backgroundColor ?? '#0A0A0A') ? '0 0 0 3px var(--gold)' : '0 0 0 1px var(--border)'};cursor:pointer;transition:all 0.15s" id="bgswatch-${c.replace('#','')}"></button>`
+                  ).join('')}
+                </div>
+              </div>
+
+              <div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid var(--border)">
+                <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Ou escolha uma cor personalizada:</div>
+                <div style="display:flex;align-items:center;gap:12px">
+                  <input type="color" id="bgColorPicker" value="${currentBgColor}" oninput="selectBgColor(this.value)" style="width:48px;height:48px;border:2px solid var(--border);border-radius:10px;background:none;cursor:pointer;padding:3px" />
+                  <div style="flex:1">
+                    <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Código Hex</div>
+                    <input class="form-input" type="text" id="bgColorHex" value="${currentBgColor}" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)){selectBgColor(this.value)}" placeholder="#0A0A0A" style="font-family:monospace;font-size:14px;letter-spacing:1px" />
+                  </div>
+                  <div id="bgColorPreviewBox" style="width:48px;height:48px;border-radius:10px;background:${currentBgColor};border:1px solid var(--border);flex-shrink:0"></div>
                 </div>
               </div>
             </div>
@@ -3656,9 +3684,9 @@ async function renderPaginaCliente(req: Request, res: Response) {
                 </div>
               </div>
               <!-- Info -->
-              <div style="padding:16px">
-                <div id="pvName" style="font-size:18px;font-weight:700;color:#111;margin-bottom:3px;font-family:'Inter',sans-serif">${shopNameDisplay}</div>
-                <div style="font-size:12px;color:#888;margin-bottom:14px">Barbearia &bull; Agendamento Online</div>
+              <div style="padding:16px;background:${currentBgColor};transition:background 0.2s" id="pvInfoSection">
+                <div id="pvName" style="font-size:18px;font-weight:700;color:${(() => { const r=parseInt(currentBgColor.slice(1,3),16)||10, g=parseInt(currentBgColor.slice(3,5),16)||10, b=parseInt(currentBgColor.slice(5,7),16)||10; return (r*299+g*587+b*114)/1000 > 128 ? '#111' : '#fff'; })()};margin-bottom:3px;font-family:'Inter',sans-serif">${shopNameDisplay}</div>
+                <div class="pv-sub" style="font-size:12px;color:${(() => { const r=parseInt(currentBgColor.slice(1,3),16)||10, g=parseInt(currentBgColor.slice(3,5),16)||10, b=parseInt(currentBgColor.slice(5,7),16)||10; return (r*299+g*587+b*114)/1000 > 128 ? '#555' : '#aaa'; })()};margin-bottom:14px">Barbearia &bull; Agendamento Online</div>
                 <div id="pvBtn" style="display:inline-block;padding:10px 22px;background:${currentColor};color:#fff;border-radius:8px;font-size:13px;font-weight:700;font-family:'Inter',sans-serif">Agendar Agora</div>
               </div>
               <!-- Galeria mini -->
@@ -3683,6 +3711,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
     <script>
     // Estado atual
     var _color = '${currentColor}';
+    var _bgColor = '${currentBgColor}';
     var _font = '${currentFont}';
     var _logoUrl = '${currentLogo}';
     var _bannerUrl = '${currentBanner}';
@@ -3714,6 +3743,34 @@ async function renderPaginaCliente(req: Request, res: Response) {
       });
       // Preview ao vivo
       document.getElementById('pvBtn').style.background = c;
+    }
+
+    function selectBgColor(c) {
+      _bgColor = c;
+      document.getElementById('fBackgroundColor').value = c;
+      document.getElementById('bgColorHex').value = c;
+      try { document.getElementById('bgColorPicker').value = c; } catch(e){}
+      // Atualizar caixa de preview
+      var cpb = document.getElementById('bgColorPreviewBox');
+      if (cpb) cpb.style.background = c;
+      // Atualizar swatches
+      document.querySelectorAll('#bgSwatches button').forEach(function(btn) {
+        var bc = btn.title;
+        btn.style.border = '3px solid ' + (bc === c ? '#fff' : 'transparent');
+        btn.style.boxShadow = bc === c ? '0 0 0 3px var(--gold)' : '0 0 0 1px var(--border)';
+      });
+      // Preview ao vivo — fundo do card de info
+      var pvInfo = document.getElementById('pvInfoSection');
+      if (pvInfo) pvInfo.style.background = c;
+      // Ajustar cor do texto do preview baseado no brilho do fundo
+      var r = parseInt(c.slice(1,3),16), g = parseInt(c.slice(3,5),16), b = parseInt(c.slice(5,7),16);
+      var brightness = (r*299 + g*587 + b*114) / 1000;
+      var textColor = brightness > 128 ? '#111' : '#fff';
+      var mutedColor = brightness > 128 ? '#555' : '#aaa';
+      var pvName = document.getElementById('pvName');
+      if (pvName) pvName.style.color = textColor;
+      var pvSub = document.querySelector('#livePreview .pv-sub');
+      if (pvSub) pvSub.style.color = mutedColor;
     }
 
     function selectFont(id) {
@@ -3845,7 +3902,48 @@ async function renderPaginaCliente(req: Request, res: Response) {
       document.getElementById('fGalleryBase64List').value = _newGalleryFiles.map(function(f){ return f.base64; }).join('||');
       document.getElementById('fGalleryMimeList').value = _newGalleryFiles.map(function(f){ return f.mime; }).join('||');
     }
+
+    function handleVisualSubmit(e) {
+      e.preventDefault();
+      prepareVisualSubmit();
+      var form = document.getElementById('visualForm');
+      var btn = form.querySelector('button[type="submit"]');
+      var origText = btn.innerHTML;
+      btn.innerHTML = '⏳ Salvando...';
+      btn.disabled = true;
+      var data = new FormData(form);
+      fetch('/admin/pagina-cliente/visual', {
+        method: 'POST',
+        body: new URLSearchParams(data)
+      }).then(function(r) {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+        if (r.ok || r.redirected) {
+          // Mostrar toast de sucesso
+          var toast = document.createElement('div');
+          toast.style.cssText = 'position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#22C55E;color:#fff;padding:14px 28px;border-radius:12px;font-size:14px;font-weight:700;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.25);display:flex;align-items:center;gap:10px;animation:fadeInUp 0.3s ease';
+          toast.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Aparência salva com sucesso!';
+          document.body.appendChild(toast);
+          setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 3500);
+          // Limpar novos arquivos de galeria (já foram enviados)
+          _newGalleryFiles = [];
+        } else {
+          alert('Erro ao salvar. Tente novamente.');
+        }
+      }).catch(function() {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+        alert('Erro de conexão. Tente novamente.');
+      });
+      return false;
+    }
     </script>
+    <style>
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    </style>
   `;
 
   // ─── Bloco 4: Configurações Extras (recolhido por padrão) ────────────────────
@@ -4722,7 +4820,7 @@ export function registerAdminRoutes(app: Express): void {
       const session = (req as any).adminSession as { barberId: number; role: string };
       const barber = await db.getBarberById(session.barberId);
       const {
-        primaryColor, fontStyle,
+        primaryColor, backgroundColor, fontStyle,
         logoUrl: logoUrlRaw, bannerUrl: bannerUrlRaw, galleryUrls: galleryUrlsRaw,
         logoBase64, logoMime,
         bannerBase64, bannerMime,
@@ -4787,11 +4885,12 @@ export function registerAdminRoutes(app: Express): void {
 
       await db.upsertShopSettings({
         primaryColor: primaryColor || null,
+        backgroundColor: backgroundColor || null,
         fontStyle: fontStyle || "moderno",
         logoUrl: finalLogoUrl,
         bannerUrl: finalBannerUrl,
         galleryUrls: finalGalleryJson,
-      }, tenantId);
+      } as any, tenantId);
 
       res.redirect("/admin/pagina-cliente?saved=1");
     } catch (e: any) {

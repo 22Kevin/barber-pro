@@ -1,0 +1,1 @@
+ALTER TABLE "shop_settings" ADD COLUMN "backgroundColor" varchar(20) DEFAULT '#0A0A0A';

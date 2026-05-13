@@ -2076,3 +2076,11 @@
 - [x] Corrigir token inválido no script JS: _galleryUrls.join('\n') com newline literal quebrava todo o script
 - [x] Substituir por JSON.stringify(_galleryUrls) — sem newlines literais no código JS
 - [x] Confirmar que botão Abrir Página já tem href correto (https://usebarberpro.com/barber-k)
+
+## Aparência - Cor de Fundo e Melhorias (13/05/2026)
+- [x] Adicionar seleção de cor de fundo da página (swatches pré-definidos + picker + hex)
+- [x] Adicionar backgroundColor ao schema drizzle e auto-migrate.ts
+- [x] Adicionar backgroundColor ao POST do visual
+- [x] Preview ao vivo reflete a cor de fundo em tempo real
+- [x] Toast de sucesso ao salvar (sem reload de página - AJAX)
+- [x] Verificar outros scripts com join('\n') - nenhum outro problema encontrado

@@ -380,6 +380,7 @@ export const shopSettings = pgTable("shop_settings", {
   seoDescription: varchar("seoDescription", { length: 300 }),
   seoImageUrl: text("seoImageUrl"),
   fontStyle: varchar("fontStyle", { length: 30 }).default("moderno"),
+  backgroundColor: varchar("backgroundColor", { length: 20 }).default("#0A0A0A"),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
