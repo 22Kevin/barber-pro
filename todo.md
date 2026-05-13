@@ -2053,3 +2053,10 @@
 - [x] Galeria de fotos com upload múltiplo, preview e remoção individual
 - [x] Preview em tempo real (cor, fonte, logo, banner, galeria)
 - [x] Botão Salvar Aparência com processamento de uploads no servidor
+
+## Aparência — Melhorias Round 2
+- [x] Botão "Remover logo" no bloco Aparência (limpa logo + preview ao vivo)
+- [x] Botão "Remover banner" no bloco Aparência (limpa banner + preview ao vivo)
+- [x] Upload de imagem de compartilhamento (sem precisar colar URL) em Configurações Extras
+- [x] Botão "Remover" para imagem de compartilhamento
+- [x] POST /admin/pagina-cliente/seo atualizado para processar upload via base64 → S3

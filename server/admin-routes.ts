@@ -3572,7 +3572,10 @@ async function renderPaginaCliente(req: Request, res: Response) {
                   ${currentLogo ? `<img id="logoPreviewImg" src="${currentLogo}" style="width:100%;height:100%;object-fit:cover" />` : `<span id="logoPreviewImg" style="font-size:28px;color:var(--muted)">✂️</span>`}
                 </div>
                 <div style="flex:1">
-                  <label for="logoFileInput" class="btn btn-ghost" style="cursor:pointer;display:inline-block;margin-bottom:6px">📷 Escolher foto</label>
+                  <div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+                    <label for="logoFileInput" class="btn btn-ghost" style="cursor:pointer;display:inline-block">📷 Escolher foto</label>
+                    ${currentLogo ? `<button type="button" onclick="removeLogo()" class="btn" style="background:#EF444422;color:#EF4444;border:1px solid #EF444444;font-size:12px;padding:6px 12px">× Remover logo</button>` : ''}
+                  </div>
                   <input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="handleLogoUpload(this)" />
                   ${currentLogo ? `<div style="font-size:11px;color:var(--muted)">Logo atual salvo. Escolha outro para substituir.</div>` : `<div style="font-size:11px;color:var(--muted)">JPG, PNG ou WebP. Recomendado: 400×400px.</div>`}
                 </div>
@@ -3587,7 +3590,10 @@ async function renderPaginaCliente(req: Request, res: Response) {
                 <div id="bannerOverlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.4);display:${currentBanner ? 'flex' : 'none'};align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;opacity:0;transition:opacity 0.2s" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">📷 Trocar imagem</div>
               </div>
               <input type="file" id="bannerFileInput" accept="image/*" style="display:none" onchange="handleBannerUpload(this)" />
-              <div style="font-size:11px;color:var(--muted)">Recomendado: 1200×400px. Aparece no topo da página.</div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="font-size:11px;color:var(--muted)">Recomendado: 1200×400px. Aparece no topo da página.</div>
+                ${currentBanner ? `<button type="button" onclick="removeBanner()" style="background:none;border:none;color:#EF4444;font-size:12px;cursor:pointer;padding:0">× Remover banner</button>` : ''}
+              </div>
             </div>
 
             <!-- Galeria de Fotos -->
@@ -3778,7 +3784,31 @@ async function renderPaginaCliente(req: Request, res: Response) {
       }
     }
 
+    function removeLogo() {
+      _logoUrl = '';
+      document.getElementById('fLogoUrl').value = '';
+      document.getElementById('fLogoBase64').value = '';
+      document.getElementById('fLogoMime').value = '';
+      var wrap = document.getElementById('logoPreviewWrap');
+      wrap.innerHTML = '<span style="font-size:28px;color:var(--muted)">✂️</span>';
+      document.getElementById('pvLogo').innerHTML = '<span style="font-size:22px">✂️</span>';
+    }
+
+    function removeBanner() {
+      _bannerUrl = '';
+      document.getElementById('fBannerUrl').value = '';
+      document.getElementById('fBannerBase64').value = '';
+      document.getElementById('fBannerMime').value = '';
+      var wrap = document.getElementById('bannerPreviewWrap');
+      wrap.style.background = 'var(--surface2)';
+      wrap.innerHTML = '<div style="text-align:center;color:var(--muted)"><div style="font-size:28px">🖼️</div><div style="font-size:12px;margin-top:4px">Clique para escolher</div></div>';
+      document.getElementById('pvBanner').style.background = 'linear-gradient(135deg,#1a1a1a,#2d2d2d)';
+    }
+
     function prepareVisualSubmit() {
+      // Sincronizar URLs atuais (podem ter sido removidas)
+      document.getElementById('fLogoUrl').value = _logoUrl;
+      document.getElementById('fBannerUrl').value = _bannerUrl;
       // Atualizar galleryUrls (existentes) e listas de novos arquivos
       document.getElementById('fGalleryUrls').value = _galleryUrls.join('\n');
       document.getElementById('fGalleryBase64List').value = _newGalleryFiles.map(function(f){ return f.base64; }).join('||');
@@ -3813,12 +3843,52 @@ async function renderPaginaCliente(req: Request, res: Response) {
                 <textarea class="form-input" name="seoDescription" rows="3" placeholder="Ex: Agende seu corte online! Barbearia especializada em cortes modernos, barba e bigode." maxlength="300" style="resize:vertical">${esc(settings?.seoDescription ?? "")}</textarea>
               </div>
               <div class="form-group">
-                <label class="form-label">Imagem de Compartilhamento <span style="color:var(--muted);font-weight:400">(URL, 1200×630px ideal)</span></label>
-                <input class="form-input" type="url" name="seoImageUrl" value="${esc(settings?.seoImageUrl ?? "")}" placeholder="https://exemplo.com/imagem-barbearia.jpg" />
-                <div style="font-size:11px;color:var(--muted);margin-top:6px">Imagem exibida quando o link é compartilhado no WhatsApp, Facebook e Instagram.</div>
+                <label class="form-label">Imagem de Compartilhamento <span style="color:var(--muted);font-weight:400">(1200×630px ideal)</span></label>
+                <input type="hidden" name="seoImageUrl" id="fSeoImageUrl" value="${esc(settings?.seoImageUrl ?? "")}" />
+                <input type="hidden" name="seoImageBase64" id="fSeoImageBase64" value="" />
+                <input type="hidden" name="seoImageMime" id="fSeoImageMime" value="" />
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
+                  ${settings?.seoImageUrl ? `
+                  <div style="width:80px;height:42px;border-radius:6px;overflow:hidden;border:1px solid var(--border);flex-shrink:0">
+                    <img id="seoImgPreview" src="${esc(settings.seoImageUrl)}" style="width:100%;height:100%;object-fit:cover" />
+                  </div>` : `<div id="seoImgPreviewWrap" style="width:80px;height:42px;border-radius:6px;border:1px dashed var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:var(--muted)">🖼️</div>`}
+                  <div style="flex:1">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                      <label for="seoImageFileInput" class="btn btn-ghost" style="cursor:pointer;font-size:12px;padding:6px 12px">📷 Escolher imagem</label>
+                      ${settings?.seoImageUrl ? `<button type="button" onclick="removeSeoImage()" style="background:#EF444422;color:#EF4444;border:1px solid #EF444444;border-radius:8px;font-size:12px;padding:6px 12px;cursor:pointer">× Remover</button>` : ''}
+                    </div>
+                  </div>
+                </div>
+                <input type="file" id="seoImageFileInput" accept="image/*" style="display:none" onchange="handleSeoImageUpload(this)" />
+                <div style="font-size:11px;color:var(--muted)">Imagem exibida quando o link é compartilhado no WhatsApp, Facebook e Instagram.</div>
               </div>
-              <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar</button>
+              <button type="submit" class="btn btn-primary" style="padding:10px 24px" onclick="prepareSeoSubmit()">Salvar</button>
             </form>
+            <script>
+            function handleSeoImageUpload(input) {
+              var file = input.files[0];
+              if (!file) return;
+              var reader = new FileReader();
+              reader.onload = function(e) {
+                var dataUrl = e.target.result;
+                document.getElementById('fSeoImageBase64').value = dataUrl.split(',')[1];
+                document.getElementById('fSeoImageMime').value = file.type;
+                var wrap = document.getElementById('seoImgPreviewWrap') || document.getElementById('seoImgPreview');
+                if (wrap) { wrap.outerHTML = '<img id="seoImgPreview" src="' + dataUrl + '" style="width:80px;height:42px;object-fit:cover;border-radius:6px;border:1px solid var(--border)" />'; }
+              };
+              reader.readAsDataURL(file);
+            }
+            function removeSeoImage() {
+              document.getElementById('fSeoImageUrl').value = '';
+              document.getElementById('fSeoImageBase64').value = '';
+              document.getElementById('fSeoImageMime').value = '';
+              var img = document.getElementById('seoImgPreview');
+              if (img) img.outerHTML = '<div id="seoImgPreviewWrap" style="width:80px;height:42px;border-radius:6px;border:1px dashed var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;color:var(--muted)">🖼️</div>';
+            }
+            function prepareSeoSubmit() {
+              // fSeoImageUrl já está sincronizado; base64 e mime são enviados separadamente
+            }
+            </script>
           </div>
 
           <div style="border-top:1px solid var(--border);margin-bottom:28px;padding-top:24px">
@@ -4723,14 +4793,29 @@ export function registerAdminRoutes(app: Express): void {
     try {
       const session = (req as any).adminSession as { barberId: number; role: string };
       const barber = await db.getBarberById(session.barberId);
-      const { seoTitle, seoDescription, seoImageUrl } = req.body ?? {};
+      const { seoTitle, seoDescription, seoImageUrl, seoImageBase64, seoImageMime } = req.body ?? {};
+
+      // Upload da imagem de compartilhamento se fornecida
+      let finalSeoImageUrl = seoImageUrl?.trim() || null;
+      if (seoImageBase64 && seoImageMime) {
+        try {
+          const { storagePut } = await import("./storage");
+          const buf = Buffer.from(seoImageBase64, "base64");
+          const ext = seoImageMime.includes("png") ? "png" : seoImageMime.includes("webp") ? "webp" : "jpg";
+          const key = `shop/${barber?.tenantId ?? 0}/seo-image-${Date.now()}.${ext}`;
+          const { url } = await storagePut(key, buf, seoImageMime);
+          finalSeoImageUrl = url;
+        } catch (e) { console.error("Erro upload seo image:", e); }
+      }
+
       await db.upsertShopSettings({
         seoTitle: seoTitle?.trim() || null,
         seoDescription: seoDescription?.trim() || null,
-        seoImageUrl: seoImageUrl?.trim() || null,
+        seoImageUrl: finalSeoImageUrl,
       }, barber?.tenantId);
       res.redirect("/admin/pagina-cliente?seosaved=1");
     } catch (e: any) {
+      console.error("Erro ao salvar SEO:", e);
       res.redirect("/admin/pagina-cliente");
     }
   });
