@@ -3393,14 +3393,12 @@ async function renderPaginaCliente(req: Request, res: Response) {
   const barber = await db.getBarberById(session.barberId);
   const settings = await db.getShopSettings(barber?.tenantId);
   const saved = req.query.saved === "1";
-  const slugSaved = req.query.slugsaved === "1";
-  const slugError = req.query.slugerror as string | undefined;
-  const activeTab = (req.query.tab as string) ?? "url";
+  const trackingSaved = req.query.trackingsaved === "1";
+  const seoSaved = req.query.seosaved === "1";
 
   // Buscar tenant para slug
   const tenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
   const currentSlug = tenant?.slug ?? "";
-  const baseUrl = process.env.PUBLIC_BASE_URL ?? "";
   const publicUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}` : "";
   const bookingUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}/agendar` : "";
 
@@ -3409,453 +3407,225 @@ async function renderPaginaCliente(req: Request, res: Response) {
   if (bookingUrl) {
     try {
       const QRCode = await import("qrcode");
-      qrDataUrl = await QRCode.default.toDataURL(bookingUrl, { width: 220, margin: 2, color: { dark: "#000000", light: "#FFFFFF" } });
+      qrDataUrl = await QRCode.default.toDataURL(bookingUrl, { width: 280, margin: 2, color: { dark: "#000000", light: "#FFFFFF" } });
     } catch { /* sem QR Code */ }
   }
 
-  // ─── Aba: URL & QR Code ──────────────────────────────────────────────────
-  const tabUrlQr = `
-    ${slugSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> URL atualizada com sucesso!</div>` : ""}
-    ${slugError ? `<div style="background:#EF444422;border:1px solid #EF444444;color:var(--error);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> ${esc(slugError)}</div>` : ""}
-
+  // ─── Bloco 1: Compartilhar sua Página ─────────────────────────────────────
+  const blocoCompartilhar = `
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">Links de Agendamento</div></div>
+      <div class="card-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">🔗</span>
+          <div class="card-title">Compartilhar sua Página</div>
+        </div>
+      </div>
       <div class="card-body">
         <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Compartilhe estes links com seus clientes para que eles possam agendar online diretamente pela página da sua barbearia.</p>
         ${bookingUrl ? `
-          <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
-            ${qrDataUrl ? `
-              <div style="flex-shrink:0;text-align:center">
-                <div style="background:#fff;padding:12px;border-radius:16px;border:1px solid var(--border);display:inline-block">
-                  <img src="${qrDataUrl}" width="160" height="160" alt="QR Code" style="display:block" />
-                </div>
-                <div style="font-size:11px;color:var(--muted);margin-top:8px">QR Code de Agendamento</div>
-                <a href="${qrDataUrl}" download="qrcode-agendamento.png" class="btn btn-ghost" style="font-size:11px;padding:6px 12px;margin-top:8px">⬇️ Baixar PNG</a>
-              </div>` : ""}
-            <div style="flex:1;min-width:220px">
-              <div style="margin-bottom:16px">
-                <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">PÁGINA PRINCIPAL DA BARBEARIA</div>
-                <div style="display:flex;gap:8px">
-                  <input id="url-vitrine" class="form-input" type="text" value="${esc(publicUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
-                  <button onclick="copyUrl('url-vitrine', this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Copiar</button>
-                  <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Abrir</a>
-                </div>
-              </div>
-              <div style="margin-bottom:20px">
-                <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">LINK DIRETO PARA AGENDAMENTO</div>
-                <div style="display:flex;gap:8px">
-                  <input id="url-booking" class="form-input" type="text" value="${esc(bookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
-                  <button onclick="copyUrl('url-booking', this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Copiar</button>
-                  <a href="${esc(bookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Abrir</a>
-                </div>
-              </div>
-              <!-- Compartilhamento -->
-              <div style="margin-top:4px">
-                <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:10px">COMPARTILHAR</div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
-                  <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário online: ' + bookingUrl)}" target="_blank" class="btn btn-primary" style="font-size:12px;padding:8px 16px;display:flex;align-items:center;gap:6px">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.116 1.522 5.847L.057 23.776a.5.5 0 0 0 .614.614l5.929-1.465A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.695-.5-5.24-1.374l-.375-.216-3.878.959.975-3.764-.237-.388A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-                    WhatsApp
-                  </a>
-                  <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(bookingUrl)}" target="_blank" class="btn btn-ghost" style="font-size:12px;padding:8px 16px;display:flex;align-items:center;gap:6px;background:#1877F2;color:#fff;border-color:#1877F2">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                    Facebook
-                  </a>
-                  <button onclick="(function(){var msg='Agende seu horário comigo!\n\nServiços, preços e disponibilidade:\n${esc(bookingUrl)}\n\nClique no link e escolha o melhor horário para você!';navigator.clipboard.writeText(msg).then(function(){var b=event.target.closest('button');var o=b.innerHTML;b.innerHTML='Copiado!';setTimeout(function(){b.innerHTML=o;},2500);});})()" class="btn btn-ghost" style="font-size:12px;padding:8px 16px;display:flex;align-items:center;gap:6px">
-                    Mensagem pronta
-                  </button>
-                </div>
-              </div>
+          <div style="margin-bottom:16px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">PÁGINA PRINCIPAL DA BARBEARIA</div>
+            <div style="display:flex;gap:8px">
+              <input id="url-vitrine" class="form-input" type="text" value="${esc(publicUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
+              <button onclick="copyUrl('url-vitrine', this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Copiar</button>
+              <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Abrir</a>
             </div>
           </div>
-        ` : `<div style="color:var(--muted);font-size:13px">Não foi possível gerar o link. Configure o PUBLIC_BASE_URL no servidor.</div>`}
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><div class="card-title">Personalizar URL</div></div>
-      <div class="card-body">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">O slug é a parte final do link que identifica sua barbearia. Use apenas letras minúsculas, números e hífens.</p>
-        <form method="POST" action="/admin/pagina-cliente/slug">
-          <div style="display:flex;align-items:center;gap:0;margin-bottom:12px">
-            <div style="padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:12px;color:var(--muted);white-space:nowrap;font-family:monospace">usebarberpro.com/</div>
-            <input class="form-input" type="text" name="slug" value="${esc(currentSlug)}" required pattern="[a-z0-9\\-]+" title="Apenas letras minúsculas, números e hífens" style="border-radius:0 8px 8px 0;font-family:monospace;font-size:14px" placeholder="nome-da-barbearia" />
+          <div style="margin-bottom:20px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px">LINK DIRETO PARA AGENDAMENTO</div>
+            <div style="display:flex;gap:8px">
+              <input id="url-booking" class="form-input" type="text" value="${esc(bookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
+              <button onclick="copyUrl('url-booking', this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Copiar</button>
+              <a href="${esc(bookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Abrir</a>
+            </div>
           </div>
-          <p style="font-size:11px;color:var(--muted);margin-bottom:16px">Atenção: Ao alterar o slug, o link antigo deixará de funcionar. Atualize todos os locais onde o link foi compartilhado.</p>
-          <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar Nova URL</button>
-        </form>
+          <div style="border-top:1px solid var(--border);padding-top:16px">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:12px">COMPARTILHAR</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário online: ' + bookingUrl)}" target="_blank" class="btn btn-primary" style="font-size:13px;padding:10px 18px;display:flex;align-items:center;gap:6px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.553 4.116 1.522 5.847L.057 23.776a.5.5 0 0 0 .614.614l5.929-1.465A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.695-.5-5.24-1.374l-.375-.216-3.878.959.975-3.764-.237-.388A9.945 9.945 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                WhatsApp
+              </a>
+              <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(bookingUrl)}" target="_blank" class="btn btn-ghost" style="font-size:13px;padding:10px 18px;display:flex;align-items:center;gap:6px;background:#1877F2;color:#fff;border-color:#1877F2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                Facebook
+              </a>
+              <button onclick="(function(){var msg='Agende seu horário comigo!\n\nServiços, preços e disponibilidade:\n${esc(bookingUrl)}\n\nClique no link e escolha o melhor horário para você!';navigator.clipboard.writeText(msg).then(function(){var b=event.target.closest('button');var o=b.innerHTML;b.innerHTML='Copiado!';setTimeout(function(){b.innerHTML=o;},2500);});})()" class="btn btn-ghost" style="font-size:13px;padding:10px 18px;display:flex;align-items:center;gap:6px">
+                Mensagem pronta
+              </button>
+            </div>
+          </div>
+        ` : `<div style="color:var(--muted);font-size:13px">Nenhum link disponível. Aguarde a configuração do sistema.</div>`}
       </div>
     </div>
-
     <script>
     function copyUrl(id, btn) {
-      const el = document.getElementById(id);
+      var el = document.getElementById(id);
       if (!el) return;
-      navigator.clipboard.writeText(el.value).then(() => {
-        const orig = btn.textContent;
+      navigator.clipboard.writeText(el.value).then(function() {
+        var orig = btn.textContent;
         btn.textContent = 'Copiado!';
-        setTimeout(() => btn.textContent = orig, 2000);
+        setTimeout(function() { btn.textContent = orig; }, 2000);
       });
     }
     </script>
   `;
 
-  // ─── Aba: Personalização Visual ──────────────────────────────────────────────
-  const tabVisual = `
-    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações visuais salvas!</div>` : ""}
-    <form method="POST" action="/admin/pagina-cliente/visual">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
-        <div class="form-group">
-          <label class="form-label">Cor Principal da Página</label>
-          <div style="display:flex;align-items:center;gap:12px">
-            <input type="color" name="primaryColor" value="${esc(settings?.primaryColor ?? "#C9A84C")}" style="width:48px;height:40px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;padding:2px" />
-            <input class="form-input" type="text" id="colorHex" value="${esc(settings?.primaryColor ?? "#C9A84C")}" style="flex:1" placeholder="#C9A84C" />
-          </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:6px">Cor usada nos botões e destaques da página de agendamento.</div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">URL do Banner</label>
-          <input class="form-input" type="text" name="bannerUrl" value="${esc(settings?.bannerUrl ?? "")}" placeholder="https://..." />
-          <div style="font-size:11px;color:var(--muted);margin-top:6px">Imagem de fundo do hero (1200×400px recomendado).</div>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">URL do Logo</label>
-        <input class="form-input" type="text" name="logoUrl" value="${esc(settings?.logoUrl ?? "")}" placeholder="https://..." />
-        <div style="font-size:11px;color:var(--muted);margin-top:6px">Logo exibido na página pública e nos e-mails.</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">URLs da Galeria (uma por linha)</label>
-        <textarea name="galleryUrls" class="form-input" rows="4" placeholder="https://...\nhttps://...">${esc(settings?.galleryUrls ?? "")}</textarea>
-        <div style="font-size:11px;color:var(--muted);margin-top:6px">Fotos exibidas na galeria da página pública.</div>
-      </div>
-      <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">Salvar Visual</button>
-    </form>
-    <script>
-      document.querySelector('input[type=color]').addEventListener('input', function() {
-        document.getElementById('colorHex').value = this.value;
-      });
-      document.getElementById('colorHex').addEventListener('input', function() {
-        if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
-          document.querySelector('input[type=color]').value = this.value;
-        }
-      });
-    </script>
-  `;
-
-  // ─── Aba: Domínio Customizado ──────────────────────────────────────────────
-  const domainSaved = req.query.domainsaved === "1";
-  const tabDominio = `
-    ${domainSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Domínio salvo com sucesso!</div>` : ""}
+  // ─── Bloco 2: QR Code da Barbearia ──────────────────────────────────────────
+  const blocoQrCode = `
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">Domínio Personalizado</div></div>
-      <div class="card-body">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Configure um domínio próprio para a página de agendamento da sua barbearia (ex: <code>agendamento.minhabarbearia.com.br</code>). O domínio precisa ser apontado para este servidor via registro DNS do tipo CNAME ou A.</p>
-        <form method="POST" action="/admin/pagina-cliente/dominio">
-          <div class="form-group">
-            <label class="form-label">Domínio Personalizado</label>
-            <input class="form-input" type="text" name="customDomain" value="${esc(settings?.customDomain ?? "")}" placeholder="agendamento.minhabarbearia.com.br" />
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">Deixe em branco para usar apenas o link padrão do sistema.</div>
-          </div>
-          <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar Domínio</button>
-        </form>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-header"><div class="card-title">Como configurar o DNS</div></div>
-      <div class="card-body">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Após salvar o domínio acima, acesse o painel do seu provedor de DNS e adicione um dos registros abaixo:</p>
-        <div style="background:var(--surface2);border-radius:8px;padding:16px;font-family:monospace;font-size:12px;margin-bottom:12px">
-          <div style="color:var(--muted);margin-bottom:8px"># Opção 1: Registro CNAME (recomendado para subdomínios)</div>
-          <div>Tipo: <strong>CNAME</strong></div>
-          <div>Nome: <strong>agendamento</strong> (ou o subdomínio desejado)</div>
-          <div>Valor: <strong>${esc(baseUrl.replace(/^https?:\/\//, ""))}</strong></div>
-        </div>
-        <div style="background:var(--surface2);border-radius:8px;padding:16px;font-family:monospace;font-size:12px">
-          <div style="color:var(--muted);margin-bottom:8px"># Opção 2: Registro A (para domínio raiz)</div>
-          <div>Tipo: <strong>A</strong></div>
-          <div>Nome: <strong>@</strong> ou <strong>agendamento</strong></div>
-          <div>Valor: <strong>[IP do servidor]</strong></div>
-        </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:12px"> A propagação do DNS pode levar até 48 horas. Entre em contato com o suporte após configurar.</p>
-      </div>
-    </div>
-  `;
-
-  // ─── Aba: Rastreamento ──────────────────────────────────────────────────────
-  const trackingSaved = req.query.trackingsaved === "1";
-  const tabRastreamento = `
-    ${trackingSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações de rastreamento salvas!</div>` : ""}
-    <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">Google Analytics 4</div></div>
-      <div class="card-body">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Acompanhe as visitas e conversões da sua página de agendamento com o Google Analytics 4. Crie uma propriedade em <a href="https://analytics.google.com" target="_blank" style="color:var(--gold)">analytics.google.com</a> e cole o Measurement ID abaixo.</p>
-        <form method="POST" action="/admin/pagina-cliente/rastreamento">
-          <div class="form-group">
-            <label class="form-label">Google Analytics 4 — Measurement ID</label>
-            <input class="form-input" type="text" name="ga4MeasurementId" value="${esc(settings?.ga4MeasurementId ?? "")}" placeholder="G-XXXXXXXXXX" style="font-family:monospace" />
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">Formato: G-XXXXXXXXXX. Encontrado em Administrador → Fluxos de dados → Tag do Google.</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Facebook Pixel ID</label>
-            <input class="form-input" type="text" name="facebookPixelId" value="${esc(settings?.facebookPixelId ?? "")}" placeholder="123456789012345" style="font-family:monospace" />
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">Encontrado no Gerenciador de Anúncios → Fontes de Dados → Pixels.</div>
-          </div>
-          <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar Rastreamento</button>
-        </form>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-header"><div class="card-title">ℹ️ Como funciona</div></div>
-      <div class="card-body">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Quando configurados, os scripts de rastreamento são injetados automaticamente em todas as páginas públicas da sua barbearia (vitrine, agendamento, pagamento). Você poderá acompanhar:</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div style="background:var(--surface2);border-radius:8px;padding:12px">
-            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">Google Analytics 4</div>
-            <div style="font-size:12px;color:var(--muted)">Visitas à página, origem do tráfego, taxa de conversão de agendamentos, dispositivos e localização dos visitantes.</div>
-          </div>
-          <div style="background:var(--surface2);border-radius:8px;padding:12px">
-            <div style="font-size:12px;font-weight:700;color:#1877F2;margin-bottom:6px">Facebook Pixel</div>
-            <div style="font-size:12px;color:var(--muted)">Rastreamento de conversões para anúncios no Facebook e Instagram, criação de públicos personalizados e retargeting.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  // ─── Aba: Preview ──────────────────────────────────────────────────────────
-  const previewTimestamp = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const tabPreview = publicUrl ? `
-    <div class="card">
       <div class="card-header">
-        <div class="card-title">Preview da Página Pública</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span id="preview-ts" style="font-size:11px;color:var(--muted)">Carregado às ${previewTimestamp}</span>
-          <button onclick="(function(){var f=document.getElementById('preview-iframe');var ts=document.getElementById('preview-ts');f.src=f.src.split('?')[0]+'?t='+Date.now();ts.textContent='Recarregado às '+new Date().toLocaleTimeString('pt-BR');})()" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">Atualizar Recarregar</button>
-          <a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">Abrir em nova aba</a>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">📱</span>
+          <div class="card-title">QR Code da Barbearia</div>
         </div>
       </div>
-      <div class="card-body" style="padding:0">
-        <iframe id="preview-iframe" src="${esc(publicUrl)}" style="width:100%;height:600px;border:none;border-radius:0 0 12px 12px" loading="lazy"></iframe>
-      </div>
-    </div>
-  ` : `
-    <div class="card">
       <div class="card-body">
-        <div style="text-align:center;padding:40px;color:var(--muted)">
-          <div style="font-size:48px;margin-bottom:16px"></div>
-          <div style="font-size:16px;font-weight:600;margin-bottom:8px">Página pública não disponível</div>
-          <div style="font-size:13px">Configure o PUBLIC_BASE_URL no servidor para habilitar o preview.</div>
-        </div>
+        ${qrDataUrl ? `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:16px">
+            <div style="background:#fff;padding:16px;border-radius:16px;border:1px solid var(--border);display:inline-block">
+              <img src="${qrDataUrl}" width="200" height="200" alt="QR Code" style="display:block" />
+            </div>
+            <p style="font-size:13px;color:var(--muted);text-align:center;max-width:320px">Imprima este QR Code e coloque na barbearia. Seus clientes escaneiam e já vão direto para o agendamento online.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+              <a href="${qrDataUrl}" download="qrcode-agendamento.png" class="btn btn-primary" style="font-size:13px;padding:10px 20px">⬇️ Baixar PNG</a>
+              <button onclick="(function(){navigator.clipboard.writeText('${esc(bookingUrl)}').then(function(){var b=event.target.closest('button');var o=b.textContent;b.textContent='Copiado!';setTimeout(function(){b.textContent=o;},2000);});})()" class="btn btn-ghost" style="font-size:13px;padding:10px 20px">🔗 Copiar link</button>
+            </div>
+          </div>
+        ` : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">QR Code não disponível. Configure o link da barbearia primeiro.</div>`}
       </div>
     </div>
   `;
 
-  // ─── Aba: SEO ─────────────────────────────────────────────────────
-  const tabSeo = `
+  // ─── Bloco 3: Aparência ──────────────────────────────────────────────────────
+  const blocoAparencia = `
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">SEO & Compartilhamento</div></div>
+      <div class="card-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:20px">🎨</span>
+          <div class="card-title">Aparência</div>
+        </div>
+      </div>
       <div class="card-body">
-        <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Configure como sua página aparece nos resultados do Google e quando compartilhada no WhatsApp, Facebook e Instagram. Estes dados são injetados automaticamente como meta tags na página pública.</p>
-        <form method="POST" action="/admin/pagina-cliente/seo">
-          <div class="form-group">
-            <label class="form-label">Título da Página <span style="color:var(--muted);font-weight:400">(até 60 caracteres)</span></label>
-            <input class="form-input" type="text" name="seoTitle" value="${esc(settings?.seoTitle ?? "")}" placeholder="Ex: Barbearia do João — Cortes modernos em São Paulo" maxlength="100" />
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">Aparece na aba do navegador e nos resultados de busca do Google. Se vazio, usa o nome da barbearia.</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Meta Descrição <span style="color:var(--muted);font-weight:400">(até 160 caracteres)</span></label>
-            <textarea class="form-input" name="seoDescription" rows="3" placeholder="Ex: Agende seu corte online! Barbearia especializada em cortes modernos, barba e bigode. Atendimento rápido e sem espera." maxlength="300" style="resize:vertical">${esc(settings?.seoDescription ?? "")}</textarea>
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">Exibida nos resultados do Google abaixo do título. Impacta diretamente a taxa de cliques.</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Imagem Open Graph <span style="color:var(--muted);font-weight:400">(URL da imagem, 1200×630px ideal)</span></label>
-            <input class="form-input" type="url" name="seoImageUrl" value="${esc(settings?.seoImageUrl ?? "")}" placeholder="https://exemplo.com/imagem-barbearia.jpg" />
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">Imagem exibida quando o link é compartilhado no WhatsApp, Facebook e Instagram. Recomendado: 1200×630px. Se vazio, usa o banner ou logo da barbearia.</div>
-          </div>
-          ${settings?.seoImageUrl ? `
-          <div style="margin-bottom:20px">
-            <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">PRÉVIA DO COMPARTILHAMENTO</div>
-            <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;max-width:400px">
-              <img src="${esc(settings.seoImageUrl)}" alt="OG Image" style="width:100%;height:200px;object-fit:cover;display:block" onerror="this.style.display='none'" />
-              <div style="padding:12px;background:var(--surface)">
-                <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase">${esc(publicUrl || "sua-url.com")}</div>
-                <div style="font-size:14px;font-weight:700;color:var(--foreground);margin-bottom:4px">${esc(settings.seoTitle || settings.shopName || "Barbearia")}</div>
-                <div style="font-size:12px;color:var(--muted)">${esc(settings.seoDescription || "Agende seu horário online.")}</div>
+        ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações visuais salvas!</div>` : ""}
+        <form method="POST" action="/admin/pagina-cliente/visual">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Cor Principal da Página</label>
+              <div style="display:flex;align-items:center;gap:12px">
+                <input type="color" name="primaryColor" value="${esc(settings?.primaryColor ?? "#C9A84C")}" id="pcColorPicker" style="width:48px;height:40px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;padding:2px" />
+                <input class="form-input" type="text" id="pcColorHex" value="${esc(settings?.primaryColor ?? "#C9A84C")}" style="flex:1" placeholder="#C9A84C" />
               </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:6px">Cor dos botões e destaques da página.</div>
             </div>
-          </div>` : ""}
-          <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar SEO</button>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">URL do Banner</label>
+              <input class="form-input" type="text" name="bannerUrl" value="${esc(settings?.bannerUrl ?? "")}" placeholder="https://..." />
+              <div style="font-size:11px;color:var(--muted);margin-top:6px">Imagem de fundo do hero (1200×400px).</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">URL do Logo</label>
+            <input class="form-input" type="text" name="logoUrl" value="${esc(settings?.logoUrl ?? "")}" placeholder="https://..." />
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">Logo exibido na página pública e nos e-mails.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">URLs da Galeria <span style="color:var(--muted);font-weight:400">(uma por linha)</span></label>
+            <textarea name="galleryUrls" class="form-input" rows="4" placeholder="https://...\nhttps://...">${esc(settings?.galleryUrls ?? "")}</textarea>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">Fotos exibidas na galeria da página pública.</div>
+          </div>
+          <button type="submit" class="btn btn-primary" style="padding:12px 28px">Salvar Aparência</button>
         </form>
       </div>
     </div>
-    <div class="card">
-      <div class="card-header"><div class="card-title">ℹ️ Dicas de SEO</div></div>
-      <div class="card-body">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div style="background:var(--surface2);border-radius:8px;padding:12px">
-            <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:6px">Google</div>
-            <div style="font-size:12px;color:var(--muted)">Use palavras-chave como "barbearia", "corte de cabelo" e o nome da sua cidade no título e descrição para aparecer nas buscas locais.</div>
-          </div>
-          <div style="background:var(--surface2);border-radius:8px;padding:12px">
-            <div style="font-size:12px;font-weight:700;color:#25D366;margin-bottom:6px">WhatsApp</div>
-            <div style="font-size:12px;color:var(--muted)">Quando você compartilha o link no WhatsApp, a imagem Open Graph é exibida automaticamente como prévia. Use uma foto atraente da barbearia.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  // Buscar dados de marketplace do tenant
-  const tenantMarketplace = tenant ? {
-    visivelMarketplace: (tenant as any).visivelMarketplace ?? false,
-    descricao: (tenant as any).descricao ?? "",
-    fotoCapa: (tenant as any).fotoCapa ?? "",
-    latitude: (tenant as any).latitude ?? "",
-    longitude: (tenant as any).longitude ?? "",
-  } : null;
-  const marketplaceSaved = req.query.mksaved === "1";
-  const mkName = esc(tenant?.name ?? "Sua Barbearia");
-  const mkCity = esc((tenant as any)?.city ?? "");
-  const mkState = esc((tenant as any)?.state ?? "");
-  const mkLocation = mkCity ? `${mkCity}${mkState ? ", " + mkState : ""}` : "";
-  const mkLogo = esc(settings?.logoUrl ?? "");
-  const tabMarketplace = `
-    ${marketplaceSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações do Marketplace salvas!</div>` : ""}
-    <div style="display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start">
-      <!-- Formulário -->
-      <div class="card">
-        <div class="card-header"><h3>Marketplace Barber Pro</h3></div>
-        <div class="card-body">
-          <p style="font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.6">Aparecer no <a href="/marketplace" target="_blank" style="color:var(--gold)">Marketplace Barber Pro</a> permite que novos clientes descubram sua barbearia. Ative a visibilidade e preencha as informações abaixo.</p>
-          <form method="POST" action="/admin/pagina-cliente/marketplace" id="mkForm">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;background:var(--surface2);border-radius:12px;padding:16px">
-              <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
-                <input type="checkbox" name="visivelMarketplace" value="1" id="mkVisible" ${tenantMarketplace?.visivelMarketplace ? "checked" : ""} style="opacity:0;width:0;height:0" />
-                <span id="mkToggle" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:${tenantMarketplace?.visivelMarketplace ? "var(--success)" : "var(--border)"};border-radius:26px;transition:0.3s" onclick="var cb=document.getElementById('mkVisible');cb.checked=!cb.checked;this.style.background=cb.checked?'var(--success)':'var(--border)';document.getElementById('mk-status').textContent=cb.checked?'Visível no Marketplace':'Oculto no Marketplace';updatePreview()"></span>
-              </label>
-              <div>
-                <div style="font-size:14px;font-weight:700" id="mk-status">${tenantMarketplace?.visivelMarketplace ? "Visível no Marketplace" : "Oculto no Marketplace"}</div>
-                <div style="font-size:12px;color:var(--muted)">Quando ativo, sua barbearia aparece na página de descoberta</div>
-              </div>
-            </div>
-            <div style="margin-bottom:16px">
-              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">DESCRIÇÃO DA BARBEARIA</label>
-              <textarea id="mkDesc" name="descricao" rows="3" placeholder="Descreva sua barbearia, especialidades, diferenciais..." oninput="updatePreview()" style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;resize:vertical">${esc(tenantMarketplace?.descricao ?? "")}</textarea>
-            </div>
-            <div style="margin-bottom:16px">
-              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">URL DA FOTO DE CAPA</label>
-              <input id="mkFoto" type="url" name="fotoCapa" value="${esc(tenantMarketplace?.fotoCapa ?? "")}" placeholder="https://..." oninput="updatePreview()" style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
-              <div style="font-size:12px;color:var(--muted);margin-top:4px">Imagem de capa exibida no card do marketplace (recomendado: 800x400px)</div>
-            </div>
-            <div style="margin-bottom:20px">
-              <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">LOCALIZAÇÃO (COORDENADAS)</label>
-              <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end">
-                <div>
-                  <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Latitude</label>
-                  <input id="mkLat" type="text" name="latitude" value="${esc(tenantMarketplace?.latitude ?? "")}" placeholder="-23.5505" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px" />
-                </div>
-                <div>
-                  <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Longitude</label>
-                  <input id="mkLng" type="text" name="longitude" value="${esc(tenantMarketplace?.longitude ?? "")}" placeholder="-46.6333" style="width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px" />
-                </div>
-                <button type="button" onclick="buscarCoordenadas()" style="padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;white-space:nowrap"> Buscar pelo endereço</button>
-              </div>
-              <div id="mkGeoStatus" style="font-size:11px;color:var(--muted);margin-top:4px">Preencha o endereço da barbearia em Configurações para usar a busca automática.</div>
-            </div>
-            <button type="submit" class="btn btn-primary">Salvar Marketplace</button>
-            <a href="/marketplace" target="_blank" class="btn btn-ghost" style="margin-left:8px">Ver Marketplace</a>
-          </form>
-        </div>
-      </div>
-      <!-- Preview do Card -->
-      <div>
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em"> Preview do Card</div>
-        <div id="mkPreviewCard" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.15)">
-          <div id="mkPreviewCapa" style="height:140px;background:${tenantMarketplace?.fotoCapa ? `url('${esc(tenantMarketplace.fotoCapa)}') center/cover` : "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)"};position:relative">
-            ${tenantMarketplace?.fotoCapa ? "" : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:32px;color:rgba(255,255,255,0.3)"></div>`}
-          </div>
-          <div style="padding:14px">
-            ${mkLogo ? `<img src="${mkLogo}" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);margin-top:-30px;margin-bottom:8px;object-fit:cover;background:var(--surface)" />` : `<div style="width:44px;height:44px;border-radius:50%;border:2px solid var(--border);margin-top:-30px;margin-bottom:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px"></div>`}
-            <div id="mkPreviewName" style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">${mkName}</div>
-            ${mkLocation ? `<div style="font-size:12px;color:var(--muted);margin-bottom:6px">${mkLocation}</div>` : ""}
-            <div id="mkPreviewDesc" style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px">${esc(tenantMarketplace?.descricao ?? "Adicione uma descrição para aparecer aqui...")}</div>
-            <a style="display:inline-block;padding:7px 14px;background:var(--gold, #c9a84c);color:#000;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">Agendar</a>
-          </div>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:center">Assim seu card aparecerá no Marketplace</div>
-      </div>
-    </div>
     <script>
-      function updatePreview() {
-        var foto = document.getElementById('mkFoto')?.value || '';
-        var desc = document.getElementById('mkDesc')?.value || 'Adicione uma descrição para aparecer aqui...';
-        var capa = document.getElementById('mkPreviewCapa');
-        var descEl = document.getElementById('mkPreviewDesc');
-        if (capa) capa.style.background = foto ? "url('" + foto + "') center/cover" : 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)';
-        if (descEl) descEl.textContent = desc;
-      }
-      async function buscarCoordenadas() {
-        var status = document.getElementById('mkGeoStatus');
-        status.textContent = '⏳ Buscando coordenadas...';
-        status.style.color = 'var(--muted)';
-        try {
-          var addr = '${esc((tenant as any)?.address ?? "")} ${esc((tenant as any)?.city ?? "")} ${esc((tenant as any)?.state ?? "")} Brasil'.trim();
-          if (!addr || addr === 'Brasil') { status.textContent = 'Preencha o endereço da barbearia em Configurações primeiro.'; return; }
-          var r = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(addr) + '&limit=1');
-          var data = await r.json();
-          if (data && data[0]) {
-            document.getElementById('mkLat').value = parseFloat(data[0].lat).toFixed(7);
-            document.getElementById('mkLng').value = parseFloat(data[0].lon).toFixed(7);
-            status.textContent = 'Coordenadas encontradas: ' + data[0].display_name.substring(0, 60) + '...';
-            status.style.color = 'var(--success)';
-          } else {
-            status.textContent = 'Endereço não encontrado. Preencha latitude e longitude manualmente.';
-            status.style.color = 'var(--error)';
-          }
-        } catch(e) {
-          status.textContent = 'Erro ao buscar. Preencha manualmente.';
-          status.style.color = 'var(--error)';
+      document.getElementById('pcColorPicker').addEventListener('input', function() {
+        document.getElementById('pcColorHex').value = this.value;
+      });
+      document.getElementById('pcColorHex').addEventListener('input', function() {
+        if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+          document.getElementById('pcColorPicker').value = this.value;
         }
-      }
+      });
     </script>
   `;
 
-  const tabs = [
-    { id: 'url', label: 'URL & QR Code' },
-    { id: 'visual', label: 'Visual' },
-    { id: 'dominio', label: 'Domínio' },
-    { id: 'rastreamento', label: 'Rastreamento' },
-    { id: 'seo', label: 'SEO' },
-    { id: 'marketplace', label: 'Marketplace' },
-    { id: 'preview', label: 'Preview' },
-  ];
+  // ─── Bloco 4: Configurações Extras (recolhido por padrão) ────────────────────
+  const blocoExtras = `
+    <details class="card" style="margin-bottom:24px">
+      <summary style="display:flex;align-items:center;gap:10px;padding:16px 20px;cursor:pointer;list-style:none;border-radius:12px">
+        <span style="font-size:20px">⚙️</span>
+        <span style="font-size:15px;font-weight:700;color:var(--text)">Configurações Extras</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--muted)">SEO, Rastreamento, Domínio, Marketplace</span>
+      </summary>
+      <div style="padding:0 20px 20px">
+        <div style="border-top:1px solid var(--border);padding-top:20px">
 
-  const tabContent: Record<string, string> = {
-    url: tabUrlQr,
-    visual: tabVisual,
-    dominio: tabDominio,
-    rastreamento: tabRastreamento,
-    seo: tabSeo,
-    marketplace: tabMarketplace,
-    preview: tabPreview,
-  };
+          <!-- SEO -->
+          <div style="margin-bottom:28px">
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">Título e Descrição da Página</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Como sua página aparece no Google e quando compartilhada no WhatsApp e redes sociais.</div>
+            ${seoSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:10px 14px;border-radius:10px;margin-bottom:14px;font-size:13px"> Salvo com sucesso!</div>` : ""}
+            <form method="POST" action="/admin/pagina-cliente/seo">
+              <div class="form-group">
+                <label class="form-label">Título da Página <span style="color:var(--muted);font-weight:400">(até 60 caracteres)</span></label>
+                <input class="form-input" type="text" name="seoTitle" value="${esc(settings?.seoTitle ?? "")}" placeholder="Ex: Barbearia do João — Cortes modernos em São Paulo" maxlength="100" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Descrição <span style="color:var(--muted);font-weight:400">(até 160 caracteres)</span></label>
+                <textarea class="form-input" name="seoDescription" rows="3" placeholder="Ex: Agende seu corte online! Barbearia especializada em cortes modernos, barba e bigode." maxlength="300" style="resize:vertical">${esc(settings?.seoDescription ?? "")}</textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Imagem de Compartilhamento <span style="color:var(--muted);font-weight:400">(URL, 1200×630px ideal)</span></label>
+                <input class="form-input" type="url" name="seoImageUrl" value="${esc(settings?.seoImageUrl ?? "")}" placeholder="https://exemplo.com/imagem-barbearia.jpg" />
+                <div style="font-size:11px;color:var(--muted);margin-top:6px">Imagem exibida quando o link é compartilhado no WhatsApp, Facebook e Instagram.</div>
+              </div>
+              <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar</button>
+            </form>
+          </div>
 
-  const body = `
-    <!-- Abas -->
-    <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;overflow-x:auto">
-      ${tabs.map(t => `
-        <a href="/admin/pagina-cliente?tab=${t.id}" style="flex-shrink:0;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;
-          ${activeTab === t.id ? 'background:var(--gold);color:#0C0C0C' : 'color:var(--muted)'}
-        ">${t.label}</a>`).join('')}
-    </div>
-    <!-- Conteúdo da aba ativa -->
-    ${tabContent[activeTab] ?? tabUrlQr}
+          <div style="border-top:1px solid var(--border);margin-bottom:28px;padding-top:24px">
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">Rastreamento (Google Analytics / Facebook Pixel)</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Acompanhe as visitas e conversões da sua página de agendamento.</div>
+            ${trackingSaved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:10px 14px;border-radius:10px;margin-bottom:14px;font-size:13px"> Salvo com sucesso!</div>` : ""}
+            <form method="POST" action="/admin/pagina-cliente/rastreamento">
+              <div class="form-group">
+                <label class="form-label">Google Analytics 4 — Measurement ID</label>
+                <input class="form-input" type="text" name="ga4MeasurementId" value="${esc(settings?.ga4MeasurementId ?? "")}" placeholder="G-XXXXXXXXXX" style="font-family:monospace" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Facebook Pixel ID</label>
+                <input class="form-input" type="text" name="facebookPixelId" value="${esc(settings?.facebookPixelId ?? "")}" placeholder="123456789012345" style="font-family:monospace" />
+              </div>
+              <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar</button>
+            </form>
+          </div>
+
+          <div style="border-top:1px solid var(--border);padding-top:24px">
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">Domínio Personalizado</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Configure um domínio próprio para a página de agendamento (ex: <code>agendamento.minhabarbearia.com.br</code>).</div>
+            <form method="POST" action="/admin/pagina-cliente/dominio">
+              <div class="form-group">
+                <label class="form-label">Domínio Personalizado</label>
+                <input class="form-input" type="text" name="customDomain" value="${esc(settings?.customDomain ?? "")}" placeholder="agendamento.minhabarbearia.com.br" />
+                <div style="font-size:11px;color:var(--muted);margin-top:6px">Deixe em branco para usar apenas o link padrão do sistema.</div>
+              </div>
+              <button type="submit" class="btn btn-primary" style="padding:10px 24px">Salvar Domínio</button>
+            </form>
+          </div>
+
+        </div>
+      </div>
+    </details>
   `;
+
+  // ─── Montar body final sem abas ──────────────────────────────────────────────
+  const body = blocoCompartilhar + blocoQrCode + blocoAparencia + blocoExtras;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
   res.send(adminLayout("Página do Cliente", "pagina-cliente", body, barber?.name, _tp));
 }
+
 
 // ─── Detalhe do Cliente ────────────────────────────────────────────
 async function renderClienteDetalhe(req: Request, res: Response) {
@@ -4615,9 +4385,9 @@ export function registerAdminRoutes(app: Express): void {
       const barber = await db.getBarberById(session.barberId);
       const { primaryColor, bannerUrl, logoUrl, galleryUrls } = req.body ?? {};
       await db.upsertShopSettings({ primaryColor, bannerUrl, logoUrl, galleryUrls }, barber?.tenantId);
-      res.redirect("/admin/pagina-cliente?tab=visual&saved=1");
+      res.redirect("/admin/pagina-cliente?saved=1");
     } catch (e: any) {
-      res.redirect("/admin/pagina-cliente?tab=visual");
+      res.redirect("/admin/pagina-cliente");
     }
   });
 
@@ -4628,9 +4398,9 @@ export function registerAdminRoutes(app: Express): void {
       const barber = await db.getBarberById(session.barberId);
       const { customDomain } = req.body ?? {};
       await db.upsertShopSettings({ customDomain: customDomain || null }, barber?.tenantId);
-      res.redirect("/admin/pagina-cliente?tab=dominio&domainsaved=1");
+      res.redirect("/admin/pagina-cliente");
     } catch (e: any) {
-      res.redirect("/admin/pagina-cliente?tab=dominio");
+      res.redirect("/admin/pagina-cliente");
     }
   });
 
@@ -4641,9 +4411,9 @@ export function registerAdminRoutes(app: Express): void {
       const barber = await db.getBarberById(session.barberId);
       const { ga4MeasurementId, facebookPixelId } = req.body ?? {};
       await db.upsertShopSettings({ ga4MeasurementId: ga4MeasurementId || null, facebookPixelId: facebookPixelId || null }, barber?.tenantId);
-      res.redirect("/admin/pagina-cliente?tab=rastreamento&trackingsaved=1");
+      res.redirect("/admin/pagina-cliente?trackingsaved=1");
     } catch (e: any) {
-      res.redirect("/admin/pagina-cliente?tab=rastreamento");
+      res.redirect("/admin/pagina-cliente");
     }
   });
 
@@ -4658,9 +4428,9 @@ export function registerAdminRoutes(app: Express): void {
         seoDescription: seoDescription?.trim() || null,
         seoImageUrl: seoImageUrl?.trim() || null,
       }, barber?.tenantId);
-      res.redirect("/admin/pagina-cliente?tab=seo&seosaved=1");
+      res.redirect("/admin/pagina-cliente?seosaved=1");
     } catch (e: any) {
-      res.redirect("/admin/pagina-cliente?tab=seo");
+      res.redirect("/admin/pagina-cliente");
     }
   });
 

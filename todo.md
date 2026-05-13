@@ -2034,3 +2034,12 @@
 ## Correções APP — Barra de Navegação e Abas Barbearia
 - [x] Adicionar suppliers.tsx ao _layout.tsx com tabBarItemStyle display none (remover aba Fornecedores da barra inferior)
 - [x] Corrigir bug visual das abas superiores em barbearia.tsx (overflow visible causava corte — substituído por View wrapper com altura fixa)
+
+## Reorganização Página do Cliente — Painel Web (admin-routes.ts)
+- [x] Remover sistema de 7 abas horizontais (URL & QR Code, Visual, Domínio, Rastreamento, SEO, Marketplace, Preview)
+- [x] Remover seção "Personalizar URL" (slug)
+- [x] Criar Bloco 1: Compartilhar sua Página (links + botões WhatsApp, Facebook, Mensagem pronta)
+- [x] Criar Bloco 2: QR Code da Barbearia (QR centralizado + Baixar PNG + Copiar link)
+- [x] Criar Bloco 3: Aparência (cor, banner, logo, galeria)
+- [x] Criar Bloco 4: Configurações Extras recolhido (SEO, Rastreamento, Domínio)
+- [x] Corrigir redirects dos POSTs para apontar para /admin/pagina-cliente sem ?tab=
