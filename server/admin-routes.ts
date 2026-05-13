@@ -877,14 +877,14 @@ async function renderDashboard(req: Request, res: Response) {
   const dashPublicUrl = dashSlug ? `${dashBaseUrl}/pub/${dashSlug}` : "";
 
   // ─── Dados dos últimos 7 dias para o gráfico ─────────────────────────────
-  const weekDays: { date: string; label: string; revenue: number }[] = [];
+  const weekDays: { date: string; label: string; revenue: number; appointmentsCount: number }[] = [];
   for (let i = 6; i >= 0; i--) {
     const wd = new Date();
     wd.setDate(wd.getDate() - i);
     const dateKey = wd.toISOString().split("T")[0];
     const dayLabel = wd.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "").slice(0, 3);
     const dayStats = await db.getDashboardStats(dateKey, tenantId).catch(() => ({ revenueToday: 0, appointmentsToday: 0, clientsToday: 0, pendingAppointments: 0 }));
-    weekDays.push({ date: dateKey, label: dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1), revenue: dayStats.revenueToday });
+    weekDays.push({ date: dateKey, label: dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1), revenue: dayStats.revenueToday, appointmentsCount: dayStats.appointmentsToday });
   }
   const maxRevenue = Math.max(...weekDays.map(d => d.revenue), 1);
   const totalWeekRevenue = weekDays.reduce((s, d) => s + d.revenue, 0);
@@ -942,6 +942,7 @@ async function renderDashboard(req: Request, res: Response) {
       </table>`;
 
   const body = `
+    <!-- 1. KPI Cards -->
     <div class="metrics-grid">
       <div class="metric-card kpi-tooltip">
         <div class="kpi-tip">Ontem: ${statsYesterday.appointmentsToday} agendamento${statsYesterday.appointmentsToday !== 1 ? 's' : ''} · ${stats.appointmentsToday === 0 && statsYesterday.appointmentsToday === 0 ? '—' : statsYesterday.appointmentsToday === 0 ? '↑ novo' : stats.appointmentsToday > statsYesterday.appointmentsToday ? '↑ +' + Math.round((stats.appointmentsToday - statsYesterday.appointmentsToday) / statsYesterday.appointmentsToday * 100) + '%' : stats.appointmentsToday < statsYesterday.appointmentsToday ? '↓ ' + Math.round((stats.appointmentsToday - statsYesterday.appointmentsToday) / statsYesterday.appointmentsToday * 100) + '%' : '= igual'}</div>
@@ -958,70 +959,89 @@ async function renderDashboard(req: Request, res: Response) {
         <div class="kpi-tip">Ontem: ${fmtCurrency(statsYesterday.revenueToday)} · ${stats.revenueToday === 0 && statsYesterday.revenueToday === 0 ? '—' : statsYesterday.revenueToday === 0 ? '↑ novo' : stats.revenueToday > statsYesterday.revenueToday ? '↑ +' + Math.round((stats.revenueToday - statsYesterday.revenueToday) / statsYesterday.revenueToday * 100) + '%' : stats.revenueToday < statsYesterday.revenueToday ? '↓ ' + Math.round((stats.revenueToday - statsYesterday.revenueToday) / statsYesterday.revenueToday * 100) + '%' : '= igual'}</div>
         <div class="metric-header">
           <div class="metric-label">Faturamento Hoje</div>
-          <div class="metric-icon" style="background:rgba(74,222,128,0.1)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <div class="metric-icon" style="background:rgba(74,222,128,.12)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           </div>
         </div>
-        <div class="metric-value" style="color:var(--success)">${fmtCurrency(stats.revenueToday)}</div>
+        <div class="metric-value" style="color:#4ADE80">${fmtCurrency(stats.revenueToday)}</div>
         <div class="metric-sub">vendas pagas</div>
       </div>
       <div class="metric-card kpi-tooltip">
         <div class="kpi-tip">Ontem: ${statsYesterday.clientsToday} cliente${statsYesterday.clientsToday !== 1 ? 's' : ''} · ${stats.clientsToday === 0 && statsYesterday.clientsToday === 0 ? '—' : statsYesterday.clientsToday === 0 ? '↑ novo' : stats.clientsToday > statsYesterday.clientsToday ? '↑ +' + Math.round((stats.clientsToday - statsYesterday.clientsToday) / statsYesterday.clientsToday * 100) + '%' : stats.clientsToday < statsYesterday.clientsToday ? '↓ ' + Math.round((stats.clientsToday - statsYesterday.clientsToday) / statsYesterday.clientsToday * 100) + '%' : '= igual'}</div>
         <div class="metric-header">
           <div class="metric-label">Clientes Atendidos</div>
-          <div class="metric-icon" style="background:rgba(96,165,250,0.1)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <div class="metric-icon" style="background:rgba(96,165,250,.12)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
         </div>
-        <div class="metric-value" style="color:var(--info)">${stats.clientsToday}</div>
+        <div class="metric-value" style="color:#60A5FA">${stats.clientsToday}</div>
         <div class="metric-sub">hoje</div>
       </div>
       <div class="metric-card">
         <div class="metric-header">
           <div class="metric-label">Equipe Ativa</div>
-          <div class="metric-icon" style="background:rgba(251,191,36,0.1)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <div class="metric-icon" style="background:rgba(251,191,36,.12)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
         </div>
-        <div class="metric-value" style="color:var(--warning)">${barbers.length}</div>
+        <div class="metric-value" style="color:#FBBF24">${barbers.length}</div>
         <div class="metric-sub">profissionais</div>
       </div>
     </div>
 
-    <!-- Gráfico de Faturamento Semanal -->
+    <!-- 2. Agenda de Hoje -->
+    ${lowStockItems.length > 0 ? `
+    <a href="/admin/estoque" style="text-decoration:none;display:flex;align-items:center;gap:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:14px 16px;margin-bottom:20px;transition:background .2s;" onmouseover="this.style.background='rgba(245,158,11,.14)'" onmouseout="this.style.background='rgba(245,158,11,.08)'">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:#F59E0B;">${lowStockItems.length} produto${lowStockItems.length !== 1 ? 's' : ''} com estoque baixo</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${lowStockItems.slice(0,3).map((p: any) => p.name + ' (' + (p.stockQuantity ?? 0) + ')').join(' · ')}${lowStockItems.length > 3 ? ' · ...' : ''}</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>` : ''}
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <div class="card-title">Agenda de Hoje &mdash; ${fmtDate(dateStr)}</div>
+        <a href="/admin/agenda" class="btn btn-ghost btn-sm">Ver tudo</a>
+      </div>
+      <div class="card-body">${appointmentsHtml}</div>
+    </div>
+
+    <!-- 3. Gráfico de Faturamento/Agendamentos Semanal -->
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px;position:relative;overflow:hidden;">
-      <!-- Brilho decorativo de fundo -->
       <div style="position:absolute;top:-60px;right:-60px;width:220px;height:220px;background:radial-gradient(circle,rgba(201,168,76,0.07) 0%,transparent 70%);pointer-events:none;"></div>
-      <!-- Header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--foreground);letter-spacing:0.3px;">Faturamento — Últimos 7 dias</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px;">Total do período: <span style="color:#C9A84C;font-weight:700;">${fmtCurrency(totalWeekRevenue)}</span></div>
+          <div style="font-size:13px;font-weight:700;color:var(--foreground);letter-spacing:0.3px;" id="chart-title">Faturamento — Últimos 7 dias</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;" id="chart-subtitle">Total do período: <span style="color:#C9A84C;font-weight:700;" id="chart-total">${fmtCurrency(totalWeekRevenue)}</span></div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <div style="width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#C9A84C,#F5D78E);"></div>
-          <span style="font-size:11px;color:var(--muted);">Faturamento</span>
+        <div style="display:flex;gap:6px;">
+          <button id="btn-revenue" onclick="switchChart('revenue')" style="padding:6px 14px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid #C9A84C;background:#C9A84C;color:#0C0C0C;cursor:pointer;transition:all .2s;">Faturamento</button>
+          <button id="btn-appointments" onclick="switchChart('appointments')" style="padding:6px 14px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;">Agendamentos</button>
         </div>
       </div>
-      <!-- SVG Chart -->
       <svg id="revenue-chart" viewBox="0 0 700 200" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;overflow:visible;" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <!-- Gradiente das barras -->
           <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="#F5D78E" stop-opacity="1"/>
             <stop offset="100%" stop-color="#C9A84C" stop-opacity="0.7"/>
           </linearGradient>
-          <!-- Gradiente da área sob a linha -->
+          <linearGradient id="barGradAppt" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#93C5FD" stop-opacity="1"/>
+            <stop offset="100%" stop-color="#3B82F6" stop-opacity="0.7"/>
+          </linearGradient>
           <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="#C9A84C" stop-opacity="0.18"/>
             <stop offset="100%" stop-color="#C9A84C" stop-opacity="0"/>
           </linearGradient>
-          <!-- Filtro de brilho nas barras -->
+          <linearGradient id="areaGradAppt" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+          </linearGradient>
           <filter id="barGlow" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
-          <!-- Animação de crescimento das barras -->
           <style>
             .bar-rect { transform-origin: bottom; animation: bar-grow 0.6s cubic-bezier(0.34,1.56,0.64,1) both; }
             .bar-rect:nth-child(1) { animation-delay: 0ms; }
@@ -1031,10 +1051,7 @@ async function renderDashboard(req: Request, res: Response) {
             .bar-rect:nth-child(5) { animation-delay: 320ms; }
             .bar-rect:nth-child(6) { animation-delay: 400ms; }
             .bar-rect:nth-child(7) { animation-delay: 480ms; }
-            @keyframes bar-grow {
-              from { transform: scaleY(0); opacity: 0; }
-              to   { transform: scaleY(1); opacity: 1; }
-            }
+            @keyframes bar-grow { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
             .line-path { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: draw-line 1.2s ease 0.3s forwards; }
             @keyframes draw-line { to { stroke-dashoffset: 0; } }
             .area-path { opacity: 0; animation: fade-area 0.8s ease 0.8s forwards; }
@@ -1050,33 +1067,32 @@ async function renderDashboard(req: Request, res: Response) {
             @keyframes pop-dot { from { opacity:0; transform:scale(0); } to { opacity:1; transform:scale(1); } }
           </style>
         </defs>
-        <!-- Grade horizontal sutil -->
+        <!-- Grade horizontal -->
         ${[0.25, 0.5, 0.75, 1.0].map(pct => {
           const y = 160 - pct * 140;
           const val = maxRevenue * pct;
           return `<line x1="40" y1="${y}" x2="680" y2="${y}" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="4,4"/>
-          <text x="36" y="${y + 4}" text-anchor="end" font-size="9" fill="var(--muted)">${val >= 1000 ? 'R$' + (val/1000).toFixed(1) + 'k' : 'R$' + val.toFixed(0)}</text>`;
+          <text class="grid-label-rev" x="36" y="${y + 4}" text-anchor="end" font-size="9" fill="var(--muted)">${val >= 1000 ? 'R$' + (val/1000).toFixed(1) + 'k' : 'R$' + val.toFixed(0)}</text>`;
         }).join('')}
         <!-- Barras -->
-        <g>
+        <g id="bars-group">
           ${weekDays.map((d, i) => {
             const x = 40 + i * 92 + 18;
             const barW = 56;
             const barH = Math.max(d.revenue / maxRevenue * 140, d.revenue > 0 ? 4 : 0);
             const y = 160 - barH;
             const isToday = d.date === dateStr;
-            return `<rect class="bar-rect" x="${x}" y="${y}" width="${barW}" height="${barH}" rx="6" ry="6" fill="${isToday ? 'url(#barGrad)' : 'rgba(201,168,76,0.35)'}" filter="${isToday ? 'url(#barGlow)' : ''}" style="cursor:default;" onmouseover="this.setAttribute('fill','url(#barGrad)')" onmouseout="this.setAttribute('fill','${isToday ? 'url(#barGrad)' : 'rgba(201,168,76,0.35)'}')" />`;
+            return `<rect class="bar-rect" x="${x}" y="${y}" width="${barW}" height="${barH}" rx="6" ry="6" fill="${isToday ? 'url(#barGrad)' : 'rgba(201,168,76,0.35)'}" data-rev="${d.revenue}" data-appt="0" />`;
           }).join('')}
         </g>
         <!-- Área sob a linha -->
-        <path class="area-path" d="${(() => {
+        <path class="area-path" id="area-path" d="${(() => {
           const pts = weekDays.map((d, i) => {
             const cx = 40 + i * 92 + 18 + 28;
             const cy = 160 - Math.max(d.revenue / maxRevenue * 140, 0);
             return [cx, cy];
           });
-          let path = `M ${pts[0][0]} 160 `;
-          path += `L ${pts[0][0]} ${pts[0][1]} `;
+          let path = `M ${pts[0][0]} 160 L ${pts[0][0]} ${pts[0][1]} `;
           for (let i = 1; i < pts.length; i++) {
             const cpx = (pts[i-1][0] + pts[i][0]) / 2;
             path += `C ${cpx} ${pts[i-1][1]} ${cpx} ${pts[i][1]} ${pts[i][0]} ${pts[i][1]} `;
@@ -1085,7 +1101,7 @@ async function renderDashboard(req: Request, res: Response) {
           return path;
         })()}" fill="url(#areaGrad)"/>
         <!-- Linha de tendência -->
-        <path class="line-path" d="${(() => {
+        <path class="line-path" id="line-path" d="${(() => {
           const pts = weekDays.map((d, i) => {
             const cx = 40 + i * 92 + 18 + 28;
             const cy = 160 - Math.max(d.revenue / maxRevenue * 140, 0);
@@ -1099,21 +1115,23 @@ async function renderDashboard(req: Request, res: Response) {
           return path;
         })()}" fill="none" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         <!-- Pontos na linha -->
-        <g>
+        <g id="dots-group">
           ${weekDays.map((d, i) => {
             const cx = 40 + i * 92 + 18 + 28;
             const cy = 160 - Math.max(d.revenue / maxRevenue * 140, 0);
-            return `<circle class="dot-point" cx="${cx}" cy="${cy}" r="4" fill="#1e293b" stroke="#C9A84C" stroke-width="2"/>`;
+            return `<circle class="dot-point" cx="${cx}" cy="${cy}" r="4" fill="var(--surface)" stroke="#C9A84C" stroke-width="2"/>`;
           }).join('')}
         </g>
-        <!-- Labels de valor acima das barras -->
-        ${weekDays.map((d, i) => {
-          const cx = 40 + i * 92 + 18 + 28;
-          const cy = 160 - Math.max(d.revenue / maxRevenue * 140, 0) - 10;
-          if (d.revenue === 0) return '';
-          const label = d.revenue >= 1000 ? 'R$' + (d.revenue/1000).toFixed(1) + 'k' : 'R$' + d.revenue.toFixed(0);
-          return `<text x="${cx}" y="${cy}" text-anchor="middle" font-size="9" font-weight="700" fill="#C9A84C" opacity="0.9">${label}</text>`;
-        }).join('')}
+        <!-- Labels de valor -->
+        <g id="labels-group">
+          ${weekDays.map((d, i) => {
+            const cx = 40 + i * 92 + 18 + 28;
+            const cy = 160 - Math.max(d.revenue / maxRevenue * 140, 0) - 10;
+            if (d.revenue === 0) return '';
+            const label = d.revenue >= 1000 ? 'R$' + (d.revenue/1000).toFixed(1) + 'k' : 'R$' + d.revenue.toFixed(0);
+            return `<text x="${cx}" y="${cy}" text-anchor="middle" font-size="9" font-weight="700" fill="#C9A84C" opacity="0.9">${label}</text>`;
+          }).join('')}
+        </g>
         <!-- Labels dos dias -->
         ${weekDays.map((d, i) => {
           const cx = 40 + i * 92 + 18 + 28;
@@ -1123,137 +1141,108 @@ async function renderDashboard(req: Request, res: Response) {
         <!-- Linha base -->
         <line x1="40" y1="160" x2="680" y2="160" stroke="var(--border)" stroke-width="1"/>
       </svg>
+      <script>
+        // Dados do gráfico (injetados pelo servidor)
+        var chartData = {
+          revenue: [${weekDays.map(d => d.revenue).join(',')}],
+          appointments: [${weekDays.map(d => d.appointmentsCount ?? 0).join(',')}],
+          labels: [${weekDays.map(d => `"${d.label}"`).join(',')}],
+          dates: [${weekDays.map(d => `"${d.date}"`).join(',')}],
+          today: "${dateStr}"
+        };
+        var currentMode = 'revenue';
+        function switchChart(mode) {
+          if (mode === currentMode) return;
+          currentMode = mode;
+          var isRev = mode === 'revenue';
+          // Atualizar botões
+          document.getElementById('btn-revenue').style.background = isRev ? '#C9A84C' : 'transparent';
+          document.getElementById('btn-revenue').style.color = isRev ? '#0C0C0C' : 'var(--muted)';
+          document.getElementById('btn-revenue').style.borderColor = isRev ? '#C9A84C' : 'var(--border)';
+          document.getElementById('btn-appointments').style.background = !isRev ? '#3B82F6' : 'transparent';
+          document.getElementById('btn-appointments').style.color = !isRev ? '#fff' : 'var(--muted)';
+          document.getElementById('btn-appointments').style.borderColor = !isRev ? '#3B82F6' : 'var(--border)';
+          // Atualizar título e total
+          var data = isRev ? chartData.revenue : chartData.appointments;
+          var maxVal = Math.max.apply(null, data.concat([1]));
+          var total = data.reduce(function(a,b){return a+b;},0);
+          document.getElementById('chart-title').textContent = isRev ? 'Faturamento — Últimos 7 dias' : 'Agendamentos — Últimos 7 dias';
+          var totalEl = document.getElementById('chart-total');
+          totalEl.style.color = isRev ? '#C9A84C' : '#3B82F6';
+          if (isRev) {
+            var t = total >= 1000 ? 'R$ ' + (total/1000).toFixed(1) + 'k' : 'R$ ' + total.toFixed(2).replace('.',',');
+            document.getElementById('chart-subtitle').innerHTML = 'Total do período: <span style="color:#C9A84C;font-weight:700;" id="chart-total">' + t + '</span>';
+          } else {
+            document.getElementById('chart-subtitle').innerHTML = 'Total do período: <span style="color:#3B82F6;font-weight:700;" id="chart-total">' + total + ' agendamento' + (total !== 1 ? 's' : '') + '</span>';
+          }
+          // Atualizar barras
+          var bars = document.querySelectorAll('#bars-group rect');
+          bars.forEach(function(bar, i) {
+            var val = data[i] || 0;
+            var barH = maxVal > 0 ? Math.max(val / maxVal * 140, val > 0 ? 4 : 0) : 0;
+            var y = 160 - barH;
+            var isToday = chartData.dates[i] === chartData.today;
+            bar.setAttribute('y', y);
+            bar.setAttribute('height', barH);
+            bar.setAttribute('fill', isRev ? (isToday ? 'url(#barGrad)' : 'rgba(201,168,76,0.35)') : (isToday ? 'url(#barGradAppt)' : 'rgba(59,130,246,0.35)'));
+          });
+          // Atualizar linha e área
+          var pts = data.map(function(val, i) {
+            var cx = 40 + i * 92 + 18 + 28;
+            var cy = maxVal > 0 ? 160 - Math.max(val / maxVal * 140, 0) : 160;
+            return [cx, cy];
+          });
+          var linePath = 'M ' + pts[0][0] + ' ' + pts[0][1] + ' ';
+          var areaPath = 'M ' + pts[0][0] + ' 160 L ' + pts[0][0] + ' ' + pts[0][1] + ' ';
+          for (var i = 1; i < pts.length; i++) {
+            var cpx = (pts[i-1][0] + pts[i][0]) / 2;
+            linePath += 'C ' + cpx + ' ' + pts[i-1][1] + ' ' + cpx + ' ' + pts[i][1] + ' ' + pts[i][0] + ' ' + pts[i][1] + ' ';
+            areaPath += 'C ' + cpx + ' ' + pts[i-1][1] + ' ' + cpx + ' ' + pts[i][1] + ' ' + pts[i][0] + ' ' + pts[i][1] + ' ';
+          }
+          areaPath += 'L ' + pts[pts.length-1][0] + ' 160 Z';
+          document.getElementById('line-path').setAttribute('d', linePath);
+          document.getElementById('line-path').style.stroke = isRev ? '#C9A84C' : '#3B82F6';
+          document.getElementById('area-path').setAttribute('d', areaPath);
+          document.getElementById('area-path').setAttribute('fill', isRev ? 'url(#areaGrad)' : 'url(#areaGradAppt)');
+          // Atualizar pontos
+          var dots = document.querySelectorAll('#dots-group circle');
+          dots.forEach(function(dot, i) {
+            var val = data[i] || 0;
+            var cy = maxVal > 0 ? 160 - Math.max(val / maxVal * 140, 0) : 160;
+            dot.setAttribute('cy', cy);
+            dot.setAttribute('stroke', isRev ? '#C9A84C' : '#3B82F6');
+          });
+          // Atualizar labels
+          var labelsG = document.getElementById('labels-group');
+          labelsG.innerHTML = '';
+          data.forEach(function(val, i) {
+            if (val === 0) return;
+            var cx = 40 + i * 92 + 18 + 28;
+            var cy = maxVal > 0 ? 160 - Math.max(val / maxVal * 140, 0) - 10 : 150;
+            var label = isRev ? (val >= 1000 ? 'R$' + (val/1000).toFixed(1) + 'k' : 'R$' + val.toFixed(0)) : val.toString();
+            var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', cx);
+            text.setAttribute('y', cy);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('font-size', '9');
+            text.setAttribute('font-weight', '700');
+            text.setAttribute('fill', isRev ? '#C9A84C' : '#3B82F6');
+            text.setAttribute('opacity', '0.9');
+            text.textContent = label;
+            labelsG.appendChild(text);
+          });
+          // Atualizar grade
+          var gridLabels = document.querySelectorAll('.grid-label-rev');
+          gridLabels.forEach(function(el, i) {
+            var pct = [0.25, 0.5, 0.75, 1.0][i];
+            var val = maxVal * pct;
+            el.textContent = isRev ? (val >= 1000 ? 'R$' + (val/1000).toFixed(1) + 'k' : 'R$' + val.toFixed(0)) : val.toFixed(0);
+          });
+        }
+      </script>
     </div>
-    <!-- Card: Baixe o App (detecção de dispositivo via JS) -->
-    <div id="download-app-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);border:1px solid rgba(201,168,76,0.25);border-radius:16px;padding:0;margin-bottom:20px;display:none;overflow:hidden;position:relative">
-      <!-- Brilho decorativo -->
-      <div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(201,168,76,0.12) 0%,transparent 70%);pointer-events:none"></div>
-      <div style="position:absolute;bottom:-60px;left:-20px;width:180px;height:180px;background:radial-gradient(circle,rgba(96,165,250,0.06) 0%,transparent 70%);pointer-events:none"></div>
-      <!-- Header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,rgba(201,168,76,0.2),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">📱</div>
-          <div>
-            <div style="font-size:15px;font-weight:700;color:var(--foreground)">Barber Pro no seu celular</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:1px">Gerencie sua barbearia de qualquer lugar</div>
-          </div>
-        </div>
-        <button onclick="document.getElementById('download-app-card').style.display='none';localStorage.setItem('hideAppCard','1')" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--muted);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:8px;line-height:1" title="Fechar">×</button>
-      </div>
-      <div class="card-body">
-      <!-- Conteúdo adaptativo por plataforma -->
-      <div style="padding:16px 20px 20px">
-        <!-- Android -->
-        <div id="app-android" style="display:none">
-          <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
-            <div style="flex:1;min-width:200px">
-              <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">Instale o app e gerencie agendamentos, clientes e financeiro direto do seu Android.</div>
-              <div style="display:flex;gap:10px;flex-wrap:wrap">
-                <a id="play-store-link" href="https://play.google.com/store/apps/details?id=space.manus.barber.app" target="_blank" style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#01875f,#017a55);color:#fff;padding:11px 18px;border-radius:12px;text-decoration:none;font-weight:700;font-size:13px;box-shadow:0 4px 12px rgba(1,135,95,0.3)">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M3.18 23.76c.3.17.65.19.96.06l12.45-7.2-2.78-2.78-10.63 9.92zM.5 1.4C.19 1.73 0 2.24 0 2.9v18.2c0 .66.19 1.17.5 1.5l.08.07 10.2-10.2v-.24L.58 1.33.5 1.4zM20.27 10.3l-2.9-1.68-3.1 3.1 3.1 3.1 2.92-1.69c.83-.48.83-1.26-.02-1.83zM4.14.24L16.59 7.44l-2.78 2.78L3.18.24C3.49.11 3.84.13 4.14.24z"/></svg>
-                  Google Play
-                </a>
-                <a href="/admin/download-apk" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.07);color:var(--foreground);padding:11px 16px;border-radius:12px;text-decoration:none;font-size:12px;border:1px solid rgba(255,255,255,0.12)">
-                  ⬇️ APK direto
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- iPhone / iOS -->
-        <div id="app-ios" style="display:none">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:14px 16px;border:1px solid rgba(255,255,255,0.08)">
-              <div style="font-size:20px;margin-bottom:8px">🌐</div>
-              <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:var(--foreground)">Usar pelo Safari</div>
-              <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.4">Toque em Compartilhar → Adicionar à Tela de Início para criar um atalho.</div>
-              <a href="/admin" style="display:inline-flex;align-items:center;gap:6px;background:rgba(201,168,76,0.15);color:#C9A84C;padding:7px 12px;border-radius:8px;text-decoration:none;font-size:11px;font-weight:700;border:1px solid rgba(201,168,76,0.3)">Acessar painel →</a>
-            </div>
-            <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:14px 16px;border:1px solid rgba(255,255,255,0.08)">
-              <div style="font-size:20px;margin-bottom:8px">🍎</div>
-              <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:var(--foreground)">App Store</div>
-              <div style="font-size:11px;color:var(--muted);line-height:1.4">App nativo para iPhone em breve. Você será notificado por e-mail.</div>
-              <div style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.06);padding:4px 8px;border-radius:6px;font-size:10px;color:var(--muted)">⏳ Em breve</div>
-            </div>
-          </div>
-        </div>
-        <!-- Desktop -->
-        <div id="app-desktop" style="display:none">
-          <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
-            <div style="background:#fff;padding:10px;border-radius:14px;border:2px solid rgba(201,168,76,0.3);box-shadow:0 0 20px rgba(201,168,76,0.1);flex-shrink:0">
-              <img src="/admin/app-qrcode" width="130" height="130" alt="QR Code App" style="display:block;border-radius:6px" />
-            </div>
-            <div style="flex:1;min-width:180px">
-              <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.5">Aponte a câmera do celular para o QR Code ou use os links abaixo:</div>
-              <div style="display:flex;flex-direction:column;gap:8px">
-                <a id="play-store-link-desktop" href="https://play.google.com/store/apps/details?id=space.manus.barber.app" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#01875f,#017a55);color:#fff;padding:9px 14px;border-radius:10px;text-decoration:none;font-size:12px;font-weight:700;box-shadow:0 3px 8px rgba(1,135,95,0.25);width:fit-content">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M3.18 23.76c.3.17.65.19.96.06l12.45-7.2-2.78-2.78-10.63 9.92zM.5 1.4C.19 1.73 0 2.24 0 2.9v18.2c0 .66.19 1.17.5 1.5l.08.07 10.2-10.2v-.24L.58 1.33.5 1.4zM20.27 10.3l-2.9-1.68-3.1 3.1 3.1 3.1 2.92-1.69c.83-.48.83-1.26-.02-1.83zM4.14.24L16.59 7.44l-2.78 2.78L3.18.24C3.49.11 3.84.13 4.14.24z"/></svg>
-                  Android — Google Play
-                </a>
-                <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.05);padding:9px 14px;border-radius:10px;font-size:12px;color:var(--muted);border:1px solid rgba(255,255,255,0.08);width:fit-content">
-                  🍎 iPhone — App Store em breve
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <script>
-    (function(){
-      if(localStorage.getItem('hideAppCard')==='1') return;
-      var ua=navigator.userAgent||'';
-      var isAndroid=/Android/i.test(ua);
-      var isIOS=/iPhone|iPad|iPod/i.test(ua);
-      var card=document.getElementById('download-app-card');
-      if(!card) return;
-      card.style.display='';
-      if(isAndroid){
-        document.getElementById('app-android').style.display='';
-      } else if(isIOS){
-        document.getElementById('app-ios').style.display='';
-      } else {
-        document.getElementById('app-desktop').style.display='';
-      }
-    })();
-    </script>
 
-    ${dashBookingUrl ? `
-    <div class="card" style="background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);border:1px solid var(--gold)44">
-      <div class="card-header">
-        <div class="card-title">Link de Agendamento Online</div>
-        <a href="/admin/pagina-cliente" class="btn btn-ghost btn-sm">Configurar página</a>
-      </div>
-      <div class="card-body">
-        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Compartilhe este link com seus clientes para que eles possam agendar online:</p>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
-          <input id="dash-booking-url" class="form-input" type="text" value="${esc(dashBookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
-          <button onclick="(function(btn){navigator.clipboard.writeText(document.getElementById('dash-booking-url').value).then(()=>{var o=btn.innerHTML;btn.innerHTML='Copiado!';setTimeout(()=>btn.innerHTML=o,2000)});})(this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Copiar</button>
-          <a href="${esc(dashBookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Abrir</a>
-          <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário: ' + dashBookingUrl)}" target="_blank" class="btn btn-primary" style="flex-shrink:0;padding:8px 14px;font-size:12px">WhatsApp</a>
-        </div>
-        ${dashPublicUrl ? `
-        <!-- Preview da Página Pública -->
-        <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface2)">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(0,0,0,0.2);border-bottom:1px solid var(--border)">
-            <div style="display:flex;align-items:center;gap:6px">
-              <div style="width:10px;height:10px;border-radius:50%;background:#ff5f57"></div>
-              <div style="width:10px;height:10px;border-radius:50%;background:#febc2e"></div>
-              <div style="width:10px;height:10px;border-radius:50%;background:#28c840"></div>
-            </div>
-            <div style="font-size:11px;color:var(--muted);font-family:monospace;background:rgba(0,0,0,0.2);padding:3px 10px;border-radius:6px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(dashPublicUrl)}</div>
-            <a href="${esc(dashPublicUrl)}" target="_blank" style="font-size:11px;color:var(--primary);text-decoration:none;font-weight:600">Abrir ↗</a>
-          </div>
-          <div style="position:relative;height:320px;overflow:hidden">
-            <iframe src="${esc(dashPublicUrl)}" style="width:100%;height:100%;border:none;pointer-events:none;transform-origin:top left" scrolling="no" loading="lazy" title="Preview da sua página"></iframe>
-            <a href="${esc(dashPublicUrl)}" target="_blank" style="position:absolute;inset:0;display:block;cursor:pointer" title="Abrir página pública"></a>
-          </div>
-        </div>` : ''}
-      </div>
-    </div>` : ''}
-
-
-    <!-- Ações Rápidas -->
+    <!-- 4. Ações Rápidas -->
     <div style="margin-bottom:20px;">
       <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;">Ações Rápidas</div>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
@@ -1290,26 +1279,99 @@ async function renderDashboard(req: Request, res: Response) {
       </div>
     </div>
 
-    <!-- Alerta de estoque baixo -->
-    ${lowStockItems.length > 0 ? `
-    <a href="/admin/estoque" style="text-decoration:none;display:flex;align-items:center;gap:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:14px 16px;margin-bottom:20px;transition:background .2s;" onmouseover="this.style.background='rgba(245,158,11,.14)'" onmouseout="this.style.background='rgba(245,158,11,.08)'">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:700;color:#F59E0B;">${lowStockItems.length} produto${lowStockItems.length !== 1 ? 's' : ''} com estoque baixo</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${lowStockItems.slice(0,3).map((p: any) => p.name + ' (' + (p.stockQuantity ?? 0) + ')').join(' · ')}${lowStockItems.length > 3 ? ' · ...' : ''}</div>
-      </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    </a>` : ''}
-
-    <div class="card">
+    <!-- 5. Link de Agendamento -->
+    ${dashBookingUrl ? `
+    <div class="card" style="background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);border:1px solid var(--gold)44;margin-bottom:20px;">
       <div class="card-header">
-        <div class="card-title">Agenda de Hoje &mdash; ${fmtDate(dateStr)}</div>
-        <a href="/admin/agenda" class="btn btn-ghost btn-sm">Ver tudo</a>
+        <div class="card-title">Link de Agendamento Online</div>
+        <a href="/admin/pagina-cliente" class="btn btn-ghost btn-sm">Configurar página</a>
       </div>
-      <div class="card-body">${appointmentsHtml}</div>
-    </div>
-  `;
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Compartilhe este link com seus clientes para que eles possam agendar online:</p>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
+          <input id="dash-booking-url" class="form-input" type="text" value="${esc(dashBookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
+          <button onclick="(function(btn){navigator.clipboard.writeText(document.getElementById('dash-booking-url').value).then(()=>{var o=btn.innerHTML;btn.innerHTML='Copiado!';setTimeout(()=>btn.innerHTML=o,2000)});})(this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Copiar</button>
+          <a href="${esc(dashBookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Abrir</a>
+          <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário: ' + dashBookingUrl)}" target="_blank" class="btn btn-primary" style="flex-shrink:0;padding:8px 14px;font-size:12px">WhatsApp</a>
+        </div>
+        ${dashPublicUrl ? `
+        <div style="margin-top:8px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;letter-spacing:0.3px;">PREVIEW DA SUA PÁGINA</div>
+          <div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);position:relative;">
+            <div style="background:var(--surface2);padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);">
+              <div style="display:flex;gap:5px;"><div style="width:10px;height:10px;border-radius:50%;background:#EF4444;"></div><div style="width:10px;height:10px;border-radius:50%;background:#F59E0B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#22C55E;"></div></div>
+              <div style="flex:1;background:var(--surface);border-radius:6px;padding:4px 10px;font-size:10px;color:var(--muted);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(dashPublicUrl)}</div>
+              <a href="${esc(dashPublicUrl)}" target="_blank" class="btn btn-ghost btn-sm" style="font-size:10px;padding:4px 8px;">Abrir ↗</a>
+            </div>
+            <div style="height:280px;overflow:hidden;position:relative;">
+              <iframe src="${esc(dashPublicUrl)}" style="width:100%;height:100%;border:none;pointer-events:none;transform-origin:top left" scrolling="no" loading="lazy" title="Preview da sua página"></iframe>
+              <a href="${esc(dashPublicUrl)}" target="_blank" style="position:absolute;inset:0;display:block;cursor:pointer" title="Abrir página pública"></a>
+            </div>
+          </div>
+        </div>` : ''}
+      </div>
+    </div>` : ''}
 
+    <!-- 6. Card: Baixe o App -->
+    <div id="download-app-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);border:1px solid rgba(201,168,76,0.25);border-radius:16px;padding:0;margin-bottom:20px;display:none;overflow:hidden;position:relative">
+      <div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(201,168,76,0.12) 0%,transparent 70%);pointer-events:none"></div>
+      <div style="position:absolute;bottom:-60px;left:-20px;width:180px;height:180px;background:radial-gradient(circle,rgba(96,165,250,0.06) 0%,transparent 70%);pointer-events:none"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,rgba(201,168,76,0.2),rgba(201,168,76,0.05));border:1px solid rgba(201,168,76,0.3);display:flex;align-items:center;justify-content:center;font-size:22px">📱</div>
+          <div>
+            <div style="font-size:15px;font-weight:800;color:#F1F5F9;letter-spacing:-0.3px">Baixe o App no Celular</div>
+            <div style="font-size:11px;color:rgba(201,168,76,0.8);margin-top:2px;font-weight:500">Gerencie sua barbearia de qualquer lugar</div>
+          </div>
+        </div>
+        <button onclick="document.getElementById('download-app-card').style.display='none'" style="background:rgba(255,255,255,0.06);border:none;color:rgba(241,245,249,0.5);cursor:pointer;padding:6px;border-radius:8px;font-size:16px;line-height:1;transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,0.12)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'">✕</button>
+      </div>
+      <div id="app-content-android" style="display:none;padding:16px 20px 20px">
+        <div style="display:flex;gap:20px;align-items:flex-start">
+          <div style="flex-shrink:0">
+            <img src="/admin/app-qrcode" alt="QR Code" style="width:120px;height:120px;border-radius:12px;border:2px solid rgba(201,168,76,0.3);background:#fff;padding:4px" />
+          </div>
+          <div style="flex:1">
+            <div style="font-size:12px;color:rgba(148,163,184,0.8);margin-bottom:14px;line-height:1.5">Escaneie o QR Code com a câmera do seu celular Android para baixar o app Barber Pro:</div>
+            <a href="https://play.google.com/store/apps/details?id=space.manus.barber.app" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#22C55E,#16A34A);color:#fff;text-decoration:none;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(34,197,94,0.3);transition:all .2s" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(34,197,94,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 12px rgba(34,197,94,0.3)'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5v-17c0-.83 1-.83 1.5-.5l14 8.5c.5.3.5 1 0 1.3l-14 8.5c-.5.3-1.5.3-1.5-.8z"/></svg>
+              Google Play →
+            </a>
+          </div>
+        </div>
+      </div>
+      <div id="app-content-ios" style="display:none;padding:16px 20px 20px">
+        <div style="display:flex;gap:16px;align-items:center;background:rgba(255,255,255,0.04);border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.08)">
+          <div style="font-size:28px">🍎</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#F1F5F9;margin-bottom:4px">iPhone — App Store</div>
+            <div style="font-size:12px;color:rgba(148,163,184,0.7);line-height:1.4">Em breve disponível na App Store.<br>Aguarde novidades!</div>
+          </div>
+        </div>
+      </div>
+      <div id="app-content-desktop" style="display:none;padding:16px 20px 20px">
+        <div style="display:flex;gap:16px;align-items:center;background:rgba(255,255,255,0.04);border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.08)">
+          <div style="font-size:28px">💻</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#F1F5F9;margin-bottom:4px">Acesse pelo celular</div>
+            <div style="font-size:12px;color:rgba(148,163,184,0.7);line-height:1.4">O app está disponível para Android.<br>Acesse esta página pelo seu celular para baixar.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function() {
+        var card = document.getElementById('download-app-card');
+        var ua = navigator.userAgent;
+        var isAndroid = /Android/i.test(ua);
+        var isIOS = /iPhone|iPad|iPod/i.test(ua);
+        card.style.display = 'block';
+        if (isAndroid) { document.getElementById('app-content-android').style.display = 'block'; }
+        else if (isIOS) { document.getElementById('app-content-ios').style.display = 'block'; }
+        else { document.getElementById('app-content-desktop').style.display = 'block'; }
+      })();
+    </script>
+  `;
   res.send(adminLayout("Dashboard", "dashboard", body, barber?.name, dashTenant?.plan ?? ""));
   } catch (dashErr: any) {
     console.error("[Dashboard] Erro ao renderizar:", dashErr?.message ?? dashErr);

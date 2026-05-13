@@ -2126,3 +2126,7 @@
 
 ## Melhorias Dashboard Admin Web Round 4 (13/05/2026)
 - [x] Gráfico de faturamento semanal com barras gradiente dourado, linha de tendência e animação
+
+## Melhorias Dashboard Admin Web Round 5 (13/05/2026)
+- [x] Alternador Faturamento/Agendamentos no gráfico semanal
+- [x] Reorganizar ordem dos blocos do dashboard (KPI → Agenda → Gráficos → Ações Rápidas → Link → App)
