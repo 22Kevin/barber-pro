@@ -49,12 +49,13 @@ const loginRateLimiter = rateLimit({
   message: { ok: false, error: "Muitas tentativas de login. Aguarde 1 minuto e tente novamente." },
   keyGenerator: (req) => {
     // Usar IP + email como chave para evitar bloqueio de IPs compartilhados
+    const ip = (req.ip ?? req.socket?.remoteAddress ?? "unknown").replace(/^::ffff:/, "");
     try {
       const body = req.body as Record<string, Record<string, Record<string, string>>>;
       const email = body?.["0"]?.json?.email ?? "";
-      return `${ipKeyGenerator(req)}:${email}`;
+      return `${ipKeyGenerator(ip)}:${email}`;
     } catch {
-      return ipKeyGenerator(req);
+      return ipKeyGenerator(ip);
     }
   },
 });

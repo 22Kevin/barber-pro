@@ -133,6 +133,7 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
     .hero-address { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
     .hero-cta { display: inline-block; background: var(--primary); color: #0A0A0A; font-size: 16px; font-weight: 800; padding: 14px 36px; border-radius: 50px; letter-spacing: 0.5px; font-family: var(--font-styled-family, inherit); }
     .hero-cta:hover { opacity: 0.9; }
+    @keyframes pulse-green { 0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(74,222,128,0.4); } 50% { opacity:0.7; box-shadow:0 0 0 6px rgba(74,222,128,0); } }
 
     /* Seções */
     .section { padding: 48px 24px; max-width: 900px; margin: 0 auto; }
@@ -405,6 +406,51 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
 </html>`;
 }
 
+// ─── Helper: Página 404 estilizada ───────────────────────────────────────────
+function notFoundPage(slug: string): string {
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Barbearia não encontrada — Barber Pro</title>
+  <meta name="description" content="Esta página de barbearia não existe. Cadastre sua barbearia gratuitamente no Barber Pro." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0A0A0A; color: #F0EEE8; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; }
+    .logo { font-size: 13px; font-weight: 900; letter-spacing: 3px; color: #C9A84C; text-transform: uppercase; margin-bottom: 48px; }
+    .code { font-size: 96px; font-weight: 900; line-height: 1; background: linear-gradient(135deg, #C9A84C, #9a7a2e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 16px; }
+    h1 { font-size: 24px; font-weight: 800; margin-bottom: 12px; }
+    p { font-size: 15px; color: #888880; line-height: 1.6; max-width: 400px; margin-bottom: 40px; }
+    .slug-hint { background: #161616; border: 1px solid #2A2A2A; border-radius: 12px; padding: 16px 20px; margin-bottom: 40px; max-width: 420px; width: 100%; }
+    .slug-hint-label { font-size: 11px; color: #888880; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+    .slug-hint-url { font-family: monospace; font-size: 14px; color: #C9A84C; word-break: break-all; }
+    .actions { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 320px; }
+    .btn-primary { display: block; background: linear-gradient(135deg, #e8c97a, #C9A84C); color: #0A0A0A; font-size: 15px; font-weight: 800; padding: 16px 24px; border-radius: 12px; text-decoration: none; transition: opacity 0.2s; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-ghost { display: block; background: transparent; color: #C9A84C; font-size: 14px; font-weight: 600; padding: 14px 24px; border-radius: 12px; border: 1px solid rgba(201,168,76,0.3); text-decoration: none; transition: border-color 0.2s; }
+    .btn-ghost:hover { border-color: #C9A84C; }
+    .footer { margin-top: 48px; font-size: 12px; color: #555; }
+  </style>
+</head>
+<body>
+  <div class="logo">✦ Barber Pro</div>
+  <div class="code">404</div>
+  <h1>Barbearia não encontrada</h1>
+  <p>O link que você acessou não corresponde a nenhuma barbearia cadastrada na plataforma.</p>
+  <div class="slug-hint">
+    <div class="slug-hint-label">Você tentou acessar</div>
+    <div class="slug-hint-url">usebarberpro.com/${escapeHtml(slug)}</div>
+  </div>
+  <div class="actions">
+    <a href="https://usebarberpro.com" class="btn-primary">🏠 Voltar para o início</a>
+    <a href="https://usebarberpro.com/#cadastro" class="btn-ghost">✂️ Cadastrar minha barbearia</a>
+  </div>
+  <div class="footer">Powered by Barber Pro — Sistema de Gestão para Barbearias</div>
+</body>
+</html>`;
+}
+
 // ─── Página principal da barbearia ───────────────────────────────────────────
 async function renderShopPage(slug: string, res: Response, req?: Request) {
   const tenant = await db.getTenantBySlug(slug);
@@ -465,6 +511,9 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       shopWorkingHours = await db.getWorkingHours(barberList[0].id);
     }
   } catch {}
+  // Status de abertura da barbearia (Aberto/Fechado agora)
+  let shopOpenStatus: { isOpen: boolean; opensAt: string | null; closesAt: string | null; lunchStart: string | null; lunchEnd: string | null } = { isOpen: false, opensAt: null, closesAt: null, lunchStart: null, lunchEnd: null };
+  try { shopOpenStatus = await db.getShopOpenStatus(tenant.id); } catch {}
 
   // Verificar se o cliente está logado via cookie de sessão
   const clientSessionRaw = req?.cookies?.[`client_session_${slug}`] ?? req?.cookies?.["client_session"];
@@ -965,6 +1014,12 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       <div class="hero-content">
         ${settings?.logoUrl ? `<img class="hero-logo" src="${escapeHtml(settings.logoUrl)}" alt="${escapeHtml(settings?.shopName ?? tenant.name)}" />` : `<div style="width:90px;height:90px;border-radius:22px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 16px;border:3px solid var(--primary)">💈</div>`}
         <div class="hero-name">${escapeHtml(settings?.shopName ?? tenant.name)}</div>
+        ${shopOpenStatus.isOpen
+          ? `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,0.18);border:1px solid rgba(34,197,94,0.4);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#4ade80;margin-bottom:8px;letter-spacing:0.3px"><span style="width:7px;height:7px;border-radius:50%;background:#4ade80;display:inline-block;animation:pulse-green 2s infinite"></span>Aberto agora${shopOpenStatus.closesAt ? ` · fecha às ${shopOpenStatus.closesAt}` : ""}</div>`
+          : shopOpenStatus.opensAt
+            ? `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.35);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;color:#f87171;margin-bottom:8px;letter-spacing:0.3px"><span style="width:7px;height:7px;border-radius:50%;background:#f87171;display:inline-block"></span>Fechado · abre às ${shopOpenStatus.opensAt}</div>`
+            : ""
+        }
         ${address ? `<div class="hero-address">📍 ${escapeHtml(address)}</div>` : ""}
         <a href="${agendamentoUrl}" class="hero-cta">Agendar Horário</a>
       </div>
@@ -1046,7 +1101,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
 // ─── Rota de agendamentoe login Página de agendamento ────────────────────────────────────────────────────
 async function renderBookingPage(slug: string, res: Response, req?: Request) {
   const tenant = await db.getTenantBySlug(slug);
-  if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
+  if (!tenant) { res.status(404).send(notFoundPage(slug)); return; }
   const settings = await db.getShopSettingsByTenantId(tenant.id);
   const barberList = await db.getAllBarbers(tenant.id);
   const serviceList = await db.getAllServicesWithMediaAndRatings(true, tenant.id);
@@ -2097,7 +2152,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 // ─── Página de avaliaçãoastro do cliente ─────────────────────────────────────
 async function renderLoginPage(slug: string, res: Response, req: Request, mode: "login" | "cadastro" = "login") {
   const tenant = await db.getTenantBySlug(slug);
-  if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
+  if (!tenant) { res.status(404).send(notFoundPage(slug)); return; }
   const settings = await db.getShopSettingsByTenantId(tenant.id);
   const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
   const redirect = (req.query.redirect as string) ?? "";
@@ -2278,7 +2333,7 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
 // ─── Página de Perfil do Cliente ─────────────────────────────────────────────
 async function renderPerfilPage(slug: string, res: Response, req: Request) {
   const tenant = await db.getTenantBySlug(slug);
-  if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
+  if (!tenant) { res.status(404).send(notFoundPage(slug)); return; }
   const settings = await db.getShopSettingsByTenantId(tenant.id);
   const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
   const shopName = settings?.shopName ?? tenant.name;
@@ -2519,7 +2574,7 @@ async function renderReviewPage(slug: string, appointmentIdStr: string, res: Res
   if (isNaN(appointmentId)) { res.status(400).send("ID de agendamento inválido."); return; }
 
   const tenant = await db.getTenantBySlug(slug);
-  if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
+  if (!tenant) { res.status(404).send(notFoundPage(slug)); return; }
   const settings = await db.getShopSettingsByTenantId(tenant.id);
   const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
   const shopName = settings?.shopName ?? tenant.name;
@@ -2681,7 +2736,7 @@ async function renderReviewPage(slug: string, appointmentIdStr: string, res: Res
 // ─── Página de Meus Agendamentos ─────────────────────────────────────────
 async function renderMyAppointmentsPage(slug: string, res: Response, req: Request) {
   const tenant = await db.getTenantBySlug(slug);
-  if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
+  if (!tenant) { res.status(404).send(notFoundPage(slug)); return; }
   const settings = await db.getShopSettingsByTenantId(tenant.id);
   const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
 
@@ -3133,7 +3188,7 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
 // ─── Página de Detalhe de Serviço ───────────────────────────────────────────
 async function renderServiceDetailPage(slug: string, serviceId: number, res: Response, req: Request) {
   const tenant = await db.getTenantBySlug(slug);
-  if (!tenant) { res.status(404).send("Barbearia não encontrada"); return; }
+  if (!tenant) { res.status(404).send(notFoundPage(slug)); return; }
   const settings = await db.getShopSettingsByTenantId(tenant.id);
   const primaryColor = (settings as any)?.primaryColor || "#C9A84C";
   const service = await db.getServiceById(serviceId);
@@ -3199,7 +3254,7 @@ async function renderServiceDetailPage(slug: string, serviceId: number, res: Res
 // ─── Página de Detalhe de Plano de Assinatura (Fluxo 4 etapas) ────────────────
 async function renderPlanDetailPage(slug: string, planId: number, res: Response, req: Request) {
   const tenant = await db.getTenantBySlug(slug);
-  if (!tenant) { res.status(404).send("Barbearia não encontrada"); return; }
+  if (!tenant) { res.status(404).send(notFoundPage(slug)); return; }
   const settings = await db.getShopSettingsByTenantId(tenant.id);
   const primaryColor = (settings as any)?.primaryColor || "#C9A84C";
   const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
@@ -3759,7 +3814,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
 // ─── Página de Detalhe de Produto ────────────────────────────────────────────
 async function renderProductDetailPage(slug: string, productId: number, res: Response, req: Request) {
   const tenant = await db.getTenantBySlug(slug);
-  if (!tenant) { res.status(404).send("Barbearia não encontrada"); return; }
+  if (!tenant) { res.status(404).send(notFoundPage(slug)); return; }
   const settings = await db.getShopSettingsByTenantId(tenant.id);
   const primaryColor = (settings as any)?.primaryColor || "#C9A84C";
   const product = await db.getProductById(productId);
@@ -4259,7 +4314,7 @@ export function registerPublicRoutes(app: Express): void {
   app.get("/pub/:slug/forgot-password", async (req: Request, res: Response) => {
     const { slug } = req.params;
     const tenant = await db.getTenantBySlug(slug);
-    if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
+    if (!tenant) { res.status(404).send(notFoundPage(slug)); return; }
     const settings = await db.getShopSettingsByTenantId(tenant.id);
     const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
     const sent = req.query.sent === "1";
@@ -5028,7 +5083,7 @@ export function registerPublicRoutes(app: Express): void {
   app.get("/pub/:slug/agendamento/:id", async (req: Request, res: Response) => {
     const { slug, id } = req.params;
     const tenant = await db.getTenantBySlug(slug);
-    if (!tenant) { res.status(404).send("Barbearia não encontrada."); return; }
+    if (!tenant) { res.status(404).send(notFoundPage(slug)); return; }
     const settings = await db.getShopSettingsByTenantId(tenant.id);
     const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
     const shopName = settings?.shopName ?? tenant.name;

@@ -2094,3 +2094,8 @@
 - [x] Campo hex de cor de fundo personalizada no APP
 - [x] Exibir nome do arquivo ao fazer upload no painel web (logo, banner, imagem de compartilhamento)
 - [x] Seção de horários de funcionamento na página pública do cliente
+
+## Melhorias Round 3 (13/05/2026)
+- [x] Badge "Aberto agora" / "Fechado" na página pública baseado nos horários cadastrados
+- [x] Página 404 personalizada para slugs inválidos com logo BarberPro
+- [x] Botão "Visualizar minha página" no bloco Aparência do painel web

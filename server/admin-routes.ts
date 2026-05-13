@@ -3669,9 +3669,10 @@ async function renderPaginaCliente(req: Request, res: Response) {
               <div style="font-size:11px;color:var(--muted)">Selecione várias fotos de uma vez. Máximo recomendado: 12 fotos.</div>
             </div>
 
-            <!-- Botão Salvar -->
-            <div style="padding-top:4px;padding-bottom:8px">
+            <!-- Botão Salvar + Visualizar -->
+            <div style="padding-top:4px;padding-bottom:8px;display:flex;flex-direction:column;gap:10px">
               <button type="submit" class="btn btn-primary" style="width:100%;padding:14px 32px;font-size:15px;font-weight:700">💾 Salvar Aparência</button>
+              ${publicUrl ? `<a href="${esc(publicUrl)}" target="_blank" class="btn btn-ghost" style="width:100%;padding:12px 32px;font-size:14px;font-weight:600;text-align:center;text-decoration:none;display:block">👁 Visualizar minha página</a>` : ""}
             </div>
           </form>
 
