@@ -2110,3 +2110,8 @@
 
 ## Melhoria Round 5 (13/05/2026)
 - [x] Atualização automática do badge Aberto/Fechado via endpoint JSON + setInterval 60s
+
+## Melhorias Dashboard Admin Web (13/05/2026)
+- [x] Corrigir ícone quebrado no card "Novo Agendamento" nas Ações Rápidas
+- [x] Redesenhar card "Baixe o App" com layout moderno e chamativo
+- [x] Adicionar preview da página pública no bloco Link de Agendamento
