@@ -446,12 +446,41 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       .main { margin-left: 0; }
       .topbar-hamburger { display: flex; }
       .topbar-date { display: none; }
-      .content { padding: 16px; }
+      .content { padding: 14px; }
       .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
       .form-row { grid-template-columns: 1fr; }
+      /* Ações Rápidas: 3 colunas em tablet */
+      .actions-grid-5 { grid-template-columns: repeat(3, 1fr) !important; }
+      /* Tabelas: scroll horizontal */
+      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      /* Botões do link de agendamento: empilhar */
+      .booking-btns { flex-wrap: wrap; }
+      .booking-btns .btn { flex: 1 1 auto; min-width: 80px; justify-content: center; }
+      /* Gráfico: botões de alternância */
+      .chart-toggle-wrap { flex-wrap: wrap; gap: 6px; }
+      /* Card Baixe o App: header */
+      .app-card-header { flex-wrap: wrap; gap: 10px; }
+      /* Topbar: esconder badge de plano em telas pequenas */
+      .topbar-plan-badge { display: none; }
+    }
+    @media (max-width: 600px) {
+      /* Ações Rápidas: 2 colunas em mobile */
+      .actions-grid-5 { grid-template-columns: repeat(2, 1fr) !important; }
+      /* Botões de ação inline: empilhar */
+      .inline-action-btns { flex-direction: column; }
+      /* Preview da página: altura menor */
+      .page-preview-iframe-wrap { height: 180px !important; }
+      /* Gráfico: padding menor */
+      .chart-card-inner { padding: 16px !important; }
     }
     @media (max-width: 480px) {
       .metrics-grid { grid-template-columns: 1fr; }
+      .content { padding: 10px; }
+      /* Topbar: título menor */
+      .topbar-title { font-size: 13px; }
+      /* Cards: padding menor */
+      .card-header { padding: 12px 14px; }
+      .card-body { padding: 12px 14px; }
     }
   </style>
   <script>
@@ -999,23 +1028,23 @@ async function renderDashboard(req: Request, res: Response) {
       </div>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     </a>` : ''}
-    <div class="card" style="margin-bottom:20px;">
+    <div class="card" style="margin-bottom:20px;overflow:hidden;">
       <div class="card-header">
         <div class="card-title">Agenda de Hoje &mdash; ${fmtDate(dateStr)}</div>
         <a href="/admin/agenda" class="btn btn-ghost btn-sm">Ver tudo</a>
       </div>
-      <div class="card-body">${appointmentsHtml}</div>
+      <div class="card-body" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">${appointmentsHtml}</div>
     </div>
 
     <!-- 3. Gráfico de Faturamento/Agendamentos Semanal -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px;position:relative;overflow:hidden;">
+    <div class="chart-card-inner" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px;position:relative;overflow:hidden;">
       <div style="position:absolute;top:-60px;right:-60px;width:220px;height:220px;background:radial-gradient(circle,rgba(201,168,76,0.07) 0%,transparent 70%);pointer-events:none;"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
         <div>
           <div style="font-size:13px;font-weight:700;color:var(--foreground);letter-spacing:0.3px;" id="chart-title">Faturamento — Últimos 7 dias</div>
           <div style="font-size:11px;color:var(--muted);margin-top:3px;" id="chart-subtitle">Total do período: <span style="color:#C9A84C;font-weight:700;" id="chart-total">${fmtCurrency(totalWeekRevenue)}</span></div>
         </div>
-        <div style="display:flex;gap:6px;">
+        <div class="chart-toggle-wrap" style="display:flex;gap:6px;flex-wrap:wrap;">
           <button id="btn-revenue" onclick="switchChart('revenue')" style="padding:6px 14px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid #C9A84C;background:#C9A84C;color:#0C0C0C;cursor:pointer;transition:all .2s;">Faturamento</button>
           <button id="btn-appointments" onclick="switchChart('appointments')" style="padding:6px 14px;font-size:11px;font-weight:700;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;">Agendamentos</button>
         </div>
@@ -1245,7 +1274,7 @@ async function renderDashboard(req: Request, res: Response) {
     <!-- 4. Ações Rápidas -->
     <div style="margin-bottom:20px;">
       <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;">Ações Rápidas</div>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+      <div class="actions-grid-5" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
         <a href="/admin/agenda/novo" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
@@ -1288,8 +1317,8 @@ async function renderDashboard(req: Request, res: Response) {
       </div>
       <div class="card-body">
         <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Compartilhe este link com seus clientes para que eles possam agendar online:</p>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
-          <input id="dash-booking-url" class="form-input" type="text" value="${esc(dashBookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1" />
+        <div class="booking-btns" style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+          <input id="dash-booking-url" class="form-input" type="text" value="${esc(dashBookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1;min-width:0" />
           <button onclick="(function(btn){navigator.clipboard.writeText(document.getElementById('dash-booking-url').value).then(()=>{var o=btn.innerHTML;btn.innerHTML='Copiado!';setTimeout(()=>btn.innerHTML=o,2000)});})(this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Copiar</button>
           <a href="${esc(dashBookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Abrir</a>
           <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário: ' + dashBookingUrl)}" target="_blank" class="btn btn-primary" style="flex-shrink:0;padding:8px 14px;font-size:12px">WhatsApp</a>
@@ -1303,7 +1332,7 @@ async function renderDashboard(req: Request, res: Response) {
               <div style="flex:1;background:var(--surface);border-radius:6px;padding:4px 10px;font-size:10px;color:var(--muted);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(dashPublicUrl)}</div>
               <a href="${esc(dashPublicUrl)}" target="_blank" class="btn btn-ghost btn-sm" style="font-size:10px;padding:4px 8px;">Abrir ↗</a>
             </div>
-            <div style="height:280px;overflow:hidden;position:relative;">
+            <div class="page-preview-iframe-wrap" style="height:280px;overflow:hidden;position:relative;">
               <iframe src="${esc(dashPublicUrl)}" style="width:100%;height:100%;border:none;pointer-events:none;transform-origin:top left" scrolling="no" loading="lazy" title="Preview da sua página"></iframe>
               <a href="${esc(dashPublicUrl)}" target="_blank" style="position:absolute;inset:0;display:block;cursor:pointer" title="Abrir página pública"></a>
             </div>
@@ -1506,11 +1535,11 @@ async function renderAgenda(req: Request, res: Response) {
   const filtersHtml = `
     <form method="GET" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;align-items:center">
       <input type="hidden" name="date" value="${dateStr}" />
-      <select name="barberId" onchange="this.form.submit()" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;min-width:160px">
+      <select name="barberId" onchange="this.form.submit()" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;min-width:120px">
         <option value="">Todos os profissionais</option>
         ${barbers.map((b: any) => `<option value="${b.id}"${filterBarberId === b.id ? " selected" : ""}>${esc(b.name)}</option>`).join("")}
       </select>
-      <div style="display:flex;flex:1;min-width:200px;gap:8px">
+      <div style="display:flex;flex:1;min-width:120px;gap:8px">
         <input type="text" name="q" value="${esc(filterSearch)}" placeholder="Buscar por nome ou telefone..."
           style="flex:1;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px" />
         <button type="submit" class="btn btn-primary" style="padding:8px 16px;font-size:13px">Buscar</button>
@@ -1673,7 +1702,7 @@ async function renderAgenda(req: Request, res: Response) {
         <!-- Filtros -->
         <form method="GET" style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
           <input type="hidden" name="date" value="${dateStr}" />
-          <select name="barberId" onchange="this.form.submit()" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;min-width:160px;">
+          <select name="barberId" onchange="this.form.submit()" style="padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;min-width:120px;">
             <option value="">Todos os profissionais</option>
             ${barbers.map((b: any) => `<option value="${b.id}"${filterBarberId === b.id ? " selected" : ""}>${esc(b.name)}</option>`).join("")}
           </select>
@@ -2057,7 +2086,7 @@ async function renderClientes(req: Request, res: Response) {
 
     <!-- Barra de ações -->
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;align-items:center">
-      <form method="GET" style="display:flex;flex:1;min-width:200px;gap:8px">
+      <form method="GET" style="display:flex;flex:1;min-width:120px;gap:8px">
         <input type="text" name="q" value="${esc(search)}" placeholder="Buscar por nome ou telefone..."
           style="flex:1;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px" />
         <button type="submit" class="btn btn-primary" style="padding:8px 16px;font-size:13px">Buscar</button>
@@ -2080,7 +2109,7 @@ async function renderClientes(req: Request, res: Response) {
       <div class="card-header">
         <div class="card-title">${filterBirthday ? `Aniversariantes de ${new Date().toLocaleString('pt-BR', {month:'long'})}` : 'Clientes'} (${filtered.length})</div>
       </div>
-      <div class="card-body">
+      <div class="card-body"><div class="table-wrap">
         ${filtered.length === 0
           ? `<div class="empty">${filterBirthday ? 'Nenhum aniversariante este mês.' : 'Nenhum cliente encontrado.'}</div>`
           : `<table>
@@ -2324,7 +2353,7 @@ async function renderServicos(req: Request, res: Response) {
         <div class="card-title">Serviços Cadastrados (${services.length})</div>
         <input type="text" id="svc-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('svc-search').value.toLowerCase();document.querySelectorAll('#svc-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;min-width:200px" />
       </div>
-      <div class="card-body"><div id="svc-table">${tableHtml}</div></div>
+      <div class="card-body"><div class="table-wrap"><div id="svc-table">${tableHtml}</div></div>
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
@@ -2484,7 +2513,7 @@ async function renderProdutos(req: Request, res: Response) {
         <div class="card-title">Produtos Cadastrados (${products.length})</div>
         <input type="text" id="prod-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('prod-search').value.toLowerCase();document.querySelectorAll('#prod-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;min-width:200px" />
       </div>
-      <div class="card-body"><div id="prod-table">${tableHtml}</div></div>
+      <div class="card-body"><div class="table-wrap"><div id="prod-table">${tableHtml}</div></div>
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
@@ -2844,7 +2873,7 @@ async function renderFinanceiro(req: Request, res: Response) {
       }).join('');
       pmtTableHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">'
         + '<div style="overflow-x:auto">'
-        + '<table style="width:100%;border-collapse:collapse;font-size:13px">'
+        + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="width:100%;border-collapse:collapse;font-size:13px">'
         + '<thead><tr style="border-bottom:1px solid var(--border);background:var(--surface2)">'
         + '<th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Cliente</th>'
         + '<th style="padding:12px 16px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.6px">Método</th>'

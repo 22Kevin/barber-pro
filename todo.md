@@ -2130,3 +2130,6 @@
 ## Melhorias Dashboard Admin Web Round 5 (13/05/2026)
 - [x] Alternador Faturamento/Agendamentos no gráfico semanal
 - [x] Reorganizar ordem dos blocos do dashboard (KPI → Agenda → Gráficos → Ações Rápidas → Link → App)
+
+## Responsividade Mobile Dashboard Admin (13/05/2026)
+- [x] Responsividade mobile completa: sidebar hamburger, KPI cards 2 colunas, gráfico, ações rápidas, tabelas e cards
