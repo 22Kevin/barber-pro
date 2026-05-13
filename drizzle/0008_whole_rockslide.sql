@@ -1,0 +1,1 @@
+ALTER TABLE "shop_settings" ADD COLUMN "dailyGoal" integer DEFAULT 0;

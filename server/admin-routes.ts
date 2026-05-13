@@ -589,6 +589,11 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       <div class="topbar-right">
         <div class="topbar-date">${new Date().toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</div>
         ${badge ? `<div style="display:inline-flex;align-items:center;gap:5px;background:${badge.bg};border:1px solid ${badge.color}33;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:${badge.color};letter-spacing:0.5px">${badge.label}</div>` : ""}
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro" style="background:var(--surface);border:1px solid var(--border);cursor:pointer;color:var(--foreground);padding:7px 10px;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.2s;min-width:36px;min-height:36px;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--foreground)'">
+          <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;flex-shrink:0"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg id="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:block;flex-shrink:0"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <span id="theme-label" style="font-size:11px;font-weight:600;letter-spacing:0.3px;display:none">Escuro</span>
+        </button>
         <div class="topbar-avatar" title="${esc(barberName)}">${initials}</div>
       </div>
     </div>
@@ -622,7 +627,27 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       var next = current === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem('bp_theme', next);
+      updateThemeIcon(next);
     }
+    function updateThemeIcon(theme) {
+      var sun = document.getElementById('theme-icon-sun');
+      var moon = document.getElementById('theme-icon-moon');
+      var label = document.getElementById('theme-label');
+      if (!sun || !moon) return;
+      if (theme === 'dark') {
+        sun.style.display = 'block'; moon.style.display = 'none';
+        if (label) label.textContent = 'Claro';
+      } else {
+        sun.style.display = 'none'; moon.style.display = 'block';
+        if (label) label.textContent = 'Escuro';
+      }
+    }
+    // Inicializar ícone ao carregar
+    (function() {
+      var t = localStorage.getItem('bp_theme') || 'dark';
+      var isDark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      updateThemeIcon(isDark ? 'dark' : 'light');
+    })();
   </script>
   <script>
     // ── Animações de navegação ──────────────────────────────────────────────
@@ -995,13 +1020,33 @@ async function renderDashboard(req: Request, res: Response) {
   const yesterdayStr = yesterday();
   const statsYesterday = await db.getDashboardStats(yesterdayStr, tenantId).catch(() => ({ appointmentsToday: 0, revenueToday: 0, clientsToday: 0, pendingAppointments: 0 }));
   const appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
+  // ─── Próximo agendamento do dia ───────────────────────────────────────────
+  const nowMinutes = (() => {
+    const now = new Date();
+    // Ajustar para horário de Brasília (UTC-3)
+    const brt = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+    return brt.getUTCHours() * 60 + brt.getUTCMinutes();
+  })();
+  const nextAppointment = appointments
+    .filter((a: any) => {
+      if (!a.startTime) return false;
+      const [h, m] = a.startTime.split(':').map(Number);
+      return (h * 60 + m) >= nowMinutes && ['scheduled', 'confirmed'].includes(a.status);
+    })
+    .sort((a: any, b: any) => {
+      const [ah, am] = a.startTime.split(':').map(Number);
+      const [bh, bm] = b.startTime.split(':').map(Number);
+      return (ah * 60 + am) - (bh * 60 + bm);
+    })[0] ?? null;
   const barbers = await db.getAllBarbers(tenantId);
   const lowStockItems = await db.getLowStockProducts(tenantId).catch((err) => {
     console.error("[Dashboard] Erro ao buscar produtos com estoque baixo:", err?.message ?? err);
     return [];
   });
 
-  // Buscar slug para o card de link de agendamento
+  // Buscar slug e settings para o card de link e meta diária
+  const dashSettings = await db.getShopSettings(tenantId).catch(() => null);
+  const dailyGoal = dashSettings?.dailyGoal ?? 0;
   const dashTenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
   const dashSlug = dashTenant?.slug ?? "";
   const dashBaseUrl = process.env.PUBLIC_BASE_URL ?? "";
@@ -1096,7 +1141,12 @@ async function renderDashboard(req: Request, res: Response) {
           </div>
         </div>
         <div class="metric-value" style="color:#4ADE80">${fmtCurrency(stats.revenueToday)}</div>
-        <div class="metric-sub">vendas pagas</div>
+        ${dailyGoal > 0 ? (() => {
+          const pct = Math.min(100, Math.round((stats.revenueToday / dailyGoal) * 100));
+          const goalFmt = fmtCurrency(dailyGoal);
+          const barColor = pct >= 100 ? '#22C55E' : pct >= 60 ? '#C9A84C' : '#EF4444';
+          return `<div style='margin-top:6px'><div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:4px'><span style='font-size:10px;color:var(--muted)'>Meta: \${goalFmt}</span><span style='font-size:10px;font-weight:700;color:\${barColor}'>\${pct}%</span></div><div style='height:4px;background:var(--border);border-radius:2px;overflow:hidden'><div style='height:100%;width:\${pct}%;background:\${barColor};border-radius:2px;transition:width 0.6s ease'></div></div></div>`;
+        })() : '<div class="metric-sub">vendas pagas</div>'}
       </div>
       <div class="metric-card kpi-tooltip">
         <div class="kpi-tip">Ontem: ${statsYesterday.clientsToday} cliente${statsYesterday.clientsToday !== 1 ? 's' : ''} · ${stats.clientsToday === 0 && statsYesterday.clientsToday === 0 ? '—' : statsYesterday.clientsToday === 0 ? '↑ novo' : stats.clientsToday > statsYesterday.clientsToday ? '↑ +' + Math.round((stats.clientsToday - statsYesterday.clientsToday) / statsYesterday.clientsToday * 100) + '%' : stats.clientsToday < statsYesterday.clientsToday ? '↓ ' + Math.round((stats.clientsToday - statsYesterday.clientsToday) / statsYesterday.clientsToday * 100) + '%' : '= igual'}</div>
@@ -1121,6 +1171,33 @@ async function renderDashboard(req: Request, res: Response) {
       </div>
     </div>
 
+    <!-- Card: Proximo Agendamento -->
+    ${nextAppointment ? (() => {
+      const naClientName = (nextAppointment as any).clientName ?? clientMap[(nextAppointment as any).clientId] ?? 'Cliente';
+      const naServiceName = (nextAppointment as any).serviceName ?? serviceMap[(nextAppointment as any).serviceId] ?? 'Servico';
+      const naBarberName = barberMap[(nextAppointment as any).barberId] ?? '';
+      const naTime = ((nextAppointment as any).startTime ?? '').substring(0, 5);
+      const naStatusColor = (nextAppointment as any).status === 'confirmed' ? '#22C55E' : '#C9A84C';
+      const naStatusLabel = (nextAppointment as any).status === 'confirmed' ? 'Confirmado' : 'Agendado';
+      return `<div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:20px;box-shadow:0 4px 24px rgba(0,0,0,0.3);position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;right:0;width:120px;height:120px;background:radial-gradient(circle,rgba(201,168,76,0.08) 0%,transparent 70%);pointer-events:none"></div>
+        <div style="width:52px;height:52px;background:rgba(201,168,76,0.15);border:2px solid rgba(201,168,76,0.4);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px">Proximo Agendamento</span>
+            <span style="font-size:10px;font-weight:700;color:${naStatusColor};background:${naStatusColor}22;border:1px solid ${naStatusColor}44;border-radius:4px;padding:1px 6px">${naStatusLabel}</span>
+          </div>
+          <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${naClientName}</div>
+          <div style="font-size:13px;color:var(--muted)">${naServiceName}${naBarberName ? ' - ' + naBarberName : ''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:28px;font-weight:900;color:#C9A84C;line-height:1">${naTime}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">hoje</div>
+        </div>
+      </div>`;
+    })() : ''}
     <!-- 2. Agenda de Hoje -->
     ${lowStockItems.length > 0 ? `
     <a href="/admin/estoque" style="text-decoration:none;display:flex;align-items:center;gap:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:14px 16px;margin-bottom:20px;transition:background .2s;" onmouseover="this.style.background='rgba(245,158,11,.14)'" onmouseout="this.style.background='rgba(245,158,11,.08)'">
@@ -3140,6 +3217,11 @@ async function renderConfiguracoes(req: Request, res: Response) {
         <label class="form-label">Chave Pix</label>
         <input class="form-input" type="text" name="pixKey" value="${esc(settings?.pixKey ?? "")}" placeholder="CPF, CNPJ, e-mail ou chave aleatória" />
       </div>
+      <div class="form-group" style="margin-top:4px">
+        <label class="form-label">Meta Diária de Faturamento (R$)</label>
+        <input class="form-input" type="number" name="dailyGoal" min="0" step="1" value="${settings?.dailyGoal ?? 0}" placeholder="Ex: 500" />
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Exibe uma barra de progresso no Dashboard. Deixe 0 para desativar.</div>
+      </div>
       <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">Salvar Dados</button>
     </form>
   `;
@@ -4938,8 +5020,9 @@ export function registerAdminRoutes(app: Express): void {
       await db.upsertShopSettings({ primaryColor, bannerUrl, logoUrl, galleryUrls }, tenantId);
     } else {
       // tab === "dados" (padrão)
-      const { shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl, pixKey } = body;
-      await db.upsertShopSettings({ shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl, pixKey }, tenantId);
+      const { shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl, pixKey, dailyGoal } = body;
+      const dailyGoalNum = dailyGoal ? parseInt(dailyGoal, 10) || 0 : 0;
+      await db.upsertShopSettings({ shopName, phone, whatsapp, instagram, address, addressNumber, addressComplement, cep, googleMapsUrl, pixKey, dailyGoal: dailyGoalNum } as any, tenantId);
     }
     res.redirect(`/admin/configuracoes?tab=${tab}&saved=1`);
   });

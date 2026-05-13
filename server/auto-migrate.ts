@@ -799,6 +799,7 @@ export async function runAutoMigrate(db: any): Promise<void> {
     { name: 'shop_settings."seoImageUrl"', sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "seoImageUrl" TEXT` },
     { name: 'shop_settings."fontStyle"',  sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "fontStyle" VARCHAR(30) DEFAULT 'moderno'` },
     { name: 'shop_settings."backgroundColor"', sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "backgroundColor" VARCHAR(20) DEFAULT '#0A0A0A'` },
+    { name: 'shop_settings."dailyGoal"', sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "dailyGoal" INTEGER DEFAULT 0` },
     // stock_movements
     { name: 'stock_movements."supplierId"', sql: `ALTER TABLE stock_movements ADD COLUMN IF NOT EXISTS "supplierId" INT` },
     // reviews

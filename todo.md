@@ -2138,3 +2138,8 @@
 - [x] Barra de progresso na topbar ao navegar entre seções
 - [x] Fade-in + slide-up suave no conteúdo principal ao carregar página
 - [x] Feedback visual (loading state) nos links da sidebar ao clicar
+
+## Melhorias Dashboard Admin Web Round 6 (13/05/2026)
+- [x] Card "Próximo agendamento" no dashboard (nome, serviço, horário em destaque)
+- [x] Meta diária de faturamento com barra de progresso no card Faturamento Hoje
+- [x] Persistência do tema escuro/claro com ícone sol/lua melhorado na topbar

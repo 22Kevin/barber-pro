@@ -381,6 +381,7 @@ export const shopSettings = pgTable("shop_settings", {
   seoImageUrl: text("seoImageUrl"),
   fontStyle: varchar("fontStyle", { length: 30 }).default("moderno"),
   backgroundColor: varchar("backgroundColor", { length: 20 }).default("#0A0A0A"),
+  dailyGoal: integer("dailyGoal").default(0),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
