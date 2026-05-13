@@ -56,6 +56,11 @@ function fmt(n: number): string {
 function today(): string {
   return new Date().toISOString().split("T")[0];
 }
+function yesterday(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split("T")[0];
+}
 
 /**
  * Envolve qualquer handler de rota GET com try/catch global.
@@ -334,6 +339,32 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     .metric-card:nth-child(2) { animation-delay: 60ms; }
     .metric-card:nth-child(3) { animation-delay: 120ms; }
     .metric-card:nth-child(4) { animation-delay: 180ms; }
+    /* ── Tooltip KPI ── */
+    .kpi-tooltip { position:relative; cursor:default; }
+    .kpi-tooltip .kpi-tip {
+      visibility:hidden; opacity:0; pointer-events:none;
+      position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%);
+      background:#1e293b; border:1px solid rgba(201,168,76,0.3); border-radius:8px;
+      padding:8px 12px; white-space:nowrap; font-size:12px; color:#e2e8f0;
+      box-shadow:0 4px 16px rgba(0,0,0,0.4); z-index:100;
+      transition:opacity .18s ease, visibility .18s ease;
+    }
+    .kpi-tooltip .kpi-tip::after {
+      content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+      border:5px solid transparent; border-top-color:#1e293b;
+    }
+    .kpi-tooltip:hover .kpi-tip { visibility:visible; opacity:1; }
+    /* ── Animação Ações Rápidas ── */
+    @keyframes action-in {
+      from { opacity: 0; transform: translateY(10px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .action-card { animation: action-in 0.3s ease both; }
+    .action-card:nth-child(1) { animation-delay: 200ms; }
+    .action-card:nth-child(2) { animation-delay: 250ms; }
+    .action-card:nth-child(3) { animation-delay: 300ms; }
+    .action-card:nth-child(4) { animation-delay: 350ms; }
+    .action-card:nth-child(5) { animation-delay: 400ms; }
     .metric-card:hover { border-color: rgba(201,168,76,0.25); box-shadow: 0 0 0 1px rgba(201,168,76,0.08), 0 4px 16px rgba(0,0,0,0.3); }
     .metric-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
     .metric-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
@@ -829,6 +860,8 @@ async function renderDashboard(req: Request, res: Response) {
   const dateStr = today();
   const tenantId = barber?.tenantId ?? null;
   const stats = await db.getDashboardStats(dateStr, tenantId);
+  const yesterdayStr = yesterday();
+  const statsYesterday = await db.getDashboardStats(yesterdayStr, tenantId).catch(() => ({ appointmentsToday: 0, revenueToday: 0, clientsToday: 0, pendingAppointments: 0 }));
   const appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
   const barbers = await db.getAllBarbers(tenantId);
   const lowStockItems = await db.getLowStockProducts(tenantId).catch((err) => {
@@ -897,7 +930,8 @@ async function renderDashboard(req: Request, res: Response) {
 
   const body = `
     <div class="metrics-grid">
-      <div class="metric-card">
+      <div class="metric-card kpi-tooltip">
+        <div class="kpi-tip">Ontem: ${statsYesterday.appointmentsToday} agendamento${statsYesterday.appointmentsToday !== 1 ? 's' : ''} · ${stats.appointmentsToday === 0 && statsYesterday.appointmentsToday === 0 ? '—' : statsYesterday.appointmentsToday === 0 ? '↑ novo' : stats.appointmentsToday > statsYesterday.appointmentsToday ? '↑ +' + Math.round((stats.appointmentsToday - statsYesterday.appointmentsToday) / statsYesterday.appointmentsToday * 100) + '%' : stats.appointmentsToday < statsYesterday.appointmentsToday ? '↓ ' + Math.round((stats.appointmentsToday - statsYesterday.appointmentsToday) / statsYesterday.appointmentsToday * 100) + '%' : '= igual'}</div>
         <div class="metric-header">
           <div class="metric-label">Agendamentos Hoje</div>
           <div class="metric-icon" style="background:var(--gold-dim)">
@@ -907,7 +941,8 @@ async function renderDashboard(req: Request, res: Response) {
         <div class="metric-value" style="color:var(--gold)">${stats.appointmentsToday}</div>
         <div class="metric-sub">${stats.pendingAppointments} pendentes</div>
       </div>
-      <div class="metric-card">
+      <div class="metric-card kpi-tooltip">
+        <div class="kpi-tip">Ontem: ${fmtCurrency(statsYesterday.revenueToday)} · ${stats.revenueToday === 0 && statsYesterday.revenueToday === 0 ? '—' : statsYesterday.revenueToday === 0 ? '↑ novo' : stats.revenueToday > statsYesterday.revenueToday ? '↑ +' + Math.round((stats.revenueToday - statsYesterday.revenueToday) / statsYesterday.revenueToday * 100) + '%' : stats.revenueToday < statsYesterday.revenueToday ? '↓ ' + Math.round((stats.revenueToday - statsYesterday.revenueToday) / statsYesterday.revenueToday * 100) + '%' : '= igual'}</div>
         <div class="metric-header">
           <div class="metric-label">Faturamento Hoje</div>
           <div class="metric-icon" style="background:rgba(74,222,128,0.1)">
@@ -917,7 +952,8 @@ async function renderDashboard(req: Request, res: Response) {
         <div class="metric-value" style="color:var(--success)">${fmtCurrency(stats.revenueToday)}</div>
         <div class="metric-sub">vendas pagas</div>
       </div>
-      <div class="metric-card">
+      <div class="metric-card kpi-tooltip">
+        <div class="kpi-tip">Ontem: ${statsYesterday.clientsToday} cliente${statsYesterday.clientsToday !== 1 ? 's' : ''} · ${stats.clientsToday === 0 && statsYesterday.clientsToday === 0 ? '—' : statsYesterday.clientsToday === 0 ? '↑ novo' : stats.clientsToday > statsYesterday.clientsToday ? '↑ +' + Math.round((stats.clientsToday - statsYesterday.clientsToday) / statsYesterday.clientsToday * 100) + '%' : stats.clientsToday < statsYesterday.clientsToday ? '↓ ' + Math.round((stats.clientsToday - statsYesterday.clientsToday) / statsYesterday.clientsToday * 100) + '%' : '= igual'}</div>
         <div class="metric-header">
           <div class="metric-label">Clientes Atendidos</div>
           <div class="metric-icon" style="background:rgba(96,165,250,0.1)">
@@ -1072,31 +1108,31 @@ async function renderDashboard(req: Request, res: Response) {
     <div style="margin-bottom:20px;">
       <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;">Ações Rápidas</div>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
-        <a href="/admin/agenda/novo" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <a href="/admin/agenda/novo" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
           </div>
           <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Novo Agendamento</span>
         </a>
-        <a href="/admin/clientes?new=1" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <a href="/admin/clientes?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(33,150,243,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
           </div>
           <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Novo Cliente</span>
         </a>
-        <a href="/admin/financeiro?new=1" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <a href="/admin/financeiro?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(76,175,80,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           </div>
           <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Nova Venda</span>
         </a>
-        <a href="/admin/servicos" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <a href="/admin/servicos" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(156,39,176,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9C27B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3L8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
           </div>
           <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Serviços</span>
         </a>
-        <a href="/admin/promocoes" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <a href="/admin/promocoes" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(239,68,68,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
           </div>
