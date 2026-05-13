@@ -2123,3 +2123,6 @@
 ## Melhorias Dashboard Admin Web Round 3 (13/05/2026)
 - [x] Animação cascata fade-in nos 5 cards de Ações Rápidas
 - [x] Tooltip nos KPI cards com valor do dia anterior e variação percentual
+
+## Melhorias Dashboard Admin Web Round 4 (13/05/2026)
+- [x] Gráfico de faturamento semanal com barras gradiente dourado, linha de tendência e animação
