@@ -105,12 +105,12 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
     :root {
       --primary: ${primaryColor};
       --primary-dim: ${primaryColor}22;
-      --bg: #0A0A0A;
+      --bg: ${(settings as any)?.backgroundColor ?? '#0A0A0A'};
       --surface: #141414;
       --surface2: #1E1E1E;
       --border: #2A2A2A;
-      --text: #F0EEE8;
-      --muted: #888880;
+      --text: ${(() => { const bg = (settings as any)?.backgroundColor ?? '#0A0A0A'; const r=parseInt(bg.slice(1,3)||'0a',16), g=parseInt(bg.slice(3,5)||'0a',16), b=parseInt(bg.slice(5,7)||'0a',16); return (r*299+g*587+b*114)/1000 > 128 ? '#111111' : '#F0EEE8'; })()};
+      --muted: ${(() => { const bg = (settings as any)?.backgroundColor ?? '#0A0A0A'; const r=parseInt(bg.slice(1,3)||'0a',16), g=parseInt(bg.slice(3,5)||'0a',16), b=parseInt(bg.slice(5,7)||'0a',16); return (r*299+g*587+b*114)/1000 > 128 ? '#555555' : '#888880'; })()};
     }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
     /* Estilo de texto escolhido pelo barbeiro */

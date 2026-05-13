@@ -2084,3 +2084,8 @@
 - [x] Preview ao vivo reflete a cor de fundo em tempo real
 - [x] Toast de sucesso ao salvar (sem reload de página - AJAX)
 - [x] Verificar outros scripts com join('\n') - nenhum outro problema encontrado
+
+## Três melhorias pós-Aparência (13/05/2026)
+- [x] Aplicar backgroundColor na página pública do cliente (public-routes.ts) com contraste automático de texto
+- [x] Adicionar seletor de cor de fundo no APP (BG_PRESET_COLORS, estado bgColor, salvamento)
+- [x] Melhorar preview da galeria no painel web (grid 4 colunas, aspect-ratio, ocultar quando vazio)

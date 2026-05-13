@@ -3864,11 +3864,16 @@ async function renderPaginaCliente(req: Request, res: Response) {
       var pvGallery = document.getElementById('pvGallery');
       var allUrls = _galleryUrls.concat(_newGalleryFiles.map(function(f){ return f.previewUrl; }));
       if (allUrls.length === 0) {
-        pvGallery.innerHTML = '<div style="font-size:11px;color:#999">Galeria vazia</div>';
+        pvGallery.style.display = 'none';
+        pvGallery.innerHTML = '';
       } else {
-        pvGallery.innerHTML = allUrls.slice(0,4).map(function(url) {
-          return '<img src="' + url + '" style="width:60px;height:60px;object-fit:cover;border-radius:6px;flex-shrink:0" />';
-        }).join('');
+        pvGallery.style.display = 'block';
+        pvGallery.innerHTML = '<div style="font-size:11px;color:#999;margin-bottom:8px;font-weight:600;padding:0 16px">GALERIA</div>'
+          + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 16px 16px">'
+          + allUrls.slice(0,4).map(function(url) {
+            return '<img src="' + url + '" style="aspect-ratio:1;width:100%;object-fit:cover;border-radius:6px" />';
+          }).join('')
+          + '</div>';
       }
     }
 

@@ -49,6 +49,18 @@ const PRESET_COLORS = [
   { label: "Rosa", value: "#EC4899" },
   { label: "Cinza", value: "#6B7280" },
 ];
+const BG_PRESET_COLORS = [
+  { label: "Preto", value: "#0A0A0A" },
+  { label: "Grafite", value: "#111827" },
+  { label: "Azul Noite", value: "#1a1a2e" },
+  { label: "Ardósia", value: "#0f172a" },
+  { label: "Carvão", value: "#1c1c1c" },
+  { label: "Zinco", value: "#18181b" },
+  { label: "Índigo", value: "#1e1b4b" },
+  { label: "Branco", value: "#ffffff" },
+  { label: "Claro", value: "#f8f9fa" },
+  { label: "Pérola", value: "#f1f5f9" },
+];
 
 // ─── Estilos de texto disponíveis ────────────────────────────────────────────
 const FONT_STYLES = [
@@ -323,6 +335,7 @@ export default function PaginaClienteScreen() {
 
   // ── Estados: Aparência ──────────────────────────────────────────────────────
   const [primaryColor, setPrimaryColor] = useState("#C9A84C");
+  const [bgColor, setBgColor] = useState("#0A0A0A");
   const [customHex, setCustomHex] = useState("");
   const [fontStyleId, setFontStyleId] = useState("moderno");
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
@@ -345,6 +358,7 @@ export default function PaginaClienteScreen() {
   useEffect(() => {
     if (settings) {
       setPrimaryColor((settings as any).primaryColor ?? "#C9A84C");
+      setBgColor((settings as any).backgroundColor ?? "#0A0A0A");
       setFontStyleId((settings as any).fontStyle ?? "moderno");
       setBannerUrl((settings as any).bannerUrl ?? null);
       setLogoUrl((settings as any).logoUrl ?? null);
@@ -420,6 +434,7 @@ export default function PaginaClienteScreen() {
   function handleSaveAppearance() {
     updateMutation.mutate({
       primaryColor: activeColor,
+      backgroundColor: bgColor,
       fontStyle: fontStyleId,
       bannerUrl: bannerUrl ?? null,
       logoUrl: logoUrl ?? null,
@@ -793,6 +808,29 @@ export default function PaginaClienteScreen() {
                 />
               </View>
             </View>
+          </View>
+
+          {/* Cor de Fundo */}
+          <Text style={[styles.sectionFieldLabel, { color: colors.muted, marginTop: 16 }]}>Cor de Fundo da Página</Text>
+          <Text style={[styles.fieldHint, { color: colors.muted, marginBottom: 12 }]}>
+            Escolha a cor de fundo da sua página pública.
+          </Text>
+          <View style={styles.colorGrid}>
+            {BG_PRESET_COLORS.map((c) => (
+              <Pressable
+                key={c.value}
+                style={({ pressed }) => [
+                  styles.colorChip,
+                  { backgroundColor: c.value, borderWidth: bgColor === c.value ? 2 : 1, borderColor: bgColor === c.value ? activeColor : colors.border },
+                  pressed && { opacity: 0.8 },
+                ]}
+                onPress={() => setBgColor(c.value)}
+              >
+                {bgColor === c.value && (
+                  <IconSymbol name="checkmark" size={14} color={c.value === "#ffffff" || c.value === "#f8f9fa" || c.value === "#f1f5f9" ? "#111" : "#fff"} />
+                )}
+              </Pressable>
+            ))}
           </View>
 
           {/* Estilo de Texto */}
