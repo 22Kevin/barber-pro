@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, name, slug, status, \"createdAt\" FROM tenants WHERE slug = 'barber-k' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT id, name, slug, status, \"createdAt\" FROM tenants WHERE slug = 'barber-k' LIMIT 5;",
+  "rows": [
+    {
+      "id": "180002",
+      "name": "Barber K",
+      "slug": "barber-k",
+      "status": "trial",
+      "createdAt": "createdAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\tslug\tstatus\tcreatedAt\n180002\tBarber K\tbarber-k\ttrial\tcreatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 2414
+}
