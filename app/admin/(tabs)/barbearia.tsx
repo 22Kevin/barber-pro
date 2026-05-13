@@ -443,14 +443,16 @@ export default function BarbeariaScreen() {
       />
 
       {/* Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
-        {TABS.map(tab => (
-          <Pressable key={tab.key} style={[styles.tab, activeTab === tab.key && styles.tabActive]} onPress={() => setActiveTab(tab.key)}>
-            <IconSymbol name={tab.icon as any} size={14} color={activeTab === tab.key ? "#0A0A0A" : "#888880"} />
-            <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      <View style={styles.tabsWrapper}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
+          {TABS.map(tab => (
+            <Pressable key={tab.key} style={[styles.tab, activeTab === tab.key && styles.tabActive]} onPress={() => setActiveTab(tab.key)}>
+              <IconSymbol name={tab.icon as any} size={14} color={activeTab === tab.key ? "#0A0A0A" : "#888880"} />
+              <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: tabBarHeight }} keyboardShouldPersistTaps="handled">
 
@@ -934,8 +936,8 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   return StyleSheet.create({
   addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
-  tabsScroll: { flexGrow: 0, marginBottom: 4, overflow: "visible" },
-  tabsContent: { gap: 8, paddingVertical: 10, paddingHorizontal: 16, paddingRight: 24 },
+  tabsWrapper: { height: 52, flexShrink: 0, marginBottom: 4 },
+  tabsContent: { flexDirection: "row", gap: 8, paddingVertical: 10, paddingHorizontal: 16, paddingRight: 24, alignItems: "center" },
   tab: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
   tabActive: { backgroundColor: "#C9A84C", borderColor: "#C9A84C" },
   tabText: { fontSize: 13, color: c.muted, fontWeight: "600" },

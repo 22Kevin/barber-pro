@@ -2030,3 +2030,7 @@
 - [x] Remover seção "Personalizar URL" da tela pagina-cliente.tsx (APP e WEB)
 - [x] Reorganizar em 4 blocos bem definidos: Compartilhar, QR Code, Aparência, Configurações Extras
 - [x] QR Code como bloco separado (não dentro de Compartilhar)
+
+## Correções APP — Barra de Navegação e Abas Barbearia
+- [x] Adicionar suppliers.tsx ao _layout.tsx com tabBarItemStyle display none (remover aba Fornecedores da barra inferior)
+- [x] Corrigir bug visual das abas superiores em barbearia.tsx (overflow visible causava corte — substituído por View wrapper com altura fixa)
