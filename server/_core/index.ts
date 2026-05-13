@@ -5,7 +5,7 @@ import net from "net";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { rateLimit } from "express-rate-limit";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { registerOAuthRoutes } from "./oauth";
 import { registerMercadoPagoRoutes } from "../mp-routes";
 import { registerSuperAdminRoutes } from "../superadmin-routes";
@@ -53,9 +53,9 @@ const loginRateLimiter = rateLimit({
     try {
       const body = req.body as Record<string, Record<string, Record<string, string>>>;
       const email = body?.["0"]?.json?.email ?? "";
-      return `${req.ip ?? "unknown"}:${email}`;
+      return `${ipKeyGenerator(req)}:${email}`;
     } catch {
-      return req.ip ?? "unknown";
+      return ipKeyGenerator(req);
     }
   },
 });
