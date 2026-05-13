@@ -2115,3 +2115,7 @@
 - [x] Corrigir ícone quebrado no card "Novo Agendamento" nas Ações Rápidas
 - [x] Redesenhar card "Baixe o App" com layout moderno e chamativo
 - [x] Adicionar preview da página pública no bloco Link de Agendamento
+
+## Melhorias Dashboard Admin Web Round 2 (13/05/2026)
+- [x] Card "Nova Promoção" nas Ações Rápidas (5º card)
+- [x] Animação fade-in + slide-up nos KPI cards do dashboard
