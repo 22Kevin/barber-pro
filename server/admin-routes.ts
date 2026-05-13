@@ -3841,7 +3841,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
       document.getElementById('fLogoUrl').value = _logoUrl;
       document.getElementById('fBannerUrl').value = _bannerUrl;
       // Atualizar galleryUrls como JSON (compatível com APP)
-      document.getElementById('fGalleryUrls').value = _galleryUrls.join('\n');
+      document.getElementById('fGalleryUrls').value = JSON.stringify(_galleryUrls);
       document.getElementById('fGalleryBase64List').value = _newGalleryFiles.map(function(f){ return f.base64; }).join('||');
       document.getElementById('fGalleryMimeList').value = _newGalleryFiles.map(function(f){ return f.mime; }).join('||');
     }

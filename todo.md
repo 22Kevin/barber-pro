@@ -2071,3 +2071,8 @@
 - [x] Botão "Salvar Aparência" com largura total
 - [x] Corrigir sincronização galeria APP↔WEB: APP salva JSON, WEB agora lê JSON e salva JSON
 - [x] parseGalleryUrls() suporta ambos os formatos (JSON e texto com \n)
+
+## Bug Fix — Aparência: Cores e Fontes não funcionavam
+- [x] Corrigir token inválido no script JS: _galleryUrls.join('\n') com newline literal quebrava todo o script
+- [x] Substituir por JSON.stringify(_galleryUrls) — sem newlines literais no código JS
+- [x] Confirmar que botão Abrir Página já tem href correto (https://usebarberpro.com/barber-k)
