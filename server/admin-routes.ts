@@ -482,6 +482,51 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       .card-header { padding: 12px 14px; }
       .card-body { padding: 12px 14px; }
     }
+    /* ─── Animações de Navegação ─────────────────────────────────────────────── */
+    /* Barra de progresso na topbar */
+    #nav-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 0%;
+      height: 3px;
+      background: linear-gradient(90deg, #C9A84C, #f0d080, #C9A84C);
+      background-size: 200% 100%;
+      z-index: 9999;
+      transition: width 0.25s ease, opacity 0.4s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #nav-progress.running {
+      opacity: 1;
+      animation: progress-shimmer 1.2s linear infinite;
+    }
+    #nav-progress.done {
+      width: 100% !important;
+      opacity: 0;
+      transition: width 0.1s ease, opacity 0.5s ease 0.1s;
+    }
+    @keyframes progress-shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    /* Fade-in do conteúdo principal ao navegar */
+    .content-enter {
+      animation: content-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    @keyframes content-enter {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    /* Feedback visual nos links da sidebar ao clicar */
+    .nav-item.nav-loading {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    @keyframes content-leave {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(-8px); }
+    }
   </style>
   <script>
     (function() {
@@ -492,6 +537,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
   </script>
 </head>
 <body>
+  <div id="nav-progress"></div>
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
@@ -577,6 +623,63 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       document.documentElement.setAttribute('data-theme', next);
       localStorage.setItem('bp_theme', next);
     }
+  </script>
+  <script>
+    // ── Animações de navegação ──────────────────────────────────────────────
+    (function() {
+      var bar = document.getElementById('nav-progress');
+      var mainContent = document.querySelector('.content');
+      var timer = null;
+      var width = 0;
+
+      function startProgress() {
+        if (!bar) return;
+        clearInterval(timer);
+        width = 0;
+        bar.style.width = '0%';
+        bar.classList.remove('done');
+        bar.classList.add('running');
+        timer = setInterval(function() {
+          var step = width < 40 ? 8 : width < 70 ? 3 : 0.5;
+          width = Math.min(width + step, 92);
+          bar.style.width = width + '%';
+        }, 80);
+      }
+
+      function finishProgress() {
+        if (!bar) return;
+        clearInterval(timer);
+        bar.style.width = '100%';
+        bar.classList.remove('running');
+        bar.classList.add('done');
+        setTimeout(function() {
+          bar.classList.remove('done');
+          bar.style.width = '0%';
+        }, 600);
+      }
+
+      document.addEventListener('click', function(e) {
+        var a = e.target.closest('a[href]');
+        if (!a) return;
+        var href = a.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('javascript') ||
+            href.startsWith('http') || href.startsWith('//') ||
+            a.target === '_blank') return;
+        var navItem = a.closest('.nav-item');
+        if (navItem) navItem.classList.add('nav-loading');
+        startProgress();
+      });
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          if (mainContent) mainContent.classList.add('content-enter');
+          finishProgress();
+        });
+      } else {
+        if (mainContent) mainContent.classList.add('content-enter');
+        finishProgress();
+      }
+    })();
   </script>
 </body>
 </html>`;

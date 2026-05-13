@@ -2133,3 +2133,8 @@
 
 ## Responsividade Mobile Dashboard Admin (13/05/2026)
 - [x] Responsividade mobile completa: sidebar hamburger, KPI cards 2 colunas, gráfico, ações rápidas, tabelas e cards
+
+## Animações de Navegação Admin Web (13/05/2026)
+- [x] Barra de progresso na topbar ao navegar entre seções
+- [x] Fade-in + slide-up suave no conteúdo principal ao carregar página
+- [x] Feedback visual (loading state) nos links da sidebar ao clicar
