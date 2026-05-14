@@ -1098,6 +1098,19 @@ async function renderDashboard(req: Request, res: Response) {
   const maxRevenue = Math.max(...weekDays.map(d => d.revenue), 1);
   const totalWeekRevenue = weekDays.reduce((s, d) => s + d.revenue, 0);
 
+  // ─── Pagamentos online pendentes ────────────────────────────────────────────
+  let pendingOnlineCount = 0;
+  let pendingOnlineTotal = 0;
+  try {
+    const dbConn = await db.getDb();
+    if (dbConn && tenantId) {
+      const raw = await dbConn.execute(sql`SELECT COUNT(*) AS cnt, COALESCE(SUM(CAST(amount AS NUMERIC)), 0) AS total FROM online_payments WHERE "tenantId" = ${tenantId} AND status = 'pending'`) as any;
+      const row = Array.isArray(raw) ? (raw[0] as any[])[0] : (raw?.rows?.[0]);
+      pendingOnlineCount = parseInt(row?.cnt ?? '0', 10);
+      pendingOnlineTotal = parseFloat(row?.total ?? '0');
+    }
+  } catch (_e) { /* silently ignore */ }
+
   // Mapa de barbeiros e clientes para exibição
   const barberMap: Record<number, string> = Object.fromEntries(barbers.map((b) => [b.id, b.name]));
   const clientIds = [...new Set(appointments.map((a: any) => a.clientId))];
@@ -1276,6 +1289,15 @@ async function renderDashboard(req: Request, res: Response) {
       <div style="flex:1">
         <div style="font-size:13px;font-weight:700;color:#F59E0B;">${lowStockItems.length} produto${lowStockItems.length !== 1 ? 's' : ''} com estoque baixo</div>
         <div style="font-size:12px;color:var(--muted);margin-top:2px;">${lowStockItems.slice(0,3).map((p: any) => p.name + ' (' + (p.stockQuantity ?? 0) + ')').join(' · ')}${lowStockItems.length > 3 ? ' · ...' : ''}</div>
+      </div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>` : ''}
+    ${pendingOnlineCount > 0 ? `
+    <a href="/admin/relatorios?tab=pagamentos" style="text-decoration:none;display:flex;align-items:center;gap:12px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.3);border-radius:12px;padding:14px 16px;margin-bottom:20px;transition:background .2s;" onmouseover="this.style.background='rgba(96,165,250,.14)'" onmouseout="this.style.background='rgba(96,165,250,.08)'">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:#60A5FA;">${pendingOnlineCount} pagamento${pendingOnlineCount !== 1 ? 's' : ''} online pendente${pendingOnlineCount !== 1 ? 's' : ''}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">Total aguardando: R$ ${pendingOnlineTotal.toFixed(2).replace('.', ',')}</div>
       </div>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     </a>` : ''}
@@ -4096,6 +4118,215 @@ async function renderRelatorios(req: Request, res: Response) {
     console.error("[relatorios] Erro ao buscar inadimpl\u00eancia:", overdueErr.message);
   }
 
+  // ─── Pagamentos Online: totais por método e lista recente ───────────────────
+  let onlineByMethod: { pix: number; card: number; pixCount: number; cardCount: number } = { pix: 0, card: 0, pixCount: 0, cardCount: 0 };
+  let onlinePaymentsList: any[] = [];
+  let onlineTotalPaid = 0;
+  let onlineTotalPending = 0;
+  let onlineTotalOverdue = 0;
+  try {
+    const dbConn2 = await db.getDb();
+    if (dbConn2 && tenantId) {
+      // Totais por método (período selecionado)
+      const rawByMethod = await dbConn2.execute(sql`
+        SELECT
+          COALESCE(SUM(CASE WHEN "paymentMethod" = 'pix' AND status = 'paid' THEN CAST(amount AS NUMERIC) ELSE 0 END), 0) AS pix_total,
+          COALESCE(SUM(CASE WHEN "paymentMethod" = 'credit_card' AND status = 'paid' THEN CAST(amount AS NUMERIC) ELSE 0 END), 0) AS card_total,
+          COUNT(CASE WHEN "paymentMethod" = 'pix' AND status = 'paid' THEN 1 END) AS pix_count,
+          COUNT(CASE WHEN "paymentMethod" = 'credit_card' AND status = 'paid' THEN 1 END) AS card_count,
+          COALESCE(SUM(CASE WHEN status = 'paid' THEN CAST(amount AS NUMERIC) ELSE 0 END), 0) AS total_paid,
+          COALESCE(SUM(CASE WHEN status = 'pending' THEN CAST(amount AS NUMERIC) ELSE 0 END), 0) AS total_pending,
+          COALESCE(SUM(CASE WHEN status = 'overdue' THEN CAST(amount AS NUMERIC) ELSE 0 END), 0) AS total_overdue
+        FROM online_payments
+        WHERE "tenantId" = ${tenantId}
+          AND "createdAt" >= NOW() - ${sql.raw(`INTERVAL '${days} days'`)}
+      `) as any;
+      const methodRow = Array.isArray(rawByMethod) ? (rawByMethod[0] as any[])?.[0] : (rawByMethod?.rows?.[0] ?? null);
+      if (methodRow) {
+        onlineByMethod = {
+          pix: parseFloat(methodRow.pix_total ?? '0'),
+          card: parseFloat(methodRow.card_total ?? '0'),
+          pixCount: parseInt(methodRow.pix_count ?? '0'),
+          cardCount: parseInt(methodRow.card_count ?? '0'),
+        };
+        onlineTotalPaid = parseFloat(methodRow.total_paid ?? '0');
+        onlineTotalPending = parseFloat(methodRow.total_pending ?? '0');
+        onlineTotalOverdue = parseFloat(methodRow.total_overdue ?? '0');
+      }
+      // Lista de pagamentos recentes (últimos 50)
+      const rawList = await dbConn2.execute(sql`
+        SELECT op.id, op.amount, op."paymentMethod", op.status, op."createdAt", op."asaasPaymentId", op."invoiceUrl",
+               c.name AS clientName
+        FROM online_payments op
+        LEFT JOIN clients c ON c.id = op."clientId"
+        WHERE op."tenantId" = ${tenantId}
+          AND op."createdAt" >= NOW() - ${sql.raw(`INTERVAL '${days} days'`)}
+        ORDER BY op."createdAt" DESC
+        LIMIT 50
+      `) as any;
+      onlinePaymentsList = Array.isArray(rawList) ? (rawList[0] as any[]) : (rawList?.rows ?? []);
+    }
+  } catch (onlineErr: any) {
+    console.error('[relatorios] Erro ao buscar pagamentos online:', onlineErr?.message);
+  }
+
+  // Gráfico de barras Pix vs Cartão
+  const onlineMaxVal = Math.max(onlineByMethod.pix, onlineByMethod.card, 1);
+  const pixBarH = Math.round((onlineByMethod.pix / onlineMaxVal) * 120);
+  const cardBarH = Math.round((onlineByMethod.card / onlineMaxVal) * 120);
+  const onlineChartSvg = `<svg viewBox="0 0 300 180" style="width:100%;max-width:320px" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="pixGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#4ADE80" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#16A34A" stop-opacity="0.7"/>
+      </linearGradient>
+      <linearGradient id="cardGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#60A5FA" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#2563EB" stop-opacity="0.7"/>
+      </linearGradient>
+    </defs>
+    <!-- Grid lines -->
+    <line x1="40" y1="20" x2="280" y2="20" stroke="#33333388" stroke-width="1" stroke-dasharray="4,3"/>
+    <line x1="40" y1="70" x2="280" y2="70" stroke="#33333388" stroke-width="1" stroke-dasharray="4,3"/>
+    <line x1="40" y1="120" x2="280" y2="120" stroke="#33333388" stroke-width="1" stroke-dasharray="4,3"/>
+    <!-- Axes -->
+    <line x1="40" y1="20" x2="40" y2="140" stroke="#555" stroke-width="1"/>
+    <line x1="40" y1="140" x2="280" y2="140" stroke="#555" stroke-width="1"/>
+    <!-- Pix bar -->
+    <rect x="70" y="${140 - pixBarH}" width="60" height="${pixBarH}" fill="url(#pixGrad)" rx="6"/>
+    <text x="100" y="${140 - pixBarH - 6}" text-anchor="middle" font-size="11" font-weight="700" fill="#4ADE80">R$ ${onlineByMethod.pix.toFixed(2).replace('.', ',')}</text>
+    <!-- Card bar -->
+    <rect x="170" y="${140 - cardBarH}" width="60" height="${cardBarH}" fill="url(#cardGrad)" rx="6"/>
+    <text x="200" y="${140 - cardBarH - 6}" text-anchor="middle" font-size="11" font-weight="700" fill="#60A5FA">R$ ${onlineByMethod.card.toFixed(2).replace('.', ',')}</text>
+    <!-- Labels -->
+    <text x="100" y="158" text-anchor="middle" font-size="12" font-weight="600" fill="#4ADE80">Pix</text>
+    <text x="200" y="158" text-anchor="middle" font-size="12" font-weight="600" fill="#60A5FA">Cartão</text>
+    <!-- Y axis labels -->
+    <text x="36" y="24" text-anchor="end" font-size="9" fill="#888">R$ ${fmt(onlineMaxVal)}</text>
+    <text x="36" y="74" text-anchor="end" font-size="9" fill="#888">R$ ${fmt(onlineMaxVal / 2)}</text>
+    <text x="36" y="124" text-anchor="end" font-size="9" fill="#888">R$ 0</text>
+  </svg>`;
+
+  // Tabela de pagamentos online
+  const pmMethodLabels: Record<string, string> = { pix: 'Pix', credit_card: 'Cartão de Crédito', debit_card: 'Cartão de Débito' };
+  const pmStatusLabels: Record<string, { label: string; color: string; bg: string }> = {
+    paid: { label: 'Pago', color: '#4ADE80', bg: '#4ADE8022' },
+    pending: { label: 'Pendente', color: '#F59E0B', bg: '#F59E0B22' },
+    overdue: { label: 'Vencido', color: '#F87171', bg: '#F8717122' },
+    cancelled: { label: 'Cancelado', color: '#9CA3AF', bg: '#9CA3AF22' },
+    refunded: { label: 'Estornado', color: '#A78BFA', bg: '#A78BFA22' },
+  };
+  const onlineTableRows = onlinePaymentsList.map((p: any) => {
+    const dt = p.createdAt ? new Date(p.createdAt).toLocaleDateString('pt-BR') : '—';
+    const val = parseFloat(p.amount ?? '0').toFixed(2).replace('.', ',');
+    const method = pmMethodLabels[p.paymentMethod] ?? (p.paymentMethod ?? '—');
+    const stInfo = pmStatusLabels[p.status] ?? { label: p.status ?? '—', color: '#9CA3AF', bg: '#9CA3AF22' };
+    const verifyBtn = p.asaasPaymentId && (p.status === 'pending' || p.status === 'overdue')
+      ? `<button onclick="verifyPayment('${p.asaasPaymentId}', this)" style="padding:3px 10px;font-size:11px;border-radius:6px;border:1px solid #C9A84C44;background:transparent;color:#C9A84C;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#C9A84C22'" onmouseout="this.style.background='transparent'">Verificar</button>`
+      : '';
+    return `<tr>
+      <td style="font-size:12px;color:var(--muted)">${dt}</td>
+      <td style="font-weight:600">${esc(p.clientName ?? '—')}</td>
+      <td style="text-align:right;font-weight:700">R$ ${val}</td>
+      <td style="font-size:12px">${method}</td>
+      <td><span style="background:${stInfo.bg};color:${stInfo.color};border:1px solid ${stInfo.color}44;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">${stInfo.label}</span></td>
+      <td>${verifyBtn}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Nenhum pagamento online no período.</td></tr>';
+
+  const onlinePaymentsHtml = `
+    <!-- KPIs de pagamentos online -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px">
+      <div style="background:var(--surface2,var(--surface));border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:#4ADE80">R$ ${fmt(onlineTotalPaid)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Recebido</div>
+      </div>
+      <div style="background:var(--surface2,var(--surface));border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:#F59E0B">R$ ${fmt(onlineTotalPending)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Pendente</div>
+      </div>
+      <div style="background:var(--surface2,var(--surface));border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:#F87171">R$ ${fmt(onlineTotalOverdue)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Vencido</div>
+      </div>
+      <div style="background:var(--surface2,var(--surface));border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:20px;font-weight:800;color:var(--foreground)">${onlineByMethod.pixCount + onlineByMethod.cardCount}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Pagamentos</div>
+      </div>
+    </div>
+    <!-- Gráfico Pix vs Cartão -->
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
+      <div>${onlineChartSvg}</div>
+      <div>
+        <div style="margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="width:12px;height:12px;border-radius:3px;background:#4ADE80;flex-shrink:0"></div>
+            <span style="font-size:13px;font-weight:600">Pix</span>
+            <span style="margin-left:auto;font-size:13px;font-weight:700;color:#4ADE80">R$ ${fmt(onlineByMethod.pix)}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);padding-left:20px">${onlineByMethod.pixCount} transaç${onlineByMethod.pixCount !== 1 ? 'ões' : 'ão'}</div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="width:12px;height:12px;border-radius:3px;background:#60A5FA;flex-shrink:0"></div>
+            <span style="font-size:13px;font-weight:600">Cartão de Crédito</span>
+            <span style="margin-left:auto;font-size:13px;font-weight:700;color:#60A5FA">R$ ${fmt(onlineByMethod.card)}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);padding-left:20px">${onlineByMethod.cardCount} transaç${onlineByMethod.cardCount !== 1 ? 'ões' : 'ão'}</div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:700">Total Recebido</span>
+            <span style="font-size:16px;font-weight:800;color:#C9A84C">R$ ${fmt(onlineByMethod.pix + onlineByMethod.card)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Tabela de pagamentos -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;color:var(--muted)">ÚLTIMOS ${Math.min(onlinePaymentsList.length, 50)} PAGAMENTOS</div>
+      <button id="btn-verify-all" onclick="verifyAllPending()" style="padding:6px 14px;font-size:12px;font-weight:600;border-radius:8px;border:1px solid #C9A84C44;background:transparent;color:#C9A84C;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#C9A84C22'" onmouseout="this.style.background='transparent'">
+        ↻ Verificar Pendentes
+      </button>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="online-payments-table">
+        <thead><tr><th>Data</th><th>Cliente</th><th style="text-align:right">Valor</th><th>Método</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody>${onlineTableRows}</tbody>
+      </table>
+    </div>
+    <script>
+      async function verifyPayment(asaasId, btn) {
+        btn.disabled = true;
+        btn.textContent = '...';
+        try {
+          const res = await fetch('/pub-api/asaas-payment-status?id=' + asaasId);
+          const data = await res.json();
+          if (data.status) {
+            const statusMap = { RECEIVED: 'Pago', CONFIRMED: 'Pago', PENDING: 'Pendente', OVERDUE: 'Vencido', REFUNDED: 'Estornado', CANCELLED: 'Cancelado' };
+            btn.closest('tr').querySelector('td:nth-child(5) span').textContent = statusMap[data.status] || data.status;
+            btn.textContent = '✓';
+            btn.style.color = '#4ADE80';
+          } else {
+            btn.textContent = 'Erro';
+          }
+        } catch(e) {
+          btn.textContent = 'Erro';
+          btn.disabled = false;
+        }
+      }
+      async function verifyAllPending() {
+        const btns = document.querySelectorAll('#online-payments-table button');
+        for (const btn of btns) {
+          if (btn.textContent.trim() === 'Verificar') {
+            await verifyPayment(btn.getAttribute('onclick').match(/'([^']+)'/)[1], btn);
+            await new Promise(r => setTimeout(r, 300));
+          }
+        }
+      }
+    </script>`;
+
+
   const body = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
       <h2 style="font-size:20px;font-weight:700;margin:0">Relatórios</h2>
@@ -4160,6 +4391,14 @@ async function renderRelatorios(req: Request, res: Response) {
     <div class="card" style="margin-bottom:24px">
       <div class="card-header"><div class="card-title">Encomendas de Produtos</div></div>
       <div class="card-body">${ordersReportHtml}</div>
+    </div>
+    <!-- Pagamentos Online -->
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header" style="justify-content:space-between">
+        <div class="card-title">💳 Pagamentos Online (Asaas)</div>
+        <span style="font-size:12px;color:var(--muted)">${onlinePaymentsList.length} registro${onlinePaymentsList.length !== 1 ? 's' : ''} no período</span>
+      </div>
+      <div class="card-body">${onlinePaymentsHtml}</div>
     </div>
     <!-- Inadimplência -->
     <div class="card" style="margin-bottom:24px">

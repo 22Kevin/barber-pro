@@ -2203,3 +2203,11 @@
 - [x] Atualizar rota pública de Cartão (pub-api/asaas-card) para usar asaasApiKey do tenant
 - [x] Atualizar webhook /api/asaas/webhook para identificar tenant pelo externalReference
 - [x] Exibir aviso na tela de pagamento quando subconta não está configurada (fallback para conta raiz)
+
+## Fase 5 — Relatório Financeiro de Pagamentos Online (14/05/2026)
+- [x] Card "Pagamentos Pendentes Online" no dashboard admin com total e botão para ver detalhes
+- [x] Seção de pagamentos online na página de Relatórios com filtro por período
+- [x] Gráfico de receita por método de pagamento (Pix vs Cartão)
+- [x] Tabela de pagamentos online com status (pendente/confirmado/cancelado) e ações
+- [x] Botão "Verificar Status" para sincronizar status de pagamento com o Asaas
+- [x] Totalizadores: receita online confirmada, pendente e cancelada no período
