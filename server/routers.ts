@@ -2106,13 +2106,21 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         if (!asaasEnabled) throw new Error("Pagamento online não configurado. Configure ASAAS_API_KEY.");
+        // Buscar asaasApiKey da subconta do tenant (se configurada)
+        const dbConn2 = await db.getDb();
+        let subAccountApiKey: string | undefined;
+        if (dbConn2) {
+          const tenantRow = await dbConn2.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${input.tenantId} LIMIT 1`);
+          const tenantData = (tenantRow as any)?.rows?.[0];
+          subAccountApiKey = tenantData?.asaasApiKey || undefined;
+        }
         const asaasCustomerId = await getOrCreateAsaasCustomer({
           name: input.clientName,
           email: input.clientEmail ?? undefined,
           mobilePhone: input.clientPhone ?? undefined,
           cpfCnpj: input.clientCpf ?? undefined,
           externalReference: String(input.clientId),
-        });
+        }, subAccountApiKey);
         const charge = await createAsaasCharge({
           customer: asaasCustomerId,
           billingType: "PIX",
@@ -2120,7 +2128,7 @@ export const appRouter = router({
           dueDate: asaasDefaultDueDate(),
           description: input.description || "Agendamento Barber Pro",
           externalReference: input.appointmentId ? String(input.appointmentId) : undefined,
-        });
+        }, subAccountApiKey);
         const dbConn = await db.getDb();
         if (dbConn) {
           await dbConn.execute(sql`
@@ -2158,6 +2166,14 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         if (!asaasEnabled) throw new Error("Pagamento online não configurado. Configure ASAAS_API_KEY.");
+        // Buscar asaasApiKey da subconta do tenant (se configurada)
+        const dbConn2 = await db.getDb();
+        let subAccountApiKey: string | undefined;
+        if (dbConn2) {
+          const tenantRow = await dbConn2.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${input.tenantId} LIMIT 1`);
+          const tenantData = (tenantRow as any)?.rows?.[0];
+          subAccountApiKey = tenantData?.asaasApiKey || undefined;
+        }
         const asaasCustomerId = await getOrCreateAsaasCustomer({
           name: input.clientName,
           email: input.clientEmail ?? undefined,
@@ -2166,7 +2182,7 @@ export const appRouter = router({
           externalReference: String(input.clientId),
           addressNumber: input.clientAddressNumber,
           postalCode: input.clientPostalCode,
-        });
+        }, subAccountApiKey);
         const charge = await createAsaasCharge({
           customer: asaasCustomerId,
           billingType: "CREDIT_CARD",

@@ -4692,15 +4692,26 @@ export function registerPublicRoutes(app: Express): void {
         try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {}
       }
       const clientId = clientInfo?.id ?? 0;
-      // Criar/recuperar cliente no Asaas
+      // Buscar asaasApiKey da subconta do tenant
+      let subApiKey: string | undefined;
+      const tenantForPix = await db.getTenantBySlug(slug);
+      if (tenantForPix) {
+        const dbConn = await db.getDb();
+        if (dbConn) {
+          const tenantRow = await dbConn.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${tenantForPix.id} LIMIT 1`);
+          const tenantData = (tenantRow as any)?.rows?.[0];
+          subApiKey = tenantData?.asaasApiKey || undefined;
+        }
+      }
+      // Criar/recuperar cliente no Asaas (na subconta se configurada)
       const asaasCustomerId = await getOrCreateAsaasCustomer({
         name: clientName || clientInfo?.name || "Cliente",
         email: clientEmail || clientInfo?.email,
         mobilePhone: clientPhone || clientInfo?.phone,
         cpfCnpj: clientCpf,
         externalReference: clientId ? String(clientId) : undefined,
-      });
-      // Criar cobrança Pix
+      }, subApiKey);
+      // Criar cobrança Pix (na subconta se configurada)
       const charge = await createAsaasCharge({
         customer: asaasCustomerId,
         billingType: "PIX",
@@ -4708,7 +4719,7 @@ export function registerPublicRoutes(app: Express): void {
         dueDate: asaasDefaultDueDate(),
         description: description || "Agendamento Barber Pro",
         externalReference: appointmentId ? String(appointmentId) : undefined,
-      });
+      }, subApiKey);
       // Salvar no banco
       const dbConn = await db.getDb();
       if (dbConn && clientId) {
@@ -4749,42 +4760,48 @@ export function registerPublicRoutes(app: Express): void {
         try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {}
       }
       const clientId = clientInfo?.id ?? 0;
+      // Buscar asaasApiKey da subconta do tenant
+      let subApiKeyCard: string | undefined;
+      const tenantForCard = await db.getTenantBySlug(slug);
+      if (tenantForCard) {
+        const dbConn = await db.getDb();
+        if (dbConn) {
+          const tenantRow = await dbConn.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${tenantForCard.id} LIMIT 1`);
+          const tenantData = (tenantRow as any)?.rows?.[0];
+          subApiKeyCard = tenantData?.asaasApiKey || undefined;
+        }
+      }
       const asaasCustomerId = await getOrCreateAsaasCustomer({
         name: clientName || clientInfo?.name || "Cliente",
         email: clientEmail || clientInfo?.email,
         mobilePhone: clientPhone || clientInfo?.phone,
         cpfCnpj: clientCpf,
         externalReference: clientId ? String(clientId) : undefined,
-      });
-      // Criar cobrança com cartão de crédito (tokenização)
-      const { default: axios } = await import("axios");
-      const cardRes = await axios.post(
-        `https://api.asaas.com/v3/payments`,
-        {
-          customer: asaasCustomerId,
-          billingType: "CREDIT_CARD",
-          value: Number(amount),
-          dueDate: asaasDefaultDueDate(),
-          description: description || "Agendamento Barber Pro",
-          externalReference: appointmentId ? String(appointmentId) : undefined,
-          creditCard: {
-            holderName: cardHolderName,
-            number: cardNumber.replace(/\s/g, ""),
-            expiryMonth: cardExpMonth,
-            expiryYear: cardExpYear,
-            ccv: cardCvv,
-          },
-          creditCardHolderInfo: {
-            name: holderName || cardHolderName,
-            cpfCnpj: holderCpfCnpj || clientCpf,
-            postalCode: holderPostalCode,
-            addressNumber: holderAddressNumber,
-            phone: holderPhone || clientPhone || clientInfo?.phone,
-          },
+      }, subApiKeyCard);
+      // Criar cobrança com cartão de crédito (na subconta se configurada)
+      const charge = await createAsaasCharge({
+        customer: asaasCustomerId,
+        billingType: "CREDIT_CARD",
+        value: Number(amount),
+        dueDate: asaasDefaultDueDate(),
+        description: description || "Agendamento Barber Pro",
+        externalReference: appointmentId ? String(appointmentId) : undefined,
+        creditCard: {
+          holderName: cardHolderName,
+          number: cardNumber.replace(/\s/g, ""),
+          expiryMonth: cardExpMonth,
+          expiryYear: cardExpYear,
+          ccv: cardCvv,
         },
-        { headers: { "access_token": process.env.ASAAS_API_KEY ?? "", "Content-Type": "application/json" } }
-      );
-      const charge = cardRes.data;
+        creditCardHolderInfo: {
+          name: holderName || cardHolderName,
+          email: clientEmail || clientInfo?.email || "cliente@barberpro.com",
+          cpfCnpj: holderCpfCnpj || clientCpf,
+          postalCode: holderPostalCode,
+          addressNumber: holderAddressNumber,
+          phone: holderPhone || clientPhone || clientInfo?.phone,
+        },
+      }, subApiKeyCard);
       const dbConn = await db.getDb();
       if (dbConn && clientId) {
         const tenant = await db.getTenantBySlug(slug);

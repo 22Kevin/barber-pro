@@ -2193,3 +2193,13 @@
 - [x] Ativar plano automaticamente ao receber pagamento confirmado (barberproSubscriptionStatus = active)
 - [x] Atualizar status para overdue ao receber PAYMENT_OVERDUE do Asaas
 - [x] Rotas POST /admin/configuracoes/asaas/subscribe e /cancel-subscription implementadas
+
+## Fase 4 — Pagamentos de Clientes via Subconta Asaas (14/05/2026)
+- [x] Atualizar createAsaasPix no asaas.ts para aceitar apiKey opcional (subconta)
+- [x] Atualizar createAsaasCard no asaas.ts para aceitar apiKey opcional (subconta)
+- [x] Atualizar procedure asaasPayments.createPix no routers.ts para buscar asaasApiKey do tenant
+- [x] Atualizar procedure asaasPayments.createCard no routers.ts para buscar asaasApiKey do tenant
+- [x] Atualizar rota pública de Pix (pub-api/asaas-pix) para usar asaasApiKey do tenant
+- [x] Atualizar rota pública de Cartão (pub-api/asaas-card) para usar asaasApiKey do tenant
+- [x] Atualizar webhook /api/asaas/webhook para identificar tenant pelo externalReference
+- [x] Exibir aviso na tela de pagamento quando subconta não está configurada (fallback para conta raiz)

@@ -107,18 +107,23 @@ export interface AsaasPaymentResult {
 /**
  * Cria ou recupera um cliente no Asaas pelo externalReference (clientId).
  * Evita duplicatas buscando pelo externalReference antes de criar.
+ * Se subAccountApiKey for fornecida, usa a API da subconta (barbearia) em vez da conta raiz.
  */
-export async function getOrCreateAsaasCustomer(payload: AsaasCustomerPayload): Promise<string> {
+export async function getOrCreateAsaasCustomer(
+  payload: AsaasCustomerPayload,
+  subAccountApiKey?: string
+): Promise<string> {
   if (!asaasEnabled) throw new Error("Asaas não configurado. Adicione ASAAS_API_KEY.");
+  const api = subAccountApiKey ? getAsaasSubAccountApi(subAccountApiKey) : asaasApi;
   // Buscar por externalReference para evitar duplicata
   if (payload.externalReference) {
     try {
-      const search = await asaasApi.get(`/customers?externalReference=${payload.externalReference}`);
+      const search = await api.get(`/v3/customers?externalReference=${payload.externalReference}`);
       const existing = search.data?.data?.[0];
       if (existing?.id) return existing.id;
     } catch {}
   }
-  const res = await asaasApi.post("/customers", payload);
+  const res = await api.post("/v3/customers", payload);
   return res.data.id as string;
 }
 
@@ -127,17 +132,22 @@ export async function getOrCreateAsaasCustomer(payload: AsaasCustomerPayload): P
 /**
  * Cria uma cobrança avulsa (produto ou agendamento).
  * Retorna o ID da cobrança e os dados de pagamento (Pix, boleto, etc.).
+ * Se subAccountApiKey for fornecida, a cobrança é criada na subconta (barbearia).
  */
-export async function createAsaasCharge(payload: AsaasChargePayload): Promise<AsaasPaymentResult> {
+export async function createAsaasCharge(
+  payload: AsaasChargePayload,
+  subAccountApiKey?: string
+): Promise<AsaasPaymentResult> {
   if (!asaasEnabled) throw new Error("Asaas não configurado. Adicione ASAAS_API_KEY.");
-  const res = await asaasApi.post("/payments", payload);
+  const api = subAccountApiKey ? getAsaasSubAccountApi(subAccountApiKey) : asaasApi;
+  const res = await api.post("/v3/payments", payload);
   const data = res.data;
   // Para Pix, buscar QR Code
   let pixQrCode: string | undefined;
   let pixCopyCola: string | undefined;
   if (payload.billingType === "PIX" && data.id) {
     try {
-      const pixRes = await asaasApi.get(`/payments/${data.id}/pixQrCode`);
+      const pixRes = await api.get(`/v3/payments/${data.id}/pixQrCode`);
       pixQrCode = pixRes.data?.encodedImage;
       pixCopyCola = pixRes.data?.payload;
     } catch {}
