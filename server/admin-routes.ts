@@ -327,7 +327,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       from { opacity: 0; transform: translateY(14px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; overflow: visible; }
     .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: border-color 0.15s, box-shadow 0.15s; animation: kpi-in 0.35s ease both; }
     .metric-card:nth-child(1) { animation-delay: 0ms; }
     .metric-card:nth-child(2) { animation-delay: 60ms; }
@@ -337,15 +337,15 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     .kpi-tooltip { position:relative; cursor:default; }
     .kpi-tooltip .kpi-tip {
       visibility:hidden; opacity:0; pointer-events:none;
-      position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%);
+      position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%);
       background:#1e293b; border:1px solid rgba(201,168,76,0.3); border-radius:8px;
       padding:8px 12px; white-space:nowrap; font-size:12px; color:#e2e8f0;
-      box-shadow:0 4px 16px rgba(0,0,0,0.4); z-index:100;
+      box-shadow:0 4px 16px rgba(0,0,0,0.4); z-index:9999;
       transition:opacity .18s ease, visibility .18s ease;
     }
-    .kpi-tooltip .kpi-tip::after {
-      content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
-      border:5px solid transparent; border-top-color:#1e293b;
+    .kpi-tooltip .kpi-tip::before {
+      content:''; position:absolute; bottom:100%; left:50%; transform:translateX(-50%);
+      border:5px solid transparent; border-bottom-color:#1e293b;
     }
     .kpi-tooltip:hover .kpi-tip { visibility:visible; opacity:1; }
     /* ── Animação Ações Rápidas ── */

@@ -2154,3 +2154,6 @@
 - [x] Transformar botão avatar "K" em menu dropdown com Meu Perfil, Configurações e Suporte
 - [x] Remover Meu Perfil, Configurações e Suporte do menu lateral (mover para dropdown do avatar)
 - [x] Mover seção Ações Rápidas para acima da Agenda no dashboard
+
+## Correção Tooltip KPI (14/05/2026)
+- [x] Corrigir tooltip dos cards KPI que estava sendo cortado pela topbar (mover para baixo do card + z-index:9999)
