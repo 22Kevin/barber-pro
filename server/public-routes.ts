@@ -15,7 +15,6 @@ import cookieParser from "cookie-parser";
 import * as db from "./db";
 import { sql } from "drizzle-orm";
 import { sendBookingConfirmationEmail, sendBarberNotificationEmail, sendPasswordResetEmail } from "./email";
-import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import bcrypt from "bcryptjs";
 import { asaasEnabled, getOrCreateAsaasCustomer, createAsaasCharge, createAsaasSubscription, asaasDefaultDueDate } from "./asaas";
 
@@ -4679,116 +4678,6 @@ export function registerPublicRoutes(app: Express): void {
     }
   });
 
-  // POST /pub-api/mp-checkout — Criar preferência Checkout Pro do Mercado Pago
-  app.post("/pub-api/mp-checkout", async (req: Request, res: Response) => {
-    try {
-      const { slug, appointmentId, price } = req.body;
-      if (!slug || !appointmentId || !price) { res.status(400).json({ error: "Dados incompletos" }); return; }
-      const tenant = await db.getTenantBySlug(slug);
-      if (!tenant) { res.status(404).json({ error: "Barbearia não encontrada" }); return; }
-      const settings = await db.getShopSettingsByTenantId(tenant.id);
-      const accessToken = (settings as any)?.mercadoPagoAccessToken;
-      if (!accessToken) { res.status(400).json({ error: "Pagamento online não configurado para esta barbearia" }); return; }
-      const appt = await db.getAppointmentById(parseInt(appointmentId));
-      if (!appt) { res.status(404).json({ error: "Agendamento não encontrado" }); return; }
-      const service = await db.getServiceById(appt.serviceId);
-      const client = await db.getClientById(appt.clientId);
-      const mpReqHost = req.headers["x-forwarded-host"] as string || req.headers.host || "localhost:3000";
-      const mpReqProto = (req.headers["x-forwarded-proto"] as string || req.protocol || "http").split(",")[0].trim();
-      const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL
-        ?? (mpReqHost.includes("localhost") ? `http://${mpReqHost}` : `${mpReqProto}://${mpReqHost}`);
-      const mpClient = new MercadoPagoConfig({ accessToken });
-      const preference = new Preference(mpClient);
-      const pref = await preference.create({
-        body: {
-          items: [{
-            id: String(appt.serviceId),
-            title: service?.name ?? "Serviço de Barbearia",
-            quantity: 1,
-            unit_price: parseFloat(String(price)),
-            currency_id: "BRL",
-          }],
-          payer: client?.email ? { email: client.email } : undefined,
-          back_urls: {
-            success: `${apiBaseUrl}/pub/${slug}/pagamento/sucesso`,
-            failure: `${apiBaseUrl}/pub/${slug}/pagamento/falha`,
-            pending: `${apiBaseUrl}/pub/${slug}/pagamento/pendente`,
-          },
-          auto_return: "approved",
-          external_reference: JSON.stringify({
-            appointmentId: parseInt(appointmentId),
-            clientId: appt.clientId,
-            barberId: appt.barberId,
-            serviceId: appt.serviceId,
-            servicePrice: parseFloat(String(price)),
-            date: appt.date,
-            startTime: appt.startTime,
-            slug,
-          }),
-          notification_url: `${apiBaseUrl}/api/mp/webhook`,
-        }
-      });
-      res.json({ checkoutUrl: pref.init_point ?? pref.sandbox_init_point });
-    } catch (e: any) {
-      console.error("[MP Checkout]", e);
-      res.status(500).json({ error: e.message });
-    }
-  });
-
-  // POST /pub-api/pix-checkout — Criar pagamento Pix via Mercado Pago
-  app.post("/pub-api/pix-checkout", async (req: Request, res: Response) => {
-    try {
-      const { slug, appointmentId, price } = req.body;
-      if (!slug || !appointmentId || !price) { res.status(400).json({ error: "Dados incompletos" }); return; }
-      const tenant = await db.getTenantBySlug(slug);
-      if (!tenant) { res.status(404).json({ error: "Barbearia não encontrada" }); return; }
-      const settings = await db.getShopSettingsByTenantId(tenant.id);
-      const accessToken = (settings as any)?.mercadoPagoAccessToken;
-      if (!accessToken) { res.status(400).json({ error: "Pagamento online não configurado para esta barbearia" }); return; }
-      const appt = await db.getAppointmentById(parseInt(appointmentId));
-      if (!appt) { res.status(404).json({ error: "Agendamento não encontrado" }); return; }
-      const service = await db.getServiceById(appt.serviceId);
-      const client = await db.getClientById(appt.clientId);
-      const pixReqHost = req.headers["x-forwarded-host"] as string || req.headers.host || "localhost:3000";
-      const pixReqProto = (req.headers["x-forwarded-proto"] as string || req.protocol || "http").split(",")[0].trim();
-      const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL
-        ?? (pixReqHost.includes("localhost") ? `http://${pixReqHost}` : `${pixReqProto}://${pixReqHost}`);
-      const mpClient = new MercadoPagoConfig({ accessToken });
-      const payment = new Payment(mpClient);
-      const paymentData = await payment.create({
-        body: {
-          transaction_amount: parseFloat(String(price)),
-          description: service?.name ?? "Serviço de Barbearia",
-          payment_method_id: "pix",
-          payer: {
-            email: client?.email ?? "cliente@barberpro.com.br",
-            first_name: client?.name?.split(" ")[0] ?? "Cliente",
-            last_name: client?.name?.split(" ").slice(1).join(" ") || "Barber",
-          },
-          external_reference: JSON.stringify({
-            appointmentId: parseInt(appointmentId),
-            clientId: appt.clientId,
-            barberId: appt.barberId,
-            serviceId: appt.serviceId,
-            servicePrice: parseFloat(String(price)),
-            date: appt.date,
-            startTime: appt.startTime,
-            slug,
-          }),
-          notification_url: `${apiBaseUrl}/api/mp/webhook`,
-        }
-      });
-      const txInfo = (paymentData as any).point_of_interaction?.transaction_data;
-      res.json({
-        pixCode: txInfo?.qr_code ?? "",
-        qrCodeBase64: txInfo?.qr_code_base64 ?? "",
-        paymentId: paymentData.id,
-      });
-    } catch (e: any) {
-      console.error("[Pix Checkout]", e);
-      res.status(500).json({ error: e.message });
-    }
-  });
 
   // POST /pub-api/asaas-pix — Criar cobrança Pix via Asaas
   app.post("/pub-api/asaas-pix", async (req: Request, res: Response) => {
@@ -5047,30 +4936,7 @@ export function registerPublicRoutes(app: Express): void {
     const settings = tenant ? await db.getShopSettingsByTenantId(tenant.id) : null;
     const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
     const shopName = settings?.shopName ?? tenant?.name ?? "Barbearia";
-    // Processar pagamento aprovado usando as credenciais do tenant
-    if (paymentId && tenant) {
-      const accessToken = (settings as any)?.mercadoPagoAccessToken;
-      if (accessToken) {
-        try {
-          const mpClient = new MercadoPagoConfig({ accessToken });
-          const payment = new Payment(mpClient);
-          const paymentData = await payment.get({ id: paymentId });
-          if (paymentData.status === "approved" && paymentData.external_reference) {
-            const ref = JSON.parse(paymentData.external_reference) as any;
-            const service = await db.getServiceById(ref.serviceId);
-            const price = String(ref.servicePrice);
-            await db.createSale({
-              clientId: ref.clientId, barberId: ref.barberId, appointmentId: ref.appointmentId,
-              subtotal: price, discount: "0", total: price,
-              paymentMethod: "mercado_pago", paymentStatus: "paid",
-              mercadoPagoPaymentId: paymentId,
-              notes: `Pago via Mercado Pago (web). ID: ${paymentId}`,
-            } as any, [{ itemType: "service", itemId: ref.serviceId, itemName: service?.name ?? "Serviço", quantity: 1, unitPrice: price, total: price }]);
-            await db.updateAppointment(ref.appointmentId, { status: "confirmed" } as any);
-          }
-        } catch (err) { console.error("[MP success page]", err); }
-      }
-    }
+
     const body = `
       <div style="max-width:400px;margin:80px auto;padding:32px 24px;text-align:center">
         <div style="font-size:64px;margin-bottom:16px">✅</div>

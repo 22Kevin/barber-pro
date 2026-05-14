@@ -2624,7 +2624,7 @@ export async function updateProductOrderStatus(
         cash: "cash", credit_card: "credit_card", debit_card: "debit_card",
         pix: "pix", other: "other",
       };
-      const pm = (pmMap[extra.paymentMethod] ?? "other") as "cash" | "credit_card" | "debit_card" | "pix" | "mercado_pago" | "other";
+      const pm = (pmMap[extra.paymentMethod] ?? "other") as "cash" | "credit_card" | "debit_card" | "pix" | "asaas" | "other";
       await createSale(
         {
           clientId: order.clientId ?? undefined,

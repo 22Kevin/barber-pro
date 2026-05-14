@@ -133,7 +133,6 @@ export default function BookScreen() {
     (availableDiscountsQuery.data?.coupons?.length ?? 0) > 0 ||
     (availableDiscountsQuery.data?.redeemableRewards?.length ?? 0) > 0;
 
-  const createPreference = trpc.payments.createPreference.useMutation();
   const createRecurring = trpc.recurring.create.useMutation();
 
   const createAppointment = trpc.appointments.create.useMutation({

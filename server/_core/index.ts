@@ -7,7 +7,6 @@ import { fileURLToPath } from "url";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { registerOAuthRoutes } from "./oauth";
-import { registerMercadoPagoRoutes } from "../mp-routes";
 import { registerSuperAdminRoutes } from "../superadmin-routes";
 
 import { registerPublicRoutes } from "../public-routes";
@@ -147,7 +146,6 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   registerOAuthRoutes(app);
-  registerMercadoPagoRoutes(app);
   registerSuperAdminRoutes(app);
   registerAdminRoutes(app);
   registerPublicRoutes(app);

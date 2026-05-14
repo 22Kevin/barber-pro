@@ -17,7 +17,7 @@ import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { trpc } from "@/lib/trpc";
 
-type PaymentMethod = "cash" | "credit_card" | "debit_card" | "pix" | "mercado_pago" | "other";
+type PaymentMethod = "cash" | "credit_card" | "debit_card" | "pix" | "asaas" | "other";
 
 interface Appointment {
   id: number;
@@ -44,7 +44,7 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
   credit_card: "💳 Cartão de Crédito",
   debit_card: "💳 Cartão de Débito",
   pix: "📱 Pix",
-  mercado_pago: "🔵 Mercado Pago",
+  asaas: "📱 Online (Asaas)",
   other: "Outro",
 };
 
@@ -53,7 +53,7 @@ const METHOD_COLORS: Record<PaymentMethod, string> = {
   credit_card: "#7C3AED",
   debit_card: "#2563EB",
   pix: "#32BCAD",
-  mercado_pago: "#009EE3",
+  asaas: "#009EE3",
   other: "#6B7280",
 };
 
@@ -79,7 +79,7 @@ export function PaymentStatusModal({
   );
 
   const registerPaymentMutation = trpc.appointments.registerPayment.useMutation();
-  const createPixMutation = trpc.payments.createPixPayment.useMutation();
+  const createPixMutation = trpc.asaasPayments.createPix.useMutation();
 
   // Reset ao fechar
   useEffect(() => {
@@ -129,24 +129,20 @@ export function PaymentStatusModal({
     if (!appointment) return;
     createPixMutation.mutate(
       {
-        serviceId: appointment.serviceId,
-        serviceName: appointment.serviceName,
-        servicePrice: parseFloat(String(appointment.servicePrice)),
-        clientName: appointment.clientName ?? "Cliente",
-        clientEmail: undefined,
+        tenantId: 0, // será resolvido pelo servidor via sessão
         clientId: appointment.clientId ?? 0,
-        barberId: appointment.barberId,
+        clientName: appointment.clientName ?? "Cliente",
         appointmentId: appointment.id,
-        date: appointment.date,
-        startTime: appointment.startTime,
+        amount: parseFloat(String(appointment.servicePrice)),
+        description: appointment.serviceName,
       },
       {
         onSuccess: (data: any) => {
-          if (data.qrCode) {
+          if (data.pixQrCode || data.pixCopyCola) {
             setPixData({
-              qrCode: data.qrCode,
-              qrCodeBase64: data.qrCodeBase64 ?? "",
-              expiresAt: data.expiresAt ?? null,
+              qrCode: data.pixCopyCola ?? "",
+              qrCodeBase64: "",
+              expiresAt: data.dueDate ?? null,
             });
             setView("pix_qr");
           } else {
@@ -318,7 +314,7 @@ export function PaymentStatusModal({
                   <Text style={styles.backText}>← Voltar</Text>
                 </TouchableOpacity>
                 <Text style={styles.sectionLabel}>Selecione o método de pagamento</Text>
-                {(["cash", "pix", "credit_card", "debit_card", "mercado_pago", "other"] as PaymentMethod[]).map((method) => (
+                {(["cash", "pix", "credit_card", "debit_card", "asaas", "other"] as PaymentMethod[]).map((method) => (
                   <TouchableOpacity
                     key={method}
                     style={[styles.methodBtn, { borderColor: METHOD_COLORS[method] + "44" }]}

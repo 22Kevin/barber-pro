@@ -52,19 +52,19 @@ export default function PixPaymentScreen() {
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const createPixMutation = trpc.payments.createPixPayment.useMutation({
-    onSuccess: (data) => {
-      if (data.qrCode) {
+  const createPixMutation = trpc.asaasPayments.createPix.useMutation({
+    onSuccess: (data: any) => {
+      const qrCode = data.pixCopyCola ?? data.qrCode ?? "";
+      if (qrCode) {
         setPixData({
-          paymentId: data.paymentId,
-          qrCode: data.qrCode,
-          qrCodeBase64: data.qrCodeBase64 ?? "",
-          expiresAt: data.expiresAt ?? null,
-          isFallback: (data as any).isFallback ?? false,
+          paymentId: data.id ?? data.paymentId ?? "",
+          qrCode,
+          qrCodeBase64: data.pixQrCodeImage ?? data.qrCodeBase64 ?? "",
+          expiresAt: data.dueDate ?? data.expiresAt ?? null,
+          isFallback: false,
         });
-        // Calcula segundos restantes baseado na data de expiração
-        if (data.expiresAt) {
-          const diff = Math.floor((new Date(data.expiresAt).getTime() - Date.now()) / 1000);
+        if (data.dueDate) {
+          const diff = Math.floor((new Date(data.dueDate).getTime() - Date.now()) / 1000);
           setSecondsLeft(Math.max(0, diff));
         }
       } else {
@@ -72,7 +72,7 @@ export default function PixPaymentScreen() {
         router.back();
       }
     },
-    onError: (err) => {
+    onError: (err: any) => {
       Alert.alert("Erro ao gerar Pix", err.message ?? "Tente novamente.");
       router.back();
     },
@@ -81,16 +81,13 @@ export default function PixPaymentScreen() {
   // Gera o Pix ao montar a tela
   useEffect(() => {
     createPixMutation.mutate({
-      serviceId: Number(params.serviceId),
-      serviceName: params.serviceName,
-      servicePrice: Number(params.servicePrice),
-      clientName: params.clientName,
-      clientEmail: params.clientEmail,
+      tenantId: 0, // resolvido pelo servidor via sessão
       clientId: Number(params.clientId),
-      barberId: Number(params.barberId),
+      clientName: params.clientName,
+      clientEmail: params.clientEmail || undefined,
       appointmentId: params.appointmentId ? Number(params.appointmentId) : null,
-      date: params.date,
-      startTime: params.startTime,
+      amount: Number(params.servicePrice),
+      description: params.serviceName,
     });
   }, []);
 
@@ -255,16 +252,13 @@ export default function PixPaymentScreen() {
                   setPixData(null);
                   setSecondsLeft(PIX_EXPIRY_SECONDS);
                   createPixMutation.mutate({
-                    serviceId: Number(params.serviceId),
-                    serviceName: params.serviceName,
-                    servicePrice: Number(params.servicePrice),
-                    clientName: params.clientName,
-                    clientEmail: params.clientEmail,
+                    tenantId: 0,
                     clientId: Number(params.clientId),
-                    barberId: Number(params.barberId),
+                    clientName: params.clientName,
+                    clientEmail: params.clientEmail || undefined,
                     appointmentId: params.appointmentId ? Number(params.appointmentId) : null,
-                    date: params.date,
-                    startTime: params.startTime,
+                    amount: Number(params.servicePrice),
+                    description: params.serviceName,
                   });
                 }}
               >

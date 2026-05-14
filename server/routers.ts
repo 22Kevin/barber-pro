@@ -9,7 +9,6 @@ import { signBarberToken, signBarberRefreshToken, verifyBarberRefreshToken } fro
 import * as db from "./db";
 import { storagePut } from "./storage";
 import * as crypto from "crypto";
-import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import * as QRCode from "qrcode";
 import { createRequire } from "module";
 const _require = createRequire(import.meta.url);
@@ -25,12 +24,6 @@ import {
 } from "./asaas";
 import * as bcrypt from "bcryptjs";
 import { sql } from "drizzle-orm";
-
-function getMpClient() {
-  const accessToken = process.env.MP_ACCESS_TOKEN;
-  if (!accessToken) throw new Error("MP_ACCESS_TOKEN não configurado");
-  return new MercadoPagoConfig({ accessToken });
-}
 
 /**
  * Gera um payload Pix estático (EMV/BR Code) para pagamento.
@@ -557,7 +550,7 @@ export const appRouter = router({
         serviceId: z.number(),
         serviceName: z.string(),
         servicePrice: z.number(),
-        paymentMethod: z.enum(["cash", "credit_card", "debit_card", "pix", "mercado_pago", "other"]),
+        paymentMethod: z.enum(["cash", "credit_card", "debit_card", "pix", "asaas", "other"]),
         notes: z.string().optional().nullable(),
       }))
       .mutation(async ({ input }) => {
@@ -598,7 +591,7 @@ export const appRouter = router({
     byDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), barberId: z.number().optional(), tenantId: z.number().optional().nullable() })).query(({ input }) => db.getSalesByDateRange(input.startDate, input.endDate, input.barberId, input.tenantId)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getSaleById(input.id)),
     create: barberProcedure
-      .input(z.object({ clientId: z.number().optional().nullable(), barberId: z.number(), appointmentId: z.number().optional().nullable(), subtotal: z.string(), discount: z.string().default("0"), total: z.string(), paymentMethod: z.enum(["cash", "credit_card", "debit_card", "pix", "mercado_pago", "other"]), paymentStatus: z.enum(["pending", "paid", "cancelled", "refunded"]).default("paid"), couponCode: z.string().optional().nullable(), notes: z.string().optional().nullable(), items: z.array(z.object({ itemType: z.enum(["service", "product"]), itemId: z.number(), itemName: z.string(), quantity: z.number().min(1), unitPrice: z.string(), total: z.string() })) }))
+      .input(z.object({ clientId: z.number().optional().nullable(), barberId: z.number(), appointmentId: z.number().optional().nullable(), subtotal: z.string(), discount: z.string().default("0"), total: z.string(), paymentMethod: z.enum(["cash", "credit_card", "debit_card", "pix", "asaas", "other"]), paymentStatus: z.enum(["pending", "paid", "cancelled", "refunded"]).default("paid"), couponCode: z.string().optional().nullable(), notes: z.string().optional().nullable(), items: z.array(z.object({ itemType: z.enum(["service", "product"]), itemId: z.number(), itemName: z.string(), quantity: z.number().min(1), unitPrice: z.string(), total: z.string() })) }))
       .mutation(({ input }) => { const { items, ...saleData } = input; return db.createSale(saleData as any, items); }),
   }),
 
@@ -978,153 +971,6 @@ export const appRouter = router({
       .query(({ input }) => db.getClientPointsHistory(input.clientId)),
   }),
   payments: router({
-    createPreference: publicProcedure
-      .input(z.object({
-        appointmentId: z.number(),
-        serviceId: z.number(),
-        serviceName: z.string(),
-        servicePrice: z.number(),
-        clientName: z.string(),
-        clientEmail: z.string().optional(),
-        barberId: z.number(),
-        clientId: z.number(),
-        date: z.string(),
-        startTime: z.string(),
-      }))
-      .mutation(async ({ input }) => {
-        const mpClient = getMpClient();
-        const preference = new Preference(mpClient);
-        const apiBaseUrl = process.env.API_PUBLIC_URL || "https://3000-ij7sp94mctpcjw0w9i9s9-ea9c4082.us2.manus.computer";
-        const result = await preference.create({
-          body: {
-            items: [{
-              id: String(input.serviceId),
-              title: input.serviceName,
-              quantity: 1,
-              unit_price: input.servicePrice,
-              currency_id: "BRL",
-            }],
-            payer: input.clientEmail ? { name: input.clientName, email: input.clientEmail } : undefined,
-            external_reference: JSON.stringify({
-              appointmentId: input.appointmentId,
-              clientId: input.clientId,
-              barberId: input.barberId,
-              serviceId: input.serviceId,
-              servicePrice: input.servicePrice,
-              date: input.date,
-              startTime: input.startTime,
-            }),
-            notification_url: `${apiBaseUrl}/api/mp/webhook`,
-            back_urls: {
-              success: `${apiBaseUrl}/api/mp/success`,
-              failure: `${apiBaseUrl}/api/mp/failure`,
-              pending: `${apiBaseUrl}/api/mp/pending`,
-            },
-            auto_return: "approved",
-          },
-        });
-        return {
-          preferenceId: result.id,
-          initPoint: result.init_point,
-          sandboxInitPoint: result.sandbox_init_point,
-        };
-      }),
-    createPixPayment: publicProcedure
-      .input(z.object({
-        serviceId: z.number(),
-        serviceName: z.string(),
-        servicePrice: z.number(),
-        clientName: z.string(),
-        clientEmail: z.string().optional(),
-        clientCpf: z.string().optional().nullable(),
-        appointmentId: z.number().optional().nullable(),
-        barberId: z.number(),
-        clientId: z.number(),
-        date: z.string(),
-        startTime: z.string(),
-      }))
-      .mutation(async ({ input }) => {
-        const apiBaseUrl = process.env.API_PUBLIC_URL || "https://3000-ij7sp94mctpcjw0w9i9s9-ea9c4082.us2.manus.computer";
-        const txId = `BP${Date.now().toString(36).toUpperCase()}`;
-
-        // Tenta via Mercado Pago primeiro
-        try {
-          const mpClient = getMpClient();
-          const payment = new Payment(mpClient);
-          const result = await payment.create({
-            body: {
-              transaction_amount: input.servicePrice,
-              description: input.serviceName,
-              payment_method_id: "pix",
-              payer: {
-                email: input.clientEmail || "cliente@barberpro.com",
-                first_name: input.clientName.split(" ")[0],
-                last_name: input.clientName.split(" ").slice(1).join(" ") || input.clientName.split(" ")[0],
-                identification: input.clientCpf
-                  ? { type: "CPF", number: input.clientCpf.replace(/\D/g, "") }
-                  : { type: "CPF", number: "00000000000" },
-              },
-              external_reference: JSON.stringify({
-                appointmentId: input.appointmentId,
-                clientId: input.clientId,
-                barberId: input.barberId,
-                serviceId: input.serviceId,
-                servicePrice: input.servicePrice,
-                date: input.date,
-                startTime: input.startTime,
-              }),
-              notification_url: `${apiBaseUrl}/api/mp/webhook`,
-            },
-          });
-          const pixData = (result as any).point_of_interaction?.transaction_data;
-          return {
-            paymentId: String(result.id),
-            status: result.status,
-            qrCode: pixData?.qr_code ?? null,
-            qrCodeBase64: pixData?.qr_code_base64 ?? null,
-            expiresAt: (result as any).date_of_expiration ?? null,
-            isFallback: false,
-          };
-        } catch (mpErr: any) {
-          // Fallback: gera QR Code Pix local (EMV/BR Code)
-          // Busca a chave Pix configurada nas settings ou usa placeholder
-          const settings = await db.getShopSettings().catch(() => null);
-          const shopName = (settings as any)?.shopName || "Barber Pro";
-          const shopCity = "SAO PAULO";
-          const configuredPixKey = (settings as any)?.pixKey || undefined;
-          const pixPayload = generatePixPayload({
-            merchantName: shopName.toUpperCase().substring(0, 25),
-            merchantCity: shopCity,
-            amount: input.servicePrice,
-            txId,
-            description: input.serviceName,
-            pixKey: configuredPixKey,
-          });
-
-          // Gera QR Code como base64 PNG
-          const qrBase64 = await QRCode.toDataURL(pixPayload, {
-            errorCorrectionLevel: "M",
-            margin: 2,
-            width: 300,
-            color: { dark: "#000000", light: "#ffffff" },
-          });
-          // Remove o prefixo data:image/png;base64,
-          const qrCodeBase64 = qrBase64.replace(/^data:image\/png;base64,/, "");
-
-          // Expira em 30 minutos
-          const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-
-          return {
-            paymentId: txId,
-            status: "pending",
-            qrCode: pixPayload,
-            qrCodeBase64,
-            expiresAt,
-            isFallback: true,
-          };
-        }
-      }),
-
     pendingList: publicProcedure
       .input(z.object({ tenantId: z.number().optional().nullable() }).optional())
       .query(async ({ input }) => {
@@ -1140,7 +986,7 @@ export const appRouter = router({
           input?.tenantId
         );
         return (allSales as any[]).filter((s) =>
-          s.paymentStatus === "pending" && s.paymentMethod === "mercado_pago"
+          s.paymentStatus === "pending" && s.paymentMethod === "asaas"
         );
       }),
 

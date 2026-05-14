@@ -2857,7 +2857,7 @@ async function renderFinanceiro(req: Request, res: Response) {
     { v: "month", l: "Este mês" }, { v: "week", l: "Últimos 7 dias" }, { v: "90", l: "Últimos 90 dias" },
   ].map(o => `<option value="${o.v}" ${period === o.v ? "selected" : ""}>${o.l}</option>`).join("");
 
-  const pmLabels: Record<string, string> = { cash: "Dinheiro", credit_card: "Cartão Crédito", debit_card: "Cartão Débito", pix: "Pix", mercado_pago: "Mercado Pago", other: "Outro" };
+  const pmLabels: Record<string, string> = { cash: "Dinheiro", credit_card: "Cartão Crédito", debit_card: "Cartão Débito", pix: "Pix", mercado_pago: "Online (legado)", asaas: "Online (Asaas)", other: "Outro" };
 
   // Aba Resumo
   const tabResumo = `
@@ -3771,7 +3771,7 @@ async function renderRelatorios(req: Request, res: Response) {
     const pm = s.paymentMethod ?? "other";
     paymentMap[pm] = (paymentMap[pm] ?? 0) + parseFloat(s.total ?? "0");
   });
-  const pmLabels: Record<string, string> = { cash: "Dinheiro", credit_card: "Cartão Crédito", debit_card: "Cartão Débito", pix: "Pix", mercado_pago: "Mercado Pago", other: "Outro" };
+  const pmLabels: Record<string, string> = { cash: "Dinheiro", credit_card: "Cartão Crédito", debit_card: "Cartão Débito", pix: "Pix", mercado_pago: "Online (legado)", asaas: "Online (Asaas)", other: "Outro" };
   const pmColors = ["#C9A84C", "#4ADE80", "#60A5FA", "#F472B6", "#A78BFA", "#FB923C"];
   const pmEntries = Object.entries(paymentMap).sort((a, b) => b[1] - a[1]);
   const pmTotal = pmEntries.reduce((s, [, v]) => s + v, 0) || 1;
@@ -7968,7 +7968,7 @@ export function registerAdminRoutes(app: Express): void {
       const netProfit = totalRevenue - totalExpenses;
       const grossMargin = totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0;
       // Receitas por forma de pagamento
-      const pmLabels: Record<string, string> = { cash: "Dinheiro", credit_card: "Cartão Crédito", debit_card: "Cartão Débito", pix: "Pix", mercado_pago: "Mercado Pago", other: "Outro" };
+      const pmLabels: Record<string, string> = { cash: "Dinheiro", credit_card: "Cartão Crédito", debit_card: "Cartão Débito", pix: "Pix", mercado_pago: "Online (legado)", asaas: "Online (Asaas)", other: "Outro" };
       const pmMap: Record<string, number> = {};
       allSales.forEach((s: any) => {
         const pm = s.paymentMethod ?? "other";

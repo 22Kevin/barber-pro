@@ -28,7 +28,7 @@ const PAYMENT_METHODS = [
   { key: "credit_card",  label: "Crédito",         icon: "creditcard.fill" as const },
   { key: "debit_card",   label: "Débito",          icon: "creditcard.fill" as const },
   { key: "pix",          label: "PIX",             icon: "checkmark.circle.fill" as const },
-  { key: "mercado_pago", label: "Mercado Pago",    icon: "dollarsign.circle.fill" as const },
+  { key: "asaas",        label: "Online (Asaas)", icon: "dollarsign.circle.fill" as const },
 ];
 
 const EXPENSE_CATEGORIES = [
@@ -280,7 +280,7 @@ export default function FinancialScreen() {
                       <Text style={styles.transactionMeta}>
                         {PAYMENT_METHODS.find(p => p.key === sale.paymentMethod)?.label ?? sale.paymentMethod} · {sale.createdAt ? new Date(sale.createdAt).toLocaleDateString("pt-BR") : "—"}
                       </Text>
-                      {sale.paymentMethod === "mercado_pago" && (
+                      {(sale.paymentMethod === "asaas" || sale.paymentMethod === "mercado_pago") && (
                         <View style={{ backgroundColor: sale.paymentStatus === "paid" ? "#009EE322" : "#F5A62322", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
                           <Text style={{ color: sale.paymentStatus === "paid" ? "#009EE3" : "#F5A623", fontSize: 10, fontWeight: "700" }}>
                             {sale.paymentStatus === "paid" ? "✓ Pago" : sale.paymentStatus === "pending" ? "⏳ Pendente" : sale.paymentStatus}
@@ -288,9 +288,7 @@ export default function FinancialScreen() {
                         </View>
                       )}
                     </View>
-                    {sale.mercadoPagoPaymentId && (
-                      <Text style={{ color: "#555", fontSize: 10, marginTop: 2 }}>MP ID: {sale.mercadoPagoPaymentId}</Text>
-                    )}
+
                   </View>
                   <Text style={styles.transactionAmount}>+{formatCurrency(parseFloat(sale.total ?? "0"))}</Text>
                 </View>

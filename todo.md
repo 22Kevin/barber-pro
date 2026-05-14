@@ -2157,3 +2157,16 @@
 
 ## Correção Tooltip KPI (14/05/2026)
 - [x] Corrigir tooltip dos cards KPI que estava sendo cortado pela topbar (mover para baixo do card + z-index:9999)
+
+## Fase 2 — Limpeza Mercado Pago (14/05/2026)
+- [x] Remover server/mp-routes.ts e seu registro em _core/index.ts
+- [x] Remover rotas pub-api/mp-checkout e pub-api/pix-checkout do public-routes.ts
+- [x] Remover imports do mercadopago em public-routes.ts
+- [x] Remover procedures payments.createPreference e payments.createPixPayment do routers.ts
+- [x] Remover imports do mercadopago em routers.ts
+- [x] Adicionar enum 'asaas' ao tipo payment_method no banco (auto-migrate.ts)
+- [x] Renomear mercado_pago para asaas nos pmLabels do admin-routes.ts
+- [x] Atualizar app/client/book.tsx — remover createPreference.useMutation()
+- [x] Atualizar app/admin/(tabs)/financial.tsx — renomear label Mercado Pago
+- [x] Atualizar components/payment-status-modal.tsx — renomear mercado_pago para asaas
+- [x] Remover dependência mercadopago do package.json
