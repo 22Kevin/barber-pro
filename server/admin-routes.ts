@@ -1172,6 +1172,7 @@ async function renderDashboard(req: Request, res: Response) {
     </div>
 
     <!-- Card: Proximo Agendamento -->
+    <div id="next-appt-wrap">
     ${nextAppointment ? (() => {
       const naClientName = (nextAppointment as any).clientName ?? clientMap[(nextAppointment as any).clientId] ?? 'Cliente';
       const naServiceName = (nextAppointment as any).serviceName ?? serviceMap[(nextAppointment as any).serviceId] ?? 'Servico';
@@ -1179,25 +1180,26 @@ async function renderDashboard(req: Request, res: Response) {
       const naTime = ((nextAppointment as any).startTime ?? '').substring(0, 5);
       const naStatusColor = (nextAppointment as any).status === 'confirmed' ? '#22C55E' : '#C9A84C';
       const naStatusLabel = (nextAppointment as any).status === 'confirmed' ? 'Confirmado' : 'Agendado';
-      return `<div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:20px;box-shadow:0 4px 24px rgba(0,0,0,0.3);position:relative;overflow:hidden">
+      return `<div id="next-appt-card" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:20px;box-shadow:0 4px 24px rgba(0,0,0,0.3);position:relative;overflow:hidden;transition:opacity 0.3s ease">
         <div style="position:absolute;top:0;right:0;width:120px;height:120px;background:radial-gradient(circle,rgba(201,168,76,0.08) 0%,transparent 70%);pointer-events:none"></div>
         <div style="width:52px;height:52px;background:rgba(201,168,76,0.15);border:2px solid rgba(201,168,76,0.4);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px">Proximo Agendamento</span>
-            <span style="font-size:10px;font-weight:700;color:${naStatusColor};background:${naStatusColor}22;border:1px solid ${naStatusColor}44;border-radius:4px;padding:1px 6px">${naStatusLabel}</span>
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px">Próximo Agendamento</span>
+            <span id="next-appt-status-badge" style="font-size:10px;font-weight:700;color:${naStatusColor};background:${naStatusColor}22;border:1px solid ${naStatusColor}44;border-radius:4px;padding:1px 6px">${naStatusLabel}</span>
           </div>
-          <div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${naClientName}</div>
-          <div style="font-size:13px;color:var(--muted)">${naServiceName}${naBarberName ? ' - ' + naBarberName : ''}</div>
+          <div id="next-appt-client" style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${naClientName}</div>
+          <div id="next-appt-service" style="font-size:13px;color:var(--muted)">${naServiceName}${naBarberName ? ' - ' + naBarberName : ''}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
-          <div style="font-size:28px;font-weight:900;color:#C9A84C;line-height:1">${naTime}</div>
+          <div id="next-appt-time" style="font-size:28px;font-weight:900;color:#C9A84C;line-height:1">${naTime}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px">hoje</div>
         </div>
       </div>`;
     })() : ''}
+    </div>
     <!-- 2. Agenda de Hoje -->
     ${lowStockItems.length > 0 ? `
     <a href="/admin/estoque" style="text-decoration:none;display:flex;align-items:center;gap:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:14px 16px;margin-bottom:20px;transition:background .2s;" onmouseover="this.style.background='rgba(245,158,11,.14)'" onmouseout="this.style.background='rgba(245,158,11,.08)'">
@@ -1578,6 +1580,77 @@ async function renderDashboard(req: Request, res: Response) {
         if (isAndroid) { document.getElementById('app-content-android').style.display = 'block'; }
         else if (isIOS) { document.getElementById('app-content-ios').style.display = 'block'; }
         else { document.getElementById('app-content-desktop').style.display = 'block'; }
+      })();
+    </script>
+    <script>
+      /* Polling automático do card Próximo Agendamento — atualiza a cada 60s */
+      (function() {
+        function renderNextAppt(d) {
+          if (!d || !d.clientName) return '';
+          var statusColor = d.status === 'confirmed' ? '#22C55E' : '#C9A84C';
+          var statusLabel = d.status === 'confirmed' ? 'Confirmado' : 'Agendado';
+          var service = d.serviceName || '';
+          if (d.barberName) service += ' - ' + d.barberName;
+          return '<div id="next-appt-card" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:20px;box-shadow:0 4px 24px rgba(0,0,0,0.3);position:relative;overflow:hidden;opacity:0;transition:opacity 0.4s ease">'
+            + '<div style="position:absolute;top:0;right:0;width:120px;height:120px;background:radial-gradient(circle,rgba(201,168,76,0.08) 0%,transparent 70%);pointer-events:none"></div>'
+            + '<div style="width:52px;height:52px;background:rgba(201,168,76,0.15);border:2px solid rgba(201,168,76,0.4);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">'
+            + '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
+            + '</div>'
+            + '<div style="flex:1;min-width:0">'
+            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+            + '<span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px">Pr\u00f3ximo Agendamento</span>'
+            + '<span style="font-size:10px;font-weight:700;color:' + statusColor + ';background:' + statusColor + '22;border:1px solid ' + statusColor + '44;border-radius:4px;padding:1px 6px">' + statusLabel + '</span>'
+            + '</div>'
+            + '<div style="font-size:18px;font-weight:800;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + d.clientName + '</div>'
+            + '<div style="font-size:13px;color:var(--muted)">' + service + '</div>'
+            + '</div>'
+            + '<div style="text-align:right;flex-shrink:0">'
+            + '<div style="font-size:28px;font-weight:900;color:#C9A84C;line-height:1">' + d.startTime + '</div>'
+            + '<div style="font-size:11px;color:var(--muted);margin-top:2px">hoje</div>'
+            + '</div>'
+            + '</div>';
+        }
+        function refreshNextAppt() {
+          var wrap = document.getElementById('next-appt-wrap');
+          if (!wrap) return;
+          fetch('/admin-api/next-appointment', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+              var oldCard = document.getElementById('next-appt-card');
+              if (d && d.clientName) {
+                /* Tem próximo agendamento */
+                if (oldCard) {
+                  /* Atualizar campos inline com fade */
+                  oldCard.style.opacity = '0';
+                  setTimeout(function() {
+                    var el;
+                    el = document.getElementById('next-appt-client'); if (el) el.textContent = d.clientName;
+                    var svc = d.serviceName || ''; if (d.barberName) svc += ' - ' + d.barberName;
+                    el = document.getElementById('next-appt-service'); if (el) el.textContent = svc;
+                    el = document.getElementById('next-appt-time'); if (el) el.textContent = d.startTime;
+                    var statusColor = d.status === 'confirmed' ? '#22C55E' : '#C9A84C';
+                    var statusLabel = d.status === 'confirmed' ? 'Confirmado' : 'Agendado';
+                    el = document.getElementById('next-appt-status-badge');
+                    if (el) { el.textContent = statusLabel; el.style.color = statusColor; el.style.background = statusColor + '22'; el.style.borderColor = statusColor + '44'; }
+                    oldCard.style.opacity = '1';
+                  }, 300);
+                } else {
+                  /* Card não existe ainda — inserir HTML completo */
+                  wrap.innerHTML = renderNextAppt(d);
+                  var newCard = document.getElementById('next-appt-card');
+                  if (newCard) { setTimeout(function() { newCard.style.opacity = '1'; }, 50); }
+                }
+              } else {
+                /* Não há próximo agendamento — remover card se existir */
+                if (oldCard) {
+                  oldCard.style.opacity = '0';
+                  setTimeout(function() { wrap.innerHTML = ''; }, 350);
+                }
+              }
+            })
+            .catch(function() { /* silencioso */ });
+        }
+        setInterval(refreshNextAppt, 60000);
       })();
     </script>
   `;
@@ -8429,6 +8502,46 @@ export function registerAdminRoutes(app: Express): void {
       res.status(500).json({ error: e.message });
     }
   });
+  // GET /admin-api/next-appointment — Retorna JSON com o próximo agendamento do dia
+  app.get("/admin-api/next-appointment", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const tenantId = barber?.tenantId ?? null;
+      const dateStr = today();
+      const appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
+      const barbers = await db.getAllBarbers(tenantId);
+      const barberMap: Record<number, string> = Object.fromEntries(barbers.map((b) => [b.id, b.name]));
+      // Calcular hora atual em BRT (UTC-3)
+      const nowMinutes = (() => {
+        const now = new Date();
+        const brt = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+        return brt.getUTCHours() * 60 + brt.getUTCMinutes();
+      })();
+      const next = appointments
+        .filter((a: any) => {
+          if (!a.startTime) return false;
+          const [h, m] = a.startTime.split(':').map(Number);
+          return (h * 60 + m) >= nowMinutes && ['scheduled', 'confirmed'].includes(a.status);
+        })
+        .sort((a: any, b: any) => {
+          const [ah, am] = a.startTime.split(':').map(Number);
+          const [bh, bm] = b.startTime.split(':').map(Number);
+          return (ah * 60 + am) - (bh * 60 + bm);
+        })[0] ?? null;
+      if (!next) { res.json({ clientName: null }); return; }
+      res.json({
+        clientName: (next as any).clientName ?? 'Cliente',
+        serviceName: (next as any).serviceName ?? (next as any).serviceNames ?? '',
+        barberName: barberMap[(next as any).barberId] ?? '',
+        startTime: ((next as any).startTime ?? '').substring(0, 5),
+        status: (next as any).status ?? 'scheduled',
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // GET /admin/download-apk — Redireciona para o APK ou Play Store
   app.get("/admin/download-apk", requireAdminAuth, (req: Request, res: Response) => {
     const apkUrl = process.env.APK_DOWNLOAD_URL ?? process.env.PLAY_STORE_URL ?? "https://play.google.com/store/apps/details?id=space.manus.barber.app";

@@ -2143,3 +2143,8 @@
 - [x] Card "Próximo agendamento" no dashboard (nome, serviço, horário em destaque)
 - [x] Meta diária de faturamento com barra de progresso no card Faturamento Hoje
 - [x] Persistência do tema escuro/claro com ícone sol/lua melhorado na topbar
+
+## Atualização Automática Card "Próximo Agendamento" (14/05/2026)
+- [x] Endpoint /admin-api/next-appointment retornando JSON com dados do próximo agendamento
+- [x] Script setInterval(60s) no dashboard para buscar e re-renderizar o card sem reload
+- [x] Animação de transição ao atualizar o card (fade suave)
