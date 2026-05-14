@@ -2216,3 +2216,10 @@
 - [x] Endpoint GET /admin/export/pagamentos-online.csv com filtro por período (start/end)
 - [x] Botão "↓ Exportar CSV" na seção de Pagamentos Online dos Relatórios
 - [x] CSV com colunas: ID, Cliente, Telefone, Método, Valor, Status, ID Asaas, Data Criação, Data Pagamento, Link Fatura
+
+## Fase 7 — Webhook Asaas (14/05/2026)
+- [x] Validação de token ASAAS_WEBHOOK_TOKEN no endpoint POST /api/asaas/webhook
+- [x] Confirmação automática de pagamento ao receber PAYMENT_RECEIVED/PAYMENT_CONFIRMED
+- [x] Atualização de status do agendamento para "confirmed" ao confirmar pagamento
+- [x] Notificação WhatsApp ao cliente com detalhes do agendamento confirmado
+- [x] Atualização automática de assinatura Barber Pro (active/overdue/cancelled)

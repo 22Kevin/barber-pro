@@ -426,10 +426,19 @@ async function startServer() {
       return res.status(500).json({ error: err.message });
     }
   });
-
-  // ─── Webhook Asaas ─────────────────────────────────────────────────────────
+  // ─── Webhook Asaas ───────────────────────────────────────────────────────────────────────────
   app.post("/api/asaas/webhook", async (req, res) => {
     try {
+      // Validação de segurança: verificar token Asaas no header (quando configurado)
+      const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
+      if (webhookToken) {
+        const receivedToken = req.headers["asaas-access-token"] as string | undefined;
+        if (!receivedToken || receivedToken !== webhookToken) {
+          console.warn("[asaas-webhook] Token inválido ou ausente — rejeitando requisição");
+          res.status(401).json({ error: "Unauthorized" });
+          return;
+        }
+      }
       const { parseAsaasWebhook } = await import("../asaas");
       const { getDb, updateAppointment } = await import("../db");
       const parsed = parseAsaasWebhook(req.body);
