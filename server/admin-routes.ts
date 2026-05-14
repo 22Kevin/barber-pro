@@ -19,7 +19,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import * as db from "./db";
 import { sql } from "drizzle-orm";
-import { asaasEnabled, createAsaasSubAccount, getAsaasSubAccount } from "./asaas";
+import { asaasEnabled, createAsaasSubAccount, getAsaasSubAccount, ensureAsaasRootCustomer, createAsaasSubscription, cancelAsaasSubscription } from "./asaas";
 import axios from "axios";
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
@@ -3576,8 +3576,59 @@ async function renderConfiguracoes(req: Request, res: Response) {
     rejected: 'var(--error)',
   };
 
+  // Dados da assinatura Barber Pro
+  const bpStatus = (tenant as any)?.barberproSubscriptionStatus ?? 'trial';
+  const bpPlanName = (tenant as any)?.barberproPlanName ?? 'starter';
+  const bpPlanPrice = parseFloat((tenant as any)?.barberproPlanPrice ?? 0);
+  const bpNextDue = (tenant as any)?.barberproNextDueDate ?? null;
+  const bpSubId = (tenant as any)?.barberproSubscriptionId ?? null;
+  const bpStatusLabel: Record<string, string> = {
+    trial: '🟡 Período de avaliação',
+    active: '🟢 Assinatura ativa',
+    overdue: '🔴 Pagamento em atraso',
+    cancelled: '⚫ Cancelada',
+    pending: '🟡 Aguardando pagamento',
+  };
+  const bpStatusColor: Record<string, string> = {
+    trial: '#FBBF24', active: 'var(--success)', overdue: 'var(--error)', cancelled: 'var(--muted)', pending: '#FBBF24',
+  };
+  const bpPlanLabel: Record<string, string> = {
+    starter: 'Starter', professional: 'Professional', premium: 'Premium',
+  };
+  const bpNextDueFmt = bpNextDue ? new Date(bpNextDue + 'T12:00:00').toLocaleDateString('pt-BR') : null;
+
   const tabPagamentos = `
     <div style="max-width:640px">
+
+      <!-- Assinatura Barber Pro -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:12px">ASSINATURA BARBER PRO</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+          <div>
+            <div style="font-size:18px;font-weight:800;color:var(--foreground);margin-bottom:4px">${bpPlanLabel[bpPlanName] ?? bpPlanName}</div>
+            <div style="font-size:13px;font-weight:600;color:${bpStatusColor[bpStatus] ?? 'var(--muted)'}">${bpStatusLabel[bpStatus] ?? bpStatus}</div>
+            ${bpPlanPrice > 0 ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">R$ ${bpPlanPrice.toFixed(2)}/mês</div>` : ''}
+            ${bpNextDueFmt ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">Próximo vencimento: ${bpNextDueFmt}</div>` : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+            ${bpStatus === 'trial' || bpStatus === 'cancelled' ? `
+              <form method="POST" action="/admin/configuracoes/asaas/subscribe">
+                <button type="submit" class="btn btn-primary" style="font-size:12px;padding:8px 16px;white-space:nowrap">Assinar agora</button>
+              </form>
+            ` : ''}
+            ${bpStatus === 'active' && bpSubId ? `
+              <form method="POST" action="/admin/configuracoes/asaas/cancel-subscription" onsubmit="return confirm('Tem certeza que deseja cancelar a assinatura?')">
+                <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px;color:var(--error);border-color:var(--error)">Cancelar assinatura</button>
+              </form>
+            ` : ''}
+            ${bpStatus === 'overdue' ? `
+              <div style="font-size:12px;color:var(--error);text-align:right">⚠️ Regularize o pagamento<br>para manter o acesso</div>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+
+      <!-- Status conta de pagamentos -->
       <!-- Status atual -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px">
         <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:8px">STATUS DA CONTA DE PAGAMENTOS</div>
@@ -5439,6 +5490,98 @@ export function registerAdminRoutes(app: Express): void {
       await dbConn.execute(sql`UPDATE tenants SET "asaasAccountStatus" = ${normalizedStatus}, "updatedAt" = NOW() WHERE id = ${barber.tenantId}`);
       res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
     } catch (e: any) {
+      res.redirect("/admin/configuracoes?tab=pagamentos");
+    }
+  });
+
+  // POST /admin/configuracoes/asaas/subscribe — Criar assinatura Barber Pro
+  app.post("/admin/configuracoes/asaas/subscribe", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      if (!barber?.tenantId) { res.redirect("/admin/configuracoes?tab=pagamentos&error=Tenant+n%C3%A3o+encontrado"); return; }
+
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.redirect("/admin/configuracoes?tab=pagamentos&error=Banco+de+dados+indispon%C3%ADvel"); return; }
+
+      const tenantRows = await dbConn.execute(sql`SELECT * FROM tenants WHERE id = ${barber.tenantId} LIMIT 1`);
+      const tenantData = ((tenantRows as any).rows as any[])[0];
+      if (!tenantData) { res.redirect("/admin/configuracoes?tab=pagamentos&error=Tenant+n%C3%A3o+encontrado"); return; }
+
+      // Verificar se já tem assinatura ativa
+      if (tenantData.barberproSubscriptionStatus === 'active' && tenantData.barberproSubscriptionId) {
+        res.redirect("/admin/configuracoes?tab=pagamentos&saved=1"); return;
+      }
+
+      // Garantir que o cliente existe na conta raiz do Asaas
+      const asaasCustomerId = await ensureAsaasRootCustomer({
+        name: tenantData.name ?? 'Barbearia',
+        email: tenantData.email ?? `tenant${barber.tenantId}@barberpro.app`,
+        cpfCnpj: (tenantData.asaasCpfCnpj ?? tenantData.cnpj ?? '').replace(/\D/g, ''),
+        mobilePhone: (tenantData.asaasMobilePhone ?? tenantData.phone ?? '').replace(/\D/g, ''),
+        tenantId: barber.tenantId,
+      });
+
+      // Criar assinatura recorrente mensal
+      const planPrice = 97.00; // R$ 97/mês — plano Starter
+      const today = new Date();
+      const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
+      const nextDue = nextMonth.toISOString().slice(0, 10);
+
+      const subscriptionId = await createAsaasSubscription({
+        customer: asaasCustomerId,
+        billingType: 'BOLETO',
+        value: planPrice,
+        nextDueDate: nextDue,
+        cycle: 'MONTHLY',
+        description: 'Assinatura Barber Pro — Plano Starter',
+        externalReference: `tenant_${barber.tenantId}`,
+      });
+
+      await dbConn.execute(sql`
+        UPDATE tenants SET
+          "barberproSubscriptionId" = ${subscriptionId},
+          "barberproSubscriptionStatus" = 'pending',
+          "barberproPlanName" = 'starter',
+          "barberproPlanPrice" = ${planPrice},
+          "barberproNextDueDate" = ${nextDue},
+          "updatedAt" = NOW()
+        WHERE id = ${barber.tenantId}
+      `);
+
+      res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
+    } catch (e: any) {
+      console.error('[asaas/subscribe]', e.message);
+      res.redirect(`/admin/configuracoes?tab=pagamentos&error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // POST /admin/configuracoes/asaas/cancel-subscription — Cancelar assinatura Barber Pro
+  app.post("/admin/configuracoes/asaas/cancel-subscription", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      if (!barber?.tenantId) { res.redirect("/admin/configuracoes?tab=pagamentos"); return; }
+
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.redirect("/admin/configuracoes?tab=pagamentos"); return; }
+
+      const rows = await dbConn.execute(sql`SELECT "barberproSubscriptionId" FROM tenants WHERE id = ${barber.tenantId} LIMIT 1`);
+      const t = ((rows as any).rows as any[])[0];
+      if (t?.barberproSubscriptionId) {
+        await cancelAsaasSubscription(t.barberproSubscriptionId);
+      }
+
+      await dbConn.execute(sql`
+        UPDATE tenants SET
+          "barberproSubscriptionStatus" = 'cancelled',
+          "updatedAt" = NOW()
+        WHERE id = ${barber.tenantId}
+      `);
+
+      res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
+    } catch (e: any) {
+      console.error('[asaas/cancel-subscription]', e.message);
       res.redirect("/admin/configuracoes?tab=pagamentos");
     }
   });

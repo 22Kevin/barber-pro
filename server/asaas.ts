@@ -328,3 +328,68 @@ export function getAsaasSubAccountApi(subAccountApiKey: string) {
     timeout: 15000,
   });
 }
+
+/**
+ * Cria ou busca um cliente na conta RAIZ do Asaas (para cobrar a mensalidade do Barber Pro).
+ * Busca primeiro pelo cpfCnpj para evitar duplicatas.
+ * Retorna o customerId do Asaas.
+ */
+export async function ensureAsaasRootCustomer(params: {
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  mobilePhone?: string;
+  tenantId: number;
+}): Promise<string> {
+  if (!asaasEnabled) throw new Error("Asaas não configurado. Adicione ASAAS_API_KEY.");
+  const cpfCnpjClean = params.cpfCnpj.replace(/\D/g, "");
+
+  // Busca por externalReference (tenantId) primeiro
+  try {
+    const search = await asaasApi.get(`/customers`, {
+      params: { externalReference: `tenant_${params.tenantId}` },
+    });
+    if (search.data?.data?.length > 0) {
+      return search.data.data[0].id as string;
+    }
+  } catch {}
+
+  // Busca por CPF/CNPJ
+  try {
+    const search = await asaasApi.get(`/customers`, {
+      params: { cpfCnpj: cpfCnpjClean },
+    });
+    if (search.data?.data?.length > 0) {
+      return search.data.data[0].id as string;
+    }
+  } catch {}
+
+  // Cria novo cliente
+  const res = await asaasApi.post("/customers", {
+    name: params.name,
+    email: params.email,
+    cpfCnpj: cpfCnpjClean,
+    mobilePhone: params.mobilePhone,
+    externalReference: `tenant_${params.tenantId}`,
+  });
+  return res.data.id as string;
+}
+
+/**
+ * Busca o status atual de uma assinatura no Asaas.
+ */
+export async function getAsaasSubscriptionStatus(subscriptionId: string): Promise<{
+  id: string;
+  status: string;
+  nextDueDate: string;
+  value: number;
+}> {
+  if (!asaasEnabled) throw new Error("Asaas não configurado.");
+  const res = await asaasApi.get(`/subscriptions/${subscriptionId}`);
+  return {
+    id: res.data.id,
+    status: res.data.status,
+    nextDueDate: res.data.nextDueDate,
+    value: res.data.value,
+  };
+}

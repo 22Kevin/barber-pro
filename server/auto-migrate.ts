@@ -838,6 +838,14 @@ export async function runAutoMigrate(db: any): Promise<void> {
     { name: 'tenants."asaasCompanyType"',   sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "asaasCompanyType" VARCHAR(20)` },
     { name: 'tenants."asaasMobilePhone"',   sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "asaasMobilePhone" VARCHAR(20)` },
     { name: 'tenants."asaasBirthDate"',     sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "asaasBirthDate" VARCHAR(10)` },
+    // Assinatura Barber Pro (cobrança recorrente)
+    { name: 'tenants."barberproSubscriptionId"',     sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproSubscriptionId" VARCHAR(100)` },
+    { name: 'tenants."barberproSubscriptionStatus"', sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproSubscriptionStatus" VARCHAR(30) DEFAULT 'trial'` },
+    { name: 'tenants."barberproPlanName"',           sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproPlanName" VARCHAR(50) DEFAULT 'starter'` },
+    { name: 'tenants."barberproPlanPrice"',          sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproPlanPrice" DECIMAL(10,2) DEFAULT 0` },
+    { name: 'tenants."barberproNextDueDate"',        sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproNextDueDate" DATE` },
+    { name: 'tenants."barberproAsaasCustomerId"',    sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproAsaasCustomerId" VARCHAR(100)` },
+    { name: 'tenants."barberproTrialEndsAt"',        sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproTrialEndsAt" DATE` },
   ];
 
   let created = 0;

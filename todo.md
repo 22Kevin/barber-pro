@@ -2181,3 +2181,15 @@
 - [x] Integrar criação automática de subconta ao salvar configurações de pagamento
 - [x] Usar asaasApiKey da subconta nas cobranças do tenant (createPix, createCard)
 - [x] Adicionar ALTER TABLE para novos campos no auto-migrate.ts
+
+## Fase 3 — Assinatura Recorrente Barber Pro (Asaas)
+- [x] Pesquisar API de assinaturas recorrentes do Asaas (POST /v3/subscriptions)
+- [x] Adicionar campos barberproSubscriptionId, barberproSubscriptionStatus, barberproPlanName, barberproPlanPrice, barberproNextDueDate na tabela tenants
+- [x] Criar função createAsaasSubscription no asaas.ts
+- [x] Criar função cancelAsaasSubscription no asaas.ts
+- [x] Criar procedures asaasPayments.createBarberproSubscription e cancelBarberproSubscription no routers.ts
+- [x] Seção 'Assinatura Barber Pro' na aba de Pagamentos das Configurações com status e botões de assinar/cancelar
+- [x] Webhook /api/asaas/webhook: tratar eventos PAYMENT_RECEIVED, SUBSCRIPTION_RENEWED, PAYMENT_OVERDUE, SUBSCRIPTION_CANCELLED
+- [x] Ativar plano automaticamente ao receber pagamento confirmado (barberproSubscriptionStatus = active)
+- [x] Atualizar status para overdue ao receber PAYMENT_OVERDUE do Asaas
+- [x] Rotas POST /admin/configuracoes/asaas/subscribe e /cancel-subscription implementadas

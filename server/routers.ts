@@ -23,6 +23,10 @@ import {
   asaasDefaultDueDate,
   createAsaasSubAccount,
   getAsaasSubAccount,
+  ensureAsaasRootCustomer,
+  getAsaasSubscriptionStatus,
+  cancelAsaasSubscription,
+  createAsaasSubscription,
 } from "./asaas";
 import * as bcrypt from "bcryptjs";
 import { sql } from "drizzle-orm";
@@ -2404,7 +2408,7 @@ export const appRouter = router({
         };
       }),
 
-    syncSubAccountStatus: publicProcedure
+     syncSubAccountStatus: publicProcedure
       .input(z.object({ tenantId: z.number() }))
       .mutation(async ({ input }) => {
         const dbConn = await db.getDb();
@@ -2414,16 +2418,162 @@ export const appRouter = router({
         `);
         const tenant = ((rows as any).rows as any[])[0];
         if (!tenant?.asaasAccountId) throw new Error("Subconta não configurada.");
-
         const accountData = await getAsaasSubAccount(tenant.asaasAccountId);
         const status = accountData.commercialInfo?.status ?? "pending";
         const normalizedStatus = status === "APPROVED" ? "active" : status === "REJECTED" ? "rejected" : "pending";
-
         await dbConn.execute(sql`
           UPDATE tenants SET "asaasAccountStatus" = ${normalizedStatus}, "updatedAt" = NOW()
           WHERE id = ${input.tenantId}
         `);
         return { status: normalizedStatus };
+      }),
+
+    // ─── Assinatura Barber Pro ────────────────────────────────────────────────
+    createBarberproSubscription: publicProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        planName: z.string(),           // 'starter' | 'pro' | 'enterprise'
+        planPrice: z.number(),          // valor em reais
+        billingType: z.enum(["BOLETO", "PIX", "CREDIT_CARD"]).default("PIX"),
+        ownerName: z.string(),
+        ownerEmail: z.string().email(),
+        ownerCpfCnpj: z.string().min(11),
+        ownerMobilePhone: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        if (!asaasEnabled) throw new Error("ASAAS_API_KEY não configurada.");
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new Error("DB unavailable");
+
+        // Verificar se já tem assinatura ativa
+        const existing = await dbConn.execute(sql`
+          SELECT "barberproSubscriptionId", "barberproSubscriptionStatus"
+          FROM tenants WHERE id = ${input.tenantId} LIMIT 1
+        `);
+        const existingTenant = ((existing as any).rows as any[])[0];
+        if (existingTenant?.barberproSubscriptionId && existingTenant?.barberproSubscriptionStatus === "active") {
+          return { ok: true, message: "Assinatura já ativa.", alreadyExists: true };
+        }
+
+        // Criar ou buscar cliente na conta raiz do Asaas
+        const customerId = await ensureAsaasRootCustomer({
+          name: input.ownerName,
+          email: input.ownerEmail,
+          cpfCnpj: input.ownerCpfCnpj,
+          mobilePhone: input.ownerMobilePhone,
+          tenantId: input.tenantId,
+        });
+
+        // Calcular próximo vencimento (amanhã)
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const nextDueDate = tomorrow.toISOString().split("T")[0];
+
+        // Criar assinatura recorrente mensal
+        const subscriptionId = await createAsaasSubscription({
+          customer: customerId,
+          billingType: input.billingType,
+          value: input.planPrice,
+          nextDueDate,
+          cycle: "MONTHLY",
+          description: `Barber Pro — Plano ${input.planName}`,
+          externalReference: `tenant_${input.tenantId}`,
+        });
+
+        // Salvar no banco
+        await dbConn.execute(sql`
+          UPDATE tenants SET
+            "barberproSubscriptionId" = ${subscriptionId},
+            "barberproSubscriptionStatus" = 'pending',
+            "barberproPlanName" = ${input.planName},
+            "barberproPlanPrice" = ${input.planPrice},
+            "barberproNextDueDate" = ${nextDueDate}::DATE,
+            "barberproAsaasCustomerId" = ${customerId},
+            "updatedAt" = NOW()
+          WHERE id = ${input.tenantId}
+        `);
+
+        return {
+          ok: true,
+          subscriptionId,
+          customerId,
+          nextDueDate,
+          message: `Assinatura criada. Primeira cobrança em ${nextDueDate}.`,
+          alreadyExists: false,
+        };
+      }),
+
+    getBarberproSubscription: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) return null;
+        const rows = await dbConn.execute(sql`
+          SELECT "barberproSubscriptionId", "barberproSubscriptionStatus",
+                 "barberproPlanName", "barberproPlanPrice",
+                 "barberproNextDueDate", "barberproAsaasCustomerId", "barberproTrialEndsAt"
+          FROM tenants WHERE id = ${input.tenantId} LIMIT 1
+        `);
+        const t = ((rows as any).rows as any[])[0];
+        if (!t) return null;
+        return {
+          subscriptionId: t.barberproSubscriptionId ?? null,
+          status: t.barberproSubscriptionStatus ?? "trial",
+          planName: t.barberproPlanName ?? "starter",
+          planPrice: t.barberproPlanPrice ? parseFloat(t.barberproPlanPrice) : 0,
+          nextDueDate: t.barberproNextDueDate ?? null,
+          customerId: t.barberproAsaasCustomerId ?? null,
+          trialEndsAt: t.barberproTrialEndsAt ?? null,
+        };
+      }),
+
+    syncBarberproSubscription: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .mutation(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new Error("DB unavailable");
+        const rows = await dbConn.execute(sql`
+          SELECT "barberproSubscriptionId" FROM tenants WHERE id = ${input.tenantId} LIMIT 1
+        `);
+        const tenant = ((rows as any).rows as any[])[0];
+        if (!tenant?.barberproSubscriptionId) throw new Error("Assinatura não encontrada.");
+        const sub = await getAsaasSubscriptionStatus(tenant.barberproSubscriptionId);
+        // ACTIVE = ativa, INACTIVE = cancelada, EXPIRED = expirada
+        const statusMap: Record<string, string> = {
+          ACTIVE: "active",
+          INACTIVE: "cancelled",
+          EXPIRED: "expired",
+          OVERDUE: "overdue",
+        };
+        const normalizedStatus = statusMap[sub.status] ?? "pending";
+        await dbConn.execute(sql`
+          UPDATE tenants SET
+            "barberproSubscriptionStatus" = ${normalizedStatus},
+            "barberproNextDueDate" = ${sub.nextDueDate}::DATE,
+            "updatedAt" = NOW()
+          WHERE id = ${input.tenantId}
+        `);
+        return { status: normalizedStatus, nextDueDate: sub.nextDueDate };
+      }),
+
+    cancelBarberproSubscription: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .mutation(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new Error("DB unavailable");
+        const rows = await dbConn.execute(sql`
+          SELECT "barberproSubscriptionId" FROM tenants WHERE id = ${input.tenantId} LIMIT 1
+        `);
+        const tenant = ((rows as any).rows as any[])[0];
+        if (!tenant?.barberproSubscriptionId) throw new Error("Assinatura não encontrada.");
+        await cancelAsaasSubscription(tenant.barberproSubscriptionId);
+        await dbConn.execute(sql`
+          UPDATE tenants SET
+            "barberproSubscriptionStatus" = 'cancelled',
+            "updatedAt" = NOW()
+          WHERE id = ${input.tenantId}
+        `);
+        return { ok: true };
       }),
   }),
   suppliers: router({

@@ -508,6 +508,38 @@ async function startServer() {
           }
         }
       }
+      // ─── Eventos de Assinatura Barber Pro ─────────────────────────────────────
+      if (dbConn && req.body?.event && req.body?.subscription) {
+        const sub = req.body.subscription;
+        const event = req.body.event as string;
+        const extRef = sub.externalReference as string | undefined;
+        // externalReference = 'tenant_<tenantId>'
+        if (extRef?.startsWith("tenant_")) {
+          const tenantId = parseInt(extRef.replace("tenant_", ""), 10);
+          if (!isNaN(tenantId)) {
+            const statusMap: Record<string, string> = {
+              PAYMENT_RECEIVED: "active",
+              PAYMENT_CONFIRMED: "active",
+              SUBSCRIPTION_RENEWED: "active",
+              PAYMENT_OVERDUE: "overdue",
+              PAYMENT_REFUNDED: "overdue",
+              SUBSCRIPTION_CANCELLED: "cancelled",
+              PAYMENT_CANCELLED: "cancelled",
+            };
+            const newStatus = statusMap[event];
+            if (newStatus) {
+              try {
+                await (dbConn as any).execute(
+                  `UPDATE tenants SET "barberproSubscriptionStatus" = '${newStatus}', "updatedAt" = NOW() WHERE id = ${tenantId}`
+                );
+                console.log(`[asaas-webhook] Assinatura Barber Pro tenant ${tenantId} → ${newStatus} (evento: ${event})`);
+              } catch (subErr: any) {
+                console.error("[asaas-webhook] Erro ao atualizar assinatura:", subErr.message);
+              }
+            }
+          }
+        }
+      }
       res.json({ received: true });
     } catch (err: any) {
       console.error("[asaas-webhook]", err.message);
