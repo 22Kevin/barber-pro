@@ -2148,3 +2148,9 @@
 - [x] Endpoint /admin-api/next-appointment retornando JSON com dados do próximo agendamento
 - [x] Script setInterval(60s) no dashboard para buscar e re-renderizar o card sem reload
 - [x] Animação de transição ao atualizar o card (fade suave)
+
+## Melhorias Visuais Dashboard (14/05/2026)
+- [x] Corrigir logo Barber Pro no sidebar e tela de login (imagem quebrada)
+- [x] Transformar botão avatar "K" em menu dropdown com Meu Perfil, Configurações e Suporte
+- [x] Remover Meu Perfil, Configurações e Suporte do menu lateral (mover para dropdown do avatar)
+- [x] Mover seção Ações Rápidas para acima da Agenda no dashboard

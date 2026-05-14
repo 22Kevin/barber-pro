@@ -232,15 +232,9 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/pagina-cliente", icon: svgIcons["pagina-cliente"], label: "Página do Cliente", id: "pagina-cliente" },
       ],
     },
-    {
-      label: "SISTEMA",
-      items: [
-        { href: "/admin/meu-perfil", icon: svgIcons["meu-perfil"], label: "Meu Perfil", id: "meu-perfil" },
-        { href: "/admin/configuracoes", icon: svgIcons.configuracoes, label: "Configurações", id: "configuracoes" },
-        { href: "/admin/suporte", icon: svgIcons.suporte, label: "Suporte", id: "suporte" },
-      ],
-    },
   ];
+  // Logo URL: usa S3 se disponível, senão fallback para SVG inline
+  const BARBER_PRO_LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/CHUXnjOFayrIGRtV.png";
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -542,7 +536,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <div class="sidebar-logo-icon">
-        <img src="/assets/images/icon.png" alt="Barber Pro" onerror="this.style.display='none';this.parentElement.innerHTML='<svg width=\'18\' height=\'18\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23C9A84C\' stroke-width=\'2\'><path d=\'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z\'/></svg>'" />
+        <img src="${BARBER_PRO_LOGO_URL}" alt="Barber Pro" style="width:28px;height:28px;object-fit:contain;border-radius:6px;" />
       </div>
       <div class="sidebar-logo-text">
         <div class="sidebar-logo-title">BARBER PRO</div>
@@ -594,7 +588,34 @@ function adminLayout(title: string, activePage: string, body: string, barberName
           <svg id="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:block;flex-shrink:0"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           <span id="theme-label" style="font-size:11px;font-weight:600;letter-spacing:0.3px;display:none">Escuro</span>
         </button>
-        <div class="topbar-avatar" title="${esc(barberName)}">${initials}</div>
+        <!-- Avatar dropdown -->
+        <div style="position:relative;" id="avatar-menu-wrap">
+          <button id="avatar-btn" onclick="toggleAvatarMenu()" style="width:32px;height:32px;background:var(--gold-dim);border:1px solid rgba(201,168,76,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;transition:box-shadow 0.15s;" title="${esc(barberName)}" onmouseover="this.style.boxShadow='0 0 0 3px var(--gold-glow)'" onmouseout="this.style.boxShadow='none'">${initials}</button>
+          <div id="avatar-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.35);z-index:999;overflow:hidden;">
+            <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border);">
+              <div style="font-size:13px;font-weight:700;color:var(--foreground);">${esc(barberName || 'Usuário')}</div>
+              ${badge ? `<div style="font-size:10px;color:${badge.color};font-weight:600;margin-top:2px;">${badge.label}</div>` : ''}
+            </div>
+            <a href="/admin/meu-perfil" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--foreground);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Meu Perfil
+            </a>
+            <a href="/admin/configuracoes" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--foreground);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Configurações
+            </a>
+            <a href="/admin/suporte" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--foreground);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Suporte
+            </a>
+            <div style="border-top:1px solid var(--border);">
+              <a href="/admin/logout" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--error);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='rgba(239,68,68,0.08)'" onmouseout="this.style.background='transparent'">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sair da conta
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="content">
@@ -602,6 +623,18 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     </div>
   </div>
   <script>
+    // ─── Avatar dropdown ──────────────────────────────────────────────────────
+    function toggleAvatarMenu() {
+      var dd = document.getElementById('avatar-dropdown');
+      if (!dd) return;
+      var isOpen = dd.style.display !== 'none';
+      dd.style.display = isOpen ? 'none' : 'block';
+    }
+    document.addEventListener('click', function(e) {
+      var wrap = document.getElementById('avatar-menu-wrap');
+      var dd = document.getElementById('avatar-dropdown');
+      if (dd && wrap && !wrap.contains(e.target)) { dd.style.display = 'none'; }
+    });
     // ─── Hambúrguer mobile ────────────────────────────────────────────────────
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
@@ -896,8 +929,7 @@ function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: 
   <div class="login-left">
     <div class="brand-block">
       <div class="brand-logo-wrap">
-        <img src="/assets/images/icon.png" alt="Barber Pro"
-          onerror="this.style.display='none';this.parentElement.innerHTML='<svg width=64 height=64 viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23C9A84C\' stroke-width=\'1.5\'><path d=\'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z\'/></svg>'" />
+        <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/CHUXnjOFayrIGRtV.png" alt="Barber Pro" style="width:64px;height:64px;object-fit:contain;border-radius:12px;" />
       </div>
       <div>
         <div class="brand-name">BARBER PRO</div>
@@ -1200,7 +1232,44 @@ async function renderDashboard(req: Request, res: Response) {
       </div>`;
     })() : ''}
     </div>
-    <!-- 2. Agenda de Hoje -->
+    <!-- 2. Ações Rápidas -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;">Ações Rápidas</div>
+      <div class="actions-grid-5" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+        <a href="/admin/agenda/novo" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+          </div>
+          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Novo Agendamento</span>
+        </a>
+        <a href="/admin/clientes?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(33,150,243,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          </div>
+          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Novo Cliente</span>
+        </a>
+        <a href="/admin/financeiro?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(76,175,80,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Nova Venda</span>
+        </a>
+        <a href="/admin/servicos" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(156,39,176,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9C27B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3L8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
+          </div>
+          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Serviços</span>
+        </a>
+        <a href="/admin/promocoes" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(239,68,68,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          </div>
+          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Nova Promoção</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- 3. Agenda de Hoje -->
     ${lowStockItems.length > 0 ? `
     <a href="/admin/estoque" style="text-decoration:none;display:flex;align-items:center;gap:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:14px 16px;margin-bottom:20px;transition:background .2s;" onmouseover="this.style.background='rgba(245,158,11,.14)'" onmouseout="this.style.background='rgba(245,158,11,.08)'">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -1218,7 +1287,7 @@ async function renderDashboard(req: Request, res: Response) {
       <div class="card-body" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">${appointmentsHtml}</div>
     </div>
 
-    <!-- 3. Gráfico de Faturamento/Agendamentos Semanal -->
+    <!-- 4. Gráfico de Faturamento/Agendamentos Semanal -->
     <div class="chart-card-inner" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px;position:relative;overflow:hidden;">
       <div style="position:absolute;top:-60px;right:-60px;width:220px;height:220px;background:radial-gradient(circle,rgba(201,168,76,0.07) 0%,transparent 70%);pointer-events:none;"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
@@ -1451,43 +1520,6 @@ async function renderDashboard(req: Request, res: Response) {
           });
         }
       </script>
-    </div>
-
-    <!-- 4. Ações Rápidas -->
-    <div style="margin-bottom:20px;">
-      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;">Ações Rápidas</div>
-      <div class="actions-grid-5" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
-        <a href="/admin/agenda/novo" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
-          </div>
-          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Novo Agendamento</span>
-        </a>
-        <a href="/admin/clientes?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="width:40px;height:40px;border-radius:12px;background:rgba(33,150,243,.12);display:flex;align-items:center;justify-content:center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-          </div>
-          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Novo Cliente</span>
-        </a>
-        <a href="/admin/financeiro?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="width:40px;height:40px;border-radius:12px;background:rgba(76,175,80,.12);display:flex;align-items:center;justify-content:center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          </div>
-          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Nova Venda</span>
-        </a>
-        <a href="/admin/servicos" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="width:40px;height:40px;border-radius:12px;background:rgba(156,39,176,.12);display:flex;align-items:center;justify-content:center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9C27B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3L8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
-          </div>
-          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Serviços</span>
-        </a>
-        <a href="/admin/promocoes" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="width:40px;height:40px;border-radius:12px;background:rgba(239,68,68,.12);display:flex;align-items:center;justify-content:center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-          </div>
-          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Nova Promoção</span>
-        </a>
-      </div>
     </div>
 
     <!-- 5. Link de Agendamento -->
