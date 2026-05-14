@@ -19,7 +19,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import * as db from "./db";
 import { sql } from "drizzle-orm";
-import { asaasEnabled } from "./asaas";
+import { asaasEnabled, createAsaasSubAccount, getAsaasSubAccount } from "./asaas";
 import axios from "axios";
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
@@ -3249,6 +3249,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
   const saved = req.query.saved === "1";
   const slugSaved = req.query.slugsaved === "1";
   const slugError = req.query.slugerror as string | undefined;
+  const configError = req.query.error as string | undefined;
   const activeTab = (req.query.tab as string) ?? "dados";
 
   // Buscar tenant para obter o slug
@@ -3559,20 +3560,159 @@ async function renderConfiguracoes(req: Request, res: Response) {
     </script>
   `;
 
+  // ─── Aba: Pagamentos Online (Subconta Asaas) ─────────────────────────────────
+  const asaasStatus = tenant?.asaasAccountStatus ?? 'not_configured';
+  const asaasConfigured = !!tenant?.asaasAccountId;
+  const statusLabel: Record<string, string> = {
+    not_configured: '⚪ Não configurado',
+    pending: '🟡 Aguardando aprovação do Asaas',
+    active: '🟢 Ativo — Pagamentos online habilitados',
+    rejected: '🔴 Reprovado — Verifique os dados e tente novamente',
+  };
+  const statusColor: Record<string, string> = {
+    not_configured: 'var(--muted)',
+    pending: '#FBBF24',
+    active: 'var(--success)',
+    rejected: 'var(--error)',
+  };
+
+  const tabPagamentos = `
+    <div style="max-width:640px">
+      <!-- Status atual -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:8px">STATUS DA CONTA DE PAGAMENTOS</div>
+        <div style="font-size:15px;font-weight:600;color:${statusColor[asaasStatus] ?? 'var(--muted)'}">${statusLabel[asaasStatus] ?? asaasStatus}</div>
+        ${asaasConfigured ? `
+          <div style="margin-top:12px;font-size:12px;color:var(--muted)">
+            ID da subconta: <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px">${esc(tenant?.asaasAccountId ?? '')}</code>
+          </div>
+          ${asaasStatus === 'pending' ? `
+            <form method="POST" action="/admin/configuracoes/asaas/sync" style="margin-top:12px">
+              <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px">↻ Verificar status de aprovação</button>
+            </form>
+          ` : ''}
+        ` : ''}
+      </div>
+
+      ${asaasStatus === 'active' ? `
+        <div style="background:#4ADE8011;border:1px solid #4ADE8033;border-radius:12px;padding:16px 20px;margin-bottom:24px;font-size:13px;color:var(--foreground)">
+          ✅ Sua conta de pagamentos está ativa. Os clientes já podem pagar online via Pix ou cartão de crédito diretamente na página de agendamento.
+        </div>
+      ` : ''}
+
+      ${asaasStatus !== 'active' ? `
+        <!-- Formulário de configuração -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px">
+          <div style="font-size:14px;font-weight:700;color:var(--foreground);margin-bottom:4px">Configurar Pagamentos Online</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.5">
+            Preencha os dados abaixo para criar sua conta de recebimentos. O dinheiro dos seus clientes será depositado diretamente na sua conta bancária.
+            Você precisará de CPF ou CNPJ e um número de celular válido.
+          </div>
+
+          <form method="POST" action="/admin/configuracoes/asaas/setup" id="asaas-setup-form">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label">Nome completo / Razão social *</label>
+                <input class="form-input" type="text" name="name" value="${esc(settings?.shopName ?? '')}" required placeholder="Ex: João Silva ou Barbearia Silva Ltda" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">E-mail *</label>
+                <input class="form-input" type="email" name="email" required placeholder="contato@barbearia.com" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Celular *</label>
+                <input class="form-input" type="text" name="mobilePhone" required placeholder="(11) 99999-9999"
+                  value="${esc(tenant?.asaasMobilePhone ?? settings?.phone ?? '')}" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">CPF ou CNPJ *</label>
+                <input class="form-input" type="text" name="cpfCnpj" required placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                  value="${esc(tenant?.asaasCpfCnpj ?? tenant?.cnpj ?? '')}" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tipo de empresa</label>
+                <select class="form-input" name="companyType" id="companyTypeSelect">
+                  <option value="">Pessoa Física (CPF)</option>
+                  <option value="MEI" ${tenant?.asaasCompanyType === 'MEI' ? 'selected' : ''}>MEI</option>
+                  <option value="LIMITED" ${tenant?.asaasCompanyType === 'LIMITED' ? 'selected' : ''}>Ltda / S.A.</option>
+                  <option value="INDIVIDUAL" ${tenant?.asaasCompanyType === 'INDIVIDUAL' ? 'selected' : ''}>Empresário Individual</option>
+                  <option value="ASSOCIATION" ${tenant?.asaasCompanyType === 'ASSOCIATION' ? 'selected' : ''}>Associação / ONG</option>
+                </select>
+              </div>
+              <div class="form-group" id="birthDateGroup">
+                <label class="form-label">Data de nascimento <span style="color:var(--muted);font-size:11px">(obrigatório para PF)</span></label>
+                <input class="form-input" type="date" name="birthDate" value="${esc(tenant?.asaasBirthDate ?? '')}" />
+              </div>
+            </div>
+
+            <div style="border-top:1px solid var(--border);margin:20px 0"></div>
+            <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:12px">ENDEREÇO (OPCIONAL)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label">Endereço</label>
+                <input class="form-input" type="text" name="address" value="${esc(settings?.address ?? '')}" placeholder="Rua, Avenida..." />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Número</label>
+                <input class="form-input" type="text" name="addressNumber" value="${esc(settings?.addressNumber ?? '')}" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Bairro</label>
+                <input class="form-input" type="text" name="province" placeholder="Bairro" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">CEP</label>
+                <input class="form-input" type="text" name="postalCode" value="${esc(settings?.cep ?? '')}" placeholder="00000-000" />
+              </div>
+            </div>
+
+            <div style="background:#0A7EA411;border:1px solid #0A7EA433;border-radius:10px;padding:12px 16px;margin:16px 0;font-size:12px;color:var(--muted);line-height:1.6">
+              🔒 Seus dados são enviados diretamente ao Asaas (empresa regulamentada pelo Banco Central) e armazenados com segurança.
+              O Barber Pro não armazena dados bancários — apenas o ID da sua conta de recebimentos.
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="padding:12px 28px;width:100%" id="asaas-submit-btn">
+              Criar conta de recebimentos
+            </button>
+          </form>
+
+          <script>
+          const companyTypeSelect = document.getElementById('companyTypeSelect');
+          const birthDateGroup = document.getElementById('birthDateGroup');
+          function toggleBirthDate() {
+            birthDateGroup.style.display = companyTypeSelect.value ? 'none' : 'block';
+          }
+          companyTypeSelect.addEventListener('change', toggleBirthDate);
+          toggleBirthDate();
+
+          document.getElementById('asaas-setup-form').addEventListener('submit', function() {
+            const btn = document.getElementById('asaas-submit-btn');
+            btn.textContent = 'Criando conta...';
+            btn.disabled = true;
+          });
+          </script>
+        </div>
+      ` : ''}
+    </div>
+  `;
+
   const tabs = [
     { id: 'dados', label: 'Dados' },
     { id: 'horarios', label: 'Horários' },
     { id: 'equipe', label: 'Equipe' },
+    { id: 'pagamentos', label: '💳 Pagamentos' },
   ];
 
   const tabContent: Record<string, string> = {
     dados: tabDados,
     horarios: tabHorarios,
     equipe: tabEquipe,
+    pagamentos: tabPagamentos,
   };
 
   const body = `
     ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações salvas com sucesso!</div>` : ""}
+    ${configError ? `<div style="background:#F8717122;border:1px solid #F8717144;color:var(--error);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">⚠️ ${esc(configError)}</div>` : ""}
 
     <!-- Abas -->
     <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px">
@@ -5212,6 +5352,94 @@ export function registerAdminRoutes(app: Express): void {
     } catch (e: any) {
       const msg = encodeURIComponent(e.message ?? "Erro ao salvar");
       res.redirect(`/admin/configuracoes?tab=url&slugerror=${msg}`);
+    }
+  });
+
+  // ─── Rotas Asaas ────────────────────────────────────────────────────────────────────────
+  // POST /admin/configuracoes/asaas/setup — Criar subconta Asaas
+  app.post("/admin/configuracoes/asaas/setup", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      if (!barber?.tenantId) {
+        res.redirect("/admin/configuracoes?tab=pagamentos&error=Tenant+n%C3%A3o+encontrado"); return;
+      }
+      if (!asaasEnabled) {
+        res.redirect("/admin/configuracoes?tab=pagamentos&error=Pagamentos+online+n%C3%A3o+configurados+no+servidor"); return;
+      }
+      const { name, email, cpfCnpj, companyType, mobilePhone, birthDate, address, addressNumber, province, postalCode } = req.body ?? {};
+      if (!name || !email || !cpfCnpj || !mobilePhone) {
+        res.redirect("/admin/configuracoes?tab=pagamentos&error=Preencha+todos+os+campos+obrigat%C3%B3rios"); return;
+      }
+
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.redirect("/admin/configuracoes?tab=pagamentos&error=Banco+de+dados+indispon%C3%ADvel"); return; }
+
+      // Verificar se já tem subconta ativa
+      const tenantRows = await dbConn.execute(sql`SELECT "asaasAccountId", "asaasAccountStatus" FROM tenants WHERE id = ${barber.tenantId} LIMIT 1`);
+      const existingTenant = ((tenantRows as any).rows as any[])[0];
+      if (existingTenant?.asaasAccountId && existingTenant?.asaasAccountStatus === 'active') {
+        res.redirect("/admin/configuracoes?tab=pagamentos&saved=1"); return;
+      }
+
+      // Criar subconta no Asaas
+      const subAccount = await createAsaasSubAccount({
+        name: name.trim(),
+        email: email.trim(),
+        cpfCnpj: cpfCnpj.replace(/\D/g, ""),
+        companyType: companyType || undefined,
+        mobilePhone: mobilePhone.replace(/\D/g, ""),
+        birthDate: birthDate || undefined,
+        address: address || undefined,
+        addressNumber: addressNumber || undefined,
+        province: province || undefined,
+        postalCode: postalCode ? postalCode.replace(/\D/g, "") : undefined,
+      });
+
+      // Salvar credenciais no banco
+      await dbConn.execute(sql`
+        UPDATE tenants SET
+          "asaasAccountId" = ${subAccount.id},
+          "asaasApiKey" = ${subAccount.apiKey},
+          "asaasWalletId" = ${subAccount.walletId},
+          "asaasAccountStatus" = 'pending',
+          "asaasCpfCnpj" = ${cpfCnpj},
+          "asaasCompanyType" = ${companyType || null},
+          "asaasMobilePhone" = ${mobilePhone},
+          "asaasBirthDate" = ${birthDate || null},
+          "updatedAt" = NOW()
+        WHERE id = ${barber.tenantId}
+      `);
+
+      res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
+    } catch (e: any) {
+      const msg = encodeURIComponent(e?.response?.data?.errors?.[0]?.description ?? e.message ?? "Erro ao criar conta");
+      res.redirect(`/admin/configuracoes?tab=pagamentos&error=${msg}`);
+    }
+  });
+
+  // POST /admin/configuracoes/asaas/sync — Sincronizar status da subconta
+  app.post("/admin/configuracoes/asaas/sync", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      if (!barber?.tenantId) { res.redirect("/admin/configuracoes?tab=pagamentos"); return; }
+
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.redirect("/admin/configuracoes?tab=pagamentos"); return; }
+
+      const rows = await dbConn.execute(sql`SELECT "asaasAccountId" FROM tenants WHERE id = ${barber.tenantId} LIMIT 1`);
+      const tenant = ((rows as any).rows as any[])[0];
+      if (!tenant?.asaasAccountId) { res.redirect("/admin/configuracoes?tab=pagamentos"); return; }
+
+      const accountData = await getAsaasSubAccount(tenant.asaasAccountId);
+      const status = (accountData as any).commercialInfo?.status ?? "pending";
+      const normalizedStatus = status === "APPROVED" ? "active" : status === "REJECTED" ? "rejected" : "pending";
+
+      await dbConn.execute(sql`UPDATE tenants SET "asaasAccountStatus" = ${normalizedStatus}, "updatedAt" = NOW() WHERE id = ${barber.tenantId}`);
+      res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
+    } catch (e: any) {
+      res.redirect("/admin/configuracoes?tab=pagamentos");
     }
   });
 

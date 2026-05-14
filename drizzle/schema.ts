@@ -79,6 +79,15 @@ export const tenants = pgTable("tenants", {
   descricao: text("descricao"),
   fotoCapa: text("fotoCapa"),
   visivelMarketplace: boolean("visivelMarketplace").default(false).notNull(),
+  // Asaas subconta
+  asaasAccountId: varchar("asaasAccountId", { length: 100 }),
+  asaasApiKey: varchar("asaasApiKey", { length: 255 }),
+  asaasWalletId: varchar("asaasWalletId", { length: 100 }),
+  asaasAccountStatus: varchar("asaasAccountStatus", { length: 30 }).default("not_configured"),
+  asaasCpfCnpj: varchar("asaasCpfCnpj", { length: 20 }),
+  asaasCompanyType: varchar("asaasCompanyType", { length: 20 }),
+  asaasMobilePhone: varchar("asaasMobilePhone", { length: 20 }),
+  asaasBirthDate: varchar("asaasBirthDate", { length: 10 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

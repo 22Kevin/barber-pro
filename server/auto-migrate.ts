@@ -828,6 +828,16 @@ export async function runAutoMigrate(db: any): Promise<void> {
     { name: 'suppliers.cnpj',             sql: `ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS cnpj VARCHAR(20)` },
     { name: 'suppliers.address',          sql: `ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS address TEXT` },
     { name: 'suppliers.contact',          sql: `ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS contact VARCHAR(255)` },
+
+    // Asaas subconta
+    { name: 'tenants."asaasAccountId"',    sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "asaasAccountId" VARCHAR(100)` },
+    { name: 'tenants."asaasApiKey"',       sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "asaasApiKey" VARCHAR(255)` },
+    { name: 'tenants."asaasWalletId"',     sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "asaasWalletId" VARCHAR(100)` },
+    { name: 'tenants."asaasAccountStatus"', sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "asaasAccountStatus" VARCHAR(30) DEFAULT 'not_configured'` },
+    { name: 'tenants."asaasCpfCnpj"',      sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "asaasCpfCnpj" VARCHAR(20)` },
+    { name: 'tenants."asaasCompanyType"',   sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "asaasCompanyType" VARCHAR(20)` },
+    { name: 'tenants."asaasMobilePhone"',   sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "asaasMobilePhone" VARCHAR(20)` },
+    { name: 'tenants."asaasBirthDate"',     sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "asaasBirthDate" VARCHAR(10)` },
   ];
 
   let created = 0;

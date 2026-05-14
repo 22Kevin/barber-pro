@@ -246,3 +246,85 @@ export function asaasDefaultDueDate(): string {
   d.setDate(d.getDate() + 3);
   return asaasDate(d);
 }
+
+// ─── Subcontas ────────────────────────────────────────────────────────────────
+
+export type AsaasCompanyType = "MEI" | "LIMITED" | "INDIVIDUAL" | "ASSOCIATION";
+
+export interface AsaasSubAccountPayload {
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  birthDate?: string;        // YYYY-MM-DD (obrigatório para PF)
+  companyType?: AsaasCompanyType; // obrigatório para PJ
+  phone?: string;
+  mobilePhone?: string;
+  address?: string;
+  addressNumber?: string;
+  complement?: string;
+  province?: string;         // bairro
+  postalCode?: string;
+}
+
+export interface AsaasSubAccountResult {
+  id: string;          // accountId da subconta
+  apiKey: string;      // chave de API da subconta (salvar imediatamente — não pode ser recuperada depois)
+  walletId: string;    // usado para split de pagamentos
+  accountNumber?: {
+    agency: string;
+    account: string;
+    accountDigit: string;
+  };
+}
+
+/**
+ * Cria uma subconta Asaas vinculada à conta raiz.
+ * IMPORTANTE: O apiKey retornado deve ser salvo imediatamente — o Asaas não permite recuperá-lo depois.
+ */
+export async function createAsaasSubAccount(
+  payload: AsaasSubAccountPayload
+): Promise<AsaasSubAccountResult> {
+  const response = await asaasApi.post("/v3/accounts", payload);
+  const data = response.data;
+  return {
+    id: data.id,
+    apiKey: data.apiKey,
+    walletId: data.walletId,
+    accountNumber: data.accountNumber,
+  };
+}
+
+/**
+ * Busca os dados de uma subconta Asaas pelo ID.
+ */
+export async function getAsaasSubAccount(accountId: string): Promise<{
+  id: string;
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  commercialInfo?: { status: string };
+  walletId: string;
+}> {
+  const response = await asaasApi.get(`/v3/accounts/${accountId}`);
+  return response.data;
+}
+
+/**
+ * Cria uma instância do cliente Asaas usando a apiKey de uma subconta específica.
+ * Usado para criar cobranças em nome da subconta (barbearia).
+ */
+const ASAAS_BASE_URL_V3 = ASAAS_SANDBOX
+  ? "https://sandbox.asaas.com/api"
+  : "https://api.asaas.com";
+
+export function getAsaasSubAccountApi(subAccountApiKey: string) {
+  return axios.create({
+    baseURL: ASAAS_BASE_URL_V3,
+    headers: {
+      "access_token": subAccountApiKey,
+      "Content-Type": "application/json",
+      "User-Agent": "BarberPro/1.0",
+    },
+    timeout: 15000,
+  });
+}

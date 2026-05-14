@@ -2170,3 +2170,14 @@
 - [x] Atualizar app/admin/(tabs)/financial.tsx — renomear label Mercado Pago
 - [x] Atualizar components/payment-status-modal.tsx — renomear mercado_pago para asaas
 - [x] Remover dependência mercadopago do package.json
+
+## Fase 1 — Subcontas Asaas (14/05/2026)
+- [x] Adicionar campos asaasAccountId, asaasApiKey, asaasWalletId, asaasAccountStatus na tabela tenants
+- [x] Criar função createAsaasSubAccount no asaas.ts
+- [x] Criar rota tRPC tenant.setupPayments para criar subconta e salvar credenciais
+- [x] Criar seção "Pagamentos Online" na página de Configurações do admin (web)
+- [x] Formulário de onboarding: CPF/CNPJ, tipo empresa, telefone, dados bancários
+- [x] Exibir status da subconta Asaas (pendente/ativo/bloqueado) no painel
+- [x] Integrar criação automática de subconta ao salvar configurações de pagamento
+- [x] Usar asaasApiKey da subconta nas cobranças do tenant (createPix, createCard)
+- [x] Adicionar ALTER TABLE para novos campos no auto-migrate.ts

@@ -64,6 +64,13 @@
       "when": 1778704825319,
       "tag": "0008_whole_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778764609409,
+      "tag": "0009_yielding_skaar",
+      "breakpoints": true
     }
   ]
 }

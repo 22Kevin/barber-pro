@@ -21,6 +21,8 @@ import {
   getOrCreateAsaasCustomer,
   createAsaasCharge,
   asaasDefaultDueDate,
+  createAsaasSubAccount,
+  getAsaasSubAccount,
 } from "./asaas";
 import * as bcrypt from "bcryptjs";
 import { sql } from "drizzle-orm";
@@ -2310,6 +2312,118 @@ export const appRouter = router({
           pixCopyCola: p.pixCopyCola ?? null,
           status: p.status ?? "pending",
         };
+      }),
+
+    // ─── Configuração de Subconta Asaas ──────────────────────────────────────
+    getSubAccountStatus: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) return null;
+        const rows = await dbConn.execute(sql`
+          SELECT "asaasAccountId", "asaasWalletId", "asaasAccountStatus",
+                 "asaasCpfCnpj", "asaasCompanyType", "asaasMobilePhone", "asaasBirthDate"
+          FROM tenants WHERE id = ${input.tenantId} LIMIT 1
+        `);
+        const t = ((rows as any).rows as any[])[0];
+        if (!t) return null;
+        return {
+          accountId: t.asaasAccountId ?? null,
+          walletId: t.asaasWalletId ?? null,
+          status: t.asaasAccountStatus ?? "not_configured",
+          cpfCnpj: t.asaasCpfCnpj ?? null,
+          companyType: t.asaasCompanyType ?? null,
+          mobilePhone: t.asaasMobilePhone ?? null,
+          birthDate: t.asaasBirthDate ?? null,
+        };
+      }),
+
+    setupSubAccount: publicProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        name: z.string().min(2),
+        email: z.string().email(),
+        cpfCnpj: z.string().min(11).max(18),
+        companyType: z.enum(["MEI", "LIMITED", "INDIVIDUAL", "ASSOCIATION"]).optional(),
+        mobilePhone: z.string().min(10),
+        birthDate: z.string().optional(), // YYYY-MM-DD
+        address: z.string().optional(),
+        addressNumber: z.string().optional(),
+        province: z.string().optional(),
+        postalCode: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        if (!asaasEnabled) throw new Error("ASAAS_API_KEY não configurada no servidor.");
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new Error("DB unavailable");
+
+        // Verificar se já tem subconta configurada
+        const existing = await dbConn.execute(sql`
+          SELECT "asaasAccountId", "asaasAccountStatus" FROM tenants WHERE id = ${input.tenantId} LIMIT 1
+        `);
+        const existingTenant = ((existing as any).rows as any[])[0];
+        if (existingTenant?.asaasAccountId && existingTenant?.asaasAccountStatus === "active") {
+          return { ok: true, message: "Subconta já configurada e ativa.", alreadyExists: true };
+        }
+
+        // Criar subconta no Asaas
+        const subAccount = await createAsaasSubAccount({
+          name: input.name,
+          email: input.email,
+          cpfCnpj: input.cpfCnpj.replace(/\D/g, ""),
+          companyType: input.companyType,
+          mobilePhone: input.mobilePhone.replace(/\D/g, ""),
+          birthDate: input.birthDate,
+          address: input.address,
+          addressNumber: input.addressNumber,
+          province: input.province,
+          postalCode: input.postalCode?.replace(/\D/g, ""),
+        });
+
+        // Salvar credenciais no banco
+        await dbConn.execute(sql`
+          UPDATE tenants SET
+            "asaasAccountId" = ${subAccount.id},
+            "asaasApiKey" = ${subAccount.apiKey},
+            "asaasWalletId" = ${subAccount.walletId},
+            "asaasAccountStatus" = 'pending',
+            "asaasCpfCnpj" = ${input.cpfCnpj},
+            "asaasCompanyType" = ${input.companyType ?? null},
+            "asaasMobilePhone" = ${input.mobilePhone},
+            "asaasBirthDate" = ${input.birthDate ?? null},
+            "updatedAt" = NOW()
+          WHERE id = ${input.tenantId}
+        `);
+
+        return {
+          ok: true,
+          accountId: subAccount.id,
+          walletId: subAccount.walletId,
+          message: "Subconta criada com sucesso. Aguardando aprovação do Asaas.",
+          alreadyExists: false,
+        };
+      }),
+
+    syncSubAccountStatus: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .mutation(async ({ input }) => {
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new Error("DB unavailable");
+        const rows = await dbConn.execute(sql`
+          SELECT "asaasAccountId" FROM tenants WHERE id = ${input.tenantId} LIMIT 1
+        `);
+        const tenant = ((rows as any).rows as any[])[0];
+        if (!tenant?.asaasAccountId) throw new Error("Subconta não configurada.");
+
+        const accountData = await getAsaasSubAccount(tenant.asaasAccountId);
+        const status = accountData.commercialInfo?.status ?? "pending";
+        const normalizedStatus = status === "APPROVED" ? "active" : status === "REJECTED" ? "rejected" : "pending";
+
+        await dbConn.execute(sql`
+          UPDATE tenants SET "asaasAccountStatus" = ${normalizedStatus}, "updatedAt" = NOW()
+          WHERE id = ${input.tenantId}
+        `);
+        return { status: normalizedStatus };
       }),
   }),
   suppliers: router({
