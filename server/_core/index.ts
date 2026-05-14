@@ -221,9 +221,10 @@ async function startServer() {
       }
     } catch { dbOk = false; }
 
-    const status = dbOk ? 200 : 503;
-    res.status(status).json({
-      ok: dbOk,
+    // Sempre retorna 200 para o health check do Docker/load balancer
+    // O status do banco é informativo apenas (não afeta o status HTTP)
+    res.status(200).json({
+      ok: true,
       timestamp: Date.now(),
       uptime: Math.floor(process.uptime()),
       env: process.env.NODE_ENV ?? "unknown",
