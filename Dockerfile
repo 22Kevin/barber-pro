@@ -3,17 +3,16 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Create pnpm store directory (required by .npmrc store-dir=/pnpm/store)
-RUN mkdir -p /pnpm/store
+# Enable corepack and install pnpm
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
-# Install pnpm
-RUN npm install -g pnpm@9.12.0
-
-# Copy package files (including .npmrc so pnpm uses /pnpm/store)
+# Copy package files
 COPY package.json pnpm-lock.yaml* .npmrc ./
 
 # Install ALL dependencies (including devDependencies for build)
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    corepack pnpm config set store-dir /pnpm/store -g && \
+    CI=true corepack pnpm install --prefer-offline --prod=false --shamefully-hoist
 
 # Copy source files needed for build
 COPY server/ ./server/
@@ -31,17 +30,16 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
-# Create pnpm store directory (required by .npmrc store-dir=/pnpm/store)
-RUN mkdir -p /pnpm/store
+# Enable corepack and install pnpm
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
-# Install pnpm
-RUN npm install -g pnpm@9.12.0
-
-# Copy package files (including .npmrc so pnpm uses /pnpm/store)
+# Copy package files
 COPY package.json pnpm-lock.yaml* .npmrc ./
 
 # Install only production dependencies
-RUN pnpm install --frozen-lockfile --prod
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    corepack pnpm config set store-dir /pnpm/store -g && \
+    CI=true corepack pnpm install --prefer-offline --prod --shamefully-hoist
 
 # Copy built server
 COPY --from=builder /app/dist ./dist
