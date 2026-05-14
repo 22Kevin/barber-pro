@@ -2211,3 +2211,8 @@
 - [x] Tabela de pagamentos online com status (pendente/confirmado/cancelado) e ações
 - [x] Botão "Verificar Status" para sincronizar status de pagamento com o Asaas
 - [x] Totalizadores: receita online confirmada, pendente e cancelada no período
+
+## Fase 6 — Exportação CSV de Pagamentos Online (14/05/2026)
+- [x] Endpoint GET /admin/export/pagamentos-online.csv com filtro por período (start/end)
+- [x] Botão "↓ Exportar CSV" na seção de Pagamentos Online dos Relatórios
+- [x] CSV com colunas: ID, Cliente, Telefone, Método, Valor, Status, ID Asaas, Data Criação, Data Pagamento, Link Fatura

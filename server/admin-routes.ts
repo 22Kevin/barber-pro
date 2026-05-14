@@ -4283,11 +4283,14 @@ async function renderRelatorios(req: Request, res: Response) {
       </div>
     </div>
     <!-- Tabela de pagamentos -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div style="font-size:13px;font-weight:700;color:var(--muted)">ÚLTIMOS ${Math.min(onlinePaymentsList.length, 50)} PAGAMENTOS</div>
-      <button id="btn-verify-all" onclick="verifyAllPending()" style="padding:6px 14px;font-size:12px;font-weight:600;border-radius:8px;border:1px solid #C9A84C44;background:transparent;color:#C9A84C;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#C9A84C22'" onmouseout="this.style.background='transparent'">
-        ↻ Verificar Pendentes
-      </button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <a href="/admin/export/pagamentos-online.csv?start=${startStr}&end=${endStr}" class="btn btn-ghost" style="font-size:12px;padding:6px 14px;white-space:nowrap;text-decoration:none">↓ Exportar CSV</a>
+        <button id="btn-verify-all" onclick="verifyAllPending()" style="padding:6px 14px;font-size:12px;font-weight:600;border-radius:8px;border:1px solid #C9A84C44;background:transparent;color:#C9A84C;cursor:pointer;transition:all .2s" onmouseover="this.style.background='#C9A84C22'" onmouseout="this.style.background='transparent'">
+          ↻ Verificar Pendentes
+        </button>
+      </div>
     </div>
     <div style="overflow-x:auto">
       <table id="online-payments-table">
