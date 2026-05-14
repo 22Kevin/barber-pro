@@ -1,0 +1,27 @@
+{
+  "query": "SELECT id, name FROM tenants LIMIT 3; SELECT id, name, phone FROM clients LIMIT 3;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT id, name FROM tenants LIMIT 3; SELECT id, name, phone FROM clients LIMIT 3;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Teste Barbearia"
+    },
+    {
+      "id": "2",
+      "name": "Barbearia Nivea"
+    },
+    {
+      "id": "30001",
+      "name": "Barbearia Kevin"
+    }
+  ],
+  "messages": [
+    "id\tname\tphone",
+    "1\tTeste Cliente\t11999999999",
+    "2\tRafael\t169922883642",
+    "30001\tKevin Rayan\t"
+  ],
+  "stdout": "id\tname\n1\tTeste Barbearia\n2\tBarbearia Nivea\n30001\tBarbearia Kevin\nid\tname\tphone\n1\tTeste Cliente\t11999999999\n2\tRafael\t169922883642\n30001\tKevin Rayan\t\n",
+  "stderr": "",
+  "execution_time_ms": 285
+}

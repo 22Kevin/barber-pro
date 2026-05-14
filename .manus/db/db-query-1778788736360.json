@@ -1,0 +1,15 @@
+{
+  "query": "INSERT INTO online_payments (tenantId, clientId, chargeType, referenceId, asaasPaymentId, asaasCustomerId, billingType, amount, status, invoiceUrl, dueDate) VALUES (1, 1, 'appointment', NULL, 'pay_test_webhook_001', 'cus_test_001', 'PIX', 50.00, 'pending', 'https://sandbox.asaas.com/i/pay_test_webhook_001', CURDATE()); SELECT id, asaasPaymentId, status FROM online_payments WHERE asaasPaymentId = 'pay_test_webhook_001';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute INSERT INTO online_payments (tenantId, clientId, chargeType, referenceId, asaasPaymentId, asaasCustomerId, billingType, amount, status, invoiceUrl, dueDate) VALUES (1, 1, 'appointment', NULL, 'pay_test_webhook_001', 'cus_test_001', 'PIX', 50.00, 'pending', 'https://sandbox.asaas.com/i/pay_test_webhook_001', CURDATE()); SELECT id, asaasPaymentId, status FROM online_payments WHERE asaasPaymentId = 'pay_test_webhook_001';",
+  "rows": [
+    {
+      "id": "1",
+      "asaasPaymentId": "pay_test_webhook_001",
+      "status": "pending"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tasaasPaymentId\tstatus\n1\tpay_test_webhook_001\tpending\n",
+  "stderr": "",
+  "execution_time_ms": 419
+}

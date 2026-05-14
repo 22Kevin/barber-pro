@@ -451,19 +451,19 @@ async function startServer() {
           OVERDUE: "overdue", REFUNDED: "refunded", CANCELLED: "cancelled",
         };
         const internalStatus = statusMap[parsed.status] ?? "pending";
-        const paidClause = internalStatus === "paid" ? ", paidAt = NOW()" : "";
+        const paidClause = internalStatus === "paid" ? `, "paidAt" = NOW()` : "";
         await (dbConn as any).execute(
-          `UPDATE online_payments SET status = '${internalStatus}', updatedAt = NOW()${paidClause} WHERE asaasPaymentId = '${parsed.asaasId}' OR asaasSubscriptionId = '${parsed.asaasId}'`
+          `UPDATE online_payments SET status = '${internalStatus}', "updatedAt" = NOW()${paidClause} WHERE "asaasPaymentId" = '${parsed.asaasId}' OR "asaasSubscriptionId" = '${parsed.asaasId}'`
         );
         // Se pago, confirmar agendamento vinculado e notificar cliente via WhatsApp
         if (internalStatus === "paid") {
           try {
             const pmtRows = await (dbConn as any).execute(
-              `SELECT op.referenceId, op.chargeType, op.clientId, op.tenantId, op.billingType,
-                      c.name AS clientName, c.phone AS clientPhone
+              `SELECT op."referenceId", op."chargeType", op."clientId", op."tenantId", op."billingType",
+                      c.name AS "clientName", c.phone AS "clientPhone"
                FROM online_payments op
-               LEFT JOIN clients c ON c.id = op.clientId
-               WHERE op.asaasPaymentId = '${parsed.asaasId}' LIMIT 1`
+               LEFT JOIN clients c ON c.id = op."clientId"
+               WHERE op."asaasPaymentId" = '${parsed.asaasId}' LIMIT 1`
             );
             const pmtArr = Array.isArray(pmtRows) ? pmtRows[0] : pmtRows?.rows ?? [];
             const pmt = pmtArr?.[0];

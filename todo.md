@@ -2223,3 +2223,7 @@
 - [x] Atualização de status do agendamento para "confirmed" ao confirmar pagamento
 - [x] Notificação WhatsApp ao cliente com detalhes do agendamento confirmado
 - [x] Atualização automática de assinatura Barber Pro (active/overdue/cancelled)
+
+## Correção Webhook — Queries PostgreSQL (14/05/2026)
+- [x] Corrigir queries SQL do webhook para usar aspas duplas nos nomes camelCase (PostgreSQL): "asaasPaymentId", "asaasSubscriptionId", "updatedAt", "paidAt", "referenceId", "chargeType", "clientId", "tenantId", "billingType"
+- [x] Verificar ASAAS_WEBHOOK_TOKEN nas secrets de produção (ausente — token não está sendo validado em produção)
