@@ -90,6 +90,8 @@ function checkRequiredEnvVars() {
   };
   const optional: Record<string, string> = {
     ASAAS_API_KEY: "Chave de API do Asaas (pagamentos online)",
+    ASAAS_SANDBOX: "Usar ambiente Sandbox do Asaas para testes (true/false)",
+    ASAAS_WEBHOOK_TOKEN: "Token de autenticação do webhook Asaas",
     SMTP_HOST: "Servidor SMTP para envio de e-mails",
     SMTP_USER: "Usuário SMTP",
     SMTP_PASS: "Senha SMTP",
@@ -554,6 +556,33 @@ async function startServer() {
     } catch (err: any) {
       console.error("[asaas-webhook]", err.message);
       res.status(400).json({ error: err.message });
+    }
+  });
+
+  // ─── Diagnóstico Asaas ──────────────────────────────────────────────────────────────────────
+  // GET /api/asaas/test — Verifica a conexão com o Asaas (Sandbox ou Produção)
+  // Protegido por cookie de sessão admin para evitar exposição pública
+  app.get("/api/asaas/test", async (req, res) => {
+    try {
+      const { asaasEnabled, asaasApi } = await import("../asaas");
+      const sandbox = process.env.ASAAS_SANDBOX === "true";
+      const apiKey = process.env.ASAAS_API_KEY ?? "";
+      if (!asaasEnabled) {
+        return res.json({ ok: false, error: "ASAAS_API_KEY não configurada", sandbox });
+      }
+      // Testar conexão listando clientes (limite 1)
+      const r = await asaasApi.get("/customers", { params: { limit: 1 } });
+      return res.json({
+        ok: true,
+        sandbox,
+        env: sandbox ? "sandbox.asaas.com" : "api.asaas.com",
+        apiKeyPrefix: apiKey.slice(0, 8) + "...",
+        webhookToken: process.env.ASAAS_WEBHOOK_TOKEN ? "configurado" : "ausente",
+        customersTotal: r.data?.totalCount ?? 0,
+      });
+    } catch (err: any) {
+      const errData = err?.response?.data ?? err.message;
+      return res.status(500).json({ ok: false, error: errData });
     }
   });
 

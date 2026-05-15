@@ -2240,3 +2240,12 @@
 ## Correção Visual Agenda (15/05/2026)
 - [x] Corrigir variáveis CSS inválidas na página Agenda: --primary → --gold, --foreground → --text, --background → --bg (183 substituições)
 - [x] Botão "Novo Agendamento" e outros botões da Agenda agora visíveis com cor dourada correta
+
+## Correção Asaas Sandbox (15/05/2026)
+- [x] Corrigir URLs duplicadas na asaas.ts (getOrCreateAsaasCustomer usa /v3/customers mas baseURL já inclui /v3)
+- [x] Corrigir createAsaasCharge que usa /v3/payments mas baseURL já inclui /v3
+- [x] Corrigir getAsaasSubAccount que usa /v3/accounts mas baseURL já inclui /v3
+- [x] Corrigir createAsaasSubAccount que usa /v3/accounts mas baseURL já inclui /v3
+- [x] Corrigir pub-api/asaas-payment-status que usa URL hardcoded de produção mesmo no Sandbox
+- [ ] Corrigir routers.ts linha 2135 INSERT sem aspas duplas nas colunas (PostgreSQL)
+- [x] Verificar ASAAS_SANDBOX=true configurado nas secrets de produção

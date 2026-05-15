@@ -16,7 +16,7 @@ import * as db from "./db";
 import { sql } from "drizzle-orm";
 import { sendBookingConfirmationEmail, sendBarberNotificationEmail, sendPasswordResetEmail } from "./email";
 import bcrypt from "bcryptjs";
-import { asaasEnabled, getOrCreateAsaasCustomer, createAsaasCharge, createAsaasSubscription, asaasDefaultDueDate } from "./asaas";
+import { asaasEnabled, getOrCreateAsaasCustomer, createAsaasCharge, createAsaasSubscription, asaasDefaultDueDate, getAsaasPaymentStatus } from "./asaas";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function escapeHtml(str: string | null | undefined): string {
@@ -4830,10 +4830,8 @@ export function registerPublicRoutes(app: Express): void {
     try {
       const { paymentId } = req.params;
       if (!asaasEnabled) { res.status(503).json({ error: "Asaas não configurado" }); return; }
-      const { default: axios } = await import("axios");
-      const r = await axios.get(`https://api.asaas.com/v3/payments/${paymentId}`,
-        { headers: { "access_token": process.env.ASAAS_API_KEY ?? "" } });
-      const status = r.data?.status;
+      const paymentData = await getAsaasPaymentStatus(paymentId);
+      const status = paymentData.status;
       const paid = status === "RECEIVED" || status === "CONFIRMED";
       // Se pago, atualizar banco
       if (paid) {

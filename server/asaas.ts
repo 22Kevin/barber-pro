@@ -21,9 +21,16 @@ import axios from "axios";
 
 const ASAAS_API_KEY = process.env.ASAAS_API_KEY ?? "";
 const ASAAS_SANDBOX = process.env.ASAAS_SANDBOX === "true";
+
+// URL base sem /v3 para que cada endpoint possa usar o caminho completo correto
 const ASAAS_BASE_URL = ASAAS_SANDBOX
   ? "https://sandbox.asaas.com/api/v3"
   : "https://api.asaas.com/v3";
+
+// URL raiz (sem /v3) para endpoints de contas e subcontas
+const ASAAS_ROOT_URL = ASAAS_SANDBOX
+  ? "https://sandbox.asaas.com/api"
+  : "https://api.asaas.com";
 
 export const asaasEnabled = !!ASAAS_API_KEY;
 
@@ -32,6 +39,18 @@ export const asaasApi = axios.create({
   headers: {
     "access_token": ASAAS_API_KEY,
     "Content-Type": "application/json",
+    "User-Agent": "BarberPro/1.0",
+  },
+  timeout: 15000,
+});
+
+// API raiz para endpoints de contas/subcontas (usa /api sem /v3)
+const asaasRootApi = axios.create({
+  baseURL: ASAAS_ROOT_URL,
+  headers: {
+    "access_token": ASAAS_API_KEY,
+    "Content-Type": "application/json",
+    "User-Agent": "BarberPro/1.0",
   },
   timeout: 15000,
 });
@@ -118,12 +137,12 @@ export async function getOrCreateAsaasCustomer(
   // Buscar por externalReference para evitar duplicata
   if (payload.externalReference) {
     try {
-      const search = await api.get(`/v3/customers?externalReference=${payload.externalReference}`);
+      const search = await api.get(`/customers?externalReference=${payload.externalReference}`);
       const existing = search.data?.data?.[0];
       if (existing?.id) return existing.id;
     } catch {}
   }
-  const res = await api.post("/v3/customers", payload);
+  const res = await api.post("/customers", payload);
   return res.data.id as string;
 }
 
@@ -140,14 +159,14 @@ export async function createAsaasCharge(
 ): Promise<AsaasPaymentResult> {
   if (!asaasEnabled) throw new Error("Asaas não configurado. Adicione ASAAS_API_KEY.");
   const api = subAccountApiKey ? getAsaasSubAccountApi(subAccountApiKey) : asaasApi;
-  const res = await api.post("/v3/payments", payload);
+  const res = await api.post("/payments", payload);
   const data = res.data;
   // Para Pix, buscar QR Code
   let pixQrCode: string | undefined;
   let pixCopyCola: string | undefined;
   if (payload.billingType === "PIX" && data.id) {
     try {
-      const pixRes = await api.get(`/v3/payments/${data.id}/pixQrCode`);
+      const pixRes = await api.get(`/payments/${data.id}/pixQrCode`);
       pixQrCode = pixRes.data?.encodedImage;
       pixCopyCola = pixRes.data?.payload;
     } catch {}
@@ -290,11 +309,12 @@ export interface AsaasSubAccountResult {
 /**
  * Cria uma subconta Asaas vinculada à conta raiz.
  * IMPORTANTE: O apiKey retornado deve ser salvo imediatamente — o Asaas não permite recuperá-lo depois.
+ * Usa o endpoint /v3/accounts da API raiz (não /api/v3).
  */
 export async function createAsaasSubAccount(
   payload: AsaasSubAccountPayload
 ): Promise<AsaasSubAccountResult> {
-  const response = await asaasApi.post("/v3/accounts", payload);
+  const response = await asaasRootApi.post("/v3/accounts", payload);
   const data = response.data;
   return {
     id: data.id,
@@ -315,7 +335,7 @@ export async function getAsaasSubAccount(accountId: string): Promise<{
   commercialInfo?: { status: string };
   walletId: string;
 }> {
-  const response = await asaasApi.get(`/v3/accounts/${accountId}`);
+  const response = await asaasRootApi.get(`/v3/accounts/${accountId}`);
   return response.data;
 }
 
@@ -323,13 +343,9 @@ export async function getAsaasSubAccount(accountId: string): Promise<{
  * Cria uma instância do cliente Asaas usando a apiKey de uma subconta específica.
  * Usado para criar cobranças em nome da subconta (barbearia).
  */
-const ASAAS_BASE_URL_V3 = ASAAS_SANDBOX
-  ? "https://sandbox.asaas.com/api"
-  : "https://api.asaas.com";
-
 export function getAsaasSubAccountApi(subAccountApiKey: string) {
   return axios.create({
-    baseURL: ASAAS_BASE_URL_V3,
+    baseURL: ASAAS_BASE_URL,
     headers: {
       "access_token": subAccountApiKey,
       "Content-Type": "application/json",
@@ -401,5 +417,27 @@ export async function getAsaasSubscriptionStatus(subscriptionId: string): Promis
     status: res.data.status,
     nextDueDate: res.data.nextDueDate,
     value: res.data.value,
+  };
+}
+
+/**
+ * Verifica o status de um pagamento diretamente na API do Asaas.
+ * Usa a URL correta baseada no ambiente (sandbox ou produção).
+ */
+export async function getAsaasPaymentStatus(paymentId: string): Promise<{
+  id: string;
+  status: string;
+  value: number;
+  dueDate: string;
+  paymentDate?: string;
+}> {
+  if (!asaasEnabled) throw new Error("Asaas não configurado.");
+  const res = await asaasApi.get(`/payments/${paymentId}`);
+  return {
+    id: res.data.id,
+    status: res.data.status,
+    value: res.data.value,
+    dueDate: res.data.dueDate,
+    paymentDate: res.data.paymentDate,
   };
 }
