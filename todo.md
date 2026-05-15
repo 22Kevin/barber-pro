@@ -2233,3 +2233,6 @@
 - [x] Restaurar dist/ no .gitignore (foi removido por engano)
 - [x] Remover dist/index.js do tracking do git
 - [x] Redesign da página de Agenda do painel web: calendário maior, visual moderno, cards aprimorados
+
+## Correção Crítica Deploy Railway (15/05/2026)
+- [x] Corrigir Dockerfile: remover --mount=type=cache incompatível com Railway Metal builder (causa raiz de todas as falhas de build)

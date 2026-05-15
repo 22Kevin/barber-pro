@@ -10,9 +10,7 @@ RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 COPY package.json pnpm-lock.yaml* .npmrc ./
 
 # Install ALL dependencies (including devDependencies for build)
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    corepack pnpm config set store-dir /pnpm/store -g && \
-    CI=true corepack pnpm install --prefer-offline --prod=false --shamefully-hoist
+RUN CI=true corepack pnpm install --prefer-offline --prod=false --shamefully-hoist
 
 # Copy source files needed for build
 COPY server/ ./server/
@@ -37,9 +35,7 @@ RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 COPY package.json pnpm-lock.yaml* .npmrc ./
 
 # Install only production dependencies
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    corepack pnpm config set store-dir /pnpm/store -g && \
-    CI=true corepack pnpm install --prefer-offline --prod --shamefully-hoist
+RUN CI=true corepack pnpm install --prefer-offline --prod --shamefully-hoist
 
 # Copy built server
 COPY --from=builder /app/dist ./dist
