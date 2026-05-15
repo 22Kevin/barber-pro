@@ -2132,7 +2132,7 @@ export const appRouter = router({
         const dbConn = await db.getDb();
         if (dbConn) {
           await dbConn.execute(sql`
-            INSERT INTO online_payments (tenantId, clientId, chargeType, referenceId, asaasPaymentId, asaasCustomerId, billingType, amount, status, invoiceUrl, pixQrCode, pixCopyCola, dueDate)
+            INSERT INTO online_payments ("tenantId", "clientId", "chargeType", "referenceId", "asaasPaymentId", "asaasCustomerId", "billingType", amount, status, "invoiceUrl", "pixQrCode", "pixCopyCola", "dueDate")
             VALUES (${input.tenantId}, ${input.clientId}, 'appointment', ${input.appointmentId ?? null}, ${charge.id}, ${asaasCustomerId}, 'PIX', ${input.amount}, 'pending', ${charge.invoiceUrl ?? null}, ${charge.pixQrCode ?? null}, ${charge.pixCopyCola ?? null}, ${charge.dueDate})
           `);
         }
@@ -2209,7 +2209,7 @@ export const appRouter = router({
         const dbConn = await db.getDb();
         if (dbConn) {
           await dbConn.execute(sql`
-            INSERT INTO online_payments (tenantId, clientId, chargeType, referenceId, asaasPaymentId, asaasCustomerId, billingType, amount, status, invoiceUrl, dueDate)
+            INSERT INTO online_payments ("tenantId", "clientId", "chargeType", "referenceId", "asaasPaymentId", "asaasCustomerId", "billingType", amount, status, "invoiceUrl", "dueDate")
             VALUES (${input.tenantId}, ${input.clientId}, 'appointment', ${input.appointmentId ?? null}, ${charge.id}, ${asaasCustomerId}, 'CREDIT_CARD', ${input.amount}, ${charge.status ?? 'pending'}, ${charge.invoiceUrl ?? null}, ${charge.dueDate})
           `);
         }
@@ -2239,27 +2239,27 @@ export const appRouter = router({
         const { tenantId, startDate, endDate, status } = input;
         const rows = status && status !== "all"
           ? await dbConn.execute(sql`
-              SELECT op.id, op.billingType, op.amount, op.status, op.dueDate, op.createdAt, op.paidAt,
-                     op.invoiceUrl, op.chargeType, op.referenceId, op.asaasPaymentId,
-                     c.name AS clientName, c.phone AS clientPhone
+              SELECT op.id, op."billingType", op.amount, op.status, op."dueDate", op."createdAt", op."paidAt",
+                     op."invoiceUrl", op."chargeType", op."referenceId", op."asaasPaymentId",
+                     c.name AS "clientName", c.phone AS "clientPhone"
               FROM online_payments op
-              LEFT JOIN clients c ON c.id = op.clientId
-              WHERE op.tenantId = ${tenantId}
-                AND (${startDate ?? null} IS NULL OR DATE(op.createdAt) >= ${startDate ?? null})
-                AND (${endDate ?? null} IS NULL OR DATE(op.createdAt) <= ${endDate ?? null})
+              LEFT JOIN clients c ON c.id = op."clientId"
+              WHERE op."tenantId" = ${tenantId}
+                AND (${startDate ?? null} IS NULL OR DATE(op."createdAt") >= ${startDate ?? null})
+                AND (${endDate ?? null} IS NULL OR DATE(op."createdAt") <= ${endDate ?? null})
                 AND op.status = ${status}
-              ORDER BY op.createdAt DESC LIMIT 200
+              ORDER BY op."createdAt" DESC LIMIT 200
             `)
           : await dbConn.execute(sql`
-              SELECT op.id, op.billingType, op.amount, op.status, op.dueDate, op.createdAt, op.paidAt,
-                     op.invoiceUrl, op.chargeType, op.referenceId, op.asaasPaymentId,
-                     c.name AS clientName, c.phone AS clientPhone
+              SELECT op.id, op."billingType", op.amount, op.status, op."dueDate", op."createdAt", op."paidAt",
+                     op."invoiceUrl", op."chargeType", op."referenceId", op."asaasPaymentId",
+                     c.name AS "clientName", c.phone AS "clientPhone"
               FROM online_payments op
-              LEFT JOIN clients c ON c.id = op.clientId
-              WHERE op.tenantId = ${tenantId}
-                AND (${startDate ?? null} IS NULL OR DATE(op.createdAt) >= ${startDate ?? null})
-                AND (${endDate ?? null} IS NULL OR DATE(op.createdAt) <= ${endDate ?? null})
-              ORDER BY op.createdAt DESC LIMIT 200
+              LEFT JOIN clients c ON c.id = op."clientId"
+              WHERE op."tenantId" = ${tenantId}
+                AND (${startDate ?? null} IS NULL OR DATE(op."createdAt") >= ${startDate ?? null})
+                AND (${endDate ?? null} IS NULL OR DATE(op."createdAt") <= ${endDate ?? null})
+              ORDER BY op."createdAt" DESC LIMIT 200
             `);
         return ((rows as any).rows as any[]).map((p: any) => ({
           id: p.id,
@@ -2281,14 +2281,14 @@ export const appRouter = router({
         const dbConn = await db.getDb();
         if (!dbConn) return [];
         const rows = await dbConn.execute(sql`
-          SELECT op.id, op.billingType, op.amount, op.status, op.dueDate, op.createdAt,
-                 op.invoiceUrl, op.asaasPaymentId,
-                 c.name AS clientName, c.phone AS clientPhone
+          SELECT op.id, op."billingType", op.amount, op.status, op."dueDate", op."createdAt",
+                 op."invoiceUrl", op."asaasPaymentId",
+                 c.name AS "clientName", c.phone AS "clientPhone"
           FROM online_payments op
-          LEFT JOIN clients c ON c.id = op.clientId
-          WHERE op.tenantId = ${input.tenantId}
+          LEFT JOIN clients c ON c.id = op."clientId"
+          WHERE op."tenantId" = ${input.tenantId}
             AND op.status = 'overdue'
-          ORDER BY op.dueDate ASC LIMIT 100
+          ORDER BY op."dueDate" ASC LIMIT 100
         `);
         return ((rows as any).rows as any[]).map((p: any) => ({
           id: p.id,
@@ -2311,7 +2311,7 @@ export const appRouter = router({
         }
         const dbConn = await db.getDb();
         if (!dbConn) throw new Error("DB unavailable");
-        await dbConn.execute(sql`UPDATE online_payments SET status = 'cancelled', updatedAt = NOW() WHERE asaasPaymentId = ${input.asaasPaymentId} AND tenantId = ${input.tenantId}`);
+        await dbConn.execute(sql`UPDATE online_payments SET status = 'cancelled', "updatedAt" = NOW() WHERE "asaasPaymentId" = ${input.asaasPaymentId} AND "tenantId" = ${input.tenantId}`);
         return { ok: true };
       }),
     getPaymentLink: publicProcedure
@@ -2320,10 +2320,10 @@ export const appRouter = router({
         const dbConn = await db.getDb();
         if (!dbConn) return null;
         const rows = await dbConn.execute(sql`
-          SELECT invoiceUrl, pixCopyCola, status
+          SELECT "invoiceUrl", "pixCopyCola", status
           FROM online_payments
-          WHERE referenceId = ${String(input.appointmentId)} AND tenantId = ${input.tenantId}
-          ORDER BY createdAt DESC LIMIT 1
+          WHERE "referenceId" = ${String(input.appointmentId)} AND "tenantId" = ${input.tenantId}
+          ORDER BY "createdAt" DESC LIMIT 1
         `);
         const p = ((rows as any).rows as any[])[0];
         if (!p) return null;
