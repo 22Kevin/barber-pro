@@ -5,7 +5,7 @@ node_modules
 # Build output — gerado durante o build
 dist
 
-# Arquivos de desenvolvimento
+# Arquivos de desenvolvimento Expo/React Native
 .expo
 .expo-shared
 android
@@ -33,18 +33,22 @@ Thumbs.db
 
 # Git
 .git
-.gitignore
 
 # Testes e cobertura
 coverage
 __tests__
 
-# Scripts de desenvolvimento
-scripts
-
-# Documentação local
-*.md
-!README.md
-
-# Imagens e assets pesados (não necessários para o servidor)
+# Imagens e assets do app mobile (não necessários para o servidor)
 assets
+
+# Arquivos de app mobile
+app
+components
+constants
+hooks
+lib
+global.css
+tailwind.config.js
+theme.config.js
+theme.config.d.ts
+expo-env.d.ts
