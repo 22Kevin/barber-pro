@@ -94,12 +94,12 @@ function withErrorPage(
       const errorBody = `
         <div style="padding:60px 24px;text-align:center;max-width:480px;margin:0 auto">
           <div style="font-size:48px;margin-bottom:16px">⚠️</div>
-          <h2 style="color:var(--foreground);margin-bottom:8px;font-size:20px">Erro ao carregar página</h2>
+          <h2 style="color:var(--text);margin-bottom:8px;font-size:20px">Erro ao carregar página</h2>
           <p style="color:var(--muted);margin-bottom:24px;font-size:14px;line-height:1.6">
             Ocorreu um problema de conexão com o banco de dados.<br>
             Aguarde alguns segundos e tente novamente.
           </p>
-          <a href="${retryUrl}" class="btn btn-primary" style="display:inline-block;padding:12px 28px;background:var(--primary);color:#0C0C0C;border-radius:10px;font-weight:700;text-decoration:none;font-size:14px">Tentar novamente</a>
+          <a href="${retryUrl}" class="btn btn-primary" style="display:inline-block;padding:12px 28px;background:var(--gold);color:#0C0C0C;border-radius:10px;font-weight:700;text-decoration:none;font-size:14px">Tentar novamente</a>
         </div>
       `;
       res.status(503).send(adminLayout(pageName, activeMenu, errorBody, barberName, tenantPlan));
@@ -583,7 +583,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       <div class="topbar-right">
         <div class="topbar-date">${new Date().toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</div>
         ${badge ? `<div style="display:inline-flex;align-items:center;gap:5px;background:${badge.bg};border:1px solid ${badge.color}33;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:${badge.color};letter-spacing:0.5px">${badge.label}</div>` : ""}
-        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro" style="background:var(--surface);border:1px solid var(--border);cursor:pointer;color:var(--foreground);padding:7px 10px;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.2s;min-width:36px;min-height:36px;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--foreground)'">
+        <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro" style="background:var(--surface);border:1px solid var(--border);cursor:pointer;color:var(--text);padding:7px 10px;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.2s;min-width:36px;min-height:36px;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">
           <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;flex-shrink:0"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           <svg id="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:block;flex-shrink:0"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           <span id="theme-label" style="font-size:11px;font-weight:600;letter-spacing:0.3px;display:none">Escuro</span>
@@ -593,18 +593,18 @@ function adminLayout(title: string, activePage: string, body: string, barberName
           <button id="avatar-btn" onclick="toggleAvatarMenu()" style="width:32px;height:32px;background:var(--gold-dim);border:1px solid rgba(201,168,76,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--gold);cursor:pointer;transition:box-shadow 0.15s;" title="${esc(barberName)}" onmouseover="this.style.boxShadow='0 0 0 3px var(--gold-glow)'" onmouseout="this.style.boxShadow='none'">${initials}</button>
           <div id="avatar-dropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.35);z-index:999;overflow:hidden;">
             <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border);">
-              <div style="font-size:13px;font-weight:700;color:var(--foreground);">${esc(barberName || 'Usuário')}</div>
+              <div style="font-size:13px;font-weight:700;color:var(--text);">${esc(barberName || 'Usuário')}</div>
               ${badge ? `<div style="font-size:10px;color:${badge.color};font-weight:600;margin-top:2px;">${badge.label}</div>` : ''}
             </div>
-            <a href="/admin/meu-perfil" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--foreground);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+            <a href="/admin/meu-perfil" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--text);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               Meu Perfil
             </a>
-            <a href="/admin/configuracoes" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--foreground);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+            <a href="/admin/configuracoes" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--text);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               Configurações
             </a>
-            <a href="/admin/suporte" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--foreground);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+            <a href="/admin/suporte" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--text);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               Suporte
             </a>
@@ -1249,35 +1249,35 @@ async function renderDashboard(req: Request, res: Response) {
     <div style="margin-bottom:20px;">
       <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;">Ações Rápidas</div>
       <div class="actions-grid-5" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
-        <a href="/admin/agenda/novo" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <a href="/admin/agenda/novo" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
           </div>
-          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Novo Agendamento</span>
+          <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Novo Agendamento</span>
         </a>
-        <a href="/admin/clientes?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <a href="/admin/clientes?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(33,150,243,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
           </div>
-          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Novo Cliente</span>
+          <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Novo Cliente</span>
         </a>
-        <a href="/admin/financeiro?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <a href="/admin/financeiro?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(76,175,80,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           </div>
-          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Nova Venda</span>
+          <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Nova Venda</span>
         </a>
-        <a href="/admin/servicos" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <a href="/admin/servicos" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(156,39,176,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9C27B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3L8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
           </div>
-          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Serviços</span>
+          <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Serviços</span>
         </a>
-        <a href="/admin/promocoes" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <a href="/admin/promocoes" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(239,68,68,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
           </div>
-          <span style="font-size:12px;font-weight:600;color:var(--foreground);text-align:center;">Nova Promoção</span>
+          <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Nova Promoção</span>
         </a>
       </div>
     </div>
@@ -1314,7 +1314,7 @@ async function renderDashboard(req: Request, res: Response) {
       <div style="position:absolute;top:-60px;right:-60px;width:220px;height:220px;background:radial-gradient(circle,rgba(201,168,76,0.07) 0%,transparent 70%);pointer-events:none;"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--foreground);letter-spacing:0.3px;" id="chart-title">Faturamento — Últimos 7 dias</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:0.3px;" id="chart-title">Faturamento — Últimos 7 dias</div>
           <div style="font-size:11px;color:var(--muted);margin-top:3px;" id="chart-subtitle">Total do período: <span style="color:#C9A84C;font-weight:700;" id="chart-total">${fmtCurrency(totalWeekRevenue)}</span></div>
         </div>
         <div class="chart-toggle-wrap" style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -1816,14 +1816,14 @@ async function renderAgenda(req: Request, res: Response) {
   const calendarHtml = `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:20px 18px;width:100%;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-        <a href="/admin/agenda?date=${prevMonthStr}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;color:var(--primary);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(201,168,76,0.1);transition:background .15s;" onmouseover="this.style.background='rgba(201,168,76,0.2)'" onmouseout="this.style.background='rgba(201,168,76,0.1)'" title="Mês anterior">
+        <a href="/admin/agenda?date=${prevMonthStr}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;color:var(--gold);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(201,168,76,0.1);transition:background .15s;" onmouseover="this.style.background='rgba(201,168,76,0.2)'" onmouseout="this.style.background='rgba(201,168,76,0.1)'" title="Mês anterior">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </a>
         <div style="text-align:center;">
-          <div style="font-size:17px;font-weight:800;color:var(--foreground);letter-spacing:-0.3px;">${monthNames[calMonth]}</div>
+          <div style="font-size:17px;font-weight:800;color:var(--text);letter-spacing:-0.3px;">${monthNames[calMonth]}</div>
           <div style="font-size:12px;color:var(--muted);font-weight:500;">${calYear}</div>
         </div>
-        <a href="/admin/agenda?date=${nextMonthStr}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;color:var(--primary);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(201,168,76,0.1);transition:background .15s;" onmouseover="this.style.background='rgba(201,168,76,0.2)'" onmouseout="this.style.background='rgba(201,168,76,0.1)'" title="Próximo mês">
+        <a href="/admin/agenda?date=${nextMonthStr}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;color:var(--gold);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(201,168,76,0.1);transition:background .15s;" onmouseover="this.style.background='rgba(201,168,76,0.2)'" onmouseout="this.style.background='rgba(201,168,76,0.1)'" title="Próximo mês">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </a>
       </div>
@@ -1836,7 +1836,7 @@ async function renderAgenda(req: Request, res: Response) {
           const isSelected = d === dateStr;
           const isToday = d === todayStr;
           const dayNum = parseInt(d.split("-")[2]);
-          return `<a href="/admin/agenda?date=${d}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;aspect-ratio:1;border-radius:10px;font-size:14px;font-weight:${isSelected || isToday ? '800' : '500'};color:${isSelected ? '#0A0A0A' : isToday ? 'var(--primary)' : 'var(--foreground)'};background:${isSelected ? 'var(--primary)' : isToday ? 'rgba(201,168,76,0.12)' : 'transparent'};border:${isToday && !isSelected ? '1.5px solid var(--primary)' : '1.5px solid transparent'};transition:all .15s;" onmouseover="if(this.style.background!='var(--primary)')this.style.background='rgba(201,168,76,0.08)'" onmouseout="if(this.style.background!='var(--primary)')this.style.background='${isSelected ? 'var(--primary)' : isToday ? 'rgba(201,168,76,0.12)' : 'transparent'}'">${dayNum}<span style="width:5px;height:5px;border-radius:50%;background:${isSelected ? 'rgba(10,10,10,0.6)' : 'var(--primary)'};margin-top:3px;opacity:${datesWithAppointments.has(d) ? '1' : '0'};display:block;"></span></a>`;
+          return `<a href="/admin/agenda?date=${d}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;aspect-ratio:1;border-radius:10px;font-size:14px;font-weight:${isSelected || isToday ? '800' : '500'};color:${isSelected ? '#0A0A0A' : isToday ? 'var(--gold)' : 'var(--text)'};background:${isSelected ? 'var(--gold)' : isToday ? 'rgba(201,168,76,0.12)' : 'transparent'};border:${isToday && !isSelected ? '1.5px solid var(--gold)' : '1.5px solid transparent'};transition:all .15s;" onmouseover="if(this.style.background!='var(--gold)')this.style.background='rgba(201,168,76,0.08)'" onmouseout="if(this.style.background!='var(--gold)')this.style.background='${isSelected ? 'var(--gold)' : isToday ? 'rgba(201,168,76,0.12)' : 'transparent'}'">${dayNum}<span style="width:5px;height:5px;border-radius:50%;background:${isSelected ? 'rgba(10,10,10,0.6)' : 'var(--gold)'};margin-top:3px;opacity:${datesWithAppointments.has(d) ? '1' : '0'};display:block;"></span></a>`;
         }).join("")}
       </div>
     </div>`;
@@ -1855,7 +1855,7 @@ async function renderAgenda(req: Request, res: Response) {
         <button type="submit" class="btn btn-primary" style="padding:8px 16px;font-size:13px">Buscar</button>
         ${filterSearch || filterBarberId ? `<a href="/admin/agenda?date=${dateStr}" class="btn btn-ghost" style="padding:8px 12px;font-size:13px"></a>` : ""}
       </div>
-      <button type="button" onclick="document.getElementById('planModal').style.display='flex'" class="btn btn-ghost" style="padding:8px 16px;font-size:13px;white-space:nowrap;border:1px solid var(--primary);color:var(--primary);display:inline-flex;align-items:center;gap:6px;">
+      <button type="button" onclick="document.getElementById('planModal').style.display='flex'" class="btn btn-ghost" style="padding:8px 16px;font-size:13px;white-space:nowrap;border:1px solid var(--gold);color:var(--gold);display:inline-flex;align-items:center;gap:6px;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         Plano
       </button>
@@ -1882,29 +1882,29 @@ async function renderAgenda(req: Request, res: Response) {
       <div style="background:var(--surface);border-radius:16px;padding:28px;width:520px;max-width:90vw;max-height:90vh;overflow-y:auto;border:1px solid var(--border);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
           <div>
-            <h2 style="font-size:18px;font-weight:700;color:var(--foreground);">Atribuir Plano de Assinatura</h2>
+            <h2 style="font-size:18px;font-weight:700;color:var(--text);">Atribuir Plano de Assinatura</h2>
             <p style="font-size:13px;color:var(--muted);margin-top:4px;">Selecione o cliente e o plano para criar a assinatura</p>
           </div>
           <button onclick="document.getElementById('planModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">&#10005;</button>
         </div>
-        ${agendaPlans.length === 0 ? '<div style="text-align:center;padding:24px;color:var(--muted);font-size:14px;">Nenhum plano ativo. <a href="/admin/planos" style="color:var(--primary);">Criar plano</a></div>' : `
+        ${agendaPlans.length === 0 ? '<div style="text-align:center;padding:24px;color:var(--muted);font-size:14px;">Nenhum plano ativo. <a href="/admin/planos" style="color:var(--gold);">Criar plano</a></div>' : `
         <form method="POST" action="/admin/assinaturas/nova" id="planAssignForm">
           <input type="hidden" name="fromAgenda" value="1" />
           <input type="hidden" name="returnDate" value="${dateStr}" />
           <div class="form-group" style="margin-bottom:16px;">
-            <label class="form-label" style="font-size:13px;font-weight:600;color:var(--foreground);margin-bottom:6px;display:block;">Cliente *</label>
+            <label class="form-label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;display:block;">Cliente *</label>
             <input type="hidden" name="clientId" id="planClientIdHidden" required />
             <div style="position:relative;margin-bottom:8px;">
               <input type="text" id="clientSearchInput" placeholder="Buscar por nome ou telefone..." autocomplete="off"
-                style="width:100%;padding:10px 12px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;box-sizing:border-box;"
+                style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;box-sizing:border-box;"
                 oninput="filterClients(this.value)"
                 onfocus="document.getElementById('planClientList').style.display='block'"
                 onblur="setTimeout(()=>{document.getElementById('planClientList').style.display='none'},200)" />
               <div id="planClientList" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-height:200px;overflow-y:auto;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,0.4);margin-top:4px;">
-                ${allClientsForModal.map((c: any) => `<div class="plan-client-item" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="choosePlanClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(201,168,76,0.08)'" onmouseout="this.style.background=''"><strong style="color:var(--foreground)">${esc(c.name)}</strong>${c.phone ? `<span style="color:var(--muted);font-size:12px">${esc(c.phone)}</span>` : ''}</div>`).join('')}
+                ${allClientsForModal.map((c: any) => `<div class="plan-client-item" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="choosePlanClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(201,168,76,0.08)'" onmouseout="this.style.background=''"><strong style="color:var(--text)">${esc(c.name)}</strong>${c.phone ? `<span style="color:var(--muted);font-size:12px">${esc(c.phone)}</span>` : ''}</div>`).join('')}
               </div>
             </div>
-            <div id="planClientChosen" style="display:none;padding:10px 14px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:10px;font-size:13px;color:var(--foreground);display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div id="planClientChosen" style="display:none;padding:10px 14px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:10px;font-size:13px;color:var(--text);display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
               <span id="planClientChosenName"></span>
               <button type="button" onclick="clearPlanClientChoice()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:0 4px;line-height:1;">×</button>
             </div>
@@ -1933,27 +1933,27 @@ async function renderAgenda(req: Request, res: Response) {
             </script>
           </div>
           <div class="form-group" style="margin-bottom:16px;">
-            <label class="form-label" style="font-size:13px;font-weight:600;color:var(--foreground);margin-bottom:6px;display:block;">Plano *</label>
+            <label class="form-label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;display:block;">Plano *</label>
             <div style="display:flex;flex-direction:column;gap:8px;">
               ${agendaPlans.map((plan: any) => `
-              <label style="display:flex;align-items:center;gap:12px;background:var(--background);border:1px solid var(--border);border-radius:12px;padding:12px 16px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
-                <input type="radio" name="planId" value="${plan.id}" required style="accent-color:var(--primary);width:16px;height:16px;flex-shrink:0;" />
+              <label style="display:flex;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 16px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+                <input type="radio" name="planId" value="${plan.id}" required style="accent-color:var(--gold);width:16px;height:16px;flex-shrink:0;" />
                 <div style="flex:1;">
-                  <div style="font-size:14px;font-weight:700;color:var(--foreground);">${esc(plan.name)}</div>
+                  <div style="font-size:14px;font-weight:700;color:var(--text);">${esc(plan.name)}</div>
                   <div style="font-size:12px;color:var(--muted);margin-top:2px;">${plan.recurrences} recorrências</div>
                 </div>
-                <div style="font-size:18px;font-weight:900;color:var(--primary);">R$ ${parseFloat(plan.price).toFixed(2)}</div>
+                <div style="font-size:18px;font-weight:900;color:var(--gold);">R$ ${parseFloat(plan.price).toFixed(2)}</div>
               </label>`).join('')}
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
             <div class="form-group">
-              <label class="form-label" style="font-size:13px;font-weight:600;color:var(--foreground);margin-bottom:6px;display:block;">Data de início *</label>
-              <input type="date" name="startDate" class="form-input" value="${dateStr}" required style="width:100%;padding:10px 12px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;" />
+              <label class="form-label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;display:block;">Data de início *</label>
+              <input type="date" name="startDate" class="form-input" value="${dateStr}" required style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;" />
             </div>
             <div class="form-group">
-              <label class="form-label" style="font-size:13px;font-weight:600;color:var(--foreground);margin-bottom:6px;display:block;">Forma de pagamento</label>
-              <select name="paymentMethod" class="form-input" style="width:100%;padding:10px 12px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;">
+              <label class="form-label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;display:block;">Forma de pagamento</label>
+              <select name="paymentMethod" class="form-input" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;">
                 <option value="cash">Dinheiro</option>
                 <option value="pix">Pix</option>
                 <option value="credit_card">Cartão de crédito</option>
@@ -1979,30 +1979,30 @@ async function renderAgenda(req: Request, res: Response) {
       .agenda-panel-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:18px; }
       .agenda-appt-card-new { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px 18px; cursor:pointer; transition:border-color .15s, box-shadow .15s, transform .1s; display:flex; align-items:center; gap:14px; }
       .agenda-appt-card-new:hover { border-color:rgba(201,168,76,0.5); box-shadow:0 4px 20px rgba(0,0,0,0.25); transform:translateY(-1px); }
-      .agenda-day-nav-link { display:flex; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:var(--foreground); background:var(--background); transition:all .15s; }
-      .agenda-day-nav-link:hover { border-color:var(--primary); color:var(--primary); background:rgba(201,168,76,0.08); }
-      .agenda-today-link { display:block; text-align:center; padding:9px; background:var(--background); border:1px solid var(--border); border-radius:12px; text-decoration:none; color:var(--muted); font-size:12px; font-weight:700; transition:all .15s; letter-spacing:0.3px; }
-      .agenda-today-link:hover { border-color:var(--primary); color:var(--primary); }
+      .agenda-day-nav-link { display:flex; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:var(--text); background:var(--bg); transition:all .15s; }
+      .agenda-day-nav-link:hover { border-color:var(--gold); color:var(--gold); background:rgba(201,168,76,0.08); }
+      .agenda-today-link { display:block; text-align:center; padding:9px; background:var(--bg); border:1px solid var(--border); border-radius:12px; text-decoration:none; color:var(--muted); font-size:12px; font-weight:700; transition:all .15s; letter-spacing:0.3px; }
+      .agenda-today-link:hover { border-color:var(--gold); color:var(--gold); }
       .agenda-view-toggle { display:flex; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:4px; width:fit-content; margin-bottom:18px; }
       .agenda-view-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; border:none; }
       .agenda-filter-bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:18px; }
-      .agenda-filter-bar select, .agenda-filter-bar input[type=text] { padding:9px 14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; color:var(--foreground); font-size:13px; transition:border-color .15s; }
-      .agenda-filter-bar select:focus, .agenda-filter-bar input[type=text]:focus { outline:none; border-color:var(--primary); }
+      .agenda-filter-bar select, .agenda-filter-bar input[type=text] { padding:9px 14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; color:var(--text); font-size:13px; transition:border-color .15s; }
+      .agenda-filter-bar select:focus, .agenda-filter-bar input[type=text]:focus { outline:none; border-color:var(--gold); }
     </style>
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-          <div style="width:4px;height:30px;background:var(--primary);border-radius:2px;flex-shrink:0;"></div>
-          <h1 style="font-size:28px;font-weight:900;color:var(--foreground);margin:0;letter-spacing:-0.5px;">${fmtDate(dateStr)}</h1>
+          <div style="width:4px;height:30px;background:var(--gold);border-radius:2px;flex-shrink:0;"></div>
+          <h1 style="font-size:28px;font-weight:900;color:var(--text);margin:0;letter-spacing:-0.5px;">${fmtDate(dateStr)}</h1>
         </div>
         <p style="font-size:13px;color:var(--muted);margin:0 0 0 14px;">${appointments.length === 0 ? 'Nenhum agendamento' : appointments.length + ' agendamento' + (appointments.length !== 1 ? 's' : '')}${filterSearch || filterBarberId ? " — filtrado" : ""}</p>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <button onclick="document.getElementById('planModal').style.display='flex'" style="display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border:1.5px solid var(--primary);background:transparent;color:var(--primary);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(201,168,76,0.1)'" onmouseout="this.style.background='transparent'">
+        <button onclick="document.getElementById('planModal').style.display='flex'" style="display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border:1.5px solid var(--gold);background:transparent;color:var(--gold);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(201,168,76,0.1)'" onmouseout="this.style.background='transparent'">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           Plano
         </button>
-        <button type="button" onclick="document.getElementById('newApptModal').style.display='flex'" style="display:inline-flex;align-items:center;gap:7px;padding:10px 22px;background:var(--primary);color:#0A0A0A;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;transition:opacity .15s;box-shadow:0 4px 16px rgba(201,168,76,0.3);" onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">
+        <button type="button" onclick="document.getElementById('newApptModal').style.display='flex'" style="display:inline-flex;align-items:center;gap:7px;padding:10px 22px;background:var(--gold);color:#0A0A0A;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;transition:opacity .15s;box-shadow:0 4px 16px rgba(201,168,76,0.3);" onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           + Novo Agendamento
         </button>
@@ -2022,7 +2022,7 @@ async function renderAgenda(req: Request, res: Response) {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             </a>
             <input type="date" value="${dateStr}" onchange="location.href='/admin/agenda?date='+this.value+'${filterBarberId ? '&barberId=' + filterBarberId : ''}'"
-              style="flex:1;padding:8px 12px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:13px;text-align:center;font-weight:600;" />
+              style="flex:1;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;text-align:center;font-weight:600;" />
             <a href="/admin/agenda?date=${nextDate.toISOString().split("T")[0]}${filterBarberId ? "&barberId=" + filterBarberId : ""}" class="agenda-day-nav-link" title="Próximo dia">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </a>
@@ -2049,7 +2049,7 @@ async function renderAgenda(req: Request, res: Response) {
 
         <!-- Toggle de vista (pill) -->
         <div class="agenda-view-toggle">
-          <button type="button" id="btnViewCards" onclick="setView('cards')" class="agenda-view-btn" style="background:var(--primary);color:#0A0A0A;">
+          <button type="button" id="btnViewCards" onclick="setView('cards')" class="agenda-view-btn" style="background:var(--gold);color:#0A0A0A;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
             Cards
           </button>
@@ -2063,11 +2063,11 @@ async function renderAgenda(req: Request, res: Response) {
         ${appointments.length === 0
           ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:60px 40px;text-align:center;color:var(--muted);">
                <div style="width:72px;height:72px;border-radius:20px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
-                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                </div>
-               <div style="font-size:16px;font-weight:700;color:var(--foreground);margin-bottom:8px;">Nenhum agendamento</div>
+               <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px;">Nenhum agendamento</div>
                <div style="font-size:13px;color:var(--muted);">Não há agendamentos para ${fmtDate(dateStr)}${filterSearch || filterBarberId ? " com os filtros aplicados" : ""}.</div>
-               <button type="button" onclick="document.getElementById('newApptModal').style.display='flex'" style="margin-top:20px;display:inline-flex;align-items:center;gap:7px;padding:10px 22px;background:var(--primary);color:#0A0A0A;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;">
+               <button type="button" onclick="document.getElementById('newApptModal').style.display='flex'" style="margin-top:20px;display:inline-flex;align-items:center;gap:7px;padding:10px 22px;background:var(--gold);color:#0A0A0A;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;">
                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                  Criar Agendamento
                </button>
@@ -2095,7 +2095,7 @@ async function renderAgenda(req: Request, res: Response) {
                 return `<div id="appt-card-${a.id}" onclick="openEditModal(${JSON.stringify({id:a.id,clientName:a.clientName??'',clientPhone:a.clientPhone??'',serviceId:a.serviceId,serviceName:serviceNames,barberId:a.barberId,barberName:a.barberName??'',date:a.date,startTime:a.startTime??'',endTime:a.endTime??'',status:a.status,notes:a.notes??''})})" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s;display:flex;align-items:center;gap:14px;" onmouseover="this.style.borderColor='rgba(201,168,76,0.5)';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.25)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none';this.style.transform='none'">
                   <!-- Horário -->
                   <div style="flex-shrink:0;text-align:center;min-width:52px;">
-                    <div style="font-size:20px;font-weight:900;color:var(--foreground);line-height:1;letter-spacing:-0.5px;">${a.startTime?.substring(0,5) ?? "—"}</div>
+                    <div style="font-size:20px;font-weight:900;color:var(--text);line-height:1;letter-spacing:-0.5px;">${a.startTime?.substring(0,5) ?? "—"}</div>
                     <div style="font-size:11px;color:var(--muted);margin-top:3px;font-weight:500;">${a.endTime?.substring(0,5) ?? ""}</div>
                   </div>
                   <!-- Barra colorida de status -->
@@ -2104,7 +2104,7 @@ async function renderAgenda(req: Request, res: Response) {
                   <div style="width:42px;height:42px;border-radius:12px;background:${sc.bg};border:1px solid ${sc.border};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:${sc.text};flex-shrink:0;">${initials}</div>
                   <!-- Info principal -->
                   <div style="flex:1;min-width:0;">
-                    <div style="font-size:14px;font-weight:700;color:var(--foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(a.clientName ?? "—")}</div>
+                    <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(a.clientName ?? "—")}</div>
                     <div style="font-size:12px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(serviceNames)}</div>
                     <div style="font-size:11px;color:var(--muted);margin-top:2px;opacity:0.7;">${esc(a.barberName ?? "—")}</div>
                   </div>
@@ -2153,7 +2153,7 @@ async function renderAgenda(req: Request, res: Response) {
                       const serviceNames = a.serviceNames ?? a.serviceName ?? "—";
                       return `<div onclick="openEditModal(${JSON.stringify({id:a.id,clientName:a.clientName??'',clientPhone:a.clientPhone??'',serviceId:a.serviceId,serviceName:serviceNames,barberId:a.barberId,barberName:a.barberName??'',date:a.date,startTime:a.startTime??'',endTime:a.endTime??'',status:a.status,notes:a.notes??''})})" style="background:${sc}18;border-left:3px solid ${sc};border-radius:0 8px 8px 0;padding:6px 10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px" onmouseover="this.style.background='${sc}30'" onmouseout="this.style.background='${sc}18'">
                         <div>
-                          <div style="font-size:12px;font-weight:700;color:var(--foreground)">${esc(a.clientName ?? "—")}</div>
+                          <div style="font-size:12px;font-weight:700;color:var(--text)">${esc(a.clientName ?? "—")}</div>
                           <div style="font-size:11px;color:var(--muted)">${esc(serviceNames)} · ${a.startTime?.substring(0,5)} – ${a.endTime?.substring(0,5)}</div>
                         </div>
                         <div style="font-size:11px;font-weight:600;color:${sc}">${esc(a.barberName ?? "")}</div>
@@ -2169,39 +2169,39 @@ async function renderAgenda(req: Request, res: Response) {
         <div id="editApptModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;position:relative">
             <button type="button" onclick="closeEditModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">×</button>
-            <div style="font-size:18px;font-weight:800;color:var(--foreground);margin-bottom:4px">Editar Agendamento</div>
+            <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">Editar Agendamento</div>
             <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Altere os dados e salve para reagendar</div>
             <form id="editApptForm" onsubmit="submitEditAppt(event)">
               <input type="hidden" id="editApptId" name="id" />
               <div style="margin-bottom:16px">
                 <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Cliente</label>
-                <div id="editApptClient" style="padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;font-size:14px;color:var(--foreground)"></div>
+                <div id="editApptClient" style="padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;font-size:14px;color:var(--text)"></div>
               </div>
               <div style="margin-bottom:16px">
                 <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Serviço</label>
-                <select id="editApptService" name="serviceId" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box">
+                <select id="editApptService" name="serviceId" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box">
                   ${services.map((s: any) => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}
                 </select>
               </div>
               <div style="margin-bottom:16px">
                 <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Profissional</label>
-                <select id="editApptBarber" name="barberId" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box">
+                <select id="editApptBarber" name="barberId" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box">
                   ${barbers.map((b: any) => `<option value="${b.id}">${esc(b.name)}</option>`).join("")}
                 </select>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
                 <div>
                   <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Data</label>
-                  <input type="date" id="editApptDate" name="date" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box" />
+                  <input type="date" id="editApptDate" name="date" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
                 </div>
                 <div>
                   <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Horário</label>
-                  <input type="time" id="editApptTime" name="startTime" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box" />
+                  <input type="time" id="editApptTime" name="startTime" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
                 </div>
               </div>
               <div style="margin-bottom:16px">
                 <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Status</label>
-                <select id="editApptStatus" name="status" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box">
+                <select id="editApptStatus" name="status" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box">
                   <option value="scheduled">Agendado</option>
                   <option value="confirmed">Confirmado</option>
                   <option value="in_progress">Em andamento</option>
@@ -2212,12 +2212,12 @@ async function renderAgenda(req: Request, res: Response) {
               </div>
               <div style="margin-bottom:20px">
                 <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Observações</label>
-                <input type="text" id="editApptNotes" name="notes" placeholder="Observações opcionais" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box" />
+                <input type="text" id="editApptNotes" name="notes" placeholder="Observações opcionais" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
               </div>
               <div id="editApptError" style="display:none;padding:10px 14px;background:rgba(244,67,54,0.1);border:1px solid rgba(244,67,54,0.3);border-radius:10px;color:#F44336;font-size:13px;margin-bottom:14px"></div>
               <div style="display:flex;gap:12px">
-                <button type="button" onclick="closeEditModal()" style="flex:1;padding:12px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
-                <button type="submit" id="editApptSubmitBtn" style="flex:1;padding:12px;background:var(--primary);border:none;border-radius:10px;color:#0A0A0A;font-size:14px;font-weight:700;cursor:pointer">Salvar Alterações</button>
+                <button type="button" onclick="closeEditModal()" style="flex:1;padding:12px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+                <button type="submit" id="editApptSubmitBtn" style="flex:1;padding:12px;background:var(--gold);border:none;border-radius:10px;color:#0A0A0A;font-size:14px;font-weight:700;cursor:pointer">Salvar Alterações</button>
               </div>
             </form>
           </div>
@@ -2226,7 +2226,7 @@ async function renderAgenda(req: Request, res: Response) {
         <div id="newApptModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;position:relative">
             <button type="button" onclick="document.getElementById('newApptModal').style.display='none'" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">×</button>
-            <div style="font-size:18px;font-weight:800;color:var(--foreground);margin-bottom:4px">Novo Agendamento</div>
+            <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">Novo Agendamento</div>
             <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Crie um agendamento manualmente</div>
             <form method="POST" action="/admin/agenda/novo">
               <div style="margin-bottom:16px">
@@ -2234,25 +2234,25 @@ async function renderAgenda(req: Request, res: Response) {
                 <input type="hidden" name="clientId" id="newApptClientId" required />
                 <div style="position:relative">
                   <input type="text" id="newApptClientSearch" placeholder="Buscar cliente por nome ou telefone..." autocomplete="off"
-                    style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box"
+                    style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box"
                     oninput="filterNewClients(this.value)"
                     onfocus="document.getElementById('newApptClientDropdown').style.display='block'"
                     onblur="setTimeout(()=>{document.getElementById('newApptClientDropdown').style.display='none'},200)" />
                   <div id="newApptClientDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-height:200px;overflow-y:auto;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.4);margin-top:4px">
-                    ${clients.map((c: any) => `<div class="new-appt-client-opt" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="selectNewApptClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='rgba(201,168,76,0.08)'" onmouseout="this.style.background=''"><strong style="color:var(--foreground)">${esc(c.name)}</strong>${c.phone ? `<span style="color:var(--muted);font-size:12px">${esc(c.phone)}</span>` : ''}</div>`).join("")}
+                    ${clients.map((c: any) => `<div class="new-appt-client-opt" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="selectNewApptClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='rgba(201,168,76,0.08)'" onmouseout="this.style.background=''"><strong style="color:var(--text)">${esc(c.name)}</strong>${c.phone ? `<span style="color:var(--muted);font-size:12px">${esc(c.phone)}</span>` : ''}</div>`).join("")}
                   </div>
                 </div>
               </div>
               <div style="margin-bottom:16px">
                 <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Serviço *</label>
-                <select name="serviceId" required style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box">
+                <select name="serviceId" required style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box">
                   <option value="">Selecione o serviço</option>
                   ${services.map((s: any) => `<option value="${s.id}">${esc(s.name)} — ${fmtCurrency(s.price)} (${s.duration ?? 30}min)</option>`).join("")}
                 </select>
               </div>
               <div style="margin-bottom:16px">
                 <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Profissional *</label>
-                <select name="barberId" required style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box">
+                <select name="barberId" required style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box">
                   <option value="">Selecione o profissional</option>
                   ${barbers.map((b: any) => `<option value="${b.id}"${b.id === session.barberId ? " selected" : ""}>${esc(b.name)}</option>`).join("")}
                 </select>
@@ -2260,20 +2260,20 @@ async function renderAgenda(req: Request, res: Response) {
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
                 <div>
                   <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Data *</label>
-                  <input type="date" name="date" value="${dateStr}" required style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box" />
+                  <input type="date" name="date" value="${dateStr}" required style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
                 </div>
                 <div>
                   <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Horário *</label>
-                  <input type="time" name="startTime" required style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box" />
+                  <input type="time" name="startTime" required style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
                 </div>
               </div>
               <div style="margin-bottom:20px">
                 <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Observações</label>
-                <input type="text" name="notes" placeholder="Observações opcionais" style="width:100%;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;box-sizing:border-box" />
+                <input type="text" name="notes" placeholder="Observações opcionais" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
               </div>
               <div style="display:flex;gap:12px">
-                <button type="button" onclick="document.getElementById('newApptModal').style.display='none'" style="flex:1;padding:12px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--foreground);font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
-                <button type="submit" style="flex:1;padding:12px;background:var(--primary);border:none;border-radius:10px;color:#0A0A0A;font-size:14px;font-weight:700;cursor:pointer">Criar Agendamento</button>
+                <button type="button" onclick="document.getElementById('newApptModal').style.display='none'" style="flex:1;padding:12px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+                <button type="submit" style="flex:1;padding:12px;background:var(--gold);border:none;border-radius:10px;color:#0A0A0A;font-size:14px;font-weight:700;cursor:pointer">Criar Agendamento</button>
               </div>
             </form>
           </div>
@@ -2283,9 +2283,9 @@ async function renderAgenda(req: Request, res: Response) {
           function setView(v) {
             document.getElementById('viewCards').style.display = v === 'cards' ? 'block' : 'none';
             document.getElementById('viewTimeline').style.display = v === 'timeline' ? 'block' : 'none';
-            document.getElementById('btnViewCards').style.background = v === 'cards' ? 'var(--primary)' : 'transparent';
+            document.getElementById('btnViewCards').style.background = v === 'cards' ? 'var(--gold)' : 'transparent';
             document.getElementById('btnViewCards').style.color = v === 'cards' ? '#0A0A0A' : 'var(--muted)';
-            document.getElementById('btnViewTimeline').style.background = v === 'timeline' ? 'var(--primary)' : 'var(--surface)';
+            document.getElementById('btnViewTimeline').style.background = v === 'timeline' ? 'var(--gold)' : 'var(--surface)';
             document.getElementById('btnViewTimeline').style.color = v === 'timeline' ? '#0A0A0A' : 'var(--muted)';
             document.getElementById('btnViewTimeline').style.border = v === 'timeline' ? 'none' : '1px solid var(--border)';
             localStorage.setItem('agendaView', v);
@@ -2423,7 +2423,7 @@ async function renderClientes(req: Request, res: Response) {
       <span style="font-size:24px"></span>
       <div>
         <div style="font-weight:700;color:#C9A84C;font-size:14px">Aniversariantes de hoje!</div>
-        <div style="font-size:13px;color:var(--foreground);margin-top:2px">${birthdayToday.map((c: any) => esc(c.name)).join(", ")}</div>
+        <div style="font-size:13px;color:var(--text);margin-top:2px">${birthdayToday.map((c: any) => esc(c.name)).join(", ")}</div>
       </div>
     </div>` : ""}
 
@@ -2665,7 +2665,7 @@ async function renderServicos(req: Request, res: Response) {
           ${services.map((s: any) => `
             <tr>
               <td><strong>${esc(s.name)}</strong>${s.description ? `<br><small style="color:var(--muted)">${esc(s.description.substring(0, 60))}${s.description.length > 60 ? "..." : ""}</small>` : ""}</td>
-              <td style="font-weight:700;color:var(--primary)">R$ ${parseFloat(s.price).toFixed(2).replace(".", ",")}</td>
+              <td style="font-weight:700;color:var(--gold)">R$ ${parseFloat(s.price).toFixed(2).replace(".", ",")}</td>
               <td>${s.durationMinutes} min</td>
               <td>${s.isActive ? `<span class="badge badge-success">Ativo</span>` : `<span class="badge badge-muted">Inativo</span>`}</td>
               <td>
@@ -2741,7 +2741,7 @@ async function renderProdutos(req: Request, res: Response) {
             <div class="form-group" style="grid-column:1/-1">
               <label class="form-label">Fornecedor *</label>
               ${suppliers.length === 0
-                ? `<div style="padding:10px;background:var(--surface2);border-radius:8px;font-size:13px;color:var(--muted)">Nenhum fornecedor cadastrado. <a href="/admin/fornecedores" style="color:var(--primary)">Cadastre um fornecedor primeiro</a>.</div><input type="hidden" name="supplierId" value="" />`
+                ? `<div style="padding:10px;background:var(--surface2);border-radius:8px;font-size:13px;color:var(--muted)">Nenhum fornecedor cadastrado. <a href="/admin/fornecedores" style="color:var(--gold)">Cadastre um fornecedor primeiro</a>.</div><input type="hidden" name="supplierId" value="" />`
                 : `<select class="form-input" name="supplierId" required>
                     <option value="">Selecione o fornecedor...</option>
                     ${suppliers.map((s: any) => `<option value="${s.id}" ${(editProduct as any)?.supplierId === s.id ? "selected" : ""}>${esc(s.name)}</option>`).join("")}
@@ -2820,7 +2820,7 @@ async function renderProdutos(req: Request, res: Response) {
             <tr>
               <td><strong>${esc(p.name)}</strong>${p.description ? `<br><small style="color:var(--muted)">${esc(p.description.substring(0, 50))}${p.description.length > 50 ? "..." : ""}</small>` : ""}</td>
               <td><span class="badge ${p.productType === "sale" ? "badge-success" : "badge-muted"}">${p.productType === "sale" ? "Venda" : "Interno"}</span></td>
-              <td style="font-weight:700;color:var(--primary)">R$ ${parseFloat(p.price).toFixed(2).replace(".", ",")}</td>
+              <td style="font-weight:700;color:var(--gold)">R$ ${parseFloat(p.price).toFixed(2).replace(".", ",")}</td>
               <td>
                 <span style="color:${p.stockQuantity <= p.minStockAlert ? "var(--error)" : "var(--success)"}">
                   ${p.stockQuantity} un.
@@ -2863,7 +2863,7 @@ async function renderProdutos(req: Request, res: Response) {
   res.send(adminLayout("Produtos", "produtos", body, barber?.name, _tp));
   } catch (err: any) {
     console.error('[renderProdutos] Erro:', err?.message);
-    res.send(adminLayout("Produtos", "produtos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/produtos" class="btn btn-primary">Tentar novamente</a></div>`));
+    res.send(adminLayout("Produtos", "produtos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/produtos" class="btn btn-primary">Tentar novamente</a></div>`));
   }
 }
 
@@ -3663,7 +3663,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
         <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:12px">ASSINATURA BARBER PRO</div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
           <div>
-            <div style="font-size:18px;font-weight:800;color:var(--foreground);margin-bottom:4px">${bpPlanLabel[bpPlanName] ?? bpPlanName}</div>
+            <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">${bpPlanLabel[bpPlanName] ?? bpPlanName}</div>
             <div style="font-size:13px;font-weight:600;color:${bpStatusColor[bpStatus] ?? 'var(--muted)'}">${bpStatusLabel[bpStatus] ?? bpStatus}</div>
             ${bpPlanPrice > 0 ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">R$ ${bpPlanPrice.toFixed(2)}/mês</div>` : ''}
             ${bpNextDueFmt ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">Próximo vencimento: ${bpNextDueFmt}</div>` : ''}
@@ -3704,7 +3704,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
       </div>
 
       ${asaasStatus === 'active' ? `
-        <div style="background:#4ADE8011;border:1px solid #4ADE8033;border-radius:12px;padding:16px 20px;margin-bottom:24px;font-size:13px;color:var(--foreground)">
+        <div style="background:#4ADE8011;border:1px solid #4ADE8033;border-radius:12px;padding:16px 20px;margin-bottom:24px;font-size:13px;color:var(--text)">
           ✅ Sua conta de pagamentos está ativa. Os clientes já podem pagar online via Pix ou cartão de crédito diretamente na página de agendamento.
         </div>
       ` : ''}
@@ -3712,7 +3712,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
       ${asaasStatus !== 'active' ? `
         <!-- Formulário de configuração -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px">
-          <div style="font-size:14px;font-weight:700;color:var(--foreground);margin-bottom:4px">Configurar Pagamentos Online</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Configurar Pagamentos Online</div>
           <div style="font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.5">
             Preencha os dados abaixo para criar sua conta de recebimentos. O dinheiro dos seus clientes será depositado diretamente na sua conta bancária.
             Você precisará de CPF ou CNPJ e um número de celular válido.
@@ -4286,7 +4286,7 @@ async function renderRelatorios(req: Request, res: Response) {
         <div style="font-size:11px;color:var(--muted);margin-top:4px">Vencido</div>
       </div>
       <div style="background:var(--surface2,var(--surface));border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
-        <div style="font-size:20px;font-weight:800;color:var(--foreground)">${onlineByMethod.pixCount + onlineByMethod.cardCount}</div>
+        <div style="font-size:20px;font-weight:800;color:var(--text)">${onlineByMethod.pixCount + onlineByMethod.cardCount}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:4px">Pagamentos</div>
       </div>
     </div>
@@ -4469,7 +4469,7 @@ async function renderRelatorios(req: Request, res: Response) {
   res.send(adminLayout("Relatórios", "relatorios", body, barber?.name, _tp));
   } catch (err: any) {
     console.error('[renderRelatorios] Erro:', err?.message);
-    res.send(adminLayout("Relatórios", "relatorios", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/relatorios" class="btn btn-primary">Tentar novamente</a></div>`));
+    res.send(adminLayout("Relatórios", "relatorios", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/relatorios" class="btn btn-primary">Tentar novamente</a></div>`));
   }
 }
 
@@ -6917,7 +6917,7 @@ export function registerAdminRoutes(app: Express): void {
     const body = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
         <div>
-          <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Lista de Espera</h1>
+          <h1 style="font-size:24px;font-weight:700;color:var(--text);">Lista de Espera</h1>
           <p style="color:var(--muted);font-size:14px;margin-top:4px;">Clientes aguardando vaga para uma data específica</p>
         </div>
         <button onclick="document.getElementById('addModal').style.display='flex'" class="btn btn-primary">+ Adicionar à Fila</button>
@@ -7047,11 +7047,11 @@ export function registerAdminRoutes(app: Express): void {
     const body = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
         <div>
-          <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Assinaturas</h1>
+          <h1 style="font-size:24px;font-weight:700;color:var(--text);">Assinaturas</h1>
           <p style="color:var(--muted);font-size:14px;margin-top:4px;">Clientes com agendamentos periódicos configurados</p>
         </div>
         <div style="display:flex;gap:10px;align-items:center;">
-          <a href="/admin/planos" class="btn btn-ghost" style="border:1px solid var(--primary);color:var(--primary);display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px;">
+          <a href="/admin/planos" class="btn btn-ghost" style="border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             Planos
           </a>
@@ -7064,7 +7064,7 @@ export function registerAdminRoutes(app: Express): void {
       <!-- Dashboard de métricas -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;">
-          <div style="font-size:24px;font-weight:900;color:var(--primary);">${stats.totalActive}</div>
+          <div style="font-size:24px;font-weight:900;color:var(--gold);">${stats.totalActive}</div>
           <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;">Ativas</div>
         </div>
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;text-align:center;">
@@ -7083,10 +7083,10 @@ export function registerAdminRoutes(app: Express): void {
 
       <!-- Tabs: Ativas / Encerradas -->
       <div style="display:flex;gap:0;margin-bottom:16px;background:var(--surface);border-radius:12px;border:1px solid var(--border);overflow:hidden;">
-        <a href="/admin/assinaturas?tab=active${searchQ ? '&q=' + encodeURIComponent(searchQ) : ''}" style="flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;text-decoration:none;transition:all .2s;${viewTab === 'active' ? 'background:var(--primary);color:#0A0A0A;' : 'color:var(--muted);'}">
+        <a href="/admin/assinaturas?tab=active${searchQ ? '&q=' + encodeURIComponent(searchQ) : ''}" style="flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;text-decoration:none;transition:all .2s;${viewTab === 'active' ? 'background:var(--gold);color:#0A0A0A;' : 'color:var(--muted);'}">
           Ativas (${stats.totalActive})
         </a>
-        <a href="/admin/assinaturas?tab=cancelled${searchQ ? '&q=' + encodeURIComponent(searchQ) : ''}" style="flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;text-decoration:none;transition:all .2s;${viewTab === 'cancelled' ? 'background:var(--primary);color:#0A0A0A;' : 'color:var(--muted);'}">
+        <a href="/admin/assinaturas?tab=cancelled${searchQ ? '&q=' + encodeURIComponent(searchQ) : ''}" style="flex:1;padding:10px;text-align:center;font-size:13px;font-weight:700;text-decoration:none;transition:all .2s;${viewTab === 'cancelled' ? 'background:var(--gold);color:#0A0A0A;' : 'color:var(--muted);'}">
           Encerradas (${stats.totalCancelled})
         </a>
       </div>
@@ -7156,8 +7156,8 @@ export function registerAdminRoutes(app: Express): void {
       <!-- Modal de Cancelamento com Motivo -->
       <div id="cancelModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
         <div style="background:var(--surface);border-radius:16px;padding:28px;width:480px;max-width:90vw;border:1px solid var(--border);">
-          <h2 style="font-size:18px;font-weight:800;color:var(--foreground);margin-bottom:4px;">Cancelar Assinatura</h2>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Cancelar a assinatura de <strong id="cancelClientName" style="color:var(--foreground);"></strong>? Os agendamentos já criados não serão removidos.</p>
+          <h2 style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px;">Cancelar Assinatura</h2>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Cancelar a assinatura de <strong id="cancelClientName" style="color:var(--text);"></strong>? Os agendamentos já criados não serão removidos.</p>
           <form method="POST" action="/admin/assinaturas/cancelar" id="cancelForm">
             <input type="hidden" name="id" id="cancelId" />
             <div class="form-group">
@@ -7176,7 +7176,7 @@ export function registerAdminRoutes(app: Express): void {
       <div id="newRecModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
         <div style="background:var(--surface);border-radius:16px;padding:28px;width:560px;max-width:90vw;max-height:90vh;overflow-y:auto;border:1px solid var(--border);">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-            <h2 style="font-size:18px;font-weight:700;color:var(--foreground);">Nova Assinatura</h2>
+            <h2 style="font-size:18px;font-weight:700;color:var(--text);">Nova Assinatura</h2>
             <button onclick="document.getElementById('newRecModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">&#10005;</button>
           </div>
           <form method="POST" action="/admin/assinaturas" id="recForm">
@@ -7232,7 +7232,7 @@ export function registerAdminRoutes(app: Express): void {
             <div class="form-group">
               <label class="form-label">Data de Início *</label>
               <input type="hidden" name="startDate" id="recStartDate" required />
-              <div id="calendarWidget" style="background:var(--background);border:1px solid var(--border);border-radius:12px;overflow:hidden;"></div>
+              <div id="calendarWidget" style="background:var(--bg);border:1px solid var(--border);border-radius:12px;overflow:hidden;"></div>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -7291,39 +7291,39 @@ export function registerAdminRoutes(app: Express): void {
 
       <style>
         .custom-select-wrapper{position:relative}
-        .cs-trigger{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .2s}
-        .cs-trigger:hover,.cs-trigger.active{border-color:var(--primary)}
-        .cs-arrow{color:var(--primary);font-size:12px}
+        .cs-trigger{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .2s}
+        .cs-trigger:hover,.cs-trigger.active{border-color:var(--gold)}
+        .cs-arrow{color:var(--gold);font-size:12px}
         .cs-label{color:var(--muted);font-size:14px}
-        .cs-label.selected{color:var(--foreground);font-weight:600}
-        .cs-dropdown{position:absolute;top:100%;left:0;right:0;z-index:10;background:var(--surface);border:1px solid var(--primary);border-radius:10px;margin-top:4px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.3)}
-        .cs-search{width:100%;padding:10px 14px;border:none;border-bottom:1px solid var(--border);background:var(--background);color:var(--foreground);font-size:14px;outline:none}
+        .cs-label.selected{color:var(--text);font-weight:600}
+        .cs-dropdown{position:absolute;top:100%;left:0;right:0;z-index:10;background:var(--surface);border:1px solid var(--gold);border-radius:10px;margin-top:4px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+        .cs-search{width:100%;padding:10px 14px;border:none;border-bottom:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;outline:none}
         .cs-options{max-height:180px;overflow-y:auto}
-        .cs-option{padding:10px 14px;cursor:pointer;font-size:14px;color:var(--foreground);transition:background .15s}
-        .cs-option:hover{background:var(--primary);color:#0A0A0A}
+        .cs-option{padding:10px 14px;cursor:pointer;font-size:14px;color:var(--text);transition:background .15s}
+        .cs-option:hover{background:var(--gold);color:#0A0A0A}
         .cs-option.hidden{display:none}
-        .cs-option.selected{background:rgba(201,168,76,.15);font-weight:600;border-left:3px solid var(--primary)}
+        .cs-option.selected{background:rgba(201,168,76,.15);font-weight:600;border-left:3px solid var(--gold)}
         .time-picker-wrapper{position:relative}
-        .tp-trigger{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--background);border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--foreground);font-weight:600;font-size:16px}
-        .tp-trigger:hover{border-color:var(--primary)}
-        .tp-dropdown{position:absolute;top:100%;left:0;right:0;z-index:10;background:var(--surface);border:1px solid var(--primary);border-radius:10px;margin-top:4px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+        .tp-trigger{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--text);font-weight:600;font-size:16px}
+        .tp-trigger:hover{border-color:var(--gold)}
+        .tp-dropdown{position:absolute;top:100%;left:0;right:0;z-index:10;background:var(--surface);border:1px solid var(--gold);border-radius:10px;margin-top:4px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.3)}
         .tp-columns{display:flex}
         .tp-col{flex:1;max-height:180px;overflow-y:auto}
         .tp-col+.tp-col{border-left:1px solid var(--border)}
-        .tp-item{padding:8px 14px;cursor:pointer;font-size:14px;text-align:center;color:var(--foreground);transition:background .15s}
-        .tp-item:hover{background:var(--primary);color:#0A0A0A}
-        .tp-item.active{background:var(--primary);color:#0A0A0A;font-weight:700}
+        .tp-item{padding:8px 14px;cursor:pointer;font-size:14px;text-align:center;color:var(--text);transition:background .15s}
+        .tp-item:hover{background:var(--gold);color:#0A0A0A}
+        .tp-item.active{background:var(--gold);color:#0A0A0A;font-weight:700}
         #calendarWidget .cal-nav{display:flex;justify-content:space-between;align-items:center;padding:12px}
-        #calendarWidget .cal-nav button{background:rgba(201,168,76,.1);border:none;color:var(--primary);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:14px}
+        #calendarWidget .cal-nav button{background:rgba(201,168,76,.1);border:none;color:var(--gold);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:14px}
         #calendarWidget .cal-nav button:hover{background:rgba(201,168,76,.25)}
         #calendarWidget .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
         #calendarWidget .cal-day-header{text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:6px 0}
-        #calendarWidget .cal-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;border-radius:8px;margin:1px;transition:all .15s;color:var(--foreground)}
+        #calendarWidget .cal-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;border-radius:8px;margin:1px;transition:all .15s;color:var(--text)}
         #calendarWidget .cal-cell:hover:not(.disabled):not(.selected){background:rgba(201,168,76,.15)}
-        #calendarWidget .cal-cell.selected{background:var(--primary);color:#0A0A0A;font-weight:800}
-        #calendarWidget .cal-cell.today{border:1px solid var(--primary);color:var(--primary)}
+        #calendarWidget .cal-cell.selected{background:var(--gold);color:#0A0A0A;font-weight:800}
+        #calendarWidget .cal-cell.today{border:1px solid var(--gold);color:var(--gold)}
         #calendarWidget .cal-cell.disabled{opacity:.3;cursor:default}
-        #calendarWidget .cal-selected-row{display:flex;align-items:center;gap:6px;padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--primary);font-weight:600}
+        #calendarWidget .cal-selected-row{display:flex;align-items:center;gap:6px;padding:10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--gold);font-weight:600}
       </style>
 
       <script>
@@ -7343,13 +7343,13 @@ export function registerAdminRoutes(app: Express): void {
         var MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
         var WDAYS=['D','S','T','Q','Q','S','S'];
         var calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calSelected='';
-        function renderCalendar(){var today=new Date().toISOString().slice(0,10);var firstDay=new Date(calYear,calMonth,1).getDay();var daysInMonth=new Date(calYear,calMonth+1,0).getDate();var html='<div class="cal-nav"><button onclick="calPrev()">&#9664;</button><span style="font-weight:700;color:var(--foreground);">'+MONTHS[calMonth]+' '+calYear+'</span><button onclick="calNext()">&#9654;</button></div><div class="cal-grid">';WDAYS.forEach(function(d){html+='<div class="cal-day-header">'+d+'</div>'});for(var i=0;i<firstDay;i++)html+='<div class="cal-cell"></div>';for(var d=1;d<=daysInMonth;d++){var mm=String(calMonth+1).padStart(2,'0');var dd=String(d).padStart(2,'0');var ds=calYear+'-'+mm+'-'+dd;var isPast=ds<today;var isToday=ds===today;var isSel=ds===calSelected;var cls='cal-cell';if(isSel)cls+=' selected';else if(isToday)cls+=' today';if(isPast)cls+=' disabled';html+='<div class="'+cls+'" onclick="'+(isPast?'':"calSelect('"+ds+"')")+'">'+d+'</div>'}html+='</div>';if(calSelected){var dt=new Date(calSelected+'T12:00:00');var fmt=dt.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});html+='<div class="cal-selected-row">&#128197; '+fmt+'</div>'}document.getElementById('calendarWidget').innerHTML=html}
+        function renderCalendar(){var today=new Date().toISOString().slice(0,10);var firstDay=new Date(calYear,calMonth,1).getDay();var daysInMonth=new Date(calYear,calMonth+1,0).getDate();var html='<div class="cal-nav"><button onclick="calPrev()">&#9664;</button><span style="font-weight:700;color:var(--text);">'+MONTHS[calMonth]+' '+calYear+'</span><button onclick="calNext()">&#9654;</button></div><div class="cal-grid">';WDAYS.forEach(function(d){html+='<div class="cal-day-header">'+d+'</div>'});for(var i=0;i<firstDay;i++)html+='<div class="cal-cell"></div>';for(var d=1;d<=daysInMonth;d++){var mm=String(calMonth+1).padStart(2,'0');var dd=String(d).padStart(2,'0');var ds=calYear+'-'+mm+'-'+dd;var isPast=ds<today;var isToday=ds===today;var isSel=ds===calSelected;var cls='cal-cell';if(isSel)cls+=' selected';else if(isToday)cls+=' today';if(isPast)cls+=' disabled';html+='<div class="'+cls+'" onclick="'+(isPast?'':"calSelect('"+ds+"')")+'">'+d+'</div>'}html+='</div>';if(calSelected){var dt=new Date(calSelected+'T12:00:00');var fmt=dt.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});html+='<div class="cal-selected-row">&#128197; '+fmt+'</div>'}document.getElementById('calendarWidget').innerHTML=html}
         function calPrev(){if(calMonth===0){calMonth=11;calYear--}else calMonth--;renderCalendar()}
         function calNext(){if(calMonth===11){calMonth=0;calYear++}else calMonth++;renderCalendar()}
         function calSelect(d){calSelected=d;document.getElementById('recStartDate').value=d;renderCalendar();updatePreview()}
         renderCalendar();
 
-        function updatePreview(){var sd=document.getElementById('recStartDate').value;var iv=parseInt(document.getElementById('recIntervalWeeks').value)||2;var oc=parseInt(document.getElementById('recOccurrences').value)||4;var pv=document.getElementById('datesPreview');var pl=document.getElementById('datesPreviewList');if(!sd){pv.style.display='none';return}pv.style.display='block';var dates=[];var d=new Date(sd+'T12:00:00');for(var i=0;i<oc;i++){dates.push(new Date(d));d.setDate(d.getDate()+iv*7)}pl.innerHTML=dates.map(function(dt){var label=dt.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});return '<span style="background:rgba(201,168,76,.12);color:var(--primary);padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;">'+label+'</span>'}).join('')}
+        function updatePreview(){var sd=document.getElementById('recStartDate').value;var iv=parseInt(document.getElementById('recIntervalWeeks').value)||2;var oc=parseInt(document.getElementById('recOccurrences').value)||4;var pv=document.getElementById('datesPreview');var pl=document.getElementById('datesPreviewList');if(!sd){pv.style.display='none';return}pv.style.display='block';var dates=[];var d=new Date(sd+'T12:00:00');for(var i=0;i<oc;i++){dates.push(new Date(d));d.setDate(d.getDate()+iv*7)}pl.innerHTML=dates.map(function(dt){var label=dt.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});return '<span style="background:rgba(201,168,76,.12);color:var(--gold);padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;">'+label+'</span>'}).join('')}
 
         function openCancelModal(id,name){document.getElementById('cancelId').value=id;document.getElementById('cancelClientName').textContent=name;document.getElementById('cancelModal').style.display='flex'}
         document.addEventListener('click',function(e){if(e.target.id==='cancelModal')document.getElementById('cancelModal').style.display='none'});
@@ -7480,7 +7480,7 @@ export function registerAdminRoutes(app: Express): void {
     const body = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
         <div>
-          <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Planos de Assinatura</h1>
+          <h1 style="font-size:24px;font-weight:700;color:var(--text);">Planos de Assinatura</h1>
           <p style="color:var(--muted);font-size:14px;margin-top:4px;">Gerencie os planos disponíveis para seus clientes</p>
         </div>
         <div style="display:flex;gap:10px;">
@@ -7499,19 +7499,19 @@ export function registerAdminRoutes(app: Express): void {
             <div style="background:var(--surface);border:1px solid ${plan.isActive ? 'var(--border)' : '#333'};border-radius:16px;padding:20px;opacity:${plan.isActive ? '1' : '0.6'};">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
                 <div>
-                  <div style="font-size:16px;font-weight:700;color:var(--foreground);">${esc(plan.name)}</div>
+                  <div style="font-size:16px;font-weight:700;color:var(--text);">${esc(plan.name)}</div>
                   ${plan.description ? `<div style="font-size:12px;color:var(--muted);margin-top:2px;">${esc(plan.description)}</div>` : ""}
                 </div>
                 <span style="background:${plan.isActive ? 'rgba(74,222,128,.12)' : 'rgba(122,120,112,.12)'};color:${plan.isActive ? '#4ADE80' : 'var(--muted)'};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">${plan.isActive ? 'Ativo' : 'Inativo'}</span>
               </div>
-              <div style="font-size:28px;font-weight:900;color:var(--primary);margin-bottom:12px;">R$ ${parseFloat(plan.price).toFixed(2)}</div>
+              <div style="font-size:28px;font-weight:900;color:var(--gold);margin-bottom:12px;">R$ ${parseFloat(plan.price).toFixed(2)}</div>
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
                 <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center;">
-                  <div style="font-size:18px;font-weight:800;color:var(--foreground);">${plan.recurrences}</div>
+                  <div style="font-size:18px;font-weight:800;color:var(--text);">${plan.recurrences}</div>
                   <div style="font-size:10px;color:var(--muted);font-weight:600;">Recorrências</div>
                 </div>
                 <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center;">
-                  <div style="font-size:18px;font-weight:800;color:var(--foreground);">${plan.maxServices}</div>
+                  <div style="font-size:18px;font-weight:800;color:var(--text);">${plan.maxServices}</div>
                   <div style="font-size:10px;color:var(--muted);font-weight:600;">Serviços</div>
                 </div>
                 <div style="background:var(--surface2);border-radius:10px;padding:10px;text-align:center;">
@@ -7538,7 +7538,7 @@ export function registerAdminRoutes(app: Express): void {
       <div id="planModal" style="display:${editPlan ? 'flex' : 'none'};position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
         <div style="background:var(--surface);border-radius:16px;padding:28px;width:560px;max-width:90vw;max-height:90vh;overflow-y:auto;border:1px solid var(--border);">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-            <h2 style="font-size:18px;font-weight:700;color:var(--foreground);">${editPlan ? 'Editar Plano' : 'Novo Plano'}</h2>
+            <h2 style="font-size:18px;font-weight:700;color:var(--text);">${editPlan ? 'Editar Plano' : 'Novo Plano'}</h2>
             <button onclick="document.getElementById('planModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">&#10005;</button>
           </div>
           <form method="POST" action="${editPlan ? '/admin/planos/' + editPlan.id + '/editar' : '/admin/planos'}">
@@ -7572,19 +7572,19 @@ export function registerAdminRoutes(app: Express): void {
             </div>
             <div class="form-group">
               <label class="form-label">Serviços incluídos</label>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;background:var(--background);border:1px solid var(--border);border-radius:10px;padding:12px;max-height:160px;overflow-y:auto;">
+              <div style="display:flex;flex-wrap:wrap;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;max-height:160px;overflow-y:auto;">
                 ${allServices.map((s: any) => {
                   const checked = editPlan?.services?.some((es: any) => es.serviceId === s.id) ? 'checked' : '';
-                  return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--foreground);cursor:pointer;min-width:140px;"><input type="checkbox" name="serviceIds" value="${s.id}" ${checked} style="accent-color:var(--primary);width:14px;height:14px;" />${esc(s.name)}</label>`;
+                  return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer;min-width:140px;"><input type="checkbox" name="serviceIds" value="${s.id}" ${checked} style="accent-color:var(--gold);width:14px;height:14px;" />${esc(s.name)}</label>`;
                 }).join("")}
               </div>
             </div>
             <div class="form-group">
               <label class="form-label">Produtos incluídos</label>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;background:var(--background);border:1px solid var(--border);border-radius:10px;padding:12px;max-height:120px;overflow-y:auto;">
+              <div style="display:flex;flex-wrap:wrap;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;max-height:120px;overflow-y:auto;">
                 ${allProducts.length === 0 ? '<span style="font-size:13px;color:var(--muted);">Nenhum produto cadastrado</span>' : allProducts.map((p: any) => {
                   const checked = editPlan?.products?.some((ep: any) => ep.productId === p.id) ? 'checked' : '';
-                  return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--foreground);cursor:pointer;min-width:140px;"><input type="checkbox" name="productIds" value="${p.id}" ${checked} style="accent-color:var(--primary);width:14px;height:14px;" />${esc(p.name)}</label>`;
+                  return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer;min-width:140px;"><input type="checkbox" name="productIds" value="${p.id}" ${checked} style="accent-color:var(--gold);width:14px;height:14px;" />${esc(p.name)}</label>`;
                 }).join("")}
               </div>
             </div>
@@ -7600,7 +7600,7 @@ export function registerAdminRoutes(app: Express): void {
     res.send(adminLayout("Planos de Assinatura", "planos", body, barber?.name, _tp));
     } catch (err: any) {
       console.error('[/admin/planos] Erro:', err?.message);
-      res.send(adminLayout("Planos de Assinatura", "planos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/planos" class="btn btn-primary">Tentar novamente</a></div>`));
+      res.send(adminLayout("Planos de Assinatura", "planos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/planos" class="btn btn-primary">Tentar novamente</a></div>`));
     }
   }));
 
@@ -7778,7 +7778,7 @@ export function registerAdminRoutes(app: Express): void {
     const body = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
         <div>
-          <h1 style="font-size:24px;font-weight:700;color:var(--foreground)">Controle de Estoque</h1>
+          <h1 style="font-size:24px;font-weight:700;color:var(--text)">Controle de Estoque</h1>
           <p style="color:var(--muted);font-size:14px;margin-top:4px">Movimentações e alertas de estoque dos produtos</p>
         </div>
         <a href="/admin/export/estoque.csv" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a>
@@ -7926,7 +7926,7 @@ export function registerAdminRoutes(app: Express): void {
     const unconfiguredServices = allServices.filter(s => !configuredIds.includes(s.id));
     const body = `
       <div style="margin-bottom:24px;">
-        <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Retorno Automático</h1>
+        <h1 style="font-size:24px;font-weight:700;color:var(--text);">Retorno Automático</h1>
         <p style="color:var(--muted);font-size:14px;margin-top:4px;">Configure mensagens automáticas de retorno por WhatsApp após o atendimento</p>
       </div>
       ${saved ? `<div class="alert alert-success">Configuração salva com sucesso.</div>` : ""}
@@ -7955,7 +7955,7 @@ export function registerAdminRoutes(app: Express): void {
               </div>
               <div class="form-group" style="display:flex;align-items:center;gap:8px;">
                 <input type="checkbox" name="isActive" id="isActive" value="1" checked style="width:16px;height:16px;" />
-                <label for="isActive" style="color:var(--foreground);font-size:14px;">Ativo</label>
+                <label for="isActive" style="color:var(--text);font-size:14px;">Ativo</label>
               </div>
               <button type="submit" class="btn btn-primary" style="width:100%;">Salvar Configuração</button>
             </form>
@@ -7969,7 +7969,7 @@ export function registerAdminRoutes(app: Express): void {
               <div style="padding:16px;border-bottom:1px solid var(--border);">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;">
                   <div>
-                    <strong style="color:var(--foreground);">${esc(c.serviceName)}</strong>
+                    <strong style="color:var(--text);">${esc(c.serviceName)}</strong>
                     <span class="badge ${c.isActive ? "badge-success" : "badge-muted"}" style="margin-left:8px;">${c.isActive ? "Ativo" : "Inativo"}</span>
                     <p style="color:var(--muted);font-size:12px;margin-top:4px;">Enviar ${c.delayDays} dia(s) após o atendimento</p>
                     <p style="color:var(--muted);font-size:12px;margin-top:2px;font-style:italic;">&ldquo;${esc(c.messageTemplate.slice(0, 80))}${c.messageTemplate.length > 80 ? "..." : ""}&rdquo;</p>
@@ -8159,7 +8159,7 @@ export function registerAdminRoutes(app: Express): void {
     const avgRate = report.length > 0 ? Math.round(report.reduce((s, p) => s + (p.conversionRate ?? 0), 0) / report.length) : 0;
     const body = `
       <div style="margin-bottom:24px;">
-        <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Conversão de Promoções</h1>
+        <h1 style="font-size:24px;font-weight:700;color:var(--text);">Conversão de Promoções</h1>
         <p style="color:var(--muted);font-size:14px;margin-top:4px;">Relatório de efetividade das promoções enviadas</p>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
@@ -8222,7 +8222,7 @@ export function registerAdminRoutes(app: Express): void {
     const pwError = req.query.pwerr as string | undefined;
     const body = `
       <div style="margin-bottom:24px;">
-        <h1 style="font-size:24px;font-weight:700;color:var(--foreground);">Meu Perfil</h1>
+        <h1 style="font-size:24px;font-weight:700;color:var(--text);">Meu Perfil</h1>
         <p style="color:var(--muted);font-size:14px;margin-top:4px;">Gerencie suas informações pessoais e senha de acesso</p>
       </div>
       ${saved ? `<div class="alert alert-success">Perfil atualizado com sucesso.</div>` : ""}
@@ -9047,7 +9047,7 @@ export function registerAdminRoutes(app: Express): void {
     const body = `
       <div style="padding:24px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-          <h1 style="font-size:24px;font-weight:700;color:var(--foreground)">Encomendas de Produtos</h1>
+          <h1 style="font-size:24px;font-weight:700;color:var(--text)">Encomendas de Produtos</h1>
           <div style="font-size:14px;color:var(--muted)">${enriched.length} pedido(s)</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">${filterBtns}</div>
@@ -9072,7 +9072,7 @@ export function registerAdminRoutes(app: Express): void {
     res.send(adminLayout("Encomendas", "encomendas", body, barber?.name, _tp2));
     } catch (err: any) {
       console.error('[/admin/encomendas] Erro:', err?.message);
-      res.send(adminLayout("Encomendas", "encomendas", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/encomendas" class="btn btn-primary">Tentar novamente</a></div>`));
+      res.send(adminLayout("Encomendas", "encomendas", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/encomendas" class="btn btn-primary">Tentar novamente</a></div>`));
     }
   }));
 
@@ -9293,12 +9293,12 @@ export function registerAdminRoutes(app: Express): void {
               <tr>
                 <td><strong>${esc(s.name)}</strong>${s.notes ? `<br><small style="color:var(--muted)">${esc(s.notes.substring(0, 60))}${s.notes.length > 60 ? "..." : ""}</small>` : ""}</td>
                 <td style="color:var(--muted);font-size:13px">${esc(s.cnpj ?? "—")}</td>
-                <td>${s.phone ? `<a href="https://wa.me/55${s.phone.replace(/\D/g,"")}" target="_blank" style="color:var(--primary);text-decoration:none">📱 ${esc(s.phone)}</a>` : `<span style="color:var(--muted)">—</span>`}</td>
+                <td>${s.phone ? `<a href="https://wa.me/55${s.phone.replace(/\D/g,"")}" target="_blank" style="color:var(--gold);text-decoration:none">📱 ${esc(s.phone)}</a>` : `<span style="color:var(--muted)">—</span>`}</td>
                 <td style="color:var(--muted);font-size:13px">${esc(s.email ?? "—")}</td>
                 <td style="color:var(--muted);font-size:13px">${esc(s.address ?? "—")}</td>
                 <td>
                   <div style="display:flex;gap:8px">
-                    <a href="/admin/fornecedores/${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--primary);color:#0A0A0A">Ver detalhes</a>
+                    <a href="/admin/fornecedores/${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--gold);color:#0A0A0A">Ver detalhes</a>
                     <a href="/admin/fornecedores?edit=${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">Editar</a>
                     <form method="POST" action="/admin/fornecedores/delete" style="display:inline" onsubmit="return confirm('Excluir este fornecedor?')">
                       <input type="hidden" name="id" value="${s.id}" />
@@ -9327,7 +9327,7 @@ export function registerAdminRoutes(app: Express): void {
     res.send(adminLayout("Fornecedores", "fornecedores", body, barber?.name, _tp));
     } catch (err: any) {
       console.error('[/admin/fornecedores] Erro:', err?.message);
-      res.send(adminLayout("Fornecedores", "fornecedores", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--foreground);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/fornecedores" class="btn btn-primary">Tentar novamente</a></div>`));
+      res.send(adminLayout("Fornecedores", "fornecedores", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/fornecedores" class="btn btn-primary">Tentar novamente</a></div>`));
     }
   }));
 
@@ -9402,7 +9402,7 @@ export function registerAdminRoutes(app: Express): void {
         <div style="display:grid;grid-template-rows:1fr 1fr;gap:12px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="card" style="padding:16px;text-align:center">
-              <div style="font-size:28px;font-weight:800;color:var(--primary)">${totalProdutos}</div>
+              <div style="font-size:28px;font-weight:800;color:var(--gold)">${totalProdutos}</div>
               <div style="font-size:12px;color:var(--muted);margin-top:4px">Produtos vinculados</div>
             </div>
             <div class="card" style="padding:16px;text-align:center">
@@ -9431,7 +9431,7 @@ export function registerAdminRoutes(app: Express): void {
               return `<tr>
                 <td><strong>${esc(p.name)}</strong>${p.description ? `<br><small style="color:var(--muted)">${esc(p.description.substring(0,60))}${p.description.length>60?"...":""}</small>` : ""}</td>
                 <td><span style="background:${p.productType==="sale"?"#0a7ea422":"#C9A84C22"};color:${p.productType==="sale"?"#0a7ea4":"#C9A84C"};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600">${p.productType==="sale"?"Venda":"Uso Interno"}</span></td>
-                <td style="font-weight:700;color:var(--primary)">R$ ${parseFloat(p.price).toFixed(2).replace(".",",")}</td>
+                <td style="font-weight:700;color:var(--gold)">R$ ${parseFloat(p.price).toFixed(2).replace(".",",")}</td>
                 <td><span style="color:${stockColor};font-weight:700">${stock}</span>${isLow?` <span style="font-size:11px;color:#FF9800">⚠ baixo</span>`:""}</td>
                 <td><span style="background:${p.isActive?"#4ADE8022":"#EF444422"};color:${p.isActive?"#4ADE80":"#F87171"};padding:3px 10px;border-radius:20px;font-size:12px">${p.isActive?"Ativo":"Inativo"}</span></td>
                 <td><a href="/admin/produtos?edit=${p.id}" class="btn" style="padding:5px 12px;font-size:12px;background:var(--surface2);color:var(--text)">Editar</a></td>
@@ -9475,7 +9475,7 @@ export function registerAdminRoutes(app: Express): void {
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
             <div style="text-align:center;padding:16px;background:var(--surface2);border-radius:12px">
               <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Últimos 12 meses</div>
-              <div style="font-size:24px;font-weight:800;color:var(--primary)">R$ ${totalCompras12m.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              <div style="font-size:24px;font-weight:800;color:var(--gold)">R$ ${totalCompras12m.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               <div style="font-size:12px;color:var(--muted);margin-top:4px">${totalPedidos12m} reposição${totalPedidos12m !== 1 ? "s" : ""}</div>
             </div>
             <div style="text-align:center;padding:16px;background:var(--surface2);border-radius:12px">
@@ -9495,7 +9495,7 @@ export function registerAdminRoutes(app: Express): void {
       <div class="card" style="margin-bottom:24px">
         <div class="card-header">
           <div class="card-title">Produtos Vinculados (${totalProdutos})</div>
-          <a href="/admin/produtos" class="btn" style="padding:6px 14px;font-size:12px;background:var(--primary);color:#0A0A0A">+ Novo produto</a>
+          <a href="/admin/produtos" class="btn" style="padding:6px 14px;font-size:12px;background:var(--gold);color:#0A0A0A">+ Novo produto</a>
         </div>
         <div class="card-body" style="padding:0">${productsTable}</div>
       </div>

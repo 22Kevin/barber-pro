@@ -2236,3 +2236,7 @@
 
 ## Correção Crítica Deploy Railway (15/05/2026)
 - [x] Corrigir Dockerfile: remover --mount=type=cache incompatível com Railway Metal builder (causa raiz de todas as falhas de build)
+
+## Correção Visual Agenda (15/05/2026)
+- [x] Corrigir variáveis CSS inválidas na página Agenda: --primary → --gold, --foreground → --text, --background → --bg (183 substituições)
+- [x] Botão "Novo Agendamento" e outros botões da Agenda agora visíveis com cor dourada correta
