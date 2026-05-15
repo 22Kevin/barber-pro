@@ -193,7 +193,7 @@ async function startServer() {
     }
     if (sub === "api") {
       // api.usebarberpro.com / → retornar info da API
-      return res.json({ name: "Barber Pro API", version: "1.0.0", status: "ok" });
+      return res.json({ name: "Barber Pro API", version: "1.0.1", status: "ok", build: "2026-05-15" });
     }
     // Domínio raiz → landing page (sem cache para garantir versão mais recente)
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
