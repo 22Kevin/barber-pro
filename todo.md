@@ -2227,3 +2227,9 @@
 ## Correção Webhook — Queries PostgreSQL (14/05/2026)
 - [x] Corrigir queries SQL do webhook para usar aspas duplas nos nomes camelCase (PostgreSQL): "asaasPaymentId", "asaasSubscriptionId", "updatedAt", "paidAt", "referenceId", "chargeType", "clientId", "tenantId", "billingType"
 - [x] Verificar ASAAS_WEBHOOK_TOKEN nas secrets de produção (ausente — token não está sendo validado em produção)
+
+## Correção Build Docker Railway (15/05/2026)
+- [x] Criar .dockerignore para excluir node_modules (1.4GB) do contexto Docker — causa raiz das falhas de build
+- [x] Restaurar dist/ no .gitignore (foi removido por engano)
+- [x] Remover dist/index.js do tracking do git
+- [x] Redesign da página de Agenda do painel web: calendário maior, visual moderno, cards aprimorados
