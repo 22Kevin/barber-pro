@@ -5805,13 +5805,17 @@ export function registerAdminRoutes(app: Express): void {
       if (!tenant?.asaasAccountId) { res.redirect("/admin/configuracoes?tab=pagamentos"); return; }
 
       const accountData = await getAsaasSubAccount(tenant.asaasAccountId);
-      const status = (accountData as any).commercialInfo?.status ?? "pending";
-      const normalizedStatus = status === "APPROVED" ? "active" : status === "REJECTED" ? "rejected" : "pending";
+      // A API Asaas pode retornar accountStatus no nível raiz OU dentro de commercialInfo
+      const rawStatus = (accountData as any).accountStatus
+        ?? (accountData as any).commercialInfo?.status
+        ?? "PENDING";
+      const normalizedStatus = rawStatus === "APPROVED" ? "active" : rawStatus === "REJECTED" ? "rejected" : "pending";
 
       await dbConn.execute(sql`UPDATE tenants SET "asaasAccountStatus" = ${normalizedStatus}, "updatedAt" = NOW() WHERE id = ${barber.tenantId}`);
       res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
     } catch (e: any) {
-      res.redirect("/admin/configuracoes?tab=pagamentos");
+      console.error('[asaas/sync] Erro ao sincronizar status:', e?.message ?? e);
+      res.redirect("/admin/configuracoes?tab=pagamentos&error=" + encodeURIComponent('Erro ao verificar status: ' + (e?.message ?? 'Tente novamente')));
     }
   });
 

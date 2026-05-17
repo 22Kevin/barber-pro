@@ -586,6 +586,28 @@ async function startServer() {
     }
   });
 
+  // GET /api/asaas/account-status — Diagnóstico da subconta Asaas (requer x-internal-key)
+  app.get("/api/asaas/account-status", async (req, res) => {
+    if (req.headers["x-internal-key"] !== "barber_migrate_2026") {
+      return res.status(403).json({ error: "forbidden" });
+    }
+    try {
+      const { getDb } = await import("../db");
+      const { getAsaasSubAccount, asaasEnabled } = await import("../asaas");
+      const db = await getDb();
+      if (!db) return res.status(500).json({ error: "no db" });
+      // Pegar primeiro tenant com asaasAccountId
+      const r = await db.execute(`SELECT id, name, "asaasAccountId", "asaasAccountStatus" FROM tenants WHERE "asaasAccountId" IS NOT NULL LIMIT 1` as any);
+      const tenant = ((r as any).rows ?? r)[0];
+      if (!tenant?.asaasAccountId) return res.json({ ok: false, error: "Nenhum tenant com asaasAccountId", tenant });
+      if (!asaasEnabled) return res.json({ ok: false, error: "ASAAS_API_KEY não configurada" });
+      const accountData = await getAsaasSubAccount(tenant.asaasAccountId);
+      return res.json({ ok: true, tenant, accountData });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message, stack: err.stack?.split('\n').slice(0,5) });
+    }
+  });
+
   // ─── Endpoint de diagnóstico do banco de dados ─────────────────────────────────────────
   app.get("/api/db-columns", async (req, res) => {
     if (req.headers["x-internal-key"] !== "barber_migrate_2026") {

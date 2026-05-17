@@ -2261,3 +2261,7 @@
 - [x] Campo de renda/faturamento ausente no formulário Asaas — campo incomeValue adicionado no form e no handler
 - [x] Erro 400 no "Assinar Agora" — colunas barberpro* adicionadas ao auto-migrate; serão criadas no próximo deploy
 - [x] CPF/CNPJ inválido — máscara de CPF/CNPJ e celular adicionadas ao formulário
+
+## Bugs Críticos Vídeo 3 (17/05/2026)
+- [x] Botão "Verificar status de aprovação" — corrigido: usa accountStatus (nível raiz) além de commercialInfo.status; timeout de 10s adicionado; erros agora mostram mensagem ao usuário
+- [x] Serviço não adicionado — era preview local sem serviços; em produção o serviço aparece pré-selecionado via URL param ?service=ID

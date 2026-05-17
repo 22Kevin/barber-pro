@@ -333,10 +333,11 @@ export async function getAsaasSubAccount(accountId: string): Promise<{
   name: string;
   email: string;
   cpfCnpj: string;
+  accountStatus?: string;          // APPROVED | PENDING | REJECTED
   commercialInfo?: { status: string };
   walletId: string;
 }> {
-  const response = await asaasRootApi.get(`/v3/accounts/${accountId}`);
+  const response = await asaasRootApi.get(`/v3/accounts/${accountId}`, { timeout: 10000 });
   return response.data;
 }
 
