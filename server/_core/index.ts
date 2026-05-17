@@ -520,38 +520,66 @@ async function startServer() {
           }
         }
       }
-      // ─── Eventos de Assinatura Barber Pro ─────────────────────────────────────
-      if (dbConn && req.body?.event && req.body?.subscription) {
-        const sub = req.body.subscription;
+
+      // ─── Eventos de Assinatura Barber Pro ─────────────────────────────────────────────────────
+      // Caso 1: evento com objeto subscription (ex: SUBSCRIPTION_CANCELLED, SUBSCRIPTION_RENEWED)
+      // Caso 2: evento PAYMENT_RECEIVED/PAYMENT_CONFIRMED com payment.subscription (pagamento de assinatura)
+      if (dbConn && req.body?.event) {
         const event = req.body.event as string;
-        const extRef = sub.externalReference as string | undefined;
-        // externalReference = 'tenant_<tenantId>'
-        if (extRef?.startsWith("tenant_")) {
-          const tenantId = parseInt(extRef.replace("tenant_", ""), 10);
-          if (!isNaN(tenantId)) {
-            const statusMap: Record<string, string> = {
-              PAYMENT_RECEIVED: "active",
-              PAYMENT_CONFIRMED: "active",
-              SUBSCRIPTION_RENEWED: "active",
-              PAYMENT_OVERDUE: "overdue",
-              PAYMENT_REFUNDED: "overdue",
-              SUBSCRIPTION_CANCELLED: "cancelled",
-              PAYMENT_CANCELLED: "cancelled",
-            };
-            const newStatus = statusMap[event];
-            if (newStatus) {
-              try {
-                await (dbConn as any).execute(
-                  `UPDATE tenants SET "barberproSubscriptionStatus" = '${newStatus}', "updatedAt" = NOW() WHERE id = ${tenantId}`
-                );
-                console.log(`[asaas-webhook] Assinatura Barber Pro tenant ${tenantId} → ${newStatus} (evento: ${event})`);
-              } catch (subErr: any) {
-                console.error("[asaas-webhook] Erro ao atualizar assinatura:", subErr.message);
-              }
+        const statusMap: Record<string, string> = {
+          PAYMENT_RECEIVED: "active",
+          PAYMENT_CONFIRMED: "active",
+          SUBSCRIPTION_RENEWED: "active",
+          PAYMENT_OVERDUE: "overdue",
+          PAYMENT_REFUNDED: "overdue",
+          SUBSCRIPTION_CANCELLED: "cancelled",
+          PAYMENT_CANCELLED: "cancelled",
+        };
+        const newStatus = statusMap[event];
+        if (newStatus) {
+          let tenantId: number | null = null;
+
+          // Caso 1: body.subscription com externalReference = 'tenant_<id>'
+          if (req.body.subscription?.externalReference?.startsWith("tenant_")) {
+            tenantId = parseInt(req.body.subscription.externalReference.replace("tenant_", ""), 10);
+          }
+
+          // Caso 2: body.payment.subscription existe → buscar tenant pelo asaasSubscriptionId
+          if (!tenantId && req.body.payment?.subscription) {
+            const subId = req.body.payment.subscription as string;
+            try {
+              const subRows = await (dbConn as any).execute(
+                `SELECT id FROM tenants WHERE "barberproSubscriptionId" = '${subId}' LIMIT 1`
+              );
+              const subArr = Array.isArray(subRows) ? subRows[0] : subRows?.rows ?? [];
+              if (subArr?.[0]?.id) tenantId = subArr[0].id;
+            } catch (lookupErr: any) {
+              console.error("[asaas-webhook] Erro ao buscar tenant por subscriptionId:", lookupErr.message);
+            }
+          }
+
+          // Caso 3: body.payment.externalReference = 'tenant_<id>' (fallback)
+          if (!tenantId && req.body.payment?.externalReference?.startsWith("tenant_")) {
+            tenantId = parseInt(req.body.payment.externalReference.replace("tenant_", ""), 10);
+          }
+
+          if (tenantId && !isNaN(tenantId)) {
+            try {
+              // Atualizar status da assinatura e data de próximo vencimento se pago
+              const nextDueClause = newStatus === "active"
+                ? `, "barberproNextDueDate" = (NOW() + INTERVAL '30 days')::date`
+                : "";
+              await (dbConn as any).execute(
+                `UPDATE tenants SET "barberproSubscriptionStatus" = '${newStatus}', "updatedAt" = NOW()${nextDueClause} WHERE id = ${tenantId}`
+              );
+              console.log(`[asaas-webhook] Assinatura Barber Pro tenant ${tenantId} → ${newStatus} (evento: ${event})`);
+            } catch (subErr: any) {
+              console.error("[asaas-webhook] Erro ao atualizar assinatura:", subErr.message);
             }
           }
         }
       }
+
       res.json({ received: true });
     } catch (err: any) {
       console.error("[asaas-webhook]", err.message);

@@ -2265,3 +2265,7 @@
 ## Bugs Críticos Vídeo 3 (17/05/2026)
 - [x] Botão "Verificar status de aprovação" — corrigido: usa accountStatus (nível raiz) além de commercialInfo.status; timeout de 10s adicionado; erros agora mostram mensagem ao usuário
 - [x] Serviço não adicionado — era preview local sem serviços; em produção o serviço aparece pré-selecionado via URL param ?service=ID
+
+## Bugs Críticos Vídeo 4 (17/05/2026)
+- [x] Webhook PAYMENT_RECEIVED não atualizava status da assinatura — corrigido: agora processa 3 casos (subscription.externalRef, payment.subscription, payment.externalRef) + atualiza barberproNextDueDate +30 dias
+- [x] Falta histórico de pagamentos na aba Pagamentos — adicionado: tabela com data, valor, forma de pagamento e status dos últimos 12 pagamentos da assinatura Barber Pro

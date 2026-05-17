@@ -3634,6 +3634,19 @@ async function renderConfiguracoes(req: Request, res: Response) {
     rejected: 'var(--error)',
   };
 
+  // Histórico de pagamentos da assinatura Barber Pro (busca no Asaas)
+  let bpPaymentHistory: any[] = [];
+  const bpSubIdForHistory = (tenant as any)?.barberproSubscriptionId ?? null;
+  if (bpSubIdForHistory) {
+    try {
+      const { asaasEnabled, asaasApi } = await import('../asaas');
+      if (asaasEnabled) {
+        const histResp = await asaasApi.get(`/payments?subscription=${bpSubIdForHistory}&limit=12`);
+        bpPaymentHistory = histResp.data?.data ?? [];
+      }
+    } catch (_) { /* silencioso */ }
+  }
+
   // Dados da assinatura Barber Pro
   const bpStatus = (tenant as any)?.barberproSubscriptionStatus ?? 'trial';
   const bpPlanName = (tenant as any)?.barberproPlanName ?? 'starter';
@@ -3685,6 +3698,40 @@ async function renderConfiguracoes(req: Request, res: Response) {
           </div>
         </div>
       </div>
+
+      <!-- Histórico de Pagamentos da Assinatura -->
+      ${bpPaymentHistory.length > 0 ? `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:14px">HISTÓRICO DE PAGAMENTOS</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="text-align:left;padding:6px 8px;color:var(--muted);font-weight:600">Data</th>
+              <th style="text-align:left;padding:6px 8px;color:var(--muted);font-weight:600">Valor</th>
+              <th style="text-align:left;padding:6px 8px;color:var(--muted);font-weight:600">Forma</th>
+              <th style="text-align:left;padding:6px 8px;color:var(--muted);font-weight:600">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${bpPaymentHistory.map((p: any) => {
+              const pmtDate = p.dueDate ? new Date(p.dueDate + 'T12:00:00').toLocaleDateString('pt-BR') : '-';
+              const pmtValue = p.value ? 'R$ ' + Number(p.value).toFixed(2).replace('.', ',') : '-';
+              const pmtBilling = p.billingType === 'PIX' ? 'Pix' : p.billingType === 'CREDIT_CARD' ? 'Cartão' : p.billingType === 'BOLETO' ? 'Boleto' : (p.billingType ?? '-');
+              const pmtStatusMap: Record<string, string> = { RECEIVED: '✅ Pago', CONFIRMED: '✅ Pago', PENDING: '⏳ Pendente', OVERDUE: '⚠️ Vencido', REFUNDED: '↩ Estornado', CANCELLED: '✖ Cancelado' };
+              const pmtStatusColor: Record<string, string> = { RECEIVED: '#4ADE80', CONFIRMED: '#4ADE80', PENDING: '#FBBF24', OVERDUE: '#F87171', REFUNDED: '#9BA1A6', CANCELLED: '#9BA1A6' };
+              const pmtStatusLabel = pmtStatusMap[p.status] ?? p.status;
+              const pmtStatusClr = pmtStatusColor[p.status] ?? 'var(--muted)';
+              return `<tr style="border-bottom:1px solid var(--border)">
+                <td style="padding:10px 8px;color:var(--text)">${pmtDate}</td>
+                <td style="padding:10px 8px;color:var(--text);font-weight:600">${pmtValue}</td>
+                <td style="padding:10px 8px;color:var(--muted)">${pmtBilling}</td>
+                <td style="padding:10px 8px;font-weight:600;color:${pmtStatusClr}">${pmtStatusLabel}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      ` : ''}
 
       <!-- Status conta de pagamentos -->
       <!-- Status atual -->

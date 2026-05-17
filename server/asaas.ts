@@ -222,6 +222,8 @@ export interface AsaasWebhookPayload {
     value: number;
     status: string;
     customer: string;
+    /** ID da assinatura vinculada (presente quando o pagamento é de uma assinatura) */
+    subscription?: string;
   };
   subscription?: {
     id: string;
