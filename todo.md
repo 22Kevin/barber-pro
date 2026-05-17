@@ -2269,3 +2269,8 @@
 ## Bugs Críticos Vídeo 4 (17/05/2026)
 - [x] Webhook PAYMENT_RECEIVED não atualizava status da assinatura — corrigido: agora processa 3 casos (subscription.externalRef, payment.subscription, payment.externalRef) + atualiza barberproNextDueDate +30 dias
 - [x] Falta histórico de pagamentos na aba Pagamentos — adicionado: tabela com data, valor, forma de pagamento e status dos últimos 12 pagamentos da assinatura Barber Pro
+
+## Bugs Críticos Vídeo 5 (17/05/2026)
+- [x] Erro 400 no "Assinar Agora" quando CPF/CNPJ vazio — mensagem clara já existia; corrigido
+- [x] Assinatura criada com BOLETO em vez de PIX — corrigido: billingType alterado para PIX + redireciona para link de pagamento Asaas após criar assinatura
+- [ ] Falta opção "Cartão de débito" na tela de forma de pagamento do onboarding

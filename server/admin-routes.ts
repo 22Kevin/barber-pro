@@ -19,7 +19,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import * as db from "./db";
 import { sql } from "drizzle-orm";
-import { asaasEnabled, createAsaasSubAccount, getAsaasSubAccount, ensureAsaasRootCustomer, createAsaasSubscription, cancelAsaasSubscription } from "./asaas";
+import { asaasEnabled, asaasApi, createAsaasSubAccount, getAsaasSubAccount, ensureAsaasRootCustomer, createAsaasSubscription, cancelAsaasSubscription } from "./asaas";
 import axios from "axios";
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
@@ -5923,7 +5923,7 @@ export function registerAdminRoutes(app: Express): void {
 
       const subscriptionId = await createAsaasSubscription({
         customer: asaasCustomerId,
-        billingType: 'BOLETO',
+        billingType: 'PIX',
         value: planPrice,
         nextDueDate: nextDue,
         cycle: 'MONTHLY',
@@ -5941,6 +5941,18 @@ export function registerAdminRoutes(app: Express): void {
           "updatedAt" = NOW()
         WHERE id = ${barber.tenantId}
       `);
+
+      // Buscar o primeiro pagamento da assinatura para redirecionar para o link de pagamento Pix
+      try {
+        const paymentsRes = await asaasApi.get(`/subscriptions/${subscriptionId}/payments?limit=1`);
+        const firstPayment = paymentsRes.data?.data?.[0];
+        if (firstPayment?.invoiceUrl) {
+          res.redirect(firstPayment.invoiceUrl);
+          return;
+        }
+      } catch (payErr) {
+        console.error('[asaas/subscribe] Erro ao buscar pagamento:', (payErr as any).message);
+      }
 
       res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
     } catch (e: any) {
