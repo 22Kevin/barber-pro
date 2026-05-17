@@ -293,6 +293,7 @@ export interface AsaasSubAccountPayload {
   complement?: string;
   province?: string;         // bairro
   postalCode?: string;
+  incomeValue?: number;       // renda/faturamento mensal em R$ (obrigatório pelo Asaas)
 }
 
 export interface AsaasSubAccountResult {

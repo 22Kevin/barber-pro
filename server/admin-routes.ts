@@ -3752,6 +3752,13 @@ async function renderConfiguracoes(req: Request, res: Response) {
                 <label class="form-label">Data de nascimento <span style="color:var(--muted);font-size:11px">(obrigatório para PF)</span></label>
                 <input class="form-input" type="date" name="birthDate" value="${esc(tenant?.asaasBirthDate ?? '')}" />
               </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label">Renda / Faturamento mensal (R$) *</label>
+                <input class="form-input" type="number" name="incomeValue" required min="1" step="0.01"
+                  placeholder="Ex: 5000.00"
+                  value="${esc(tenant?.asaasIncomeValue ? String(tenant.asaasIncomeValue) : '')}" />
+                <div style="font-size:11px;color:var(--muted);margin-top:4px">Informe sua renda mensal ou faturamento estimado da barbearia. Exigido pelo Asaas para compliance financeiro.</div>
+              </div>
             </div>
 
             <div style="border-top:1px solid var(--border);margin:20px 0"></div>
@@ -3793,6 +3800,38 @@ async function renderConfiguracoes(req: Request, res: Response) {
           }
           companyTypeSelect.addEventListener('change', toggleBirthDate);
           toggleBirthDate();
+
+          // Máscara CPF/CNPJ
+          const cpfCnpjInput = document.querySelector('input[name="cpfCnpj"]');
+          if (cpfCnpjInput) {
+            cpfCnpjInput.addEventListener('input', function() {
+              let v = this.value.replace(/\D/g, '').substring(0, 14);
+              if (v.length <= 11) {
+                v = v.replace(/(\d{3})(\d)/, '$1.$2')
+                     .replace(/(\d{3})(\d)/, '$1.$2')
+                     .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+              } else {
+                v = v.replace(/(\d{2})(\d)/, '$1.$2')
+                     .replace(/(\d{3})(\d)/, '$1.$2')
+                     .replace(/(\d{3})(\d)/, '$1.$2')
+                     .replace(/(\d{4})(\d{1,2})$/, '$1/$2')
+                     .replace(/(\d{2})$/, '-$1');
+              }
+              this.value = v;
+            });
+          }
+
+          // Máscara celular
+          const phoneInput = document.querySelector('input[name="mobilePhone"]');
+          if (phoneInput) {
+            phoneInput.addEventListener('input', function() {
+              let v = this.value.replace(/\D/g, '').substring(0, 11);
+              if (v.length >= 11) v = v.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+              else if (v.length >= 7) v = v.replace(/(\d{2})(\d{4,5})(\d{0,4})/, '($1) $2-$3');
+              else if (v.length >= 3) v = v.replace(/(\d{2})(\d+)/, '($1) $2');
+              this.value = v;
+            });
+          }
 
           document.getElementById('asaas-setup-form').addEventListener('submit', function() {
             const btn = document.getElementById('asaas-submit-btn');
@@ -5696,9 +5735,12 @@ export function registerAdminRoutes(app: Express): void {
       if (!asaasEnabled) {
         res.redirect("/admin/configuracoes?tab=pagamentos&error=Pagamentos+online+n%C3%A3o+configurados+no+servidor"); return;
       }
-      const { name, email, cpfCnpj, companyType, mobilePhone, birthDate, address, addressNumber, province, postalCode } = req.body ?? {};
+      const { name, email, cpfCnpj, companyType, mobilePhone, birthDate, address, addressNumber, province, postalCode, incomeValue } = req.body ?? {};
       if (!name || !email || !cpfCnpj || !mobilePhone) {
         res.redirect("/admin/configuracoes?tab=pagamentos&error=Preencha+todos+os+campos+obrigat%C3%B3rios"); return;
+      }
+      if (!incomeValue || isNaN(parseFloat(incomeValue)) || parseFloat(incomeValue) <= 0) {
+        res.redirect("/admin/configuracoes?tab=pagamentos&error=Preencha+o+campo+de+renda%2Ffaturamento+mensal"); return;
       }
 
       const dbConn = await db.getDb();
@@ -5723,6 +5765,7 @@ export function registerAdminRoutes(app: Express): void {
         addressNumber: addressNumber || undefined,
         province: province || undefined,
         postalCode: postalCode ? postalCode.replace(/\D/g, "") : undefined,
+        incomeValue: parseFloat(incomeValue),
       });
 
       // Salvar credenciais no banco

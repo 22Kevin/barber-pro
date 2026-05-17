@@ -1,0 +1,13 @@
+{
+  "query": "\nALTER TABLE tenants\n  ADD COLUMN IF NOT EXISTS \"barberproSubscriptionId\" TEXT,\n  ADD COLUMN IF NOT EXISTS \"barberproSubscriptionStatus\" TEXT DEFAULT 'none',\n  ADD COLUMN IF NOT EXISTS \"barberproPlanName\" TEXT,\n  ADD COLUMN IF NOT EXISTS \"barberproPlanPrice\" NUMERIC(10,2),\n  ADD COLUMN IF NOT EXISTS \"barberproNextDueDate\" TEXT,\n  ADD COLUMN IF NOT EXISTS \"barberproCustomerId\" TEXT;\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute \nALTER TABLE tenants\n  ADD COLUMN IF NOT EXISTS \"barberproSubscriptionId\" TEXT,\n  ADD COLUMN IF NOT EXISTS \"barberproSubscriptionStatus\" TEXT DEFAULT 'none',\n  ADD COLUMN IF NOT EXISTS \"barberproPlanName\" TEXT,\n  ADD COLUMN IF NOT EXISTS \"barberproPlanPrice\" NUMERIC(10,2),\n  ADD COLUMN IF NOT EXISTS \"barberproNextDueDate\" TEXT,\n  ADD COLUMN IF NOT EXISTS \"barberproCustomerId\" TEXT;\n",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 2: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 2 column 53 near \"\"barberproSubscriptionId\" TEXT,",
+    "  ADD COLUMN IF NOT EXISTS \"barberproSubscriptionStatus\" TEXT DEFAULT 'none',",
+    "  ADD COLUMN IF NOT EXISTS \"barberproPlanName\" TEXT,",
+    "  ADD COLUMN IF NOT EXISTS \"barberproPlanPrice\" NUMERIC(10,2),",
+    "  ADD COLUMN IF NOT EXISTS \"barberproNextDueDate\" TEXT,",
+    "  ADD COLUMN IF NOT EXISTS \"barberproCustomerId\" TEXT\""
+  ]
+}
