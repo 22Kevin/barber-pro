@@ -5805,11 +5805,25 @@ export function registerAdminRoutes(app: Express): void {
       if (!tenant?.asaasAccountId) { res.redirect("/admin/configuracoes?tab=pagamentos"); return; }
 
       const accountData = await getAsaasSubAccount(tenant.asaasAccountId);
-      // A API Asaas pode retornar accountStatus no nível raiz OU dentro de commercialInfo
+      // A API Asaas pode retornar accountStatus no nível raiz OU dentro de commercialInfo.
+      // Se nenhum desses campos estiver presente mas a conta existe (tem walletId e accountNumber),
+      // a conta está ativa (aprovada automaticamente no Asaas Sandbox e em contas já aprovadas).
       const rawStatus = (accountData as any).accountStatus
         ?? (accountData as any).commercialInfo?.status
-        ?? "PENDING";
-      const normalizedStatus = rawStatus === "APPROVED" ? "active" : rawStatus === "REJECTED" ? "rejected" : "pending";
+        ?? null;
+      let normalizedStatus: string;
+      if (rawStatus === "APPROVED") {
+        normalizedStatus = "active";
+      } else if (rawStatus === "REJECTED") {
+        normalizedStatus = "rejected";
+      } else if (rawStatus === "PENDING" || rawStatus === "IN_ANALYSIS") {
+        normalizedStatus = "pending";
+      } else {
+        // Sem campo de status: conta existe e tem walletId → está ativa
+        const hasWallet = !!(accountData as any).walletId;
+        const hasAccount = !!(accountData as any).accountNumber?.account;
+        normalizedStatus = (hasWallet || hasAccount) ? "active" : "pending";
+      }
 
       await dbConn.execute(sql`UPDATE tenants SET "asaasAccountStatus" = ${normalizedStatus}, "updatedAt" = NOW() WHERE id = ${barber.tenantId}`);
       res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
