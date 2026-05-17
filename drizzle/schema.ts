@@ -88,6 +88,12 @@ export const tenants = pgTable("tenants", {
   asaasCompanyType: varchar("asaasCompanyType", { length: 20 }),
   asaasMobilePhone: varchar("asaasMobilePhone", { length: 20 }),
   asaasBirthDate: varchar("asaasBirthDate", { length: 10 }),
+  // Assinatura Barber Pro
+  barberproSubscriptionId: varchar("barberproSubscriptionId", { length: 100 }),
+  barberproSubscriptionStatus: varchar("barberproSubscriptionStatus", { length: 30 }).default("trial"),
+  barberproPlanName: varchar("barberproPlanName", { length: 50 }).default("starter"),
+  barberproPlanPrice: numeric("barberproPlanPrice", { precision: 10, scale: 2 }),
+  barberproNextDueDate: varchar("barberproNextDueDate", { length: 10 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

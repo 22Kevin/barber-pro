@@ -1,0 +1,9 @@
+{
+  "query": "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='tenants' AND column_name LIKE 'barberpro%' ORDER BY column_name;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT column_name, data_type FROM information_schema.columns WHERE table_name='tenants' AND column_name LIKE 'barberpro%' ORDER BY column_name;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 267
+}

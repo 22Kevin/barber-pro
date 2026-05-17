@@ -5792,10 +5792,17 @@ export function registerAdminRoutes(app: Express): void {
       }
 
       // Garantir que o cliente existe na conta raiz do Asaas
+      const cpfCnpjRaw = (tenantData.asaasCpfCnpj ?? tenantData.cnpj ?? '').replace(/\D/g, '');
+      if (!cpfCnpjRaw || cpfCnpjRaw.length < 11) {
+        res.redirect("/admin/configuracoes?tab=pagamentos&error=" + encodeURIComponent(
+          "Para assinar, primeiro configure sua conta de pagamentos preenchendo CPF/CNPJ na seção abaixo."
+        ));
+        return;
+      }
       const asaasCustomerId = await ensureAsaasRootCustomer({
         name: tenantData.name ?? 'Barbearia',
         email: tenantData.email ?? `tenant${barber.tenantId}@barberpro.app`,
-        cpfCnpj: (tenantData.asaasCpfCnpj ?? tenantData.cnpj ?? '').replace(/\D/g, ''),
+        cpfCnpj: cpfCnpjRaw,
         mobilePhone: (tenantData.asaasMobilePhone ?? tenantData.phone ?? '').replace(/\D/g, ''),
         tenantId: barber.tenantId,
       });

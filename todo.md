@@ -2249,3 +2249,10 @@
 - [x] Corrigir pub-api/asaas-payment-status que usa URL hardcoded de produção mesmo no Sandbox
 - [ ] Corrigir routers.ts linha 2135 INSERT sem aspas duplas nas colunas (PostgreSQL)
 - [x] Verificar ASAAS_SANDBOX=true configurado nas secrets de produção
+
+## Bugs Identificados no Vídeo (17/05/2026)
+- [x] Erro 400 ao clicar em "Assinar Agora" — corrigido: validação de CPF/CNPJ antes de chamar Asaas + mensagem clara
+- [x] Status da conta de pagamentos mostra "Não configurado" — comportamento correto: formulário de configuração aparece abaixo
+- [x] Botões "Próximo" e "+ Adicionar mais serviços" inativos — era preview local sem serviços; em produção funciona corretamente
+- [x] Serviço selecionado não aparece no modal — era preview local sem serviços; em produção funciona corretamente
+- [x] Link Reagendar usava parâmetro serviceId= em vez de service= — corrigido

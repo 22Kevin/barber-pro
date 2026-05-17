@@ -586,6 +586,22 @@ async function startServer() {
     }
   });
 
+  // ─── Endpoint de diagnóstico do banco de dados ─────────────────────────────────────────
+  app.get("/api/db-columns", async (req, res) => {
+    if (req.headers["x-internal-key"] !== "barber_migrate_2026") {
+      return res.status(403).json({ error: "forbidden" });
+    }
+    try {
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (!db) return res.status(500).json({ error: "no db" });
+      const r = await db.execute(`SELECT column_name, data_type FROM information_schema.columns WHERE table_name='tenants' AND column_name LIKE 'barberpro%' ORDER BY column_name` as any);
+      return res.json({ ok: true, rows: (r as any).rows ?? r });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   // ─── Rotas /:slug — usebarberpro.com/:slug serve a página pública de cada barbearia ───
   // Slugs de sistema reservados (não são barbearias)
   const SYSTEM_PATHS = new Set(["api", "admin", "superadmin", "pub", "pub-api", "landing", "status", "marketplace", "internal", "app", "www", "_next", "static", "assets", "favicon.ico"]);
