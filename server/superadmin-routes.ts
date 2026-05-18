@@ -1753,17 +1753,16 @@ export function registerSuperAdminRoutes(app: Express): void {
       if (!dbConn) throw new Error("Banco indisponível");
       const { sql: sqlTag } = await import('drizzle-orm');
 
-      await dbConn.execute(sqlTag`
-        UPDATE tenants SET
-          plan = ${sqlTag.raw(planName)}::tenant_plan,
-          "barberproPlanName" = ${planName},
-          "barberproPlanPrice" = ${planPrice},
-          "barberproSubscriptionStatus" = ${subscriptionStatus},
-          "barberproNextDueDate" = ${nextDueDate || null},
-          "barberproSubscriptionId" = ${subscriptionId || null},
-          "updatedAt" = NOW()
-        WHERE id = ${tenantId}
-      `);
+      // Usar db.updateTenant para garantir cast correto do enum plan via Drizzle ORM
+      await db.updateTenant(tenantId, {
+        plan: planName as any,
+        barberproPlanName: planName,
+        barberproPlanPrice: String(planPrice),
+        barberproSubscriptionStatus: subscriptionStatus,
+        barberproNextDueDate: nextDueDate || null,
+        barberproSubscriptionId: subscriptionId || null,
+        updatedAt: new Date(),
+      });
 
       res.redirect(`/superadmin/planos/editar/${tenantId}?saved=1`);
     } catch (e: any) {

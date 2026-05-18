@@ -2791,18 +2791,16 @@ export const appRouter = router({
           externalReference: `tenant_${input.tenantId}`,
         });
 
-        // 4. Atualizar banco
-        await dbConn.execute(sql`
-          UPDATE tenants SET
-            plan = ${sql.raw(input.newPlan)}::tenant_plan,
-            "barberproSubscriptionId" = ${newSubId},
-            "barberproSubscriptionStatus" = 'pending',
-            "barberproPlanName" = ${newLabel},
-            "barberproPlanPrice" = ${newPrice},
-            "barberproNextDueDate" = ${nextDue},
-            "updatedAt" = NOW()
-          WHERE id = ${input.tenantId}
-        `);
+        // 4. Atualizar banco via Drizzle ORM (evita cast de enum incorreto)
+        await db.updateTenant(input.tenantId, {
+          plan: input.newPlan as any,
+          barberproSubscriptionId: newSubId,
+          barberproSubscriptionStatus: 'pending',
+          barberproPlanName: newLabel,
+          barberproPlanPrice: String(newPrice),
+          barberproNextDueDate: nextDue,
+          updatedAt: new Date(),
+        });
 
         // 5. Buscar link de pagamento
         try {

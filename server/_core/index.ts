@@ -566,13 +566,7 @@ async function startServer() {
 
           if (tenantId && !isNaN(tenantId)) {
             try {
-              // Atualizar status da assinatura e data de próximo vencimento se pago
-              const nextDueClause = newStatus === "active"
-                ? `, "barberproNextDueDate" = (NOW() + INTERVAL '30 days')::date`
-                : "";
-
-              // Ao confirmar pagamento, registrar também o plano e valor corretos
-              let planUpdateClause = "";
+              // Ao confirmar pagamento, registrar também o plano e valor corretos;
               if (newStatus === "active") {
                 // Tentar extrair valor e descrição do pagamento para identificar o plano
                 const paymentValue = req.body.payment?.value ?? req.body.value ?? null;
@@ -598,13 +592,31 @@ async function startServer() {
                   ? `, "barberproNextDueDate" = '${req.body.payment.dueDate}'::date`
                   : `, "barberproNextDueDate" = (NOW() + INTERVAL '30 days')::date`;
 
-                planUpdateClause = `, "barberproPlanName" = '${detectedPlan}', "barberproPlanPrice" = ${detectedPrice}, plan = '${detectedPlan}'::tenant_plan${nextDueFromPayment}`;
                 console.log(`[asaas-webhook] Plano detectado: ${detectedPlan} (R$${detectedPrice}) para tenant ${tenantId}`);
-              }
 
-              await (dbConn as any).execute(
-                `UPDATE tenants SET "barberproSubscriptionStatus" = '${newStatus}', "updatedAt" = NOW()${newStatus === 'active' ? '' : nextDueClause}${planUpdateClause} WHERE id = ${tenantId}`
-              );
+                // Calcular próximo vencimento
+                const nextDueDateStr = req.body.payment?.dueDate
+                  ? req.body.payment.dueDate
+                  : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+                // Usar db.updateTenant para evitar cast de enum incorreto
+                const { updateTenant } = await import('../db');
+                await updateTenant(tenantId, {
+                  barberproSubscriptionStatus: newStatus,
+                  plan: detectedPlan as any,
+                  barberproPlanName: detectedPlan,
+                  barberproPlanPrice: String(detectedPrice),
+                  barberproNextDueDate: nextDueDateStr,
+                  updatedAt: new Date(),
+                });
+              } else {
+                // Para status não-active, apenas atualizar o status
+                const { updateTenant } = await import('../db');
+                await updateTenant(tenantId, {
+                  barberproSubscriptionStatus: newStatus,
+                  updatedAt: new Date(),
+                });
+              }
               console.log(`[asaas-webhook] Assinatura Barber Pro tenant ${tenantId} → ${newStatus} (evento: ${event})`);
 
               // Enviar e-mail de cancelamento ao super_admin da barbearia

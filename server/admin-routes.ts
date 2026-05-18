@@ -6497,18 +6497,16 @@ export function registerAdminRoutes(app: Express): void {
       });
 
       // Atualizar o plano real do tenant também (para manter consistência)
-      // Nota: usamos sql.raw para o cast do enum tenant_plan para evitar parâmetros duplicados
-      await dbConn.execute(sql`
-        UPDATE tenants SET
-          plan = ${sql.raw(selectedPlan)}::tenant_plan,
-          "barberproSubscriptionId" = ${subscriptionId},
-          "barberproSubscriptionStatus" = 'pending',
-          "barberproPlanName" = ${selectedPlan},
-          "barberproPlanPrice" = ${planPrice},
-          "barberproNextDueDate" = ${nextDue},
-          "updatedAt" = NOW()
-        WHERE id = ${barber.tenantId}
-      `);
+      // Usar db.updateTenant para garantir cast correto do enum plan via Drizzle ORM
+      await db.updateTenant(barber.tenantId, {
+        plan: selectedPlan as any,
+        barberproSubscriptionId: subscriptionId,
+        barberproSubscriptionStatus: 'pending',
+        barberproPlanName: selectedPlan,
+        barberproPlanPrice: String(planPrice),
+        barberproNextDueDate: nextDue,
+        updatedAt: new Date(),
+      });
 
       // Enviar e-mail de boas-vindas / confirmação de assinatura
       try {
@@ -6693,18 +6691,16 @@ export function registerAdminRoutes(app: Express): void {
         externalReference: `tenant_${barber.tenantId}`,
       });
 
-      // 4. Atualizar o banco com o novo plano
-      await dbConn.execute(sql`
-        UPDATE tenants SET
-          plan = ${sql.raw(newPlan)}::tenant_plan,
-          "barberproSubscriptionId" = ${newSubId},
-          "barberproSubscriptionStatus" = 'pending',
-          "barberproPlanName" = ${newPlan},
-          "barberproPlanPrice" = ${newPrice},
-          "barberproNextDueDate" = ${nextDue},
-          "updatedAt" = NOW()
-        WHERE id = ${barber.tenantId}
-      `);
+      // 4. Atualizar o banco com o novo plano via Drizzle ORM (evita cast de enum incorreto)
+      await db.updateTenant(barber.tenantId, {
+        plan: newPlan as any,
+        barberproSubscriptionId: newSubId,
+        barberproSubscriptionStatus: 'pending',
+        barberproPlanName: newPlan,
+        barberproPlanPrice: String(newPrice),
+        barberproNextDueDate: nextDue,
+        updatedAt: new Date(),
+      });
 
       // 5. Redirecionar para o link de pagamento Pix da nova assinatura
       try {
