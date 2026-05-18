@@ -3701,6 +3701,16 @@ async function renderConfiguracoes(req: Request, res: Response) {
                 <button type="submit" class="btn btn-primary" style="font-size:12px;padding:8px 16px;white-space:nowrap">Assinar agora via Pix</button>
               </form>
             ` : ''}
+            ${bpStatus === 'active' ? `
+              <form method="POST" action="/admin/configuracoes/asaas/upgrade-plan" style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+                <select name="newPlan" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer">
+                  <option value="solo" ${effectivePlanName === 'solo' ? 'selected' : ''}>Solo — R$ 49/mês (1 barbeiro)</option>
+                  <option value="team" ${effectivePlanName === 'team' ? 'selected' : ''}>Equipe — R$ 89/mês (até 5 barbeiros)</option>
+                  <option value="studio" ${effectivePlanName === 'studio' ? 'selected' : ''}>Estúdio — R$ 149/mês (ilimitado)</option>
+                </select>
+                <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px" onclick="return confirm('Alterar o plano cancelará a assinatura atual e criará uma nova. Confirmar?')">Alterar plano</button>
+              </form>
+            ` : ''}
             ${bpStatus === 'active' && bpSubId ? `
               <form method="POST" action="/admin/configuracoes/asaas/cancel-subscription" onsubmit="return confirm('Tem certeza que deseja cancelar a assinatura?')">
                 <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px;color:var(--error);border-color:var(--error)">Cancelar assinatura</button>
@@ -6009,6 +6019,102 @@ export function registerAdminRoutes(app: Express): void {
       res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
     } catch (e: any) {
       console.error('[asaas/cancel-subscription]', e.message);
+      res.redirect("/admin/configuracoes?tab=pagamentos");
+    }
+  });
+
+  // POST /admin/configuracoes/asaas/upgrade-plan — Alterar plano da assinatura Barber Pro
+  app.post("/admin/configuracoes/asaas/upgrade-plan", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      if (!barber?.tenantId) { res.redirect("/admin/configuracoes?tab=pagamentos"); return; }
+
+      const newPlan = (req.body as any)?.newPlan ?? 'solo';
+      const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
+      const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
+      const newPrice = planPriceMap[newPlan] ?? 49;
+      const newLabel = planLabelMap[newPlan] ?? newPlan;
+
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.redirect("/admin/configuracoes?tab=pagamentos"); return; }
+
+      // Buscar dados do tenant
+      const tenantRows = await dbConn.execute(sql`
+        SELECT "barberproSubscriptionId", "barberproAsaasCustomerId", "asaasAccountId",
+               "asaasMobilePhone", phone, name, cnpj
+        FROM tenants WHERE id = ${barber.tenantId} LIMIT 1
+      `);
+      const tenantData = ((tenantRows as any).rows as any[])[0];
+      if (!tenantData) { res.redirect("/admin/configuracoes?tab=pagamentos"); return; }
+
+      // 1. Cancelar assinatura atual no Asaas (se existir)
+      if (tenantData.barberproSubscriptionId) {
+        try {
+          await cancelAsaasSubscription(tenantData.barberproSubscriptionId);
+        } catch (cancelErr: any) {
+          console.warn('[asaas/upgrade-plan] Erro ao cancelar assinatura antiga:', cancelErr.message);
+        }
+      }
+
+      // 2. Garantir que o customer Asaas existe
+      const asaasCustomerId = await ensureAsaasCustomer({
+        name: (await db.getBarberById(session.barberId) as any)?.name ?? tenantData.name,
+        cpfCnpj: tenantData.cnpj ?? '',
+        mobilePhone: (tenantData.asaasMobilePhone ?? tenantData.phone ?? '').replace(/\D/g, ''),
+        tenantId: barber.tenantId,
+      });
+
+      // 3. Criar nova assinatura com o plano selecionado
+      const today = new Date();
+      const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
+      const nextDue = nextMonth.toISOString().slice(0, 10);
+
+      const newSubId = await createAsaasSubscription({
+        customer: asaasCustomerId,
+        billingType: 'PIX',
+        value: newPrice,
+        nextDueDate: nextDue,
+        cycle: 'MONTHLY',
+        description: `Barber Pro — Plano ${newLabel} (R$ ${newPrice}/mês)`,
+        externalReference: `tenant_${barber.tenantId}`,
+      });
+
+      // 4. Atualizar o banco com o novo plano
+      await dbConn.execute(sql`
+        UPDATE tenants SET
+          plan = ${newPlan}::"plan",
+          "barberproSubscriptionId" = ${newSubId},
+          "barberproSubscriptionStatus" = 'pending',
+          "barberproPlanName" = ${newPlan},
+          "barberproPlanPrice" = ${newPrice},
+          "barberproNextDueDate" = ${nextDue},
+          "updatedAt" = NOW()
+        WHERE id = ${barber.tenantId}
+      `);
+
+      // 5. Redirecionar para o link de pagamento Pix da nova assinatura
+      try {
+        const paymentsRes = await asaasApi.get(`/subscriptions/${newSubId}/payments?limit=1`);
+        const firstPayment = paymentsRes.data?.data?.[0];
+        if (firstPayment?.invoiceUrl) {
+          res.redirect(firstPayment.invoiceUrl);
+          return;
+        }
+        if (firstPayment?.id) {
+          const pixRes = await asaasApi.get(`/payments/${firstPayment.id}/pixQrCode`);
+          if (pixRes.data?.payload) {
+            res.redirect(`/admin/configuracoes?tab=pagamentos&pix=${encodeURIComponent(pixRes.data.payload)}&saved=1`);
+            return;
+          }
+        }
+      } catch (payErr: any) {
+        console.warn('[asaas/upgrade-plan] Erro ao buscar link de pagamento:', payErr.message);
+      }
+
+      res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
+    } catch (e: any) {
+      console.error('[asaas/upgrade-plan]', e.message);
       res.redirect("/admin/configuracoes?tab=pagamentos");
     }
   });

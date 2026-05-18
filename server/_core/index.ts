@@ -17,6 +17,7 @@ import { startReviewEmailJob } from "../review-job";
 import { startWhatsAppReminderJob } from "../whatsapp-reminder-job";
 import { startSubscriptionReminderJob } from "../subscription-reminder-job";
 import { startBackupJob } from "../backup-job";
+import { startTrialExpiryJob } from "../trial-expiry-job";
 
 // ─── Rate Limiters ────────────────────────────────────────────────────────────
 /**
@@ -569,10 +570,73 @@ async function startServer() {
               const nextDueClause = newStatus === "active"
                 ? `, "barberproNextDueDate" = (NOW() + INTERVAL '30 days')::date`
                 : "";
+
+              // Ao confirmar pagamento, registrar também o plano e valor corretos
+              let planUpdateClause = "";
+              if (newStatus === "active") {
+                // Tentar extrair valor e descrição do pagamento para identificar o plano
+                const paymentValue = req.body.payment?.value ?? req.body.value ?? null;
+                const paymentDesc: string = (req.body.payment?.description ?? req.body.description ?? "").toLowerCase();
+                const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
+                const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
+
+                // Identificar plano pelo valor ou pela descrição
+                let detectedPlan = "solo";
+                if (paymentValue) {
+                  const val = parseFloat(paymentValue);
+                  if (val >= 140) detectedPlan = "studio";
+                  else if (val >= 80) detectedPlan = "team";
+                  else detectedPlan = "solo";
+                } else if (paymentDesc.includes("estúdio") || paymentDesc.includes("studio")) {
+                  detectedPlan = "studio";
+                } else if (paymentDesc.includes("equipe") || paymentDesc.includes("team")) {
+                  detectedPlan = "team";
+                }
+
+                const detectedPrice = paymentValue ? parseFloat(paymentValue) : planPriceMap[detectedPlan];
+                const nextDueFromPayment = req.body.payment?.dueDate
+                  ? `, "barberproNextDueDate" = '${req.body.payment.dueDate}'::date`
+                  : `, "barberproNextDueDate" = (NOW() + INTERVAL '30 days')::date`;
+
+                planUpdateClause = `, "barberproPlanName" = '${detectedPlan}', "barberproPlanPrice" = ${detectedPrice}, plan = '${detectedPlan}'::"plan"${nextDueFromPayment}`;
+                console.log(`[asaas-webhook] Plano detectado: ${detectedPlan} (R$${detectedPrice}) para tenant ${tenantId}`);
+              }
+
               await (dbConn as any).execute(
-                `UPDATE tenants SET "barberproSubscriptionStatus" = '${newStatus}', "updatedAt" = NOW()${nextDueClause} WHERE id = ${tenantId}`
+                `UPDATE tenants SET "barberproSubscriptionStatus" = '${newStatus}', "updatedAt" = NOW()${newStatus === 'active' ? '' : nextDueClause}${planUpdateClause} WHERE id = ${tenantId}`
               );
               console.log(`[asaas-webhook] Assinatura Barber Pro tenant ${tenantId} → ${newStatus} (evento: ${event})`);
+
+              // Enviar e-mail de confirmação de assinatura ao super_admin da barbearia
+              if (newStatus === "active") {
+                try {
+                  const tenantRows = await (dbConn as any).execute(
+                    `SELECT t.name AS "tenantName", b.email AS "adminEmail", b.name AS "adminName"
+                     FROM tenants t
+                     LEFT JOIN barbers b ON b."tenantId" = t.id AND b.role = 'super_admin'
+                     WHERE t.id = ${tenantId}
+                     LIMIT 1`
+                  );
+                  const tenantArr = Array.isArray(tenantRows) ? tenantRows[0] : tenantRows?.rows ?? [];
+                  const tenantInfo = tenantArr?.[0];
+                  if (tenantInfo?.adminEmail) {
+                    const { sendEmail } = await import("../email");
+                    await sendEmail({
+                      to: tenantInfo.adminEmail,
+                      subject: `✅ Assinatura Barber Pro ativada — ${tenantInfo.tenantName}`,
+                      html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto">
+                        <h2 style="color:#C9A84C">Assinatura ativada! 🎉</h2>
+                        <p>Olá, <strong>${tenantInfo.adminName ?? 'Admin'}</strong>!</p>
+                        <p>Seu pagamento foi confirmado e a assinatura do <strong>Barber Pro</strong> está ativa.</p>
+                        <p>Acesse o painel administrativo normalmente: <a href="https://usebarberpro.com">usebarberpro.com</a></p>
+                        <p style="color:#888;font-size:12px">Barber Pro — Sistema Completo de Barbearia</p>
+                      </div>`,
+                    }).catch((e: any) => console.error("[asaas-webhook] Erro ao enviar e-mail de ativação:", e.message));
+                  }
+                } catch (emailErr: any) {
+                  console.error("[asaas-webhook] Erro ao buscar tenant para e-mail:", emailErr.message);
+                }
+              }
             } catch (subErr: any) {
               console.error("[asaas-webhook] Erro ao atualizar assinatura:", subErr.message);
             }
@@ -761,6 +825,8 @@ async function startServer() {
     startWhatsAppReminderJob();
     // Iniciar job de lembretes de assinatura (3 dias antes)
     startSubscriptionReminderJob();
+    // Iniciar job de notificação de trial expirando (3 dias antes)
+    startTrialExpiryJob();
     // Iniciar job de backup semanal do PostgreSQL (toda segunda-feira às 03:00)
     startBackupJob();
   });

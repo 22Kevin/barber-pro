@@ -553,3 +553,30 @@ export async function sendSupportReplyNotificationEmail(opts: {
     console.error("[email] Erro ao enviar resposta de ticket:", err);
   }
 }
+
+/**
+ * Função genérica de envio de e-mail — usada pelo webhook Asaas e jobs internos.
+ */
+export async function sendEmail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+}): Promise<void> {
+  const transporter = createTransporter();
+  if (!transporter) return;
+  const from = process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "noreply@barberpro.app";
+  try {
+    await transporter.sendMail({
+      from: `"Barber Pro" <${from}>`,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
+    });
+    console.log(`[email] E-mail enviado para ${opts.to}: ${opts.subject}`);
+  } catch (err) {
+    console.error("[email] Erro ao enviar e-mail genérico:", err);
+    throw err;
+  }
+}

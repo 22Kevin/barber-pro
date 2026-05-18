@@ -2280,3 +2280,8 @@
 - [x] Adicionar seletor de plano no formulário de assinatura (antes de clicar "Assinar agora")
 - [x] Adicionar seção "Planos Barber Pro" no painel superadmin com gerenciamento de planos
 - [x] Mostrar plano atual do tenant na aba Pagamentos com nome correto (Solo/Equipe/Estúdio)
+
+## Melhorias Asaas Round 2 (18/05/2026)
+- [x] Webhook PAYMENT_RECEIVED atualiza barberproSubscriptionStatus para 'active' com plano correto
+- [x] Job de notificação de trial expirando 3 dias antes (WhatsApp + email)
+- [x] Upgrade de plano para assinantes ativos na aba Pagamentos
