@@ -23,6 +23,7 @@ import { AdminHeader } from "@/components/admin-header";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useColors } from "@/hooks/use-colors";
+import { applyPriceMask, parsePriceMask } from "@/hooks/use-mask";
 
 type Supplier = {
   id: number;
@@ -70,6 +71,7 @@ export default function ProductsScreen() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  const handlePriceChange = (t: string) => setPrice(applyPriceMask(t));
   const [stock, setStock] = useState("0");
   const [isActive, setIsActive] = useState(true);
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
@@ -152,7 +154,7 @@ export default function ProductsScreen() {
   function openEdit(p: Product) {
     setEditing(p);
     setSavedProductId(p.id);
-    setName(p.name); setDescription(p.description ?? ""); setPrice(p.price); setStock(String(p.stock)); setIsActive(p.isActive);
+    setName(p.name); setDescription(p.description ?? ""); setPrice(applyPriceMask(p.price)); setStock(String(p.stock)); setIsActive(p.isActive);
     setSelectedSupplierId(p.supplierId ?? null);
     setShowModal(true);
   }
@@ -161,7 +163,7 @@ export default function ProductsScreen() {
 
   function handleSave() {
     if (!name.trim()) { Alert.alert("Atenção", "Informe o nome do produto."); return; }
-    const priceNum = parseFloat(price.replace(",", "."));
+    const priceNum = parsePriceMask(price);
     if (isNaN(priceNum) || priceNum <= 0) { Alert.alert("Atenção", "Informe um preço válido."); return; }
     if (!selectedSupplierId) { Alert.alert("Atenção", "Selecione o fornecedor do produto."); return; }
     const stockNum = parseInt(stock) || 0;
@@ -391,7 +393,7 @@ export default function ProductsScreen() {
                 <View style={{ flexDirection: "row", gap: 12 }}>
                   <View style={{ flex: 1 }}>
                     <Field label="Preço (R$) *">
-                      <TextInput style={styles.input} value={price} onChangeText={setPrice} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
+                      <TextInput style={styles.input} value={price} onChangeText={handlePriceChange} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
                     </Field>
                   </View>
                   <View style={{ flex: 1 }}>

@@ -19,6 +19,7 @@ import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { AdminHeader } from "@/components/admin-header";
 import { useBarberAuth } from "@/lib/auth-context";
+import { applyDocumentMask, applyPhoneMask, stripMask } from "@/hooks/use-mask";
 
 type Supplier = {
   id: number;
@@ -129,9 +130,9 @@ export default function SuppliersScreen() {
     setEditingId(s.id);
     setForm({
       name: s.name,
-      phone: s.phone ?? "",
+      phone: s.phone ? applyPhoneMask(s.phone) : "",
       email: s.email ?? "",
-      cnpj: s.cnpj ?? "",
+      cnpj: s.cnpj ? applyDocumentMask(s.cnpj) : "",
       address: s.address ?? "",
       notes: s.notes ?? "",
     });
@@ -156,9 +157,9 @@ export default function SuppliersScreen() {
     }
     const payload = {
       name: form.name.trim(),
-      phone: form.phone.trim() || undefined,
+      phone: form.phone.trim() ? stripMask(form.phone) : undefined,
       email: form.email.trim() || undefined,
-      cnpj: form.cnpj.trim() || undefined,
+      cnpj: form.cnpj.trim() ? stripMask(form.cnpj) : undefined,
       address: form.address.trim() || undefined,
       notes: form.notes.trim() || undefined,
     };
@@ -472,20 +473,22 @@ export default function SuppliersScreen() {
               <TextInput
                 style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
                 value={form.cnpj}
-                onChangeText={(v) => setForm((f) => ({ ...f, cnpj: v }))}
+                onChangeText={(v) => setForm((f) => ({ ...f, cnpj: applyDocumentMask(v) }))}
                 placeholder="00.000.000/0000-00"
                 placeholderTextColor={colors.muted}
                 keyboardType="numeric"
+                maxLength={18}
               />
 
               <Text style={[styles.label, { color: colors.muted }]}>Telefone / WhatsApp</Text>
               <TextInput
                 style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
                 value={form.phone}
-                onChangeText={(v) => setForm((f) => ({ ...f, phone: v }))}
+                onChangeText={(v) => setForm((f) => ({ ...f, phone: applyPhoneMask(v) }))}
                 placeholder="(00) 00000-0000"
                 placeholderTextColor={colors.muted}
                 keyboardType="phone-pad"
+                maxLength={15}
               />
 
               <Text style={[styles.label, { color: colors.muted }]}>E-mail</Text>

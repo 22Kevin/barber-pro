@@ -2368,3 +2368,12 @@
 - [ ] E-mail de confirmação inclui código Pix copia e cola no corpo
 - [ ] Tela de sucesso animada pós-pagamento (app mobile)
 - [ ] Tela de sucesso animada pós-pagamento (painel web)
+
+- [ ] Corrigir máscara de telefone na tela de Clientes
+- [ ] Adicionar máscara de preço na tela de Serviços
+- [ ] Corrigir bug de salvamento de novos Serviços
+- [ ] Adicionar máscara de preço na tela de Produtos
+- [ ] Corrigir máscara de CNPJ na tela de Fornecedores
+- [ ] Corrigir máscaras de telefone, whatsapp, CEP, Chave Pix, CPF/CNPJ na tela de Configurações
+- [ ] Corrigir vazamento de dados: Relatórios - Serviços mais Vendidos filtrar por tenantId
+- [ ] Corrigir vazamento de dados: Avaliações filtrar por tenantId

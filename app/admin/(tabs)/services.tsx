@@ -24,6 +24,7 @@ import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useColors } from "@/hooks/use-colors";
+import { applyPriceMask, parsePriceMask } from "@/hooks/use-mask";
 
 type Service = {
   id: number;
@@ -50,6 +51,7 @@ export default function ServicesScreen() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  const handlePriceChange = (t: string) => setPrice(applyPriceMask(t));
   const [duration, setDuration] = useState(30);
   const [isActive, setIsActive] = useState(true);
   const [savedServiceId, setSavedServiceId] = useState<number | null>(null);
@@ -61,7 +63,8 @@ export default function ServicesScreen() {
     onSuccess: (newId) => {
       utils.services.list.invalidate();
       // Não fecha o modal: atualiza o ID para mostrar o MediaUploader imediatamente
-      setSavedServiceId(newId as any);
+      if (newId) setSavedServiceId(newId as any);
+      else closeModal(); // fallback: fecha o modal se não retornou ID
     },
     onError: (e) => Alert.alert("Erro", e.message),
   });
@@ -84,7 +87,7 @@ export default function ServicesScreen() {
   function openEdit(s: Service) {
     setEditing(s);
     setSavedServiceId(s.id);
-    setName(s.name); setDescription(s.description ?? ""); setPrice(s.price); setDuration(s.durationMinutes); setIsActive(s.isActive);
+    setName(s.name); setDescription(s.description ?? ""); setPrice(applyPriceMask(s.price)); setDuration(s.durationMinutes); setIsActive(s.isActive);
     setShowModal(true);
   }
 
@@ -92,8 +95,9 @@ export default function ServicesScreen() {
 
   function handleSave() {
     if (!name.trim()) { Alert.alert("Atenção", "Informe o nome do serviço."); return; }
-    const priceNum = parseFloat(price.replace(",", "."));
-    if (isNaN(priceNum) || priceNum <= 0) { Alert.alert("Atenção", "Informe um preço válido."); return; }
+    const priceNum = parsePriceMask(price);
+    if (isNaN(priceNum) || priceNum <= 0) { Alert.alert("Atenção", "Informe um preço válido (ex: 35,00)."); return; }
+    if (!tenantId) { Alert.alert("Erro", "Sessão expirada. Faça login novamente."); return; }
     const data = { name: name.trim(), description: description.trim() || null, price: priceNum.toFixed(2), durationMinutes: duration, isActive };
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data });
@@ -217,7 +221,7 @@ export default function ServicesScreen() {
                 </Field>
 
                 <Field label="Preço (R$) *">
-                  <TextInput style={styles.input} value={price} onChangeText={setPrice} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
+                  <TextInput style={styles.input} value={price} onChangeText={handlePriceChange} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
                 </Field>
 
                 <Field label="Duração">
@@ -246,9 +250,17 @@ export default function ServicesScreen() {
                 {(savedServiceId || editing) ? (
                   <Field label="Fotos e Vídeos">
                     {savedServiceId && !editing && (
-                      <View style={styles.createdBanner}>
-                        <IconSymbol name="checkmark.circle.fill" size={16} color="#22C55E" />
-                        <Text style={styles.createdBannerText}>Serviço criado! Adicione fotos e vídeos abaixo.</Text>
+                      <View style={{ gap: 8 }}>
+                        <View style={styles.createdBanner}>
+                          <IconSymbol name="checkmark.circle.fill" size={16} color="#22C55E" />
+                          <Text style={styles.createdBannerText}>Serviço criado! Adicione fotos e vídeos abaixo.</Text>
+                        </View>
+                        <Pressable
+                          style={({ pressed }) => [styles.saveBtn, { backgroundColor: "#22C55E" }, pressed && { opacity: 0.8 }]}
+                          onPress={closeModal}
+                        >
+                          <Text style={styles.saveBtnText}>CONCLUÍDO</Text>
+                        </Pressable>
                       </View>
                     )}
                     <MediaUploader

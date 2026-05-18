@@ -362,8 +362,9 @@ export default function ClientsScreen() {
                       placeholder={field.placeholder}
                       placeholderTextColor="#555"
                       keyboardType={field.keyboard}
-                      autoCapitalize={field.keyboard === "email-address" ? "none" : "words"}
+                      autoCapitalize={field.keyboard === "email-address" || field.keyboard === "phone-pad" ? "none" : "words"}
                       autoCorrect={false}
+                      maxLength={field.keyboard === "phone-pad" ? 15 : undefined}
                     />
                   </View>
                 ))}

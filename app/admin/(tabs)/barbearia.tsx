@@ -469,7 +469,7 @@ export default function BarbeariaScreen() {
             ].map(f => (
               <View key={f.label} style={{ marginBottom: 14 }}>
                 <Text style={styles.fieldLabel}>{f.label}</Text>
-                <TextInput style={styles.input} value={f.value} onChangeText={f.setter} placeholder={f.placeholder} placeholderTextColor="#555" keyboardType={f.keyboard} autoCapitalize={f.keyboard === "default" && f.label.includes("Instagram") ? "none" : "sentences"} autoCorrect={false} />
+                <TextInput style={styles.input} value={f.value} onChangeText={f.setter} placeholder={f.placeholder} placeholderTextColor="#555" keyboardType={f.keyboard} autoCapitalize={f.keyboard === "phone-pad" || f.keyboard === "numeric" || f.keyboard === "number-pad" || f.keyboard === "url" || f.label.includes("Instagram") ? "none" : "sentences"} autoCorrect={false} />
               </View>
             ))}
 

@@ -159,33 +159,50 @@ export async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T
  */
 export async function runWithTenant<T>(
   tenantId: number | null | undefined,
-  fn: (db: ReturnType<typeof drizzle>) => Promise<T>
+  fn: (db: ReturnType<typeof drizzle>) => Promise<T>,
+  retries = 2
 ): Promise<T> {
-  if (!_pool) await getDb();
-  if (!_pool || !_db) throw new Error("Database not available");
-  const client = await _pool.connect();
-  try {
-    const tenantDb = drizzle(client as any);
-    await client.query('BEGIN');
-    if (tenantId != null) {
-      try { await client.query('SET LOCAL ROLE barber_app'); } catch { /* role pode não existir */ }
-      await client.query(`SET LOCAL app.tenant_id = '${tenantId}'`);
-      await client.query(`SET LOCAL app.is_superadmin = 'false'`);
-    } else {
-      await client.query(`SET LOCAL app.tenant_id = ''`);
-      await client.query(`SET LOCAL app.is_superadmin = 'true'`);
-    }
+  let lastErr: any;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (!_pool) await getDb();
+    if (!_pool || !_db) throw new Error("Database not available");
+    const client = await _pool.connect();
     try {
-      const result = await fn(tenantDb);
-      await client.query('COMMIT');
-      return result;
-    } catch (err) {
-      await client.query('ROLLBACK');
+      const tenantDb = drizzle(client as any);
+      await client.query('BEGIN');
+      if (tenantId != null) {
+        try { await client.query('SET LOCAL ROLE barber_app'); } catch { /* role pode não existir */ }
+        await client.query(`SET LOCAL app.tenant_id = '${tenantId}'`);
+        await client.query(`SET LOCAL app.is_superadmin = 'false'`);
+      } else {
+        await client.query(`SET LOCAL app.tenant_id = ''`);
+        await client.query(`SET LOCAL app.is_superadmin = 'true'`);
+      }
+      try {
+        const result = await fn(tenantDb);
+        await client.query('COMMIT');
+        return result;
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      }
+    } catch (err: any) {
+      lastErr = err;
+      const msg = (err?.message ?? "").toLowerCase();
+      const isConnErr = msg.includes("ssl") || msg.includes("connection") || msg.includes("econnreset") || msg.includes("etimedout") || msg.includes("socket");
+      if (isConnErr && attempt < retries) {
+        console.warn(`[runWithTenant] Erro de conexão (tentativa ${attempt + 1}/${retries}), reconectando...`);
+        resetPool();
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        await getDb();
+        continue;
+      }
       throw err;
+    } finally {
+      client.release();
     }
-  } finally {
-    client.release();
   }
+  throw lastErr;
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -882,9 +899,18 @@ export async function getSalesByDateRange(startDate: string, endDate: string, ba
     if (barberIds.length === 0) return [];
     conditions.push(sql`${sales.barberId} IN (${sql.join(barberIds.map(id => sql`${id}`), sql`, `)})` as any);
   }
-  return db.select().from(sales).where(and(...conditions)).orderBy(desc(sales.createdAt));
+  const salesResult = await db.select().from(sales).where(and(...conditions)).orderBy(desc(sales.createdAt));
+  if (salesResult.length === 0) return [];
+  // Buscar os items de todas as vendas em uma única query
+  const saleIds = salesResult.map(s => s.id);
+  const itemsResult = await db.select().from(saleItems).where(inArray(saleItems.saleId, saleIds));
+  const itemsBySaleId: Record<number, typeof itemsResult> = {};
+  for (const item of itemsResult) {
+    if (!itemsBySaleId[item.saleId]) itemsBySaleId[item.saleId] = [];
+    itemsBySaleId[item.saleId].push(item);
+  }
+  return salesResult.map(s => ({ ...s, items: itemsBySaleId[s.id] ?? [] }));
 }
-
 export async function createSale(data: InsertSale, items: Array<{ itemType: "service" | "product"; itemId: number; itemName: string; quantity: number; unitPrice: string; total: string }>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -1155,6 +1181,8 @@ export async function getReviewsByClient(clientId: number, tenantId?: number | n
 export async function getRecentReviews(limit = 5, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [];
+  // SEGURANÇA: sem tenantId, retorna vazio para evitar vazamento de dados entre barbearias
+  if (tenantId == null) return [];
   try {
     const result = await db
       .select({
@@ -1166,6 +1194,7 @@ export async function getRecentReviews(limit = 5, tenantId?: number | null) {
         serviceId: reviews.serviceId,
       })
       .from(reviews)
+      .where(eq(reviews.tenantId, tenantId))
       .orderBy(desc(reviews.createdAt))
       .limit(limit);
     const clientIds = Array.from(new Set(result.map(r => r.clientId)));

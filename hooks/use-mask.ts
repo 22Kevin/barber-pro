@@ -110,3 +110,27 @@ export function validateDocument(raw: string): boolean | null {
   if (digits.length === 14) return validateCNPJ(digits);
   return null; // ainda incompleto
 }
+
+/**
+ * Aplica máscara de preço monetário brasileiro: 0,00 / 1.234,56
+ * Aceita apenas dígitos, formata com separador de milhar e decimal.
+ */
+export function applyPriceMask(raw: string): string {
+  // Remove tudo que não for dígito
+  const digits = raw.replace(/\D/g, "").slice(0, 10);
+  if (digits.length === 0) return "";
+  // Converte para centavos e formata
+  const cents = parseInt(digits, 10);
+  const reais = Math.floor(cents / 100);
+  const centavos = cents % 100;
+  const reaisFormatted = reais.toLocaleString("pt-BR");
+  return `${reaisFormatted},${String(centavos).padStart(2, "0")}`;
+}
+
+/**
+ * Converte string de preço mascarado (ex: "1.234,56") para número float.
+ */
+export function parsePriceMask(masked: string): number {
+  const normalized = masked.replace(/\./g, "").replace(",", ".");
+  return parseFloat(normalized) || 0;
+}
