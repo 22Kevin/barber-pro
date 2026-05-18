@@ -106,6 +106,14 @@ function layout(title: string, session: BOSession | null, body: string): string 
         ${session.role === "super_admin" ? `<a href="/superadmin/usuarios" class="${title === "Usuários" ? "active" : ""}">Usuários</a>` : ""}
         ${session.role === "super_admin" ? `<a href="/superadmin/cms" class="${title.startsWith("CMS") ? "active" : ""}">CMS</a>` : ""}
         <a href="/superadmin/email-preview" class="${title === "E-mails" ? "active" : ""}">E-mails</a>
+        <div style="flex:1;max-width:280px;margin:0 8px;position:relative;">
+          <form action="/superadmin/busca" method="GET" style="margin:0">
+            <input type="text" name="q" placeholder="Buscar barbearia..." autocomplete="off"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px 6px 32px;font-size:12px;color:var(--text);outline:none;transition:border-color 0.15s;"
+              onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'" />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </form>
+        </div>
         <div class="nav-user">
           <span>${esc(session.name)}</span>
           <span class="role-badge role-${session.role}">${session.role === "super_admin" ? "Super Admin" : session.role === "admin" ? "Admin" : "Suporte"}</span>
@@ -2117,6 +2125,59 @@ export function registerSuperAdminRoutes(app: Express): void {
       res.redirect(`/superadmin/email-preview?template=${tpl}&sent=${encodeURIComponent(toEmail)}`);
     } catch (e: any) {
       res.redirect(`/superadmin/email-preview?template=${tpl}&error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // ─── Busca global ─────────────────────────────────────────────────────────────
+  app.get("/superadmin/busca", requireAuth, async (req, res) => {
+    const q = ((req.query.q as string) || "").trim();
+    if (!q) return res.redirect("/superadmin/tenants");
+    try {
+      const rows = await db.execute(
+        `SELECT id, name, slug, plan, barberproSubscriptionStatus, barberproTrialEndsAt, createdAt
+         FROM tenants
+         WHERE name LIKE ? OR slug LIKE ? OR id = ?
+         ORDER BY name ASC LIMIT 30`,
+        [`%${q}%`, `%${q}%`, isNaN(Number(q)) ? -1 : Number(q)]
+      ) as any[];
+      const results = Array.isArray(rows[0]) ? rows[0] : rows;
+      const planLabel: Record<string, string> = { solo: "Solo", team: "Equipe", studio: "Estúdio" };
+      const statusColor: Record<string, string> = { active: "#4ADE80", trial: "#FBBF24", expired: "#F87171", cancelled: "#F87171", pending: "#60A5FA" };
+      const rows_html = results.length === 0
+        ? `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Nenhuma barbearia encontrada para "${esc(q)}"</td></tr>`
+        : results.map((t: any) => `
+          <tr>
+            <td><a href="/superadmin/tenants/${t.id}" style="color:var(--gold);font-weight:600">${esc(t.name)}</a><div style="font-size:11px;color:var(--muted)">${esc(t.slug)}</div></td>
+            <td>${planLabel[t.plan] ?? t.plan ?? "—"}</td>
+            <td><span style="color:${statusColor[t.barberproSubscriptionStatus] ?? "var(--muted)"};font-weight:600">${t.barberproSubscriptionStatus ?? "—"}</span></td>
+            <td style="font-size:12px;color:var(--muted)">${t.barberproTrialEndsAt ? new Date(t.barberproTrialEndsAt).toLocaleDateString("pt-BR") : "—"}</td>
+            <td><a href="/superadmin/tenants/${t.id}" style="font-size:12px">Ver →</a></td>
+          </tr>`).join("");
+      const body = `
+        <div style="margin-bottom:20px">
+          <form action="/superadmin/busca" method="GET" style="display:flex;gap:8px;max-width:480px">
+            <input type="text" name="q" value="${esc(q)}" placeholder="Buscar barbearia..."
+              style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--text);outline:none" />
+            <button type="submit" style="background:var(--gold);color:#000;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">Buscar</button>
+          </form>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px">${results.length} resultado(s) para "<strong style="color:var(--text)">${esc(q)}</strong>"</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="border-bottom:1px solid var(--border);background:var(--surface2)">
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600">BARBEARIA</th>
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600">PLANO</th>
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600">STATUS</th>
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600">TRIAL ATÉ</th>
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600">AÇÃO</th>
+            </tr></thead>
+            <tbody>${rows_html}</tbody>
+          </table>
+        </div>`;
+      const session = (req as any).boSession as BOSession;
+      res.send(layout("Busca", session, body));
+    } catch (e: any) {
+      res.status(500).send("Erro: " + e.message);
     }
   });
 }

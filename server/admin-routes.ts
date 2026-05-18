@@ -184,7 +184,7 @@ async function requireActiveSubscription(req: Request, res: Response, next: Next
 }
 
 // ─── Layout base do painel ────────────────────────────────────────────────────
-function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = ""): string {
+function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>): string {
   const planBadge: Record<string, { label: string; color: string; bg: string }> = {
     solo: { label: "Solo", color: "#9BA1A6", bg: "rgba(155,161,166,0.12)" },
     team: { label: "Equipe", color: "#c9a84c", bg: "rgba(201,168,76,0.12)" },
@@ -658,6 +658,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       </div>
     </div>
     <div class="content">
+      ${breadcrumb ? `<nav style="display:flex;align-items:center;gap:6px;margin-bottom:20px;font-size:12px;">${breadcrumb.map((b, i) => i < breadcrumb.length - 1 ? `<a href="${b.href}" style="color:var(--gold);text-decoration:none;opacity:0.75;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.75'">${b.label}</a><span style="color:var(--muted);font-size:13px;">›</span>` : `<span style="color:var(--text);font-weight:600;">${b.label}</span>`).join('')}</nav>` : ''}
       ${body}
     </div>
   </div>
@@ -2411,7 +2412,7 @@ async function renderAgenda(req: Request, res: Response) {
   const tenantObj = barber?.tenantId ? await db.getTenantById(barber.tenantId) : null;
   const _tp = (tenantObj as any)?.plan ?? "";
   const tenantSlug = (tenantObj as any)?.slug ?? "";
-  res.send(adminLayout(`Agenda — ${fmtDate(dateStr)}`, "agenda", body, barber?.name, _tp));
+  res.send(adminLayout(`Agenda — ${fmtDate(dateStr)}`, "agenda", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Agenda",href:"/admin/agenda"}]));
 }
 
 // ─── Clientes ─────────────────────────────────────────────────────────────────
@@ -2607,7 +2608,7 @@ async function renderClientes(req: Request, res: Response) {
   `;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Clientes", "clientes", body, barber?.name, _tp));
+  res.send(adminLayout("Clientes", "clientes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Clientes",href:"/admin/clientes"}]));
 }
 
 // ─── Serviços ─────────────────────────────────────────────────────────────────
@@ -2739,7 +2740,7 @@ async function renderServicos(req: Request, res: Response) {
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Serviços", "servicos", body, barber?.name, _tp));
+  res.send(adminLayout("Serviços", "servicos", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Serviços",href:"/admin/servicos"}]));
 }
 
 async function renderProdutos(req: Request, res: Response) {
@@ -2899,7 +2900,7 @@ async function renderProdutos(req: Request, res: Response) {
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Produtos", "produtos", body, barber?.name, _tp));
+  res.send(adminLayout("Produtos", "produtos", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Produtos",href:"/admin/produtos"}]));
   } catch (err: any) {
     console.error('[renderProdutos] Erro:', err?.message);
     res.send(adminLayout("Produtos", "produtos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/produtos" class="btn btn-primary">Tentar novamente</a></div>`));
@@ -3335,7 +3336,7 @@ async function renderFinanceiro(req: Request, res: Response) {
   `;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Financeiro", "financeiro", body, barber?.name, _tp));
+  res.send(adminLayout("Financeiro", "financeiro", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Financeiro",href:"/admin/financeiro"}]));
 }
 
 // ─── Configurações ────────────────────────────────────────────
@@ -3991,7 +3992,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
   `;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Configurações", "configuracoes", body, barber?.name, _tp));
+  res.send(adminLayout("Configurações", "configuracoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Configurações",href:"/admin/configuracoes"}]));
 }
 
 // ─── Registro das rotas ───────────────────────────────────────────────────────
@@ -4083,7 +4084,7 @@ async function renderNovoAgendamento(req: Request, res: Response) {
     </script>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Novo Agendamento", "agenda", body, barber?.name, _tp));
+  res.send(adminLayout("Novo Agendamento", "agenda", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Agenda",href:"/admin/agenda"},{label:"Novo Agendamento",href:"/admin/novo-agendamento"}]));
 }
 
 // ─── Relatórios ───────────────────────────────────────────────────────────────
@@ -4621,7 +4622,7 @@ async function renderRelatorios(req: Request, res: Response) {
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Relatórios", "relatorios", body, barber?.name, _tp));
+  res.send(adminLayout("Relatórios", "relatorios", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Relatórios",href:"/admin/relatorios"}]));
   } catch (err: any) {
     console.error('[renderRelatorios] Erro:', err?.message);
     res.send(adminLayout("Relatórios", "relatorios", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/relatorios" class="btn btn-primary">Tentar novamente</a></div>`));
@@ -5329,7 +5330,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
   const body = blocoAvisoHorarios + blocoCompartilhar + blocoQrCode + blocoAparencia + blocoExtras;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Página do Cliente", "pagina-cliente", body, barber?.name, _tp));
+  res.send(adminLayout("Página do Cliente", "pagina-cliente", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Página do Cliente",href:"/admin/pagina-cliente"}]));
 }
 
 
@@ -5422,7 +5423,7 @@ async function renderClienteDetalhe(req: Request, res: Response) {
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout(`Cliente: ${(client as any).name}`, "clientes", body, barber?.name, _tp));
+  res.send(adminLayout(`Cliente: ${(client as any).name}`, "clientes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Clientes",href:"/admin/clientes"},{label:(client as any).name,href:"#"}]));
 }
 
 export function registerAdminRoutes(app: Express): void {
@@ -6922,7 +6923,7 @@ export function registerAdminRoutes(app: Express): void {
       ${activeTab === "programa" ? tabPrograma : activeTab === "recompensas" ? tabRecompensas : tabCupons}
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Fidelidade", "fidelidade", body, barber?.name, _tp));
+  res.send(adminLayout("Fidelidade", "fidelidade", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fidelidade",href:"/admin/fidelidade"}]));
   }));
 
   app.post("/admin/fidelidade/config", requireAdminAuth, async (req: Request, res: Response) => {
@@ -7043,7 +7044,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Cupons", "cupons", body, barber?.name, _tp));
+  res.send(adminLayout("Cupons", "cupons", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fidelidade",href:"/admin/fidelidade"},{label:"Cupons",href:"/admin/cupons"}]));
   }));
 
   app.post("/admin/cupons", requireAdminAuth, async (req: Request, res: Response) => {
@@ -7138,7 +7139,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Avaliações", "avaliacoes", body, barber?.name, _tp));
+  res.send(adminLayout("Avaliações", "avaliacoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Avaliações",href:"/admin/avaliacoes"}]));
   }));
 
   // ─── Comissões ────────────────────────────────────────────────────────────
@@ -7252,7 +7253,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Comissões", "comissoes", body, barber?.name, _tp));
+  res.send(adminLayout("Comissões", "comissoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Comissões",href:"/admin/comissoes"}]));
   }));
 
   app.post("/admin/comissoes/config", requireAdminAuth, async (req: Request, res: Response) => {
@@ -7362,7 +7363,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Lista de Espera", "lista-espera", body, barber?.name, _tp));
+  res.send(adminLayout("Lista de Espera", "lista-espera", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Lista de Espera",href:"/admin/lista-espera"}]));
   }));
 
   app.post("/admin/lista-espera", requireAdminAuth, async (req: Request, res: Response) => {
@@ -7722,7 +7723,7 @@ export function registerAdminRoutes(app: Express): void {
       </script>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayout("Assinaturas", "assinaturas", body, barber?.name, _tp));
+    res.send(adminLayout("Assinaturas", "assinaturas", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Assinaturas",href:"/admin/assinaturas"}]));
   }));
 
     app.post("/admin/assinaturas", requireAdminAuth, async (req: Request, res: Response) => {
@@ -7963,7 +7964,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayout("Planos de Assinatura", "planos", body, barber?.name, _tp));
+    res.send(adminLayout("Planos de Assinatura", "planos", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Planos de Assinatura",href:"/admin/planos"}]));
     } catch (err: any) {
       console.error('[/admin/planos] Erro:', err?.message);
       res.send(adminLayout("Planos de Assinatura", "planos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/planos" class="btn btn-primary">Tentar novamente</a></div>`));
@@ -8200,7 +8201,7 @@ export function registerAdminRoutes(app: Express): void {
       </script>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Estoque", "estoque", body, barber?.name, _tp));
+  res.send(adminLayout("Estoque", "estoque", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Estoque",href:"/admin/estoque"}]));
   }));
 
   app.post("/admin/estoque/movimentacao", requireAdminAuth, async (req: Request, res: Response) => {
@@ -8270,7 +8271,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayout(`Histórico — ${esc(product.name)}`, "estoque", body, barber?.name, _tp));
+    res.send(adminLayout(`Histórico — ${esc(product.name)}`, "estoque", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Estoque",href:"/admin/estoque"},{label:`Histórico — ${esc(product.name)}`,href:"#"}]));
   }));
 
   // ─── Retorno Automático ─────────────────────────────────────────────
@@ -8358,7 +8359,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Retorno Automático", "retorno-automatico", body, barber?.name, _tp));
+  res.send(adminLayout("Retorno Automático", "retorno-automatico", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Retorno Automático",href:"/admin/retorno-automatico"}]));
   }));
 
   app.post("/admin/retorno-automatico", requireAdminAuth, async (req: Request, res: Response) => {
@@ -8495,7 +8496,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayout("Promoções", "promocoes", body, barber?.name, _tp));
+    res.send(adminLayout("Promoções", "promocoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Promoções",href:"/admin/promocoes"}]));
   }));
 
   app.post("/admin/promocoes", requireAdminAuth, async (req: Request, res: Response) => {
@@ -8575,7 +8576,7 @@ export function registerAdminRoutes(app: Express): void {
       ` : ""}
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Conversão de Promoções", "conversao-promocoes", body, barber?.name, _tp));
+  res.send(adminLayout("Conversão de Promoções", "conversao-promocoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Promoções",href:"/admin/promocoes"},{label:"Conversão",href:"/admin/conversao-promocoes"}]));
   }));
 
   // ─── Meu Perfil ──────────────────────────────────────────────────────────────
@@ -8687,7 +8688,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Meu Perfil", "meu-perfil", body, barber?.name, _tp));
+  res.send(adminLayout("Meu Perfil", "meu-perfil", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Meu Perfil",href:"/admin/meu-perfil"}]));
   }));
   app.post("/admin/meu-perfil", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
@@ -8774,7 +8775,7 @@ export function registerAdminRoutes(app: Express): void {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Chat WhatsApp", "chat", body, barber?.name, _tp));
+  res.send(adminLayout("Chat WhatsApp", "chat", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Chat WhatsApp",href:"/admin/chat"}]));
   }));
 
   app.get("/admin/chat/:clientId", requireAdminAuth, withErrorPage("Chat", "chat", async (req: Request, res: Response) => {
@@ -8832,7 +8833,7 @@ export function registerAdminRoutes(app: Express): void {
       <script>const h=document.getElementById('chatHistory');if(h)h.scrollTop=h.scrollHeight;</script>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout(`Chat — ${client.name}`, "chat", body, barber?.name, _tp));
+  res.send(adminLayout(`Chat — ${client.name}`, "chat", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Chat WhatsApp",href:"/admin/chat"},{label:client.name,href:"#"}]));
   }));
 
   app.post("/admin/chat/:clientId", requireAdminAuth, async (req: Request, res: Response) => {
@@ -9208,7 +9209,7 @@ export function registerAdminRoutes(app: Express): void {
         </table>
       </div>
     `;
-    res.send(adminLayout("Minhas Comissões", "minhas-comissoes", body, barber?.name, _tp));
+    res.send(adminLayout("Minhas Comissões", "minhas-comissoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Minhas Comissões",href:"/admin/minhas-comissoes"}]));
   }));
 
 

@@ -2635,6 +2635,34 @@ export const appRouter = router({
         return { status: normalizedStatus, nextDueDate: sub.nextDueDate };
       }),
 
+    getBarberproPaymentLink: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }) => {
+        if (!asaasEnabled) return null;
+        const dbConn = await db.getDb();
+        if (!dbConn) return null;
+        const rows = await dbConn.execute(sql`
+          SELECT "barberproSubscriptionId" FROM tenants WHERE id = ${input.tenantId} LIMIT 1
+        `);
+        const tenant = ((rows as any).rows as any[])[0];
+        if (!tenant?.barberproSubscriptionId) return null;
+        try {
+          const paymentsRes = await asaasApi.get(`/subscriptions/${tenant.barberproSubscriptionId}/payments?limit=1`);
+          const firstPayment = paymentsRes.data?.data?.[0];
+          if (!firstPayment) return null;
+          if (firstPayment.invoiceUrl) return { paymentLink: firstPayment.invoiceUrl as string, type: 'invoice' as const, pixQrCode: null, pixCopyCola: null };
+          if (firstPayment.id) {
+            const pixRes = await asaasApi.get(`/payments/${firstPayment.id}/pixQrCode`);
+            if (pixRes.data?.encodedImage) {
+              return { paymentLink: null, type: 'pix' as const, pixQrCode: pixRes.data.encodedImage as string, pixCopyCola: pixRes.data.payload as string };
+            }
+          }
+          return null;
+        } catch (e: any) {
+          console.warn('[getBarberproPaymentLink]', e.message);
+          return null;
+        }
+      }),
     cancelBarberproSubscription: publicProcedure
       .input(z.object({ tenantId: z.number() }))
       .mutation(async ({ input }) => {

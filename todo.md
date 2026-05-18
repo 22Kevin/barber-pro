@@ -2298,3 +2298,10 @@
 ## Finalização do Módulo de E-mail (18/05/2026)
 - [x] Botão "Enviar teste" na tela de preview com endpoint POST /superadmin/email-preview/send-test
 - [x] E-mail de cancelamento de assinatura via webhook SUBSCRIPTION_CANCELLED
+
+## Usabilidade Painel + App Mobile (18/05/2026)
+- [ ] Breadcrumb no painel admin da barbearia (admin-routes)
+- [x] Busca global na navbar do superadmin
+- [x] App mobile: tela de paywall ao expirar trial
+- [x] App mobile: status de assinatura nas configurações
+- [ ] App mobile: botão de upgrade de plano no app

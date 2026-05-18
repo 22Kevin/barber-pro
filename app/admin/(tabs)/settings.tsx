@@ -1,19 +1,24 @@
 import { useState, useEffect } from "react";
 import {
+  ActivityIndicator,
+  Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useThemeContext } from "@/lib/theme-provider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { useColors } from "@/hooks/use-colors";
+import { useBarberAuth } from "@/lib/auth-context";
+import { trpc } from "@/lib/trpc";
 
 type ThemeOption = "light" | "dark" | "system";
 
@@ -23,6 +28,193 @@ const THEME_OPTIONS: { key: ThemeOption; label: string; icon: string; descriptio
   { key: "system", label: "Sistema", icon: "gearshape.fill", description: "Segue a preferência do dispositivo" },
 ];
 
+const PLAN_LABELS: Record<string, string> = {
+  Solo: "Solo",
+  Equipe: "Equipe",
+  "Estúdio": "Estúdio",
+  starter: "Starter",
+};
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  active: { label: "Ativa", color: "#4ADE80", bg: "#4ADE8022" },
+  trial: { label: "Trial gratuito", color: "#FBBF24", bg: "#FBBF2422" },
+  pending: { label: "Pendente", color: "#60A5FA", bg: "#60A5FA22" },
+  expired: { label: "Expirado", color: "#F87171", bg: "#F8717122" },
+  cancelled: { label: "Cancelado", color: "#888", bg: "#44444422" },
+  overdue: { label: "Em atraso", color: "#F87171", bg: "#F8717122" },
+};
+
+// ─── Seção de Assinatura ──────────────────────────────────────────────────────
+function SubscriptionSection() {
+  const { barber } = useBarberAuth();
+  const router = useRouter();
+  const tenantId = barber?.tenantId ?? 0;
+
+  const { data: sub, isLoading, refetch } = trpc.asaasPayments.getBarberproSubscription.useQuery(
+    { tenantId },
+    { enabled: tenantId > 0, staleTime: 2 * 60 * 1000 }
+  );
+
+  const syncMutation = trpc.asaasPayments.syncBarberproSubscription.useMutation({
+    onSuccess: () => refetch(),
+    onError: (e) => Alert.alert("Erro", e.message),
+  });
+
+  const paymentLinkQuery = trpc.asaasPayments.getBarberproPaymentLink.useQuery(
+    { tenantId },
+    { enabled: false } // Busca apenas quando solicitado
+  );
+
+  async function handlePayNow() {
+    const result = await paymentLinkQuery.refetch();
+    const data = result.data;
+    if (data?.paymentLink) {
+      Linking.openURL(data.paymentLink);
+    } else if (data?.pixCopyCola) {
+      Alert.alert(
+        "Pix Copia e Cola",
+        data.pixCopyCola,
+        [{ text: "OK" }]
+      );
+    } else {
+      Alert.alert("Atenção", "Link de pagamento não disponível. Acesse o painel web para pagar.");
+    }
+  }
+
+  if (tenantId === 0) return null;
+
+  const statusInfo = STATUS_CONFIG[sub?.status ?? "trial"] ?? STATUS_CONFIG.trial;
+  const planLabel = PLAN_LABELS[sub?.planName ?? ""] ?? sub?.planName ?? "—";
+  const planPrice = sub?.planPrice ? `R$ ${sub.planPrice.toFixed(2).replace(".", ",")}/mês` : "—";
+  const nextDue = sub?.nextDueDate
+    ? new Date(sub.nextDueDate).toLocaleDateString("pt-BR")
+    : null;
+  const trialEnds = sub?.trialEndsAt
+    ? new Date(sub.trialEndsAt).toLocaleDateString("pt-BR")
+    : null;
+
+  const isExpiredOrCancelled = sub?.status === "expired" || sub?.status === "cancelled";
+  const isPending = sub?.status === "pending";
+  const isTrial = sub?.status === "trial";
+
+  return (
+    <View style={subStyles.section}>
+      <View style={subStyles.sectionHeader}>
+        <IconSymbol name="creditcard.fill" size={18} color="#C9A84C" />
+        <Text style={subStyles.sectionTitle}>Minha Assinatura</Text>
+      </View>
+
+      {isLoading ? (
+        <ActivityIndicator color="#C9A84C" style={{ marginVertical: 16 }} />
+      ) : (
+        <>
+          {/* Status badge */}
+          <View style={[subStyles.statusBadge, { backgroundColor: statusInfo.bg }]}>
+            <View style={[subStyles.statusDot, { backgroundColor: statusInfo.color }]} />
+            <Text style={[subStyles.statusText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
+          </View>
+
+          {/* Detalhes do plano */}
+          {sub?.planName && sub.planName !== "starter" && (
+            <View style={subStyles.detailsCard}>
+              <View style={subStyles.detailRow}>
+                <Text style={subStyles.detailLabel}>Plano</Text>
+                <Text style={subStyles.detailValue}>{planLabel}</Text>
+              </View>
+              <View style={subStyles.divider} />
+              <View style={subStyles.detailRow}>
+                <Text style={subStyles.detailLabel}>Valor</Text>
+                <Text style={subStyles.detailValue}>{planPrice}</Text>
+              </View>
+              {nextDue && (
+                <>
+                  <View style={subStyles.divider} />
+                  <View style={subStyles.detailRow}>
+                    <Text style={subStyles.detailLabel}>Próximo vencimento</Text>
+                    <Text style={subStyles.detailValue}>{nextDue}</Text>
+                  </View>
+                </>
+              )}
+            </View>
+          )}
+
+          {/* Trial info */}
+          {isTrial && trialEnds && (
+            <View style={subStyles.trialCard}>
+              <IconSymbol name="clock.fill" size={14} color="#FBBF24" />
+              <Text style={subStyles.trialText}>
+                Trial gratuito até <Text style={{ fontWeight: "700", color: "#FBBF24" }}>{trialEnds}</Text>
+              </Text>
+            </View>
+          )}
+
+          {/* Ações */}
+          <View style={subStyles.actions}>
+            {(isExpiredOrCancelled || isTrial) && (
+              <Pressable
+                style={({ pressed }) => [subStyles.ctaBtn, pressed && { opacity: 0.85 }]}
+                onPress={() => router.push("/admin/barberpro-paywall")}
+              >
+                <Text style={subStyles.ctaBtnText}>
+                  {isExpiredOrCancelled ? "Reativar assinatura" : "Assinar agora"}
+                </Text>
+              </Pressable>
+            )}
+
+            {isPending && (
+              <Pressable
+                style={({ pressed }) => [subStyles.ctaBtn, pressed && { opacity: 0.85 }]}
+                onPress={handlePayNow}
+                disabled={paymentLinkQuery.isFetching}
+              >
+                {paymentLinkQuery.isFetching ? (
+                  <ActivityIndicator color="#000" size="small" />
+                ) : (
+                  <Text style={subStyles.ctaBtnText}>Pagar via Pix</Text>
+                )}
+              </Pressable>
+            )}
+
+            <Pressable
+              style={({ pressed }) => [subStyles.syncBtn, pressed && { opacity: 0.7 }]}
+              onPress={() => syncMutation.mutate({ tenantId })}
+              disabled={syncMutation.isPending || !sub?.subscriptionId}
+            >
+              {syncMutation.isPending ? (
+                <ActivityIndicator color="#9BA1A6" size="small" />
+              ) : (
+                <Text style={subStyles.syncBtnText}>Atualizar status</Text>
+              )}
+            </Pressable>
+          </View>
+        </>
+      )}
+    </View>
+  );
+}
+
+const subStyles = StyleSheet.create({
+  section: { backgroundColor: "#111", borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: "#2A2A2A" },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#ECEDEE" },
+  statusBadge: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, marginBottom: 12 },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  statusText: { fontSize: 12, fontWeight: "700" },
+  detailsCard: { backgroundColor: "#1A1A1A", borderRadius: 12, borderWidth: 1, borderColor: "#2A2A2A", marginBottom: 12, overflow: "hidden" },
+  detailRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 14, paddingVertical: 11 },
+  detailLabel: { fontSize: 13, color: "#9BA1A6" },
+  detailValue: { fontSize: 13, fontWeight: "600", color: "#ECEDEE" },
+  divider: { height: 1, backgroundColor: "#2A2A2A" },
+  trialCard: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#FBBF2411", borderRadius: 10, padding: 10, marginBottom: 12 },
+  trialText: { fontSize: 12, color: "#9BA1A6", flex: 1 },
+  actions: { gap: 8 },
+  ctaBtn: { backgroundColor: "#C9A84C", borderRadius: 12, paddingVertical: 13, alignItems: "center" },
+  ctaBtnText: { fontSize: 14, fontWeight: "800", color: "#000" },
+  syncBtn: { alignItems: "center", paddingVertical: 8 },
+  syncBtnText: { fontSize: 12, color: "#9BA1A6" },
+});
+
+// ─── Tela principal ───────────────────────────────────────────────────────────
 export default function SettingsScreen() {
   const colors = useColors();
   const styles = createStyles(colors);
@@ -54,6 +246,9 @@ export default function SettingsScreen() {
     <ScreenContainer containerClassName="bg-background">
       <AdminHeader title="Configurações" />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: tabBarHeight }}>
+
+        {/* Minha Assinatura */}
+        <SubscriptionSection />
 
         {/* Aparência */}
         <View style={styles.section}>
