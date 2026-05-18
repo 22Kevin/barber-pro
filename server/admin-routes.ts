@@ -3663,9 +3663,17 @@ async function renderConfiguracoes(req: Request, res: Response) {
   const bpStatusColor: Record<string, string> = {
     trial: '#FBBF24', active: 'var(--success)', overdue: 'var(--error)', cancelled: 'var(--muted)', pending: '#FBBF24',
   };
+  // Mapeamento dos planos reais do sistema (solo/team/studio) para exibição
   const bpPlanLabel: Record<string, string> = {
-    starter: 'Starter', professional: 'Professional', premium: 'Premium',
+    solo: 'Solo', team: 'Equipe', studio: 'Estúdio',
+    starter: 'Starter', professional: 'Professional', premium: 'Premium', // legado
   };
+  const bpPlanPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
+  // Plano real do tenant (campo plan da tabela tenants)
+  const tenantRealPlan = (tenant as any)?.plan ?? 'solo';
+  // Se o tenant ainda não tem plano Barber Pro registrado, usar o plano real do tenant
+  const effectivePlanName = (bpPlanName === 'starter' || !bpPlanName) ? tenantRealPlan : bpPlanName;
+  const effectivePlanPrice = bpPlanPrice > 0 ? bpPlanPrice : (bpPlanPriceMap[tenantRealPlan] ?? 49);
   const bpNextDueFmt = bpNextDue ? new Date(bpNextDue + 'T12:00:00').toLocaleDateString('pt-BR') : null;
 
   const tabPagamentos = `
@@ -3676,15 +3684,21 @@ async function renderConfiguracoes(req: Request, res: Response) {
         <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:12px">ASSINATURA BARBER PRO</div>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
           <div>
-            <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">${bpPlanLabel[bpPlanName] ?? bpPlanName}</div>
+            <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">${bpPlanLabel[effectivePlanName] ?? effectivePlanName}</div>
             <div style="font-size:13px;font-weight:600;color:${bpStatusColor[bpStatus] ?? 'var(--muted)'}">${bpStatusLabel[bpStatus] ?? bpStatus}</div>
-            ${bpPlanPrice > 0 ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">R$ ${bpPlanPrice.toFixed(2)}/mês</div>` : ''}
+            <div style="font-size:12px;color:var(--muted);margin-top:4px">R$ ${effectivePlanPrice.toFixed(2)}/mês</div>
             ${bpNextDueFmt ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">Próximo vencimento: ${bpNextDueFmt}</div>` : ''}
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
             ${bpStatus === 'trial' || bpStatus === 'cancelled' ? `
-              <form method="POST" action="/admin/configuracoes/asaas/subscribe">
-                <button type="submit" class="btn btn-primary" style="font-size:12px;padding:8px 16px;white-space:nowrap">Assinar agora</button>
+              <form method="POST" action="/admin/configuracoes/asaas/subscribe" style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+                <input type="hidden" name="selectedPlan" value="${tenantRealPlan}" />
+                <select name="selectedPlan" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer">
+                  <option value="solo" ${tenantRealPlan === 'solo' ? 'selected' : ''}>Solo — R$ 49/mês (1 barbeiro)</option>
+                  <option value="team" ${tenantRealPlan === 'team' ? 'selected' : ''}>Equipe — R$ 89/mês (até 5 barbeiros)</option>
+                  <option value="studio" ${tenantRealPlan === 'studio' ? 'selected' : ''}>Estúdio — R$ 149/mês (ilimitado)</option>
+                </select>
+                <button type="submit" class="btn btn-primary" style="font-size:12px;padding:8px 16px;white-space:nowrap">Assinar agora via Pix</button>
               </form>
             ` : ''}
             ${bpStatus === 'active' && bpSubId ? `
@@ -5915,8 +5929,14 @@ export function registerAdminRoutes(app: Express): void {
         tenantId: barber.tenantId,
       });
 
+      // Plano selecionado pelo usuário no formulário (ou plano real do tenant como fallback)
+      const selectedPlan = (req.body as any)?.selectedPlan ?? tenantData.plan ?? 'solo';
+      const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
+      const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
+      const planPrice = planPriceMap[selectedPlan] ?? 49;
+      const planLabel = planLabelMap[selectedPlan] ?? selectedPlan;
+
       // Criar assinatura recorrente mensal
-      const planPrice = 97.00; // R$ 97/mês — plano Starter
       const today = new Date();
       const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
       const nextDue = nextMonth.toISOString().slice(0, 10);
@@ -5927,15 +5947,17 @@ export function registerAdminRoutes(app: Express): void {
         value: planPrice,
         nextDueDate: nextDue,
         cycle: 'MONTHLY',
-        description: 'Assinatura Barber Pro — Plano Starter',
+        description: `Barber Pro — Plano ${planLabel} (R$ ${planPrice}/mês)`,
         externalReference: `tenant_${barber.tenantId}`,
       });
 
+      // Atualizar o plano real do tenant também (para manter consistência)
       await dbConn.execute(sql`
         UPDATE tenants SET
+          plan = ${selectedPlan}::"plan",
           "barberproSubscriptionId" = ${subscriptionId},
           "barberproSubscriptionStatus" = 'pending',
-          "barberproPlanName" = 'starter',
+          "barberproPlanName" = ${selectedPlan},
           "barberproPlanPrice" = ${planPrice},
           "barberproNextDueDate" = ${nextDue},
           "updatedAt" = NOW()

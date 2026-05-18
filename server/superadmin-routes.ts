@@ -99,6 +99,7 @@ function layout(title: string, session: BOSession | null, body: string): string 
       <div class="nav-links">
         <a href="/superadmin" class="${title === "Dashboard" ? "active" : ""}">Dashboard</a>
         <a href="/superadmin/tenants" class="${title === "Barbearias" ? "active" : ""}">Barbearias</a>
+        <a href="/superadmin/planos" class="${title === "Planos" ? "active" : ""}">Planos</a>
         <a href="/superadmin/erros" class="${title === "Erros" ? "active" : ""}">Erros</a>
         <a href="/superadmin/leads" class="${title === "Leads" ? "active" : ""}">Leads</a>
         <a href="/superadmin/suporte" class="${title === "Suporte" ? "active" : ""}">Suporte</a>
@@ -1281,5 +1282,300 @@ export function registerSuperAdminRoutes(app: Express): void {
       await db.updateTicketStatus(ticketId, status);
     }
     res.redirect(`/superadmin/suporte/${ticketId}`);
+  });
+
+  // ── GET /superadmin/planos — Painel de Planos Barber Pro ────────────────────
+  app.get("/superadmin/planos", requireAuth, async (req: Request, res: Response) => {
+    const session = (req as any).boSession as BOSession;
+    const saved = req.query.saved === '1';
+    const error = req.query.error ? decodeURIComponent(req.query.error as string) : null;
+
+    // Buscar todos os tenants com dados de assinatura
+    const allTenants = await db.getAllTenants();
+    const dbConn = await db.getDb();
+
+    // Buscar dados de assinatura Barber Pro de todos os tenants
+    let tenantsWithSub: any[] = [];
+    if (dbConn) {
+      try {
+        const { sql: sqlTag } = await import('drizzle-orm');
+        const rows = await dbConn.execute(sqlTag`
+          SELECT
+            t.id, t.name, t.slug, t.plan, t.status,
+            t."barberproSubscriptionId", t."barberproSubscriptionStatus",
+            t."barberproPlanName", t."barberproPlanPrice",
+            t."barberproNextDueDate", t."barberproAsaasCustomerId",
+            t."createdAt"
+          FROM tenants t
+          ORDER BY t."createdAt" DESC
+        `);
+        tenantsWithSub = ((rows as any).rows ?? []) as any[];
+      } catch (e) {
+        tenantsWithSub = allTenants.map((t: any) => t);
+      }
+    } else {
+      tenantsWithSub = allTenants.map((t: any) => t);
+    }
+
+    // Estatísticas
+    const totalTenants = tenantsWithSub.length;
+    const activeSubscriptions = tenantsWithSub.filter((t: any) => t.barberproSubscriptionStatus === 'active').length;
+    const pendingSubscriptions = tenantsWithSub.filter((t: any) => t.barberproSubscriptionStatus === 'pending').length;
+    const trialTenants = tenantsWithSub.filter((t: any) => !t.barberproSubscriptionStatus || t.barberproSubscriptionStatus === 'trial').length;
+
+    // MRR por plano
+    const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
+    const activeSubs = tenantsWithSub.filter((t: any) => t.barberproSubscriptionStatus === 'active');
+    const mrrTotal = activeSubs.reduce((sum: number, t: any) => {
+      const price = t.barberproPlanPrice ? parseFloat(t.barberproPlanPrice) : (planPriceMap[t.barberproPlanName ?? t.plan] ?? 0);
+      return sum + price;
+    }, 0);
+
+    const planCounts = { solo: 0, team: 0, studio: 0 };
+    activeSubs.forEach((t: any) => {
+      const p = (t.barberproPlanName ?? t.plan) as keyof typeof planCounts;
+      if (p in planCounts) planCounts[p]++;
+    });
+
+    const bpStatusLabel: Record<string, string> = {
+      active: '🟢 Ativa', pending: '🟡 Aguardando pagamento',
+      overdue: '🔴 Em atraso', cancelled: '⚫ Cancelada',
+      trial: '🟡 Trial', undefined: '⚪ Sem assinatura',
+    };
+    const bpStatusColor: Record<string, string> = {
+      active: '#4ADE80', pending: '#FBBF24', overdue: '#F87171',
+      cancelled: '#888', trial: '#FBBF24',
+    };
+    const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
+
+    res.send(layout("Planos", session, `
+      <div class="container">
+        ${saved ? `<div style="background:#4ADE8022;color:#4ADE80;border:1px solid #4ADE8044;border-radius:12px;padding:12px 18px;margin-bottom:20px">✅ Plano atualizado com sucesso!</div>` : ''}
+        ${error ? `<div style="background:#F8717122;color:#F87171;border:1px solid #F8717144;border-radius:12px;padding:12px 18px;margin-bottom:20px">⚠️ ${esc(error)}</div>` : ''}
+
+        <div class="page-header">
+          <div class="page-title">Planos Barber Pro</div>
+          <div class="page-sub">Gerenciamento de assinaturas e planos dos assinantes</div>
+        </div>
+
+        <!-- Métricas -->
+        <div class="metrics">
+          <div class="metric-card">
+            <div class="metric-label">MRR Total</div>
+            <div class="metric-value">R$ ${mrrTotal.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</div>
+            <div class="metric-sub">receita mensal recorrente</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Assinaturas Ativas</div>
+            <div class="metric-value" style="color:#4ADE80">${activeSubscriptions}</div>
+            <div class="metric-sub">de ${totalTenants} barbearias</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Aguardando Pagamento</div>
+            <div class="metric-value" style="color:#FBBF24">${pendingSubscriptions}</div>
+            <div class="metric-sub">pagamentos pendentes</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Em Trial / Sem Plano</div>
+            <div class="metric-value" style="color:var(--muted)">${trialTenants}</div>
+            <div class="metric-sub">não assinantes</div>
+          </div>
+        </div>
+
+        <!-- Distribuição por plano -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:center">
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">SOLO — R$49/mês</div>
+            <div style="font-size:32px;font-weight:900;color:var(--muted)">${planCounts.solo}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">1 barbeiro</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:center">
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">EQUIPE — R$89/mês</div>
+            <div style="font-size:32px;font-weight:900;color:var(--gold)">${planCounts.team}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">até 5 barbeiros</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:center">
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">ESTÚDIO — R$149/mês</div>
+            <div style="font-size:32px;font-weight:900;color:#C084FC">${planCounts.studio}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">ilimitado</div>
+          </div>
+        </div>
+
+        <!-- Tabela de assinantes -->
+        <div class="table-wrap">
+          <div class="table-header">
+            <h2>Todas as Barbearias</h2>
+            <span style="font-size:12px;color:var(--muted)">${totalTenants} cadastradas</span>
+          </div>
+          <table>
+            <thead><tr>
+              <th>Barbearia</th>
+              <th>Plano Barber Pro</th>
+              <th>Status Assinatura</th>
+              <th>Valor/mês</th>
+              <th>Próx. Vencimento</th>
+              <th>ID Asaas</th>
+              <th>Ações</th>
+            </tr></thead>
+            <tbody>
+              ${tenantsWithSub.length === 0 ? `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">Nenhuma barbearia cadastrada</td></tr>` : ''}
+              ${tenantsWithSub.map((t: any) => {
+                const subStatus = t.barberproSubscriptionStatus ?? 'trial';
+                const planName = t.barberproPlanName ?? t.plan ?? 'solo';
+                const planPrice = t.barberproPlanPrice ? parseFloat(t.barberproPlanPrice) : (planPriceMap[planName] ?? 0);
+                const nextDue = t.barberproNextDueDate ? new Date(t.barberproNextDueDate + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+                const subId = t.barberproSubscriptionId ?? '';
+                const statusColor = bpStatusColor[subStatus] ?? '#888';
+                const statusLbl = bpStatusLabel[subStatus] ?? subStatus;
+                return `
+                  <tr>
+                    <td>
+                      <div style="font-weight:700">${esc(t.name)}</div>
+                      <div style="font-size:11px;color:var(--muted)">${esc(t.slug)}</div>
+                    </td>
+                    <td>
+                      <span style="font-weight:700;color:${planName === 'studio' ? '#C084FC' : planName === 'team' ? 'var(--gold)' : 'var(--muted)'}">
+                        ${planLabelMap[planName] ?? planName}
+                      </span>
+                    </td>
+                    <td>
+                      <span style="color:${statusColor};font-weight:600;font-size:12px">${statusLbl}</span>
+                    </td>
+                    <td style="font-weight:700;color:var(--text)">
+                      ${planPrice > 0 ? `R$ ${planPrice.toFixed(2).replace('.', ',')}` : '—'}
+                    </td>
+                    <td style="color:var(--muted);font-size:12px">${nextDue}</td>
+                    <td style="font-size:11px;color:var(--muted);font-family:monospace">
+                      ${subId ? `<span title="${esc(subId)}">${esc(subId.slice(0, 12))}...</span>` : '—'}
+                    </td>
+                    <td class="actions">
+                      <a href="/superadmin/planos/editar/${t.id}" class="btn btn-gold">Editar Plano</a>
+                      ${subStatus === 'active' ? `<a href="/superadmin/planos/cancelar/${t.id}" class="btn btn-red" onclick="return confirm('Cancelar assinatura de ${esc(t.name)}?')">Cancelar</a>` : ''}
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `));
+  });
+
+  // ── GET /superadmin/planos/editar/:id — Formulário de edição de plano ────────
+  app.get("/superadmin/planos/editar/:id", requireAuth, requireRole("super_admin", "admin"), async (req: Request, res: Response) => {
+    const session = (req as any).boSession as BOSession;
+    const tenantId = parseInt(req.params.id);
+    if (isNaN(tenantId)) return res.redirect("/superadmin/planos");
+
+    const dbConn = await db.getDb();
+    if (!dbConn) return res.redirect("/superadmin/planos?error=Banco+indispon%C3%ADvel");
+
+    const { sql: sqlTag } = await import('drizzle-orm');
+    const rows = await dbConn.execute(sqlTag`
+      SELECT id, name, slug, plan, status,
+        "barberproSubscriptionId", "barberproSubscriptionStatus",
+        "barberproPlanName", "barberproPlanPrice", "barberproNextDueDate"
+      FROM tenants WHERE id = ${tenantId} LIMIT 1
+    `);
+    const tenant = ((rows as any).rows ?? [])[0];
+    if (!tenant) return res.redirect("/superadmin/planos");
+
+    const saved = req.query.saved === '1';
+    res.send(layout("Planos", session, `
+      <div class="container" style="max-width:600px">
+        ${saved ? `<div style="background:#4ADE8022;color:#4ADE80;border:1px solid #4ADE8044;border-radius:12px;padding:12px 18px;margin-bottom:20px">✅ Plano atualizado!</div>` : ''}
+        <div style="margin-bottom:20px"><a href="/superadmin/planos" class="btn btn-gray">← Voltar</a></div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px">
+          <div style="font-size:18px;font-weight:800;margin-bottom:4px">${esc(tenant.name)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:24px">${esc(tenant.slug)}</div>
+
+          <form method="POST" action="/superadmin/planos/editar/${tenantId}">
+            <div class="form-group">
+              <label>Plano Barber Pro</label>
+              <select name="planName">
+                <option value="solo" ${(tenant.barberproPlanName ?? tenant.plan) === 'solo' ? 'selected' : ''}>Solo — R$ 49/mês (1 barbeiro)</option>
+                <option value="team" ${(tenant.barberproPlanName ?? tenant.plan) === 'team' ? 'selected' : ''}>Equipe — R$ 89/mês (até 5 barbeiros)</option>
+                <option value="studio" ${(tenant.barberproPlanName ?? tenant.plan) === 'studio' ? 'selected' : ''}>Estúdio — R$ 149/mês (ilimitado)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Status da Assinatura</label>
+              <select name="subscriptionStatus">
+                <option value="trial" ${(tenant.barberproSubscriptionStatus ?? 'trial') === 'trial' ? 'selected' : ''}>Trial</option>
+                <option value="active" ${tenant.barberproSubscriptionStatus === 'active' ? 'selected' : ''}>Ativa</option>
+                <option value="pending" ${tenant.barberproSubscriptionStatus === 'pending' ? 'selected' : ''}>Aguardando Pagamento</option>
+                <option value="overdue" ${tenant.barberproSubscriptionStatus === 'overdue' ? 'selected' : ''}>Em Atraso</option>
+                <option value="cancelled" ${tenant.barberproSubscriptionStatus === 'cancelled' ? 'selected' : ''}>Cancelada</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Próximo Vencimento (YYYY-MM-DD)</label>
+              <input type="date" name="nextDueDate" value="${esc(tenant.barberproNextDueDate ?? '')}" />
+            </div>
+            <div class="form-group">
+              <label>ID da Assinatura Asaas (opcional)</label>
+              <input type="text" name="subscriptionId" value="${esc(tenant.barberproSubscriptionId ?? '')}" placeholder="sub_xxxxxxxx" style="font-family:monospace" />
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;padding:12px">Salvar Alterações</button>
+          </form>
+        </div>
+      </div>
+    `));
+  });
+
+  // ── POST /superadmin/planos/editar/:id — Salvar edição de plano ─────────────
+  app.post("/superadmin/planos/editar/:id", requireAuth, requireRole("super_admin", "admin"), async (req: Request, res: Response) => {
+    const tenantId = parseInt(req.params.id);
+    if (isNaN(tenantId)) return res.redirect("/superadmin/planos");
+
+    const { planName, subscriptionStatus, nextDueDate, subscriptionId } = req.body as {
+      planName: string; subscriptionStatus: string; nextDueDate: string; subscriptionId: string;
+    };
+
+    const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
+    const planPrice = planPriceMap[planName] ?? 49;
+
+    try {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new Error("Banco indisponível");
+      const { sql: sqlTag } = await import('drizzle-orm');
+
+      await dbConn.execute(sqlTag`
+        UPDATE tenants SET
+          plan = ${planName}::"plan",
+          "barberproPlanName" = ${planName},
+          "barberproPlanPrice" = ${planPrice},
+          "barberproSubscriptionStatus" = ${subscriptionStatus},
+          "barberproNextDueDate" = ${nextDueDate || null},
+          "barberproSubscriptionId" = ${subscriptionId || null},
+          "updatedAt" = NOW()
+        WHERE id = ${tenantId}
+      `);
+
+      res.redirect(`/superadmin/planos/editar/${tenantId}?saved=1`);
+    } catch (e: any) {
+      res.redirect(`/superadmin/planos?error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // ── GET /superadmin/planos/cancelar/:id — Cancelar assinatura ────────────────
+  app.get("/superadmin/planos/cancelar/:id", requireAuth, requireRole("super_admin", "admin"), async (req: Request, res: Response) => {
+    const tenantId = parseInt(req.params.id);
+    if (isNaN(tenantId)) return res.redirect("/superadmin/planos");
+    try {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new Error("Banco indisponível");
+      const { sql: sqlTag } = await import('drizzle-orm');
+      await dbConn.execute(sqlTag`
+        UPDATE tenants SET
+          "barberproSubscriptionStatus" = 'cancelled',
+          "updatedAt" = NOW()
+        WHERE id = ${tenantId}
+      `);
+      res.redirect("/superadmin/planos?saved=1");
+    } catch (e: any) {
+      res.redirect(`/superadmin/planos?error=${encodeURIComponent(e.message)}`);
+    }
   });
 }

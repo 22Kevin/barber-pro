@@ -2274,3 +2274,9 @@
 - [x] Erro 400 no "Assinar Agora" quando CPF/CNPJ vazio — mensagem clara já existia; corrigido
 - [x] Assinatura criada com BOLETO em vez de PIX — corrigido: billingType alterado para PIX + redireciona para link de pagamento Asaas após criar assinatura
 - [ ] Falta opção "Cartão de débito" na tela de forma de pagamento do onboarding
+
+## Correção Planos Asaas + Painel Superadmin (18/05/2026)
+- [x] Corrigir endpoint subscribe para usar nome/valor correto do plano (Solo R$49, Equipe R$89, Estúdio R$149) em vez de hardcoded "Starter R$97"
+- [x] Adicionar seletor de plano no formulário de assinatura (antes de clicar "Assinar agora")
+- [x] Adicionar seção "Planos Barber Pro" no painel superadmin com gerenciamento de planos
+- [x] Mostrar plano atual do tenant na aba Pagamentos com nome correto (Solo/Equipe/Estúdio)
