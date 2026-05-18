@@ -3883,8 +3883,12 @@ async function renderConfiguracoes(req: Request, res: Response) {
               </div>
               <div class="form-group">
                 <label class="form-label">CPF ou CNPJ *</label>
-                <input class="form-input" type="text" name="cpfCnpj" required placeholder="000.000.000-00 ou 00.000.000/0001-00"
-                  value="${esc(tenant?.asaasCpfCnpj ?? tenant?.cnpj ?? '')}" />
+                <div style="position:relative">
+                  <input class="form-input" type="text" name="cpfCnpj" id="cpfCnpjField" required placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                    value="${esc(tenant?.asaasCpfCnpj ?? tenant?.cnpj ?? '')}" style="padding-right:36px" />
+                  <span id="cpfCnpjIcon" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:16px;display:none"></span>
+                </div>
+                <div id="cpfCnpjError" style="color:var(--error);font-size:12px;margin-top:4px;display:none"></div>
               </div>
               <div class="form-group">
                 <label class="form-label">Tipo de empresa</label>
@@ -3949,11 +3953,64 @@ async function renderConfiguracoes(req: Request, res: Response) {
           companyTypeSelect.addEventListener('change', toggleBirthDate);
           toggleBirthDate();
 
-          // Máscara CPF/CNPJ
-          const cpfCnpjInput = document.querySelector('input[name="cpfCnpj"]');
+          // Máscara CPF/CNPJ com validação em tempo real
+          function validateCpfDigits(d) {
+            if (d.length !== 11) return false;
+            var allSameCpf = true; for (var j = 1; j < 11; j++) { if (d[j] !== d[0]) { allSameCpf = false; break; } } if (allSameCpf) return false;
+            var s = 0; for (var i = 0; i < 9; i++) s += parseInt(d[i]) * (10 - i);
+            var r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+            if (r !== parseInt(d[9])) return false;
+            s = 0; for (var i = 0; i < 10; i++) s += parseInt(d[i]) * (11 - i);
+            r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+            return r === parseInt(d[10]);
+          }
+          function validateCnpjDigits(d) {
+            if (d.length !== 14) return false;
+            var allSame = true; for (var k = 1; k < 14; k++) { if (d[k] !== d[0]) { allSame = false; break; } } if (allSame) return false;
+            function calc(str, w) { var s = 0; for (var i = 0; i < w.length; i++) s += parseInt(str[i]) * w[i]; var r = s % 11; return r < 2 ? 0 : 11 - r; }
+            if (calc(d, [5,4,3,2,9,8,7,6,5,4,3,2]) !== parseInt(d[12])) return false;
+            return calc(d, [6,5,4,3,2,9,8,7,6,5,4,3,2]) === parseInt(d[13]);
+          }
+          var cpfCnpjInput = document.getElementById('cpfCnpjField');
+          var cpfCnpjIcon = document.getElementById('cpfCnpjIcon');
+          var cpfCnpjErrorEl = document.getElementById('cpfCnpjError');
+          function updateCpfCnpjFeedback(digits) {
+            if (!cpfCnpjIcon || !cpfCnpjErrorEl) return;
+            if (digits.length === 0) {
+              cpfCnpjIcon.style.display = 'none';
+              cpfCnpjErrorEl.style.display = 'none';
+              return;
+            }
+            if (digits.length < 11) {
+              cpfCnpjIcon.style.display = 'none';
+              cpfCnpjErrorEl.style.display = 'none';
+              return;
+            }
+            if (digits.length === 11) {
+              var ok = validateCpfDigits(digits);
+              cpfCnpjIcon.textContent = ok ? '✅' : '❌';
+              cpfCnpjIcon.style.display = 'inline';
+              cpfCnpjErrorEl.textContent = ok ? '' : 'CPF inválido. Verifique os dígitos.';
+              cpfCnpjErrorEl.style.display = ok ? 'none' : 'block';
+              return;
+            }
+            if (digits.length > 11 && digits.length < 14) {
+              cpfCnpjIcon.style.display = 'none';
+              cpfCnpjErrorEl.style.display = 'none';
+              return;
+            }
+            if (digits.length === 14) {
+              var ok = validateCnpjDigits(digits);
+              cpfCnpjIcon.textContent = ok ? '✅' : '❌';
+              cpfCnpjIcon.style.display = 'inline';
+              cpfCnpjErrorEl.textContent = ok ? '' : 'CNPJ inválido. Verifique os dígitos.';
+              cpfCnpjErrorEl.style.display = ok ? 'none' : 'block';
+            }
+          }
           if (cpfCnpjInput) {
             cpfCnpjInput.addEventListener('input', function() {
-              let v = this.value.replace(/\D/g, '').substring(0, 14);
+              var digits = this.value.replace(/\D/g, '').substring(0, 14);
+              var v = digits;
               if (v.length <= 11) {
                 v = v.replace(/(\d{3})(\d)/, '$1.$2')
                      .replace(/(\d{3})(\d)/, '$1.$2')
@@ -3966,7 +4023,11 @@ async function renderConfiguracoes(req: Request, res: Response) {
                      .replace(/(\d{2})$/, '-$1');
               }
               this.value = v;
+              updateCpfCnpjFeedback(digits);
             });
+            // Validar valor já preenchido ao carregar
+            var initialDigits = cpfCnpjInput.value.replace(/\D/g, '');
+            if (initialDigits.length >= 11) updateCpfCnpjFeedback(initialDigits);
           }
 
           // Máscara celular
@@ -6218,7 +6279,7 @@ export function registerAdminRoutes(app: Express): void {
         if (cardCpfDigits.length === 11) {
           const isCardCpfValid = (() => {
             const d = cardCpfDigits;
-            if (/^(\d)\1{10}$/.test(d)) return false;
+            var allSameCpf = true; for (var j = 1; j < 11; j++) { if (d[j] !== d[0]) { allSameCpf = false; break; } } if (allSameCpf) return false;
             let s = 0; for (let i = 0; i < 9; i++) s += parseInt(d[i]) * (10 - i);
             let r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
             if (r !== parseInt(d[9])) return false;
@@ -6346,10 +6407,10 @@ export function registerAdminRoutes(app: Express): void {
         const paymentsRes = await asaasApi.get(`/subscriptions/${subscriptionId}/payments?limit=1`);
         const firstPayment = paymentsRes.data?.data?.[0];
         if (firstPayment?.invoiceUrl) {
-          // Para cartão de crédito/débito aprovado na criação, não há invoice a pagar
+          // Para cartão de crédito/débito aprovado na criação, redirecionar para tela de confirmação
           if (hasCard && firstPayment.status === 'CONFIRMED') {
-            if (isJson) { res.json({ redirect: '/admin/configuracoes?tab=pagamentos&saved=1' }); return; }
-            res.redirect('/admin/configuracoes?tab=pagamentos&saved=1'); return;
+            if (isJson) { res.json({ redirect: '/admin/configuracoes/assinatura-ativada' }); return; }
+            res.redirect('/admin/configuracoes/assinatura-ativada'); return;
           }
           if (isJson) { res.json({ redirect: firstPayment.invoiceUrl }); return; }
           res.redirect(firstPayment.invoiceUrl);
@@ -6718,6 +6779,61 @@ export function registerAdminRoutes(app: Express): void {
       res.redirect("/admin/financeiro?tab=receitas&saved=1");
     } catch (e: any) {
       res.redirect(`/admin/financeiro?tab=receitas&error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // GET /admin/configuracoes/assinatura-ativada — Tela de confirmação pós-pagamento
+  app.get("/admin/configuracoes/assinatura-ativada", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const dbConn = await db.getDb();
+      let planLabel = 'Solo'; let planPrice = 49; let nextDue = '';
+      if (dbConn && barber?.tenantId) {
+        const rows = await dbConn.execute(sql`SELECT "barberproPlanName", "barberproPlanPrice", "barberproNextDueDate" FROM tenants WHERE id = ${barber.tenantId} LIMIT 1`);
+        const t = ((rows as any).rows as any[])[0];
+        if (t) {
+          const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
+          planLabel = planLabelMap[t.barberproPlanName ?? 'solo'] ?? t.barberproPlanName ?? 'Solo';
+          planPrice = t.barberproPlanPrice ? parseFloat(t.barberproPlanPrice) : 49;
+          nextDue = t.barberproNextDueDate
+            ? new Date(t.barberproNextDueDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+            : '';
+        }
+      }
+      const _tp = (await db.getTenantById(barber?.tenantId ?? 0))?.plan ?? '';
+      const html = adminLayout(
+        'Assinatura Ativada',
+        'configuracoes',
+        `<div style="max-width:520px;margin:60px auto;text-align:center;padding:0 16px">
+          <div style="font-size:64px;margin-bottom:16px">🎉</div>
+          <h1 style="font-size:26px;font-weight:900;color:var(--text);margin:0 0 8px">Assinatura ativada!</h1>
+          <p style="color:var(--muted);font-size:15px;margin:0 0 32px">Seu pagamento foi confirmado e o acesso ao Barber Pro está liberado.</p>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:28px;text-align:left">
+            <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;color:var(--muted);margin-bottom:16px">RESUMO DA ASSINATURA</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+              <span style="color:var(--muted);font-size:13px">Plano</span>
+              <span style="color:var(--text);font-weight:700;font-size:14px">Barber Pro ${planLabel}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)">
+              <span style="color:var(--muted);font-size:13px">Valor mensal</span>
+              <span style="color:#C9A84C;font-weight:700;font-size:14px">R$ ${planPrice},00</span>
+            </div>
+            ${nextDue ? `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0">
+              <span style="color:var(--muted);font-size:13px">Próximo vencimento</span>
+              <span style="color:var(--text);font-weight:600;font-size:13px">${nextDue}</span>
+            </div>` : ''}
+          </div>
+          <a href="/admin" class="btn btn-primary" style="display:inline-block;padding:14px 36px;font-size:15px;font-weight:700;text-decoration:none">Ir para o painel →</a>
+          <p style="color:var(--muted);font-size:12px;margin-top:20px">Você também receberá um e-mail de confirmação com o recibo do pagamento.</p>
+        </div>`,
+        barber?.name ?? '',
+        _tp,
+        [{ label: 'Configurações', href: '/admin/configuracoes' }, { label: 'Assinatura Ativada' }]
+      );
+      res.send(html);
+    } catch (e: any) {
+      res.redirect('/admin/configuracoes?tab=pagamentos&saved=1');
     }
   });
 

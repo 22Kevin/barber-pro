@@ -73,6 +73,7 @@ export default function BarberProPaywallScreen() {
   const [ownerName, setOwnerName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState(barber?.email ?? "");
   const [ownerCpfCnpj, setOwnerCpfCnpj] = useState("");
+  const [cpfCnpjTouched, setCpfCnpjTouched] = useState(false);
   const [ownerPhone, setOwnerPhone] = useState(barber?.phone ?? "");
   const [step, setStep] = useState<"plans" | "form" | "pending">("plans");
   const [billingType, setBillingType] = useState<BillingType>("PIX");
@@ -338,7 +339,31 @@ export default function BarberProPaywallScreen() {
               <Text style={styles.formLabel}>E-mail *</Text>
               <TextInput style={styles.input} placeholder="seu@email.com" placeholderTextColor="#555" value={ownerEmail} onChangeText={setOwnerEmail} keyboardType="email-address" autoCapitalize="none" />
               <Text style={styles.formLabel}>CPF ou CNPJ *</Text>
-              <TextInput style={styles.input} placeholder="000.000.000-00" placeholderTextColor="#555" value={ownerCpfCnpj} onChangeText={setOwnerCpfCnpj} keyboardType="numeric" />
+              {(() => {
+                const digits = ownerCpfCnpj.replace(/\D/g, '');
+                const isComplete = digits.length === 11 || digits.length === 14;
+                const errMsg = cpfCnpjTouched && isComplete ? cpfCnpjError(ownerCpfCnpj) : null;
+                const isValid = cpfCnpjTouched && isComplete && !errMsg;
+                return (
+                  <>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <TextInput
+                        style={[styles.input, { flex: 1 }, errMsg ? { borderColor: '#F87171', borderWidth: 1.5 } : isValid ? { borderColor: '#4ADE80', borderWidth: 1.5 } : {}]}
+                        placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                        placeholderTextColor="#555"
+                        value={ownerCpfCnpj}
+                        onChangeText={(v) => { setOwnerCpfCnpj(v); if (!cpfCnpjTouched) setCpfCnpjTouched(true); }}
+                        onBlur={() => setCpfCnpjTouched(true)}
+                        keyboardType="numeric"
+                      />
+                      {cpfCnpjTouched && isComplete && (
+                        <Text style={{ fontSize: 18 }}>{errMsg ? '\u274c' : '\u2705'}</Text>
+                      )}
+                    </View>
+                    {errMsg ? <Text style={{ color: '#F87171', fontSize: 12, marginTop: 4 }}>{errMsg}</Text> : null}
+                  </>
+                );
+              })()}
               <Text style={styles.formLabel}>Celular *</Text>
               <TextInput style={styles.input} placeholder="(11) 99999-9999" placeholderTextColor="#555" value={ownerPhone} onChangeText={setOwnerPhone} keyboardType="phone-pad" />
             </View>

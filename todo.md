@@ -2327,3 +2327,8 @@
 - [x] Feedback de erro específico do Asaas no cartão (painel web + app mobile)
 - [x] Salvar forma de pagamento preferida (AsyncStorage app + localStorage web)
 - [x] Validação de dígitos verificadores CPF/CNPJ no frontend e backend
+
+## Round 8 — UX de Pagamento (18/05/2026)
+- [x] Máscara automática CPF/CNPJ no formulário web de Configurar Pagamentos Online
+- [x] Tela de confirmação pós-pagamento após webhook ativar assinatura
+- [x] Validação em tempo real com ícone de erro no campo CPF/CNPJ (web + app mobile)
