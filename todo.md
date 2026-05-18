@@ -2322,3 +2322,8 @@
 - [x] Painel web: endpoint /subscribe e /upgrade-plan aceitam dados do cartão e criam pagamento tokenizado via Asaas
 - [x] App mobile: paywall com seletor Pix / Crédito / Débito e formulário de cartão com detecção de bandeira
 - [x] App mobile: settings.tsx com modal de upgrade aceitando cartão
+
+## Round 7 — Qualidade de Pagamento (18/05/2026)
+- [x] Feedback de erro específico do Asaas no cartão (painel web + app mobile)
+- [x] Salvar forma de pagamento preferida (AsyncStorage app + localStorage web)
+- [x] Validação de dígitos verificadores CPF/CNPJ no frontend e backend

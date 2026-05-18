@@ -3993,10 +3993,16 @@ async function renderConfiguracoes(req: Request, res: Response) {
 
     <script>
     // ── Seletor de forma de pagamento ──────────────────────────────────────────
-    var _selectedMethod = 'PIX';
+    var _selectedMethod = localStorage.getItem('barberpro_preferredBillingType') || 'PIX';
+
+    // Restaurar forma de pagamento preferida ao carregar
+    document.addEventListener('DOMContentLoaded', function() {
+      if (_selectedMethod !== 'PIX') { selectPayMethod(_selectedMethod); }
+    });
 
     function selectPayMethod(method) {
       _selectedMethod = method;
+      try { localStorage.setItem('barberpro_preferredBillingType', method); } catch(e) {}
       // Atualizar visual dos botões
       document.querySelectorAll('.pay-method-btn').forEach(function(btn) {
         var isActive = btn.getAttribute('data-method') === method;
@@ -6148,6 +6154,33 @@ export function registerAdminRoutes(app: Express): void {
         ));
         return;
       }
+      // Validar dígitos verificadores do CPF/CNPJ
+      const isCpfCnpjValid = (() => {
+        const d = cpfCnpjRaw;
+        if (d.length === 11) {
+          if (/^(\d)\1{10}$/.test(d)) return false;
+          let s = 0; for (let i = 0; i < 9; i++) s += parseInt(d[i]) * (10 - i);
+          let r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+          if (r !== parseInt(d[9])) return false;
+          s = 0; for (let i = 0; i < 10; i++) s += parseInt(d[i]) * (11 - i);
+          r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+          return r === parseInt(d[10]);
+        }
+        if (d.length === 14) {
+          if (/^(\d)\1{13}$/.test(d)) return false;
+          const calc = (str: string, w: number[]) => { let s = 0; for (let i = 0; i < w.length; i++) s += parseInt(str[i]) * w[i]; const r = s % 11; return r < 2 ? 0 : 11 - r; };
+          if (calc(d, [5,4,3,2,9,8,7,6,5,4,3,2]) !== parseInt(d[12])) return false;
+          return calc(d, [6,5,4,3,2,9,8,7,6,5,4,3,2]) === parseInt(d[13]);
+        }
+        return false;
+      })();
+      if (!isCpfCnpjValid) {
+        const cpfCnpjErrMsg = cpfCnpjRaw.length === 11
+          ? 'CPF inválido. Verifique os dígitos na seção "Configurar Pagamentos Online" abaixo.'
+          : 'CNPJ inválido. Verifique os dígitos na seção "Configurar Pagamentos Online" abaixo.';
+        res.redirect("/admin/configuracoes?tab=pagamentos&error=" + encodeURIComponent(cpfCnpjErrMsg));
+        return;
+      }
       const asaasCustomerId = await ensureAsaasRootCustomer({
         name: tenantData.name ?? 'Barbearia',
         email: tenantData.email ?? `tenant${barber.tenantId}@barberpro.app`,
@@ -6179,6 +6212,27 @@ export function registerAdminRoutes(app: Express): void {
         expiryYear: (body.cardExpiryYear ?? '').trim(),
         ccv: (body.cardCvv ?? '').trim(),
       } : undefined;
+      // Validar CPF do titular do cartão
+      if (hasCard) {
+        const cardCpfDigits = (body.cardCpf ?? '').replace(/\D/g, '');
+        if (cardCpfDigits.length === 11) {
+          const isCardCpfValid = (() => {
+            const d = cardCpfDigits;
+            if (/^(\d)\1{10}$/.test(d)) return false;
+            let s = 0; for (let i = 0; i < 9; i++) s += parseInt(d[i]) * (10 - i);
+            let r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+            if (r !== parseInt(d[9])) return false;
+            s = 0; for (let i = 0; i < 10; i++) s += parseInt(d[i]) * (11 - i);
+            r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+            return r === parseInt(d[10]);
+          })();
+          if (!isCardCpfValid) {
+            if (isJson) { res.status(400).json({ error: 'CPF do titular do cartão inválido. Verifique os dígitos.' }); return; }
+            res.redirect('/admin/configuracoes?tab=pagamentos&error=' + encodeURIComponent('CPF do titular do cartão inválido. Verifique os dígitos.'));
+            return;
+          }
+        }
+      }
       const creditCardHolderInfo = hasCard ? {
         name: (body.cardHolder ?? tenantData.name ?? '').trim(),
         email: tenantData.email ?? `tenant${barber.tenantId}@barberpro.app`,
@@ -6439,7 +6493,7 @@ export function registerAdminRoutes(app: Express): void {
       res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
     } catch (e: any) {
       console.error('[asaas/upgrade-plan]', e.message);
-      res.redirect("/admin/configuracoes?tab=pagamentos");
+      res.redirect(`/admin/configuracoes?tab=pagamentos&error=${encodeURIComponent(e.message)}`);
     }
   });
 

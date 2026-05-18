@@ -2533,6 +2533,31 @@ export const appRouter = router({
         const dbConn = await db.getDb();
         if (!dbConn) throw new Error("DB unavailable");
 
+        // Validar CPF/CNPJ com dígitos verificadores
+        const cpfCnpjDigits = input.ownerCpfCnpj.replace(/\D/g, "");
+        const isValidCpfCnpj = (() => {
+          const d = cpfCnpjDigits;
+          if (d.length === 11) {
+            if (/^(\d)\1{10}$/.test(d)) return false;
+            let s = 0; for (let i = 0; i < 9; i++) s += parseInt(d[i]) * (10 - i);
+            let r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+            if (r !== parseInt(d[9])) return false;
+            s = 0; for (let i = 0; i < 10; i++) s += parseInt(d[i]) * (11 - i);
+            r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+            return r === parseInt(d[10]);
+          }
+          if (d.length === 14) {
+            if (/^(\d)\1{13}$/.test(d)) return false;
+            const calc = (str: string, w: number[]) => { let s = 0; for (let i = 0; i < w.length; i++) s += parseInt(str[i]) * w[i]; const r = s % 11; return r < 2 ? 0 : 11 - r; };
+            if (calc(d, [5,4,3,2,9,8,7,6,5,4,3,2]) !== parseInt(d[12])) return false;
+            return calc(d, [6,5,4,3,2,9,8,7,6,5,4,3,2]) === parseInt(d[13]);
+          }
+          return false;
+        })();
+        if (!isValidCpfCnpj) {
+          throw new Error(cpfCnpjDigits.length === 11 ? "CPF inválido. Verifique os dígitos." : "CNPJ inválido. Verifique os dígitos.");
+        }
+
         // Verificar se já tem assinatura ativa
         const existing = await dbConn.execute(sql`
           SELECT "barberproSubscriptionId", "barberproSubscriptionStatus"

@@ -3,7 +3,9 @@
  * Exibida quando o trial expira ou a assinatura é cancelada.
  * Permite o dono da barbearia escolher um plano e assinar via Pix, Crédito ou Débito.
  */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { cpfCnpjError, validateCPF } from "@/lib/cpf-cnpj";
 import {
   ActivityIndicator,
   Alert,
@@ -74,6 +76,20 @@ export default function BarberProPaywallScreen() {
   const [ownerPhone, setOwnerPhone] = useState(barber?.phone ?? "");
   const [step, setStep] = useState<"plans" | "form" | "pending">("plans");
   const [billingType, setBillingType] = useState<BillingType>("PIX");
+
+  // Carregar forma de pagamento preferida
+  useEffect(() => {
+    AsyncStorage.getItem("@barberpro:preferredBillingType").then((saved) => {
+      if (saved === "PIX" || saved === "CREDIT_CARD" || saved === "UNDEFINED") {
+        setBillingType(saved as BillingType);
+      }
+    }).catch(() => {});
+  }, []);
+
+  function handleSetBillingType(method: BillingType) {
+    setBillingType(method);
+    AsyncStorage.setItem("@barberpro:preferredBillingType", method).catch(() => {});
+  }
   const [pixCopyCola, setPixCopyCola] = useState<string | null>(null);
 
   // Dados do cartão
@@ -143,7 +159,8 @@ export default function BarberProPaywallScreen() {
 
     if (!ownerName.trim()) { Alert.alert("Atenção", "Informe seu nome completo."); return; }
     if (!ownerEmail.trim()) { Alert.alert("Atenção", "Informe seu e-mail."); return; }
-    if (!ownerCpfCnpj.trim()) { Alert.alert("Atenção", "Informe seu CPF ou CNPJ."); return; }
+    const cpfCnpjErr = cpfCnpjError(ownerCpfCnpj);
+    if (cpfCnpjErr) { Alert.alert("CPF/CNPJ inválido", cpfCnpjErr); return; }
     if (!ownerPhone.trim()) { Alert.alert("Atenção", "Informe seu celular."); return; }
 
     if (isCard) {
@@ -153,7 +170,8 @@ export default function BarberProPaywallScreen() {
       if (!expM || !expY || expY.length < 4) { Alert.alert("Atenção", "Data de validade inválida. Use MM/AAAA."); return; }
       if (!cardCvv.trim()) { Alert.alert("Atenção", "CVV obrigatório."); return; }
       if (!cardHolder.trim()) { Alert.alert("Atenção", "Nome no cartão obrigatório."); return; }
-      if (cardCpf.replace(/\D/g, "").length < 11) { Alert.alert("Atenção", "CPF do titular obrigatório."); return; }
+      const cardCpfErr = validateCPF(cardCpf.replace(/\D/g, "")) ? null : "CPF do titular inválido. Verifique os dígitos.";
+      if (cardCpfErr) { Alert.alert("CPF inválido", cardCpfErr); return; }
       if (cardCep.replace(/\D/g, "").length < 8) { Alert.alert("Atenção", "CEP obrigatório."); return; }
       if (!cardAddrNum.trim()) { Alert.alert("Atenção", "Número do endereço obrigatório."); return; }
     }
@@ -340,7 +358,7 @@ export default function BarberProPaywallScreen() {
                         active && styles.payMethodBtnActive,
                         pressed && { opacity: 0.8 },
                       ]}
-                      onPress={() => setBillingType(method)}
+                      onPress={() => handleSetBillingType(method)}
                     >
                       <Text style={[styles.payMethodText, active && styles.payMethodTextActive]}>
                         {labels[method]}

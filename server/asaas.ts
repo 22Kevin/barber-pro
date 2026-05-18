@@ -195,8 +195,23 @@ export async function createAsaasCharge(
  */
 export async function createAsaasSubscription(payload: AsaasSubscriptionPayload): Promise<string> {
   if (!asaasEnabled) throw new Error("Asaas não configurado. Adicione ASAAS_API_KEY.");
-  const res = await asaasApi.post("/subscriptions", payload);
-  return res.data.id as string;
+  try {
+    const res = await asaasApi.post("/subscriptions", payload);
+    if (!res.data?.id) {
+      const errMsg = res.data?.errors?.[0]?.description ?? res.data?.errors?.[0]?.code ?? "Erro desconhecido ao criar assinatura.";
+      throw new Error(errMsg);
+    }
+    return res.data.id as string;
+  } catch (err: any) {
+    // Extrair mensagem amigável da resposta do Asaas
+    const asaasErrors = err?.response?.data?.errors;
+    if (Array.isArray(asaasErrors) && asaasErrors.length > 0) {
+      const msgs = asaasErrors.map((e: any) => e.description ?? e.code ?? JSON.stringify(e)).join(" | ");
+      throw new Error(msgs);
+    }
+    const fallback = err?.response?.data?.message ?? err?.message ?? "Erro ao criar assinatura no Asaas.";
+    throw new Error(fallback);
+  }
 }
 
 /**
