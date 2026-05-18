@@ -144,6 +144,45 @@ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+// Middleware assíncrono que verifica se a assinatura Barber Pro está ativa/trial.
+// Se expirada ou cancelada, redireciona para a aba de pagamentos com aviso.
+// Rotas de pagamentos e configurações são sempre permitidas para não criar loop.
+async function requireActiveSubscription(req: Request, res: Response, next: NextFunction) {
+  try {
+    const ALWAYS_ALLOWED = ["/admin/configuracoes", "/admin/login", "/admin/logout", "/admin/meu-perfil"];
+    const isAlwaysAllowed = ALWAYS_ALLOWED.some(p => req.path === p || req.path.startsWith(p + "/") || req.path.startsWith("/admin/configuracoes/asaas"));
+    if (isAlwaysAllowed) return next();
+
+    const session = (req as any).adminSession as { barberId: number; role: string } | undefined;
+    if (!session) return next();
+
+    const barber = await db.getBarberById(session.barberId);
+    if (!barber?.tenantId) return next();
+
+    const dbConn = await db.getDb();
+    if (!dbConn) return next();
+
+    const rows = await dbConn.execute(
+      `SELECT "barberproSubscriptionStatus", "trialEndsAt" FROM tenants WHERE id = ${barber.tenantId} LIMIT 1` as any
+    );
+    const t = ((rows as any).rows as any[])[0];
+    if (!t) return next();
+
+    const status = t.barberproSubscriptionStatus ?? 'trial';
+    const trialEndsAt = t.trialEndsAt ? new Date(t.trialEndsAt) : null;
+    const trialExpired = trialEndsAt && trialEndsAt < new Date();
+
+    // Bloquear apenas se expirado ou cancelado (nunca bloquear pending/overdue para não impedir pagamento)
+    const isBlocked = status === 'expired' || status === 'cancelled' || (status === 'trial' && trialExpired);
+    if (isBlocked) {
+      return res.redirect("/admin/configuracoes?tab=pagamentos&expired=1");
+    }
+    return next();
+  } catch {
+    return next(); // Em caso de erro, não bloquear
+  }
+}
+
 // ─── Layout base do painel ────────────────────────────────────────────────────
 function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = ""): string {
   const planBadge: Record<string, { label: string; color: string; bg: string }> = {
@@ -3649,6 +3688,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
 
   // Dados da assinatura Barber Pro
   const bpStatus = (tenant as any)?.barberproSubscriptionStatus ?? 'trial';
+  const isExpiredParam = (req as any).query?.expired === '1';
   const bpPlanName = (tenant as any)?.barberproPlanName ?? 'starter';
   const bpPlanPrice = parseFloat((tenant as any)?.barberproPlanPrice ?? 0);
   const bpNextDue = (tenant as any)?.barberproNextDueDate ?? null;
@@ -3657,11 +3697,12 @@ async function renderConfiguracoes(req: Request, res: Response) {
     trial: '🟡 Período de avaliação',
     active: '🟢 Assinatura ativa',
     overdue: '🔴 Pagamento em atraso',
-    cancelled: '⚫ Cancelada',
+    cancelled: '⚪ Assinatura cancelada',
     pending: '🟡 Aguardando pagamento',
+    expired: '🔴 Trial expirado',
   };
   const bpStatusColor: Record<string, string> = {
-    trial: '#FBBF24', active: 'var(--success)', overdue: 'var(--error)', cancelled: 'var(--muted)', pending: '#FBBF24',
+    trial: '#FBBF24', active: 'var(--success)', overdue: 'var(--error)', cancelled: 'var(--muted)', pending: '#FBBF24', expired: 'var(--error)',
   };
   // Mapeamento dos planos reais do sistema (solo/team/studio) para exibição
   const bpPlanLabel: Record<string, string> = {
@@ -3930,7 +3971,11 @@ async function renderConfiguracoes(req: Request, res: Response) {
   };
 
   const body = `
-    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Configurações salvas com sucesso!</div>` : ""}
+    ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ Configurações salvas com sucesso!</div>` : ""}
+    ${isExpiredParam ? `<div style="background:#EF444422;border:1.5px solid #EF444466;color:#F87171;padding:16px 20px;border-radius:12px;margin-bottom:20px;font-size:14px;line-height:1.6">
+      <strong>🔴 Seu período de teste expirou.</strong><br>
+      Para continuar usando o Barber Pro, assine um dos planos abaixo. O acesso será restaurado imediatamente após a confirmação do pagamento.
+    </div>` : ""}
     ${configError ? `<div style="background:#F8717122;border:1px solid #F8717144;color:var(--error);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">⚠️ ${esc(configError)}</div>` : ""}
 
     <!-- Abas -->
@@ -5974,6 +6019,69 @@ export function registerAdminRoutes(app: Express): void {
         WHERE id = ${barber.tenantId}
       `);
 
+      // Enviar e-mail de boas-vindas / confirmação de assinatura
+      try {
+        const adminBarber = await db.getBarberById(session.barberId);
+        if (tenantData.email || adminBarber?.email) {
+          const { sendEmail } = await import("../email");
+          const recipientEmail = tenantData.email ?? adminBarber?.email;
+          const recipientName = adminBarber?.name ?? tenantData.name ?? 'Admin';
+          const planLabelFull = planLabelMap[selectedPlan] ?? selectedPlan;
+          await sendEmail({
+            to: recipientEmail,
+            subject: `🎉 Assinatura Barber Pro criada — Plano ${planLabelFull}`,
+            html: `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#0A0A0A;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:560px;margin:40px auto;background:#111;border:1px solid #222;border-radius:16px;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#1a1a1a,#0A0A0A);padding:32px;text-align:center;border-bottom:1px solid #222">
+      <div style="font-size:28px;font-weight:900;color:#C9A84C;letter-spacing:-1px">✂️ BARBER PRO</div>
+      <div style="font-size:13px;color:#666;margin-top:4px">Sistema Completo de Barbearia</div>
+    </div>
+    <div style="padding:32px">
+      <div style="background:#C9A84C18;border:1.5px solid #C9A84C44;border-radius:12px;padding:16px 20px;margin-bottom:24px;text-align:center">
+        <div style="font-size:24px;margin-bottom:8px">🎉</div>
+        <div style="font-size:16px;font-weight:800;color:#C9A84C">Assinatura criada com sucesso!</div>
+        <div style="font-size:13px;color:#888;margin-top:4px">Plano ${planLabelFull} — R$ ${planPrice}/mês</div>
+      </div>
+      <p style="color:#ECEDEE;font-size:15px;line-height:1.6;margin:0 0 16px">Olá, <strong style="color:#C9A84C">${recipientName}</strong>!</p>
+      <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 20px">
+        Sua assinatura do <strong style="color:#ECEDEE">Barber Pro — Plano ${planLabelFull}</strong> foi criada.
+        Agora é só efetuar o pagamento via Pix para ativar o acesso completo.
+      </p>
+      <div style="background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:16px 20px;margin-bottom:24px">
+        <div style="font-size:12px;color:#666;margin-bottom:8px">RESUMO DA ASSINATURA</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span style="color:#9BA1A6;font-size:13px">Plano</span>
+          <span style="color:#ECEDEE;font-weight:700;font-size:13px">${planLabelFull}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span style="color:#9BA1A6;font-size:13px">Valor mensal</span>
+          <span style="color:#C9A84C;font-weight:700;font-size:13px">R$ ${planPrice},00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:#9BA1A6;font-size:13px">Forma de pagamento</span>
+          <span style="color:#ECEDEE;font-weight:700;font-size:13px">Pix (mensal)</span>
+        </div>
+      </div>
+      <div style="text-align:center;margin-bottom:24px">
+        <a href="https://usebarberpro.com/admin/configuracoes?tab=pagamentos"
+           style="display:inline-block;background:#C9A84C;color:#000;font-weight:800;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none">
+          PAGAR VIA PIX →
+        </a>
+      </div>
+      <p style="color:#555;font-size:12px;text-align:center;margin:0">Após a confirmação do pagamento, o acesso será ativado automaticamente.</p>
+    </div>
+    <div style="background:#0A0A0A;padding:20px;text-align:center;border-top:1px solid #1a1a1a">
+      <div style="font-size:11px;color:#444">Barber Pro — <a href="https://usebarberpro.com" style="color:#C9A84C;text-decoration:none">usebarberpro.com</a></div>
+    </div>
+  </div>
+</body></html>`,
+          }).catch((emailErr: any) => console.error('[asaas/subscribe] Erro ao enviar e-mail de boas-vindas:', emailErr.message));
+        }
+      } catch (emailErr: any) {
+        console.error('[asaas/subscribe] Erro ao buscar dados para e-mail:', emailErr.message);
+      }
+
       // Buscar o primeiro pagamento da assinatura para redirecionar para o link de pagamento Pix
       try {
         const paymentsRes = await asaasApi.get(`/subscriptions/${subscriptionId}/payments?limit=1`);
@@ -6233,6 +6341,9 @@ export function registerAdminRoutes(app: Express): void {
       res.status(500).json({ error: e.message });
     }
   });
+
+  // Middleware global de verificação de assinatura ativa para todas as rotas /admin (exceto configurações e login)
+  app.use("/admin", requireAdminAuth, requireActiveSubscription);
 
   // Rotas protegidas
   app.get("/admin", requireAdminAuth, withErrorPage("Dashboard", "dashboard", renderDashboard));

@@ -2285,3 +2285,9 @@
 - [x] Webhook PAYMENT_RECEIVED atualiza barberproSubscriptionStatus para 'active' com plano correto
 - [x] Job de notificação de trial expirando 3 dias antes (WhatsApp + email)
 - [x] Upgrade de plano para assinantes ativos na aba Pagamentos
+
+## Melhorias Asaas Round 3 (18/05/2026)
+- [x] Bloqueio de acesso ao expirar trial (status expired via webhook SUBSCRIPTION_CANCELLED + job)
+- [x] E-mail de boas-vindas/confirmação ao assinar o Barber Pro
+- [x] Aba "Em Trial" no superadmin com lista de barbearias e extensão manual do trial
+- [x] Push notification de trial expirando no app do barbeiro (complementar ao e-mail)

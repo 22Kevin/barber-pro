@@ -1290,6 +1290,8 @@ export function registerSuperAdminRoutes(app: Express): void {
     const saved = req.query.saved === '1';
     const error = req.query.error ? decodeURIComponent(req.query.error as string) : null;
 
+    const activeTab = (req.query.tab as string) ?? 'todos';
+
     // Buscar todos os tenants com dados de assinatura
     const allTenants = await db.getAllTenants();
     const dbConn = await db.getDb();
@@ -1305,6 +1307,7 @@ export function registerSuperAdminRoutes(app: Express): void {
             t."barberproSubscriptionId", t."barberproSubscriptionStatus",
             t."barberproPlanName", t."barberproPlanPrice",
             t."barberproNextDueDate", t."barberproAsaasCustomerId",
+            t."trialEndsAt",
             t."createdAt"
           FROM tenants t
           ORDER BY t."createdAt" DESC
@@ -1316,6 +1319,18 @@ export function registerSuperAdminRoutes(app: Express): void {
     } else {
       tenantsWithSub = allTenants.map((t: any) => t);
     }
+
+    // Filtrar barbearias em trial (vencimento nos próximos 7 dias ou já expirado)
+    const now = new Date();
+    const in7Days = new Date(now.getTime() + 7 * 86400000);
+    const trialList = tenantsWithSub.filter((t: any) => {
+      const status = t.barberproSubscriptionStatus ?? 'trial';
+      return (status === 'trial' || status === 'expired') && t.trialEndsAt;
+    }).sort((a: any, b: any) => {
+      const da = new Date(a.trialEndsAt).getTime();
+      const db2 = new Date(b.trialEndsAt).getTime();
+      return da - db2;
+    });
 
     // Estatísticas
     const totalTenants = tenantsWithSub.length;
@@ -1401,6 +1416,75 @@ export function registerSuperAdminRoutes(app: Express): void {
           </div>
         </div>
 
+        <!-- Abas de navegação -->
+        <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px">
+          <a href="/superadmin/planos?tab=todos" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'todos' ? 'background:var(--gold);color:#0C0C0C' : 'color:var(--muted)'}">
+            Todas as Barbearias (${totalTenants})
+          </a>
+          <a href="/superadmin/planos?tab=trial" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'trial' ? 'background:var(--gold);color:#0C0C0C' : 'color:var(--muted)'}">
+            Em Trial / Expirado (${trialList.length})
+          </a>
+        </div>
+
+        ${activeTab === 'trial' ? `
+        <!-- Tabela de barbearias em trial -->
+        <div class="table-wrap">
+          <div class="table-header">
+            <h2>Barbearias em Trial / Expirado</h2>
+            <span style="font-size:12px;color:var(--muted)">${trialList.length} barbearias</span>
+          </div>
+          <table>
+            <thead><tr>
+              <th>Barbearia</th>
+              <th>Status</th>
+              <th>Trial Expira em</th>
+              <th>Dias Restantes</th>
+              <th>Ações</th>
+            </tr></thead>
+            <tbody>
+              ${trialList.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px">Nenhuma barbearia em trial</td></tr>` : ''}
+              ${trialList.map((t: any) => {
+                const trialEnd = new Date(t.trialEndsAt);
+                const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / 86400000);
+                const isExpired = daysLeft < 0;
+                const isUrgent = daysLeft >= 0 && daysLeft <= 3;
+                const daysColor = isExpired ? '#F87171' : isUrgent ? '#FBBF24' : '#4ADE80';
+                const daysLabel = isExpired ? `Expirou há ${Math.abs(daysLeft)} dia(s)` : `${daysLeft} dia(s) restantes`;
+                const status = t.barberproSubscriptionStatus ?? 'trial';
+                return `
+                  <tr>
+                    <td>
+                      <div style="font-weight:700">${esc(t.name)}</div>
+                      <div style="font-size:11px;color:var(--muted)">${esc(t.slug)}</div>
+                    </td>
+                    <td>
+                      <span style="color:${isExpired ? '#F87171' : '#FBBF24'};font-weight:600;font-size:12px">
+                        ${isExpired ? '🔴 Expirado' : '🟡 Trial'}
+                      </span>
+                    </td>
+                    <td style="color:var(--muted);font-size:12px">${trialEnd.toLocaleDateString('pt-BR')}</td>
+                    <td style="font-weight:700;color:${daysColor};font-size:13px">${daysLabel}</td>
+                    <td class="actions">
+                      <form method="POST" action="/superadmin/planos/extend-trial/${t.id}" style="display:inline">
+                        <select name="days" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;margin-right:4px">
+                          <option value="7">+7 dias</option>
+                          <option value="14">+14 dias</option>
+                          <option value="30" selected>+30 dias</option>
+                          <option value="60">+60 dias</option>
+                        </select>
+                        <button type="submit" class="btn btn-gold" style="font-size:12px;padding:6px 14px">Estender Trial</button>
+                      </form>
+                      <a href="/superadmin/planos/editar/${t.id}" class="btn btn-gray" style="font-size:12px;padding:6px 14px">Editar</a>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        ${activeTab !== 'trial' ? `
         <!-- Tabela de assinantes -->
         <div class="table-wrap">
           <div class="table-header">
@@ -1458,8 +1542,33 @@ export function registerSuperAdminRoutes(app: Express): void {
             </tbody>
           </table>
         </div>
+        ` : ''}
       </div>
     `));
+  });
+
+  // ── POST /superadmin/planos/extend-trial/:id — Estender trial manualmente
+  app.post("/superadmin/planos/extend-trial/:id", requireAuth, requireRole("super_admin", "admin"), async (req: Request, res: Response) => {
+    const tenantId = parseInt(req.params.id);
+    if (isNaN(tenantId)) return res.redirect("/superadmin/planos?tab=trial");
+    try {
+      const days = parseInt((req.body as any)?.days ?? '30');
+      if (isNaN(days) || days < 1 || days > 365) throw new Error('Dias inválidos');
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new Error('Banco indisponível');
+      const { sql: sqlTag } = await import('drizzle-orm');
+      // Estender a partir de hoje ou da data de expiração atual, o que for maior
+      await dbConn.execute(sqlTag`
+        UPDATE tenants SET
+          "trialEndsAt" = GREATEST(NOW(), "trialEndsAt") + INTERVAL '${days} days',
+          "barberproSubscriptionStatus" = 'trial',
+          "updatedAt" = NOW()
+        WHERE id = ${tenantId}
+      `);
+      res.redirect("/superadmin/planos?tab=trial&saved=1");
+    } catch (e: any) {
+      res.redirect(`/superadmin/planos?tab=trial&error=${encodeURIComponent(e.message)}`);
+    }
   });
 
   // ── GET /superadmin/planos/editar/:id — Formulário de edição de plano ────────

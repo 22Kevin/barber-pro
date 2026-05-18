@@ -125,7 +125,7 @@ async function runTrialExpiryJob() {
   try {
     resetDailyCache();
 
-    const { getDb } = await import("./db");
+    const { getDb, getBarberPushToken, sendExpoPushNotification } = await import("./db");
     const dbConn = await getDb();
     if (!dbConn) return;
 
@@ -144,6 +144,7 @@ async function runTrialExpiryJob() {
         t.name AS "tenantName",
         t."trialEndsAt",
         t.phone AS "tenantPhone",
+        b.id AS "adminBarberId",
         b.email AS "adminEmail",
         b.name AS "adminName",
         b.phone AS "adminPhone"
@@ -185,10 +186,34 @@ async function runTrialExpiryJob() {
           }).catch((e: any) => console.error(`[trial-expiry] Erro ao enviar e-mail para ${tenant.adminEmail}:`, e.message));
         }
 
+           // Enviar push notification ao super_admin da barbearia
+        if (tenant.adminBarberId) {
+          try {
+            const pushToken = await getBarberPushToken(tenant.adminBarberId);
+            if (pushToken) {
+              const urgencyText = daysLeft <= 0 ? 'expirou!' : daysLeft === 1 ? 'expira amanhã!' : `expira em ${daysLeft} dias`;
+              await sendExpoPushNotification(
+                pushToken,
+                `⏰ Seu trial ${urgencyText}`,
+                `Assine o Barber Pro para continuar usando o sistema sem interrupção.`,
+                { type: 'trial_expiry', daysLeft, tenantId }
+              );
+              console.log(`[trial-expiry] Push enviado para ${tenant.tenantName} (barberId: ${tenant.adminBarberId})`);
+            }
+          } catch (pushErr: any) {
+            console.error(`[trial-expiry] Erro ao enviar push para ${tenant.tenantName}:`, pushErr.message);
+          }
+        }
+
         // Gerar link WhatsApp (para envio manual ou integração futura)
         const phone = tenant.adminPhone ?? tenant.tenantPhone;
         if (phone) {
-          const msg = `Olá ${tenant.adminName ?? "Admin"}! ⏰ O período de teste do *${tenant.tenantName}* no Barber Pro expira em *${daysLeft} dia${daysLeft !== 1 ? 's' : ''}*.\n\nPara continuar usando o sistema, acesse:\nhttps://usebarberpro.com/admin/configuracoes#pagamentos\n\nPlanos a partir de R$ 49/mês. 💈`;
+          const msg = `Olá ${tenant.adminName ?? "Admin"}! ⏰ O período de teste do *${tenant.tenantName}* no Barber Pro expira em *${daysLeft} dia${daysLeft !== 1 ? 's' : ''}*.
+
+Para continuar usando o sistema, acesse:
+https://usebarberpro.com/admin/configuracoes#pagamentos
+
+Planos a partir de R$ 49/mês. 💈`;
           const waLink = buildWhatsAppLink(phone, msg);
           console.log(`[trial-expiry] WhatsApp para ${tenant.tenantName} (${daysLeft}d): ${waLink}`);
         }
