@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, name, email, role, isActive FROM backoffice_users LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT id, name, email, role, isActive FROM backoffice_users LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "name": "Kevin Rayan",
+      "email": "kevin.rayan25@gmail.com",
+      "role": "super_admin",
+      "isActive": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\tisActive\n1\tKevin Rayan\tkevin.rayan25@gmail.com\tsuper_admin\t1\n",
+  "stderr": "",
+  "execution_time_ms": 954
+}

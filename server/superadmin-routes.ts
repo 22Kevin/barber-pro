@@ -157,6 +157,11 @@ function layout(title: string, session: BOSession | null, body: string): string 
     /* Métricas */
     .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 28px; }
     .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
+    .breadcrumb { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; font-size: 13px; }
+    .bc-link { color: var(--gold); text-decoration: none; opacity: 0.8; transition: opacity 0.15s; }
+    .bc-link:hover { opacity: 1; text-decoration: underline; }
+    .bc-sep { color: var(--muted); font-size: 14px; }
+    .bc-current { color: var(--text); font-weight: 600; }
     .metric-label { font-size: 10px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
     .metric-value { font-size: 30px; font-weight: 900; color: var(--gold); line-height: 1; }
     .metric-sub { font-size: 11px; color: var(--muted); margin-top: 5px; }
@@ -645,6 +650,7 @@ export function registerSuperAdminRoutes(app: Express): void {
 
       res.send(layout("Barbearias", session, `
         <div class="container">
+          <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><span class="bc-current">Barbearias</span></div>
           <div class="page-header">
             <div class="page-title">Barbearias Cadastradas</div>
             <div class="page-sub">${allTenants.length} resultado${allTenants.length !== 1 ? "s" : ""}</div>
@@ -789,6 +795,7 @@ export function registerSuperAdminRoutes(app: Express): void {
 
       res.send(layout("Erros", session, `
         <div class="container">
+          <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><span class="bc-current">Erros</span></div>
           <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
             <div>
               <div class="page-title">Log de Erros</div>
@@ -900,6 +907,7 @@ export function registerSuperAdminRoutes(app: Express): void {
 
       res.send(layout("Leads", session, `
         <div class="container">
+          <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><span class="bc-current">Leads</span></div>
           <div class="page-header">
             <div class="page-title">Leads da Landing Page</div>
             <div class="page-sub">${leads.length} resultado${leads.length !== 1 ? "s" : ""} encontrado${leads.length !== 1 ? "s" : ""}</div>
@@ -944,6 +952,7 @@ export function registerSuperAdminRoutes(app: Express): void {
 
       res.send(layout("Usuários", session, `
         <div class="container">
+          <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><span class="bc-current">Usuários</span></div>
           <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
             <div>
               <div class="page-title">Usuários do Backoffice</div>
@@ -1066,6 +1075,7 @@ export function registerSuperAdminRoutes(app: Express): void {
     const saved = req.query.saved ? '<div class="alert alert-success">Alterações salvas! Faça deploy para aplicar na landing page.</div>' : "";
     res.send(layout("CMS — Landing Page", session, `
       <div class="container">
+        <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><span class="bc-current">CMS</span></div>
         <div class="page-header">
           <div class="page-title">CMS da Landing Page</div>
           <div class="page-sub">Gerencie os conteúdos exibidos em usebarberpro.com</div>
@@ -1162,10 +1172,10 @@ export function registerSuperAdminRoutes(app: Express): void {
     const priorityColors: Record<string, string> = { urgent: '#F87171', high: '#FBBF24', normal: '#60A5FA', low: '#888' };
     const openCount = tickets.filter((t: any) => ['open','waiting_admin'].includes(t.status)).length;
     res.send(layout("Suporte", session, `
-      <div class="container">
+        <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><span class="bc-current">Suporte</span></div>
         <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
-          <div>
-            <div class="page-title">Suporte Interno</div>
+            <div>
+              <div class="page-title">Suporte Interno</div>
             <div class="page-sub">Tickets abertos pelos assinantes</div>
           </div>
           ${openCount > 0 ? `<span style="background:#F8717122;color:#F87171;border:1px solid #F8717144;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700">${openCount} aberto${openCount > 1 ? 's' : ''}</span>` : ''}
@@ -1216,6 +1226,7 @@ export function registerSuperAdminRoutes(app: Express): void {
     const saved = req.query.saved === '1';
     res.send(layout("Suporte", session, `
       <div class="container" style="max-width:800px">
+        <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><a href="/superadmin/suporte" class="bc-link">Suporte</a><span class="bc-sep">›</span><span class="bc-current">Ticket #${ticketId}</span></div>
         <div style="margin-bottom:20px"><a href="/superadmin/suporte" class="btn btn-gray">Voltar</a></div>
         ${saved ? `<div style="background:#4ADE8022;color:#4ADE80;border:1px solid #4ADE8044;border-radius:12px;padding:12px 18px;margin-bottom:16px">Resposta enviada!</div>` : ''}
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px">
@@ -1385,6 +1396,7 @@ export function registerSuperAdminRoutes(app: Express): void {
 
     res.send(layout("Planos", session, `
       <div class="container">
+        <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><span class="bc-current">Planos</span></div>
         ${saved ? `<div style="background:#4ADE8022;color:#4ADE80;border:1px solid #4ADE8044;border-radius:12px;padding:12px 18px;margin-bottom:20px">✅ Plano atualizado com sucesso!</div>` : ''}
         ${error ? `<div style="background:#F8717122;color:#F87171;border:1px solid #F8717144;border-radius:12px;padding:12px 18px;margin-bottom:20px">⚠️ ${esc(error)}</div>` : ''}
 
@@ -1675,6 +1687,7 @@ export function registerSuperAdminRoutes(app: Express): void {
     const saved = req.query.saved === '1';
     res.send(layout("Planos", session, `
       <div class="container" style="max-width:600px">
+        <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><a href="/superadmin/planos" class="bc-link">Planos</a><span class="bc-sep">›</span><span class="bc-current">Editar Plano</span></div>
         ${saved ? `<div style="background:#4ADE8022;color:#4ADE80;border:1px solid #4ADE8044;border-radius:12px;padding:12px 18px;margin-bottom:20px">✅ Plano atualizado!</div>` : ''}
         <div style="margin-bottom:20px"><a href="/superadmin/planos" class="btn btn-gray">← Voltar</a></div>
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px">
@@ -2001,7 +2014,10 @@ export function registerSuperAdminRoutes(app: Express): void {
     const currentTemplate = templates[template] ?? templates.booking;
 
     res.send(layout("Preview de E-mails", null, `
-      <div style="display:flex;gap:0;height:calc(100vh - 80px)">
+      <div style="padding:16px 24px 0">
+        <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><span class="bc-current">E-mails</span></div>
+      </div>
+      <div style="display:flex;gap:0;height:calc(100vh - 110px)">
         <!-- Sidebar de templates -->
         <div style="width:280px;min-width:280px;background:#111;border-right:1px solid #222;overflow-y:auto;padding:16px">
           <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Templates</div>
