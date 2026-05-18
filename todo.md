@@ -2359,3 +2359,12 @@
 - [x] Painel web: formulário de assinatura exibe QR Code inline (sem redirecionar para Asaas)
 - [x] Painel web: botão "Copiar código Pix" com feedback visual
 - [x] Painel web: polling automático a cada 10s para verificar status do pagamento
+
+## Melhorias Pix - Fase 2 (18/05/2026)
+- [ ] Contador regressivo de 30min para expiração do QR Code (app mobile)
+- [ ] Botão "Gerar novo QR Code" quando expirar (app mobile)
+- [ ] Contador regressivo de 30min para expiração do QR Code (painel web)
+- [ ] Botão "Gerar novo QR Code" quando expirar (painel web)
+- [ ] E-mail de confirmação inclui código Pix copia e cola no corpo
+- [ ] Tela de sucesso animada pós-pagamento (app mobile)
+- [ ] Tela de sucesso animada pós-pagamento (painel web)

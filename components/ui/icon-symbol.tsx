@@ -128,6 +128,7 @@ const MAPPING = {
   "safari.fill": "open-in-browser",
   "doc.on.clipboard": "content-copy",
   "doc.on.doc": "content-copy",
+  "doc.on.doc.fill": "content-copy",
   "square.and.pencil": "edit-note",
   "paintpalette.fill": "palette",
   "antenna.radiowaves.left.and.right": "wifi-tethering",

@@ -3875,9 +3875,23 @@ async function renderConfiguracoes(req: Request, res: Response) {
               <div id="pix-qr-container" style="display:none;flex-direction:column;gap:12px;width:100%">
                 <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--muted)">PAGAMENTO VIA PIX</div>
                 <div id="pix-plan-info" style="font-size:13px;color:var(--text);font-weight:600"></div>
+                <!-- Contador de expiração -->
+                <div id="pix-countdown-wrapper" style="display:flex;align-items:center;gap:6px;background:#1e2022;border:1px solid #334155;border-radius:8px;padding:6px 12px;transition:all 0.3s">
+                  <span id="pix-countdown-icon" style="color:#9BA1A6;font-size:14px">&#9200;</span>
+                  <span style="font-size:12px;color:#9BA1A6">Expira em</span>
+                  <span id="pix-countdown" style="font-size:13px;font-weight:700;color:#9BA1A6;font-family:monospace">30:00</span>
+                </div>
+                <!-- QR Code -->
                 <div style="display:flex;flex-direction:column;align-items:center;background:#fff;border-radius:12px;padding:16px;gap:8px">
                   <div id="pix-qr-loading" style="color:#333;font-size:12px">Gerando QR Code...</div>
                   <img id="pix-qr-img" src="" alt="QR Code Pix" style="display:none;width:200px;height:200px;border-radius:8px" />
+                  <!-- Tela de expirado -->
+                  <div id="pix-qr-expired" style="display:none;flex-direction:column;align-items:center;gap:10px;padding:16px">
+                    <div style="font-size:32px">&#9888;</div>
+                    <div style="font-size:14px;font-weight:700;color:#F59E0B;text-align:center">QR Code expirado</div>
+                    <div style="font-size:12px;color:#9BA1A6;text-align:center">O código Pix expirou após 30 minutos.</div>
+                    <button id="pix-renew-btn" type="button" onclick="renewPixQrCode()" style="padding:10px 20px;background:#C9A84C;color:#000;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Gerar novo QR Code</button>
+                  </div>
                   <div style="font-size:11px;color:#555;text-align:center">Abra o app do seu banco e escaneie o QR Code</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
@@ -3903,6 +3917,16 @@ async function renderConfiguracoes(req: Request, res: Response) {
                 </button>
                 <div id="check-payment-msg" style="font-size:12px;text-align:center;display:none"></div>
                 <div style="font-size:11px;color:var(--muted);text-align:center">Verificando automaticamente a cada 10 segundos...</div>
+              </div>
+
+              <!-- Tela de sucesso pós-pagamento (oculta até confirmação) -->
+              <div id="pix-success-screen" style="display:none;flex-direction:column;align-items:center;gap:16px;padding:24px;text-align:center">
+                <div style="width:80px;height:80px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px rgba(201,168,76,0.5);font-size:40px">&#10003;</div>
+                <div style="font-size:22px;font-weight:800;color:#C9A84C">Pagamento confirmado!</div>
+                <div style="font-size:15px;color:var(--text)">Bem-vindo ao Barber Pro</div>
+                <div id="pix-success-plan" style="font-size:13px;color:var(--muted)"></div>
+                <div style="background:var(--surface);border:1.5px solid #C9A84C;border-radius:10px;padding:12px 20px;font-size:14px;font-weight:700;color:#C9A84C">Acesso ativado com sucesso!</div>
+                <div style="font-size:12px;color:var(--muted)">Redirecionando automaticamente...</div>
               </div>
             ` : ''}
             ${bpStatus === 'active' ? `
@@ -4351,7 +4375,10 @@ async function renderConfiguracoes(req: Request, res: Response) {
       // Criar e exibir o painel de QR Code
       var container = document.getElementById('pix-qr-container');
       if (!container) return;
-      container.style.display = 'block';
+      container.style.display = 'flex';
+
+      // Guardar dados para renovação
+      window._pixData = data;
 
       // QR Code
       if (data.pixQrCode) {
@@ -4359,6 +4386,8 @@ async function renderConfiguracoes(req: Request, res: Response) {
         if (qrImg) { qrImg.src = 'data:image/png;base64,' + data.pixQrCode; qrImg.style.display = 'block'; }
         var qrLoading = document.getElementById('pix-qr-loading');
         if (qrLoading) qrLoading.style.display = 'none';
+        var qrExpired = document.getElementById('pix-qr-expired');
+        if (qrExpired) qrExpired.style.display = 'none';
       }
 
       // Copia e cola
@@ -4366,7 +4395,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
         var pixCodeEl = document.getElementById('pix-copy-cola-text');
         if (pixCodeEl) pixCodeEl.textContent = data.pixCopyCola;
         var pixCodeArea = document.getElementById('pix-copy-cola-area');
-        if (pixCodeArea) pixCodeArea.style.display = 'block';
+        if (pixCodeArea) pixCodeArea.style.display = 'flex';
         window._pixCopyCola = data.pixCopyCola;
       }
 
@@ -4374,10 +4403,104 @@ async function renderConfiguracoes(req: Request, res: Response) {
       var planInfo = document.getElementById('pix-plan-info');
       if (planInfo) planInfo.textContent = 'Plano ' + (data.planLabel || '') + ' — R$ ' + (data.planPrice || '') + '/mês';
 
+      // Iniciar contador de expiração (30 minutos)
+      startPixCountdown(30 * 60);
+
       // Iniciar polling automático a cada 10s
       window._pixPollingInterval = setInterval(function() {
         checkPaymentStatus(true);
       }, 10000);
+    }
+
+    function startPixCountdown(totalSeconds) {
+      if (window._pixCountdownInterval) clearInterval(window._pixCountdownInterval);
+      var secondsLeft = totalSeconds;
+      updateCountdownDisplay(secondsLeft);
+      window._pixCountdownInterval = setInterval(function() {
+        secondsLeft--;
+        updateCountdownDisplay(secondsLeft);
+        if (secondsLeft <= 0) {
+          clearInterval(window._pixCountdownInterval);
+          showPixExpired();
+        }
+      }, 1000);
+    }
+
+    function updateCountdownDisplay(secs) {
+      var el = document.getElementById('pix-countdown');
+      if (!el) return;
+      var m = Math.floor(secs / 60).toString().padStart(2, '0');
+      var s = (secs % 60).toString().padStart(2, '0');
+      el.textContent = m + ':' + s;
+      var wrapper = document.getElementById('pix-countdown-wrapper');
+      if (wrapper) {
+        wrapper.style.borderColor = secs < 120 ? '#F59E0B' : '#334155';
+        wrapper.style.background = secs < 120 ? '#2a1a00' : '#1e2022';
+        el.style.color = secs < 120 ? '#F59E0B' : '#9BA1A6';
+        var icon = document.getElementById('pix-countdown-icon');
+        if (icon) icon.style.color = secs < 120 ? '#F59E0B' : '#9BA1A6';
+      }
+    }
+
+    function showPixExpired() {
+      var qrImg = document.getElementById('pix-qr-img');
+      if (qrImg) qrImg.style.display = 'none';
+      var qrLoading = document.getElementById('pix-qr-loading');
+      if (qrLoading) qrLoading.style.display = 'none';
+      var qrExpired = document.getElementById('pix-qr-expired');
+      if (qrExpired) qrExpired.style.display = 'flex';
+      var countdownWrapper = document.getElementById('pix-countdown-wrapper');
+      if (countdownWrapper) countdownWrapper.style.display = 'none';
+      // Parar polling
+      if (window._pixPollingInterval) clearInterval(window._pixPollingInterval);
+    }
+
+    function renewPixQrCode() {
+      var renewBtn = document.getElementById('pix-renew-btn');
+      if (renewBtn) { renewBtn.disabled = true; renewBtn.textContent = 'Gerando...'; }
+      var data = window._pixData || {};
+      // Reutilizar o mesmo payload (o servidor cria nova cobrança Pix)
+      var payload = { plan: data.planKey || 'solo', billingType: 'PIX' };
+      fetch('/admin/configuracoes/asaas/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(function(r) { return r.json(); })
+        .then(function(newData) {
+          if (newData.pix) {
+            showPixQrCode(newData);
+          } else {
+            if (renewBtn) { renewBtn.disabled = false; renewBtn.textContent = 'Gerar novo QR Code'; }
+            alert('Erro ao gerar novo QR Code. Tente novamente.');
+          }
+        })
+        .catch(function() {
+          if (renewBtn) { renewBtn.disabled = false; renewBtn.textContent = 'Gerar novo QR Code'; }
+          alert('Erro de conexão. Tente novamente.');
+        });
+    }
+
+    function showPaymentSuccess(planLabel, planPrice) {
+      // Parar todos os timers
+      if (window._pixPollingInterval) clearInterval(window._pixPollingInterval);
+      if (window._pixCountdownInterval) clearInterval(window._pixCountdownInterval);
+
+      // Esconder painel QR Code
+      var container = document.getElementById('pix-qr-container');
+      if (container) container.style.display = 'none';
+
+      // Exibir tela de sucesso
+      var successEl = document.getElementById('pix-success-screen');
+      if (successEl) {
+        successEl.style.display = 'flex';
+        var planEl = document.getElementById('pix-success-plan');
+        if (planEl) planEl.textContent = 'Plano ' + planLabel + ' — R$ ' + planPrice + '/mês';
+      }
+
+      // Redirecionar após 3 segundos
+      setTimeout(function() {
+        window.location.href = '/admin/configuracoes?tab=pagamentos&activated=1';
+      }, 3000);
     }
 
     function copyPixCode() {
@@ -4407,9 +4530,9 @@ async function renderConfiguracoes(req: Request, res: Response) {
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.status === 'active') {
-            // Parar polling e redirecionar
-            if (window._pixPollingInterval) { clearInterval(window._pixPollingInterval); }
-            window.location.href = '/admin/configuracoes/assinatura-ativada';
+            // Mostrar tela de sucesso animada
+            var pixData = window._pixData || {};
+            showPaymentSuccess(pixData.planLabel || '', pixData.planPrice || '');
           } else if (data.status === 'pending') {
             if (!isPolling) {
               if (msg) { msg.style.display = 'block'; msg.style.color = 'var(--muted)'; msg.textContent = '⏳ Pagamento ainda não confirmado. Aguarde alguns minutos e tente novamente.'; }
@@ -6662,6 +6785,15 @@ export function registerAdminRoutes(app: Express): void {
           <span style="color:#ECEDEE;font-weight:700;font-size:13px">${billingType === 'CREDIT_CARD' ? 'Cartão de Crédito' : billingType === 'UNDEFINED' ? 'Cartão de Débito' : 'Pix (mensal)'}</span>
         </div>
       </div>
+      ${billingType === 'PIX' && subResult.pixCopyCola ? `
+      <div style="background:#1a1a1a;border:1.5px solid #C9A84C;border-radius:12px;padding:16px 20px;margin-bottom:20px">
+        <div style="font-size:12px;font-weight:700;color:#C9A84C;letter-spacing:0.08em;margin-bottom:10px">PIX COPIA E COLA</div>
+        <div style="font-family:monospace;font-size:11px;color:#ECEDEE;word-break:break-all;line-height:1.6;background:#111;border-radius:8px;padding:10px;margin-bottom:12px">${subResult.pixCopyCola}</div>
+        <div style="font-size:12px;color:#9BA1A6">Copie o código acima e cole no app do seu banco para pagar.</div>
+      </div>
+      <div style="background:#2a1a00;border:1px solid #F59E0B;border-radius:8px;padding:10px 14px;margin-bottom:20px">
+        <div style="font-size:12px;color:#F59E0B">⚠️ O código Pix expira em 30 minutos. Se expirar, acesse o sistema e gere um novo código.</div>
+      </div>` : ''}
       <div style="text-align:center;margin-bottom:24px">
         ${billingType === 'PIX' ? `<a href="https://usebarberpro.com/admin/configuracoes?tab=pagamentos"
            style="display:inline-block;background:#C9A84C;color:#000;font-weight:800;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none">

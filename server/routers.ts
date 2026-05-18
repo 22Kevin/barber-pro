@@ -2631,6 +2631,46 @@ export const appRouter = router({
           WHERE id = ${input.tenantId}
         `);
 
+        // Enviar e-mail de confirmação com código Pix (se Pix)
+        if (input.billingType === "PIX" && subResult.pixCopyCola && input.ownerEmail) {
+          import("./email").then(({ sendEmail, emailLayout, alertBox, ctaButton, detailRow }) => {
+            const planLabels: Record<string, string> = { solo: "Solo", team: "Equipe", studio: "Estúdio" };
+            const planPrices: Record<string, string> = { solo: "R$ 49/mês", team: "R$ 89/mês", studio: "R$ 149/mês" };
+            const planLabel = planLabels[input.planName.toLowerCase()] ?? input.planName;
+            const planPrice = planPrices[input.planName.toLowerCase()] ?? `R$ ${input.planPrice}/mês`;
+            const pixCode = subResult.pixCopyCola!;
+
+            const body = `
+              <h2 style="margin:0 0 8px;font-size:22px;color:#C9A84C">Finalize seu pagamento via Pix</h2>
+              <p style="margin:0 0 20px;color:#9BA1A6;font-size:15px">
+                Olá, ${input.ownerName}! Sua assinatura do <strong>Barber Pro</strong> foi criada com sucesso.
+                Realize o pagamento via Pix para ativar seu acesso.
+              </p>
+              ${detailRow("Plano", planLabel)}
+              ${detailRow("Valor", planPrice)}
+              ${detailRow("Vencimento", nextDueDate)}
+              ${alertBox("warning", `
+                <strong>Pix Copia e Cola</strong><br/>
+                <span style="font-family:monospace;font-size:12px;word-break:break-all;color:#ECEDEE">${pixCode}</span>
+              `)}
+              <p style="margin:16px 0 8px;color:#9BA1A6;font-size:13px">
+                Copie o código acima e cole no app do seu banco para pagar. O acesso será liberado automaticamente após a confirmação.
+              </p>
+              <p style="margin:0;color:#687076;font-size:12px">
+                ⚠️ O código Pix expira em 30 minutos. Se expirar, acesse o sistema e gere um novo código.
+              </p>
+            `;
+            sendEmail({
+              to: input.ownerEmail,
+              subject: `💳 Barber Pro — Pague via Pix para ativar o Plano ${planLabel}`,
+              html: emailLayout(body, {
+                title: "Pagamento Pix — Barber Pro",
+                previewText: `Seu código Pix para ativar o Plano ${planLabel} do Barber Pro`,
+              }),
+            }).catch(() => {});
+          }).catch(() => {});
+        }
+
         return {
           ok: true,
           subscriptionId,

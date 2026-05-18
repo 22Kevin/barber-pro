@@ -88,6 +88,15 @@ export default function BarberProPaywallScreen() {
   const [pollingCount, setPollingCount] = useState(0);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Contador de expiração do QR Code (30 minutos = 1800 segundos)
+  const PIX_EXPIRY_SECONDS = 30 * 60;
+  const [pixSecondsLeft, setPixSecondsLeft] = useState(PIX_EXPIRY_SECONDS);
+  const [pixExpired, setPixExpired] = useState(false);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Tela de sucesso pós-pagamento
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   // Carregar forma de pagamento preferida
   useEffect(() => {
     AsyncStorage.getItem("@barberpro:preferredBillingType").then((saved) => {
@@ -109,12 +118,42 @@ export default function BarberProPaywallScreen() {
     };
   }, [step, billingType, pixPaymentId]);
 
+  // Contador de expiração do QR Code
+  useEffect(() => {
+    if (step === "pending" && billingType === "PIX" && pixQrCode) {
+      setPixSecondsLeft(PIX_EXPIRY_SECONDS);
+      setPixExpired(false);
+      countdownRef.current = setInterval(() => {
+        setPixSecondsLeft((s) => {
+          if (s <= 1) {
+            clearInterval(countdownRef.current!);
+            setPixExpired(true);
+            return 0;
+          }
+          return s - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [step, billingType, pixQrCode]);
+
   const utils = trpc.useUtils();
 
-  // Verificar status via polling
+  // Verificar status via polling — detectar pagamento confirmado
   useEffect(() => {
     if (pollingCount > 0 && step === "pending") {
-      utils.asaasPayments.getBarberproSubscription.invalidate({ tenantId });
+      utils.asaasPayments.getBarberproSubscription.fetch({ tenantId }).then((data) => {
+        if (data?.status === "active") {
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          setPaymentSuccess(true);
+          setTimeout(() => {
+            utils.asaasPayments.getBarberproSubscription.invalidate({ tenantId });
+          }, 3000);
+        }
+      }).catch(() => {});
     }
   }, [pollingCount]);
 
@@ -143,9 +182,46 @@ export default function BarberProPaywallScreen() {
       if (data.pixQrCode) setPixQrCode(data.pixQrCode);
       if (data.pixCopyCola) setPixCopyCola(data.pixCopyCola);
       if (data.pixPaymentId) setPixPaymentId(data.pixPaymentId);
+      // Resetar contador
+      setPixSecondsLeft(PIX_EXPIRY_SECONDS);
+      setPixExpired(false);
     },
     onError: (e) => Alert.alert("Erro", e.message),
   });
+
+  // Mutation para renovar o QR Code (cria nova assinatura/pagamento)
+  const renewPixMutation = trpc.asaasPayments.createBarberproSubscription.useMutation({
+    onSuccess: (data) => {
+      if (data.pixQrCode) setPixQrCode(data.pixQrCode);
+      if (data.pixCopyCola) setPixCopyCola(data.pixCopyCola);
+      if (data.pixPaymentId) setPixPaymentId(data.pixPaymentId);
+      setPixSecondsLeft(PIX_EXPIRY_SECONDS);
+      setPixExpired(false);
+      setCopied(false);
+    },
+    onError: (e) => Alert.alert("Erro ao renovar QR Code", e.message),
+  });
+
+  function handleRenewQrCode() {
+    const [expM, expY] = cardExpiry.split("/");
+    renewPixMutation.mutate({
+      tenantId,
+      planName: plan.label,
+      planPrice: plan.price,
+      billingType: "PIX",
+      ownerName: ownerName.trim(),
+      ownerEmail: ownerEmail.trim(),
+      ownerCpfCnpj: ownerCpfCnpj.replace(/\D/g, ""),
+      ownerMobilePhone: ownerPhone.replace(/\D/g, ""),
+    });
+  }
+
+  // Formatar segundos como MM:SS
+  function formatCountdown(secs: number): string {
+    const m = Math.floor(secs / 60).toString().padStart(2, "0");
+    const s = (secs % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  }
 
   // ─── Máscaras ─────────────────────────────────────────────────────────────
   function formatCardNumber(raw: string) {
@@ -183,8 +259,22 @@ export default function BarberProPaywallScreen() {
 
   // ─── Verificar status manualmente ─────────────────────────────────────────
   function handleCheckStatus() {
-    utils.asaasPayments.getBarberproSubscription.invalidate({ tenantId });
-    setPollingCount((c) => c + 1);
+    utils.asaasPayments.getBarberproSubscription.fetch({ tenantId }).then((data) => {
+      if (data?.status === "active") {
+        // Parar todos os timers
+        if (pollingRef.current) clearInterval(pollingRef.current);
+        if (countdownRef.current) clearInterval(countdownRef.current);
+        setPaymentSuccess(true);
+        // Redirecionar após 3 segundos
+        setTimeout(() => {
+          utils.asaasPayments.getBarberproSubscription.invalidate({ tenantId });
+        }, 3000);
+      } else {
+        Alert.alert("⏳ Pagamento pendente", "Ainda não identificamos o pagamento. Aguarde alguns instantes e tente novamente.");
+      }
+    }).catch(() => {
+      utils.asaasPayments.getBarberproSubscription.invalidate({ tenantId });
+    });
   }
 
   // ─── Submissão ────────────────────────────────────────────────────────────
@@ -237,6 +327,45 @@ export default function BarberProPaywallScreen() {
     });
   }
 
+  // ─── Tela de sucesso pós-pagamento ─────────────────────────────────────────
+  if (paymentSuccess) {
+    return (
+      <ScreenContainer containerClassName="bg-background">
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32 }}>
+          {/* Ícone de sucesso */}
+          <View style={{
+            width: 96, height: 96, borderRadius: 48,
+            backgroundColor: "#C9A84C", alignItems: "center", justifyContent: "center",
+            marginBottom: 24,
+            shadowColor: "#C9A84C", shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.5, shadowRadius: 20, elevation: 10,
+          }}>
+            <IconSymbol name="checkmark.circle.fill" size={56} color="#fff" />
+          </View>
+          <Text style={{ fontSize: 28, fontWeight: "800", color: "#C9A84C", textAlign: "center", marginBottom: 12 }}>
+            Pagamento confirmado!
+          </Text>
+          <Text style={{ fontSize: 16, color: "#ECEDEE", textAlign: "center", lineHeight: 24, marginBottom: 8 }}>
+            Bem-vindo ao Barber Pro
+          </Text>
+          <Text style={{ fontSize: 14, color: "#9BA1A6", textAlign: "center", lineHeight: 22, marginBottom: 32 }}>
+            Plano {plan.label} ativado com sucesso.{"\n"}Seu acesso completo está liberado.
+          </Text>
+          <View style={{
+            backgroundColor: "#1e2022", borderRadius: 12, padding: 16,
+            borderWidth: 1, borderColor: "#C9A84C", width: "100%", alignItems: "center",
+          }}>
+            <Text style={{ fontSize: 13, color: "#9BA1A6", marginBottom: 4 }}>Plano ativo</Text>
+            <Text style={{ fontSize: 20, fontWeight: "700", color: "#C9A84C" }}>{plan.label} — R$ {plan.price}/mês</Text>
+          </View>
+          <Text style={{ fontSize: 12, color: "#687076", textAlign: "center", marginTop: 24 }}>
+            Redirecionando automaticamente...
+          </Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   // ─── Tela de aguardando pagamento ─────────────────────────────────────────
   if (step === "pending") {
     const isPix = billingType === "PIX";
@@ -257,10 +386,47 @@ export default function BarberProPaywallScreen() {
 
           {isPix ? (
             <>
-              {/* QR Code */}
+              {/* QR Code ou tela de expirado */}
               <View style={styles.qrContainer}>
-                {pixQrCode ? (
+                {pixExpired ? (
+                  <View style={{ alignItems: "center", gap: 12, paddingVertical: 8 }}>
+                    <IconSymbol name="exclamationmark.triangle.fill" size={40} color="#F59E0B" />
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: "#F59E0B", textAlign: "center" }}>
+                      QR Code expirado
+                    </Text>
+                    <Text style={{ fontSize: 13, color: "#9BA1A6", textAlign: "center" }}>
+                      O código Pix expirou após 30 minutos.
+                    </Text>
+                    <Pressable
+                      style={({ pressed }) => [{
+                        backgroundColor: "#C9A84C", borderRadius: 10,
+                        paddingVertical: 12, paddingHorizontal: 24,
+                        opacity: pressed || renewPixMutation.isPending ? 0.75 : 1,
+                      }]}
+                      onPress={handleRenewQrCode}
+                      disabled={renewPixMutation.isPending}
+                    >
+                      {renewPixMutation.isPending
+                        ? <ActivityIndicator color="#000" size="small" />
+                        : <Text style={{ color: "#000", fontWeight: "700", fontSize: 14 }}>Gerar novo QR Code</Text>
+                      }
+                    </Pressable>
+                  </View>
+                ) : pixQrCode ? (
                   <>
+                    {/* Contador de expiração */}
+                    <View style={{
+                      flexDirection: "row", alignItems: "center", gap: 6,
+                      backgroundColor: pixSecondsLeft < 120 ? "#3d1f00" : "#1e2022",
+                      borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
+                      borderWidth: 1, borderColor: pixSecondsLeft < 120 ? "#F59E0B" : "#334155",
+                      marginBottom: 8,
+                    }}>
+                      <IconSymbol name="clock.fill" size={14} color={pixSecondsLeft < 120 ? "#F59E0B" : "#9BA1A6"} />
+                      <Text style={{ fontSize: 13, color: pixSecondsLeft < 120 ? "#F59E0B" : "#9BA1A6", fontWeight: "600" }}>
+                        Expira em {formatCountdown(pixSecondsLeft)}
+                      </Text>
+                    </View>
                     <Image
                       source={{ uri: `data:image/png;base64,${pixQrCode}` }}
                       style={styles.qrImage}
