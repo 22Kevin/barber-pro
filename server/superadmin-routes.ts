@@ -1777,7 +1777,7 @@ export function registerSuperAdminRoutes(app: Express): void {
     const {
       emailLayout, alertBox, ctaButton, detailRow,
       sendBookingConfirmationEmail, sendBarberNotificationEmail,
-    } = await import("../email");
+    } = await import("./email");
 
     // Dados de exemplo para cada template
     const today = new Date();
@@ -2047,7 +2047,7 @@ export function registerSuperAdminRoutes(app: Express): void {
     const { template: tpl, email: toEmail } = req.body as { template: string; email: string };
     if (!tpl || !toEmail) return res.redirect("/superadmin/email-preview?error=Dados+inv%C3%A1lidos");
     try {
-      const { sendEmail, emailLayout, alertBox, ctaButton, detailRow } = await import("../email");
+      const { sendEmail, emailLayout, alertBox, ctaButton, detailRow } = await import("./email");
       const today = new Date();
       const dateStr = today.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
       const dateShort = today.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
