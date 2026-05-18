@@ -105,6 +105,7 @@ function layout(title: string, session: BOSession | null, body: string): string 
         <a href="/superadmin/suporte" class="${title === "Suporte" ? "active" : ""}">Suporte</a>
         ${session.role === "super_admin" ? `<a href="/superadmin/usuarios" class="${title === "Usuários" ? "active" : ""}">Usuários</a>` : ""}
         ${session.role === "super_admin" ? `<a href="/superadmin/cms" class="${title.startsWith("CMS") ? "active" : ""}">CMS</a>` : ""}
+        <a href="/superadmin/email-preview" class="${title === "E-mails" ? "active" : ""}">E-mails</a>
         <div class="nav-user">
           <span>${esc(session.name)}</span>
           <span class="role-badge role-${session.role}">${session.role === "super_admin" ? "Super Admin" : session.role === "admin" ? "Admin" : "Suporte"}</span>
@@ -1749,7 +1750,7 @@ export function registerSuperAdminRoutes(app: Express): void {
     }
   });
 
-  // ── GET /superadmin/planos/cancelar/:id — Cancelar assinatura ────────────────
+  // ── GET /superadmin/planos/cancelar/:id — Cancelar assinatura ────────────────────
   app.get("/superadmin/planos/cancelar/:id", requireAuth, requireRole("super_admin", "admin"), async (req: Request, res: Response) => {
     const tenantId = parseInt(req.params.id);
     if (isNaN(tenantId)) return res.redirect("/superadmin/planos");
@@ -1767,5 +1768,266 @@ export function registerSuperAdminRoutes(app: Express): void {
     } catch (e: any) {
       res.redirect(`/superadmin/planos?error=${encodeURIComponent(e.message)}`);
     }
+  });
+
+  // ── GET /superadmin/email-preview — Preview dos templates de e-mail ───────────
+  app.get("/superadmin/email-preview", requireAuth, requireRole("super_admin", "admin"), async (req: Request, res: Response) => {
+    const template = (req.query.template as string) ?? "booking";
+
+    const {
+      emailLayout, alertBox, ctaButton, detailRow,
+      sendBookingConfirmationEmail, sendBarberNotificationEmail,
+    } = await import("../email");
+
+    // Dados de exemplo para cada template
+    const today = new Date();
+    const dateStr = today.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+    const dateShort = today.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+
+    const templates: Record<string, { title: string; html: string }> = {
+      booking: {
+        title: "Confirmação de Agendamento (cliente)",
+        html: (() => {
+          const body = `
+            ${alertBox("✅", "Agendamento confirmado!", "Seu horário está reservado", "#4ADE80")}
+            <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+              Olá, <strong style="color:#ECEDEE">João Silva</strong>! Seu agendamento na
+              <strong style="color:#ECEDEE">Barbearia Exemplo</strong> está confirmado.
+            </p>
+            <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${detailRow("Serviço", "Corte + Barba")}
+                ${detailRow("Barbeiro", "Carlos Mendes")}
+                ${detailRow("Data", dateStr)}
+                ${detailRow("Horário", "14:00 — 15:00")}
+                ${detailRow("Valor", "R$ 55,00", "#4ADE80", true)}
+              </table>
+            </div>
+            ${ctaButton("Ver meu agendamento →", "https://usebarberpro.com/barbearia-exemplo")}`;
+          return emailLayout(body, { headerSubtitle: "Confirmação de Agendamento", previewText: "Seu agendamento está confirmado para hoje às 14h." });
+        })(),
+      },
+      barber: {
+        title: "Notificação ao Barbeiro (novo agendamento)",
+        html: (() => {
+          const body = `
+            ${alertBox("📅", "Novo agendamento!", dateStr, "#C9A84C")}
+            <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+              Você tem um novo agendamento na <strong style="color:#ECEDEE">Barbearia Exemplo</strong>.
+            </p>
+            <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${detailRow("Cliente", "João Silva")}
+                ${detailRow("Serviço", "Corte + Barba")}
+                ${detailRow("Data", dateStr)}
+                ${detailRow("Horário", "14:00 — 15:00", "#C9A84C", true)}
+              </table>
+            </div>
+            ${ctaButton("Ver agenda →", "https://usebarberpro.com/barbearia-exemplo/admin")}`;
+          return emailLayout(body, { headerSubtitle: "Novo Agendamento", previewText: "João Silva agendou Corte + Barba para hoje às 14h." });
+        })(),
+      },
+      review: {
+        title: "Solicitação de Avaliação",
+        html: (() => {
+          const body = `
+            ${alertBox("⭐", "Como foi sua experiência?", "Sua opinião é muito importante", "#FBBF24")}
+            <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+              Olá, <strong style="color:#ECEDEE">João Silva</strong>! Esperamos que tenha gostado do atendimento na
+              <strong style="color:#ECEDEE">Barbearia Exemplo</strong>. Deixe sua avaliação!
+            </p>
+            <div style="text-align:center;margin-bottom:28px">
+              <div style="font-size:40px;letter-spacing:8px">⭐⭐⭐⭐⭐</div>
+              <p style="color:#9BA1A6;font-size:13px;margin-top:8px">Clique nas estrelas para avaliar</p>
+            </div>
+            ${ctaButton("Avaliar atendimento →", "https://usebarberpro.com/barbearia-exemplo", "#FBBF24")}`;
+          return emailLayout(body, { headerSubtitle: "Avaliação de Atendimento", previewText: "Como foi seu corte? Avalie o atendimento na Barbearia Exemplo." });
+        })(),
+      },
+      password: {
+        title: "Recuperação de Senha",
+        html: (() => {
+          const body = `
+            ${alertBox("🔑", "Redefinir sua senha", "Solicitação de recuperação", "#C9A84C")}
+            <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+              Olá, <strong style="color:#ECEDEE">João Silva</strong>! Recebemos uma solicitação para redefinir sua senha.
+            </p>
+            <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:24px;margin-bottom:24px;text-align:center">
+              <div style="font-size:11px;color:#9BA1A6;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">Código de Verificação</div>
+              <div style="font-size:36px;font-weight:900;color:#C9A84C;letter-spacing:8px">847291</div>
+              <div style="font-size:12px;color:#555;margin-top:8px">Válido por 15 minutos</div>
+            </div>
+            ${ctaButton("Redefinir senha →", "https://usebarberpro.com/reset-password?token=exemplo")}`;
+          return emailLayout(body, { headerSubtitle: "Recuperação de Senha", previewText: "Seu código de recuperação: 847291 (válido por 15 min)." });
+        })(),
+      },
+      onboarding: {
+        title: "Boas-vindas ao Barber Pro (onboarding)",
+        html: (() => {
+          const trialEnd = new Date(); trialEnd.setDate(trialEnd.getDate() + 14);
+          const trialEndStr = trialEnd.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+          const body = `
+            ${alertBox("🎉", "Bem-vindo ao Barber Pro!", "Barbearia Exemplo está pronta para decolar", "#4ADE80")}
+            <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+              Olá, <strong style="color:#ECEDEE">João Silva</strong>! Sua barbearia foi criada com sucesso.
+              Você tem <strong style="color:#C9A84C">14 dias grátis</strong> para explorar tudo.
+            </p>
+            <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${detailRow("Barbearia", "Barbearia Exemplo")}
+                ${detailRow("Plano selecionado", "Barber Pro Equipe — R$ 89/mês", "#C9A84C")}
+                ${detailRow("Trial gratuito até", trialEndStr, "#4ADE80")}
+                ${detailRow("Link de agendamento", "usebarberpro.com/barbearia-exemplo", "#60A5FA", true)}
+              </table>
+            </div>
+            <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:28px">
+              <div style="font-size:12px;color:#9BA1A6;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px">🚀 Primeiros passos</div>
+              ${["Configure seus serviços e preços","Adicione seus barbeiros e horários","Compartilhe o link de agendamento","Baixe o app Barber Pro"].map((s,i)=>`<div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:10px"><span style="color:#C9A84C;font-weight:800;min-width:20px">${i+1}.</span><span style="color:#ECEDEE;font-size:13px;line-height:1.5">${s}</span></div>`).join("")}
+            </div>
+            ${ctaButton("Acessar meu painel →", "https://usebarberpro.com/barbearia-exemplo/admin")}`;
+          return emailLayout(body, { headerSubtitle: "Bem-vindo ao Barber Pro", previewText: "Barbearia Exemplo está pronta! Acesse o painel e comece a receber agendamentos." });
+        })(),
+      },
+      subscription: {
+        title: "Boas-vindas à Assinatura (após assinar)",
+        html: (() => {
+          const nextDue = new Date(); nextDue.setMonth(nextDue.getMonth() + 1);
+          const body = `
+            ${alertBox("🌟", "Assinatura ativada!", "Barber Pro Equipe está ativo", "#4ADE80")}
+            <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+              Olá, <strong style="color:#ECEDEE">João Silva</strong>! Sua assinatura do Barber Pro foi ativada com sucesso.
+            </p>
+            <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${detailRow("Plano", "Barber Pro Equipe")}
+                ${detailRow("Valor", "R$ 89,00/mês", "#4ADE80")}
+                ${detailRow("Próximo vencimento", nextDue.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }), "#FBBF24", true)}
+              </table>
+            </div>
+            ${ctaButton("Acessar o painel →", "https://usebarberpro.com/barbearia-exemplo/admin")}`;
+          return emailLayout(body, { headerSubtitle: "Assinatura Ativada", previewText: "Barber Pro Equipe ativado! Acesse o painel e gerencie sua barbearia." });
+        })(),
+      },
+      payment: {
+        title: "Confirmação de Pagamento (recibo)",
+        html: (() => {
+          const nextDue = new Date(); nextDue.setMonth(nextDue.getMonth() + 1);
+          const body = `
+            ${alertBox("✅", "Pagamento confirmado!", "Sua assinatura está ativa", "#4ADE80")}
+            <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+              Olá, <strong style="color:#ECEDEE">João Silva</strong>! Seu pagamento foi confirmado.
+            </p>
+            <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${detailRow("Plano", "Barber Pro Equipe")}
+                ${detailRow("Valor pago", "R$ 89,00", "#4ADE80")}
+                ${detailRow("Data do pagamento", dateShort)}
+                ${detailRow("Forma de pagamento", "Pix")}
+                ${detailRow("Próximo vencimento", nextDue.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" }), "#FBBF24", true)}
+              </table>
+            </div>
+            ${ctaButton("Acessar o painel →", "https://usebarberpro.com/barbearia-exemplo/admin")}`;
+          return emailLayout(body, { headerSubtitle: "Confirmação de Pagamento", previewText: "Pagamento de R$ 89,00 confirmado. Barber Pro Equipe ativo!" });
+        })(),
+      },
+      trial: {
+        title: "Trial Expirando (3 dias antes)",
+        html: (() => {
+          const trialEnd = new Date(); trialEnd.setDate(trialEnd.getDate() + 2);
+          const body = `
+            ${alertBox("⏰", "Seu período de teste expira em 2 dias!", trialEnd.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" }), "#F59E0B")}
+            <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+              Olá, <strong style="color:#ECEDEE">João Silva</strong>! O período de teste da
+              <strong style="color:#ECEDEE">Barbearia Exemplo</strong> expira em 2 dias.
+            </p>
+            <div style="margin-bottom:28px">
+              ${[{n:"Solo",p:"R$ 49",d:"1 barbeiro",pop:false},{n:"Equipe",p:"R$ 89",d:"até 5 barbeiros",pop:true},{n:"Estúdio",p:"R$ 149",d:"ilimitados",pop:false}].map(pl=>`
+              <div style="background:#1A1A1A;border:${pl.pop?"2px solid #C9A84C44":"1px solid #2A2A2A"};border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <div><div style="font-weight:700;color:#ECEDEE">${pl.n}${pl.pop?" <span style='font-size:10px;background:#C9A84C22;color:#C9A84C;padding:2px 6px;border-radius:4px'>POPULAR</span>":""}</div><div style="font-size:12px;color:#666">${pl.d}</div></div>
+                <div style="font-size:18px;font-weight:900;color:#C9A84C">${pl.p}<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
+              </div>`).join("")}
+            </div>
+            ${ctaButton("Assinar agora →", "https://usebarberpro.com/barbearia-exemplo/admin/configuracoes#pagamentos")}`;
+          return emailLayout(body, { headerSubtitle: "Aviso de Trial", previewText: "Seu trial do Barber Pro expira em 2 dias. Assine agora para continuar." });
+        })(),
+      },
+      lead: {
+        title: "Notificação de Novo Lead",
+        html: (() => {
+          const body = `
+            ${alertBox("📧", "Novo lead recebido!", "Alguém demonstrou interesse", "#60A5FA")}
+            <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+              Um novo lead foi registrado via formulário da landing page.
+            </p>
+            <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${detailRow("Nome", "João Silva")}
+                ${detailRow("E-mail", "joao@exemplo.com")}
+                ${detailRow("Telefone", "(11) 99999-9999")}
+                ${detailRow("Origem", "Landing Page", "#C9A84C", true)}
+              </table>
+            </div>
+            ${ctaButton("Ver leads no superadmin →", "https://usebarberpro.com/superadmin")}`;
+          return emailLayout(body, { headerSubtitle: "Novo Lead", previewText: "João Silva demonstrou interesse no Barber Pro." });
+        })(),
+      },
+      support: {
+        title: "Novo Ticket de Suporte",
+        html: (() => {
+          const body = `
+            ${alertBox("🎯", "Novo ticket de suporte", "#1234 — Problema com agendamento", "#C9A84C")}
+            <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+              Um novo ticket foi aberto por <strong style="color:#ECEDEE">João Silva</strong> da
+              <strong style="color:#ECEDEE">Barbearia Exemplo</strong>.
+            </p>
+            <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+              <div style="font-size:12px;color:#9BA1A6;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Mensagem</div>
+              <p style="color:#ECEDEE;font-size:14px;line-height:1.6;margin:0">
+                Olá, estou com dificuldade para configurar os horários de trabalho dos meus barbeiros. Quando tento salvar, aparece um erro.
+              </p>
+            </div>
+            ${ctaButton("Responder ticket →", "https://usebarberpro.com/superadmin/suporte")}`;
+          return emailLayout(body, { headerSubtitle: "Suporte ao Cliente", previewText: "Novo ticket de suporte: Problema com agendamento." });
+        })(),
+      },
+    };
+
+    const templateList = Object.entries(templates).map(([key, t]) => ({
+      key,
+      title: t.title,
+      active: key === template,
+    }));
+
+    const currentTemplate = templates[template] ?? templates.booking;
+
+    res.send(layout("Preview de E-mails", null, `
+      <div style="display:flex;gap:0;height:calc(100vh - 80px)">
+        <!-- Sidebar de templates -->
+        <div style="width:280px;min-width:280px;background:#111;border-right:1px solid #222;overflow-y:auto;padding:16px">
+          <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:12px">Templates</div>
+          ${templateList.map(t => `
+            <a href="/superadmin/email-preview?template=${t.key}"
+               style="display:block;padding:10px 14px;border-radius:8px;margin-bottom:4px;text-decoration:none;
+                      background:${t.active ? "#C9A84C22" : "transparent"};
+                      border:1px solid ${t.active ? "#C9A84C44" : "transparent"};
+                      color:${t.active ? "#C9A84C" : "#9BA1A6"};
+                      font-size:13px;line-height:1.4">
+              ${t.title}
+            </a>`).join("")}
+        </div>
+        <!-- Preview do template -->
+        <div style="flex:1;overflow:auto;background:#0A0A0A;padding:0">
+          <div style="background:#1A1A1A;border-bottom:1px solid #222;padding:12px 20px;display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:14px;color:#ECEDEE;font-weight:600">${currentTemplate.title}</div>
+            <div style="font-size:12px;color:#666">Preview apenas — não envia e-mail real</div>
+          </div>
+          <iframe
+            srcdoc="${currentTemplate.html.replace(/"/g, '&quot;').replace(/'/g, '&#39;')}"
+            style="width:100%;height:calc(100vh - 120px);border:none;background:#0A0A0A"
+            sandbox="allow-same-origin"
+          ></iframe>
+        </div>
+      </div>
+    `));
   });
 }
