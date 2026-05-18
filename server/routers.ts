@@ -2604,7 +2604,7 @@ export const appRouter = router({
           ?? "127.0.0.1";
 
         // Criar assinatura recorrente mensal
-        const subscriptionId = await createAsaasSubscription({
+        const subResult = await createAsaasSubscription({
           customer: customerId,
           billingType: input.billingType as "PIX" | "CREDIT_CARD" | "UNDEFINED",
           value: input.planPrice,
@@ -2616,6 +2616,7 @@ export const appRouter = router({
           ...(creditCardHolderInfo ? { creditCardHolderInfo } : {}),
           ...(isCard ? { remoteIp } : {}),
         });
+        const subscriptionId = subResult.subscriptionId;
 
         // Salvar no banco
         await dbConn.execute(sql`
@@ -2637,6 +2638,11 @@ export const appRouter = router({
           nextDueDate,
           message: `Assinatura criada. Primeira cobrança em ${nextDueDate}.`,
           alreadyExists: false,
+          // Dados do QR Code Pix (presentes apenas quando billingType === 'PIX')
+          pixQrCode: subResult.pixQrCode ?? null,
+          pixCopyCola: subResult.pixCopyCola ?? null,
+          pixPaymentId: subResult.pixPaymentId ?? null,
+          invoiceUrl: subResult.invoiceUrl ?? null,
         };
       }),
 
@@ -2781,7 +2787,7 @@ export const appRouter = router({
         // 3. Criar nova assinatura
         const today = new Date();
         const nextDue = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate()).toISOString().slice(0, 10);
-        const newSubId = await createAsaasSubscription({
+        const newSubResult = await createAsaasSubscription({
           customer: asaasCustomerId,
           billingType: 'PIX',
           value: newPrice,
@@ -2790,6 +2796,7 @@ export const appRouter = router({
           description: `Barber Pro — Plano ${newLabel} (R$ ${newPrice}/mês)`,
           externalReference: `tenant_${input.tenantId}`,
         });
+        const newSubId = newSubResult.subscriptionId;
 
         // 4. Atualizar banco via Drizzle ORM (evita cast de enum incorreto)
         await db.updateTenant(input.tenantId, {
@@ -2802,18 +2809,12 @@ export const appRouter = router({
           updatedAt: new Date(),
         });
 
-        // 5. Buscar link de pagamento
-        try {
-          const paymentsRes = await asaasApi.get(`/subscriptions/${newSubId}/payments?limit=1`);
-          const firstPayment = paymentsRes.data?.data?.[0];
-          if (firstPayment?.invoiceUrl) return { paymentLink: firstPayment.invoiceUrl as string, pixCopyCola: null };
-          if (firstPayment?.id) {
-            const pixRes = await asaasApi.get(`/payments/${firstPayment.id}/pixQrCode`);
-            if (pixRes.data?.payload) return { paymentLink: null, pixCopyCola: pixRes.data.payload as string };
-          }
-        } catch {}
-
-        return { paymentLink: null, pixCopyCola: null };
+        return {
+          paymentLink: newSubResult.invoiceUrl ?? null,
+          pixQrCode: newSubResult.pixQrCode ?? null,
+          pixCopyCola: newSubResult.pixCopyCola ?? null,
+          pixPaymentId: newSubResult.pixPaymentId ?? null,
+        };
       }),
   }),
   suppliers: router({

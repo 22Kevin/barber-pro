@@ -2,14 +2,16 @@
  * Tela de Paywall do Barber Pro
  * Exibida quando o trial expira ou a assinatura é cancelada.
  * Permite o dono da barbearia escolher um plano e assinar via Pix, Crédito ou Débito.
+ * Pix: exibe QR Code nativo + copia e cola (sem redirecionar para o Asaas).
  */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Clipboard from "expo-clipboard";
 import { cpfCnpjError, validateCPF } from "@/lib/cpf-cnpj";
 import {
   ActivityIndicator,
   Alert,
-  Linking,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -78,6 +80,14 @@ export default function BarberProPaywallScreen() {
   const [step, setStep] = useState<"plans" | "form" | "pending">("plans");
   const [billingType, setBillingType] = useState<BillingType>("PIX");
 
+  // Dados do QR Code Pix
+  const [pixQrCode, setPixQrCode] = useState<string | null>(null);
+  const [pixCopyCola, setPixCopyCola] = useState<string | null>(null);
+  const [pixPaymentId, setPixPaymentId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [pollingCount, setPollingCount] = useState(0);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Carregar forma de pagamento preferida
   useEffect(() => {
     AsyncStorage.getItem("@barberpro:preferredBillingType").then((saved) => {
@@ -87,11 +97,31 @@ export default function BarberProPaywallScreen() {
     }).catch(() => {});
   }, []);
 
+  // Polling automático de status do pagamento Pix
+  useEffect(() => {
+    if (step === "pending" && billingType === "PIX" && pixPaymentId) {
+      pollingRef.current = setInterval(() => {
+        setPollingCount((c) => c + 1);
+      }, 10000);
+    }
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [step, billingType, pixPaymentId]);
+
+  const utils = trpc.useUtils();
+
+  // Verificar status via polling
+  useEffect(() => {
+    if (pollingCount > 0 && step === "pending") {
+      utils.asaasPayments.getBarberproSubscription.invalidate({ tenantId });
+    }
+  }, [pollingCount]);
+
   function handleSetBillingType(method: BillingType) {
     setBillingType(method);
     AsyncStorage.setItem("@barberpro:preferredBillingType", method).catch(() => {});
   }
-  const [pixCopyCola, setPixCopyCola] = useState<string | null>(null);
 
   // Dados do cartão
   const [cardNumber, setCardNumber] = useState("");
@@ -106,21 +136,13 @@ export default function BarberProPaywallScreen() {
   const plan = PLANS.find((p) => p.key === selectedPlan)!;
   const isCard = billingType === "CREDIT_CARD" || billingType === "UNDEFINED";
 
-  const utils = trpc.useUtils();
-
   const createMutation = trpc.asaasPayments.createBarberproSubscription.useMutation({
-    onSuccess: async () => {
+    onSuccess: (data) => {
       setStep("pending");
-      try {
-        const linkData = await utils.asaasPayments.getBarberproPaymentLink.fetch({ tenantId });
-        if (linkData?.paymentLink) {
-          Linking.openURL(linkData.paymentLink);
-        } else if (linkData?.pixCopyCola) {
-          setPixCopyCola(linkData.pixCopyCola);
-        }
-      } catch (_e) {
-        // Silencioso — usuário já está na tela de pending
-      }
+      // Usar QR Code retornado diretamente pelo servidor
+      if (data.pixQrCode) setPixQrCode(data.pixQrCode);
+      if (data.pixCopyCola) setPixCopyCola(data.pixCopyCola);
+      if (data.pixPaymentId) setPixPaymentId(data.pixPaymentId);
     },
     onError: (e) => Alert.alert("Erro", e.message),
   });
@@ -149,6 +171,20 @@ export default function BarberProPaywallScreen() {
     const d = raw.replace(/\D/g, "").substring(0, 8);
     if (d.length > 5) return d.substring(0, 5) + "-" + d.substring(5);
     return d;
+  }
+
+  // ─── Copiar código Pix ────────────────────────────────────────────────────
+  async function handleCopyPix() {
+    if (!pixCopyCola) return;
+    await Clipboard.setStringAsync(pixCopyCola);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
+  }
+
+  // ─── Verificar status manualmente ─────────────────────────────────────────
+  function handleCheckStatus() {
+    utils.asaasPayments.getBarberproSubscription.invalidate({ tenantId });
+    setPollingCount((c) => c + 1);
   }
 
   // ─── Submissão ────────────────────────────────────────────────────────────
@@ -210,54 +246,110 @@ export default function BarberProPaywallScreen() {
           <View style={styles.header}>
             <Text style={styles.badge}>BARBER PRO</Text>
             <Text style={styles.title}>
-              {isCard ? "Assinatura criada!" : "Aguardando pagamento"}
+              {isCard ? "Assinatura criada!" : "Pague com Pix"}
             </Text>
             <Text style={styles.subtitle}>
               {isCard
                 ? "Sua assinatura foi criada com cartão. O acesso será liberado automaticamente."
-                : "Sua assinatura foi criada! Complete o pagamento Pix para liberar o acesso."}
+                : `Plano ${plan.label} — R$ ${plan.price}/mês`}
             </Text>
           </View>
 
-          <View style={styles.pendingCard}>
-            <View style={styles.pendingIcon}>
-              <IconSymbol name="clock.fill" size={32} color="#C9A84C" />
-            </View>
-            <Text style={styles.pendingTitle}>Plano {plan.label} — R$ {plan.price}/mês</Text>
-            <Text style={styles.pendingDesc}>
-              {isCard
-                ? "Seu cartão foi registrado. O acesso será liberado após a confirmação do pagamento pelo Asaas."
-                : "O link de pagamento foi aberto no navegador. Após confirmar o Pix, seu acesso será liberado automaticamente em até 5 minutos."}
-            </Text>
-          </View>
+          {isPix ? (
+            <>
+              {/* QR Code */}
+              <View style={styles.qrContainer}>
+                {pixQrCode ? (
+                  <>
+                    <Image
+                      source={{ uri: `data:image/png;base64,${pixQrCode}` }}
+                      style={styles.qrImage}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.qrHint}>Abra o app do seu banco e escaneie o QR Code</Text>
+                  </>
+                ) : (
+                  <View style={styles.qrPlaceholder}>
+                    <ActivityIndicator color="#C9A84C" size="large" />
+                    <Text style={styles.qrHint}>Gerando QR Code...</Text>
+                  </View>
+                )}
+              </View>
 
-          {isPix && pixCopyCola && (
-            <View style={styles.pixCard}>
-              <Text style={styles.pixLabel}>Pix Copia e Cola</Text>
-              <Text style={styles.pixCode} numberOfLines={3}>{pixCopyCola}</Text>
+              {/* Separador */}
+              <View style={styles.orRow}>
+                <View style={styles.orLine} />
+                <Text style={styles.orText}>ou</Text>
+                <View style={styles.orLine} />
+              </View>
+
+              {/* Copia e cola */}
+              {pixCopyCola ? (
+                <View style={styles.pixCard}>
+                  <Text style={styles.pixLabel}>Pix Copia e Cola</Text>
+                  <Text style={styles.pixCode} numberOfLines={4} selectable>{pixCopyCola}</Text>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.copyBtn,
+                      copied && styles.copyBtnSuccess,
+                      pressed && { opacity: 0.8 },
+                    ]}
+                    onPress={handleCopyPix}
+                  >
+                    <IconSymbol
+                      name={copied ? "checkmark.circle.fill" : "doc.on.doc.fill"}
+                      size={16}
+                      color={copied ? "#000" : "#C9A84C"}
+                    />
+                    <Text style={[styles.copyBtnText, copied && { color: "#000" }]}>
+                      {copied ? "Código copiado!" : "Copiar código Pix"}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              {/* Instruções */}
+              <View style={styles.instructionsCard}>
+                <Text style={styles.instructionsTitle}>Como pagar</Text>
+                {[
+                  "Abra o app do seu banco",
+                  "Escolha pagar via Pix",
+                  "Escaneie o QR Code ou cole o código",
+                  "Confirme o pagamento de R$ " + plan.price,
+                  "Seu acesso será liberado automaticamente",
+                ].map((step, i) => (
+                  <View key={i} style={styles.instructionRow}>
+                    <View style={styles.instructionNum}>
+                      <Text style={styles.instructionNumText}>{i + 1}</Text>
+                    </View>
+                    <Text style={styles.instructionText}>{step}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Botão verificar */}
               <Pressable
-                style={({ pressed }) => [styles.copyBtn, pressed && { opacity: 0.7 }]}
-                onPress={() => {
-                  import("expo-clipboard").then((Clipboard) => {
-                    Clipboard.setStringAsync(pixCopyCola);
-                    Alert.alert("Copiado!", "Código Pix copiado para a área de transferência.");
-                  });
-                }}
+                style={({ pressed }) => [styles.ctaBtn, { marginTop: 8 }, pressed && { opacity: 0.85 }]}
+                onPress={handleCheckStatus}
               >
-                <Text style={styles.copyBtnText}>Copiar código Pix</Text>
+                <Text style={styles.ctaBtnText}>Já paguei — verificar status</Text>
               </Pressable>
+
+              <Text style={styles.pollingNote}>
+                Verificando automaticamente a cada 10 segundos...
+              </Text>
+            </>
+          ) : (
+            <View style={styles.pendingCard}>
+              <View style={styles.pendingIcon}>
+                <IconSymbol name="checkmark.circle.fill" size={32} color="#C9A84C" />
+              </View>
+              <Text style={styles.pendingTitle}>Plano {plan.label} — R$ {plan.price}/mês</Text>
+              <Text style={styles.pendingDesc}>
+                Seu cartão foi registrado. O acesso será liberado após a confirmação do pagamento pelo Asaas.
+              </Text>
             </View>
           )}
-
-          <Pressable
-            style={({ pressed }) => [styles.ctaBtn, pressed && { opacity: 0.85 }]}
-            onPress={() => {
-              utils.asaasPayments.getBarberproSubscription.invalidate({ tenantId });
-              Alert.alert("Verificando...", "Aguarde enquanto verificamos o status do seu pagamento.");
-            }}
-          >
-            <Text style={styles.ctaBtnText}>Verificar acesso</Text>
-          </Pressable>
 
           <Pressable style={styles.logoutBtn} onPress={logout}>
             <Text style={styles.logoutBtnText}>Sair da conta</Text>
@@ -357,7 +449,7 @@ export default function BarberProPaywallScreen() {
                         keyboardType="numeric"
                       />
                       {cpfCnpjTouched && isComplete && (
-                        <Text style={{ fontSize: 18 }}>{errMsg ? '\u274c' : '\u2705'}</Text>
+                        <Text style={{ fontSize: 18 }}>{errMsg ? '❌' : '✅'}</Text>
                       )}
                     </View>
                     {errMsg ? <Text style={{ color: '#F87171', fontSize: 12, marginTop: 4 }}>{errMsg}</Text> : null}
@@ -392,6 +484,11 @@ export default function BarberProPaywallScreen() {
                   );
                 })}
               </View>
+              {billingType === "PIX" && (
+                <Text style={styles.pixHint}>
+                  ✓ QR Code exibido diretamente no app — sem sair do Barber Pro
+                </Text>
+              )}
             </View>
 
             {/* Formulário de cartão */}
@@ -512,13 +609,18 @@ export default function BarberProPaywallScreen() {
           disabled={createMutation.isPending}
         >
           {createMutation.isPending ? (
-            <ActivityIndicator color="#000" />
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <ActivityIndicator color="#000" size="small" />
+              <Text style={styles.ctaBtnText}>
+                {billingType === "PIX" ? "Gerando QR Code..." : "Processando..."}
+              </Text>
+            </View>
           ) : (
             <Text style={styles.ctaBtnText}>
               {step === "plans"
                 ? `Continuar com o Plano ${plan.label} →`
                 : billingType === "PIX"
-                  ? "Gerar Pix para pagamento"
+                  ? "Gerar QR Code Pix"
                   : billingType === "CREDIT_CARD"
                     ? "Assinar com Cartão de Crédito"
                     : "Assinar com Cartão de Débito"}
@@ -601,7 +703,66 @@ const styles = StyleSheet.create({
   backBtnText: { fontSize: 13, color: "#9BA1A6" },
   logoutBtn: { alignItems: "center", marginTop: 20 },
   logoutBtnText: { fontSize: 13, color: "#555" },
-  // Pending
+  pixHint: { fontSize: 11, color: "#4ADE80", marginTop: 8 },
+  // QR Code
+  qrContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  qrImage: { width: 220, height: 220 },
+  qrPlaceholder: { width: 220, height: 220, alignItems: "center", justifyContent: "center", gap: 12 },
+  qrHint: { fontSize: 12, color: "#444", textAlign: "center", marginTop: 12, lineHeight: 18 },
+  orRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 16 },
+  orLine: { flex: 1, height: 1, backgroundColor: "#2A2A2A" },
+  orText: { fontSize: 12, color: "#555" },
+  pixCard: {
+    backgroundColor: "#111",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+    padding: 20,
+    marginBottom: 16,
+    gap: 8,
+  },
+  pixLabel: { fontSize: 11, fontWeight: "700", color: "#9BA1A6", letterSpacing: 1 },
+  pixCode: { fontSize: 11, color: "#ECEDEE", fontFamily: "monospace", lineHeight: 18 },
+  copyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#1A1A1A",
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: "#C9A84C44",
+  },
+  copyBtnSuccess: { backgroundColor: "#C9A84C" },
+  copyBtnText: { fontSize: 13, fontWeight: "600", color: "#C9A84C" },
+  instructionsCard: {
+    backgroundColor: "#111",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+    padding: 20,
+    marginBottom: 16,
+    gap: 12,
+  },
+  instructionsTitle: { fontSize: 13, fontWeight: "700", color: "#ECEDEE", marginBottom: 4 },
+  instructionRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  instructionNum: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: "#C9A84C22",
+    alignItems: "center", justifyContent: "center",
+  },
+  instructionNumText: { fontSize: 12, fontWeight: "700", color: "#C9A84C" },
+  instructionText: { fontSize: 13, color: "#9BA1A6", flex: 1 },
+  pollingNote: { fontSize: 11, color: "#555", textAlign: "center", marginTop: 8 },
+  // Pending (cartão)
   pendingCard: {
     backgroundColor: "#111",
     borderRadius: 16,
@@ -620,19 +781,6 @@ const styles = StyleSheet.create({
   },
   pendingTitle: { fontSize: 18, fontWeight: "700", color: "#ECEDEE", textAlign: "center" },
   pendingDesc: { fontSize: 13, color: "#9BA1A6", textAlign: "center", lineHeight: 20 },
-  pixCard: {
-    backgroundColor: "#111",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#2A2A2A",
-    padding: 20,
-    marginBottom: 16,
-    gap: 8,
-  },
-  pixLabel: { fontSize: 12, fontWeight: "600", color: "#9BA1A6" },
-  pixCode: { fontSize: 11, color: "#ECEDEE", fontFamily: "monospace", lineHeight: 18 },
-  copyBtn: { backgroundColor: "#1A1A1A", borderRadius: 10, paddingVertical: 10, alignItems: "center", marginTop: 4 },
-  copyBtnText: { fontSize: 13, fontWeight: "600", color: "#C9A84C" },
   payMethodBtn: { flex: 1, backgroundColor: "#1A1A1A", borderRadius: 10, paddingVertical: 12, alignItems: "center", borderWidth: 1.5, borderColor: "#2A2A2A" },
   payMethodBtnActive: { borderColor: "#C9A84C", backgroundColor: "#1A1500" },
   payMethodText: { fontSize: 13, fontWeight: "600", color: "#9BA1A6" },

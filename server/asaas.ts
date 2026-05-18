@@ -189,11 +189,21 @@ export async function createAsaasCharge(
 
 // ─── Assinaturas Recorrentes ──────────────────────────────────────────────────
 
+export interface AsaasSubscriptionResult {
+  subscriptionId: string;
+  /** Presente apenas quando billingType === 'PIX' */
+  pixQrCode?: string;      // Base64 da imagem do QR Code
+  pixCopyCola?: string;    // Código Pix copia e cola
+  pixPaymentId?: string;   // ID do pagamento gerado para polling
+  invoiceUrl?: string;     // URL de fallback (boleto/cartão)
+}
+
 /**
  * Cria uma assinatura mensal recorrente no Asaas.
- * Retorna o ID da assinatura no Asaas.
+ * Para Pix, busca automaticamente o QR Code e o código copia e cola da primeira cobrança.
+ * Retorna o ID da assinatura e, se Pix, os dados do QR Code.
  */
-export async function createAsaasSubscription(payload: AsaasSubscriptionPayload): Promise<string> {
+export async function createAsaasSubscription(payload: AsaasSubscriptionPayload): Promise<AsaasSubscriptionResult> {
   if (!asaasEnabled) throw new Error("Asaas não configurado. Adicione ASAAS_API_KEY.");
   try {
     const res = await asaasApi.post("/subscriptions", payload);
@@ -201,7 +211,35 @@ export async function createAsaasSubscription(payload: AsaasSubscriptionPayload)
       const errMsg = res.data?.errors?.[0]?.description ?? res.data?.errors?.[0]?.code ?? "Erro desconhecido ao criar assinatura.";
       throw new Error(errMsg);
     }
-    return res.data.id as string;
+    const subscriptionId = res.data.id as string;
+
+    // Para Pix, buscar o primeiro pagamento gerado e obter o QR Code
+    if (payload.billingType === "PIX") {
+      try {
+        // Aguardar um momento para o Asaas gerar o pagamento
+        await new Promise(r => setTimeout(r, 1500));
+        const paymentsRes = await asaasApi.get("/payments", {
+          params: { subscription: subscriptionId, limit: 1, offset: 0 }
+        });
+        const firstPayment = paymentsRes.data?.data?.[0];
+        if (firstPayment?.id) {
+          const pixRes = await asaasApi.get(`/payments/${firstPayment.id}/pixQrCode`);
+          return {
+            subscriptionId,
+            pixQrCode: pixRes.data?.encodedImage,
+            pixCopyCola: pixRes.data?.payload,
+            pixPaymentId: firstPayment.id,
+          };
+        }
+      } catch {
+        // Se falhar ao buscar QR Code, retorna só o ID (fallback para invoiceUrl)
+      }
+    }
+
+    return {
+      subscriptionId,
+      invoiceUrl: res.data.invoiceUrl,
+    };
   } catch (err: any) {
     // Extrair mensagem amigável da resposta do Asaas
     const asaasErrors = err?.response?.data?.errors;

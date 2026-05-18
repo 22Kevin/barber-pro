@@ -2342,3 +2342,20 @@
 - [x] Máscaras centralizadas: CPF, CNPJ, CEP, telefone, celular, cartão, validade, CVV, data de nascimento
 - [x] Polling de status pós-Pix com botão "Já paguei — verificar status"
 - [x] E-mail de boas-vindas personalizado por forma de pagamento (Pix vs Cartão)
+
+## QR Code Pix Nativo (v3.x)
+
+- [ ] QR Code Pix nativo: buscar pixQrCode e pixCopyCola após criar assinatura no servidor (asaas.ts + routers.ts + admin-routes.ts)
+- [ ] QR Code Pix nativo no app mobile: exibir QR Code Base64, botão copiar código, polling automático a cada 10s
+- [ ] QR Code Pix nativo no painel web: exibir QR Code Base64, botão copiar código, polling automático a cada 10s
+
+## QR Code Pix Nativo (18/05/2026)
+- [x] Servidor: createAsaasSubscription retorna pixQrCode (Base64), pixCopyCola e pixPaymentId
+- [x] Servidor: endpoint /subscribe retorna JSON com QR Code para Pix (sem redirecionar para Asaas)
+- [x] App mobile: tela de pagamento Pix exibe QR Code nativo (Image base64)
+- [x] App mobile: botão "Copiar código Pix" com feedback visual
+- [x] App mobile: polling automático a cada 10s para verificar status do pagamento
+- [x] App mobile: botão "Já paguei — verificar status"
+- [x] Painel web: formulário de assinatura exibe QR Code inline (sem redirecionar para Asaas)
+- [x] Painel web: botão "Copiar código Pix" com feedback visual
+- [x] Painel web: polling automático a cada 10s para verificar status do pagamento

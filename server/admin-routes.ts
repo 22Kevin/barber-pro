@@ -3824,6 +3824,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
           </div>
           <div style="display:flex;flex-direction:column;gap:8px">
             ${bpStatus === 'trial' || bpStatus === 'cancelled' ? `
+              <div id="subscribe-form-area">
               <div id="subscribe-widget" style="display:flex;flex-direction:column;gap:10px;width:100%">
                 <!-- Seletor de plano -->
                 <select id="sub-plan" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;width:100%">
@@ -3867,6 +3868,41 @@ async function renderConfiguracoes(req: Request, res: Response) {
                 </div>
                 <!-- Botão de assinatura -->
                 <button id="sub-btn" type="button" onclick="submitSubscription()" class="btn btn-primary" style="font-size:13px;padding:10px 20px;width:100%;white-space:nowrap">Assinar agora via Pix</button>
+              </div>
+              </div>
+
+              <!-- Painel QR Code Pix (oculto até clicar em Assinar via Pix) -->
+              <div id="pix-qr-container" style="display:none;flex-direction:column;gap:12px;width:100%">
+                <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--muted)">PAGAMENTO VIA PIX</div>
+                <div id="pix-plan-info" style="font-size:13px;color:var(--text);font-weight:600"></div>
+                <div style="display:flex;flex-direction:column;align-items:center;background:#fff;border-radius:12px;padding:16px;gap:8px">
+                  <div id="pix-qr-loading" style="color:#333;font-size:12px">Gerando QR Code...</div>
+                  <img id="pix-qr-img" src="" alt="QR Code Pix" style="display:none;width:200px;height:200px;border-radius:8px" />
+                  <div style="font-size:11px;color:#555;text-align:center">Abra o app do seu banco e escaneie o QR Code</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="flex:1;height:1px;background:var(--border)"></div>
+                  <span style="font-size:11px;color:var(--muted)">ou</span>
+                  <div style="flex:1;height:1px;background:var(--border)"></div>
+                </div>
+                <div id="pix-copy-cola-area" style="display:none;flex-direction:column;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px">
+                  <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--muted)">PIX COPIA E COLA</div>
+                  <div id="pix-copy-cola-text" style="font-size:11px;color:var(--text);font-family:monospace;word-break:break-all;line-height:1.5"></div>
+                  <button id="copy-pix-btn" type="button" onclick="copyPixCode()" style="padding:10px;background:var(--surface);border:1.5px solid var(--primary);color:var(--primary);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;width:100%">Copiar código Pix</button>
+                </div>
+                <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px">
+                  <div style="font-size:12px;font-weight:700;color:var(--text)">Como pagar</div>
+                  <div style="display:flex;align-items:center;gap:8px"><div style="min-width:20px;height:20px;border-radius:50%;background:var(--primary);color:var(--bg);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">1</div><span style="font-size:12px;color:var(--muted)">Abra o app do seu banco</span></div>
+                  <div style="display:flex;align-items:center;gap:8px"><div style="min-width:20px;height:20px;border-radius:50%;background:var(--primary);color:var(--bg);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">2</div><span style="font-size:12px;color:var(--muted)">Escolha pagar via Pix</span></div>
+                  <div style="display:flex;align-items:center;gap:8px"><div style="min-width:20px;height:20px;border-radius:50%;background:var(--primary);color:var(--bg);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">3</div><span style="font-size:12px;color:var(--muted)">Escaneie o QR Code ou cole o código</span></div>
+                  <div style="display:flex;align-items:center;gap:8px"><div style="min-width:20px;height:20px;border-radius:50%;background:var(--primary);color:var(--bg);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">4</div><span style="font-size:12px;color:var(--muted)">Confirme o pagamento</span></div>
+                  <div style="display:flex;align-items:center;gap:8px"><div style="min-width:20px;height:20px;border-radius:50%;background:var(--primary);color:var(--bg);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center">5</div><span style="font-size:12px;color:var(--muted)">Seu acesso será liberado automaticamente</span></div>
+                </div>
+                <button type="button" id="check-payment-btn" onclick="checkPaymentStatus()" style="padding:10px 18px;background:var(--primary);color:var(--bg);border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;width:100%">
+                  ✔ Já paguei — verificar status
+                </button>
+                <div id="check-payment-msg" style="font-size:12px;text-align:center;display:none"></div>
+                <div style="font-size:11px;color:var(--muted);text-align:center">Verificando automaticamente a cada 10 segundos...</div>
               </div>
             ` : ''}
             ${bpStatus === 'active' ? `
@@ -4277,45 +4313,118 @@ async function renderConfiguracoes(req: Request, res: Response) {
         payload.cardAddrNum = addrNum;
       }
 
+      if (method === 'PIX') {
+        if (btn) { btn.textContent = 'Gerando QR Code...'; }
+      }
+
       fetch('/admin/configuracoes/asaas/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       }).then(function(r) {
-        // Se o servidor redirecionar, seguir o redirect
         if (r.redirected) { window.location.href = r.url; return; }
         return r.json().then(function(data) {
+          if (data.error) {
+            alert('Erro: ' + data.error);
+            if (btn) { btn.disabled = false; btn.textContent = method === 'PIX' ? 'Gerar QR Code Pix' : 'Assinar agora'; }
+            return;
+          }
+          // Pix: exibir QR Code nativo inline
+          if (data.pix) {
+            showPixQrCode(data);
+            return;
+          }
           if (data.redirect) { window.location.href = data.redirect; }
-          else if (data.error) { alert('Erro: ' + data.error); if (btn) { btn.disabled = false; btn.textContent = 'Assinar agora'; } }
           else { window.location.href = '/admin/configuracoes?tab=pagamentos&saved=1'; }
         });
       }).catch(function(err) {
         alert('Erro de conexão. Tente novamente.');
-        if (btn) { btn.disabled = false; btn.textContent = 'Assinar agora'; }
+        if (btn) { btn.disabled = false; btn.textContent = method === 'PIX' ? 'Gerar QR Code Pix' : 'Assinar agora'; }
       });
     }
 
-    function checkPaymentStatus() {
+    function showPixQrCode(data) {
+      // Esconder o formulário de assinatura
+      var formArea = document.getElementById('subscribe-form-area');
+      if (formArea) formArea.style.display = 'none';
+
+      // Criar e exibir o painel de QR Code
+      var container = document.getElementById('pix-qr-container');
+      if (!container) return;
+      container.style.display = 'block';
+
+      // QR Code
+      if (data.pixQrCode) {
+        var qrImg = document.getElementById('pix-qr-img');
+        if (qrImg) { qrImg.src = 'data:image/png;base64,' + data.pixQrCode; qrImg.style.display = 'block'; }
+        var qrLoading = document.getElementById('pix-qr-loading');
+        if (qrLoading) qrLoading.style.display = 'none';
+      }
+
+      // Copia e cola
+      if (data.pixCopyCola) {
+        var pixCodeEl = document.getElementById('pix-copy-cola-text');
+        if (pixCodeEl) pixCodeEl.textContent = data.pixCopyCola;
+        var pixCodeArea = document.getElementById('pix-copy-cola-area');
+        if (pixCodeArea) pixCodeArea.style.display = 'block';
+        window._pixCopyCola = data.pixCopyCola;
+      }
+
+      // Plano
+      var planInfo = document.getElementById('pix-plan-info');
+      if (planInfo) planInfo.textContent = 'Plano ' + (data.planLabel || '') + ' — R$ ' + (data.planPrice || '') + '/mês';
+
+      // Iniciar polling automático a cada 10s
+      window._pixPollingInterval = setInterval(function() {
+        checkPaymentStatus(true);
+      }, 10000);
+    }
+
+    function copyPixCode() {
+      var code = window._pixCopyCola || '';
+      if (!code) return;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(code).then(function() {
+          var btn = document.getElementById('copy-pix-btn');
+          if (btn) { btn.textContent = '\u2705 Código copiado!'; btn.style.background = '#4ADE80'; btn.style.color = '#000'; setTimeout(function() { btn.textContent = 'Copiar código Pix'; btn.style.background = ''; btn.style.color = ''; }, 3000); }
+        });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = code; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        var btn = document.getElementById('copy-pix-btn');
+        if (btn) { btn.textContent = '\u2705 Código copiado!'; setTimeout(function() { btn.textContent = 'Copiar código Pix'; }, 3000); }
+      }
+    }
+
+    function checkPaymentStatus(isPolling) {
       var btn = document.getElementById('check-payment-btn');
       var msg = document.getElementById('check-payment-msg');
-      if (btn) { btn.disabled = true; btn.textContent = 'Verificando...'; }
-      if (msg) { msg.style.display = 'none'; }
+      if (!isPolling) {
+        if (btn) { btn.disabled = true; btn.textContent = 'Verificando...'; }
+        if (msg) { msg.style.display = 'none'; }
+      }
       fetch('/admin/configuracoes/asaas/check-payment-status', { method: 'GET' })
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.status === 'active') {
+            // Parar polling e redirecionar
+            if (window._pixPollingInterval) { clearInterval(window._pixPollingInterval); }
             window.location.href = '/admin/configuracoes/assinatura-ativada';
           } else if (data.status === 'pending') {
-            if (msg) { msg.style.display = 'block'; msg.style.color = 'var(--muted)'; msg.textContent = '⏳ Pagamento ainda não confirmado. Aguarde alguns minutos e tente novamente.'; }
-            if (btn) { btn.disabled = false; btn.textContent = '✔ Já paguei — verificar status'; }
+            if (!isPolling) {
+              if (msg) { msg.style.display = 'block'; msg.style.color = 'var(--muted)'; msg.textContent = '⏳ Pagamento ainda não confirmado. Aguarde alguns minutos e tente novamente.'; }
+              if (btn) { btn.disabled = false; btn.textContent = '✔ Já paguei — verificar status'; }
+            }
           } else {
             if (msg) { msg.style.display = 'block'; msg.style.color = 'var(--error)'; msg.textContent = 'Status: ' + (data.status || 'desconhecido'); }
             if (btn) { btn.disabled = false; btn.textContent = '✔ Já paguei — verificar status'; }
           }
         })
         .catch(function() {
-          if (msg) { msg.style.display = 'block'; msg.style.color = 'var(--error)'; msg.textContent = 'Erro de conexão. Tente novamente.'; }
-          if (btn) { btn.disabled = false; btn.textContent = '✔ Já paguei — verificar status'; }
+          if (!isPolling) {
+            if (msg) { msg.style.display = 'block'; msg.style.color = 'var(--error)'; msg.textContent = 'Erro de conexão. Tente novamente.'; }
+            if (btn) { btn.disabled = false; btn.textContent = '✔ Já paguei — verificar status'; }
+          }
         });
     }
     </script>
@@ -6483,7 +6592,7 @@ export function registerAdminRoutes(app: Express): void {
       const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
       const nextDue = nextMonth.toISOString().slice(0, 10);
 
-      const subscriptionId = await createAsaasSubscription({
+      const subResult = await createAsaasSubscription({
         customer: asaasCustomerId,
         billingType: billingType as 'PIX' | 'CREDIT_CARD' | 'UNDEFINED',
         value: planPrice,
@@ -6495,6 +6604,7 @@ export function registerAdminRoutes(app: Express): void {
         ...(creditCardHolderInfo ? { creditCardHolderInfo } : {}),
         ...(hasCard ? { remoteIp } : {}),
       });
+      const subscriptionId = subResult.subscriptionId;
 
       // Atualizar o plano real do tenant também (para manter consistência)
       // Usar db.updateTenant para garantir cast correto do enum plan via Drizzle ORM
@@ -6574,22 +6684,45 @@ export function registerAdminRoutes(app: Express): void {
         console.error('[asaas/subscribe] Erro ao buscar dados para e-mail:', emailErr.message);
       }
 
-      // Buscar o primeiro pagamento da assinatura para redirecionar para o link de pagamento
-      try {
-        const paymentsRes = await asaasApi.get(`/subscriptions/${subscriptionId}/payments?limit=1`);
-        const firstPayment = paymentsRes.data?.data?.[0];
-        if (firstPayment?.invoiceUrl) {
-          // Para cartão de crédito/débito aprovado na criação, redirecionar para tela de confirmação
-          if (hasCard && firstPayment.status === 'CONFIRMED') {
+      // Para Pix: retornar QR Code nativo (já buscado pelo createAsaasSubscription)
+      // Para cartão: verificar se foi aprovado na criação
+      if (billingType === 'PIX') {
+        const pixQrCode = subResult.pixQrCode ?? null;
+        const pixCopyCola = subResult.pixCopyCola ?? null;
+        const pixPaymentId = subResult.pixPaymentId ?? null;
+        if (isJson) {
+          res.json({
+            ok: true,
+            pix: true,
+            pixQrCode,
+            pixCopyCola,
+            pixPaymentId,
+            subscriptionId,
+            planLabel,
+            planPrice,
+          });
+          return;
+        }
+        // Fallback HTML: redirecionar para página de pagamento Pix com parâmetros
+        const params = new URLSearchParams();
+        if (pixCopyCola) params.set('pixCopyCola', pixCopyCola);
+        if (pixQrCode) params.set('pixQrCode', pixQrCode);
+        params.set('planLabel', planLabel);
+        params.set('planPrice', String(planPrice));
+        res.redirect(`/admin/configuracoes/pix-pagamento?${params.toString()}`);
+        return;
+      }
+
+      // Cartão: verificar se foi aprovado
+      if (hasCard) {
+        try {
+          const paymentsRes = await asaasApi.get(`/subscriptions/${subscriptionId}/payments?limit=1`);
+          const firstPayment = paymentsRes.data?.data?.[0];
+          if (firstPayment?.status === 'CONFIRMED') {
             if (isJson) { res.json({ redirect: '/admin/configuracoes/assinatura-ativada' }); return; }
             res.redirect('/admin/configuracoes/assinatura-ativada'); return;
           }
-          if (isJson) { res.json({ redirect: firstPayment.invoiceUrl }); return; }
-          res.redirect(firstPayment.invoiceUrl);
-          return;
-        }
-      } catch (payErr) {
-        console.error('[asaas/subscribe] Erro ao buscar pagamento:', (payErr as any).message);
+        } catch {}
       }
 
       if (isJson) { res.json({ redirect: '/admin/configuracoes?tab=pagamentos&saved=1' }); return; }
