@@ -1,7 +1,7 @@
 /**
  * Tela de Paywall do Barber Pro
  * Exibida quando o trial expira ou a assinatura é cancelada.
- * Permite o dono da barbearia escolher um plano e assinar via Pix.
+ * Permite o dono da barbearia escolher um plano e assinar via Pix, Crédito ou Débito.
  */
 import React, { useState } from "react";
 import {
@@ -49,6 +49,19 @@ const PLANS = [
 ] as const;
 
 type PlanKey = "solo" | "team" | "studio";
+type BillingType = "PIX" | "CREDIT_CARD" | "UNDEFINED";
+
+// ─── Detecção de bandeira ──────────────────────────────────────────────────────
+function detectBrand(num: string): { icon: string; name: string } | null {
+  const n = num.replace(/\D/g, "");
+  if (/^4011|^4312|^4389|^4514|^4573|^4576|^5041|^5066|^5090|^6277|^6362|^6363|^6504|^6505|^6516|^6550/.test(n)) return { icon: "🟡", name: "Elo" };
+  if (/^606282|^3841/.test(n)) return { icon: "🟠", name: "Hipercard" };
+  if (/^3[47]/.test(n)) return { icon: "⭐", name: "Amex" };
+  if (/^30[0-5]|^36|^38/.test(n)) return { icon: "💳", name: "Diners" };
+  if (/^5[1-5]|^2[2-7]/.test(n)) return { icon: "🔴", name: "Mastercard" };
+  if (/^4/.test(n)) return { icon: "🟦", name: "Visa" };
+  return null;
+}
 
 export default function BarberProPaywallScreen() {
   const { barber, logout } = useBarberAuth();
@@ -60,17 +73,27 @@ export default function BarberProPaywallScreen() {
   const [ownerCpfCnpj, setOwnerCpfCnpj] = useState("");
   const [ownerPhone, setOwnerPhone] = useState(barber?.phone ?? "");
   const [step, setStep] = useState<"plans" | "form" | "pending">("plans");
-  const [billingType, setBillingType] = useState<"PIX" | "DEBIT_CARD">("PIX");
+  const [billingType, setBillingType] = useState<BillingType>("PIX");
   const [pixCopyCola, setPixCopyCola] = useState<string | null>(null);
 
+  // Dados do cartão
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [cardHolder, setCardHolder] = useState("");
+  const [cardCpf, setCardCpf] = useState("");
+  const [cardCep, setCardCep] = useState("");
+  const [cardAddrNum, setCardAddrNum] = useState("");
+  const [cardBrand, setCardBrand] = useState<{ icon: string; name: string } | null>(null);
+
   const plan = PLANS.find((p) => p.key === selectedPlan)!;
+  const isCard = billingType === "CREDIT_CARD" || billingType === "UNDEFINED";
 
   const utils = trpc.useUtils();
 
   const createMutation = trpc.asaasPayments.createBarberproSubscription.useMutation({
     onSuccess: async () => {
       setStep("pending");
-      // Buscar o link de pagamento da primeira cobrança
       try {
         const linkData = await utils.asaasPayments.getBarberproPaymentLink.fetch({ tenantId });
         if (linkData?.paymentLink) {
@@ -78,45 +101,102 @@ export default function BarberProPaywallScreen() {
         } else if (linkData?.pixCopyCola) {
           setPixCopyCola(linkData.pixCopyCola);
         }
-      } catch (e) {
-        // Silencioso — o usuário já está na tela de pending
+      } catch (_e) {
+        // Silencioso — usuário já está na tela de pending
       }
     },
     onError: (e) => Alert.alert("Erro", e.message),
   });
 
+  // ─── Máscaras ─────────────────────────────────────────────────────────────
+  function formatCardNumber(raw: string) {
+    const digits = raw.replace(/\D/g, "").substring(0, 16);
+    return digits.replace(/(\d{4})(?=\d)/g, "$1 ");
+  }
+
+  function formatExpiry(raw: string) {
+    const digits = raw.replace(/\D/g, "").substring(0, 6);
+    if (digits.length >= 3) return digits.substring(0, 2) + "/" + digits.substring(2);
+    return digits;
+  }
+
+  function formatCpf(raw: string) {
+    const d = raw.replace(/\D/g, "").substring(0, 11);
+    return d
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  }
+
+  function formatCep(raw: string) {
+    const d = raw.replace(/\D/g, "").substring(0, 8);
+    if (d.length > 5) return d.substring(0, 5) + "-" + d.substring(5);
+    return d;
+  }
+
+  // ─── Submissão ────────────────────────────────────────────────────────────
   function handleContinue() {
     if (step === "plans") {
       setStep("form");
       return;
     }
+
     if (!ownerName.trim()) { Alert.alert("Atenção", "Informe seu nome completo."); return; }
     if (!ownerEmail.trim()) { Alert.alert("Atenção", "Informe seu e-mail."); return; }
     if (!ownerCpfCnpj.trim()) { Alert.alert("Atenção", "Informe seu CPF ou CNPJ."); return; }
     if (!ownerPhone.trim()) { Alert.alert("Atenção", "Informe seu celular."); return; }
 
+    if (isCard) {
+      const rawNum = cardNumber.replace(/\D/g, "");
+      if (rawNum.length < 13) { Alert.alert("Atenção", "Número do cartão inválido."); return; }
+      const [expM, expY] = cardExpiry.split("/");
+      if (!expM || !expY || expY.length < 4) { Alert.alert("Atenção", "Data de validade inválida. Use MM/AAAA."); return; }
+      if (!cardCvv.trim()) { Alert.alert("Atenção", "CVV obrigatório."); return; }
+      if (!cardHolder.trim()) { Alert.alert("Atenção", "Nome no cartão obrigatório."); return; }
+      if (cardCpf.replace(/\D/g, "").length < 11) { Alert.alert("Atenção", "CPF do titular obrigatório."); return; }
+      if (cardCep.replace(/\D/g, "").length < 8) { Alert.alert("Atenção", "CEP obrigatório."); return; }
+      if (!cardAddrNum.trim()) { Alert.alert("Atenção", "Número do endereço obrigatório."); return; }
+    }
+
+    const [expM, expY] = cardExpiry.split("/");
+
     createMutation.mutate({
       tenantId,
       planName: plan.label,
       planPrice: plan.price,
-      billingType: billingType,
+      billingType,
       ownerName: ownerName.trim(),
       ownerEmail: ownerEmail.trim(),
       ownerCpfCnpj: ownerCpfCnpj.replace(/\D/g, ""),
       ownerMobilePhone: ownerPhone.replace(/\D/g, ""),
+      ...(isCard ? {
+        cardNumber: cardNumber.replace(/\D/g, ""),
+        cardExpiryMonth: expM ?? "",
+        cardExpiryYear: expY ?? "",
+        cardCvv: cardCvv.trim(),
+        cardHolder: cardHolder.trim(),
+        cardCpf: cardCpf.replace(/\D/g, ""),
+        cardCep: cardCep.replace(/\D/g, ""),
+        cardAddrNum: cardAddrNum.trim(),
+      } : {}),
     });
   }
 
   // ─── Tela de aguardando pagamento ─────────────────────────────────────────
   if (step === "pending") {
+    const isPix = billingType === "PIX";
     return (
       <ScreenContainer containerClassName="bg-background">
         <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 48 }}>
           <View style={styles.header}>
             <Text style={styles.badge}>BARBER PRO</Text>
-            <Text style={styles.title}>Aguardando pagamento</Text>
+            <Text style={styles.title}>
+              {isCard ? "Assinatura criada!" : "Aguardando pagamento"}
+            </Text>
             <Text style={styles.subtitle}>
-              Sua assinatura foi criada! Complete o pagamento Pix para liberar o acesso.
+              {isCard
+                ? "Sua assinatura foi criada com cartão. O acesso será liberado automaticamente."
+                : "Sua assinatura foi criada! Complete o pagamento Pix para liberar o acesso."}
             </Text>
           </View>
 
@@ -126,18 +206,19 @@ export default function BarberProPaywallScreen() {
             </View>
             <Text style={styles.pendingTitle}>Plano {plan.label} — R$ {plan.price}/mês</Text>
             <Text style={styles.pendingDesc}>
-              O link de pagamento foi aberto no navegador. Após confirmar o Pix, seu acesso será liberado automaticamente em até 5 minutos.
+              {isCard
+                ? "Seu cartão foi registrado. O acesso será liberado após a confirmação do pagamento pelo Asaas."
+                : "O link de pagamento foi aberto no navegador. Após confirmar o Pix, seu acesso será liberado automaticamente em até 5 minutos."}
             </Text>
           </View>
 
-          {pixCopyCola && (
+          {isPix && pixCopyCola && (
             <View style={styles.pixCard}>
               <Text style={styles.pixLabel}>Pix Copia e Cola</Text>
               <Text style={styles.pixCode} numberOfLines={3}>{pixCopyCola}</Text>
               <Pressable
                 style={({ pressed }) => [styles.copyBtn, pressed && { opacity: 0.7 }]}
                 onPress={() => {
-                  // Copiar para clipboard
                   import("expo-clipboard").then((Clipboard) => {
                     Clipboard.setStringAsync(pixCopyCola);
                     Alert.alert("Copiado!", "Código Pix copiado para a área de transferência.");
@@ -152,12 +233,11 @@ export default function BarberProPaywallScreen() {
           <Pressable
             style={({ pressed }) => [styles.ctaBtn, pressed && { opacity: 0.85 }]}
             onPress={() => {
-              // Verificar se o pagamento foi confirmado
               utils.asaasPayments.getBarberproSubscription.invalidate({ tenantId });
               Alert.alert("Verificando...", "Aguarde enquanto verificamos o status do seu pagamento.");
             }}
           >
-            <Text style={styles.ctaBtnText}>Já paguei — verificar acesso</Text>
+            <Text style={styles.ctaBtnText}>Verificar acesso</Text>
           </Pressable>
 
           <Pressable style={styles.logoutBtn} onPress={logout}>
@@ -181,7 +261,7 @@ export default function BarberProPaywallScreen() {
           <Text style={styles.subtitle}>
             {step === "plans"
               ? "Seu período de trial encerrou. Assine agora para continuar usando o Barber Pro."
-              : `Plano ${plan.label} — R$ ${plan.price}/mês via ${billingType === "PIX" ? "Pix" : "Cartão de Débito"}`}
+              : `Plano ${plan.label} — R$ ${plan.price}/mês`}
           </Text>
         </View>
 
@@ -232,75 +312,150 @@ export default function BarberProPaywallScreen() {
           </>
         ) : (
           <>
+            {/* Dados pessoais */}
             <View style={styles.formCard}>
+              <Text style={[styles.sectionTitle]}>DADOS PESSOAIS</Text>
               <Text style={styles.formLabel}>Nome completo *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Seu nome completo"
-                placeholderTextColor="#555"
-                value={ownerName}
-                onChangeText={setOwnerName}
-              />
+              <TextInput style={styles.input} placeholder="Seu nome completo" placeholderTextColor="#555" value={ownerName} onChangeText={setOwnerName} />
               <Text style={styles.formLabel}>E-mail *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="seu@email.com"
-                placeholderTextColor="#555"
-                value={ownerEmail}
-                onChangeText={setOwnerEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
+              <TextInput style={styles.input} placeholder="seu@email.com" placeholderTextColor="#555" value={ownerEmail} onChangeText={setOwnerEmail} keyboardType="email-address" autoCapitalize="none" />
               <Text style={styles.formLabel}>CPF ou CNPJ *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="000.000.000-00"
-                placeholderTextColor="#555"
-                value={ownerCpfCnpj}
-                onChangeText={setOwnerCpfCnpj}
-                keyboardType="numeric"
-              />
+              <TextInput style={styles.input} placeholder="000.000.000-00" placeholderTextColor="#555" value={ownerCpfCnpj} onChangeText={setOwnerCpfCnpj} keyboardType="numeric" />
               <Text style={styles.formLabel}>Celular *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="(11) 99999-9999"
-                placeholderTextColor="#555"
-                value={ownerPhone}
-                onChangeText={setOwnerPhone}
-                keyboardType="phone-pad"
-              />
+              <TextInput style={styles.input} placeholder="(11) 99999-9999" placeholderTextColor="#555" value={ownerPhone} onChangeText={setOwnerPhone} keyboardType="phone-pad" />
             </View>
+
             {/* Forma de pagamento */}
             <View style={styles.formCard}>
-              <Text style={[styles.formLabel, { marginTop: 0 }]}>Forma de pagamento *</Text>
-              <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.payMethodBtn,
-                    billingType === "PIX" && styles.payMethodBtnActive,
-                    pressed && { opacity: 0.8 },
-                  ]}
-                  onPress={() => setBillingType("PIX")}
-                >
-                  <Text style={[styles.payMethodText, billingType === "PIX" && styles.payMethodTextActive]}>Pix</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.payMethodBtn,
-                    billingType === "DEBIT_CARD" && styles.payMethodBtnActive,
-                    pressed && { opacity: 0.8 },
-                  ]}
-                  onPress={() => setBillingType("DEBIT_CARD")}
-                >
-                  <Text style={[styles.payMethodText, billingType === "DEBIT_CARD" && styles.payMethodTextActive]}>Cartão de Débito</Text>
-                </Pressable>
+              <Text style={styles.sectionTitle}>FORMA DE PAGAMENTO</Text>
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+                {(["PIX", "CREDIT_CARD", "UNDEFINED"] as BillingType[]).map((method) => {
+                  const labels: Record<BillingType, string> = { PIX: "Pix", CREDIT_CARD: "Crédito", UNDEFINED: "Débito" };
+                  const active = billingType === method;
+                  return (
+                    <Pressable
+                      key={method}
+                      style={({ pressed }) => [
+                        styles.payMethodBtn,
+                        active && styles.payMethodBtnActive,
+                        pressed && { opacity: 0.8 },
+                      ]}
+                      onPress={() => setBillingType(method)}
+                    >
+                      <Text style={[styles.payMethodText, active && styles.payMethodTextActive]}>
+                        {labels[method]}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
-              {billingType === "DEBIT_CARD" && (
-                <Text style={[styles.formLabel, { marginTop: 8, color: "#FBBF24" }]}>
-                  ⚠️ O link de pagamento será aberto no navegador para inserir os dados do cartão.
-                </Text>
-              )}
             </View>
+
+            {/* Formulário de cartão */}
+            {isCard && (
+              <View style={styles.formCard}>
+                <Text style={styles.sectionTitle}>DADOS DO CARTÃO</Text>
+                {/* Número com bandeira */}
+                <Text style={styles.formLabel}>Número do cartão *</Text>
+                <View style={{ position: "relative" }}>
+                  <TextInput
+                    style={[styles.input, { paddingRight: 40 }]}
+                    placeholder="0000 0000 0000 0000"
+                    placeholderTextColor="#555"
+                    value={cardNumber}
+                    onChangeText={(t) => {
+                      const formatted = formatCardNumber(t);
+                      setCardNumber(formatted);
+                      setCardBrand(detectBrand(formatted));
+                    }}
+                    keyboardType="numeric"
+                    maxLength={19}
+                  />
+                  {cardBrand && (
+                    <Text style={styles.brandIcon}>{cardBrand.icon}</Text>
+                  )}
+                </View>
+                {cardBrand && (
+                  <Text style={styles.brandName}>{cardBrand.name} detectado</Text>
+                )}
+
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.formLabel}>Validade *</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="MM/AAAA"
+                      placeholderTextColor="#555"
+                      value={cardExpiry}
+                      onChangeText={(t) => setCardExpiry(formatExpiry(t))}
+                      keyboardType="numeric"
+                      maxLength={7}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.formLabel}>CVV *</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="000"
+                      placeholderTextColor="#555"
+                      value={cardCvv}
+                      onChangeText={setCardCvv}
+                      keyboardType="numeric"
+                      maxLength={4}
+                      secureTextEntry
+                    />
+                  </View>
+                </View>
+
+                <Text style={styles.formLabel}>Nome no cartão *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Como impresso no cartão"
+                  placeholderTextColor="#555"
+                  value={cardHolder}
+                  onChangeText={setCardHolder}
+                  autoCapitalize="characters"
+                />
+
+                <Text style={[styles.sectionTitle, { marginTop: 16 }]}>DADOS DO TITULAR</Text>
+                <Text style={styles.formLabel}>CPF do titular *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="000.000.000-00"
+                  placeholderTextColor="#555"
+                  value={cardCpf}
+                  onChangeText={(t) => setCardCpf(formatCpf(t))}
+                  keyboardType="numeric"
+                  maxLength={14}
+                />
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.formLabel}>CEP *</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="00000-000"
+                      placeholderTextColor="#555"
+                      value={cardCep}
+                      onChangeText={(t) => setCardCep(formatCep(t))}
+                      keyboardType="numeric"
+                      maxLength={9}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.formLabel}>Número *</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="123"
+                      placeholderTextColor="#555"
+                      value={cardAddrNum}
+                      onChangeText={setCardAddrNum}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
+                <Text style={styles.secureNote}>🔒 Dados transmitidos com criptografia SSL ao Asaas.</Text>
+              </View>
+            )}
 
             <Pressable style={styles.backBtn} onPress={() => setStep("plans")}>
               <Text style={styles.backBtnText}>← Voltar para planos</Text>
@@ -317,7 +472,13 @@ export default function BarberProPaywallScreen() {
             <ActivityIndicator color="#000" />
           ) : (
             <Text style={styles.ctaBtnText}>
-              {step === "plans" ? `Continuar com o Plano ${plan.label} →` : "Gerar link de pagamento Pix"}
+              {step === "plans"
+                ? `Continuar com o Plano ${plan.label} →`
+                : billingType === "PIX"
+                  ? "Gerar Pix para pagamento"
+                  : billingType === "CREDIT_CARD"
+                    ? "Assinar com Cartão de Crédito"
+                    : "Assinar com Cartão de Débito"}
             </Text>
           )}
         </Pressable>
@@ -376,6 +537,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 4,
   },
+  sectionTitle: { fontSize: 11, fontWeight: "700", color: "#9BA1A6", letterSpacing: 1, marginBottom: 4 },
   formLabel: { fontSize: 12, fontWeight: "600", color: "#9BA1A6", marginTop: 12, marginBottom: 4 },
   input: {
     backgroundColor: "#1A1A1A",
@@ -387,6 +549,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#ECEDEE",
   },
+  brandIcon: { position: "absolute", right: 12, top: 12, fontSize: 18 },
+  brandName: { fontSize: 11, color: "#C9A84C", marginTop: 4, marginLeft: 2 },
+  secureNote: { fontSize: 10, color: "#555", marginTop: 10 },
   ctaBtn: { backgroundColor: "#C9A84C", borderRadius: 14, paddingVertical: 16, alignItems: "center", marginTop: 8 },
   ctaBtnText: { fontSize: 15, fontWeight: "800", color: "#000" },
   backBtn: { alignItems: "center", marginBottom: 12 },

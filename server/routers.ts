@@ -2511,15 +2511,24 @@ export const appRouter = router({
     createBarberproSubscription: publicProcedure
       .input(z.object({
         tenantId: z.number(),
-        planName: z.string(),           // 'starter' | 'pro' | 'enterprise'
+        planName: z.string(),           // 'solo' | 'team' | 'studio'
         planPrice: z.number(),          // valor em reais
-        billingType: z.enum(["BOLETO", "PIX", "CREDIT_CARD"]).default("PIX"),
+        billingType: z.enum(["BOLETO", "PIX", "CREDIT_CARD", "UNDEFINED"]).default("PIX"),
         ownerName: z.string(),
         ownerEmail: z.string().email(),
         ownerCpfCnpj: z.string().min(11),
         ownerMobilePhone: z.string().optional(),
+        // Dados opcionais de cartão de crédito/débito
+        cardNumber: z.string().optional(),
+        cardExpiryMonth: z.string().optional(),
+        cardExpiryYear: z.string().optional(),
+        cardCvv: z.string().optional(),
+        cardHolder: z.string().optional(),
+        cardCpf: z.string().optional(),
+        cardCep: z.string().optional(),
+        cardAddrNum: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         if (!asaasEnabled) throw new Error("ASAAS_API_KEY não configurada.");
         const dbConn = await db.getDb();
         if (!dbConn) throw new Error("DB unavailable");
@@ -2548,15 +2557,39 @@ export const appRouter = router({
         tomorrow.setDate(tomorrow.getDate() + 1);
         const nextDueDate = tomorrow.toISOString().split("T")[0];
 
+        // Montar dados de cartão se fornecidos
+        const isCard = input.billingType === "CREDIT_CARD" || input.billingType === "UNDEFINED";
+        const creditCard = isCard && input.cardNumber ? {
+          holderName: input.cardHolder ?? input.ownerName,
+          number: input.cardNumber.replace(/\D/g, ""),
+          expiryMonth: input.cardExpiryMonth ?? "",
+          expiryYear: input.cardExpiryYear ?? "",
+          ccv: input.cardCvv ?? "",
+        } : undefined;
+        const creditCardHolderInfo = isCard && input.cardNumber ? {
+          name: input.cardHolder ?? input.ownerName,
+          email: input.ownerEmail,
+          cpfCnpj: (input.cardCpf ?? input.ownerCpfCnpj).replace(/\D/g, ""),
+          postalCode: (input.cardCep ?? "").replace(/\D/g, ""),
+          addressNumber: input.cardAddrNum ?? "",
+          phone: input.ownerMobilePhone ?? "",
+        } : undefined;
+        const remoteIp = (ctx as any)?.req?.headers?.["x-forwarded-for"]?.split(",")?.[0]?.trim()
+          ?? (ctx as any)?.req?.socket?.remoteAddress
+          ?? "127.0.0.1";
+
         // Criar assinatura recorrente mensal
         const subscriptionId = await createAsaasSubscription({
           customer: customerId,
-          billingType: input.billingType,
+          billingType: input.billingType as "PIX" | "CREDIT_CARD" | "UNDEFINED",
           value: input.planPrice,
           nextDueDate,
           cycle: "MONTHLY",
           description: `Barber Pro — Plano ${input.planName}`,
           externalReference: `tenant_${input.tenantId}`,
+          ...(creditCard ? { creditCard } : {}),
+          ...(creditCardHolderInfo ? { creditCardHolderInfo } : {}),
+          ...(isCard ? { remoteIp } : {}),
         });
 
         // Salvar no banco

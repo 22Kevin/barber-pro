@@ -108,6 +108,10 @@ export interface AsaasSubscriptionPayload {
   cycle: "MONTHLY";
   description: string;
   externalReference?: string; // subscriptionId no nosso sistema
+  // Campos opcionais para pagamento via cartão de crédito
+  creditCard?: AsaasCreditCardInfo;
+  creditCardHolderInfo?: AsaasCreditCardHolderInfo;
+  remoteIp?: string;
 }
 
 export interface AsaasPaymentResult {

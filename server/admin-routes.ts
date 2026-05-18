@@ -3733,18 +3733,50 @@ async function renderConfiguracoes(req: Request, res: Response) {
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
             ${bpStatus === 'trial' || bpStatus === 'cancelled' ? `
-              <form method="POST" action="/admin/configuracoes/asaas/subscribe" style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
-                <select name="selectedPlan" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer">
+              <div id="subscribe-widget" style="display:flex;flex-direction:column;gap:10px;align-items:flex-end;width:100%">
+                <!-- Seletor de plano -->
+                <select id="sub-plan" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;width:100%">
                   <option value="solo" ${tenantRealPlan === 'solo' ? 'selected' : ''}>Solo — R$ 49/mês (1 barbeiro)</option>
                   <option value="team" ${tenantRealPlan === 'team' ? 'selected' : ''}>Equipe — R$ 89/mês (até 5 barbeiros)</option>
                   <option value="studio" ${tenantRealPlan === 'studio' ? 'selected' : ''}>Estúdio — R$ 149/mês (ilimitado)</option>
                 </select>
-                <select name="billingType" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer">
-                  <option value="PIX">Pix</option>
-                  <option value="DEBIT_CARD">Cartão de Débito</option>
-                </select>
-                <button type="submit" class="btn btn-primary" style="font-size:12px;padding:8px 16px;white-space:nowrap">Assinar agora</button>
-              </form>
+                <!-- Seletor de forma de pagamento -->
+                <div style="display:flex;gap:6px;width:100%">
+                  <button type="button" class="pay-method-btn active" data-method="PIX" onclick="selectPayMethod('PIX')" style="flex:1;padding:8px 6px;border-radius:8px;border:1.5px solid var(--primary);background:var(--primary);color:var(--bg);font-size:12px;font-weight:600;cursor:pointer">Pix</button>
+                  <button type="button" class="pay-method-btn" data-method="CREDIT_CARD" onclick="selectPayMethod('CREDIT_CARD')" style="flex:1;padding:8px 6px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-weight:600;cursor:pointer">Crédito</button>
+                  <button type="button" class="pay-method-btn" data-method="UNDEFINED" onclick="selectPayMethod('UNDEFINED')" style="flex:1;padding:8px 6px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-weight:600;cursor:pointer">Débito</button>
+                </div>
+                <!-- Formulário de cartão (oculto por padrão) -->
+                <div id="card-form-area" style="display:none;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:2px">
+                  <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:10px">DADOS DO CARTÃO</div>
+                  <!-- Número do cartão com bandeira -->
+                  <div style="position:relative;margin-bottom:10px">
+                    <input id="card-number" type="text" inputmode="numeric" placeholder="0000 0000 0000 0000" maxlength="19"
+                      style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 42px 8px 10px;font-size:13px;font-family:monospace" />
+                    <span id="card-brand-icon" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:16px"></span>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+                    <input id="card-expiry" type="text" inputmode="numeric" placeholder="MM/AAAA" maxlength="7"
+                      style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px" />
+                    <input id="card-cvv" type="text" inputmode="numeric" placeholder="CVV" maxlength="4"
+                      style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px" />
+                  </div>
+                  <input id="card-holder" type="text" placeholder="Nome no cartão (como impresso)" maxlength="50"
+                    style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:10px" />
+                  <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:8px">DADOS DO TITULAR</div>
+                  <input id="card-cpf" type="text" inputmode="numeric" placeholder="CPF do titular" maxlength="14"
+                    style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:8px" />
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <input id="card-cep" type="text" inputmode="numeric" placeholder="CEP" maxlength="9"
+                      style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px" />
+                    <input id="card-addr-num" type="text" placeholder="Número" maxlength="10"
+                      style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px" />
+                  </div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:8px">🔒 Dados transmitidos com criptografia SSL diretamente ao Asaas.</div>
+                </div>
+                <!-- Botão de assinatura -->
+                <button id="sub-btn" type="button" onclick="submitSubscription()" class="btn btn-primary" style="font-size:13px;padding:10px 20px;width:100%;white-space:nowrap">Assinar agora via Pix</button>
+              </div>
             ` : ''}
             ${bpStatus === 'active' ? `
               <form method="POST" action="/admin/configuracoes/asaas/upgrade-plan" style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
@@ -3958,6 +3990,142 @@ async function renderConfiguracoes(req: Request, res: Response) {
         </div>
       ` : ''}
     </div>
+
+    <script>
+    // ── Seletor de forma de pagamento ──────────────────────────────────────────
+    var _selectedMethod = 'PIX';
+
+    function selectPayMethod(method) {
+      _selectedMethod = method;
+      // Atualizar visual dos botões
+      document.querySelectorAll('.pay-method-btn').forEach(function(btn) {
+        var isActive = btn.getAttribute('data-method') === method;
+        btn.style.border = isActive ? '1.5px solid var(--primary)' : '1.5px solid var(--border)';
+        btn.style.background = isActive ? 'var(--primary)' : 'var(--bg)';
+        btn.style.color = isActive ? 'var(--bg)' : 'var(--text)';
+      });
+      // Mostrar/ocultar formulário de cartão
+      var cardArea = document.getElementById('card-form-area');
+      if (cardArea) {
+        cardArea.style.display = (method === 'CREDIT_CARD' || method === 'UNDEFINED') ? 'block' : 'none';
+      }
+      // Atualizar texto do botão
+      var btn = document.getElementById('sub-btn');
+      if (btn) {
+        var labels = { PIX: 'Assinar agora via Pix', CREDIT_CARD: 'Assinar com Cartão de Crédito', UNDEFINED: 'Assinar com Cartão de Débito' };
+        btn.textContent = labels[method] || 'Assinar agora';
+      }
+    }
+
+    // ── Detecção de bandeira por número do cartão ──────────────────────────────
+    function detectCardBrand(num) {
+      var n = num.replace(/\D/g, '');
+      if (/^4011|^4312|^4389|^4514|^4573|^4576|^5041|^5066|^5090|^6277|^6362|^6363|^6504|^6505|^6516|^6550/.test(n)) return { icon: '\uD83D\uDFE1', name: 'Elo' };
+      if (/^606282|^3841/.test(n)) return { icon: '\uD83D\uDFE0', name: 'Hipercard' };
+      if (/^3[47]/.test(n)) return { icon: '\u2B50', name: 'Amex' };
+      if (/^30[0-5]|^36|^38/.test(n)) return { icon: '\uD83D\uDCB3', name: 'Diners' };
+      if (/^5[1-5]|^2[2-7]/.test(n)) return { icon: '\uD83D\uDD34', name: 'Mastercard' };
+      if (/^4/.test(n)) return { icon: '\uD83D\uDFE6', name: 'Visa' };
+      return null;
+    }
+
+    var cardNumberInput = document.getElementById('card-number');
+    if (cardNumberInput) {
+      cardNumberInput.addEventListener('input', function() {
+        // Formatar com espaços a cada 4 dígitos
+        var v = this.value.replace(/\D/g, '').substring(0, 16);
+        this.value = v.replace(/(\d{4})(?=\d)/g, '$1 ');
+        // Detectar bandeira
+        var brand = detectCardBrand(v);
+        var icon = document.getElementById('card-brand-icon');
+        if (icon) icon.textContent = brand ? brand.icon : '';
+      });
+    }
+
+    // Máscara de validade MM/AAAA
+    var cardExpiryInput = document.getElementById('card-expiry');
+    if (cardExpiryInput) {
+      cardExpiryInput.addEventListener('input', function() {
+        var v = this.value.replace(/\D/g, '').substring(0, 6);
+        if (v.length >= 3) v = v.substring(0, 2) + '/' + v.substring(2);
+        this.value = v;
+      });
+    }
+
+    // Máscara CPF
+    var cardCpfInput = document.getElementById('card-cpf');
+    if (cardCpfInput) {
+      cardCpfInput.addEventListener('input', function() {
+        var v = this.value.replace(/\D/g, '').substring(0, 11);
+        v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        this.value = v;
+      });
+    }
+
+    // Máscara CEP
+    var cardCepInput = document.getElementById('card-cep');
+    if (cardCepInput) {
+      cardCepInput.addEventListener('input', function() {
+        var v = this.value.replace(/\D/g, '').substring(0, 8);
+        if (v.length > 5) v = v.substring(0, 5) + '-' + v.substring(5);
+        this.value = v;
+      });
+    }
+
+    // ── Submissão via fetch (para capturar IP do cliente) ──────────────────────
+    function submitSubscription() {
+      var plan = document.getElementById('sub-plan') ? document.getElementById('sub-plan').value : 'solo';
+      var method = _selectedMethod;
+      var btn = document.getElementById('sub-btn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Processando...'; }
+
+      var payload = { selectedPlan: plan, billingType: method };
+
+      if (method === 'CREDIT_CARD' || method === 'UNDEFINED') {
+        var numRaw = (document.getElementById('card-number').value || '').replace(/\D/g, '');
+        var expiry = (document.getElementById('card-expiry').value || '').split('/');
+        var cvv = (document.getElementById('card-cvv').value || '').trim();
+        var holder = (document.getElementById('card-holder').value || '').trim();
+        var cpf = (document.getElementById('card-cpf').value || '').replace(/\D/g, '');
+        var cep = (document.getElementById('card-cep').value || '').replace(/\D/g, '');
+        var addrNum = (document.getElementById('card-addr-num').value || '').trim();
+
+        if (!numRaw || numRaw.length < 13) { alert('Número do cartão inválido.'); if (btn) { btn.disabled = false; btn.textContent = method === 'CREDIT_CARD' ? 'Assinar com Cartão de Crédito' : 'Assinar com Cartão de Débito'; } return; }
+        if (!expiry[0] || !expiry[1] || expiry[1].length < 4) { alert('Data de validade inválida. Use MM/AAAA.'); if (btn) { btn.disabled = false; } return; }
+        if (!cvv) { alert('CVV obrigatório.'); if (btn) { btn.disabled = false; } return; }
+        if (!holder) { alert('Nome no cartão obrigatório.'); if (btn) { btn.disabled = false; } return; }
+        if (!cpf || cpf.length < 11) { alert('CPF do titular obrigatório.'); if (btn) { btn.disabled = false; } return; }
+        if (!cep || cep.length < 8) { alert('CEP obrigatório.'); if (btn) { btn.disabled = false; } return; }
+        if (!addrNum) { alert('Número do endereço obrigatório.'); if (btn) { btn.disabled = false; } return; }
+
+        payload.cardNumber = numRaw;
+        payload.cardExpiryMonth = expiry[0];
+        payload.cardExpiryYear = expiry[1];
+        payload.cardCvv = cvv;
+        payload.cardHolder = holder;
+        payload.cardCpf = cpf;
+        payload.cardCep = cep;
+        payload.cardAddrNum = addrNum;
+      }
+
+      fetch('/admin/configuracoes/asaas/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(function(r) {
+        // Se o servidor redirecionar, seguir o redirect
+        if (r.redirected) { window.location.href = r.url; return; }
+        return r.json().then(function(data) {
+          if (data.redirect) { window.location.href = data.redirect; }
+          else if (data.error) { alert('Erro: ' + data.error); if (btn) { btn.disabled = false; btn.textContent = 'Assinar agora'; } }
+          else { window.location.href = '/admin/configuracoes?tab=pagamentos&saved=1'; }
+        });
+      }).catch(function(err) {
+        alert('Erro de conexão. Tente novamente.');
+        if (btn) { btn.disabled = false; btn.textContent = 'Assinar agora'; }
+      });
+    }
+    </script>
   `;
 
   const tabs = [
@@ -5989,14 +6157,40 @@ export function registerAdminRoutes(app: Express): void {
       });
 
       // Plano selecionado pelo usuário no formulário (ou plano real do tenant como fallback)
-      // Garantir string simples (não array) — Express pode retornar array se houver campos duplicados
+      // Aceita tanto JSON (via fetch) quanto form-urlencoded (fallback)
+      const isJson = req.headers['content-type']?.includes('application/json');
       const rawPlan = (req.body as any)?.selectedPlan;
       const selectedPlan: string = (Array.isArray(rawPlan) ? rawPlan[rawPlan.length - 1] : rawPlan) ?? tenantData.plan ?? 'solo';
-      const billingType: string = (req.body as any)?.billingType === 'DEBIT_CARD' ? 'DEBIT_CARD' : 'PIX';
+      const rawBilling = ((req.body as any)?.billingType ?? 'PIX') as string;
+      const allowedBillings = ['PIX', 'CREDIT_CARD', 'UNDEFINED'];
+      const billingType: string = allowedBillings.includes(rawBilling) ? rawBilling : 'PIX';
       const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
       const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
       const planPrice = planPriceMap[selectedPlan] ?? 49;
       const planLabel = planLabelMap[selectedPlan] ?? selectedPlan;
+
+      // Dados do cartão (presentes apenas quando billingType é CREDIT_CARD ou UNDEFINED)
+      const body = req.body as any;
+      const hasCard = billingType === 'CREDIT_CARD' || billingType === 'UNDEFINED';
+      const creditCardData = hasCard ? {
+        holderName: (body.cardHolder ?? '').trim(),
+        number: (body.cardNumber ?? '').replace(/\D/g, ''),
+        expiryMonth: (body.cardExpiryMonth ?? '').trim(),
+        expiryYear: (body.cardExpiryYear ?? '').trim(),
+        ccv: (body.cardCvv ?? '').trim(),
+      } : undefined;
+      const creditCardHolderInfo = hasCard ? {
+        name: (body.cardHolder ?? tenantData.name ?? '').trim(),
+        email: tenantData.email ?? `tenant${barber.tenantId}@barberpro.app`,
+        cpfCnpj: (body.cardCpf ?? cpfCnpjRaw).replace(/\D/g, ''),
+        postalCode: (body.cardCep ?? '').replace(/\D/g, ''),
+        addressNumber: (body.cardAddrNum ?? '').trim(),
+        phone: (tenantData.asaasMobilePhone ?? tenantData.phone ?? '').replace(/\D/g, ''),
+      } : undefined;
+      // IP do cliente (enviado pelo fetch do frontend via JSON ou header)
+      const remoteIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+        ?? req.socket.remoteAddress
+        ?? '127.0.0.1';
 
       // Criar assinatura recorrente mensal
       const today = new Date();
@@ -6005,12 +6199,15 @@ export function registerAdminRoutes(app: Express): void {
 
       const subscriptionId = await createAsaasSubscription({
         customer: asaasCustomerId,
-        billingType: billingType as 'PIX' | 'DEBIT_CARD',
+        billingType: billingType as 'PIX' | 'CREDIT_CARD' | 'UNDEFINED',
         value: planPrice,
         nextDueDate: nextDue,
         cycle: 'MONTHLY',
         description: `Barber Pro — Plano ${planLabel} (R$ ${planPrice}/mês)`,
         externalReference: `tenant_${barber.tenantId}`,
+        ...(creditCardData ? { creditCard: creditCardData } : {}),
+        ...(creditCardHolderInfo ? { creditCardHolderInfo } : {}),
+        ...(hasCard ? { remoteIp } : {}),
       });
 
       // Atualizar o plano real do tenant também (para manter consistência)
@@ -6090,11 +6287,17 @@ export function registerAdminRoutes(app: Express): void {
         console.error('[asaas/subscribe] Erro ao buscar dados para e-mail:', emailErr.message);
       }
 
-      // Buscar o primeiro pagamento da assinatura para redirecionar para o link de pagamento Pix
+      // Buscar o primeiro pagamento da assinatura para redirecionar para o link de pagamento
       try {
         const paymentsRes = await asaasApi.get(`/subscriptions/${subscriptionId}/payments?limit=1`);
         const firstPayment = paymentsRes.data?.data?.[0];
         if (firstPayment?.invoiceUrl) {
+          // Para cartão de crédito/débito aprovado na criação, não há invoice a pagar
+          if (hasCard && firstPayment.status === 'CONFIRMED') {
+            if (isJson) { res.json({ redirect: '/admin/configuracoes?tab=pagamentos&saved=1' }); return; }
+            res.redirect('/admin/configuracoes?tab=pagamentos&saved=1'); return;
+          }
+          if (isJson) { res.json({ redirect: firstPayment.invoiceUrl }); return; }
           res.redirect(firstPayment.invoiceUrl);
           return;
         }
@@ -6102,10 +6305,15 @@ export function registerAdminRoutes(app: Express): void {
         console.error('[asaas/subscribe] Erro ao buscar pagamento:', (payErr as any).message);
       }
 
+      if (isJson) { res.json({ redirect: '/admin/configuracoes?tab=pagamentos&saved=1' }); return; }
       res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
     } catch (e: any) {
       console.error('[asaas/subscribe]', e.message);
-      res.redirect(`/admin/configuracoes?tab=pagamentos&error=${encodeURIComponent(e.message)}`);
+      if ((req.headers['content-type'] ?? '').includes('application/json')) {
+        res.status(400).json({ error: e.message });
+      } else {
+        res.redirect(`/admin/configuracoes?tab=pagamentos&error=${encodeURIComponent(e.message)}`);
+      }
     }
   });
 

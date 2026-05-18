@@ -2300,11 +2300,11 @@
 - [x] E-mail de cancelamento de assinatura via webhook SUBSCRIPTION_CANCELLED
 
 ## Usabilidade Painel + App Mobile (18/05/2026)
-- [ ] Breadcrumb no painel admin da barbearia (admin-routes)
+- [x] Breadcrumb no painel admin da barbearia (admin-routes)
 - [x] Busca global na navbar do superadmin
 - [x] App mobile: tela de paywall ao expirar trial
 - [x] App mobile: status de assinatura nas configurações
-- [ ] App mobile: botão de upgrade de plano no app
+- [x] App mobile: botão de upgrade de plano no app
 
 ## Melhorias Round 5 (18/05/2026)
 - [x] App mobile: botão de upgrade de plano na seção Minha Assinatura (settings.tsx)
@@ -2315,3 +2315,10 @@
 - [x] Bug SQL: campo selectedPlan duplicado no form causava array e erro UPDATE tenant_plan
 - [x] Bug SQL: cast ::\"plan\" substituído por sql.raw()::tenant_plan nos endpoints subscribe e upgrade-plan
 - [x] Painel web: seletor de forma de pagamento (Pix / Cartão de Débito) adicionado ao formulário de assinatura
+
+## Pagamento com Cartão — Round 6 (18/05/2026)
+- [x] Painel web: seletor de forma de pagamento (Pix / Crédito / Débito) com formulário de cartão dinâmico
+- [x] Painel web: detecção automática de bandeira por número do cartão (Visa, Mastercard, Elo, Hipercard, Amex)
+- [x] Painel web: endpoint /subscribe e /upgrade-plan aceitam dados do cartão e criam pagamento tokenizado via Asaas
+- [x] App mobile: paywall com seletor Pix / Crédito / Débito e formulário de cartão com detecção de bandeira
+- [x] App mobile: settings.tsx com modal de upgrade aceitando cartão
