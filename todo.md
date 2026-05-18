@@ -2294,3 +2294,7 @@
 ## Melhorias Asaas Round 4 (18/05/2026)
 - [x] E-mail de confirmação de pagamento (assinatura ativada) via webhook PAYMENT_RECEIVED
 - [x] Relatório de churn no superadmin: aba Cancelamentos/Expirados com taxa de conversão (30 dias) 30 dias)
+
+## Finalização do Módulo de E-mail (18/05/2026)
+- [x] Botão "Enviar teste" na tela de preview com endpoint POST /superadmin/email-preview/send-test
+- [x] E-mail de cancelamento de assinatura via webhook SUBSCRIPTION_CANCELLED

@@ -607,6 +607,69 @@ async function startServer() {
               );
               console.log(`[asaas-webhook] Assinatura Barber Pro tenant ${tenantId} → ${newStatus} (evento: ${event})`);
 
+              // Enviar e-mail de cancelamento ao super_admin da barbearia
+              if (newStatus === "cancelled") {
+                try {
+                  const cancelRows = await (dbConn as any).execute(
+                    `SELECT t.name AS "tenantName", t.slug, t."barberproPlanName",
+                            b.email AS "adminEmail", b.name AS "adminName"
+                     FROM tenants t
+                     LEFT JOIN barbers b ON b."tenantId" = t.id AND b.role = 'super_admin'
+                     WHERE t.id = ${tenantId}
+                     LIMIT 1`
+                  );
+                  const cancelArr = Array.isArray(cancelRows) ? cancelRows[0] : cancelRows?.rows ?? [];
+                  const cancelInfo = cancelArr?.[0];
+                  if (cancelInfo?.adminEmail) {
+                    const { sendEmail, emailLayout, alertBox, ctaButton, detailRow } = await import("../email");
+                    const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
+                    const planLabel = planLabelMap[cancelInfo.barberproPlanName ?? 'solo'] ?? cancelInfo.barberproPlanName ?? 'Solo';
+                    const cancelledAt = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+                    const reactivateUrl = `https://usebarberpro.com/${cancelInfo.slug ?? 'admin'}/admin/configuracoes?tab=pagamentos`;
+                    const cancelBody = `
+                      ${alertBox('⚠️', 'Assinatura cancelada', `Barber Pro ${planLabel} foi cancelado`, '#F87171')}
+                      <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+                        Olá, <strong style="color:#ECEDEE">${cancelInfo.adminName ?? 'Admin'}</strong>! A assinatura do
+                        <strong style="color:#ECEDEE">${cancelInfo.tenantName}</strong> no Barber Pro foi cancelada.
+                      </p>
+                      <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                          ${detailRow('Plano cancelado', 'Barber Pro ' + planLabel)}
+                          ${detailRow('Data do cancelamento', cancelledAt, '#F87171')}
+                          ${detailRow('Acesso ao sistema', 'Bloqueado até nova assinatura', '#F87171', true)}
+                        </table>
+                      </div>
+                      <div style="background:#F8717118;border:1.5px solid #F8717144;border-radius:14px;padding:18px 20px;margin-bottom:24px">
+                        <div style="font-size:14px;font-weight:700;color:#F87171;margin-bottom:8px">🔒 Acesso bloqueado</div>
+                        <p style="color:#9BA1A6;font-size:13px;line-height:1.5;margin:0">
+                          O acesso ao painel administrativo e ao app está suspenso. Para reativar, assine um dos planos abaixo.
+                        </p>
+                      </div>
+                      <div style="margin-bottom:28px">
+                        ${[{n:'Solo',p:'R$ 49',d:'1 barbeiro'},{n:'Equipe',p:'R$ 89',d:'até 5 barbeiros'},{n:'Estúdio',p:'R$ 149',d:'ilimitados'}].map(pl=>`
+                        <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                          <div><div style="font-weight:700;color:#ECEDEE;font-size:14px">${pl.n}</div><div style="font-size:12px;color:#666">${pl.d}</div></div>
+                          <div style="font-size:16px;font-weight:900;color:#C9A84C">${pl.p}<span style="font-size:11px;font-weight:400;color:#666">/mês</span></div>
+                        </div>`).join('')}
+                      </div>
+                      ${ctaButton('Reativar assinatura →', reactivateUrl, '#C9A84C')}
+                      <p style="color:#555555;font-size:12px;text-align:center;margin:0">
+                        Seus dados ficam preservados por 30 dias. Após esse prazo, a conta será excluída permanentemente.
+                      </p>`;
+                    await sendEmail({
+                      to: cancelInfo.adminEmail,
+                      subject: `⚠️ Assinatura cancelada — Barber Pro ${planLabel}`,
+                      html: emailLayout(cancelBody, {
+                        headerSubtitle: 'Assinatura Cancelada',
+                        previewText: `Sua assinatura do Barber Pro ${planLabel} foi cancelada. Reative agora para recuperar o acesso.`,
+                      }),
+                    }).catch((e: any) => console.error("[asaas-webhook] Erro ao enviar e-mail de cancelamento:", e.message));
+                  }
+                } catch (cancelEmailErr: any) {
+                  console.error("[asaas-webhook] Erro ao buscar tenant para e-mail de cancelamento:", cancelEmailErr.message);
+                }
+              }
+
               // Enviar e-mail de confirmação de pagamento/ativação ao super_admin da barbearia
               if (newStatus === "active") {
                 try {

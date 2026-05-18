@@ -2019,15 +2019,88 @@ export function registerSuperAdminRoutes(app: Express): void {
         <div style="flex:1;overflow:auto;background:#0A0A0A;padding:0">
           <div style="background:#1A1A1A;border-bottom:1px solid #222;padding:12px 20px;display:flex;align-items:center;justify-content:space-between">
             <div style="font-size:14px;color:#ECEDEE;font-weight:600">${currentTemplate.title}</div>
-            <div style="font-size:12px;color:#666">Preview apenas — não envia e-mail real</div>
+            <form method="POST" action="/superadmin/email-preview/send-test" style="display:flex;align-items:center;gap:10px">
+              <input type="hidden" name="template" value="${template}" />
+              <span style="font-size:12px;color:#666">Enviar para:</span>
+              <input type="email" name="email" placeholder="seu@email.com" required
+                style="background:#0A0A0A;border:1px solid #333;border-radius:8px;padding:6px 12px;color:#ECEDEE;font-size:12px;width:200px;outline:none" />
+              <button type="submit"
+                style="background:#C9A84C;color:#0A0A0A;border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer">
+                Enviar teste
+              </button>
+            </form>
           </div>
+          ${req.query.sent ? `<div style="background:#4ADE8022;border-bottom:1px solid #4ADE8044;padding:10px 20px;font-size:13px;color:#4ADE80">✅ E-mail de teste enviado para <strong>${req.query.sent}</strong></div>` : ""}
+          ${req.query.error ? `<div style="background:#F8717122;border-bottom:1px solid #F8717144;padding:10px 20px;font-size:13px;color:#F87171">❌ Erro ao enviar: ${req.query.error}</div>` : ""}
           <iframe
             srcdoc="${currentTemplate.html.replace(/"/g, '&quot;').replace(/'/g, '&#39;')}"
-            style="width:100%;height:calc(100vh - 120px);border:none;background:#0A0A0A"
+            style="width:100%;height:calc(100vh - ${req.query.sent || req.query.error ? '158' : '120'}px);border:none;background:#0A0A0A"
             sandbox="allow-same-origin"
           ></iframe>
         </div>
       </div>
     `));
+  });
+
+  // ── POST /superadmin/email-preview/send-test — Envia e-mail de teste ─────────────────────────────
+  app.post("/superadmin/email-preview/send-test", requireAuth, requireRole("super_admin", "admin"), async (req: Request, res: Response) => {
+    const { template: tpl, email: toEmail } = req.body as { template: string; email: string };
+    if (!tpl || !toEmail) return res.redirect("/superadmin/email-preview?error=Dados+inv%C3%A1lidos");
+    try {
+      const { sendEmail, emailLayout, alertBox, ctaButton, detailRow } = await import("../email");
+      const today = new Date();
+      const dateStr = today.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+      const dateShort = today.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+
+      const templateSubjects: Record<string, string> = {
+        booking: "✅ [TESTE] Confirmação de Agendamento",
+        barber: "📅 [TESTE] Novo Agendamento",
+        review: "⭐ [TESTE] Avalie seu Atendimento",
+        password: "🔑 [TESTE] Recuperação de Senha",
+        onboarding: "🎉 [TESTE] Bem-vindo ao Barber Pro!",
+        subscription: "🌟 [TESTE] Assinatura Ativada!",
+        payment: "✅ [TESTE] Pagamento Confirmado",
+        trial: "⏰ [TESTE] Seu Trial Expira em Breve",
+        lead: "📧 [TESTE] Novo Lead Recebido",
+        support: "🎯 [TESTE] Novo Ticket de Suporte",
+        cancellation: "⚠️ [TESTE] Assinatura Cancelada",
+      };
+
+      // Gerar o HTML do template selecionado (mesmos dados de exemplo da rota GET)
+      const buildHtml = (key: string): string => {
+        const nextDue = new Date(); nextDue.setMonth(nextDue.getMonth() + 1);
+        const trialEnd = new Date(); trialEnd.setDate(trialEnd.getDate() + 2);
+        const trialEndStr = trialEnd.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+        const nextDueStr = nextDue.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+
+        const bodies: Record<string, string> = {
+          booking: `${alertBox("✅", "Agendamento confirmado!", "Seu horário está reservado", "#4ADE80")}<p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">Olá, <strong style="color:#ECEDEE">João Silva</strong>! Seu agendamento na <strong style="color:#ECEDEE">Barbearia Exemplo</strong> está confirmado.</p><div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px"><table width="100%" cellpadding="0" cellspacing="0">${detailRow("Serviço","Corte + Barba")}${detailRow("Barbeiro","Carlos Mendes")}${detailRow("Data",dateStr)}${detailRow("Horário","14:00 — 15:00")}${detailRow("Valor","R$ 55,00","#4ADE80",true)}</table></div>${ctaButton("Ver meu agendamento →","https://usebarberpro.com")}`,
+          barber: `${alertBox("📅","Novo agendamento!",dateStr,"#C9A84C")}<p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">Você tem um novo agendamento na <strong style="color:#ECEDEE">Barbearia Exemplo</strong>.</p><div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px"><table width="100%" cellpadding="0" cellspacing="0">${detailRow("Cliente","João Silva")}${detailRow("Serviço","Corte + Barba")}${detailRow("Data",dateStr)}${detailRow("Horário","14:00 — 15:00","#C9A84C",true)}</table></div>${ctaButton("Ver agenda →","https://usebarberpro.com")}`,
+          review: `${alertBox("⭐","Como foi sua experiência?","Sua opinião é muito importante","#FBBF24")}<p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">Olá, <strong style="color:#ECEDEE">João Silva</strong>! Esperamos que tenha gostado do atendimento na <strong style="color:#ECEDEE">Barbearia Exemplo</strong>.</p><div style="text-align:center;margin-bottom:28px"><div style="font-size:40px;letter-spacing:8px">⭐⭐⭐⭐⭐</div></div>${ctaButton("Avaliar atendimento →","https://usebarberpro.com","#FBBF24")}`,
+          password: `${alertBox("🔑","Redefinir sua senha","Solicitação de recuperação","#C9A84C")}<p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">Olá, <strong style="color:#ECEDEE">João Silva</strong>! Recebemos uma solicitação para redefinir sua senha.</p><div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:24px;margin-bottom:24px;text-align:center"><div style="font-size:11px;color:#9BA1A6;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">Código de Verificação</div><div style="font-size:36px;font-weight:900;color:#C9A84C;letter-spacing:8px">847291</div><div style="font-size:12px;color:#555;margin-top:8px">Válido por 15 minutos</div></div>${ctaButton("Redefinir senha →","https://usebarberpro.com")}`,
+          onboarding: `${alertBox("🎉","Bem-vindo ao Barber Pro!","Barbearia Exemplo está pronta para decolar","#4ADE80")}<p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">Olá, <strong style="color:#ECEDEE">João Silva</strong>! Sua barbearia foi criada com sucesso. Você tem <strong style="color:#C9A84C">14 dias grátis</strong> para explorar tudo.</p><div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px"><table width="100%" cellpadding="0" cellspacing="0">${detailRow("Barbearia","Barbearia Exemplo")}${detailRow("Plano","Barber Pro Equipe — R$ 89/mês","#C9A84C")}${detailRow("Trial até",nextDueStr,"#4ADE80",true)}</table></div>${ctaButton("Acessar meu painel →","https://usebarberpro.com")}`,
+          subscription: `${alertBox("🌟","Assinatura ativada!","Barber Pro Equipe está ativo","#4ADE80")}<p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">Olá, <strong style="color:#ECEDEE">João Silva</strong>! Sua assinatura foi ativada com sucesso.</p><div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px"><table width="100%" cellpadding="0" cellspacing="0">${detailRow("Plano","Barber Pro Equipe")}${detailRow("Valor","R$ 89,00/mês","#4ADE80")}${detailRow("Próximo vencimento",nextDueStr,"#FBBF24",true)}</table></div>${ctaButton("Acessar o painel →","https://usebarberpro.com")}`,
+          payment: `${alertBox("✅","Pagamento confirmado!","Sua assinatura está ativa","#4ADE80")}<p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">Olá, <strong style="color:#ECEDEE">João Silva</strong>! Seu pagamento foi confirmado.</p><div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px"><table width="100%" cellpadding="0" cellspacing="0">${detailRow("Plano","Barber Pro Equipe")}${detailRow("Valor pago","R$ 89,00","#4ADE80")}${detailRow("Data",dateShort)}${detailRow("Forma","Pix")}${detailRow("Próximo vencimento",nextDueStr,"#FBBF24",true)}</table></div>${ctaButton("Acessar o painel →","https://usebarberpro.com")}`,
+          trial: `${alertBox("⏰","Seu período de teste expira em 2 dias!",trialEndStr,"#F59E0B")}<p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">Olá, <strong style="color:#ECEDEE">João Silva</strong>! O período de teste da <strong style="color:#ECEDEE">Barbearia Exemplo</strong> expira em 2 dias.</p>${ctaButton("Assinar agora →","https://usebarberpro.com")}`,
+          lead: `${alertBox("📧","Novo lead recebido!","Alguém demonstrou interesse","#60A5FA")}<div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px"><table width="100%" cellpadding="0" cellspacing="0">${detailRow("Nome","João Silva")}${detailRow("E-mail","joao@exemplo.com")}${detailRow("Telefone","(11) 99999-9999","#C9A84C",true)}</table></div>${ctaButton("Ver leads →","https://usebarberpro.com/superadmin")}`,
+          support: `${alertBox("🎯","Novo ticket de suporte","#1234 — Problema com agendamento","#C9A84C")}<div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px"><p style="color:#ECEDEE;font-size:14px;line-height:1.6;margin:0">Olá, estou com dificuldade para configurar os horários de trabalho dos meus barbeiros.</p></div>${ctaButton("Responder ticket →","https://usebarberpro.com/superadmin/suporte")}`,
+          cancellation: `${alertBox("⚠️","Assinatura cancelada","Barber Pro Equipe foi cancelado","#F87171")}<p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">Olá, <strong style="color:#ECEDEE">João Silva</strong>! A assinatura da <strong style="color:#ECEDEE">Barbearia Exemplo</strong> no Barber Pro foi cancelada.</p><div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px"><table width="100%" cellpadding="0" cellspacing="0">${detailRow("Plano cancelado","Barber Pro Equipe")}${detailRow("Data",dateShort,"#F87171")}${detailRow("Acesso","Bloqueado até nova assinatura","#F87171",true)}</table></div>${ctaButton("Reativar assinatura →","https://usebarberpro.com")}`,
+        };
+        const subtitles: Record<string, string> = {
+          booking: "Confirmação de Agendamento", barber: "Novo Agendamento", review: "Avaliação de Atendimento",
+          password: "Recuperação de Senha", onboarding: "Bem-vindo ao Barber Pro", subscription: "Assinatura Ativada",
+          payment: "Confirmação de Pagamento", trial: "Aviso de Trial", lead: "Novo Lead", support: "Suporte ao Cliente",
+          cancellation: "Assinatura Cancelada",
+        };
+        return emailLayout(bodies[key] ?? bodies.booking, { headerSubtitle: subtitles[key] ?? "Barber Pro", previewText: `[TESTE] ${subtitles[key] ?? "Barber Pro"}` });
+      };
+
+      const html = buildHtml(tpl);
+      const subject = templateSubjects[tpl] ?? `[TESTE] ${tpl}`;
+      await sendEmail({ to: toEmail, subject, html });
+      res.redirect(`/superadmin/email-preview?template=${tpl}&sent=${encodeURIComponent(toEmail)}`);
+    } catch (e: any) {
+      res.redirect(`/superadmin/email-preview?template=${tpl}&error=${encodeURIComponent(e.message)}`);
+    }
   });
 }
