@@ -621,7 +621,7 @@ async function startServer() {
                   const tenantArr = Array.isArray(tenantRows) ? tenantRows[0] : tenantRows?.rows ?? [];
                   const tenantInfo = tenantArr?.[0];
                   if (tenantInfo?.adminEmail) {
-                    const { sendEmail } = await import("../email");
+                    const { sendEmail, emailLayout, alertBox, ctaButton, detailRow } = await import("../email");
                     const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
                     const planName = tenantInfo.barberproPlanName ?? 'solo';
                     const planLabel = planLabelMap[planName] ?? planName;
@@ -630,66 +630,34 @@ async function startServer() {
                     const nextDue = tenantInfo.barberproNextDueDate
                       ? new Date(tenantInfo.barberproNextDueDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
                       : 'próximo mês';
+                    const paymentBody = `
+                      ${alertBox('✅', 'Pagamento confirmado!', 'Sua assinatura está ativa', '#4ADE80')}
+                      <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+                        Olá, <strong style="color:#ECEDEE">${tenantInfo.adminName ?? 'Admin'}</strong>! Seu pagamento foi confirmado e a assinatura do
+                        <strong style="color:#ECEDEE">${tenantInfo.tenantName}</strong> no Barber Pro está ativa.
+                      </p>
+                      <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+                        <div style="font-size:11px;color:#555;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:14px">Recibo de Pagamento</div>
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                          ${detailRow('Plano', 'Barber Pro ' + planLabel)}
+                          ${detailRow('Valor pago', 'R$ ' + planPrice.toFixed(2).replace('.', ','), '#4ADE80')}
+                          ${detailRow('Data do pagamento', paidAt)}
+                          ${detailRow('Forma de pagamento', 'Pix')}
+                          ${detailRow('Próximo vencimento', nextDue, '#FBBF24', true)}
+                        </table>
+                      </div>
+                      ${ctaButton('Acessar o painel →', 'https://usebarberpro.com/admin')}
+                      <p style="color:#555555;font-size:12px;text-align:center;margin:0">
+                        O pagamento será cobrado automaticamente todo mês via Pix. Para cancelar, acesse
+                        <a href="https://usebarberpro.com/admin/configuracoes?tab=pagamentos" style="color:#C9A84C">Configurações &gt; Pagamentos</a>.
+                      </p>`;
                     await sendEmail({
                       to: tenantInfo.adminEmail,
                       subject: `✅ Pagamento confirmado — Barber Pro ${planLabel}`,
-                      html: `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#0A0A0A;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-  <div style="max-width:560px;margin:40px auto;background:#111;border:1px solid #222;border-radius:16px;overflow:hidden">
-    <div style="background:linear-gradient(135deg,#1a1a1a,#0A0A0A);padding:32px;text-align:center;border-bottom:1px solid #222">
-      <div style="font-size:28px;font-weight:900;color:#C9A84C;letter-spacing:-1px">✂️ BARBER PRO</div>
-      <div style="font-size:13px;color:#666;margin-top:4px">Sistema Completo de Barbearia</div>
-    </div>
-    <div style="padding:32px">
-      <div style="background:#4ADE8018;border:1.5px solid #4ADE8044;border-radius:12px;padding:16px 20px;margin-bottom:24px;text-align:center">
-        <div style="font-size:28px;margin-bottom:8px">✅</div>
-        <div style="font-size:16px;font-weight:800;color:#4ADE80">Pagamento confirmado!</div>
-        <div style="font-size:13px;color:#888;margin-top:4px">Sua assinatura está ativa</div>
-      </div>
-      <p style="color:#ECEDEE;font-size:15px;line-height:1.6;margin:0 0 16px">Olá, <strong style="color:#C9A84C">${tenantInfo.adminName ?? 'Admin'}</strong>!</p>
-      <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
-        Seu pagamento foi confirmado e a assinatura do <strong style="color:#ECEDEE">${tenantInfo.tenantName}</strong>
-        no Barber Pro está ativa. Acesse o painel normalmente.
-      </p>
-      <div style="background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:20px;margin-bottom:24px">
-        <div style="font-size:11px;color:#555;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:14px">RECIBO DE PAGAMENTO</div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #222">
-          <span style="color:#9BA1A6;font-size:13px">Plano</span>
-          <span style="color:#ECEDEE;font-weight:700;font-size:13px">Barber Pro ${planLabel}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #222">
-          <span style="color:#9BA1A6;font-size:13px">Valor pago</span>
-          <span style="color:#4ADE80;font-weight:800;font-size:15px">R$ ${planPrice.toFixed(2).replace('.', ',')}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #222">
-          <span style="color:#9BA1A6;font-size:13px">Data do pagamento</span>
-          <span style="color:#ECEDEE;font-weight:600;font-size:13px">${paidAt}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #222">
-          <span style="color:#9BA1A6;font-size:13px">Forma de pagamento</span>
-          <span style="color:#ECEDEE;font-weight:600;font-size:13px">Pix</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:10px 0">
-          <span style="color:#9BA1A6;font-size:13px">Próximo vencimento</span>
-          <span style="color:#FBBF24;font-weight:600;font-size:13px">${nextDue}</span>
-        </div>
-      </div>
-      <div style="text-align:center;margin-bottom:24px">
-        <a href="https://usebarberpro.com/admin"
-           style="display:inline-block;background:#C9A84C;color:#000;font-weight:800;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none">
-          ACESSAR O PAINEL →
-        </a>
-      </div>
-      <p style="color:#555;font-size:12px;text-align:center;margin:0">
-        O pagamento será cobrado automaticamente todo mês via Pix. Para cancelar, acesse
-        <a href="https://usebarberpro.com/admin/configuracoes?tab=pagamentos" style="color:#C9A84C">Configurações &gt; Pagamentos</a>.
-      </p>
-    </div>
-    <div style="background:#0A0A0A;padding:20px;text-align:center;border-top:1px solid #1a1a1a">
-      <div style="font-size:11px;color:#444">Barber Pro — <a href="https://usebarberpro.com" style="color:#C9A84C;text-decoration:none">usebarberpro.com</a></div>
-    </div>
-  </div>
-</body></html>`,
+                      html: emailLayout(paymentBody, {
+                        headerSubtitle: 'Confirmação de Pagamento',
+                        previewText: `Pagamento de R$ ${planPrice.toFixed(2).replace('.', ',')} confirmado. Barber Pro ${planLabel} ativo!`,
+                      }),
                     }).catch((e: any) => console.error("[asaas-webhook] Erro ao enviar e-mail de ativação:", e.message));
                   }
                 } catch (emailErr: any) {

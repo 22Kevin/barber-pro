@@ -13,7 +13,7 @@
  * Se a coluna não existir no banco, o job funciona sem persistência (pode reenviar).
  */
 
-import { sendEmail } from "./email";
+import { sendEmail, emailLayout, alertBox, ctaButton } from "./email";
 
 const JOB_INTERVAL_MS = 60 * 60 * 1000; // 1 hora
 const DAYS_AHEAD = 3;
@@ -44,81 +44,41 @@ function buildTrialExpiryEmail(tenantName: string, adminName: string, daysLeft: 
   const urgencyColor = daysLeft <= 1 ? "#EF4444" : daysLeft <= 2 ? "#F59E0B" : "#C9A84C";
   const urgencyText = daysLeft === 0 ? "expira hoje" : daysLeft === 1 ? "expira amanhã" : `expira em ${daysLeft} dias`;
 
-  return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0A0A0A;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
-  <div style="max-width:560px;margin:40px auto;background:#111;border:1px solid #222;border-radius:16px;overflow:hidden">
-    <!-- Header -->
-    <div style="background:linear-gradient(135deg,#1a1a1a,#0A0A0A);padding:32px;text-align:center;border-bottom:1px solid #222">
-      <div style="font-size:28px;font-weight:900;color:#C9A84C;letter-spacing:-1px">✂️ BARBER PRO</div>
-      <div style="font-size:13px;color:#666;margin-top:4px">Sistema Completo de Barbearia</div>
-    </div>
+  const body = `
+    ${alertBox('⏰', `Seu período de teste ${urgencyText}!`, dateFormatted, urgencyColor)}
 
-    <!-- Body -->
-    <div style="padding:32px">
-      <div style="background:${urgencyColor}18;border:1.5px solid ${urgencyColor}44;border-radius:12px;padding:16px 20px;margin-bottom:24px;text-align:center">
-        <div style="font-size:24px;margin-bottom:8px">⏰</div>
-        <div style="font-size:16px;font-weight:800;color:${urgencyColor}">Seu período de teste ${urgencyText}!</div>
-        <div style="font-size:13px;color:#888;margin-top:4px">${dateFormatted}</div>
+    <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+      Olá, <strong style="color:#ECEDEE">${adminName}</strong>! O período de teste gratuito do
+      <strong style="color:#ECEDEE">${tenantName}</strong> no Barber Pro ${urgencyText}.
+      Para continuar usando o sistema sem interrupção, assine agora.
+    </p>
+
+    <!-- Planos -->
+    <div style="margin-bottom:28px">
+      <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div><div style="font-weight:700;color:#ECEDEE">Solo</div><div style="font-size:12px;color:#666">1 barbeiro</div></div>
+        <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 49<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
       </div>
-
-      <p style="color:#ECEDEE;font-size:15px;line-height:1.6;margin:0 0 16px">
-        Olá, <strong style="color:#C9A84C">${adminName}</strong>!
-      </p>
-      <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
-        O período de teste gratuito do <strong style="color:#ECEDEE">${tenantName}</strong> no Barber Pro
-        ${urgencyText}. Para continuar usando o sistema sem interrupção, assine agora.
-      </p>
-
-      <!-- Planos -->
-      <div style="display:grid;gap:12px;margin-bottom:28px">
-        <div style="background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-weight:700;color:#ECEDEE">Solo</div>
-            <div style="font-size:12px;color:#666">1 barbeiro</div>
-          </div>
-          <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 49<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
-        </div>
-        <div style="background:#1a1a1a;border:2px solid #C9A84C44;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-weight:700;color:#ECEDEE">Equipe <span style="font-size:10px;background:#C9A84C22;color:#C9A84C;padding:2px 6px;border-radius:4px;margin-left:4px">POPULAR</span></div>
-            <div style="font-size:12px;color:#666">até 5 barbeiros</div>
-          </div>
-          <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 89<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
-        </div>
-        <div style="background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-weight:700;color:#ECEDEE">Estúdio</div>
-            <div style="font-size:12px;color:#666">barbeiros ilimitados</div>
-          </div>
-          <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 149<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
-        </div>
+      <div style="background:#1A1A1A;border:2px solid #C9A84C44;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div><div style="font-weight:700;color:#ECEDEE">Equipe <span style="font-size:10px;background:#C9A84C22;color:#C9A84C;padding:2px 6px;border-radius:4px;margin-left:4px">POPULAR</span></div><div style="font-size:12px;color:#666">até 5 barbeiros</div></div>
+        <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 89<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
       </div>
-
-      <!-- CTA -->
-      <div style="text-align:center;margin-bottom:24px">
-        <a href="https://usebarberpro.com/admin/configuracoes#pagamentos"
-           style="display:inline-block;background:#C9A84C;color:#000;font-weight:800;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none;letter-spacing:0.5px">
-          ASSINAR AGORA →
-        </a>
-      </div>
-
-      <p style="color:#555;font-size:12px;text-align:center;margin:0">
-        Após a assinatura, o pagamento é feito via Pix e a ativação é imediata.
-      </p>
-    </div>
-
-    <!-- Footer -->
-    <div style="background:#0A0A0A;padding:20px;text-align:center;border-top:1px solid #1a1a1a">
-      <div style="font-size:11px;color:#444">
-        Barber Pro — Sistema Completo de Barbearia<br>
-        <a href="https://usebarberpro.com" style="color:#C9A84C;text-decoration:none">usebarberpro.com</a>
+      <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-weight:700;color:#ECEDEE">Estúdio</div><div style="font-size:12px;color:#666">barbeiros ilimitados</div></div>
+        <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 149<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
       </div>
     </div>
-  </div>
-</body>
-</html>`;
+
+    ${ctaButton('Assinar agora →', 'https://usebarberpro.com/admin/configuracoes#pagamentos')}
+
+    <p style="color:#555555;font-size:12px;text-align:center;margin:0">
+      Após a assinatura, o pagamento é feito via Pix e a ativação é imediata.
+    </p>`;
+
+  return emailLayout(body, {
+    headerSubtitle: 'Aviso de Trial',
+    previewText: `Seu trial do Barber Pro ${urgencyText}. Assine agora para continuar.`,
+  });
 }
 
 async function runTrialExpiryJob() {
