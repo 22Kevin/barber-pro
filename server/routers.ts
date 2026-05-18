@@ -2682,6 +2682,83 @@ export const appRouter = router({
         `);
         return { ok: true };
       }),
+
+    upgradeBarberproSubscription: publicProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        newPlan: z.enum(['solo', 'team', 'studio']),
+      }))
+      .mutation(async ({ input }) => {
+        if (!asaasEnabled) throw new Error('ASAAS_API_KEY não configurada.');
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new Error('DB unavailable');
+
+        const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
+        const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
+        const newPrice = planPriceMap[input.newPlan];
+        const newLabel = planLabelMap[input.newPlan];
+
+        // Buscar dados do tenant
+        const tenantRows = await dbConn.execute(sql`
+          SELECT "barberproSubscriptionId", "barberproAsaasCustomerId",
+                 "asaasMobilePhone", phone, name, cnpj
+          FROM tenants WHERE id = ${input.tenantId} LIMIT 1
+        `);
+        const tenantData = ((tenantRows as any).rows as any[])[0];
+        if (!tenantData) throw new Error('Tenant não encontrado.');
+
+        // 1. Cancelar assinatura atual
+        if (tenantData.barberproSubscriptionId) {
+          try { await cancelAsaasSubscription(tenantData.barberproSubscriptionId); } catch {}
+        }
+
+        // 2. Garantir customer Asaas
+        const asaasCustomerId = await ensureAsaasCustomer({
+          name: tenantData.name ?? 'Cliente',
+          cpfCnpj: tenantData.cnpj ?? '',
+          mobilePhone: (tenantData.asaasMobilePhone ?? tenantData.phone ?? '').replace(/\D/g, ''),
+          tenantId: input.tenantId,
+        });
+
+        // 3. Criar nova assinatura
+        const today = new Date();
+        const nextDue = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate()).toISOString().slice(0, 10);
+        const newSubId = await createAsaasSubscription({
+          customer: asaasCustomerId,
+          billingType: 'PIX',
+          value: newPrice,
+          nextDueDate: nextDue,
+          cycle: 'MONTHLY',
+          description: `Barber Pro — Plano ${newLabel} (R$ ${newPrice}/mês)`,
+          externalReference: `tenant_${input.tenantId}`,
+        });
+
+        // 4. Atualizar banco
+        await dbConn.execute(sql`
+          UPDATE tenants SET
+            plan = ${input.newPlan}::"plan",
+            "barberproSubscriptionId" = ${newSubId},
+            "barberproSubscriptionStatus" = 'pending',
+            "barberproPlanName" = ${newLabel},
+            "barberproPlanPrice" = ${newPrice},
+            "barberproNextDueDate" = ${nextDue},
+            "updatedAt" = NOW()
+          WHERE id = ${input.tenantId}
+        `);
+
+        // 5. Buscar link de pagamento
+        try {
+          const paymentsRes = await asaasApi.get(`/subscriptions/${newSubId}/payments?limit=1`);
+          const firstPayment = paymentsRes.data?.data?.[0];
+          if (firstPayment?.invoiceUrl) return { paymentLink: firstPayment.invoiceUrl as string, pixCopyCola: null };
+          if (firstPayment?.id) {
+            const pixRes = await asaasApi.get(`/payments/${firstPayment.id}/pixQrCode`);
+            if (pixRes.data?.payload) return { paymentLink: null, pixCopyCola: pixRes.data.payload as string };
+          }
+        } catch {}
+
+        return { paymentLink: null, pixCopyCola: null };
+      }),
   }),
   suppliers: router({
     list: publicProcedure

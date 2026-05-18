@@ -60,6 +60,7 @@ export default function BarberProPaywallScreen() {
   const [ownerCpfCnpj, setOwnerCpfCnpj] = useState("");
   const [ownerPhone, setOwnerPhone] = useState(barber?.phone ?? "");
   const [step, setStep] = useState<"plans" | "form" | "pending">("plans");
+  const [billingType, setBillingType] = useState<"PIX" | "DEBIT_CARD">("PIX");
   const [pixCopyCola, setPixCopyCola] = useState<string | null>(null);
 
   const plan = PLANS.find((p) => p.key === selectedPlan)!;
@@ -98,7 +99,7 @@ export default function BarberProPaywallScreen() {
       tenantId,
       planName: plan.label,
       planPrice: plan.price,
-      billingType: "PIX",
+      billingType: billingType,
       ownerName: ownerName.trim(),
       ownerEmail: ownerEmail.trim(),
       ownerCpfCnpj: ownerCpfCnpj.replace(/\D/g, ""),
@@ -180,7 +181,7 @@ export default function BarberProPaywallScreen() {
           <Text style={styles.subtitle}>
             {step === "plans"
               ? "Seu período de trial encerrou. Assine agora para continuar usando o Barber Pro."
-              : `Plano ${plan.label} — R$ ${plan.price}/mês via Pix`}
+              : `Plano ${plan.label} — R$ ${plan.price}/mês via ${billingType === "PIX" ? "Pix" : "Cartão de Débito"}`}
           </Text>
         </View>
 
@@ -269,6 +270,38 @@ export default function BarberProPaywallScreen() {
                 keyboardType="phone-pad"
               />
             </View>
+            {/* Forma de pagamento */}
+            <View style={styles.formCard}>
+              <Text style={[styles.formLabel, { marginTop: 0 }]}>Forma de pagamento *</Text>
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.payMethodBtn,
+                    billingType === "PIX" && styles.payMethodBtnActive,
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => setBillingType("PIX")}
+                >
+                  <Text style={[styles.payMethodText, billingType === "PIX" && styles.payMethodTextActive]}>Pix</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.payMethodBtn,
+                    billingType === "DEBIT_CARD" && styles.payMethodBtnActive,
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => setBillingType("DEBIT_CARD")}
+                >
+                  <Text style={[styles.payMethodText, billingType === "DEBIT_CARD" && styles.payMethodTextActive]}>Cartão de Débito</Text>
+                </Pressable>
+              </View>
+              {billingType === "DEBIT_CARD" && (
+                <Text style={[styles.formLabel, { marginTop: 8, color: "#FBBF24" }]}>
+                  ⚠️ O link de pagamento será aberto no navegador para inserir os dados do cartão.
+                </Text>
+              )}
+            </View>
+
             <Pressable style={styles.backBtn} onPress={() => setStep("plans")}>
               <Text style={styles.backBtnText}>← Voltar para planos</Text>
             </Pressable>
@@ -392,4 +425,8 @@ const styles = StyleSheet.create({
   pixCode: { fontSize: 11, color: "#ECEDEE", fontFamily: "monospace", lineHeight: 18 },
   copyBtn: { backgroundColor: "#1A1A1A", borderRadius: 10, paddingVertical: 10, alignItems: "center", marginTop: 4 },
   copyBtnText: { fontSize: 13, fontWeight: "600", color: "#C9A84C" },
+  payMethodBtn: { flex: 1, backgroundColor: "#1A1A1A", borderRadius: 10, paddingVertical: 12, alignItems: "center", borderWidth: 1.5, borderColor: "#2A2A2A" },
+  payMethodBtnActive: { borderColor: "#C9A84C", backgroundColor: "#1A1500" },
+  payMethodText: { fontSize: 13, fontWeight: "600", color: "#9BA1A6" },
+  payMethodTextActive: { color: "#C9A84C" },
 });

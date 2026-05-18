@@ -9358,7 +9358,7 @@ export function registerAdminRoutes(app: Express): void {
       </script>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayout("Clientes em Órbita", "orbita", body, barber?.name, _tp));
+    res.send(adminLayout("Clientes em Órbita", "orbita", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Clientes em Órbita",href:"/admin/orbita"}]));
   }));
 
   // ─── Encomendas de Produtos ────────────────────────────────────────────────
@@ -9436,7 +9436,7 @@ export function registerAdminRoutes(app: Express): void {
       </script>
     `;
     const _tp2 = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayout("Encomendas", "encomendas", body, barber?.name, _tp2));
+    res.send(adminLayout("Encomendas", "encomendas", body, barber?.name, _tp2, [{label:"Dashboard",href:"/admin"},{label:"Encomendas",href:"/admin/encomendas"}]));
     } catch (err: any) {
       console.error('[/admin/encomendas] Erro:', err?.message);
       res.send(adminLayout("Encomendas", "encomendas", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/encomendas" class="btn btn-primary">Tentar novamente</a></div>`));
@@ -9691,7 +9691,7 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
     `;
-    res.send(adminLayout("Fornecedores", "fornecedores", body, barber?.name, _tp));
+    res.send(adminLayout("Fornecedores", "fornecedores", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fornecedores",href:"/admin/fornecedores"}]));
     } catch (err: any) {
       console.error('[/admin/fornecedores] Erro:', err?.message);
       res.send(adminLayout("Fornecedores", "fornecedores", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/fornecedores" class="btn btn-primary">Tentar novamente</a></div>`));
@@ -9873,6 +9873,6 @@ export function registerAdminRoutes(app: Express): void {
         <div class="card-body" style="padding:0">${historyTable}</div>
       </div>
     `;
-    res.send(adminLayout(`${esc(supplier.name)} — Fornecedor`, "fornecedores", body, barber?.name, _tp));
+    res.send(adminLayout(`${esc(supplier.name)} — Fornecedor`, "fornecedores", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fornecedores",href:"/admin/fornecedores"},{label:esc(supplier.name),href:"#"}]));
   }));
 }

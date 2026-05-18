@@ -2305,3 +2305,8 @@
 - [x] App mobile: tela de paywall ao expirar trial
 - [x] App mobile: status de assinatura nas configurações
 - [ ] App mobile: botão de upgrade de plano no app
+
+## Melhorias Round 5 (18/05/2026)
+- [x] App mobile: botão de upgrade de plano na seção Minha Assinatura (settings.tsx)
+- [x] Onboarding: opção "Cartão de débito" na tela de forma de pagamento
+- [x] Breadcrumbs no painel admin da barbearia (admin-routes.ts) — todas as páginas
