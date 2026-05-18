@@ -2310,3 +2310,8 @@
 - [x] App mobile: botão de upgrade de plano na seção Minha Assinatura (settings.tsx)
 - [x] Onboarding: opção "Cartão de débito" na tela de forma de pagamento
 - [x] Breadcrumbs no painel admin da barbearia (admin-routes.ts) — todas as páginas
+
+## Correções Round 5b (18/05/2026)
+- [x] Bug SQL: campo selectedPlan duplicado no form causava array e erro UPDATE tenant_plan
+- [x] Bug SQL: cast ::\"plan\" substituído por sql.raw()::tenant_plan nos endpoints subscribe e upgrade-plan
+- [x] Painel web: seletor de forma de pagamento (Pix / Cartão de Débito) adicionado ao formulário de assinatura

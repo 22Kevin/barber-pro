@@ -3734,13 +3734,16 @@ async function renderConfiguracoes(req: Request, res: Response) {
           <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
             ${bpStatus === 'trial' || bpStatus === 'cancelled' ? `
               <form method="POST" action="/admin/configuracoes/asaas/subscribe" style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
-                <input type="hidden" name="selectedPlan" value="${tenantRealPlan}" />
                 <select name="selectedPlan" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer">
                   <option value="solo" ${tenantRealPlan === 'solo' ? 'selected' : ''}>Solo — R$ 49/mês (1 barbeiro)</option>
                   <option value="team" ${tenantRealPlan === 'team' ? 'selected' : ''}>Equipe — R$ 89/mês (até 5 barbeiros)</option>
                   <option value="studio" ${tenantRealPlan === 'studio' ? 'selected' : ''}>Estúdio — R$ 149/mês (ilimitado)</option>
                 </select>
-                <button type="submit" class="btn btn-primary" style="font-size:12px;padding:8px 16px;white-space:nowrap">Assinar agora via Pix</button>
+                <select name="billingType" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer">
+                  <option value="PIX">Pix</option>
+                  <option value="DEBIT_CARD">Cartão de Débito</option>
+                </select>
+                <button type="submit" class="btn btn-primary" style="font-size:12px;padding:8px 16px;white-space:nowrap">Assinar agora</button>
               </form>
             ` : ''}
             ${bpStatus === 'active' ? `
@@ -5986,7 +5989,10 @@ export function registerAdminRoutes(app: Express): void {
       });
 
       // Plano selecionado pelo usuário no formulário (ou plano real do tenant como fallback)
-      const selectedPlan = (req.body as any)?.selectedPlan ?? tenantData.plan ?? 'solo';
+      // Garantir string simples (não array) — Express pode retornar array se houver campos duplicados
+      const rawPlan = (req.body as any)?.selectedPlan;
+      const selectedPlan: string = (Array.isArray(rawPlan) ? rawPlan[rawPlan.length - 1] : rawPlan) ?? tenantData.plan ?? 'solo';
+      const billingType: string = (req.body as any)?.billingType === 'DEBIT_CARD' ? 'DEBIT_CARD' : 'PIX';
       const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
       const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
       const planPrice = planPriceMap[selectedPlan] ?? 49;
@@ -5999,7 +6005,7 @@ export function registerAdminRoutes(app: Express): void {
 
       const subscriptionId = await createAsaasSubscription({
         customer: asaasCustomerId,
-        billingType: 'PIX',
+        billingType: billingType as 'PIX' | 'DEBIT_CARD',
         value: planPrice,
         nextDueDate: nextDue,
         cycle: 'MONTHLY',
@@ -6008,9 +6014,10 @@ export function registerAdminRoutes(app: Express): void {
       });
 
       // Atualizar o plano real do tenant também (para manter consistência)
+      // Nota: usamos sql.raw para o cast do enum tenant_plan para evitar parâmetros duplicados
       await dbConn.execute(sql`
         UPDATE tenants SET
-          plan = ${selectedPlan}::"plan",
+          plan = ${sql.raw(selectedPlan)}::tenant_plan,
           "barberproSubscriptionId" = ${subscriptionId},
           "barberproSubscriptionStatus" = 'pending',
           "barberproPlanName" = ${selectedPlan},
@@ -6192,7 +6199,7 @@ export function registerAdminRoutes(app: Express): void {
       // 4. Atualizar o banco com o novo plano
       await dbConn.execute(sql`
         UPDATE tenants SET
-          plan = ${newPlan}::"plan",
+          plan = ${sql.raw(newPlan)}::tenant_plan,
           "barberproSubscriptionId" = ${newSubId},
           "barberproSubscriptionStatus" = 'pending',
           "barberproPlanName" = ${newPlan},
