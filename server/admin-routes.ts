@@ -3724,16 +3724,18 @@ async function renderConfiguracoes(req: Request, res: Response) {
       <!-- Assinatura Barber Pro -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px">
         <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:12px">ASSINATURA BARBER PRO</div>
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
-          <div>
-            <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">${bpPlanLabel[effectivePlanName] ?? effectivePlanName}</div>
-            <div style="font-size:13px;font-weight:600;color:${bpStatusColor[bpStatus] ?? 'var(--muted)'}">${bpStatusLabel[bpStatus] ?? bpStatus}</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:4px">R$ ${effectivePlanPrice.toFixed(2)}/mês</div>
-            ${bpNextDueFmt ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">Próximo vencimento: ${bpNextDueFmt}</div>` : ''}
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+            <div>
+              <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">${bpPlanLabel[effectivePlanName] ?? effectivePlanName}</div>
+              <div style="font-size:13px;font-weight:600;color:${bpStatusColor[bpStatus] ?? 'var(--muted)'}">${bpStatusLabel[bpStatus] ?? bpStatus}</div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">R$ ${effectivePlanPrice.toFixed(2)}/mês</div>
+              ${bpNextDueFmt ? `<div style="font-size:12px;color:var(--muted);margin-top:2px">Próximo vencimento: ${bpNextDueFmt}</div>` : ''}
+            </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          <div style="display:flex;flex-direction:column;gap:8px">
             ${bpStatus === 'trial' || bpStatus === 'cancelled' ? `
-              <div id="subscribe-widget" style="display:flex;flex-direction:column;gap:10px;align-items:flex-end;width:100%">
+              <div id="subscribe-widget" style="display:flex;flex-direction:column;gap:10px;width:100%">
                 <!-- Seletor de plano -->
                 <select id="sub-plan" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;width:100%">
                   <option value="solo" ${tenantRealPlan === 'solo' ? 'selected' : ''}>Solo — R$ 49/mês (1 barbeiro)</option>

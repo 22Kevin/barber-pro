@@ -1755,7 +1755,7 @@ export function registerSuperAdminRoutes(app: Express): void {
 
       await dbConn.execute(sqlTag`
         UPDATE tenants SET
-          plan = ${planName}::"plan",
+          plan = ${sqlTag.raw(planName)}::tenant_plan,
           "barberproPlanName" = ${planName},
           "barberproPlanPrice" = ${planPrice},
           "barberproSubscriptionStatus" = ${subscriptionStatus},

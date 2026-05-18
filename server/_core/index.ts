@@ -598,7 +598,7 @@ async function startServer() {
                   ? `, "barberproNextDueDate" = '${req.body.payment.dueDate}'::date`
                   : `, "barberproNextDueDate" = (NOW() + INTERVAL '30 days')::date`;
 
-                planUpdateClause = `, "barberproPlanName" = '${detectedPlan}', "barberproPlanPrice" = ${detectedPrice}, plan = '${detectedPlan}'::"plan"${nextDueFromPayment}`;
+                planUpdateClause = `, "barberproPlanName" = '${detectedPlan}', "barberproPlanPrice" = ${detectedPrice}, plan = '${detectedPlan}'::tenant_plan${nextDueFromPayment}`;
                 console.log(`[asaas-webhook] Plano detectado: ${detectedPlan} (R$${detectedPrice}) para tenant ${tenantId}`);
               }
 

@@ -2794,7 +2794,7 @@ export const appRouter = router({
         // 4. Atualizar banco
         await dbConn.execute(sql`
           UPDATE tenants SET
-            plan = ${input.newPlan}::"plan",
+            plan = ${sql.raw(input.newPlan)}::tenant_plan,
             "barberproSubscriptionId" = ${newSubId},
             "barberproSubscriptionStatus" = 'pending',
             "barberproPlanName" = ${newLabel},

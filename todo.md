@@ -2332,3 +2332,7 @@
 - [x] Máscara automática CPF/CNPJ no formulário web de Configurar Pagamentos Online
 - [x] Tela de confirmação pós-pagamento após webhook ativar assinatura
 - [x] Validação em tempo real com ícone de erro no campo CPF/CNPJ (web + app mobile)
+
+## Bugs Round 9 (18/05/2026)
+- [x] Bug SQL: selectedPlan ainda chega como array no /subscribe via Pix (cast duplicado)
+- [x] Layout: botão "Débito" sumindo do seletor de forma de pagamento (overflow)
