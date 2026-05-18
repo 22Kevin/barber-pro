@@ -2291,3 +2291,6 @@
 - [x] E-mail de boas-vindas/confirmação ao assinar o Barber Pro
 - [x] Aba "Em Trial" no superadmin com lista de barbearias e extensão manual do trial
 - [x] Push notification de trial expirando no app do barbeiro (complementar ao e-mail)
+## Melhorias Asaas Round 4 (18/05/2026)
+- [x] E-mail de confirmação de pagamento (assinatura ativada) via webhook PAYMENT_RECEIVED
+- [x] Relatório de churn no superadmin: aba Cancelamentos/Expirados com taxa de conversão (30 dias) 30 dias)

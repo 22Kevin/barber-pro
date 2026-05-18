@@ -1338,6 +1338,25 @@ export function registerSuperAdminRoutes(app: Express): void {
     const pendingSubscriptions = tenantsWithSub.filter((t: any) => t.barberproSubscriptionStatus === 'pending').length;
     const trialTenants = tenantsWithSub.filter((t: any) => !t.barberproSubscriptionStatus || t.barberproSubscriptionStatus === 'trial').length;
 
+    // Churn: barbearias que cancelaram ou expiraram nos últimos 30 dias
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+    const churnList = tenantsWithSub.filter((t: any) => {
+      const status = t.barberproSubscriptionStatus ?? 'trial';
+      if (status !== 'cancelled' && status !== 'expired' && status !== 'overdue') return false;
+      const refDate = t.barberproNextDueDate ? new Date(t.barberproNextDueDate + 'T12:00:00') :
+                      t.trialEndsAt ? new Date(t.trialEndsAt) : null;
+      if (!refDate) return status === 'cancelled';
+      return refDate >= thirtyDaysAgo;
+    }).sort((a: any, b: any) => {
+      const da = a.barberproNextDueDate ? new Date(a.barberproNextDueDate + 'T12:00:00').getTime() : 0;
+      const db2 = b.barberproNextDueDate ? new Date(b.barberproNextDueDate + 'T12:00:00').getTime() : 0;
+      return db2 - da;
+    });
+
+    // Taxa de conversão e churn rate
+    const conversionRate = totalTenants > 0 ? Math.round((activeSubscriptions / totalTenants) * 100) : 0;
+    const churnRate = activeSubscriptions > 0 ? Math.round((churnList.length / activeSubscriptions) * 100) : 0;
+
     // MRR por plano
     const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
     const activeSubs = tenantsWithSub.filter((t: any) => t.barberproSubscriptionStatus === 'active');
@@ -1395,6 +1414,16 @@ export function registerSuperAdminRoutes(app: Express): void {
             <div class="metric-value" style="color:var(--muted)">${trialTenants}</div>
             <div class="metric-sub">não assinantes</div>
           </div>
+          <div class="metric-card">
+            <div class="metric-label">Taxa de Conversão</div>
+            <div class="metric-value" style="color:${conversionRate >= 50 ? '#4ADE80' : conversionRate >= 25 ? '#FBBF24' : '#F87171'}">${conversionRate}%</div>
+            <div class="metric-sub">trial → assinante</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Churn (30 dias)</div>
+            <div class="metric-value" style="color:${churnRate === 0 ? '#4ADE80' : churnRate <= 5 ? '#FBBF24' : '#F87171'}">${churnList.length}</div>
+            <div class="metric-sub">${churnRate}% dos ativos</div>
+          </div>
         </div>
 
         <!-- Distribuição por plano -->
@@ -1419,10 +1448,13 @@ export function registerSuperAdminRoutes(app: Express): void {
         <!-- Abas de navegação -->
         <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px">
           <a href="/superadmin/planos?tab=todos" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'todos' ? 'background:var(--gold);color:#0C0C0C' : 'color:var(--muted)'}">
-            Todas as Barbearias (${totalTenants})
+            Todas (${totalTenants})
           </a>
           <a href="/superadmin/planos?tab=trial" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'trial' ? 'background:var(--gold);color:#0C0C0C' : 'color:var(--muted)'}">
-            Em Trial / Expirado (${trialList.length})
+            Trial / Expirado (${trialList.length})
+          </a>
+          <a href="/superadmin/planos?tab=churn" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'churn' ? 'background:#F87171;color:#fff' : 'color:var(--muted)'}">
+            Churn 30d (${churnList.length})
           </a>
         </div>
 
@@ -1484,7 +1516,56 @@ export function registerSuperAdminRoutes(app: Express): void {
         </div>
         ` : ''}
 
-        ${activeTab !== 'trial' ? `
+        ${activeTab === 'churn' ? `
+        <!-- Tabela de churn -->
+        <div class="table-wrap">
+          <div class="table-header">
+            <h2>Churn — Cancelamentos e Expirações (30 dias)</h2>
+            <span style="font-size:12px;color:var(--muted)">${churnList.length} barbearia(s) • taxa: ${churnRate}% dos ativos</span>
+          </div>
+          <table>
+            <thead><tr>
+              <th>Barbearia</th>
+              <th>Motivo</th>
+              <th>Plano</th>
+              <th>Valor Perdido/mês</th>
+              <th>Data Referência</th>
+              <th>Ações</th>
+            </tr></thead>
+            <tbody>
+              ${churnList.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">🎉 Nenhum cancelamento nos últimos 30 dias!</td></tr>` : ''}
+              ${churnList.map((t: any) => {
+                const status = t.barberproSubscriptionStatus ?? 'cancelled';
+                const planName = t.barberproPlanName ?? t.plan ?? 'solo';
+                const planLabel2 = planLabelMap[planName] ?? planName;
+                const planPrice2 = t.barberproPlanPrice ? parseFloat(t.barberproPlanPrice) : (planPriceMap[planName] ?? 0);
+                const refDate = t.barberproNextDueDate
+                  ? new Date(t.barberproNextDueDate + 'T12:00:00').toLocaleDateString('pt-BR')
+                  : t.trialEndsAt ? new Date(t.trialEndsAt).toLocaleDateString('pt-BR') : '—';
+                const motivo = status === 'cancelled' ? '⚫ Cancelamento' : status === 'expired' ? '🔴 Trial Expirado' : '🟠 Em Atraso';
+                const motivoColor = status === 'cancelled' ? '#888' : status === 'expired' ? '#F87171' : '#FBBF24';
+                return `
+                  <tr>
+                    <td>
+                      <div style="font-weight:700">${esc(t.name)}</div>
+                      <div style="font-size:11px;color:var(--muted)">${esc(t.slug)}</div>
+                    </td>
+                    <td><span style="color:${motivoColor};font-weight:600;font-size:12px">${motivo}</span></td>
+                    <td style="font-weight:700;color:${planName === 'studio' ? '#C084FC' : planName === 'team' ? 'var(--gold)' : 'var(--muted)'}">${planLabel2}</td>
+                    <td style="font-weight:800;color:#F87171;font-size:14px">${planPrice2 > 0 ? `− R$ ${planPrice2.toFixed(2).replace('.', ',')}` : '—'}</td>
+                    <td style="color:var(--muted);font-size:12px">${refDate}</td>
+                    <td class="actions">
+                      <a href="/superadmin/planos/editar/${t.id}" class="btn btn-gold" style="font-size:12px;padding:6px 14px">Reativar</a>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        ${activeTab === 'todos' ? `
         <!-- Tabela de assinantes -->
         <div class="table-wrap">
           <div class="table-header">
