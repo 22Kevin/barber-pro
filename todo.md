@@ -2336,3 +2336,9 @@
 ## Bugs Round 9 (18/05/2026)
 - [x] Bug SQL: selectedPlan ainda chega como array no /subscribe via Pix (cast duplicado)
 - [x] Layout: botão "Débito" sumindo do seletor de forma de pagamento (overflow)
+
+## Round 10 — Máscaras e UX de Pagamento (18/05/2026)
+- [x] Varredura completa: mapear todos os campos sem máscara no painel web
+- [x] Máscaras centralizadas: CPF, CNPJ, CEP, telefone, celular, cartão, validade, CVV, data de nascimento
+- [x] Polling de status pós-Pix com botão "Já paguei — verificar status"
+- [x] E-mail de boas-vindas personalizado por forma de pagamento (Pix vs Cartão)

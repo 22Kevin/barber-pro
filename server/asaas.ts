@@ -464,3 +464,21 @@ export async function getAsaasPaymentStatus(paymentId: string): Promise<{
     paymentDate: res.data.paymentDate,
   };
 }
+
+/**
+ * Busca os pagamentos de uma assinatura Asaas.
+ * Retorna a lista de cobranças com status, valor e data de vencimento.
+ */
+export async function getAsaasSubscriptionPayments(subscriptionId: string): Promise<{
+  data: Array<{ id: string; status: string; value: number; dueDate: string; paymentDate?: string; billingType?: string }>;
+  totalCount: number;
+}> {
+  if (!asaasEnabled) throw new Error("Asaas não configurado.");
+  const res = await asaasApi.get(`/payments`, {
+    params: { subscription: subscriptionId, limit: 10, offset: 0 }
+  });
+  return {
+    data: res.data.data ?? [],
+    totalCount: res.data.totalCount ?? 0,
+  };
+}

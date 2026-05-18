@@ -778,6 +778,95 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         finishProgress();
       }
     })();
+
+    // ── Máscaras globais ──────────────────────────────────────────────────────
+    (function() {
+      function applyMask(input, type) {
+        input.addEventListener('input', function(e) {
+          var v = input.value.replace(/\D/g, '');
+          if (type === 'phone') {
+            // (11) 99999-9999 ou (11) 9999-9999
+            if (v.length > 11) v = v.slice(0, 11);
+            if (v.length > 10) {
+              v = '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
+            } else if (v.length > 6) {
+              v = '(' + v.slice(0,2) + ') ' + v.slice(2,6) + '-' + v.slice(6);
+            } else if (v.length > 2) {
+              v = '(' + v.slice(0,2) + ') ' + v.slice(2);
+            } else if (v.length > 0) {
+              v = '(' + v;
+            }
+            input.value = v;
+          } else if (type === 'cep') {
+            if (v.length > 8) v = v.slice(0, 8);
+            if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5);
+            input.value = v;
+          } else if (type === 'cpf') {
+            if (v.length > 11) v = v.slice(0, 11);
+            if (v.length > 9) v = v.slice(0,3) + '.' + v.slice(3,6) + '.' + v.slice(6,9) + '-' + v.slice(9);
+            else if (v.length > 6) v = v.slice(0,3) + '.' + v.slice(3,6) + '.' + v.slice(6);
+            else if (v.length > 3) v = v.slice(0,3) + '.' + v.slice(3);
+            input.value = v;
+          } else if (type === 'cnpj') {
+            if (v.length > 14) v = v.slice(0, 14);
+            if (v.length > 12) v = v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5,8) + '/' + v.slice(8,12) + '-' + v.slice(12);
+            else if (v.length > 8) v = v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5,8) + '/' + v.slice(8);
+            else if (v.length > 5) v = v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5);
+            else if (v.length > 2) v = v.slice(0,2) + '.' + v.slice(2);
+            input.value = v;
+          } else if (type === 'cpf-cnpj') {
+            if (v.length <= 11) {
+              // CPF
+              if (v.length > 9) v = v.slice(0,3) + '.' + v.slice(3,6) + '.' + v.slice(6,9) + '-' + v.slice(9);
+              else if (v.length > 6) v = v.slice(0,3) + '.' + v.slice(3,6) + '.' + v.slice(6);
+              else if (v.length > 3) v = v.slice(0,3) + '.' + v.slice(3);
+              input.value = v;
+            } else {
+              // CNPJ
+              v = v.slice(0, 14);
+              if (v.length > 12) v = v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5,8) + '/' + v.slice(8,12) + '-' + v.slice(12);
+              else if (v.length > 8) v = v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5,8) + '/' + v.slice(8);
+              else if (v.length > 5) v = v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5);
+              else v = v.slice(0,2) + '.' + v.slice(2);
+              input.value = v;
+            }
+          } else if (type === 'card-number') {
+            if (v.length > 16) v = v.slice(0, 16);
+            v = v.replace(/(\d{4})(?=\d)/g, '$1 ');
+            input.value = v;
+          } else if (type === 'card-expiry') {
+            if (v.length > 6) v = v.slice(0, 6);
+            if (v.length > 2) v = v.slice(0,2) + '/' + v.slice(2);
+            input.value = v;
+          } else if (type === 'card-cvv') {
+            if (v.length > 4) v = v.slice(0, 4);
+            input.value = v;
+          }
+        });
+      }
+      function initMasks() {
+        document.querySelectorAll('[data-mask]').forEach(function(el) {
+          applyMask(el, el.getAttribute('data-mask'));
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMasks);
+      } else {
+        initMasks();
+      }
+      // Re-init masks when dynamic content is added (modals, etc.)
+      var _maskObs = new MutationObserver(function(mutations) {
+        mutations.forEach(function(m) {
+          m.addedNodes.forEach(function(node) {
+            if (node.nodeType === 1) {
+              if (node.hasAttribute && node.hasAttribute('data-mask')) applyMask(node, node.getAttribute('data-mask'));
+              node.querySelectorAll && node.querySelectorAll('[data-mask]').forEach(function(el) { applyMask(el, el.getAttribute('data-mask')); });
+            }
+          });
+        });
+      });
+      _maskObs.observe(document.body, { childList: true, subtree: true });
+    })();
   </script>
 </body>
 </html>`;
@@ -2538,7 +2627,7 @@ async function renderClientes(req: Request, res: Response) {
           </div>
           <div class="form-group">
             <label class="form-label">Telefone *</label>
-            <input type="text" name="phone" class="form-input" required placeholder="(11) 99999-9999" />
+            <input type="text" name="phone" class="form-input" required placeholder="(11) 99999-9999" maxlength="15" data-mask="phone" />
           </div>
           <div class="form-group">
             <label class="form-label">E-mail</label>
@@ -2572,7 +2661,7 @@ async function renderClientes(req: Request, res: Response) {
           </div>
           <div class="form-group">
             <label class="form-label">Telefone *</label>
-            <input type="text" name="phone" id="editPhone" class="form-input" required />
+            <input type="text" name="phone" id="editPhone" class="form-input" required placeholder="(11) 99999-9999" maxlength="15" data-mask="phone" />
           </div>
           <div class="form-group">
             <label class="form-label">E-mail</label>
@@ -3386,11 +3475,11 @@ async function renderConfiguracoes(req: Request, res: Response) {
         </div>
         <div class="form-group">
           <label class="form-label">Telefone</label>
-          <input class="form-input" type="text" name="phone" value="${esc(settings?.phone ?? "")}" placeholder="(11) 99999-9999" />
+          <input class="form-input" type="text" name="phone" value="${esc(settings?.phone ?? "")}" placeholder="(11) 99999-9999" maxlength="15" data-mask="phone" />
         </div>
         <div class="form-group">
           <label class="form-label">WhatsApp</label>
-          <input class="form-input" type="text" name="whatsapp" value="${esc(settings?.whatsapp ?? "")}" placeholder="5511999999999" />
+          <input class="form-input" type="text" name="whatsapp" value="${esc(settings?.whatsapp ?? "")}" placeholder="5511999999999" maxlength="15" data-mask="phone" />
         </div>
         <div class="form-group">
           <label class="form-label">Instagram</label>
@@ -3410,7 +3499,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
         </div>
         <div class="form-group">
           <label class="form-label">CEP</label>
-          <input class="form-input" type="text" name="cep" value="${esc(settings?.cep ?? "")}" />
+          <input class="form-input" type="text" name="cep" value="${esc(settings?.cep ?? "")}" placeholder="00000-000" maxlength="9" data-mask="cep" />
         </div>
       </div>
       <div class="form-group" style="margin-top:4px">
@@ -3575,7 +3664,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
             </div>
             <div class="form-group">
               <label class="form-label">Telefone</label>
-              <input class="form-input" type="text" name="phone" placeholder="(11) 99999-9999" />
+              <input class="form-input" type="text" name="phone" placeholder="(11) 99999-9999" maxlength="15" data-mask="phone" />
             </div>
           </div>
           <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">Cadastrar Profissional</button>
@@ -3753,23 +3842,23 @@ async function renderConfiguracoes(req: Request, res: Response) {
                   <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:10px">DADOS DO CARTÃO</div>
                   <!-- Número do cartão com bandeira -->
                   <div style="position:relative;margin-bottom:10px">
-                    <input id="card-number" type="text" inputmode="numeric" placeholder="0000 0000 0000 0000" maxlength="19"
+                    <input id="card-number" type="text" inputmode="numeric" placeholder="0000 0000 0000 0000" maxlength="19" data-mask="card-number"
                       style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 42px 8px 10px;font-size:13px;font-family:monospace" />
                     <span id="card-brand-icon" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:16px"></span>
                   </div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-                    <input id="card-expiry" type="text" inputmode="numeric" placeholder="MM/AAAA" maxlength="7"
+                    <input id="card-expiry" type="text" inputmode="numeric" placeholder="MM/AAAA" maxlength="7" data-mask="card-expiry"
                       style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px" />
-                    <input id="card-cvv" type="text" inputmode="numeric" placeholder="CVV" maxlength="4"
+                    <input id="card-cvv" type="text" inputmode="numeric" placeholder="CVV" maxlength="4" data-mask="card-cvv"
                       style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px" />
                   </div>
                   <input id="card-holder" type="text" placeholder="Nome no cartão (como impresso)" maxlength="50"
                     style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:10px" />
                   <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:8px">DADOS DO TITULAR</div>
-                  <input id="card-cpf" type="text" inputmode="numeric" placeholder="CPF do titular" maxlength="14"
+                  <input id="card-cpf" type="text" inputmode="numeric" placeholder="CPF do titular" maxlength="14" data-mask="cpf"
                     style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:8px" />
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                    <input id="card-cep" type="text" inputmode="numeric" placeholder="CEP" maxlength="9"
+                    <input id="card-cep" type="text" inputmode="numeric" placeholder="CEP" maxlength="9" data-mask="cep"
                       style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px" />
                     <input id="card-addr-num" type="text" placeholder="Número" maxlength="10"
                       style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px" />
@@ -3797,6 +3886,17 @@ async function renderConfiguracoes(req: Request, res: Response) {
             ` : ''}
             ${bpStatus === 'overdue' ? `
               <div style="font-size:12px;color:var(--error);text-align:right">⚠️ Regularize o pagamento<br>para manter o acesso</div>
+            ` : ''}
+            ${bpStatus === 'pending' ? `
+              <div style="display:flex;flex-direction:column;gap:8px;width:100%">
+                <div style="font-size:12px;color:var(--muted);padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
+                  ⏳ Aguardando confirmação do pagamento. Se você já realizou o pagamento via Pix, clique no botão abaixo para verificar.
+                </div>
+                <button type="button" id="check-payment-btn" onclick="checkPaymentStatus()" style="padding:10px 18px;background:var(--primary);color:var(--bg);border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;width:100%">
+                  ✔ Já paguei — verificar status
+                </button>
+                <div id="check-payment-msg" style="font-size:12px;text-align:center;display:none"></div>
+              </div>
             ` : ''}
           </div>
         </div>
@@ -3880,14 +3980,14 @@ async function renderConfiguracoes(req: Request, res: Response) {
               </div>
               <div class="form-group">
                 <label class="form-label">Celular *</label>
-                <input class="form-input" type="text" name="mobilePhone" required placeholder="(11) 99999-9999"
+                <input class="form-input" type="text" name="mobilePhone" required placeholder="(11) 99999-9999" maxlength="15" data-mask="phone"
                   value="${esc(tenant?.asaasMobilePhone ?? settings?.phone ?? '')}" />
               </div>
               <div class="form-group">
                 <label class="form-label">CPF ou CNPJ *</label>
                 <div style="position:relative">
                   <input class="form-input" type="text" name="cpfCnpj" id="cpfCnpjField" required placeholder="000.000.000-00 ou 00.000.000/0001-00"
-                    value="${esc(tenant?.asaasCpfCnpj ?? tenant?.cnpj ?? '')}" style="padding-right:36px" />
+                    value="${esc(tenant?.asaasCpfCnpj ?? tenant?.cnpj ?? '')}" style="padding-right:36px" maxlength="18" data-mask="cpf-cnpj" />
                   <span id="cpfCnpjIcon" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:16px;display:none"></span>
                 </div>
                 <div id="cpfCnpjError" style="color:var(--error);font-size:12px;margin-top:4px;display:none"></div>
@@ -4193,6 +4293,30 @@ async function renderConfiguracoes(req: Request, res: Response) {
         alert('Erro de conexão. Tente novamente.');
         if (btn) { btn.disabled = false; btn.textContent = 'Assinar agora'; }
       });
+    }
+
+    function checkPaymentStatus() {
+      var btn = document.getElementById('check-payment-btn');
+      var msg = document.getElementById('check-payment-msg');
+      if (btn) { btn.disabled = true; btn.textContent = 'Verificando...'; }
+      if (msg) { msg.style.display = 'none'; }
+      fetch('/admin/configuracoes/asaas/check-payment-status', { method: 'GET' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.status === 'active') {
+            window.location.href = '/admin/configuracoes/assinatura-ativada';
+          } else if (data.status === 'pending') {
+            if (msg) { msg.style.display = 'block'; msg.style.color = 'var(--muted)'; msg.textContent = '⏳ Pagamento ainda não confirmado. Aguarde alguns minutos e tente novamente.'; }
+            if (btn) { btn.disabled = false; btn.textContent = '✔ Já paguei — verificar status'; }
+          } else {
+            if (msg) { msg.style.display = 'block'; msg.style.color = 'var(--error)'; msg.textContent = 'Status: ' + (data.status || 'desconhecido'); }
+            if (btn) { btn.disabled = false; btn.textContent = '✔ Já paguei — verificar status'; }
+          }
+        })
+        .catch(function() {
+          if (msg) { msg.style.display = 'block'; msg.style.color = 'var(--error)'; msg.textContent = 'Erro de conexão. Tente novamente.'; }
+          if (btn) { btn.disabled = false; btn.textContent = '✔ Já paguei — verificar status'; }
+        });
     }
     </script>
   `;
@@ -6190,6 +6314,51 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  // GET /admin/configuracoes/asaas/check-payment-status — Verificar status do pagamento pendente
+  app.get("/admin/configuracoes/asaas/check-payment-status", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      if (!barber?.tenantId) { res.json({ status: 'error', message: 'Tenant não encontrado' }); return; }
+
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.json({ status: 'error', message: 'Banco de dados indisponível' }); return; }
+
+      const tenantRows = await dbConn.execute(sql`SELECT "barberproSubscriptionStatus", "barberproSubscriptionId" FROM tenants WHERE id = ${barber.tenantId} LIMIT 1`);
+      const tenantData = ((tenantRows as any).rows as any[])[0];
+      if (!tenantData) { res.json({ status: 'error', message: 'Tenant não encontrado' }); return; }
+
+      const currentStatus = tenantData.barberproSubscriptionStatus ?? 'trial';
+
+      // Se já está ativo, retornar imediatamente
+      if (currentStatus === 'active') {
+        res.json({ status: 'active' }); return;
+      }
+
+      // Se há uma assinatura pendente, consultar o Asaas para verificar o status real
+      const subId = tenantData.barberproSubscriptionId;
+      if (subId && currentStatus === 'pending') {
+        try {
+          const { getAsaasSubscriptionPayments } = await import('./asaas.js');
+          const payments = await getAsaasSubscriptionPayments(subId);
+          const latestPayment = (payments?.data ?? []).find((p: any) => p.status === 'RECEIVED' || p.status === 'CONFIRMED');
+          if (latestPayment) {
+            // Pagamento confirmado! Atualizar o banco
+            await dbConn.execute(sql`UPDATE tenants SET "barberproSubscriptionStatus" = 'active', "updatedAt" = NOW() WHERE id = ${barber.tenantId}`);
+            res.json({ status: 'active' }); return;
+          }
+        } catch (asaasErr: any) {
+          console.error('[check-payment-status] Erro ao consultar Asaas:', asaasErr?.message);
+        }
+      }
+
+      res.json({ status: currentStatus });
+    } catch (e: any) {
+      console.error('[check-payment-status] Erro:', e?.message ?? e);
+      res.json({ status: 'error', message: e?.message ?? 'Erro interno' });
+    }
+  });
+
   // POST /admin/configuracoes/asaas/subscribe — Criar assinatura Barber Pro
   app.post("/admin/configuracoes/asaas/subscribe", requireAdminAuth, async (req: Request, res: Response) => {
     try {
@@ -6368,7 +6537,7 @@ export function registerAdminRoutes(app: Express): void {
       <p style="color:#ECEDEE;font-size:15px;line-height:1.6;margin:0 0 16px">Olá, <strong style="color:#C9A84C">${recipientName}</strong>!</p>
       <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 20px">
         Sua assinatura do <strong style="color:#ECEDEE">Barber Pro — Plano ${planLabelFull}</strong> foi criada.
-        Agora é só efetuar o pagamento via Pix para ativar o acesso completo.
+        ${billingType === 'CREDIT_CARD' ? 'O pagamento via cartão de crédito está sendo processado.' : billingType === 'UNDEFINED' ? 'O pagamento via cartão de débito está sendo processado.' : 'Agora é só efetuar o pagamento via Pix para ativar o acesso completo.'}
       </p>
       <div style="background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:16px 20px;margin-bottom:24px">
         <div style="font-size:12px;color:#666;margin-bottom:8px">RESUMO DA ASSINATURA</div>
@@ -6382,16 +6551,19 @@ export function registerAdminRoutes(app: Express): void {
         </div>
         <div style="display:flex;justify-content:space-between">
           <span style="color:#9BA1A6;font-size:13px">Forma de pagamento</span>
-          <span style="color:#ECEDEE;font-weight:700;font-size:13px">Pix (mensal)</span>
+          <span style="color:#ECEDEE;font-weight:700;font-size:13px">${billingType === 'CREDIT_CARD' ? 'Cartão de Crédito' : billingType === 'UNDEFINED' ? 'Cartão de Débito' : 'Pix (mensal)'}</span>
         </div>
       </div>
       <div style="text-align:center;margin-bottom:24px">
-        <a href="https://usebarberpro.com/admin/configuracoes?tab=pagamentos"
+        ${billingType === 'PIX' ? `<a href="https://usebarberpro.com/admin/configuracoes?tab=pagamentos"
            style="display:inline-block;background:#C9A84C;color:#000;font-weight:800;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none">
           PAGAR VIA PIX →
-        </a>
+        </a>` : `<a href="https://usebarberpro.com/admin/configuracoes?tab=pagamentos"
+           style="display:inline-block;background:#C9A84C;color:#000;font-weight:800;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none">
+          VER STATUS DA ASSINATURA →
+        </a>`}
       </div>
-      <p style="color:#555;font-size:12px;text-align:center;margin:0">Após a confirmação do pagamento, o acesso será ativado automaticamente.</p>
+      <p style="color:#555;font-size:12px;text-align:center;margin:0">${billingType === 'PIX' ? 'Após a confirmação do pagamento, o acesso será ativado automaticamente.' : 'O acesso será ativado assim que o pagamento for confirmado.'}</p>
     </div>
     <div style="background:#0A0A0A;padding:20px;text-align:center;border-top:1px solid #1a1a1a">
       <div style="font-size:11px;color:#444">Barber Pro — <a href="https://usebarberpro.com" style="color:#C9A84C;text-decoration:none">usebarberpro.com</a></div>
@@ -8998,7 +9170,7 @@ export function registerAdminRoutes(app: Express): void {
               </div>
               <div class="form-group">
                 <label class="form-label">Telefone / WhatsApp</label>
-                <input type="tel" name="phone" value="${esc(barber.phone ?? "")}" class="form-input" placeholder="(11) 99999-9999" />
+                <input type="tel" name="phone" value="${esc(barber.phone ?? "")}" class="form-input" placeholder="(11) 99999-9999" maxlength="15" data-mask="phone" />
               </div>
               <div class="form-group">
                 <label class="form-label">Especialidade</label>
@@ -10010,11 +10182,11 @@ export function registerAdminRoutes(app: Express): void {
               </div>
               <div class="form-group">
                 <label class="form-label">CNPJ</label>
-                <input class="form-input" type="text" name="cnpj" value="${esc((editSupplier as any)?.cnpj ?? "")}" placeholder="00.000.000/0000-00" />
+                <input class="form-input" type="text" name="cnpj" value="${esc((editSupplier as any)?.cnpj ?? "")}" placeholder="00.000.000/0001-00" maxlength="18" data-mask="cnpj" />
               </div>
               <div class="form-group">
                 <label class="form-label">Telefone / WhatsApp</label>
-                <input class="form-input" type="text" name="phone" value="${esc((editSupplier as any)?.phone ?? "")}" placeholder="(00) 00000-0000" />
+                <input class="form-input" type="text" name="phone" value="${esc((editSupplier as any)?.phone ?? "")}" placeholder="(11) 99999-9999" maxlength="15" data-mask="phone" />
               </div>
               <div class="form-group">
                 <label class="form-label">E-mail</label>
