@@ -781,69 +781,86 @@ function adminLayout(title: string, activePage: string, body: string, barberName
 
     // ── Máscaras globais ──────────────────────────────────────────────────────
     (function() {
-      function applyMask(input, type) {
-        input.addEventListener('input', function(e) {
-          var v = input.value.replace(/\D/g, '');
-          if (type === 'phone') {
-            // (11) 99999-9999 ou (11) 9999-9999
-            if (v.length > 11) v = v.slice(0, 11);
-            if (v.length > 10) {
-              v = '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
-            } else if (v.length > 6) {
-              v = '(' + v.slice(0,2) + ') ' + v.slice(2,6) + '-' + v.slice(6);
-            } else if (v.length > 2) {
-              v = '(' + v.slice(0,2) + ') ' + v.slice(2);
-            } else if (v.length > 0) {
-              v = '(' + v;
-            }
-            input.value = v;
-          } else if (type === 'cep') {
-            if (v.length > 8) v = v.slice(0, 8);
-            if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5);
-            input.value = v;
-          } else if (type === 'cpf') {
-            if (v.length > 11) v = v.slice(0, 11);
-            if (v.length > 9) v = v.slice(0,3) + '.' + v.slice(3,6) + '.' + v.slice(6,9) + '-' + v.slice(9);
-            else if (v.length > 6) v = v.slice(0,3) + '.' + v.slice(3,6) + '.' + v.slice(6);
-            else if (v.length > 3) v = v.slice(0,3) + '.' + v.slice(3);
-            input.value = v;
-          } else if (type === 'cnpj') {
-            if (v.length > 14) v = v.slice(0, 14);
-            if (v.length > 12) v = v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5,8) + '/' + v.slice(8,12) + '-' + v.slice(12);
-            else if (v.length > 8) v = v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5,8) + '/' + v.slice(8);
-            else if (v.length > 5) v = v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5);
-            else if (v.length > 2) v = v.slice(0,2) + '.' + v.slice(2);
-            input.value = v;
-          } else if (type === 'cpf-cnpj') {
-            if (v.length <= 11) {
-              // CPF
-              if (v.length > 9) v = v.slice(0,3) + '.' + v.slice(3,6) + '.' + v.slice(6,9) + '-' + v.slice(9);
-              else if (v.length > 6) v = v.slice(0,3) + '.' + v.slice(3,6) + '.' + v.slice(6);
-              else if (v.length > 3) v = v.slice(0,3) + '.' + v.slice(3);
-              input.value = v;
-            } else {
-              // CNPJ
-              v = v.slice(0, 14);
-              if (v.length > 12) v = v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5,8) + '/' + v.slice(8,12) + '-' + v.slice(12);
-              else if (v.length > 8) v = v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5,8) + '/' + v.slice(8);
-              else if (v.length > 5) v = v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5);
-              else v = v.slice(0,2) + '.' + v.slice(2);
-              input.value = v;
-            }
-          } else if (type === 'card-number') {
-            if (v.length > 16) v = v.slice(0, 16);
-            v = v.replace(/(\d{4})(?=\d)/g, '$1 ');
-            input.value = v;
-          } else if (type === 'card-expiry') {
-            if (v.length > 6) v = v.slice(0, 6);
-            if (v.length > 2) v = v.slice(0,2) + '/' + v.slice(2);
-            input.value = v;
-          } else if (type === 'card-cvv') {
-            if (v.length > 4) v = v.slice(0, 4);
-            input.value = v;
+      // WeakSet garante que cada campo receba o listener apenas UMA vez,
+      // mesmo que o MutationObserver detecte o nó várias vezes.
+      var _maskedEls = new WeakSet();
+
+      function formatMaskValue(raw, type) {
+        var v = raw.replace(/\D/g, '');
+        if (type === 'phone') {
+          v = v.slice(0, 11);
+          if (v.length > 10) return '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
+          if (v.length > 6)  return '(' + v.slice(0,2) + ') ' + v.slice(2,6) + '-' + v.slice(6);
+          if (v.length > 2)  return '(' + v.slice(0,2) + ') ' + v.slice(2);
+          if (v.length > 0)  return '(' + v;
+          return '';
+        }
+        if (type === 'cep') {
+          v = v.slice(0, 8);
+          if (v.length > 5) return v.slice(0,5) + '-' + v.slice(5);
+          return v;
+        }
+        if (type === 'cpf') {
+          v = v.slice(0, 11);
+          if (v.length > 9) return v.slice(0,3) + '.' + v.slice(3,6) + '.' + v.slice(6,9) + '-' + v.slice(9);
+          if (v.length > 6) return v.slice(0,3) + '.' + v.slice(3,6) + '.' + v.slice(6);
+          if (v.length > 3) return v.slice(0,3) + '.' + v.slice(3);
+          return v;
+        }
+        if (type === 'cnpj') {
+          v = v.slice(0, 14);
+          if (v.length > 12) return v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5,8) + '/' + v.slice(8,12) + '-' + v.slice(12);
+          if (v.length > 8)  return v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5,8) + '/' + v.slice(8);
+          if (v.length > 5)  return v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5);
+          if (v.length > 2)  return v.slice(0,2) + '.' + v.slice(2);
+          return v;
+        }
+        if (type === 'cpf-cnpj') {
+          if (v.length <= 11) {
+            v = v.slice(0, 11);
+            if (v.length > 9) return v.slice(0,3) + '.' + v.slice(3,6) + '.' + v.slice(6,9) + '-' + v.slice(9);
+            if (v.length > 6) return v.slice(0,3) + '.' + v.slice(3,6) + '.' + v.slice(6);
+            if (v.length > 3) return v.slice(0,3) + '.' + v.slice(3);
+            return v;
+          } else {
+            v = v.slice(0, 14);
+            if (v.length > 12) return v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5,8) + '/' + v.slice(8,12) + '-' + v.slice(12);
+            if (v.length > 8)  return v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5,8) + '/' + v.slice(8);
+            if (v.length > 5)  return v.slice(0,2) + '.' + v.slice(2,5) + '.' + v.slice(5);
+            return v.slice(0,2) + '.' + v.slice(2);
           }
+        }
+        if (type === 'card-number') {
+          v = v.slice(0, 16);
+          return v.replace(/(\d{4})(?=\d)/g, '$1 ');
+        }
+        if (type === 'card-expiry') {
+          v = v.slice(0, 6);
+          if (v.length > 2) return v.slice(0,2) + '/' + v.slice(2);
+          return v;
+        }
+        if (type === 'card-cvv') {
+          return v.slice(0, 4);
+        }
+        return raw;
+      }
+
+      function applyMask(input, type) {
+        // Evita adicionar múltiplos listeners no mesmo elemento
+        if (_maskedEls.has(input)) return;
+        _maskedEls.add(input);
+        input.addEventListener('input', function() {
+          var start = input.selectionStart;
+          var oldLen = input.value.length;
+          var formatted = formatMaskValue(input.value, type);
+          input.value = formatted;
+          // Reposiciona o cursor proporcionalmente após formatação
+          var diff = formatted.length - oldLen;
+          var newPos = Math.max(0, (start || 0) + diff);
+          try { input.setSelectionRange(newPos, newPos); } catch(e) {}
         });
       }
+
       function initMasks() {
         document.querySelectorAll('[data-mask]').forEach(function(el) {
           applyMask(el, el.getAttribute('data-mask'));
@@ -854,7 +871,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       } else {
         initMasks();
       }
-      // Re-init masks when dynamic content is added (modals, etc.)
+      // Re-init masks quando conteúdo dinâmico é adicionado (modais, etc.)
       var _maskObs = new MutationObserver(function(mutations) {
         mutations.forEach(function(m) {
           m.addedNodes.forEach(function(node) {
@@ -4170,39 +4187,17 @@ async function renderConfiguracoes(req: Request, res: Response) {
             }
           }
           if (cpfCnpjInput) {
+            // A máscara de formatação é gerenciada pelo sistema global data-mask.
+            // Aqui apenas adicionamos o feedback de validação CPF/CNPJ.
             cpfCnpjInput.addEventListener('input', function() {
-              var digits = this.value.replace(/\D/g, '').substring(0, 14);
-              var v = digits;
-              if (v.length <= 11) {
-                v = v.replace(/(\d{3})(\d)/, '$1.$2')
-                     .replace(/(\d{3})(\d)/, '$1.$2')
-                     .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-              } else {
-                v = v.replace(/(\d{2})(\d)/, '$1.$2')
-                     .replace(/(\d{3})(\d)/, '$1.$2')
-                     .replace(/(\d{3})(\d)/, '$1.$2')
-                     .replace(/(\d{4})(\d{1,2})$/, '$1/$2')
-                     .replace(/(\d{2})$/, '-$1');
-              }
-              this.value = v;
+              var digits = this.value.replace(/\D/g, '');
               updateCpfCnpjFeedback(digits);
             });
             // Validar valor já preenchido ao carregar
             var initialDigits = cpfCnpjInput.value.replace(/\D/g, '');
             if (initialDigits.length >= 11) updateCpfCnpjFeedback(initialDigits);
           }
-
-          // Máscara celular
-          const phoneInput = document.querySelector('input[name="mobilePhone"]');
-          if (phoneInput) {
-            phoneInput.addEventListener('input', function() {
-              let v = this.value.replace(/\D/g, '').substring(0, 11);
-              if (v.length >= 11) v = v.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-              else if (v.length >= 7) v = v.replace(/(\d{2})(\d{4,5})(\d{0,4})/, '($1) $2-$3');
-              else if (v.length >= 3) v = v.replace(/(\d{2})(\d+)/, '($1) $2');
-              this.value = v;
-            });
-          }
+          // Máscara de telefone gerenciada pelo sistema global data-mask (input[name="mobilePhone"] tem data-mask="phone")
 
           document.getElementById('asaas-setup-form').addEventListener('submit', function() {
             const btn = document.getElementById('asaas-submit-btn');
@@ -4258,46 +4253,15 @@ async function renderConfiguracoes(req: Request, res: Response) {
       return null;
     }
 
+    // Detecção de bandeira ao digitar número do cartão
+    // (a máscara de formatação é gerenciada pelo sistema global data-mask)
     var cardNumberInput = document.getElementById('card-number');
     if (cardNumberInput) {
       cardNumberInput.addEventListener('input', function() {
-        // Formatar com espaços a cada 4 dígitos
-        var v = this.value.replace(/\D/g, '').substring(0, 16);
-        this.value = v.replace(/(\d{4})(?=\d)/g, '$1 ');
-        // Detectar bandeira
+        var v = this.value.replace(/\D/g, '');
         var brand = detectCardBrand(v);
         var icon = document.getElementById('card-brand-icon');
         if (icon) icon.textContent = brand ? brand.icon : '';
-      });
-    }
-
-    // Máscara de validade MM/AAAA
-    var cardExpiryInput = document.getElementById('card-expiry');
-    if (cardExpiryInput) {
-      cardExpiryInput.addEventListener('input', function() {
-        var v = this.value.replace(/\D/g, '').substring(0, 6);
-        if (v.length >= 3) v = v.substring(0, 2) + '/' + v.substring(2);
-        this.value = v;
-      });
-    }
-
-    // Máscara CPF
-    var cardCpfInput = document.getElementById('card-cpf');
-    if (cardCpfInput) {
-      cardCpfInput.addEventListener('input', function() {
-        var v = this.value.replace(/\D/g, '').substring(0, 11);
-        v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-        this.value = v;
-      });
-    }
-
-    // Máscara CEP
-    var cardCepInput = document.getElementById('card-cep');
-    if (cardCepInput) {
-      cardCepInput.addEventListener('input', function() {
-        var v = this.value.replace(/\D/g, '').substring(0, 8);
-        if (v.length > 5) v = v.substring(0, 5) + '-' + v.substring(5);
-        this.value = v;
       });
     }
 
