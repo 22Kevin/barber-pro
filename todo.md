@@ -2377,3 +2377,7 @@
 - [ ] Corrigir máscaras de telefone, whatsapp, CEP, Chave Pix, CPF/CNPJ na tela de Configurações
 - [ ] Corrigir vazamento de dados: Relatórios - Serviços mais Vendidos filtrar por tenantId
 - [ ] Corrigir vazamento de dados: Avaliações filtrar por tenantId
+
+## Bugs v3.x — Cadastro
+- [x] BUG: Cadastro de Serviços não funciona no painel web e/ou app mobile (botão Criar não persiste)
+- [x] BUG: Cadastro de Produtos não funciona no painel web e/ou app mobile (botão Criar não persiste)

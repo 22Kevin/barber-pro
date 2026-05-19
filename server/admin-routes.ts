@@ -2707,6 +2707,7 @@ async function renderServicos(req: Request, res: Response) {
       </div>
       <div class="card-body" style="padding:24px">
         <form method="POST" action="/admin/servicos${editService ? `?edit=${editService.id}` : ""}">
+          <input type="hidden" name="tenantId" value="${tenantId ?? ""}" />
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
             <div class="form-group">
               <label class="form-label">Nome do Serviço *</label>
@@ -2840,6 +2841,7 @@ async function renderProdutos(req: Request, res: Response) {
       </div>
       <div class="card-body" style="padding:24px">
         <form method="POST" action="/admin/produtos${editProduct ? `?edit=${editProduct.id}` : ""}">
+          <input type="hidden" name="tenantId" value="${tenantId ?? ""}" />
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
             <div class="form-group">
               <label class="form-label">Nome do Produto *</label>
@@ -7400,13 +7402,17 @@ export function registerAdminRoutes(app: Express): void {
   app.post("/admin/servicos", requireAdminAuth, async (req: Request, res: Response) => {
     const { name, description, price, durationMinutes, isActive, mediaBase64, mediaMime } = req.body;
     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+    // Obter tenantId da sessão (fonte segura) — não confiar no body
+    const _svcSession = (req as any).adminSession as { barberId: number; role: string };
+    const _svcBarber = await db.getBarberById(_svcSession.barberId);
+    const _svcTenantId = _svcBarber?.tenantId ?? null;
     let serviceId: number;
     if (editId) {
       await db.updateService(editId, { name, description, price, durationMinutes: parseInt(durationMinutes), isActive: isActive === "true" });
       serviceId = editId;
     } else {
-      const newService = await db.createService({ name, description, price, durationMinutes: parseInt(durationMinutes), isActive: isActive === "true" });
-      serviceId = (newService as any).insertId ?? (newService as any).id ?? 0;
+      const newService = await db.createService({ name, description, price: String(price), durationMinutes: parseInt(durationMinutes), isActive: isActive === "true", tenantId: _svcTenantId } as any);
+      serviceId = (newService as any) ?? 0;
     }
     // Processar upload de mídia
     if (mediaBase64 && mediaMime && serviceId) {
@@ -7439,13 +7445,17 @@ export function registerAdminRoutes(app: Express): void {
     const { name, description, price, productType, stockQuantity, minStockAlert, isActive, mediaBase64, mediaMime, supplierId } = req.body;
     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
     const supplierIdNum = supplierId ? parseInt(supplierId) : null;
+    // Obter tenantId da sessão (fonte segura) — não confiar no body
+    const _prdSession = (req as any).adminSession as { barberId: number; role: string };
+    const _prdBarber = await db.getBarberById(_prdSession.barberId);
+    const _prdTenantId = _prdBarber?.tenantId ?? null;
     let productId: number;
     if (editId) {
       await db.updateProduct(editId, { name, description, price, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true", supplierId: supplierIdNum } as any);
       productId = editId;
     } else {
-      const newProduct = await db.createProduct({ name, description, price, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true", supplierId: supplierIdNum } as any);
-      productId = (newProduct as any).insertId ?? (newProduct as any).id ?? 0;
+      const newProduct = await db.createProduct({ name, description, price: String(price), productType: productType || "sale", stockQuantity: parseInt(stockQuantity) || 0, minStockAlert: parseInt(minStockAlert) || 5, isActive: isActive === "true", supplierId: supplierIdNum, tenantId: _prdTenantId } as any);
+      productId = (newProduct as any) ?? 0;
     }
     // Processar upload de mídia
     if (mediaBase64 && mediaMime && productId) {

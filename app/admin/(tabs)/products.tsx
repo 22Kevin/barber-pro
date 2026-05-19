@@ -165,9 +165,8 @@ export default function ProductsScreen() {
     if (!name.trim()) { Alert.alert("Atenção", "Informe o nome do produto."); return; }
     const priceNum = parsePriceMask(price);
     if (isNaN(priceNum) || priceNum <= 0) { Alert.alert("Atenção", "Informe um preço válido."); return; }
-    if (!selectedSupplierId) { Alert.alert("Atenção", "Selecione o fornecedor do produto."); return; }
     const stockNum = parseInt(stock) || 0;
-    const data = { name: name.trim(), description: description.trim() || null, price: priceNum.toFixed(2), stock: stockNum, isActive, supplierId: selectedSupplierId };
+    const data = { name: name.trim(), description: description.trim() || null, price: priceNum.toFixed(2), stock: stockNum, isActive, supplierId: selectedSupplierId ?? null };
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data } as any);
     } else {
