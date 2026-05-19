@@ -779,14 +779,12 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       }
     })();
 
-    // ── Máscaras globais ──────────────────────────────────────────────────────
+    // ── Máscaras globais (event delegation) ─────────────────────────────────
+    // Usa event delegation no document — UM ÚNICO listener para todos os campos.
+    // Não há risco de duplicação independente de como o DOM é manipulado.
     (function() {
-      // WeakSet garante que cada campo receba o listener apenas UMA vez,
-      // mesmo que o MutationObserver detecte o nó várias vezes.
-      var _maskedEls = new WeakSet();
-
-      function formatMaskValue(raw, type) {
-        var v = raw.replace(/\D/g, '');
+      function bpMask(raw, type) {
+        var v = (raw || '').replace(/\D/g, '');
         if (type === 'phone') {
           v = v.slice(0, 11);
           if (v.length > 10) return '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
@@ -839,50 +837,24 @@ function adminLayout(title: string, activePage: string, body: string, barberName
           if (v.length > 2) return v.slice(0,2) + '/' + v.slice(2);
           return v;
         }
-        if (type === 'card-cvv') {
-          return v.slice(0, 4);
-        }
+        if (type === 'card-cvv') { return v.slice(0, 4); }
         return raw;
       }
-
-      function applyMask(input, type) {
-        // Evita adicionar múltiplos listeners no mesmo elemento
-        if (_maskedEls.has(input)) return;
-        _maskedEls.add(input);
-        input.addEventListener('input', function() {
-          var start = input.selectionStart;
-          var oldLen = input.value.length;
-          var formatted = formatMaskValue(input.value, type);
-          input.value = formatted;
-          // Reposiciona o cursor proporcionalmente após formatação
-          var diff = formatted.length - oldLen;
-          var newPos = Math.max(0, (start || 0) + diff);
-          try { input.setSelectionRange(newPos, newPos); } catch(e) {}
-        });
-      }
-
-      function initMasks() {
-        document.querySelectorAll('[data-mask]').forEach(function(el) {
-          applyMask(el, el.getAttribute('data-mask'));
-        });
-      }
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initMasks);
-      } else {
-        initMasks();
-      }
-      // Re-init masks quando conteúdo dinâmico é adicionado (modais, etc.)
-      var _maskObs = new MutationObserver(function(mutations) {
-        mutations.forEach(function(m) {
-          m.addedNodes.forEach(function(node) {
-            if (node.nodeType === 1) {
-              if (node.hasAttribute && node.hasAttribute('data-mask')) applyMask(node, node.getAttribute('data-mask'));
-              node.querySelectorAll && node.querySelectorAll('[data-mask]').forEach(function(el) { applyMask(el, el.getAttribute('data-mask')); });
-            }
-          });
-        });
-      });
-      _maskObs.observe(document.body, { childList: true, subtree: true });
+      // Event delegation: UM listener no document captura todos os campos com data-mask.
+      // Não importa quando/como o campo foi inserido no DOM — funciona sempre.
+      document.addEventListener('input', function(e) {
+        var el = e.target;
+        if (!el || !el.getAttribute) return;
+        var maskType = el.getAttribute('data-mask');
+        if (!maskType) return;
+        var start = el.selectionStart;
+        var oldLen = el.value.length;
+        var formatted = bpMask(el.value, maskType);
+        el.value = formatted;
+        var diff = formatted.length - oldLen;
+        var newPos = Math.max(0, (start || 0) + diff);
+        try { el.setSelectionRange(newPos, newPos); } catch(e) {}
+      }, true); // capture=true garante que captura antes de outros listeners
     })();
   </script>
 </body>
