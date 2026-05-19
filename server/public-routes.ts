@@ -1911,6 +1911,8 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       }
 
       // ─── Inicializar ──────────────────────────────────────────────────────────
+      console.log("[BarberPro] SERVICES:", SERVICES.length, JSON.stringify(SERVICES.slice(0,2)));
+      console.log("[BarberPro] BARBERS:", BARBERS.length);
       renderBarbers();
 
       // Pré-preencher via query string (retorno do login ou clique em "Agendar")
