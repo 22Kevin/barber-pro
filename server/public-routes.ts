@@ -1130,7 +1130,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
   const hasMp = !!(settings as any)?.mercadoPagoAccessToken;
   const waNumber = ((settings as any)?.whatsapp || (settings as any)?.phone || "").replace(/\D/g, "");
-  const waNumberJson = JSON.stringify(waNumber ? "55" + waNumber : "");
+  const waNumberJson = safeJson(waNumber ? "55" + waNumber : "");
 
   // Dados dos serviços e barbeiros em JSON para o JS da página
   // safeJson: escapa < > & para injeção segura em blocos <script> dentro de HTML
@@ -4037,6 +4037,28 @@ export function registerPublicRoutes(app: Express): void {
 
   app.get("/pub/:slug/agendar", async (req: Request, res: Response) => {
     await renderBookingPage(req.params.slug, res, req);
+  });
+
+  // Endpoint de diagnóstico — retorna os dados brutos da página de agendamento em JSON
+  app.get("/pub-api/booking-debug/:slug", async (req: Request, res: Response) => {
+    try {
+      const slug = req.params.slug;
+      const tenant = await db.getTenantBySlug(slug);
+      if (!tenant) return res.status(404).json({ error: "tenant não encontrado" });
+      const settings = await db.getShopSettingsByTenantId(tenant.id);
+      const barberList = await db.getAllBarbers(tenant.id);
+      const serviceList = await db.getAllServicesWithMediaAndRatings(true, tenant.id);
+      return res.json({
+        tenantId: tenant.id,
+        slug,
+        servicesCount: serviceList.length,
+        barbersCount: barberList.length,
+        services: serviceList.map((s) => ({ id: s.id, name: s.name, price: s.price, durationMinutes: s.durationMinutes, isActive: s.isActive })),
+        barbers: barberList.map((b) => ({ id: b.id, name: b.name, isActive: b.isActive })),
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
   });
 
   app.get("/pub/:slug/servico/:serviceId", async (req: Request, res: Response) => {
