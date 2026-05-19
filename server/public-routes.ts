@@ -1323,8 +1323,10 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       <!-- Etapa 1: Serviço selecionado + adicionar mais -->
       <div id="step-1">
-        <div class="step-section-title">✂ Serviço selecionado</div>
-        <!-- Card do serviço principal (pré-selecionado) -->
+        <div class="step-section-title" id="step1-title">✂ Escolha o serviço</div>
+        <!-- Lista de seleção de serviço (quando não vem pré-selecionado via URL) -->
+        <div class="services-grid2" id="svc-picker-list" style="display:none"></div>
+        <!-- Card do serviço principal (pré-selecionado via URL ou após escolha) -->
         <div id="main-svc-card" class="main-svc-card"></div>
         <!-- Accordion: adicionar mais serviços -->
         <div class="add-more-toggle" id="add-more-toggle" onclick="toggleAddMore()">
@@ -1527,6 +1529,43 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         panel.style.display = isOpen ? 'none' : 'block';
         if (icon) icon.textContent = isOpen ? '＋' : '－';
         if (!isOpen) renderServices();
+      }
+
+      function renderSvcPicker() {
+        var el = document.getElementById('svc-picker-list');
+        if (!el) return;
+        var html = '';
+        SERVICES.forEach(function(s) {
+          var isSel = selectedService && selectedService.id === s.id;
+          var thumbHtml = s.thumbnailUrl
+            ? '<img class="svc-thumb2" src="' + escHtml(s.thumbnailUrl) + '" alt="' + escHtml(s.name) + '" loading="lazy" />'
+            : '<div class="svc-thumb2-placeholder">✂</div>';
+          html += '<div class="svc-card2' + (isSel ? ' extra-selected' : '') + '" id="pick-svc-' + s.id + '" onclick="pickService(' + s.id + ')" style="cursor:pointer">';
+          html += thumbHtml;
+          html += '<div class="svc-body2">';
+          html += '<div class="svc-name2">' + escHtml(s.name) + '</div>';
+          html += '<div class="svc-meta2">⏱ ' + fmtDur(s.durationMinutes) + '</div>';
+          html += '<div class="svc-price2">' + fmtPrice(s.price) + '</div>';
+          html += '</div></div>';
+        });
+        el.innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Nenhum serviço disponível.</div>';
+        el.style.display = 'block';
+      }
+
+      function pickService(id) {
+        selectService(id);
+        // Mostrar card do serviço selecionado e habilitar botão Próximo
+        var mainCard = document.getElementById('main-svc-card');
+        if (mainCard) mainCard.style.display = 'flex';
+        var nextBtn = document.getElementById('btn-step1-next');
+        if (nextBtn) { nextBtn.classList.add('ready'); nextBtn.style.pointerEvents = ''; nextBtn.style.opacity = ''; }
+        // Atualizar título e mostrar accordion
+        var titleEl = document.getElementById('step1-title');
+        if (titleEl) titleEl.textContent = '✂ Serviço selecionado';
+        var addMore = document.getElementById('add-more-toggle');
+        if (addMore) addMore.style.display = 'flex';
+        // Atualizar visual da lista de seleção
+        renderSvcPicker();
       }
 
       function selectService(id) {
@@ -1879,9 +1918,19 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       if (params.get('service')) {
         var svcId = parseInt(params.get('service'));
         selectService(svcId);
-      } else if (SERVICES.length > 0) {
-        // Se não veio serviço na URL, selecionar o primeiro por padrão
-        selectService(SERVICES[0].id);
+        // Quando há serviço pré-selecionado, ocultar a lista de seleção e mostrar só o card
+        var svcPickerEl = document.getElementById('svc-picker-list');
+        if (svcPickerEl) svcPickerEl.style.display = 'none';
+      } else {
+        // Sem serviço na URL: mostrar lista para o cliente escolher
+        renderSvcPicker();
+        // Esconder o card, o accordion e o botão Próximo até que um serviço seja selecionado
+        var mainCard = document.getElementById('main-svc-card');
+        if (mainCard) mainCard.style.display = 'none';
+        var addMoreToggle = document.getElementById('add-more-toggle');
+        if (addMoreToggle) addMoreToggle.style.display = 'none';
+        var nextBtn = document.getElementById('btn-step1-next');
+        if (nextBtn) { nextBtn.classList.remove('ready'); nextBtn.style.pointerEvents = 'none'; nextBtn.style.opacity = '0.4'; }
       }
       if (params.get('barber')) {
         var bid = parseInt(params.get('barber'));
