@@ -1133,7 +1133,9 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
   const waNumberJson = JSON.stringify(waNumber ? "55" + waNumber : "");
 
   // Dados dos serviços e barbeiros em JSON para o JS da página
-  const servicesJson = JSON.stringify(serviceList.map((s) => ({
+  // safeJson: escapa < > & para injeção segura em blocos <script> dentro de HTML
+  const safeJson = (v: unknown) => JSON.stringify(v).replace(/</g, '\u003c').replace(/>/g, '\u003e').replace(/&/g, '\u0026');
+  const servicesJson = safeJson(serviceList.map((s) => ({
     id: s.id,
     name: s.name,
     price: s.price,
@@ -1141,7 +1143,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
     thumbnailUrl: (s as any).thumbnailUrl ?? null,
     description: (s as any).description ?? null,
   })));
-  const barbersJson = JSON.stringify(barberList.map((b) => ({
+  const barbersJson = safeJson(barberList.map((b) => ({
     id: b.id,
     name: b.name,
     photoUrl: b.photoUrl ?? null,
@@ -1149,8 +1151,8 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
   })));
   const firstBarberId = barberList[0]?.id ?? 1;
 
-  const loggedClientJson = loggedClient ? JSON.stringify(loggedClient) : "null";
-  const hasMpJson = JSON.stringify(hasMp);
+  const loggedClientJson = loggedClient ? safeJson(loggedClient) : "null";
+  const hasMpJson = safeJson(hasMp);
 
   // Gerar os próximos 30 dias para o calendário
   const today = new Date();
@@ -1168,7 +1170,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       month: monthShort[d.getMonth()],
     });
   }
-  const calendarJson = JSON.stringify(calendarDays);
+  const calendarJson = safeJson(calendarDays);
 
   const body = `
     <style>
@@ -1911,8 +1913,6 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       }
 
       // ─── Inicializar ──────────────────────────────────────────────────────────
-      console.log("[BarberPro] SERVICES:", SERVICES.length, JSON.stringify(SERVICES.slice(0,2)));
-      console.log("[BarberPro] BARBERS:", BARBERS.length);
       renderBarbers();
 
       // Pré-preencher via query string (retorno do login ou clique em "Agendar")
