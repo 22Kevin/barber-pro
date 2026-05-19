@@ -784,7 +784,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     // Não há risco de duplicação independente de como o DOM é manipulado.
     (function() {
       function bpMask(raw, type) {
-        var v = (raw || '').replace(/\D/g, '');
+        var v = (raw || '').replace(/[^0-9]/g, '');
         if (type === 'phone') {
           v = v.slice(0, 11);
           if (v.length > 10) return '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
@@ -830,7 +830,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         }
         if (type === 'card-number') {
           v = v.slice(0, 16);
-          return v.replace(/(\d{4})(?=\d)/g, '$1 ');
+          return v.replace(/([0-9]{4})(?=[0-9])/g, '$1 ');
         }
         if (type === 'card-expiry') {
           v = v.slice(0, 6);
