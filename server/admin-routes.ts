@@ -4162,11 +4162,11 @@ async function renderConfiguracoes(req: Request, res: Response) {
             // A máscara de formatação é gerenciada pelo sistema global data-mask.
             // Aqui apenas adicionamos o feedback de validação CPF/CNPJ.
             cpfCnpjInput.addEventListener('input', function() {
-              var digits = this.value.replace(/\D/g, '');
+              var digits = this.value.replace(/[^0-9]/g, '');
               updateCpfCnpjFeedback(digits);
             });
             // Validar valor já preenchido ao carregar
-            var initialDigits = cpfCnpjInput.value.replace(/\D/g, '');
+            var initialDigits = cpfCnpjInput.value.replace(/[^0-9]/g, '');
             if (initialDigits.length >= 11) updateCpfCnpjFeedback(initialDigits);
           }
           // Máscara de telefone gerenciada pelo sistema global data-mask (input[name="mobilePhone"] tem data-mask="phone")
@@ -4215,7 +4215,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
 
     // ── Detecção de bandeira por número do cartão ──────────────────────────────
     function detectCardBrand(num) {
-      var n = num.replace(/\D/g, '');
+      var n = num.replace(/[^0-9]/g, '');
       if (/^4011|^4312|^4389|^4514|^4573|^4576|^5041|^5066|^5090|^6277|^6362|^6363|^6504|^6505|^6516|^6550/.test(n)) return { icon: '\uD83D\uDFE1', name: 'Elo' };
       if (/^606282|^3841/.test(n)) return { icon: '\uD83D\uDFE0', name: 'Hipercard' };
       if (/^3[47]/.test(n)) return { icon: '\u2B50', name: 'Amex' };
@@ -4230,7 +4230,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
     var cardNumberInput = document.getElementById('card-number');
     if (cardNumberInput) {
       cardNumberInput.addEventListener('input', function() {
-        var v = this.value.replace(/\D/g, '');
+        var v = this.value.replace(/[^0-9]/g, '');
         var brand = detectCardBrand(v);
         var icon = document.getElementById('card-brand-icon');
         if (icon) icon.textContent = brand ? brand.icon : '';
@@ -4247,12 +4247,12 @@ async function renderConfiguracoes(req: Request, res: Response) {
       var payload = { selectedPlan: plan, billingType: method };
 
       if (method === 'CREDIT_CARD' || method === 'UNDEFINED') {
-        var numRaw = (document.getElementById('card-number').value || '').replace(/\D/g, '');
+        var numRaw = (document.getElementById('card-number').value || '').replace(/[^0-9]/g, '');
         var expiry = (document.getElementById('card-expiry').value || '').split('/');
         var cvv = (document.getElementById('card-cvv').value || '').trim();
         var holder = (document.getElementById('card-holder').value || '').trim();
-        var cpf = (document.getElementById('card-cpf').value || '').replace(/\D/g, '');
-        var cep = (document.getElementById('card-cep').value || '').replace(/\D/g, '');
+        var cpf = (document.getElementById('card-cpf').value || '').replace(/[^0-9]/g, '');
+        var cep = (document.getElementById('card-cep').value || '').replace(/[^0-9]/g, '');
         var addrNum = (document.getElementById('card-addr-num').value || '').trim();
 
         if (!numRaw || numRaw.length < 13) { alert('Número do cartão inválido.'); if (btn) { btn.disabled = false; btn.textContent = method === 'CREDIT_CARD' ? 'Assinar com Cartão de Crédito' : 'Assinar com Cartão de Débito'; } return; }

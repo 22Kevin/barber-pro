@@ -2023,23 +2023,23 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       }
       // ─── Máscaras de campos ────────────────────────────────────────────────────
       function maskCardNumber(el) {
-        var v = el.value.replace(/\D/g,'').substring(0,16);
-        el.value = v.replace(/(\d{4})(?=\d)/g,'$1 ').trim();
+        var v = el.value.replace(/[^0-9]/g,'').substring(0,16);
+        el.value = v.replace(/([0-9]{4})(?=[0-9])/g,'$1 ').trim();
       }
       function maskCpf(el) {
-        var v = el.value.replace(/\D/g,'').substring(0,11);
-        if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/,'$1.$2.$3-$4');
-        else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/,'$1.$2.$3');
-        else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/,'$1.$2');
+        var v = el.value.replace(/[^0-9]/g,'').substring(0,11);
+        if (v.length > 9) v = v.replace(/([0-9]{3})([0-9]{3})([0-9]{3})([0-9]{1,2})/,'$1.$2.$3-$4');
+        else if (v.length > 6) v = v.replace(/([0-9]{3})([0-9]{3})([0-9]{1,3})/,'$1.$2.$3');
+        else if (v.length > 3) v = v.replace(/([0-9]{3})([0-9]{1,3})/,'$1.$2');
         el.value = v;
       }
       function maskCep(el) {
-        var v = el.value.replace(/\D/g,'').substring(0,8);
-        if (v.length > 5) v = v.replace(/(\d{5})(\d{1,3})/,'$1-$2');
+        var v = el.value.replace(/[^0-9]/g,'').substring(0,8);
+        if (v.length > 5) v = v.replace(/([0-9]{5})([0-9]{1,3})/,'$1-$2');
         el.value = v;
       }
       function maskMonth(el) {
-        var v = el.value.replace(/\D/g,'').substring(0,2);
+        var v = el.value.replace(/[^0-9]/g,'').substring(0,2);
         if (v.length === 2) { var n = parseInt(v); if (n < 1) v = '01'; if (n > 12) v = '12'; }
         el.value = v;
       }
@@ -2098,12 +2098,12 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         var ccError = document.getElementById('cc-error');
         ccError.style.display = 'none';
         var name = document.getElementById('cc-name').value.trim();
-        var number = document.getElementById('cc-number').value.replace(/\s/g,'');
+        var number = document.getElementById('cc-number').value.replace(/ /g,'');
         var month = document.getElementById('cc-month').value.trim();
         var year = document.getElementById('cc-year').value.trim();
         var cvv = document.getElementById('cc-cvv').value.trim();
-        var cpf = document.getElementById('cc-cpf').value.replace(/\D/g,'');
-        var cep = document.getElementById('cc-cep').value.replace(/\D/g,'');
+        var cpf = document.getElementById('cc-cpf').value.replace(/[^0-9]/g,'');
+        var cep = document.getElementById('cc-cep').value.replace(/[^0-9]/g,'');
         var addrNum = document.getElementById('cc-addr-num').value.trim();
         if (!name || !number || !month || !year || !cvv || !cpf) {
           ccError.textContent = 'Preencha todos os campos obrigatórios.'; ccError.style.display = 'block'; return;
