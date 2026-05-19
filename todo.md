@@ -2381,3 +2381,9 @@
 ## Bugs v3.x — Cadastro
 - [x] BUG: Cadastro de Serviços não funciona no painel web e/ou app mobile (botão Criar não persiste)
 - [x] BUG: Cadastro de Produtos não funciona no painel web e/ou app mobile (botão Criar não persiste)
+
+## Bugs v3.x — Página de Agendamento do Cliente
+- [x] BUG: Imagens (logo, banner, galeria) não aparecem na Página de Agendamento — handleVisualSubmit usava URLSearchParams que corrompe base64; corrigido para JSON
+- [x] BUG: Imagens de Serviços e Produtos não aparecem na Página de Agendamento — dependia de cadastros que estavam falhando (corrigido junto com bug de cadastro)
+- [x] BUG: Planos de Assinatura não aparecem na Página de Agendamento — query SQL raw substituída por funções Drizzle; erro de sintaxe no bloco de planos corrigido
+- [x] BUG: Erro de sintaxe no public-routes.ts (try sem catch) causado por } extra no bloco de planos

@@ -1,0 +1,35 @@
+{
+  "query": "SELECT \"galleryUrls\" IS NOT NULL as has_gallery, LEFT(\"galleryUrls\", 1) as first_char, LENGTH(\"galleryUrls\") as len FROM shop_settings WHERE \"galleryUrls\" IS NOT NULL LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT \"galleryUrls\" IS NOT NULL as has_gallery, LEFT(\"galleryUrls\", 1) as first_char, LENGTH(\"galleryUrls\") as len FROM shop_settings WHERE \"galleryUrls\" IS NOT NULL LIMIT 5;",
+  "rows": [
+    {
+      "has_gallery": "1",
+      "first_char": "g",
+      "len": "11"
+    },
+    {
+      "has_gallery": "1",
+      "first_char": "g",
+      "len": "11"
+    },
+    {
+      "has_gallery": "1",
+      "first_char": "g",
+      "len": "11"
+    },
+    {
+      "has_gallery": "1",
+      "first_char": "g",
+      "len": "11"
+    },
+    {
+      "has_gallery": "1",
+      "first_char": "g",
+      "len": "11"
+    }
+  ],
+  "messages": [],
+  "stdout": "has_gallery\tfirst_char\tlen\n1\tg\t11\n1\tg\t11\n1\tg\t11\n1\tg\t11\n1\tg\t11\n",
+  "stderr": "",
+  "execution_time_ms": 396
+}

@@ -1,0 +1,16 @@
+{
+  "query": "SELECT COUNT(*) as total, COUNT(\"logoUrl\") as has_logo, COUNT(\"bannerUrl\") as has_banner, COUNT(\"galleryUrls\") as has_gallery FROM shop_settings;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT COUNT(*) as total, COUNT(\"logoUrl\") as has_logo, COUNT(\"bannerUrl\") as has_banner, COUNT(\"galleryUrls\") as has_gallery FROM shop_settings;",
+  "rows": [
+    {
+      "total": "15",
+      "has_logo": "15",
+      "has_banner": "15",
+      "has_gallery": "15"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\thas_logo\thas_banner\thas_gallery\n15\t15\t15\t15\n",
+  "stderr": "",
+  "execution_time_ms": 372
+}

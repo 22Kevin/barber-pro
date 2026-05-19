@@ -5713,10 +5713,25 @@ async function renderPaginaCliente(req: Request, res: Response) {
       var origText = btn.innerHTML;
       btn.innerHTML = '⏳ Salvando...';
       btn.disabled = true;
-      var data = new FormData(form);
+      // Serializar como JSON para preservar base64 corretamente (URLSearchParams corrompe '+' do base64)
+      var payload = {
+        primaryColor: document.getElementById('fPrimaryColor').value,
+        backgroundColor: document.getElementById('fBackgroundColor').value,
+        fontStyle: document.getElementById('fFontStyle').value,
+        logoUrl: document.getElementById('fLogoUrl').value,
+        bannerUrl: document.getElementById('fBannerUrl').value,
+        galleryUrls: document.getElementById('fGalleryUrls').value,
+        logoBase64: document.getElementById('fLogoBase64').value,
+        logoMime: document.getElementById('fLogoMime').value,
+        bannerBase64: document.getElementById('fBannerBase64').value,
+        bannerMime: document.getElementById('fBannerMime').value,
+        galleryBase64List: document.getElementById('fGalleryBase64List').value,
+        galleryMimeList: document.getElementById('fGalleryMimeList').value,
+      };
       fetch('/admin/pagina-cliente/visual', {
         method: 'POST',
-        body: new URLSearchParams(data)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       }).then(function(r) {
         btn.innerHTML = origText;
         btn.disabled = false;
@@ -7276,11 +7291,17 @@ export function registerAdminRoutes(app: Express): void {
       }
 
       // Upload das fotos novas da galeria
-      let finalGalleryUrls = galleryUrlsRaw || "";
+      // galleryUrlsRaw pode ser JSON (novo formato) ou texto com \n (legado)
+      const parseGalleryRaw = (raw: string): string[] => {
+        if (!raw) return [];
+        const s = raw.trim();
+        if (s.startsWith('[')) { try { return (JSON.parse(s) as string[]).filter(Boolean); } catch {} }
+        return s.split('\n').map((u: string) => u.trim()).filter(Boolean);
+      };
+      let existingGalleryUrls: string[] = parseGalleryRaw(galleryUrlsRaw || "");
       if (galleryBase64List && galleryMimeList) {
         const base64Arr = galleryBase64List.split("||").filter(Boolean);
         const mimeArr = galleryMimeList.split("||").filter(Boolean);
-        const newUrls: string[] = [];
         for (let i = 0; i < base64Arr.length; i++) {
           try {
             const buf = Buffer.from(base64Arr[i], "base64");
@@ -7288,21 +7309,13 @@ export function registerAdminRoutes(app: Express): void {
             const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
             const key = `shop/${tenantId ?? 0}/gallery-${Date.now()}-${i}.${ext}`;
             const { url } = await storagePut(key, buf, mime);
-            newUrls.push(url);
+            existingGalleryUrls.push(url);
           } catch (e) { console.error("Erro upload galeria:", e); }
-        }
-        if (newUrls.length > 0) {
-          const existing = (finalGalleryUrls || "").split("\n").map((u: string) => u.trim()).filter(Boolean);
-          finalGalleryUrls = [...existing, ...newUrls].join("\n");
         }
       }
 
-      // Converter galleryUrls para formato JSON (compatível com APP)
-      let finalGalleryJson: string | null = null;
-      if (finalGalleryUrls) {
-        const urls = finalGalleryUrls.split('\n').map((u: string) => u.trim()).filter(Boolean);
-        finalGalleryJson = urls.length > 0 ? JSON.stringify(urls) : null;
-      }
+      // Salvar galleryUrls como JSON (compatível com APP e WEB)
+      const finalGalleryJson: string | null = existingGalleryUrls.length > 0 ? JSON.stringify(existingGalleryUrls) : null;
 
       await db.upsertShopSettings({
         primaryColor: primaryColor || null,
@@ -7313,10 +7326,21 @@ export function registerAdminRoutes(app: Express): void {
         galleryUrls: finalGalleryJson,
       } as any, tenantId);
 
-      res.redirect("/admin/pagina-cliente?saved=1");
+      // Responder com JSON (compatível com fetch do cliente) ou redirect (compatível com form tradicional)
+      const acceptsJson = req.headers['content-type']?.includes('application/json') || req.headers['accept']?.includes('application/json');
+      if (acceptsJson) {
+        res.json({ ok: true, logoUrl: finalLogoUrl, bannerUrl: finalBannerUrl });
+      } else {
+        res.redirect("/admin/pagina-cliente?saved=1");
+      }
     } catch (e: any) {
       console.error("Erro ao salvar visual:", e);
-      res.redirect("/admin/pagina-cliente");
+      const acceptsJson = req.headers['content-type']?.includes('application/json') || req.headers['accept']?.includes('application/json');
+      if (acceptsJson) {
+        res.status(500).json({ error: e.message });
+      } else {
+        res.redirect("/admin/pagina-cliente");
+      }
     }
   });
 

@@ -522,10 +522,15 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   }
   const isLoggedIn = !!loggedClient;
 
-  // Galeria
-  const galleryUrls: string[] = settings?.galleryUrls
-    ? JSON.parse(settings.galleryUrls).filter(Boolean)
-    : [];
+  // Galeria — suporte a JSON e texto com \n (legado)
+  const galleryUrls: string[] = (() => {
+    if (!settings?.galleryUrls) return [];
+    const raw = settings.galleryUrls.trim();
+    if (raw.startsWith('[')) {
+      try { return (JSON.parse(raw) as string[]).filter(Boolean); } catch {}
+    }
+    return raw.split('\n').map((u: string) => u.trim()).filter(Boolean);
+  })();
 
   // Avaliações recentes (máx 6) — filtradas por tenant para isolamento
   const allReviewsRaw: Array<{ id: number; clientId: number; serviceId: number | null; rating: number; comment: string | null; createdAt: Date }> = [];
@@ -788,26 +793,13 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   let subscriptionPlansHtml = "";
   let planServicesData: Record<number, any[]> = {};
   try {
-    const dbConn = await db.getDb();
-    if (dbConn) {
-      const tenantIdVal = tenant.id;
-      const plansResult = await dbConn.execute(
-        sql`SELECT * FROM subscription_plans WHERE "tenantId" = ${tenantIdVal} AND "isActive" = true ORDER BY price ASC`
-      ) as any;
-      const plans = Array.isArray(plansResult) ? plansResult[0] : plansResult?.rows ?? [];
-      if (plans && plans.length > 0) {
-        // Buscar serviços de cada plano
-        for (const plan of plans) {
-          const planIdVal = plan.id;
-          const svcsResult = await dbConn.execute(
-            sql`SELECT sps.serviceId, s.name as serviceName, s.price as servicePrice
-             FROM subscription_plan_services sps
-             JOIN services s ON s.id = sps.serviceId
-             WHERE sps.planId = ${planIdVal}`
-          ) as any;
-          const svcs = Array.isArray(svcsResult) ? svcsResult[0] : svcsResult?.rows ?? [];
-          planServicesData[plan.id] = svcs ?? [];
-        }
+    const plans = await db.getSubscriptionPlansByTenantId(tenant.id);
+    if (plans && plans.length > 0) {
+      // Buscar serviços de cada plano
+      for (const plan of plans) {
+        const svcs = await db.getSubscriptionPlanServices(plan.id);
+        planServicesData[plan.id] = svcs ?? [];
+      }
         const planCards = (plans as any[]).map((plan: any, idx: number) => {
           const isPopular = idx === Math.floor(plans.length / 2) && plans.length > 1;
           const svcs = planServicesData[plan.id] ?? [];
@@ -839,79 +831,76 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
             </div>
           `;
         }).join("");
-        subscriptionPlansHtml = `
-          <div style="margin-bottom:16px">
-            <p style="color:var(--muted);font-size:14px;margin:0">Assine um plano e garanta seus horários todo mês com desconto.</p>
-          </div>
-          <div class="tab-cards-grid">${planCards}</div>
-          <!-- Modal de Assinatura -->
-          <div class="plan-modal-overlay" id="planModalOverlay" onclick="if(event.target===this)closePlanModal()">
-            <div class="plan-modal">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                <div>
-                  <div class="plan-modal-title" id="planModalTitle"></div>
-                  <div class="plan-modal-sub" id="planModalSub"></div>
-                </div>
-                <button onclick="closePlanModal()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">×</button>
-              </div>
-              <div id="planModalServices"></div>
-              <button class="plan-modal-confirm" id="planModalConfirm"
-                style="background:${primaryColor};color:#0A0A0A;border:none"
-                onclick="confirmPlanSubscription()">
-                Continuar para Agendamento
-              </button>
-            </div>
-          </div>
-          <script>
-            var _planData = {};
-            function openPlanModal(planId, name, price, maxSvc, maxPrd, recurrences, servicesJson) {
-              _planData = { planId, name, price, maxSvc, maxPrd, recurrences, selectedServices: [] };
-              try { _planData.services = JSON.parse(servicesJson.replace(/&quot;/g,'"').replace(/&#39;/g,"'")); } catch(e) { _planData.services = []; }
-              document.getElementById('planModalTitle').textContent = name;
-              document.getElementById('planModalSub').textContent = 'R$ ' + price.toFixed(2).replace('.',',') + '/mês · ' + recurrences + ' agendamento' + (recurrences !== 1 ? 's' : '') + ' por mês';
-              var svcHtml = '';
-              if (_planData.services.length > 0) {
-                svcHtml += '<div class="plan-modal-section">Escolha ' + (maxSvc >= 999 ? 'todos os' : maxSvc) + ' serviço' + (maxSvc !== 1 ? 's' : '') + ' do plano:</div>';
-                _planData.services.forEach(function(s) {
-                  svcHtml += '<div class="plan-service-item" id="svc_' + s.id + '" onclick="togglePlanService(' + s.id + ')">' +
-                    '<div class="plan-service-check" id="svcCheck_' + s.id + '"></div>' +
-                    '<div style="flex:1"><div style="font-size:14px;font-weight:600">' + s.name + '</div>' +
-                    '<div style="font-size:12px;color:var(--muted)">R$ ' + Number(s.price).toFixed(2).replace('.',',') + '</div></div></div>';
-                });
-              }
-              document.getElementById('planModalServices').innerHTML = svcHtml;
-              document.getElementById('planModalOverlay').classList.add('open');
-            }
-            function closePlanModal() {
-              document.getElementById('planModalOverlay').classList.remove('open');
-            }
-            function togglePlanService(id) {
-              var idx = _planData.selectedServices.indexOf(id);
-              if (idx >= 0) {
-                _planData.selectedServices.splice(idx, 1);
-                document.getElementById('svc_' + id).classList.remove('selected');
-                document.getElementById('svcCheck_' + id).textContent = '';
-              } else {
-                if (_planData.maxSvc < 999 && _planData.selectedServices.length >= _planData.maxSvc) {
-                  alert('Você pode escolher no máximo ' + _planData.maxSvc + ' serviço' + (_planData.maxSvc !== 1 ? 's' : '') + '.');
-                  return;
-                }
-                _planData.selectedServices.push(id);
-                document.getElementById('svc_' + id).classList.add('selected');
-                document.getElementById('svcCheck_' + id).textContent = '✓';
-              }
-            }
-            function confirmPlanSubscription() {
-              if (_planData.services.length > 0 && _planData.selectedServices.length === 0) {
-                alert('Selecione pelo menos um serviço para continuar.');
-                return;
-              }
-              var url = '/pub/${slug}/agendar?planId=' + _planData.planId + '&selectedServices=' + _planData.selectedServices.join(',');
-              window.location.href = url;
-            }
-          <\/script>
-        `;
-      }
+        const planModalScript = [
+          '<script>',
+          '  var _pubBase = "/pub/' + slug + '";',
+          '  var _planData = {};',
+          '  function openPlanModal(planId, name, price, maxSvc, maxPrd, recurrences, servicesJson) {',
+          '    _planData = { planId, name, price, maxSvc, maxPrd, recurrences, selectedServices: [] };',
+          '    try { _planData.services = JSON.parse(decodeURIComponent(servicesJson)); } catch(e) { _planData.services = []; }',
+          '    document.getElementById("planModalTitle").textContent = name;',
+          '    document.getElementById("planModalSub").textContent = "R$ " + price.toFixed(2).replace(".",",") + "/m\u00eas \u00b7 " + recurrences + " agendamento" + (recurrences !== 1 ? "s" : "") + " por m\u00eas";',
+          '    var svcHtml = "";',
+          '    if (_planData.services.length > 0) {',
+          '      svcHtml += "<div class=plan-modal-section>Escolha " + (maxSvc >= 999 ? "todos os" : maxSvc) + " servi\u00e7o" + (maxSvc !== 1 ? "s" : "") + " do plano:</div>";',
+          '      _planData.services.forEach(function(s) {',
+          '        svcHtml += "<div class=plan-service-item id=svc_" + s.id + " onclick=togglePlanService(" + s.id + ")>" +',
+          '          "<div class=plan-service-check id=svcCheck_" + s.id + "></div>" +',
+          '          "<div style=flex:1><div style=font-size:14px;font-weight:600>" + s.name + "</div>" +',
+          '          "<div style=font-size:12px;color:var(--muted)>R$ " + Number(s.price).toFixed(2).replace(".",",") + "</div></div></div>";',
+          '      });',
+          '    }',
+          '    document.getElementById("planModalServices").innerHTML = svcHtml;',
+          '    document.getElementById("planModalOverlay").classList.add("open");',
+          '  }',
+          '  function closePlanModal() { document.getElementById("planModalOverlay").classList.remove("open"); }',
+          '  function togglePlanService(id) {',
+          '    var idx = _planData.selectedServices.indexOf(id);',
+          '    if (idx >= 0) {',
+          '      _planData.selectedServices.splice(idx, 1);',
+          '      document.getElementById("svc_" + id).classList.remove("selected");',
+          '      document.getElementById("svcCheck_" + id).textContent = "";',
+          '    } else {',
+          '      if (_planData.maxSvc < 999 && _planData.selectedServices.length >= _planData.maxSvc) {',
+          '        alert("Voc\u00ea pode escolher no m\u00e1ximo " + _planData.maxSvc + " servi\u00e7o" + (_planData.maxSvc !== 1 ? "s" : "") + ".");',
+          '        return;',
+          '      }',
+          '      _planData.selectedServices.push(id);',
+          '      document.getElementById("svc_" + id).classList.add("selected");',
+          '      document.getElementById("svcCheck_" + id).textContent = "\u2713";',
+          '    }',
+          '  }',
+          '  function confirmPlanSubscription() {',
+          '    if (_planData.services.length > 0 && _planData.selectedServices.length === 0) {',
+          '      alert("Selecione pelo menos um servi\u00e7o para continuar.");',
+          '      return;',
+          '    }',
+          '    var url = _pubBase + "/agendar?planId=" + _planData.planId + "&selectedServices=" + _planData.selectedServices.join(",");',
+          '    window.location.href = url;',
+          '  }',
+          '<\/script>',
+        ].join('\n');
+        subscriptionPlansHtml = [
+          '<div style="margin-bottom:16px">',
+          '  <p style="color:var(--muted);font-size:14px;margin:0">Assine um plano e garanta seus horários todo mês com desconto.</p>',
+          '</div>',
+          '<div class="tab-cards-grid">' + planCards + '</div>',
+          '<!-- Modal de Assinatura -->',
+          '<div class="plan-modal-overlay" id="planModalOverlay" onclick="if(event.target===this)closePlanModal()">',
+          '  <div class="plan-modal">',
+          '    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">',
+          '      <div>',
+          '        <div class="plan-modal-title" id="planModalTitle"></div>',
+          '        <div class="plan-modal-sub" id="planModalSub"></div>',
+          '      </div>',
+          '      <button onclick="closePlanModal()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">×</button>',
+          '    </div>',
+          '    <div id="planModalServices"></div>',
+          '    <button class="plan-modal-confirm" id="planModalConfirm" style="background:' + primaryColor + ';color:#0A0A0A;border:none" onclick="confirmPlanSubscription()">Continuar para Agendamento</button>',
+          '  </div>',
+          '</div>',
+          planModalScript,
+        ].join('\n');
     }
   } catch (e) { /* planos opcionais */ }
 

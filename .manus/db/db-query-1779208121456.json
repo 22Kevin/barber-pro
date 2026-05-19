@@ -1,0 +1,55 @@
+{
+  "query": "SELECT id, \"tenantId\", \"shopName\", \"logoUrl\", \"bannerUrl\", \"galleryUrls\", \"primaryColor\" FROM shop_settings LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user rLw1JvbLdYFD3rk.0158decbe081 --database 9fdXPX6chg63KWfUcPP4iP --execute SELECT id, \"tenantId\", \"shopName\", \"logoUrl\", \"bannerUrl\", \"galleryUrls\", \"primaryColor\" FROM shop_settings LIMIT 5;",
+  "rows": [
+    {
+      "id": "1",
+      "tenantId": "tenantId",
+      "shopName": "shopName",
+      "logoUrl": "logoUrl",
+      "bannerUrl": "bannerUrl",
+      "galleryUrls": "galleryUrls",
+      "primaryColor": "primaryColor"
+    },
+    {
+      "id": "30001",
+      "tenantId": "tenantId",
+      "shopName": "shopName",
+      "logoUrl": "logoUrl",
+      "bannerUrl": "bannerUrl",
+      "galleryUrls": "galleryUrls",
+      "primaryColor": "primaryColor"
+    },
+    {
+      "id": "30002",
+      "tenantId": "tenantId",
+      "shopName": "shopName",
+      "logoUrl": "logoUrl",
+      "bannerUrl": "bannerUrl",
+      "galleryUrls": "galleryUrls",
+      "primaryColor": "primaryColor"
+    },
+    {
+      "id": "60001",
+      "tenantId": "tenantId",
+      "shopName": "shopName",
+      "logoUrl": "logoUrl",
+      "bannerUrl": "bannerUrl",
+      "galleryUrls": "galleryUrls",
+      "primaryColor": "primaryColor"
+    },
+    {
+      "id": "90001",
+      "tenantId": "tenantId",
+      "shopName": "shopName",
+      "logoUrl": "logoUrl",
+      "bannerUrl": "bannerUrl",
+      "galleryUrls": "galleryUrls",
+      "primaryColor": "primaryColor"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\ttenantId\tshopName\tlogoUrl\tbannerUrl\tgalleryUrls\tprimaryColor\n1\ttenantId\tshopName\tlogoUrl\tbannerUrl\tgalleryUrls\tprimaryColor\n30001\ttenantId\tshopName\tlogoUrl\tbannerUrl\tgalleryUrls\tprimaryColor\n30002\ttenantId\tshopName\tlogoUrl\tbannerUrl\tgalleryUrls\tprimaryColor\n60001\ttenantId\tshopName\tlogoUrl\tbannerUrl\tgalleryUrls\tprimaryColor\n90001\ttenantId\tshopName\tlogoUrl\tbannerUrl\tgalleryUrls\tprimaryColor\n",
+  "stderr": "",
+  "execution_time_ms": 1217
+}

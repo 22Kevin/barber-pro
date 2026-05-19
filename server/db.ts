@@ -37,6 +37,8 @@ import {
   orbitLeads,
   productOrders,
   suppliers,
+  subscriptionPlans,
+  subscriptionPlanServices,
   type Supplier,
   type InsertSupplier,
   type WhatsappMessage,
@@ -3040,4 +3042,32 @@ export async function countOpenSupportTickets(): Promise<number> {
     SELECT COUNT(*) AS cnt FROM support_tickets WHERE status IN ('open', 'waiting_admin')
   `);
   return parseInt((result as any).rows[0]?.cnt || '0', 10);
+}
+
+// ─── Planos de Assinatura ─────────────────────────────────────────────────────
+export async function getSubscriptionPlansByTenantId(tenantId: number) {
+  return withRetry(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    return db.select().from(subscriptionPlans)
+      .where(and(eq(subscriptionPlans.tenantId, tenantId), eq(subscriptionPlans.isActive, true)))
+      .orderBy(subscriptionPlans.price);
+  });
+}
+
+export async function getSubscriptionPlanServices(planId: number) {
+  return withRetry(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    const rows = await db
+      .select({
+        serviceId: subscriptionPlanServices.serviceId,
+        serviceName: services.name,
+        servicePrice: services.price,
+      })
+      .from(subscriptionPlanServices)
+      .leftJoin(services, eq(services.id, subscriptionPlanServices.serviceId))
+      .where(eq(subscriptionPlanServices.planId, planId));
+    return rows;
+  });
 }
