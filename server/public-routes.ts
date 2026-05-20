@@ -1130,12 +1130,10 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
   const hasMp = !!(settings as any)?.mercadoPagoAccessToken;
   const waNumber = ((settings as any)?.whatsapp || (settings as any)?.phone || "").replace(/\D/g, "");
-  const waNumberJson = safeJson(waNumber ? "55" + waNumber : "");
+  const waNumberJson = JSON.stringify(waNumber ? "55" + waNumber : "");
 
   // Dados dos serviços e barbeiros em JSON para o JS da página
-  // safeJson: escapa < > & para injeção segura em blocos <script> dentro de HTML
-  const safeJson = (v: unknown) => JSON.stringify(v).replace(/</g, '\u003c').replace(/>/g, '\u003e').replace(/&/g, '\u0026');
-  const servicesJson = safeJson(serviceList.map((s) => ({
+  const servicesJson = JSON.stringify(serviceList.map((s) => ({
     id: s.id,
     name: s.name,
     price: s.price,
@@ -1143,7 +1141,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
     thumbnailUrl: (s as any).thumbnailUrl ?? null,
     description: (s as any).description ?? null,
   })));
-  const barbersJson = safeJson(barberList.map((b) => ({
+  const barbersJson = JSON.stringify(barberList.map((b) => ({
     id: b.id,
     name: b.name,
     photoUrl: b.photoUrl ?? null,
@@ -1151,8 +1149,8 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
   })));
   const firstBarberId = barberList[0]?.id ?? 1;
 
-  const loggedClientJson = loggedClient ? safeJson(loggedClient) : "null";
-  const hasMpJson = safeJson(hasMp);
+  const loggedClientJson = loggedClient ? JSON.stringify(loggedClient) : "null";
+  const hasMpJson = JSON.stringify(hasMp);
 
   // Gerar os próximos 30 dias para o calendário
   const today = new Date();
@@ -1170,7 +1168,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       month: monthShort[d.getMonth()],
     });
   }
-  const calendarJson = safeJson(calendarDays);
+  const calendarJson = JSON.stringify(calendarDays);
 
   const body = `
     <style>
@@ -1325,13 +1323,11 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       <!-- Etapa 1: Serviço selecionado + adicionar mais -->
       <div id="step-1">
-        <div class="step-section-title" id="step1-title">✂ Escolha o serviço</div>
-        <!-- Lista de seleção de serviço (visível por padrão; ocultada via JS quando vem ?service=ID) -->
-        <div class="services-grid2" id="svc-picker-list"></div>
-        <!-- Card do serviço principal (oculto até seleção) -->
-        <div id="main-svc-card" class="main-svc-card" style="display:none"></div>
-        <!-- Accordion: adicionar mais serviços (oculto até seleção) -->
-        <div class="add-more-toggle" id="add-more-toggle" onclick="toggleAddMore()" style="display:none">
+        <div class="step-section-title">✂ Serviço selecionado</div>
+        <!-- Card do serviço principal (pré-selecionado) -->
+        <div id="main-svc-card" class="main-svc-card"></div>
+        <!-- Accordion: adicionar mais serviços -->
+        <div class="add-more-toggle" id="add-more-toggle" onclick="toggleAddMore()">
           <span id="add-more-icon">＋</span>
           <span>Adicionar mais serviços</span>
         </div>
@@ -1341,7 +1337,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         <!-- Resumo dos serviços selecionados -->
         <div id="selected-summary" style="display:none" class="selected-summary"></div>
         <div class="booking-nav">
-          <button class="btn-next-step" id="btn-step1-next" onclick="goToStep(2)" style="flex:1;opacity:0.4;pointer-events:none">Próximo →</button>
+          <button class="btn-next-step ready" id="btn-step1-next" onclick="goToStep(2)" style="flex:1">Próximo →</button>
         </div>
       </div>
 
@@ -1531,43 +1527,6 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         panel.style.display = isOpen ? 'none' : 'block';
         if (icon) icon.textContent = isOpen ? '＋' : '－';
         if (!isOpen) renderServices();
-      }
-
-      function renderSvcPicker() {
-        var el = document.getElementById('svc-picker-list');
-        if (!el) return;
-        var html = '';
-        SERVICES.forEach(function(s) {
-          var isSel = selectedService && selectedService.id === s.id;
-          var thumbHtml = s.thumbnailUrl
-            ? '<img class="svc-thumb2" src="' + escHtml(s.thumbnailUrl) + '" alt="' + escHtml(s.name) + '" loading="lazy" />'
-            : '<div class="svc-thumb2-placeholder">✂</div>';
-          html += '<div class="svc-card2' + (isSel ? ' extra-selected' : '') + '" id="pick-svc-' + s.id + '" onclick="pickService(' + s.id + ')" style="cursor:pointer">';
-          html += thumbHtml;
-          html += '<div class="svc-body2">';
-          html += '<div class="svc-name2">' + escHtml(s.name) + '</div>';
-          html += '<div class="svc-meta2">⏱ ' + fmtDur(s.durationMinutes) + '</div>';
-          html += '<div class="svc-price2">' + fmtPrice(s.price) + '</div>';
-          html += '</div></div>';
-        });
-        el.innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Nenhum serviço disponível.</div>';
-        el.style.display = 'block';
-      }
-
-      function pickService(id) {
-        selectService(id);
-        // Mostrar card do serviço selecionado e habilitar botão Próximo
-        var mainCard = document.getElementById('main-svc-card');
-        if (mainCard) mainCard.style.display = 'flex';
-        var nextBtn = document.getElementById('btn-step1-next');
-        if (nextBtn) { nextBtn.classList.add('ready'); nextBtn.style.pointerEvents = ''; nextBtn.style.opacity = ''; }
-        // Atualizar título e mostrar accordion
-        var titleEl = document.getElementById('step1-title');
-        if (titleEl) titleEl.textContent = '✂ Serviço selecionado';
-        var addMore = document.getElementById('add-more-toggle');
-        if (addMore) addMore.style.display = 'flex';
-        // Atualizar visual da lista de seleção
-        renderSvcPicker();
       }
 
       function selectService(id) {
@@ -1920,18 +1879,9 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       if (params.get('service')) {
         var svcId = parseInt(params.get('service'));
         selectService(svcId);
-        // Serviço pré-selecionado via URL: ocultar lista, mostrar card e accordion, habilitar botão
-        var svcPickerEl = document.getElementById('svc-picker-list');
-        if (svcPickerEl) svcPickerEl.style.display = 'none';
-        var mainCard = document.getElementById('main-svc-card');
-        if (mainCard) mainCard.style.display = 'flex';
-        var addMoreToggle = document.getElementById('add-more-toggle');
-        if (addMoreToggle) addMoreToggle.style.display = 'flex';
-        var nextBtn = document.getElementById('btn-step1-next');
-        if (nextBtn) { nextBtn.classList.add('ready'); nextBtn.style.pointerEvents = ''; nextBtn.style.opacity = ''; }
-      } else {
-        // Sem serviço na URL: renderizar lista de seleção (já visível no HTML)
-        renderSvcPicker();
+      } else if (SERVICES.length > 0) {
+        // Se não veio serviço na URL, selecionar o primeiro por padrão
+        selectService(SERVICES[0].id);
       }
       if (params.get('barber')) {
         var bid = parseInt(params.get('barber'));
@@ -4037,28 +3987,6 @@ export function registerPublicRoutes(app: Express): void {
 
   app.get("/pub/:slug/agendar", async (req: Request, res: Response) => {
     await renderBookingPage(req.params.slug, res, req);
-  });
-
-  // Endpoint de diagnóstico — retorna os dados brutos da página de agendamento em JSON
-  app.get("/pub-api/booking-debug/:slug", async (req: Request, res: Response) => {
-    try {
-      const slug = req.params.slug;
-      const tenant = await db.getTenantBySlug(slug);
-      if (!tenant) return res.status(404).json({ error: "tenant não encontrado" });
-      const settings = await db.getShopSettingsByTenantId(tenant.id);
-      const barberList = await db.getAllBarbers(tenant.id);
-      const serviceList = await db.getAllServicesWithMediaAndRatings(true, tenant.id);
-      return res.json({
-        tenantId: tenant.id,
-        slug,
-        servicesCount: serviceList.length,
-        barbersCount: barberList.length,
-        services: serviceList.map((s) => ({ id: s.id, name: s.name, price: s.price, durationMinutes: s.durationMinutes, isActive: s.isActive })),
-        barbers: barberList.map((b) => ({ id: b.id, name: b.name, isActive: b.isActive })),
-      });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
   });
 
   app.get("/pub/:slug/servico/:serviceId", async (req: Request, res: Response) => {
