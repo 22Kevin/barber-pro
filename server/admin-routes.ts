@@ -2741,8 +2741,8 @@ async function renderServicos(req: Request, res: Response) {
               <button type="button" onclick="document.getElementById('svc-media-file').click()" class="btn" style="padding:10px 18px;background:var(--surface2);color:var(--text)">Selecionar arquivo</button>
               <span id="svc-media-name" style="color:var(--muted);font-size:13px">Nenhum arquivo selecionado</span>
             </div>
-            <div id="svc-media-preview" style="margin-top:10px;display:none">
-              <img id="svc-media-img" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover" />
+            <div id="svc-media-preview" style="margin-top:10px;display:${editService?.thumbnailUrl ? 'block' : 'none'}">
+              <img id="svc-media-img" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover" src="${editService?.thumbnailUrl ?? ''}" />
               <video id="svc-media-vid" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);display:none" controls></video>
             </div>
             <input type="hidden" name="mediaBase64" id="svc-media-b64" />
@@ -7439,7 +7439,6 @@ export function registerAdminRoutes(app: Express): void {
       serviceId = (newService as any) ?? 0;
     }
     // Processar upload de mídia
-    console.log('[svc-upload] mediaBase64 length:', mediaBase64?.length ?? 0, 'mediaMime:', mediaMime);
     if (mediaBase64 && mediaMime && serviceId) {
       try {
         const { storagePut } = await import("./storage");
@@ -7449,10 +7448,7 @@ export function registerAdminRoutes(app: Express): void {
         const { url } = await storagePut(key, buffer, mediaMime);
         const type = mediaMime.startsWith("video/") ? "video" : "image";
         await db.addMediaFile({ entityType: "service", entityId: serviceId, url, type });
-      } catch (e: any) { 
-        console.error("[svc-upload] ERRO:", e?.message ?? String(e));
-        console.error("[svc-upload] STACK:", e?.stack ?? "");
-      }
+      } catch (e) { console.error('Erro ao salvar mídia do serviço:', e); }
     }
     res.redirect("/admin/servicos?saved=1");
   });
