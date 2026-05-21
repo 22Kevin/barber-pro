@@ -8673,6 +8673,7 @@ export function registerAdminRoutes(app: Express): void {
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId;
     const { clientId, planId, startDate, paymentMethod, returnDate, selectedServiceIds: selSvcRaw, selectedProductIds: selPrdRaw, appointments: apptsRaw } = req.body;
+    console.log('[nova-assinatura] clientId:', clientId, 'planId:', planId, 'selSvc:', selSvcRaw, 'appts:', apptsRaw);
     if (!clientId || !planId || !startDate) {
       const rd = returnDate || today();
       res.redirect(`/admin/agenda?date=${rd}&error=Preencha+todos+os+campos`); return;
