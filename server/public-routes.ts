@@ -3367,7 +3367,8 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
         planProducts = Array.isArray(prdsResult) ? prdsResult[0] : prdsResult?.rows ?? [];
       }
     }
-  } catch {}
+  } catch (e: any) { console.error('[plan-svc] ERRO:', e?.message ?? String(e)); }
+  console.log('[plan-svc] plan:', plan?.id, 'services:', planServices.length, 'products:', planProducts.length, 'planId param:', planId);
   if (!plan) { res.redirect(`/pub/${slug}`); return; }
   // Buscar barbeiros ativos
   const barberList = await db.getAllBarbers(tenant.id);
