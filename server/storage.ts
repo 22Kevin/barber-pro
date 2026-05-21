@@ -1,95 +1,124 @@
-// Preconfigured storage helpers for Manus WebDev templates
-// Uses the Biz-provided storage proxy (Authorization: Bearer <token>)
+// Storage helpers — Cloudflare R2 via S3-compatible API (AWS Signature V4)
+// Variáveis necessárias: S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET
 
-import { ENV } from "./_core/env";
+import { createHmac, createHash } from "crypto";
 
-type StorageConfig = { baseUrl: string; apiKey: string };
+function getConfig() {
+  const endpoint = process.env.S3_ENDPOINT ?? "";
+  const accessKey = process.env.S3_ACCESS_KEY ?? "";
+  const secretKey = process.env.S3_SECRET_KEY ?? "";
+  const bucket = process.env.S3_BUCKET ?? "";
 
-function getStorageConfig(): StorageConfig {
-  const baseUrl = ENV.forgeApiUrl;
-  const apiKey = ENV.forgeApiKey;
-
-  if (!baseUrl || !apiKey) {
+  if (!endpoint || !accessKey || !secretKey || !bucket) {
     throw new Error(
-      "Storage proxy credentials missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY",
+      "Storage credentials missing: set S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET"
     );
   }
 
-  return { baseUrl: baseUrl.replace(/\/+$/, ""), apiKey };
+  return { endpoint: endpoint.replace(/\/+$/, ""), accessKey, secretKey, bucket };
 }
 
-function buildUploadUrl(baseUrl: string, relKey: string): URL {
-  const url = new URL("v1/storage/upload", ensureTrailingSlash(baseUrl));
-  url.searchParams.set("path", normalizeKey(relKey));
-  return url;
+function sha256(data: string | Buffer): string {
+  return createHash("sha256").update(data).digest("hex");
 }
 
-async function buildDownloadUrl(baseUrl: string, relKey: string, apiKey: string): Promise<string> {
-  const downloadApiUrl = new URL("v1/storage/downloadUrl", ensureTrailingSlash(baseUrl));
-  downloadApiUrl.searchParams.set("path", normalizeKey(relKey));
-  const response = await fetch(downloadApiUrl, {
-    method: "GET",
-    headers: buildAuthHeaders(apiKey),
-  });
-  return (await response.json()).url;
+function hmac(key: Buffer | string, data: string): Buffer {
+  return createHmac("sha256", key).update(data).digest();
 }
 
-function ensureTrailingSlash(value: string): string {
-  return value.endsWith("/") ? value : `${value}/`;
+function getSigningKey(secretKey: string, date: string, region: string, service: string): Buffer {
+  const kDate = hmac("AWS4" + secretKey, date);
+  const kRegion = hmac(kDate, region);
+  const kService = hmac(kRegion, service);
+  return hmac(kService, "aws4_request");
 }
 
-function normalizeKey(relKey: string): string {
-  return relKey.replace(/^\/+/, "");
-}
+function signRequest(
+  method: string,
+  url: URL,
+  headers: Record<string, string>,
+  bodyHash: string,
+  accessKey: string,
+  secretKey: string
+): string {
+  const now = new Date();
+  const datetime = now.toISOString().replace(/[:-]|\.\d{3}/g, "").slice(0, 15) + "Z";
+  const date = datetime.slice(0, 8);
+  const region = "auto";
+  const service = "s3";
 
-function toFormData(
-  data: Buffer | Uint8Array | string,
-  contentType: string,
-  fileName: string,
-): FormData {
-  const blob =
-    typeof data === "string"
-      ? new Blob([data], { type: contentType })
-      : new Blob([data as any], { type: contentType });
-  const form = new FormData();
-  form.append("file", blob, fileName || "file");
-  return form;
-}
+  headers["x-amz-date"] = datetime;
+  headers["x-amz-content-sha256"] = bodyHash;
 
-function buildAuthHeaders(apiKey: string): HeadersInit {
-  return { Authorization: `Bearer ${apiKey}` };
+  const signedHeaderNames = Object.keys(headers).sort().join(";");
+  const canonicalHeaders = Object.keys(headers)
+    .sort()
+    .map((k) => `${k}:${headers[k]}\n`)
+    .join("");
+
+  const canonicalRequest = [
+    method,
+    url.pathname,
+    url.search.slice(1),
+    canonicalHeaders,
+    signedHeaderNames,
+    bodyHash,
+  ].join("\n");
+
+  const credentialScope = `${date}/${region}/${service}/aws4_request`;
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    datetime,
+    credentialScope,
+    sha256(canonicalRequest),
+  ].join("\n");
+
+  const signingKey = getSigningKey(secretKey, date, region, service);
+  const signature = hmac(signingKey, stringToSign).toString("hex");
+
+  return `AWS4-HMAC-SHA256 Credential=${accessKey}/${credentialScope}, SignedHeaders=${signedHeaderNames}, Signature=${signature}`;
 }
 
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
-  contentType = "application/octet-stream",
+  contentType = "application/octet-stream"
 ): Promise<{ key: string; url: string }> {
-  const { baseUrl, apiKey } = getStorageConfig();
-  const key = normalizeKey(relKey);
-  const uploadUrl = buildUploadUrl(baseUrl, key);
-  const formData = toFormData(data, contentType, key.split("/").pop() ?? key);
-  const response = await fetch(uploadUrl, {
-    method: "POST",
-    headers: buildAuthHeaders(apiKey),
-    body: formData,
+  const { endpoint, accessKey, secretKey, bucket } = getConfig();
+  const key = relKey.replace(/^\/+/, "");
+  const body = typeof data === "string" ? Buffer.from(data) : Buffer.from(data as any);
+  const bodyHash = sha256(body);
+
+  const url = new URL(`/${bucket}/${key}`, endpoint);
+  const headers: Record<string, string> = {
+    host: url.host,
+    "content-type": contentType,
+    "content-length": String(body.length),
+  };
+
+  const auth = signRequest("PUT", url, headers, bodyHash, accessKey, secretKey);
+  headers["authorization"] = auth;
+
+  const response = await fetch(url.toString(), {
+    method: "PUT",
+    headers,
+    body,
   });
 
   if (!response.ok) {
     const message = await response.text().catch(() => response.statusText);
-    throw new Error(
-      `Storage upload failed (${response.status} ${response.statusText}): ${message}`,
-    );
+    throw new Error(`Storage upload failed (${response.status}): ${message}`);
   }
-  const url = (await response.json()).url;
-  return { key, url };
+
+  // URL pública do objeto via Cloudflare R2 CDN
+  const publicBaseUrl = process.env.S3_PUBLIC_URL ?? `${endpoint}/${bucket}`;
+  const publicUrl = `${publicBaseUrl.replace(/\/+$/, "")}/${key}`;
+  return { key, url: publicUrl };
 }
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
-  const { baseUrl, apiKey } = getStorageConfig();
-  const key = normalizeKey(relKey);
-  return {
-    key,
-    url: await buildDownloadUrl(baseUrl, key, apiKey),
-  };
+  const { endpoint, bucket } = getConfig();
+  const key = relKey.replace(/^\/+/, "");
+  const url = `${endpoint}/${bucket}/${key}`;
+  return { key, url };
 }
