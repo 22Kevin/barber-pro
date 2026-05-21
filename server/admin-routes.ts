@@ -839,6 +839,24 @@ function adminLayout(title: string, activePage: string, body: string, barberName
           return v;
         }
         if (type === 'card-cvv') { return v.slice(0, 4); }
+        if (type === 'price') {
+          // Permite apenas números e vírgula/ponto como decimal
+          var cleaned = (raw || '').replace(/[^0-9.,]/g, '');
+          // Normalizar: trocar ponto por vírgula e remover duplicatas
+          cleaned = cleaned.replace('.', ',').replace(/,(.*),/, function(m, g){ return ',' + g.replace(/,/g,''); });
+          // Limitar a 2 casas decimais
+          var parts = cleaned.split(',');
+          if (parts[1] !== undefined) parts[1] = parts[1].slice(0, 2);
+          return parts.join(',');
+        }
+        if (type === 'cnpj-mask') {
+          v = v.slice(0, 14);
+          if (v.length > 12) return v.slice(0,2)+'.'+v.slice(2,5)+'.'+v.slice(5,8)+'/'+v.slice(8,12)+'-'+v.slice(12);
+          if (v.length > 8)  return v.slice(0,2)+'.'+v.slice(2,5)+'.'+v.slice(5,8)+'/'+v.slice(8);
+          if (v.length > 5)  return v.slice(0,2)+'.'+v.slice(2,5)+'.'+v.slice(5);
+          if (v.length > 2)  return v.slice(0,2)+'.'+v.slice(2);
+          return v;
+        }
         return raw;
       }
       // Event delegation: UM listener no document captura todos os campos com data-mask.
@@ -2837,7 +2855,7 @@ async function renderServicos(req: Request, res: Response) {
             </div>
             <div class="form-group">
               <label class="form-label">Preço (R$) *</label>
-              <input class="form-input" type="number" name="price" step="0.01" min="0" value="${editService?.price ?? ""}" required />
+              <input class="form-input" type="text" id="svcPriceInput" name="price" inputmode="decimal" data-mask="price" value="${editService?.price ? parseFloat(editService.price).toFixed(2).replace('.', ',') : ''}" placeholder="0,00" required />
             </div>
             <div class="form-group">
               <label class="form-label">Duração (minutos) *</label>
@@ -2971,7 +2989,7 @@ async function renderProdutos(req: Request, res: Response) {
             </div>
             <div class="form-group">
               <label class="form-label">Preço (R$) *</label>
-              <input class="form-input" type="number" name="price" step="0.01" min="0" value="${editProduct?.price ?? ""}" required />
+              <input class="form-input" type="text" id="prdPriceInput" name="price" inputmode="decimal" data-mask="price" value="${editProduct?.price ? parseFloat(editProduct.price).toFixed(2).replace('.', ',') : ''}" placeholder="0,00" required />
             </div>
             <div class="form-group">
               <label class="form-label">Tipo</label>
@@ -3556,7 +3574,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
   const tenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
   const currentSlug = tenant?.slug ?? "";
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "";
-  const publicUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}` : "";
+  const publicUrl = currentSlug ? `https://usebarberpro.com/pub/${currentSlug}` : "";
   const bookingUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}/agendar` : "";
   const shopNameForShare = settings?.shopName ?? "Minha Barbearia";
 
@@ -4801,19 +4819,27 @@ async function renderRelatorios(req: Request, res: Response) {
   const { getDb } = await import("./db.js");
   const dbConn = await getDb();
   let serviceRanking: Array<{ name: string; count: number; revenue: number }> = [];
-  if (dbConn) {
-    const { eq } = await import("drizzle-orm");
-    const items = await dbConn.select().from(saleItemsTable).where(
-      eq(saleItemsTable.itemType, "service")
-    );
-    const map: Record<string, { count: number; revenue: number }> = {};
-    items.forEach((item: any) => {
-      if (!map[item.itemName]) map[item.itemName] = { count: 0, revenue: 0 };
-      map[item.itemName].count += item.quantity;
-      map[item.itemName].revenue += parseFloat(item.total ?? "0");
-    });
-    serviceRanking = Object.entries(map).map(([name, v]) => ({ name, ...v }))
-      .sort((a, b) => b.count - a.count).slice(0, 8);
+  if (dbConn && tenantId) {
+    const { eq, and, inArray } = await import("drizzle-orm");
+    const { sales: salesTable } = await import("../drizzle/schema.js");
+    // Buscar IDs de vendas do tenant no período
+    const tenantSales = await dbConn.select({ id: salesTable.id })
+      .from(salesTable)
+      .where(and(eq(salesTable.tenantId, tenantId)));
+    const saleIds = tenantSales.map((s: any) => s.id);
+    if (saleIds.length > 0) {
+      const items = await dbConn.select().from(saleItemsTable).where(
+        and(eq(saleItemsTable.itemType, "service"), inArray(saleItemsTable.saleId, saleIds))
+      );
+      const map: Record<string, { count: number; revenue: number }> = {};
+      items.forEach((item: any) => {
+        if (!map[item.itemName]) map[item.itemName] = { count: 0, revenue: 0 };
+        map[item.itemName].count += item.quantity;
+        map[item.itemName].revenue += parseFloat(item.total ?? "0");
+      });
+      serviceRanking = Object.entries(map).map(([name, v]) => ({ name, ...v }))
+        .sort((a, b) => b.count - a.count).slice(0, 8);
+    }
   }
   const maxCount = Math.max(...serviceRanking.map(s => s.count), 1);
   const rankingRows = serviceRanking.map((s, i) => `
@@ -5297,7 +5323,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
   // Buscar tenant para slug
   const tenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
   const currentSlug = tenant?.slug ?? "";
-  const publicUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}` : "";
+  const publicUrl = currentSlug ? `https://usebarberpro.com/pub/${currentSlug}` : "";
   const bookingUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}/agendar` : "";
   const shopNameForShare = settings?.shopName ?? "Minha Barbearia";
 
