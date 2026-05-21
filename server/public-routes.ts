@@ -1278,6 +1278,8 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       .main-svc-name { font-size: 15px; font-weight: 800; }
       .main-svc-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
       .main-svc-price { font-size: 16px; font-weight: 900; color: var(--primary); margin-top: 4px; }
+      .main-svc-remove { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 12px 14px 12px 8px; line-height: 1; flex-shrink: 0; transition: color 0.15s; }
+      .main-svc-remove:hover { color: #ef4444; }
       .add-more-toggle { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--surface); border: 1.5px dashed var(--border); border-radius: 14px; cursor: pointer; font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 12px; transition: background 0.15s; }
       .add-more-toggle:hover { background: var(--surface2); }
       .selected-summary { background: var(--surface2); border-radius: 12px; padding: 12px 16px; margin-top: 12px; }
@@ -1323,21 +1325,29 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       <!-- Etapa 1: Serviço selecionado + adicionar mais -->
       <div id="step-1">
-        <div class="step-section-title">✂ Serviço selecionado</div>
-        <!-- Card do serviço principal (pré-selecionado) -->
-        <div id="main-svc-card" class="main-svc-card"></div>
-        <!-- Accordion: adicionar mais serviços -->
-        <div class="add-more-toggle" id="add-more-toggle" onclick="toggleAddMore()">
+        <!-- Título dinâmico (muda conforme estado) -->
+        <div id="step1-title" class="step-section-title">✂ Escolha um serviço</div>
+
+        <!-- Grade de seleção de serviço principal (visível quando nenhum serviço está selecionado) -->
+        <div id="main-svc-select" class="services-grid2" style="margin-bottom:16px;"></div>
+
+        <!-- Card do serviço principal selecionado (visível após seleção) -->
+        <div id="main-svc-card" class="main-svc-card" style="display:none"></div>
+
+        <!-- Accordion: adicionar mais serviços (visível somente após seleção) -->
+        <div class="add-more-toggle" id="add-more-toggle" onclick="toggleAddMore()" style="display:none">
           <span id="add-more-icon">＋</span>
           <span>Adicionar mais serviços</span>
         </div>
         <div id="add-more-panel" style="display:none">
           <div class="services-grid2" id="services-list"></div>
         </div>
-        <!-- Resumo dos serviços selecionados -->
+
+        <!-- Resumo dos serviços extras selecionados -->
         <div id="selected-summary" style="display:none" class="selected-summary"></div>
+
         <div class="booking-nav">
-          <button class="btn-next-step ready" id="btn-step1-next" onclick="goToStep(2)" style="flex:1">Próximo →</button>
+          <button class="btn-next-step" id="btn-step1-next" onclick="goToStep(2)" style="flex:1">Próximo →</button>
         </div>
       </div>
 
@@ -1448,17 +1458,67 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       function renderMainServiceCard() {
         var el = document.getElementById('main-svc-card');
-        if (!el || !selectedService) return;
+        var selectEl = document.getElementById('main-svc-select');
+        var addMoreEl = document.getElementById('add-more-toggle');
+        var titleEl = document.getElementById('step1-title');
+        var btnNext = document.getElementById('btn-step1-next');
+
+        if (!selectedService) {
+          // Modo seleção: esconde card e accordion, mostra grade de escolha
+          if (el) el.style.display = 'none';
+          if (addMoreEl) addMoreEl.style.display = 'none';
+          if (titleEl) titleEl.textContent = '✂ Escolha um serviço';
+          if (btnNext) { btnNext.classList.remove('ready'); }
+
+          if (!selectEl) return;
+          selectEl.style.display = 'grid';
+          var html = '';
+          SERVICES.forEach(function(s) {
+            var thumbHtml = s.thumbnailUrl
+              ? '<img class="svc-thumb2" src="' + escHtml(s.thumbnailUrl) + '" alt="" loading="lazy" />'
+              : '<div class="svc-thumb2-placeholder">✂</div>';
+            html += '<div class="svc-card2" onclick="selectService(' + s.id + ')">' +
+              thumbHtml +
+              '<div class="svc-body2">' +
+                '<div class="svc-name2">' + escHtml(s.name) + '</div>' +
+                '<div class="svc-meta2">⏱ ' + fmtDur(s.durationMinutes) + '</div>' +
+                '<div class="svc-price2">' + fmtPrice(s.price) + '</div>' +
+              '</div>' +
+            '</div>';
+          });
+          selectEl.innerHTML = html;
+          return;
+        }
+
+        // Modo exibição: esconde grade, mostra card com botão de remover
+        if (selectEl) selectEl.style.display = 'none';
+        if (addMoreEl) addMoreEl.style.display = '';
+        if (titleEl) titleEl.textContent = '✂ Serviço selecionado';
+        if (btnNext) { btnNext.classList.add('ready'); }
+
         var s = selectedService;
         var thumbHtml = s.thumbnailUrl
           ? '<img class="main-svc-thumb" src="' + escHtml(s.thumbnailUrl) + '" alt="" loading="lazy" />'
           : '<div class="main-svc-thumb-placeholder">✂</div>';
+
+        el.style.display = 'flex';
         el.innerHTML = thumbHtml +
           '<div class="main-svc-body">' +
             '<div class="main-svc-name">' + escHtml(s.name) + '</div>' +
             '<div class="main-svc-meta">⏱ ' + fmtDur(s.durationMinutes) + '</div>' +
             '<div class="main-svc-price">' + fmtPrice(s.price) + '</div>' +
-          '</div>';
+          '</div>' +
+          '<button class="main-svc-remove" onclick="removeMainService()" title="Remover serviço">✕</button>';
+      }
+
+      function removeMainService() {
+        selectedService = null;
+        selectedServices = [];
+        var summaryEl = document.getElementById('selected-summary');
+        if (summaryEl) { summaryEl.style.display = 'none'; summaryEl.innerHTML = ''; }
+        var addMorePanel = document.getElementById('add-more-panel');
+        if (addMorePanel) addMorePanel.style.display = 'none';
+        renderMainServiceCard();
       }
 
       function renderServices() {
@@ -1469,17 +1529,16 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           // Não mostrar o serviço principal na lista de extras
           if (selectedService && s.id === selectedService.id) return;
           var isExtra = selectedServices.some(function(x) { return x.id === s.id; });
-          html += '<div class="svc-card2' + (isExtra ? ' extra-selected' : '') + '" id="svc-' + s.id + '" onclick="toggleExtraService(' + s.id + ')">';
-          if (s.thumbnailUrl) {
-            html += '<img class="svc-thumb2" src="' + escHtml(s.thumbnailUrl) + '" alt="' + escHtml(s.name) + '" loading="lazy" />';
-          } else {
-            html += '<div class="svc-thumb2-placeholder">✂</div>';
-          }
-          html += '<div class="svc-body2">';
-          html += '<div class="svc-name2">' + escHtml(s.name) + '</div>';
-          html += '<div class="svc-meta2">⏱ ' + fmtDur(s.durationMinutes) + '</div>';
-          html += '<div class="svc-price2">' + fmtPrice(s.price) + '</div>';
-          html += '</div></div>';
+          var thumbHtml = s.thumbnailUrl
+            ? '<img class="svc-thumb2" src="' + escHtml(s.thumbnailUrl) + '" alt="" loading="lazy" />'
+            : '<div class="svc-thumb2-placeholder">✂</div>';
+          html += '<div class="svc-card2' + (isExtra ? ' extra-selected' : '') + '" id="svc-' + s.id + '" onclick="toggleExtraService(' + s.id + ')">' +
+            thumbHtml +
+            '<div class="svc-body2">' +
+              '<div class="svc-name2">' + escHtml(s.name) + '</div>' +
+              '<div class="svc-meta2">⏱ ' + fmtDur(s.durationMinutes) + '</div>' +
+              '<div class="svc-price2">' + fmtPrice(s.price) + '</div>' +
+            '</div></div>';
         });
         list.innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Nenhum outro serviço disponível.</div>';
       }
@@ -1530,8 +1589,11 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       }
 
       function selectService(id) {
-        selectedService = SERVICES.find(function(s) { return s.id === id; }) || null;
-        selectedServices = [];
+        var svc = SERVICES.find(function(s) { return s.id === id; });
+        if (!svc) return;
+        selectedService = svc;
+        // Remover o serviço principal dos extras se ele estiver lá
+        selectedServices = selectedServices.filter(function(s) { return s.id !== id; });
         renderMainServiceCard();
         renderServices();
         renderSelectedSummary();
@@ -1873,16 +1935,16 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       // ─── Inicializar ──────────────────────────────────────────────────────────
       renderBarbers();
+      renderMainServiceCard();
 
       // Pré-preencher via query string (retorno do login ou clique em "Agendar")
       var params = new URLSearchParams(window.location.search);
       if (params.get('service')) {
         var svcId = parseInt(params.get('service'));
         selectService(svcId);
-      } else if (SERVICES.length > 0) {
-        // Se não veio serviço na URL, selecionar o primeiro por padrão
-        selectService(SERVICES[0].id);
       }
+      // Se não veio ?service= na URL, selectedService permanece null
+      // e renderMainServiceCard() já exibe a grade de seleção
       if (params.get('barber')) {
         var bid = parseInt(params.get('barber'));
         var found = BARBERS.find(function(b) { return b.id === bid; });
