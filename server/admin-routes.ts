@@ -4818,12 +4818,13 @@ async function renderRelatorios(req: Request, res: Response) {
   </svg>`;
   // Ranking de serviços (por saleItems)
   const dbConn = await getDb();
+  // allBarbers já foi buscado acima com filtro por tenantId
+  const barberIds = allBarbers.map((b: any) => b.id);
   let serviceRanking: Array<{ name: string; count: number; revenue: number }> = [];
-  if (dbConn && tenantId) {
-    // Buscar IDs de vendas do tenant
+  if (dbConn && barberIds.length > 0) {
     const tenantSales = await dbConn.select({ id: salesTable.id })
       .from(salesTable)
-      .where(eq(salesTable.tenantId, tenantId));
+      .where(inArray(salesTable.barberId, barberIds));
     const saleIds = tenantSales.map((s: any) => s.id);
     if (saleIds.length > 0) {
       const items = await dbConn.select().from(saleItemsTable).where(
