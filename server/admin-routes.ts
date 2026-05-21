@@ -8733,6 +8733,7 @@ export function registerAdminRoutes(app: Express): void {
       const rd = returnDate || today();
       res.redirect(`/admin/agenda?date=${rd}&planSaved=1`);
     } catch (e: any) {
+      console.error('[nova-assinatura] ERRO:', e?.message, e?.stack?.slice(0,300));
       const rd = returnDate || today();
       res.redirect(`/admin/agenda?date=${rd}&error=${encodeURIComponent(e.message)}`);
     }
