@@ -3679,7 +3679,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
           var isSel = planSelectedBarber && planSelectedBarber.id === b.id;
           html += '<div class="plan-barber-card' + (isSel ? ' selected' : '') + '" onclick="selectPlanBarber(' + b.id + ')">';
           if (b.photoUrl) {
-            html += '<img class="plan-barber-avatar" src="' + escHtml(b.photoUrl) + '" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />';
+            html += '<img class="plan-barber-avatar" src="' + escHtml(b.photoUrl) + '" alt="" onerror="this.style.display=&quot;none&quot;;this.nextElementSibling.style.display=&quot;flex&quot;" />';
             html += '<div class="plan-barber-placeholder" style="display:none">' + initials + '</div>';
           } else {
             html += '<div class="plan-barber-placeholder">' + initials + '</div>';
