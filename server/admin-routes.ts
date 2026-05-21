@@ -8672,7 +8672,7 @@ export function registerAdminRoutes(app: Express): void {
     const session = (req as any).adminSession as { barberId: number; role: string };
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId;
-    const { clientId, planId, startDate, paymentMethod, returnDate } = req.body;
+    const { clientId, planId, startDate, paymentMethod, returnDate, selectedServiceIds: selSvcRaw, selectedProductIds: selPrdRaw, appointments: apptsRaw } = req.body;
     if (!clientId || !planId || !startDate) {
       const rd = returnDate || today();
       res.redirect(`/admin/agenda?date=${rd}&error=Preencha+todos+os+campos`); return;
@@ -8681,17 +8681,20 @@ export function registerAdminRoutes(app: Express): void {
       const dbConn = await db.getDb();
       if (!dbConn || !tenantId) throw new Error("Banco indisponível");
       // Buscar dados do plano
-      const planRows = await dbConn.execute(sql`SELECT id, name, price, recurrences, "selectedServiceIds", "selectedProductIds" FROM subscription_plans WHERE id = ${parseInt(planId)} AND "tenantId" = ${tenantId} LIMIT 1`) as any;
+      const planRows = await dbConn.execute(sql`SELECT id, name, price, recurrences, "maxServices", "maxProducts" FROM subscription_plans WHERE id = ${parseInt(planId)} AND "tenantId" = ${tenantId} LIMIT 1`) as any;
       const planData = Array.isArray(planRows) ? (planRows[0] as any[])[0] : (planRows?.rows ?? [])[0];
       if (!planData) throw new Error("Plano não encontrado");
       const price = parseFloat(planData.price) || 0;
-      const selectedServiceIds: number[] = (() => { try { return JSON.parse(planData.selectedServiceIds || "[]"); } catch { return []; } })();
-      const selectedProductIds: number[] = (() => { try { return JSON.parse(planData.selectedProductIds || "[]"); } catch { return []; } })();
+      // Usar selectedServiceIds/ProductIds vindos do modal (escolha do barbeiro)
+      const selectedServiceIds: number[] = (() => { try { return JSON.parse(selSvcRaw || "[]"); } catch { return []; } })();
+      const selectedProductIds: number[] = (() => { try { return JSON.parse(selPrdRaw || "[]"); } catch { return []; } })();
+      const appointments: {date: string; startTime: string}[] = (() => { try { return JSON.parse(apptsRaw || "[]"); } catch { return []; } })();
       const now = new Date();
       const cycleEndDate = new Date(now);
       cycleEndDate.setMonth(cycleEndDate.getMonth() + 1);
       const cycleEnd = cycleEndDate.toISOString().split("T")[0];
-      await dbConn.execute(sql`
+      // Inserir assinatura
+      const subResult = await dbConn.execute(sql`
         INSERT INTO client_subscriptions
           ("tenantId", "planId", "clientId", "barberId", "selectedServiceIds", "selectedProductIds",
            status, "paymentMethod", price, "cycleStart", "cycleEnd", "autoRenew")
@@ -8702,6 +8705,30 @@ export function registerAdminRoutes(app: Express): void {
           ${startDate}, ${cycleEnd}, ${false}
         )
       `);
+      // Criar agendamentos individuais se houver horários selecionados
+      if (appointments.length > 0 && selectedServiceIds.length > 0) {
+        const serviceId = selectedServiceIds[0];
+        // Buscar duração do serviço
+        const svcRows = await dbConn.execute(sql`SELECT "durationMinutes" FROM services WHERE id = ${serviceId} LIMIT 1`) as any;
+        const svcData = Array.isArray(svcRows) ? (svcRows[0] as any[])[0] : (svcRows?.rows ?? [])[0];
+        const duration = svcData?.durationMinutes ?? 30;
+        for (const appt of appointments) {
+          const [h, m] = appt.startTime.split(":").map(Number);
+          const endMinutes = h * 60 + m + duration;
+          const endH = String(Math.floor(endMinutes / 60) % 24).padStart(2, "0");
+          const endM = String(endMinutes % 60).padStart(2, "0");
+          const endTime = `${endH}:${endM}`;
+          await dbConn.execute(sql`
+            INSERT INTO appointments
+              ("tenantId", "clientId", "barberId", "serviceId", date, "startTime", "endTime", status, "serviceNames")
+            VALUES (
+              ${tenantId}, ${parseInt(clientId)}, ${session.barberId}, ${serviceId},
+              ${appt.date}, ${appt.startTime}, ${endTime}, 'scheduled',
+              ${planData.name}
+            )
+          `);
+        }
+      }
       const rd = returnDate || today();
       res.redirect(`/admin/agenda?date=${rd}&planSaved=1`);
     } catch (e: any) {
