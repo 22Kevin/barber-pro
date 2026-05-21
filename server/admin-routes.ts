@@ -2364,9 +2364,9 @@ async function renderAgenda(req: Request, res: Response) {
               </div>
               <div style="margin-bottom:16px">
                 <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Serviço *</label>
-                <select name="serviceId" required style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box">
+                <select name="serviceId" id="newApptServiceSelect" required onchange="updateNewApptDuration(this)" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box">
                   <option value="">Selecione o serviço</option>
-                  ${services.map((s: any) => `<option value="${s.id}">${esc(s.name)} — ${fmtCurrency(s.price)} (${s.duration ?? 30}min)</option>`).join("")}
+                  ${services.map((s: any) => `<option value="${s.id}" data-duration="${(s as any).durationMinutes ?? 30}">${esc(s.name)} — ${fmtCurrency(s.price)} (${(s as any).durationMinutes ?? 30}min)</option>`).join("")}
                 </select>
               </div>
               <div style="margin-bottom:16px">
@@ -2383,7 +2383,9 @@ async function renderAgenda(req: Request, res: Response) {
                 </div>
                 <div>
                   <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Horário *</label>
-                  <input type="time" name="startTime" required style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
+                  <input type="hidden" name="startTime" id="newApptStartTime" required />
+                  <div id="newApptTimeDisplay" onclick="document.getElementById('newApptTimePicker').style.display='block'" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;box-sizing:border-box;cursor:pointer">Selecione o horário</div>
+                  <div id="newApptTimePicker" style="display:none;margin-top:8px;max-height:220px;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px"></div>
                 </div>
               </div>
               <div style="margin-bottom:20px">
@@ -2398,6 +2400,54 @@ async function renderAgenda(req: Request, res: Response) {
           </div>
         </div>
         <script>
+          // Seletor de horário no modal de novo agendamento
+          function updateNewApptDuration(sel) { loadNewApptSlots(); }
+
+          async function loadNewApptSlots() {
+            var date = document.querySelector('[name="date"]')?.value;
+            var serviceId = document.getElementById('newApptServiceSelect')?.value;
+            var barberId = document.querySelector('[name="barberId"]')?.value;
+            var duration = 30;
+            var sel = document.getElementById('newApptServiceSelect');
+            if (sel && sel.value) {
+              var opt = sel.options[sel.selectedIndex];
+              duration = parseInt(opt.getAttribute('data-duration') || '30');
+            }
+            var picker = document.getElementById('newApptTimePicker');
+            var display = document.getElementById('newApptTimeDisplay');
+            if (!date || !barberId) { picker.style.display = 'none'; return; }
+            picker.innerHTML = '<div style="padding:8px;color:var(--muted);font-size:13px">Carregando...</div>';
+            picker.style.display = 'block';
+            try {
+              var r = await fetch('/pub-api/slots?barberId=' + barberId + '&date=' + date + '&duration=' + duration);
+              var slots = await r.json();
+              if (!slots.length) { picker.innerHTML = '<div style="padding:8px;color:var(--muted);font-size:13px">Nenhum horário disponível.</div>'; return; }
+              var manha = slots.filter(function(s){return parseInt(s.startTime)<12;});
+              var tarde = slots.filter(function(s){var h=parseInt(s.startTime);return h>=12&&h<18;});
+              var noite = slots.filter(function(s){return parseInt(s.startTime)>=18;});
+              function slotGroup(label, arr) {
+                if (!arr.length) return '';
+                return '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;padding:4px 4px 6px">' + label + '</div>' +
+                  '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">' +
+                  arr.map(function(s) {
+                    return '<button type="button" onclick="selectNewApptTime(&quot;' + s.startTime + '&quot;)" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-weight:600;cursor:pointer">' + s.startTime + '</button>';
+                  }).join('') + '</div>';
+              }
+              picker.innerHTML = slotGroup('Manhã', manha) + slotGroup('Tarde', tarde) + slotGroup('Noite', noite);
+            } catch(e) { picker.innerHTML = '<div style="padding:8px;color:var(--error);font-size:13px">Erro ao carregar horários.</div>'; }
+          }
+
+          function selectNewApptTime(time) {
+            document.getElementById('newApptStartTime').value = time;
+            document.getElementById('newApptTimeDisplay').textContent = time;
+            document.getElementById('newApptTimeDisplay').style.color = 'var(--text)';
+            document.getElementById('newApptTimePicker').style.display = 'none';
+          }
+
+          // Recarregar slots quando mudar data ou profissional
+          document.querySelector('[name="date"]')?.addEventListener('change', loadNewApptSlots);
+          document.querySelector('[name="barberId"]')?.addEventListener('change', loadNewApptSlots);
+
           // Toggle de vista
           function setView(v) {
             document.getElementById('viewCards').style.display = v === 'cards' ? 'block' : 'none';

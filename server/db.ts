@@ -2031,7 +2031,7 @@ export async function updateAppointmentStatus(id: number, status: string) {
 export async function deleteProduct(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(products).set({ isActive: false }).where(eq(products.id, id));
+  await db.delete(products).where(eq(products.id, id));
 }
 
 // ─── Avaliação Pós-Atendimento ────────────────────────────────────────────────
