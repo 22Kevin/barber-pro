@@ -1988,7 +1988,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
                 '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:11px;word-break:break-all;font-family:monospace;text-align:left;margin-bottom:12px" id="pix-code">' + (data.pixCopyCola || '') + '</div>' +
                 '<button onclick="copyPixCode()" style="width:100%;padding:10px;background:var(--primary);color:#0A0A0A;font-size:13px;font-weight:800;border:none;border-radius:10px;cursor:pointer;margin-bottom:12px">📋 Copiar código Pix</button>' +
                 '<div style="font-size:12px;color:var(--muted);line-height:1.5" id="pix-confirm-msg">Após o pagamento, seu agendamento será confirmado automaticamente.</div>' +
-                '<button onclick="checkPixPayment(\'' + paymentId + '\')" style="margin-top:10px;width:100%;padding:10px;background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;border:1.5px solid var(--border);border-radius:10px;cursor:pointer">🔄 Verificar pagamento</button>' +
+                '<button onclick="checkPixPayment(&quot;' + paymentId + '&quot;)" style="margin-top:10px;width:100%;padding:10px;background:var(--surface2);color:var(--text);font-size:13px;font-weight:700;border:1.5px solid var(--border);border-radius:10px;cursor:pointer">🔄 Verificar pagamento</button>' +
               '</div>' +
             '</div>';
           btn.style.display = 'none';
@@ -3135,7 +3135,7 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
             + '<div style="display:flex;justify-content:center;gap:8px;margin:16px 0" id="prStars">' + starsHtml + '</div>'
             + '<textarea id="prComment" placeholder="Coment\u00e1rio (opcional)" style="width:100%;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;resize:none;height:80px;box-sizing:border-box"></textarea>'
             + '<button id="prSubmit" onclick="submitProductReview()" style="margin-top:12px;width:100%;padding:14px;background:var(--primary);color:#0A0A0A;font-weight:900;border-radius:12px;border:none;font-size:15px;cursor:pointer">Enviar Avalia\u00e7\u00e3o</button>'
-            + '<button onclick="document.getElementById(\'productReviewModal\').style.display=\'none\'" style="margin-top:8px;width:100%;padding:10px;background:transparent;border:none;color:var(--muted);font-size:14px;cursor:pointer">Cancelar</button>'
+            + '<button onclick="document.getElementById(&quot;productReviewModal&quot;).style.display=&quot;none&quot;" style="margin-top:8px;width:100%;padding:10px;background:transparent;border:none;color:var(--muted);font-size:14px;cursor:pointer">Cancelar</button>'
             + '</div>';
           document.body.appendChild(modal);
         }
@@ -3617,7 +3617,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
           var isSel = planSelectedBarber && planSelectedBarber.id === b.id;
           html += '<div class="plan-barber-card' + (isSel ? ' selected' : '') + '" onclick="selectPlanBarber(' + b.id + ')">';
           if (b.photoUrl) {
-            html += '<img class="plan-barber-avatar" src="' + escHtml(b.photoUrl) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'" />';
+            html += '<img class="plan-barber-avatar" src="' + escHtml(b.photoUrl) + '" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />';
             html += '<div class="plan-barber-placeholder" style="display:none">' + initials + '</div>';
           } else {
             html += '<div class="plan-barber-placeholder">' + initials + '</div>';
@@ -3660,8 +3660,8 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
           var isPast = dt < today;
           var isSel = planSelectedDate === iso;
           var cls = 'plan-cal-cell' + (isPast ? ' plan-cal-past' : '') + (isSel ? ' plan-cal-selected' : '');
-          var onclick = isPast ? '' : 'onclick="selectPlanDate(\''+iso+'\')"\';
-          html += '<div class="' + cls + '"' + (isPast ? '' : ' onclick="selectPlanDate(\''+iso+'\')"\'') + '>' + d + '</div>';
+          var onclick = isPast ? '' : 'onclick="selectPlanDate(&quot;'+iso+'&quot;)"';
+          html += '<div class="' + cls + '"' + (isPast ? '' : ' onclick="selectPlanDate(&quot;'+iso+'&quot;)"') + '>' + d + '</div>';
         }
         // Cabeçalho do mês
         var calTitle = document.getElementById('plan-cal-title');
@@ -3693,7 +3693,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
           var tarde = slots.filter(function(s){var h=parseInt(s.startTime);return h>=12&&h<18;});
           var noite = slots.filter(function(s){return parseInt(s.startTime)>=18;});
           function slotBtn(s) {
-            return '<button class="plan-slot-btn" onclick="addPlanAppt(\''+s.startTime+'\')">'+s.startTime+'</button>';
+            return '<button class="plan-slot-btn" onclick="addPlanAppt(&quot;'+s.startTime+'&quot;)">'+s.startTime+'</button>';
           }
           var html = '<div style="margin-top:8px">';
           if (manha.length) html += '<div class="plan-slot-group"><div class="plan-period-label">☀️ Manhã<div class="plan-period-line"></div></div><div class="plan-slots-row">' + manha.map(slotBtn).join('') + '</div></div>';
