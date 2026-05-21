@@ -18,7 +18,9 @@
 
 import type { Express, Request, Response, NextFunction } from "express";
 import * as db from "./db";
-import { sql } from "drizzle-orm";
+import { sql, eq, and, inArray } from "drizzle-orm";
+import { saleItems as saleItemsTable, sales as salesTable } from "../drizzle/schema";
+import { getDb } from "./db";
 import { asaasEnabled, asaasApi, createAsaasSubAccount, getAsaasSubAccount, ensureAsaasRootCustomer, createAsaasSubscription, cancelAsaasSubscription } from "./asaas";
 import axios from "axios";
 import PDFDocument from "pdfkit";
@@ -4815,17 +4817,13 @@ async function renderRelatorios(req: Request, res: Response) {
     <text x="12" y="82" text-anchor="middle" font-size="9" fill="#999">${fmt(maxVal/2)}</text>
   </svg>`;
   // Ranking de serviços (por saleItems)
-  const { saleItems: saleItemsTable } = await import("../drizzle/schema.js");
-  const { getDb } = await import("./db.js");
   const dbConn = await getDb();
   let serviceRanking: Array<{ name: string; count: number; revenue: number }> = [];
   if (dbConn && tenantId) {
-    const { eq, and, inArray } = await import("drizzle-orm");
-    const { sales: salesTable } = await import("../drizzle/schema.js");
-    // Buscar IDs de vendas do tenant no período
+    // Buscar IDs de vendas do tenant
     const tenantSales = await dbConn.select({ id: salesTable.id })
       .from(salesTable)
-      .where(and(eq(salesTable.tenantId, tenantId)));
+      .where(eq(salesTable.tenantId, tenantId));
     const saleIds = tenantSales.map((s: any) => s.id);
     if (saleIds.length > 0) {
       const items = await dbConn.select().from(saleItemsTable).where(
