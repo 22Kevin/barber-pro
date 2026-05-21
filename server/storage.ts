@@ -105,9 +105,12 @@ export async function storagePut(
     body,
   });
 
+  console.log("[storage] PUT response status:", response.status, response.statusText);
+  const responseText = await response.text().catch(() => "");
+  console.log("[storage] PUT response body:", responseText.slice(0, 500));
+  
   if (!response.ok) {
-    const message = await response.text().catch(() => response.statusText);
-    throw new Error(`Storage upload failed (${response.status}): ${message}`);
+    throw new Error(`Storage upload failed (${response.status}): ${responseText}`);
   }
 
   // URL pública do objeto via Cloudflare R2 CDN
