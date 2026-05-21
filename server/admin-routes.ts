@@ -7439,6 +7439,7 @@ export function registerAdminRoutes(app: Express): void {
       serviceId = (newService as any) ?? 0;
     }
     // Processar upload de mídia
+    console.log('[svc-upload] mediaBase64 length:', mediaBase64?.length ?? 0, 'mediaMime:', mediaMime);
     if (mediaBase64 && mediaMime && serviceId) {
       try {
         const { storagePut } = await import("./storage");
