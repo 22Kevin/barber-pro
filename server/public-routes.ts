@@ -3357,6 +3357,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
            WHERE sps.planId = ${planId}`
         ) as any;
         planServices = Array.isArray(svcsResult) ? svcsResult[0] : svcsResult?.rows ?? [];
+        console.log('[plan-svc] planId:', planId, 'svcsResult type:', typeof svcsResult, 'isArray:', Array.isArray(svcsResult), 'length:', planServices.length, 'raw:', JSON.stringify(svcsResult).slice(0, 300));
         const prdsResult = await dbConn.execute(
           sql`SELECT spp.productId, p.name as productName, p.price as productPrice
            FROM subscription_plan_products spp
