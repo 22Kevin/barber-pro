@@ -3520,6 +3520,11 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
         <div id="plan-barbers-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px;margin-bottom:20px"></div>
         <!-- Calendário -->
         <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">📅 Escolha as datas (${plan.recurrences}x)</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <button id="plan-cal-prev" onclick="planCalNav(-1)" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);cursor:pointer;font-size:16px">‹</button>
+          <span id="plan-cal-title" style="font-size:14px;font-weight:700;color:var(--text)"></span>
+          <button id="plan-cal-next" onclick="planCalNav(1)" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);cursor:pointer;font-size:16px">›</button>
+        </div>
         <div class="plan-cal-grid" id="plan-cal-grid"></div>
         <!-- Slots -->
         <div id="plan-slots-area" style="margin-top:8px"></div>
@@ -3745,6 +3750,13 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
         var maxYear = maxDate.getFullYear();
         if (nextBtn) nextBtn.disabled = (planCalYear > maxYear || (planCalYear === maxYear && planCalMonth >= maxMonth));
         grid.innerHTML = html;
+      }
+
+      function planCalNav(dir) {
+        planCalMonth += dir;
+        if (planCalMonth > 11) { planCalMonth = 0; planCalYear++; }
+        if (planCalMonth < 0) { planCalMonth = 11; planCalYear--; }
+        renderPlanCal();
       }
 
       function selectPlanDate(iso) {
