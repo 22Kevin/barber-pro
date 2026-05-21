@@ -374,6 +374,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     .metric-card:nth-child(4) { animation-delay: 180ms; }
     /* ── Tooltip KPI ── */
     .kpi-tooltip { position:relative; cursor:default; }
+    .kpi-tooltip:hover { z-index:100; }
     .kpi-tooltip .kpi-tip {
       visibility:hidden; opacity:0; pointer-events:none;
       position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%);
@@ -1687,7 +1688,7 @@ async function renderDashboard(req: Request, res: Response) {
               <a href="${esc(dashPublicUrl)}" target="_blank" class="btn btn-ghost btn-sm" style="font-size:10px;padding:4px 8px;">Abrir ↗</a>
             </div>
             <div class="page-preview-iframe-wrap" style="height:280px;overflow:hidden;position:relative;">
-              <iframe src="${esc(dashPublicUrl)}" style="width:100%;height:100%;border:none;pointer-events:none;transform-origin:top left" scrolling="no" loading="lazy" title="Preview da sua página"></iframe>
+              <iframe src="${esc(dashPublicUrl)}" style="width:1200px;height:900px;border:none;pointer-events:none;transform-origin:top left;transform:scale(0.685);" scrolling="no" loading="lazy" title="Preview da sua página"></iframe>
               <a href="${esc(dashPublicUrl)}" target="_blank" style="position:absolute;inset:0;display:block;cursor:pointer" title="Abrir página pública"></a>
             </div>
           </div>
@@ -2896,8 +2897,8 @@ async function renderProdutos(req: Request, res: Response) {
               <button type="button" onclick="document.getElementById('prd-media-file').click()" class="btn" style="padding:10px 18px;background:var(--surface2);color:var(--text)">Selecionar arquivo</button>
               <span id="prd-media-name" style="color:var(--muted);font-size:13px">Nenhum arquivo selecionado</span>
             </div>
-            <div id="prd-media-preview" style="margin-top:10px;display:none">
-              <img id="prd-media-img" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover" />
+            <div id="prd-media-preview" style="margin-top:10px;display:${editProduct?.thumbnailUrl ? 'block' : 'none'}">
+              <img id="prd-media-img" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover" src="${editProduct?.thumbnailUrl ?? ''}" />
               <video id="prd-media-vid" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);display:none" controls></video>
             </div>
             <input type="hidden" name="mediaBase64" id="prd-media-b64" />
@@ -4579,7 +4580,7 @@ async function renderNovoAgendamento(req: Request, res: Response) {
           <label class="form-label">SERVIÇO *</label>
           <select name="serviceId" class="form-input" required id="serviceSelect" onchange="updateDuration(this)">
             <option value="">Selecione o serviço</option>
-            ${services.map((s: any) => `<option value="${s.id}" data-duration="${s.duration ?? 30}">${esc(s.name)} — ${fmtCurrency(s.price)} (${s.duration ?? 30}min)</option>`).join("")}
+            ${services.map((s: any) => `<option value="${s.id}" data-duration="${s.durationMinutes ?? 30}" data-price="${s.price ?? 0}">${esc(s.name)} — ${fmtCurrency(s.price)} (${s.durationMinutes ?? 30}min)</option>`).join("")}
           </select>
         </div>
         <div class="form-group">

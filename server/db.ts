@@ -484,7 +484,7 @@ export async function updateService(id: number, data: Partial<InsertService>) {
 export async function deleteService(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(services).set({ isActive: false }).where(eq(services.id, id));
+  await db.delete(services).where(eq(services.id, id));
 }
 
 // ─── Produtos ─────────────────────────────────────────────────────────────────
