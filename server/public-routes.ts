@@ -3614,14 +3614,13 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
       function renderPlanSvcList() {
         var svcEl = document.getElementById('plan-svc-list');
         var prdEl = document.getElementById('plan-prd-list');
-        var maxSvc = PLAN.maxServices || PLAN_SERVICES.length;
-        var maxPrd = PLAN.maxProducts || PLAN_PRODUCTS.length;
+        var maxSvc = PLAN.maxServices < 999 ? PLAN.maxServices : PLAN_SERVICES.length;
+        var maxPrd = PLAN.maxProducts < 999 ? PLAN.maxProducts : PLAN_PRODUCTS.length;
         var svcHtml = '';
         if (PLAN_SERVICES.length > 0) {
-          var svcCount = planSelectedServices.length + '/' + PLAN_SERVICES.length;
           svcHtml += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
             '<span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">✂ Serviços</span>' +
-            '<span style="font-size:12px;font-weight:700;color:var(--primary)">' + planSelectedServices.length + '/' + PLAN_SERVICES.length + '</span>' +
+            '<span style="font-size:12px;font-weight:700;color:var(--primary)">' + planSelectedServices.length + '/' + maxSvc + '</span>' +
           '</div>';
           PLAN_SERVICES.forEach(function(s) {
             var isSel = planSelectedServices.indexOf(s.serviceId) >= 0;
@@ -3639,7 +3638,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
         if (PLAN_PRODUCTS.length > 0) {
           prdHtml += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
             '<span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">🧴 Produtos</span>' +
-            '<span style="font-size:12px;font-weight:700;color:var(--primary)">' + planSelectedProducts.length + '/' + PLAN_PRODUCTS.length + '</span>' +
+            '<span style="font-size:12px;font-weight:700;color:var(--primary)">' + planSelectedProducts.length + '/' + maxPrd + '</span>' +
           '</div>';
           PLAN_PRODUCTS.forEach(function(p) {
             var isSel = planSelectedProducts.indexOf(p.productId) >= 0;
@@ -3741,7 +3740,10 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
         var prevBtn = document.getElementById('plan-cal-prev');
         var nextBtn = document.getElementById('plan-cal-next');
         if (prevBtn) prevBtn.disabled = (planCalYear === today.getFullYear() && planCalMonth <= today.getMonth());
-        if (nextBtn) nextBtn.disabled = (planCalYear > maxDate.getFullYear() || (planCalYear === maxDate.getFullYear() && planCalMonth >= maxDate.getMonth()));
+        // Permitir navegar até o mês que contém a data máxima (hoje + 30 dias)
+        var maxMonth = maxDate.getMonth();
+        var maxYear = maxDate.getFullYear();
+        if (nextBtn) nextBtn.disabled = (planCalYear > maxYear || (planCalYear === maxYear && planCalMonth >= maxMonth));
         grid.innerHTML = html;
       }
 
