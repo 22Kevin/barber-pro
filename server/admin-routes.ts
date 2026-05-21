@@ -1850,8 +1850,17 @@ async function renderAgenda(req: Request, res: Response) {
   try {
     const dbConn = await db.getDb();
     if (dbConn && tenantId) {
-      const rawP = await dbConn.execute(sql`SELECT id, name, price, recurrences FROM subscription_plans WHERE "tenantId" = ${tenantId} AND "isActive" = true ORDER BY name`) as any;
+      const rawP = await dbConn.execute(sql`SELECT id, name, price, recurrences, "maxServices", "maxProducts" FROM subscription_plans WHERE "tenantId" = ${tenantId} AND "isActive" = true ORDER BY name`) as any;
       agendaPlans = Array.isArray(rawP) ? (rawP[0] as any[]) : (rawP?.rows ?? []);
+      // Buscar serviços e produtos de cada plano
+      for (const plan of agendaPlans) {
+        try {
+          const svcs = await dbConn.execute(sql`SELECT sps."serviceId", s.name as "serviceName", s."durationMinutes" FROM subscription_plan_services sps JOIN services s ON s.id = sps."serviceId" WHERE sps."planId" = ${plan.id}`) as any;
+          plan.services = Array.isArray(svcs) ? (svcs[0] as any[]) : (svcs?.rows ?? []);
+          const prds = await dbConn.execute(sql`SELECT spp."productId", p.name as "productName" FROM subscription_plan_products spp JOIN products p ON p.id = spp."productId" WHERE spp."planId" = ${plan.id}`) as any;
+          plan.products = Array.isArray(prds) ? (prds[0] as any[]) : (prds?.rows ?? []);
+        } catch(e) { plan.services = []; plan.products = []; }
+      }
     }
   } catch(e) { /* planos indisponíveis */ }
   // Buscar datas com agendamentos no mês para indicador visual
@@ -1995,99 +2004,356 @@ async function renderAgenda(req: Request, res: Response) {
       <span style="color:var(--muted);font-size:13px;margin-left:auto">${appointments.length} agendamento(s)${filterSearch || filterBarberId ? " (filtrado)" : ""}</span>
     </div>`;
 
-  const planModalHtml = `
-    <!-- Modal Atribuir Plano -->
+  const agendaPlansByIdJson = JSON.stringify(
+    agendaPlans.reduce((acc: any, p: any) => {
+      acc[p.id] = { 
+        id: p.id, name: p.name, price: p.price, recurrences: p.recurrences,
+        maxServices: p.maxServices ?? 999, maxProducts: p.maxProducts ?? 999,
+        services: p.services ?? [], products: p.products ?? []
+      };
+      return acc;
+    }, {})
+  );
+  const planModalHtml = \`
+    <!-- Modal Atribuir Plano — Fluxo completo 4 etapas -->
     <div id="planModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
-      <div style="background:var(--surface);border-radius:16px;padding:28px;width:520px;max-width:90vw;max-height:90vh;overflow-y:auto;border:1px solid var(--border);">
+      <div style="background:var(--surface);border-radius:16px;padding:28px;width:560px;max-width:95vw;max-height:92vh;overflow-y:auto;border:1px solid var(--border);">
+        <!-- Header -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
           <div>
             <h2 style="font-size:18px;font-weight:700;color:var(--text);">Atribuir Plano de Assinatura</h2>
-            <p style="font-size:13px;color:var(--muted);margin-top:4px;">Selecione o cliente e o plano para criar a assinatura</p>
+            <p id="planModalSub" style="font-size:13px;color:var(--muted);margin-top:4px;">Etapa 1 de 4</p>
           </div>
-          <button onclick="document.getElementById('planModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">&#10005;</button>
+          <button onclick="closePlanModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">&#10005;</button>
         </div>
-        ${agendaPlans.length === 0 ? '<div style="text-align:center;padding:24px;color:var(--muted);font-size:14px;">Nenhum plano ativo. <a href="/admin/planos" style="color:var(--gold);">Criar plano</a></div>' : `
-        <form method="POST" action="/admin/assinaturas/nova" id="planAssignForm">
-          <input type="hidden" name="fromAgenda" value="1" />
-          <input type="hidden" name="returnDate" value="${dateStr}" />
-          <div class="form-group" style="margin-bottom:16px;">
-            <label class="form-label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;display:block;">Cliente *</label>
-            <input type="hidden" name="clientId" id="planClientIdHidden" required />
-            <div style="position:relative;margin-bottom:8px;">
-              <input type="text" id="clientSearchInput" placeholder="Buscar por nome ou telefone..." autocomplete="off"
+        <!-- Indicador de etapas -->
+        <div style="display:flex;align-items:center;gap:0;margin-bottom:24px;">
+          \${[1,2,3,4].map(i => \`
+            <div id="pmDot\${i}" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;background:var(--surface2);color:var(--muted);transition:all .2s;">\${i}</div>
+            \${i < 4 ? '<div style="flex:1;height:2px;background:var(--border);margin:0 4px;transition:background .3s;" id="pmLine'+i+'"></div>' : ''}
+          \`).join('')}
+        </div>
+        \${agendaPlans.length === 0 ? '<div style="text-align:center;padding:24px;color:var(--muted);font-size:14px;">Nenhum plano ativo. <a href="/admin/planos" style="color:var(--gold);">Criar plano</a></div>' : \`
+        <!-- Etapa 1: Cliente + Plano -->
+        <div id="pmStep1">
+          <div style="margin-bottom:16px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Cliente *</label>
+            <input type="hidden" id="pmClientId" />
+            <div style="position:relative;">
+              <input type="text" id="pmClientSearch" placeholder="Buscar por nome ou telefone..." autocomplete="off"
                 style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;box-sizing:border-box;"
-                oninput="filterClients(this.value)"
-                onfocus="document.getElementById('planClientList').style.display='block'"
-                onblur="setTimeout(()=>{document.getElementById('planClientList').style.display='none'},200)" />
-              <div id="planClientList" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-height:200px;overflow-y:auto;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,0.4);margin-top:4px;">
-                ${allClientsForModal.map((c: any) => `<div class="plan-client-item" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="choosePlanClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.background='rgba(201,168,76,0.08)'" onmouseout="this.style.background=''"><strong style="color:var(--text)">${esc(c.name)}</strong>${c.phone ? `<span style="color:var(--muted);font-size:12px">${esc(c.phone)}</span>` : ''}</div>`).join('')}
+                oninput="pmFilterClients(this.value)"
+                onfocus="document.getElementById('pmClientList').style.display='block'"
+                onblur="setTimeout(()=>{document.getElementById('pmClientList').style.display='none'},200)" />
+              <div id="pmClientList" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-height:180px;overflow-y:auto;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,0.4);margin-top:4px;">
+                \${allClientsForModal.map((c: any) => \`<div class="pm-client-opt" data-id="\${c.id}" data-name="\${esc(c.name)}" data-phone="\${esc(c.phone ?? '')}" onclick="pmChooseClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;" onmouseover="this.style.background='rgba(201,168,76,0.08)'" onmouseout="this.style.background=''"><strong>\${esc(c.name)}</strong>\${c.phone ? \`<span style="color:var(--muted);font-size:12px">\${esc(c.phone)}</span>\` : ''}</div>\`).join('')}
               </div>
             </div>
-            <div id="planClientChosen" style="display:none;padding:10px 14px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:10px;font-size:13px;color:var(--text);display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <span id="planClientChosenName"></span>
-              <button type="button" onclick="clearPlanClientChoice()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:0 4px;line-height:1;">×</button>
+            <div id="pmClientChosen" style="display:none;padding:10px 14px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:10px;font-size:13px;color:var(--text);display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+              <span id="pmClientChosenName"></span>
+              <button type="button" onclick="pmClearClient()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;">×</button>
             </div>
-            <script>
-              function filterClients(q) {
-                q = q.toLowerCase();
-                document.querySelectorAll('.plan-client-item').forEach(function(el) {
-                  const n = el.dataset.name.toLowerCase(), p = (el.dataset.phone || '').toLowerCase();
-                  el.style.display = (n.includes(q) || p.includes(q)) ? '' : 'none';
-                });
-                document.getElementById('planClientList').style.display = 'block';
-              }
-              function choosePlanClient(el) {
-                document.getElementById('planClientIdHidden').value = el.dataset.id;
-                document.getElementById('clientSearchInput').value = el.dataset.name + (el.dataset.phone ? ' — ' + el.dataset.phone : '');
-                document.getElementById('planClientList').style.display = 'none';
-                const chosen = document.getElementById('planClientChosen');
-                document.getElementById('planClientChosenName').textContent = el.dataset.name + (el.dataset.phone ? ' — ' + el.dataset.phone : '');
-                chosen.style.display = 'flex';
-              }
-              function clearPlanClientChoice() {
-                document.getElementById('planClientIdHidden').value = '';
-                document.getElementById('clientSearchInput').value = '';
-                document.getElementById('planClientChosen').style.display = 'none';
-              }
-            </script>
           </div>
-          <div class="form-group" style="margin-bottom:16px;">
-            <label class="form-label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;display:block;">Plano *</label>
+          <div style="margin-bottom:20px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Plano *</label>
             <div style="display:flex;flex-direction:column;gap:8px;">
-              ${agendaPlans.map((plan: any) => `
-              <label style="display:flex;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 16px;cursor:pointer;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
-                <input type="radio" name="planId" value="${plan.id}" required style="accent-color:var(--gold);width:16px;height:16px;flex-shrink:0;" />
+              \${agendaPlans.map((plan: any) => \`
+              <label id="pmPlanLabel\${plan.id}" style="display:flex;align-items:center;gap:12px;background:var(--bg);border:2px solid var(--border);border-radius:12px;padding:12px 16px;cursor:pointer;transition:border-color .2s;" onclick="pmSelectPlan(\${plan.id})">
+                <div id="pmPlanDot\${plan.id}" style="width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;"></div>
                 <div style="flex:1;">
-                  <div style="font-size:14px;font-weight:700;color:var(--text);">${esc(plan.name)}</div>
-                  <div style="font-size:12px;color:var(--muted);margin-top:2px;">${plan.recurrences} recorrências</div>
+                  <div style="font-size:14px;font-weight:700;color:var(--text);">\${esc(plan.name)}</div>
+                  <div style="font-size:12px;color:var(--muted);margin-top:2px;">\${plan.recurrences} recorrências</div>
                 </div>
-                <div style="font-size:18px;font-weight:900;color:var(--gold);">R$ ${parseFloat(plan.price).toFixed(2)}</div>
-              </label>`).join('')}
+                <div style="font-size:16px;font-weight:900;color:var(--gold);">R$ \${parseFloat(plan.price).toFixed(2).replace('.',',')}</div>
+              </label>\`).join('')}
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-            <div class="form-group">
-              <label class="form-label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;display:block;">Data de início *</label>
-              <input type="date" name="startDate" class="form-input" value="${dateStr}" required style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;" />
+          <div style="display:flex;gap:12px;">
+            <button type="button" onclick="closePlanModal()" class="btn" style="flex:1;padding:10px;">Cancelar</button>
+            <button type="button" onclick="pmGoTo(2)" class="btn btn-primary" style="flex:1;padding:10px;">Próximo →</button>
+          </div>
+        </div>
+
+        <!-- Etapa 2: Serviços e Produtos -->
+        <div id="pmStep2" style="display:none;">
+          <div id="pmSvcList" style="margin-bottom:16px;"></div>
+          <div id="pmPrdList" style="margin-bottom:16px;"></div>
+          <div style="display:flex;gap:12px;">
+            <button type="button" onclick="pmGoTo(1)" class="btn" style="flex:1;padding:10px;">← Voltar</button>
+            <button type="button" id="pmBtnStep2Next" onclick="pmGoTo(3)" class="btn btn-primary" style="flex:1;padding:10px;">Próximo →</button>
+          </div>
+        </div>
+
+        <!-- Etapa 3: Barbeiro + Datas e Horários -->
+        <div id="pmStep3" style="display:none;">
+          <div style="margin-bottom:16px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">💈 Profissional</label>
+            <select id="pmBarberId" onchange="pmRenderCal()" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;">
+              \${barbers.map((b: any) => \`<option value="\${b.id}">\${esc(b.name)}</option>\`).join('')}
+            </select>
+          </div>
+          <div style="margin-bottom:10px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">📅 Escolha as datas</label>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <button type="button" onclick="pmCalNav(-1)" id="pmCalPrev" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;color:var(--text);cursor:pointer;font-size:16px;">‹</button>
+              <span id="pmCalTitle" style="font-size:13px;font-weight:700;color:var(--text);"></span>
+              <button type="button" onclick="pmCalNav(1)" id="pmCalNext" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px 10px;color:var(--text);cursor:pointer;font-size:16px;">›</button>
             </div>
-            <div class="form-group">
-              <label class="form-label" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;display:block;">Forma de pagamento</label>
-              <select name="paymentMethod" class="form-input" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;">
-                <option value="cash">Dinheiro</option>
-                <option value="pix">Pix</option>
-                <option value="credit_card">Cartão de crédito</option>
-                <option value="debit_card">Cartão de débito</option>
-              </select>
+            <div id="pmCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:12px;"></div>
+          </div>
+          <div id="pmSlotsArea" style="margin-bottom:12px;"></div>
+          <div id="pmApptsList" style="margin-bottom:12px;"></div>
+          <div style="display:flex;gap:12px;">
+            <button type="button" onclick="pmGoTo(2)" class="btn" style="flex:1;padding:10px;">← Voltar</button>
+            <button type="button" id="pmBtnStep3Next" onclick="pmGoTo(4)" class="btn btn-primary" style="flex:1;padding:10px;">Próximo →</button>
+          </div>
+        </div>
+
+        <!-- Etapa 4: Pagamento + Confirmação -->
+        <div id="pmStep4" style="display:none;">
+          <div id="pmSummary" style="background:var(--bg);border-radius:12px;padding:16px;margin-bottom:16px;font-size:13px;"></div>
+          <div style="margin-bottom:16px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Forma de Pagamento</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              \${[['cash','💵 Dinheiro'],['pix','⚡ Pix'],['credit_card','💳 Crédito'],['debit_card','💳 Débito']].map(([v,l]) => \`
+              <button type="button" id="pmPay_\${v}" onclick="pmSelectPay('\${v}')" style="padding:10px;border-radius:10px;border:2px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;">\${l}</button>\`).join('')}
             </div>
           </div>
-          <div style="display:flex;gap:12px;margin-top:20px;">
-            <button type="button" onclick="document.getElementById('planModal').style.display='none'" class="btn" style="flex:1;padding:10px;">Cancelar</button>
-            <button type="submit" class="btn btn-primary" style="flex:1;padding:10px;">Confirmar Assinatura</button>
+          <div style="display:flex;gap:12px;">
+            <button type="button" onclick="pmGoTo(3)" class="btn" style="flex:1;padding:10px;">← Voltar</button>
+            <button type="button" onclick="pmConfirm()" class="btn btn-primary" style="flex:1;padding:10px;font-weight:700;">✅ Confirmar Assinatura</button>
           </div>
-        </form>`}
+        </div>
+        \`}
       </div>
     </div>
-  `;
+
+    <script>
+      var PM_PLANS = \${agendaPlansByIdJson};
+      var PM_MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      var PM_WEEK = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+      var pmState = { step:1, clientId:'', clientName:'', planId:0, selectedServices:[], selectedProducts:[], appointments:[], paymentMethod:'cash', calYear:new Date().getFullYear(), calMonth:new Date().getMonth(), selectedDate:null };
+
+      function closePlanModal() { document.getElementById('planModal').style.display='none'; pmReset(); }
+      function pmReset() { pmState = { step:1, clientId:'', clientName:'', planId:0, selectedServices:[], selectedProducts:[], appointments:[], paymentMethod:'cash', calYear:new Date().getFullYear(), calMonth:new Date().getMonth(), selectedDate:null }; pmGoTo(1); document.getElementById('pmClientSearch').value=''; document.getElementById('pmClientChosen').style.display='none'; document.getElementById('pmClientId').value=''; }
+
+      function pmGoTo(step) {
+        var plan = pmState.planId ? PM_PLANS[pmState.planId] : null;
+        // Validações
+        if (step === 2 && !pmState.clientId) { alert('Selecione um cliente.'); return; }
+        if (step === 2 && !pmState.planId) { alert('Selecione um plano.'); return; }
+        if (step === 4 && pmState.appointments.length < (plan?.recurrences || 1)) { alert('Selecione todos os horários necessários.'); return; }
+        [1,2,3,4].forEach(function(i) {
+          document.getElementById('pmStep'+i).style.display = i === step ? 'block' : 'none';
+          var dot = document.getElementById('pmDot'+i);
+          dot.style.background = i < step ? '#22C55E' : i === step ? 'var(--gold)' : 'var(--surface2)';
+          dot.style.color = i <= step ? '#0A0A0A' : 'var(--muted)';
+          dot.textContent = i < step ? '✓' : i;
+          if (i < 4) { var line = document.getElementById('pmLine'+i); if(line) line.style.background = i < step ? '#22C55E' : 'var(--border)'; }
+        });
+        pmState.step = step;
+        document.getElementById('planModalSub').textContent = 'Etapa ' + step + ' de 4' + (plan ? ' — ' + plan.name : '');
+        if (step === 2) pmRenderSvcPrd();
+        if (step === 3) { pmRenderCal(); }
+        if (step === 4) pmRenderSummary();
+        window.scrollTo(0,0);
+      }
+
+      function pmFilterClients(q) {
+        q = q.toLowerCase();
+        document.querySelectorAll('.pm-client-opt').forEach(function(el) {
+          var n = el.dataset.name.toLowerCase(), p = (el.dataset.phone||'').toLowerCase();
+          el.style.display = (n.includes(q)||p.includes(q)) ? '' : 'none';
+        });
+        document.getElementById('pmClientList').style.display = 'block';
+      }
+      function pmChooseClient(el) {
+        pmState.clientId = el.dataset.id;
+        pmState.clientName = el.dataset.name + (el.dataset.phone ? ' — ' + el.dataset.phone : '');
+        document.getElementById('pmClientSearch').value = pmState.clientName;
+        document.getElementById('pmClientId').value = el.dataset.id;
+        document.getElementById('pmClientList').style.display = 'none';
+        document.getElementById('pmClientChosenName').textContent = pmState.clientName;
+        document.getElementById('pmClientChosen').style.display = 'flex';
+      }
+      function pmClearClient() { pmState.clientId=''; pmState.clientName=''; document.getElementById('pmClientSearch').value=''; document.getElementById('pmClientChosen').style.display='none'; }
+
+      function pmSelectPlan(id) {
+        pmState.planId = id;
+        pmState.selectedServices = []; pmState.selectedProducts = []; pmState.appointments = [];
+        Object.keys(PM_PLANS).forEach(function(k) {
+          var lbl = document.getElementById('pmPlanLabel'+k), dot = document.getElementById('pmPlanDot'+k);
+          var isSel = parseInt(k) === id;
+          lbl.style.borderColor = isSel ? 'var(--gold)' : 'var(--border)';
+          dot.style.background = isSel ? 'var(--gold)' : 'transparent';
+          dot.style.borderColor = isSel ? 'var(--gold)' : 'var(--border)';
+        });
+      }
+
+      function pmRenderSvcPrd() {
+        var plan = PM_PLANS[pmState.planId]; if (!plan) return;
+        var maxSvc = plan.maxServices < 999 ? plan.maxServices : plan.services.length;
+        var maxPrd = plan.maxProducts < 999 ? plan.maxProducts : plan.products.length;
+        var svcHtml = '';
+        if (plan.services.length > 0) {
+          svcHtml += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">✂ Serviços</span><span style="font-size:12px;font-weight:700;color:var(--gold);">'+pmState.selectedServices.length+'/'+maxSvc+'</span></div>';
+          plan.services.forEach(function(s) {
+            var isSel = pmState.selectedServices.indexOf(s.serviceId) >= 0;
+            svcHtml += '<div onclick="pmToggleSvc('+s.serviceId+')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:10px;border:2px solid '+(isSel?'var(--gold)':'var(--border)')+';background:'+(isSel?'rgba(201,168,76,0.08)':'var(--bg)')+';cursor:pointer;margin-bottom:6px;transition:all .15s;">' +
+              '<div><div style="font-size:13px;font-weight:700;color:var(--text);">'+s.serviceName+'</div><div style="font-size:11px;color:var(--muted);">'+(s.durationMinutes||30)+'min</div></div>' +
+              '<div style="width:20px;height:20px;border-radius:50%;border:2px solid '+(isSel?'var(--gold)':'var(--border)')+';background:'+(isSel?'var(--gold)':'transparent')+';display:flex;align-items:center;justify-content:center;font-size:11px;color:'+(isSel?'#0A0A0A':'transparent')+';">✓</div>' +
+            '</div>';
+          });
+        }
+        document.getElementById('pmSvcList').innerHTML = svcHtml;
+        var prdHtml = '';
+        if (plan.products.length > 0) {
+          prdHtml += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">🧴 Produtos</span><span style="font-size:12px;font-weight:700;color:var(--gold);">'+pmState.selectedProducts.length+'/'+maxPrd+'</span></div>';
+          plan.products.forEach(function(p) {
+            var isSel = pmState.selectedProducts.indexOf(p.productId) >= 0;
+            prdHtml += '<div onclick="pmTogglePrd('+p.productId+')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:10px;border:2px solid '+(isSel?'var(--gold)':'var(--border)')+';background:'+(isSel?'rgba(201,168,76,0.08)':'var(--bg)')+';cursor:pointer;margin-bottom:6px;transition:all .15s;">' +
+              '<div style="font-size:13px;font-weight:700;color:var(--text);">'+p.productName+'</div>' +
+              '<div style="width:20px;height:20px;border-radius:50%;border:2px solid '+(isSel?'var(--gold)':'var(--border)')+';background:'+(isSel?'var(--gold)':'transparent')+';display:flex;align-items:center;justify-content:center;font-size:11px;color:'+(isSel?'#0A0A0A':'transparent')+';">✓</div>' +
+            '</div>';
+          });
+        }
+        document.getElementById('pmPrdList').innerHTML = prdHtml;
+      }
+      function pmToggleSvc(id) {
+        var plan = PM_PLANS[pmState.planId]; if (!plan) return;
+        var max = plan.maxServices < 999 ? plan.maxServices : plan.services.length;
+        var idx = pmState.selectedServices.indexOf(id);
+        if (idx >= 0) pmState.selectedServices.splice(idx,1);
+        else if (pmState.selectedServices.length < max) pmState.selectedServices.push(id);
+        pmRenderSvcPrd();
+      }
+      function pmTogglePrd(id) {
+        var plan = PM_PLANS[pmState.planId]; if (!plan) return;
+        var max = plan.maxProducts < 999 ? plan.maxProducts : plan.products.length;
+        var idx = pmState.selectedProducts.indexOf(id);
+        if (idx >= 0) pmState.selectedProducts.splice(idx,1);
+        else if (pmState.selectedProducts.length < max) pmState.selectedProducts.push(id);
+        pmRenderSvcPrd();
+      }
+
+      function pmCalNav(dir) {
+        pmState.calMonth += dir;
+        if (pmState.calMonth > 11) { pmState.calMonth=0; pmState.calYear++; }
+        if (pmState.calMonth < 0) { pmState.calMonth=11; pmState.calYear--; }
+        pmRenderCal();
+      }
+      function pmRenderCal() {
+        var today = new Date(); today.setHours(0,0,0,0);
+        var maxDate = new Date(today); maxDate.setDate(today.getDate()+30);
+        var firstDay = new Date(pmState.calYear, pmState.calMonth, 1).getDay();
+        var daysInMonth = new Date(pmState.calYear, pmState.calMonth+1, 0).getDate();
+        var html = PM_WEEK.map(function(d){return '<div style="text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:4px 0;">'+d+'</div>';}).join('');
+        for (var i=0;i<firstDay;i++) html += '<div></div>';
+        for (var d=1;d<=daysInMonth;d++) {
+          var dt = new Date(pmState.calYear, pmState.calMonth, d); dt.setHours(0,0,0,0);
+          var iso = dt.toISOString().split('T')[0];
+          var isPast = dt < today, isFuture = dt > maxDate, isSel = pmState.selectedDate === iso;
+          var disabled = isPast || isFuture;
+          html += '<div onclick="'+(disabled?'':'pmSelectDate(&quot;'+iso+'&quot;)')+'" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:13px;font-weight:600;cursor:'+(disabled?'not-allowed':'pointer')+';background:'+(isSel?'var(--gold)':'transparent')+';color:'+(isSel?'#0A0A0A':disabled?'var(--muted)':'var(--text)')+';opacity:'+(disabled?'0.3':'1')+';border:2px solid '+(isSel?'var(--gold)':'transparent')+';">'+d+'</div>';
+        }
+        document.getElementById('pmCalGrid').innerHTML = html;
+        document.getElementById('pmCalTitle').textContent = PM_MONTH_NAMES[pmState.calMonth] + ' ' + pmState.calYear;
+        var prev = document.getElementById('pmCalPrev'), next = document.getElementById('pmCalNext');
+        if (prev) prev.disabled = (pmState.calYear===today.getFullYear()&&pmState.calMonth<=today.getMonth());
+        if (next) next.disabled = (pmState.calYear>maxDate.getFullYear()||(pmState.calYear===maxDate.getFullYear()&&pmState.calMonth>=maxDate.getMonth()));
+      }
+      function pmSelectDate(iso) { pmState.selectedDate=iso; pmRenderCal(); pmLoadSlots(); }
+      async function pmLoadSlots() {
+        var area = document.getElementById('pmSlotsArea'); if (!pmState.selectedDate) { area.innerHTML=''; return; }
+        var barberId = document.getElementById('pmBarberId').value;
+        var plan = PM_PLANS[pmState.planId];
+        var duration = 30;
+        if (plan && plan.services.length > 0 && pmState.selectedServices.length > 0) {
+          var svc = plan.services.find(function(s){return s.serviceId===pmState.selectedServices[0];});
+          if (svc) duration = svc.durationMinutes || 30;
+        }
+        area.innerHTML = '<div style="padding:8px;color:var(--muted);font-size:13px;">Carregando horários...</div>';
+        try {
+          var r = await fetch('/pub-api/slots?barberId='+barberId+'&date='+pmState.selectedDate+'&duration='+duration);
+          var slots = await r.json();
+          if (!slots.length) { area.innerHTML='<div style="padding:8px;color:var(--muted);font-size:13px;">Nenhum horário disponível.</div>'; return; }
+          var manha=slots.filter(function(s){return parseInt(s.startTime)<12;});
+          var tarde=slots.filter(function(s){var h=parseInt(s.startTime);return h>=12&&h<18;});
+          var noite=slots.filter(function(s){return parseInt(s.startTime)>=18;});
+          function grp(label,arr) {
+            if (!arr.length) return '';
+            return '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;padding:4px 0 6px;">'+label+'</div>'+
+              '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">'+
+              arr.map(function(s){return '<button type="button" onclick="pmAddAppt(&quot;'+s.startTime+'&quot;)" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;">'+s.startTime+'</button>';}).join('')+
+            '</div>';
+          }
+          area.innerHTML = '<div style="margin-top:8px;">'+grp('Manhã',manha)+grp('Tarde',tarde)+grp('Noite',noite)+'</div>';
+        } catch(e) { area.innerHTML='<div style="color:var(--error);font-size:13px;">Erro ao carregar horários.</div>'; }
+      }
+      function pmAddAppt(time) {
+        var plan = PM_PLANS[pmState.planId]; if (!plan) return;
+        if (pmState.appointments.length >= plan.recurrences) { alert('Você já selecionou todos os horários necessários.'); return; }
+        var exists = pmState.appointments.find(function(a){return a.date===pmState.selectedDate&&a.startTime===time;});
+        if (exists) return;
+        pmState.appointments.push({date:pmState.selectedDate, startTime:time});
+        pmRenderAppts();
+        document.getElementById('pmSlotsArea').innerHTML='';
+        pmState.selectedDate=null; pmRenderCal();
+      }
+      function pmRemoveAppt(idx) { pmState.appointments.splice(idx,1); pmRenderAppts(); }
+      function pmRenderAppts() {
+        var plan = PM_PLANS[pmState.planId];
+        var html = pmState.appointments.length > 0 ?
+          '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">AGENDAMENTOS SELECIONADOS ('+pmState.appointments.length+'/'+(plan?plan.recurrences:0)+')</div>' +
+          pmState.appointments.map(function(a,i){
+            var parts=a.date.split('-'); var dateFormatted=parts[2]+'/'+parts[1]+'/'+parts[0];
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;margin-bottom:4px;font-size:13px;"><span>📅 '+dateFormatted+' às '+a.startTime+'</span><button type="button" onclick="pmRemoveAppt('+i+')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;">×</button></div>';
+          }).join('') : '';
+        document.getElementById('pmApptsList').innerHTML = html;
+        var btn = document.getElementById('pmBtnStep3Next');
+        if (btn) btn.style.opacity = (plan && pmState.appointments.length >= plan.recurrences) ? '1' : '0.5';
+      }
+
+      function pmSelectPay(v) {
+        pmState.paymentMethod = v;
+        ['cash','pix','credit_card','debit_card'].forEach(function(k) {
+          var btn = document.getElementById('pmPay_'+k);
+          if (btn) { btn.style.borderColor = k===v?'var(--gold)':'var(--border)'; btn.style.background = k===v?'rgba(201,168,76,0.12)':'var(--bg)'; }
+        });
+      }
+      function pmRenderSummary() {
+        var plan = PM_PLANS[pmState.planId]; if (!plan) return;
+        var html = '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;">Resumo da Assinatura</div>';
+        html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="color:var(--muted);">Cliente</span><span>'+pmState.clientName+'</span></div>';
+        html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="color:var(--muted);">Plano</span><span>'+plan.name+'</span></div>';
+        html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);"><span style="color:var(--muted);">Agendamentos</span><span>'+pmState.appointments.length+' de '+plan.recurrences+'</span></div>';
+        html += '<div style="display:flex;justify-content:space-between;padding:8px 0;"><span style="color:var(--muted);font-weight:700;">Total</span><span style="color:var(--gold);font-size:16px;font-weight:900;">R$ '+parseFloat(plan.price).toFixed(2).replace('.',',')+'</span></div>';
+        document.getElementById('pmSummary').innerHTML = html;
+        pmSelectPay(pmState.paymentMethod);
+      }
+      async function pmConfirm() {
+        if (!pmState.clientId || !pmState.planId) { alert('Dados incompletos.'); return; }
+        var plan = PM_PLANS[pmState.planId];
+        var payload = {
+          clientId: pmState.clientId, planId: pmState.planId,
+          startDate: new Date().toISOString().split('T')[0],
+          paymentMethod: pmState.paymentMethod,
+          selectedServiceIds: JSON.stringify(pmState.selectedServices),
+          selectedProductIds: JSON.stringify(pmState.selectedProducts),
+          appointments: JSON.stringify(pmState.appointments),
+          fromAgenda: '1', returnDate: '${dateStr}'
+        };
+        var form = document.createElement('form');
+        form.method = 'POST'; form.action = '/admin/assinaturas/nova';
+        Object.keys(payload).forEach(function(k) {
+          var inp = document.createElement('input'); inp.type='hidden'; inp.name=k; inp.value=payload[k];
+          form.appendChild(inp);
+        });
+        document.body.appendChild(form);
+        form.submit();
+      }
+    </script>
+  \`;
 
   const body = `
     <!-- Header moderno da Agenda -->
