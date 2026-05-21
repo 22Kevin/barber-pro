@@ -3351,24 +3351,22 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
       plan = plans?.[0] ?? null;
       if (plan) {
         const svcsResult = await dbConn.execute(
-          sql`SELECT sps.serviceId, s.name as serviceName, s.durationMinutes, s.price as servicePrice
+          sql`SELECT sps."serviceId", s.name as "serviceName", s."durationMinutes", s.price as "servicePrice"
            FROM subscription_plan_services sps
-           JOIN services s ON s.id = sps.serviceId
-           WHERE sps.planId = ${planId}`
+           JOIN services s ON s.id = sps."serviceId"
+           WHERE sps."planId" = ${planId}`
         ) as any;
         planServices = Array.isArray(svcsResult) ? svcsResult[0] : svcsResult?.rows ?? [];
-        console.log('[plan-svc] planId:', planId, 'svcsResult type:', typeof svcsResult, 'isArray:', Array.isArray(svcsResult), 'length:', planServices.length, 'raw:', JSON.stringify(svcsResult).slice(0, 300));
         const prdsResult = await dbConn.execute(
-          sql`SELECT spp.productId, p.name as productName, p.price as productPrice
+          sql`SELECT spp."productId", p.name as "productName", p.price as "productPrice"
            FROM subscription_plan_products spp
-           JOIN products p ON p.id = spp.productId
-           WHERE spp.planId = ${planId}`
+           JOIN products p ON p.id = spp."productId"
+           WHERE spp."planId" = ${planId}`
         ) as any;
         planProducts = Array.isArray(prdsResult) ? prdsResult[0] : prdsResult?.rows ?? [];
       }
     }
-  } catch (e: any) { console.error('[plan-svc] ERRO:', e?.message ?? String(e)); }
-  console.log('[plan-svc] plan:', plan?.id, 'services:', planServices.length, 'products:', planProducts.length, 'planId param:', planId);
+  } catch (e: any) { console.error('[plan] Erro ao buscar dados do plano:', e?.message ?? String(e)); }
   if (!plan) { res.redirect(`/pub/${slug}`); return; }
   // Buscar barbeiros ativos
   const barberList = await db.getAllBarbers(tenant.id);
