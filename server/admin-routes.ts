@@ -2384,7 +2384,7 @@ async function renderAgenda(req: Request, res: Response) {
                 <div>
                   <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Horário *</label>
                   <input type="hidden" name="startTime" id="newApptStartTime" required />
-                  <div id="newApptTimeDisplay" onclick="document.getElementById('newApptTimePicker').style.display='block'" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;box-sizing:border-box;cursor:pointer">Selecione o horário</div>
+                  <div id="newApptTimeDisplay" onclick="loadNewApptSlots()" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:14px;box-sizing:border-box;cursor:pointer">Selecione o horário</div>
                   <div id="newApptTimePicker" style="display:none;margin-top:8px;max-height:220px;overflow-y:auto;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px"></div>
                 </div>
               </div>
@@ -2404,9 +2404,10 @@ async function renderAgenda(req: Request, res: Response) {
           function updateNewApptDuration(sel) { loadNewApptSlots(); }
 
           async function loadNewApptSlots() {
-            var date = document.querySelector('[name="date"]')?.value;
+            var date = document.querySelector('#newApptModal [name="date"]')?.value;
             var serviceId = document.getElementById('newApptServiceSelect')?.value;
-            var barberId = document.querySelector('[name="barberId"]')?.value;
+            var barberId = document.querySelector('#newApptModal [name="barberId"]')?.value;
+            console.log('[slots] date:', date, 'barberId:', barberId, 'serviceId:', serviceId);
             var duration = 30;
             var sel = document.getElementById('newApptServiceSelect');
             if (sel && sel.value) {
@@ -2445,8 +2446,15 @@ async function renderAgenda(req: Request, res: Response) {
           }
 
           // Recarregar slots quando mudar data ou profissional
-          document.querySelector('[name="date"]')?.addEventListener('change', loadNewApptSlots);
-          document.querySelector('[name="barberId"]')?.addEventListener('change', loadNewApptSlots);
+          // Usar event delegation para garantir que os elementos existem
+          document.addEventListener('change', function(e) {
+            var target = e.target;
+            if (target.name === 'date' || target.name === 'barberId') {
+              if (document.getElementById('newApptModal').style.display !== 'none') {
+                loadNewApptSlots();
+              }
+            }
+          });
 
           // Toggle de vista
           function setView(v) {
