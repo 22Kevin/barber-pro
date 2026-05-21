@@ -3614,9 +3614,15 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
       function renderPlanSvcList() {
         var svcEl = document.getElementById('plan-svc-list');
         var prdEl = document.getElementById('plan-prd-list');
+        var maxSvc = PLAN.maxServices || PLAN_SERVICES.length;
+        var maxPrd = PLAN.maxProducts || PLAN_PRODUCTS.length;
         var svcHtml = '';
         if (PLAN_SERVICES.length > 0) {
-          svcHtml += '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">✂ Serviços</div>';
+          var svcCount = planSelectedServices.length + '/' + PLAN_SERVICES.length;
+          svcHtml += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+            '<span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">✂ Serviços</span>' +
+            '<span style="font-size:12px;font-weight:700;color:var(--primary)">' + planSelectedServices.length + '/' + PLAN_SERVICES.length + '</span>' +
+          '</div>';
           PLAN_SERVICES.forEach(function(s) {
             var isSel = planSelectedServices.indexOf(s.serviceId) >= 0;
             svcHtml += '<div class="plan-svc-item' + (isSel ? ' selected' : '') + '" onclick="togglePlanSvc(' + s.serviceId + ')">' +
@@ -3624,24 +3630,22 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
                 '<div style="font-size:14px;font-weight:700">' + escHtml(s.serviceName) + '</div>' +
                 '<div style="font-size:12px;color:var(--muted);margin-top:2px">' + fmtDur(s.durationMinutes) + '</div>' +
               '</div>' +
-              '<div style="display:flex;align-items:center;gap:10px">' +
-                '<span style="font-size:13px;font-weight:700;color:var(--primary)">' + fmtPrice(s.servicePrice) + '</span>' +
-                '<div style="width:22px;height:22px;border-radius:50%;border:2px solid ' + (isSel ? 'var(--primary)' : 'var(--border)') + ';background:' + (isSel ? 'var(--primary)' : 'transparent') + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:' + (isSel ? '#0A0A0A' : 'transparent') + '">✓</div>' +
-              '</div>' +
+              '<div style="width:22px;height:22px;border-radius:50%;border:2px solid ' + (isSel ? 'var(--primary)' : 'var(--border)') + ';background:' + (isSel ? 'var(--primary)' : 'transparent') + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:' + (isSel ? '#0A0A0A' : 'transparent') + '">✓</div>' +
             '</div>';
           });
         }
         svcEl.innerHTML = svcHtml;
         var prdHtml = '';
         if (PLAN_PRODUCTS.length > 0) {
-          prdHtml += '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">🧴 Produtos</div>';
+          prdHtml += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+            '<span style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">🧴 Produtos</span>' +
+            '<span style="font-size:12px;font-weight:700;color:var(--primary)">' + planSelectedProducts.length + '/' + PLAN_PRODUCTS.length + '</span>' +
+          '</div>';
           PLAN_PRODUCTS.forEach(function(p) {
             var isSel = planSelectedProducts.indexOf(p.productId) >= 0;
             prdHtml += '<div class="plan-prd-item' + (isSel ? ' selected' : '') + '" onclick="togglePlanPrd(' + p.productId + ')">' +
               '<div style="font-size:14px;font-weight:700">' + escHtml(p.productName) + '</div>' +
-              '<div style="display:flex;align-items:center;gap:10px">' +
-                '<div style="width:22px;height:22px;border-radius:50%;border:2px solid ' + (isSel ? 'var(--primary)' : 'var(--border)') + ';background:' + (isSel ? 'var(--primary)' : 'transparent') + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:' + (isSel ? '#0A0A0A' : 'transparent') + '">✓</div>' +
-              '</div>' +
+              '<div style="width:22px;height:22px;border-radius:50%;border:2px solid ' + (isSel ? 'var(--primary)' : 'var(--border)') + ';background:' + (isSel ? 'var(--primary)' : 'transparent') + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:' + (isSel ? '#0A0A0A' : 'transparent') + '">✓</div>' +
             '</div>';
           });
         }
@@ -3708,6 +3712,10 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
       function renderPlanCal() {
         var grid = document.getElementById('plan-cal-grid');
         var today = new Date(); today.setHours(0,0,0,0);
+        // Limite: 30 dias a partir de hoje (data de assinatura)
+        var maxDate = new Date(today);
+        maxDate.setDate(today.getDate() + 30);
+        maxDate.setHours(0,0,0,0);
         var firstDay = new Date(planCalYear, planCalMonth, 1).getDay();
         var daysInMonth = new Date(planCalYear, planCalMonth + 1, 0).getDate();
         var html = '';
@@ -3720,14 +3728,20 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
           dt.setHours(0,0,0,0);
           var iso = dt.toISOString().split('T')[0];
           var isPast = dt < today;
+          var isFuture = dt > maxDate;
+          var isDisabled = isPast || isFuture;
           var isSel = planSelectedDate === iso;
-          var cls = 'plan-cal-cell' + (isPast ? ' plan-cal-past' : '') + (isSel ? ' plan-cal-selected' : '');
-          var onclick = isPast ? '' : 'onclick="selectPlanDate(&quot;'+iso+'&quot;)"';
-          html += '<div class="' + cls + '"' + (isPast ? '' : ' onclick="selectPlanDate(&quot;'+iso+'&quot;)"') + '>' + d + '</div>';
+          var cls = 'plan-cal-cell' + (isDisabled ? ' plan-cal-past' : '') + (isSel ? ' plan-cal-selected' : '');
+          html += '<div class="' + cls + '"' + (!isDisabled ? ' onclick="selectPlanDate(&quot;'+iso+'&quot;)"' : '') + '>' + d + '</div>';
         }
-        // Cabeçalho do mês
+        // Cabeçalho do mês + botões de navegação
         var calTitle = document.getElementById('plan-cal-title');
         if (calTitle) calTitle.textContent = MONTH_NAMES[planCalMonth] + ' ' + planCalYear;
+        // Controlar botões de navegação
+        var prevBtn = document.getElementById('plan-cal-prev');
+        var nextBtn = document.getElementById('plan-cal-next');
+        if (prevBtn) prevBtn.disabled = (planCalYear === today.getFullYear() && planCalMonth <= today.getMonth());
+        if (nextBtn) nextBtn.disabled = (planCalYear > maxDate.getFullYear() || (planCalYear === maxDate.getFullYear() && planCalMonth >= maxDate.getMonth()));
         grid.innerHTML = html;
       }
 
