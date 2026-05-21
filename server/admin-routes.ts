@@ -8673,7 +8673,6 @@ export function registerAdminRoutes(app: Express): void {
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId;
     const { clientId, planId, startDate, paymentMethod, returnDate, selectedServiceIds: selSvcRaw, selectedProductIds: selPrdRaw, appointments: apptsRaw } = req.body;
-    console.log('[nova-assinatura] clientId:', clientId, 'planId:', planId, 'selSvc:', selSvcRaw, 'appts:', apptsRaw);
     if (!clientId || !planId || !startDate) {
       const rd = returnDate || today();
       res.redirect(`/admin/agenda?date=${rd}&error=Preencha+todos+os+campos`); return;
@@ -8721,9 +8720,9 @@ export function registerAdminRoutes(app: Express): void {
           const endTime = `${endH}:${endM}`;
           await dbConn.execute(sql`
             INSERT INTO appointments
-              ("tenantId", "clientId", "barberId", "serviceId", date, "startTime", "endTime", status, "serviceNames")
+              ("clientId", "barberId", "serviceId", date, "startTime", "endTime", status, "serviceNames")
             VALUES (
-              ${tenantId}, ${parseInt(clientId)}, ${session.barberId}, ${serviceId},
+              ${parseInt(clientId)}, ${session.barberId}, ${serviceId},
               ${appt.date}, ${appt.startTime}, ${endTime}, 'scheduled',
               ${planData.name}
             )
@@ -8733,7 +8732,6 @@ export function registerAdminRoutes(app: Express): void {
       const rd = returnDate || today();
       res.redirect(`/admin/agenda?date=${rd}&planSaved=1`);
     } catch (e: any) {
-      console.error('[nova-assinatura] ERRO:', e?.message, e?.stack?.slice(0,300));
       const rd = returnDate || today();
       res.redirect(`/admin/agenda?date=${rd}&error=${encodeURIComponent(e.message)}`);
     }
