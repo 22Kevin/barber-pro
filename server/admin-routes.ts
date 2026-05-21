@@ -7449,7 +7449,10 @@ export function registerAdminRoutes(app: Express): void {
         const { url } = await storagePut(key, buffer, mediaMime);
         const type = mediaMime.startsWith("video/") ? "video" : "image";
         await db.addMediaFile({ entityType: "service", entityId: serviceId, url, type });
-      } catch (e) { console.error("Erro ao salvar mídia do serviço:", e); }
+      } catch (e: any) { 
+        console.error("[svc-upload] ERRO:", e?.message ?? String(e));
+        console.error("[svc-upload] STACK:", e?.stack ?? "");
+      }
     }
     res.redirect("/admin/servicos?saved=1");
   });
