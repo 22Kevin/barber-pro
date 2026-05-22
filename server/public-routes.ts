@@ -188,12 +188,12 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
     /* Grid de cards dentro das abas */
-    .tab-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .tab-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
     @media (max-width: 700px) { .tab-cards-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
     @media (max-width: 380px) { .tab-cards-grid { grid-template-columns: 1fr; gap: 12px; } }
 
     /* Card unificado — 1 card = 1 elemento completo */
-    .tab-card { background: #1a2035; border: 1px solid rgba(155,48,255,0.15); border-radius: 16px; overflow: hidden; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; cursor: pointer; display: flex !important; flex-direction: column !important; text-decoration: none; color: inherit; }
+    .tab-card { background: #1a2035; border: 1px solid rgba(155,48,255,0.15); border-radius: 16px; overflow: hidden; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; cursor: pointer; display: flex !important; flex-direction: column !important; text-decoration: none; color: inherit; height: 100%; }
     .tab-card:hover { border-color: rgba(155,48,255,0.5); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(155,48,255,0.15); }
 
     /* Imagem do card */
