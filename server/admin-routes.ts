@@ -2666,9 +2666,96 @@ async function renderAgenda(req: Request, res: Response) {
             if (saved === 'timeline') setView('timeline');
           })();
           // Modal Editar Agendamento
+          var APPT_COLORS = {confirmed:'#4ADE80',in_progress:'#60A5FA',completed:'#C9A84C',cancelled:'#F87171',scheduled:'#F59E0B'};
+          var APPT_LABELS = {confirmed:'Confirmado',in_progress:'Em atendimento',completed:'Concluido',cancelled:'Cancelado',scheduled:'Agendado'};
+
+          function updateCardVisual(id, status) {
+            var card = document.getElementById('appt-card-' + id);
+            if (!card) return;
+            var c = APPT_COLORS[status] || '#888';
+            var badge = card.querySelector('[style*="border-radius:20px"]');
+            if (badge) { badge.textContent = APPT_LABELS[status] || status; badge.style.color = c; badge.style.background = c + '18'; badge.style.borderColor = c + '44'; }
+            var bar = card.querySelector('[style*="width:3px"]');
+            if (bar) bar.style.background = c;
+            var btnsDiv = card.querySelector('[style*="gap:4px"]');
+            if (btnsDiv) btnsDiv.innerHTML = '';
+          }
+
+          function showToast(html, duration) {
+            var t = document.createElement('div');
+            t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1a2035;border:1px solid rgba(201,168,76,0.3);border-radius:14px;padding:16px 20px;z-index:9999;max-width:340px;box-shadow:0 8px 40px rgba(0,0,0,0.5);animation:fadeIn .3s';
+            t.innerHTML = html + '<button onclick="this.parentElement.remove()" style="position:absolute;top:8px;right:10px;background:none;border:none;color:#666;cursor:pointer;font-size:18px;line-height:1">&times;</button>';
+            document.body.appendChild(t);
+            setTimeout(function(){ if(t.parentElement) t.remove(); }, duration || 8000);
+          }
+
+          function showPaymentModal(pmt) {
+            var overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px';
+            var price = 'R$ ' + parseFloat(pmt.amount || 0).toFixed(2).replace('.',',');
+
+            if (pmt.onlinePaid) {
+              var billingLabel = pmt.billingType === 'PIX' ? 'Pix' : pmt.billingType === 'CREDIT_CARD' ? 'Cartao de Credito' : pmt.billingType;
+              overlay.innerHTML =
+                '<div style="background:#1a2035;border:1px solid rgba(74,222,128,0.3);border-radius:18px;padding:28px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5)">' +
+                  '<div style="text-align:center;margin-bottom:20px"><div style="font-size:44px">&#10003;</div>' +
+                  '<div style="font-size:17px;font-weight:800;color:#4ADE80">Pagamento confirmado!</div>' +
+                  '<div style="font-size:13px;color:#888;margin-top:4px">Cliente ja pagou online via ' + billingLabel + '</div></div>' +
+                  '<div style="background:#0d1117;border-radius:12px;padding:16px;margin-bottom:20px;text-align:center">' +
+                  '<div style="font-size:24px;font-weight:900;color:#4ADE80">' + price + '</div>' +
+                  '<div style="font-size:12px;color:#888;margin-top:2px">' + pmt.serviceName + '</div></div>' +
+                  (pmt.waReview ? '<a href="' + pmt.waReview.waLink + '" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:#25D36618;border:1px solid #25D36644;border-radius:10px;color:#25D366;font-size:13px;font-weight:700;text-decoration:none;margin-bottom:12px">&#128172; Pedir avaliacao no WhatsApp</a>' : '') +
+                  '<button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:14px">Fechar</button>' +
+                '</div>';
+            } else {
+              overlay.innerHTML =
+                '<div style="background:#1a2035;border:1px solid rgba(201,168,76,0.3);border-radius:18px;padding:28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5)">' +
+                  '<div style="font-size:17px;font-weight:800;color:var(--gold);margin-bottom:4px">&#128181; Registrar Pagamento</div>' +
+                  '<div style="font-size:13px;color:#888;margin-bottom:20px">' + pmt.clientName + ' &mdash; ' + pmt.serviceName + '</div>' +
+                  '<div style="background:#0d1117;border-radius:12px;padding:14px;margin-bottom:20px;text-align:center">' +
+                  '<div style="font-size:28px;font-weight:900;color:var(--gold)">' + price + '</div></div>' +
+                  '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Forma de pagamento</div>' +
+                  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">' +
+                    '<button onclick="registerSale(event,' + JSON.stringify(pmt) + ','cash')" style="padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">&#128181; Dinheiro</button>' +
+                    '<button onclick="registerSale(event,' + JSON.stringify(pmt) + ','pix')" style="padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">&#128247; Pix</button>' +
+                    '<button onclick="registerSale(event,' + JSON.stringify(pmt) + ','credit_card')" style="padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">&#128179; Cartao</button>' +
+                    '<button onclick="registerSale(event,' + JSON.stringify(pmt) + ','debit_card')" style="padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">&#128179; Debito</button>' +
+                  '</div>' +
+                  '<button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:13px">Cancelar</button>' +
+                '</div>';
+            }
+            document.body.appendChild(overlay);
+          }
+
+          async function registerSale(e, pmt, paymentMethod) {
+            var btn = e.target;
+            btn.disabled = true; btn.style.opacity = '0.6';
+            try {
+              var r = await fetch('/admin-api/appointment-sale', {
+                method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+                body: JSON.stringify({
+                  appointmentId: pmt.appointmentId, serviceId: pmt.serviceId,
+                  serviceName: pmt.serviceName, clientId: pmt.clientId,
+                  barberId: pmt.barberId, amount: pmt.amount, paymentMethod: paymentMethod
+                })
+              });
+              var d = await r.json();
+              if (!d.ok) throw new Error(d.error || 'Erro ao registrar venda');
+              btn.closest('[style*="fixed"]').remove();
+              showToast(
+                '<div style="font-size:13px;font-weight:800;color:#4ADE80;margin-bottom:6px">Pagamento registrado!</div>' +
+                '<div style="font-size:12px;color:#888;margin-bottom:10px">Venda criada no Financeiro automaticamente.</div>' +
+                (pmt.waReview ? '<a href="' + pmt.waReview.waLink + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#25D36618;border:1px solid #25D36644;border-radius:8px;color:#25D366;font-size:12px;font-weight:700;text-decoration:none">&#128172; Pedir avaliacao</a>' : ''),
+                8000
+              );
+            } catch(err) { btn.disabled = false; btn.style.opacity='1'; alert('Erro: ' + err.message); }
+          }
+
           async function changeApptStatus(id, status, btn) {
-            var labels = {confirmed:'Confirmado',in_progress:'Em atendimento',completed:'Concluido',cancelled:'Cancelado'};
-            var colors = {confirmed:'#4ADE80',in_progress:'#60A5FA',completed:'#C9A84C',cancelled:'#F87171'};
+            // Cancelamento: confirmar primeiro
+            if (status === 'cancelled') {
+              if (!confirm('Cancelar este agendamento?')) return;
+            }
             btn.disabled = true; btn.style.opacity = '0.5';
             try {
               var r = await fetch('/admin-api/appointment-status', {
@@ -2677,29 +2764,19 @@ async function renderAgenda(req: Request, res: Response) {
               });
               var d = await r.json();
               if (!d.ok) throw new Error(d.error || 'Erro');
-              var card = document.getElementById('appt-card-' + id);
-              if (card) {
-                var badge = card.querySelector('[style*="border-radius:20px"]');
-                if (badge) {
-                  badge.textContent = labels[status] || status;
-                  badge.style.color = colors[status] || '#888';
-                  badge.style.background = (colors[status] || '#888') + '18';
-                  badge.style.borderColor = (colors[status] || '#888') + '44';
-                }
-                var bar = card.querySelector('[style*="width:3px"]');
-                if (bar) bar.style.background = colors[status] || '#888';
-                var btnsDiv = card.querySelector('[style*="display:flex"][style*="gap:4px"]');
-                if (btnsDiv) btnsDiv.innerHTML = '';
-              }
+              updateCardVisual(id, status);
+              // Confirmado: toast WhatsApp
               if (status === 'confirmed' && d.whatsapp) {
-                var toast = document.createElement('div');
-                toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1a2035;border:1px solid rgba(74,222,128,0.3);border-radius:12px;padding:14px 18px;z-index:9999;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.4)';
-                toast.innerHTML = '<div style="font-size:13px;font-weight:700;color:#4ADE80;margin-bottom:6px">Agendamento confirmado!</div>' +
-                  '<div style="font-size:12px;color:#888;margin-bottom:10px">Notificar ' + d.whatsapp.clientName + ' pelo WhatsApp?</div>' +
-                  '<a href="' + d.whatsapp.waLink + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#25D36618;border:1px solid #25D36644;border-radius:8px;color:#25D366;font-size:12px;font-weight:700;text-decoration:none">Enviar WhatsApp</a>' +
-                  '<button onclick="this.parentElement.remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;color:#888;cursor:pointer;font-size:16px;line-height:1">x</button>';
-                document.body.appendChild(toast);
-                setTimeout(function(){ if(toast.parentElement) toast.remove(); }, 8000);
+                showToast(
+                  '<div style="font-size:13px;font-weight:700;color:#4ADE80;margin-bottom:6px">Agendamento confirmado!</div>' +
+                  '<div style="font-size:12px;color:#888;margin-bottom:10px">Notificar ' + d.whatsapp.clientName + '?</div>' +
+                  '<a href="' + d.whatsapp.waLink + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#25D36618;border:1px solid #25D36644;border-radius:8px;color:#25D366;font-size:12px;font-weight:700;text-decoration:none">&#128172; Enviar WhatsApp</a>',
+                  8000
+                );
+              }
+              // Concluido: modal de pagamento
+              if (status === 'completed' && d.payment) {
+                showPaymentModal(d.payment);
               }
             } catch(e) {
               btn.disabled = false; btn.style.opacity = '1';
@@ -7419,7 +7496,77 @@ export function registerAdminRoutes(app: Express): void {
           }
         } catch {}
       }
-      res.json({ ok: true, whatsapp: whatsappData });
+      // Se concluindo, verificar pagamento online associado
+      let paymentData: Record<string, any> | null = null;
+      if (status === "completed") {
+        try {
+          const appt = await db.getAppointmentById(id);
+          const client = appt?.clientId ? await db.getClientById(appt.clientId) : null;
+          const svc = appt?.serviceId ? await db.getServiceById(appt.serviceId) : null;
+          // Buscar pagamento online associado ao agendamento
+          const dbConn = await db.getDb();
+          let onlinePaid = false;
+          let onlineAmount = "0";
+          let onlineBillingType = "";
+          if (dbConn && appt) {
+            const pmtRows = await dbConn.execute(sql`
+              SELECT status, amount, "billingType" FROM online_payments
+              WHERE "referenceId" = ${id} AND "chargeType" = 'appointment'
+              AND status IN ('received', 'confirmed') LIMIT 1
+            `) as any;
+            const pmt = Array.isArray(pmtRows) ? pmtRows[0]?.[0] : pmtRows?.rows?.[0];
+            if (pmt) { onlinePaid = true; onlineAmount = pmt.amount; onlineBillingType = pmt.billingType; }
+          }
+          paymentData = {
+            onlinePaid,
+            amount: svc ? String(svc.price) : "0",
+            paidAmount: onlineAmount,
+            billingType: onlineBillingType,
+            serviceId: svc?.id,
+            serviceName: svc?.name ?? "Servico",
+            clientId: client?.id,
+            clientName: client?.name ?? "Cliente",
+            clientPhone: client?.phone ?? "",
+            appointmentId: id,
+            barberId: appt?.barberId,
+          };
+          // WhatsApp de avaliação
+          if (client?.phone) {
+            const phone = client.phone.replace(/\D/g, "");
+            const msg = encodeURIComponent("Ola " + client.name + "! Obrigado pela visita. Como foi sua experiencia? Sua opiniao e muito importante para nos!");
+            paymentData.waReview = { phone, waLink: "https://wa.me/55" + phone + "?text=" + msg, clientName: client.name };
+          }
+        } catch (e: any) { console.error("[appointment-status/completed]", e.message); }
+      }
+
+      res.json({ ok: true, whatsapp: whatsappData, payment: paymentData });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+  // POST /admin-api/appointment-sale — Registrar venda ao concluir agendamento
+  app.post("/admin-api/appointment-sale", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number };
+      const barber = await db.getBarberById(session.barberId);
+      const { appointmentId, serviceId, serviceName, clientId, barberId, amount, paymentMethod } = req.body;
+      const saleId = await db.createSale({
+        barberId: parseInt(barberId) || session.barberId,
+        clientId: parseInt(clientId),
+        paymentMethod: paymentMethod || "cash",
+        totalAmount: String(amount),
+        status: "completed",
+        notes: "Venda gerada automaticamente ao concluir agendamento #" + appointmentId,
+        tenantId: barber?.tenantId ?? null,
+      } as any, [{
+        itemType: "service",
+        itemId: parseInt(serviceId),
+        itemName: serviceName,
+        quantity: 1,
+        unitPrice: String(amount),
+        total: String(amount),
+      }]);
+      res.json({ ok: true, saleId });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
