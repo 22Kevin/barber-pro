@@ -521,14 +521,39 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       /* Gráfico: padding menor */
       .chart-card-inner { padding: 16px !important; }
     }
+    @media (max-width: 768px) {
+      /* Tabelas: scroll horizontal */
+      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      /* Grids de 2 colunas nos formulários -> 1 coluna */
+      .form-row { grid-template-columns: 1fr !important; }
+      /* Agenda: painel lateral fecha em tablet */
+      .agenda-page { grid-template-columns: 1fr !important; }
+      /* Modais: ficam na base da tela como sheet */
+      #svcModal, #prdModal, #supModal { align-items: flex-end !important; padding: 0 !important; }
+      #svcModal > div, #prdModal > div, #supModal > div { max-width: 100% !important; border-radius: 16px 16px 0 0 !important; max-height: 92vh; }
+      /* Headers das páginas: empilhar */
+      .content [style*="display:flex"][style*="align-items:center"][style*="padding:16px 20px"] { flex-direction: column !important; align-items: stretch !important; }
+      .content [style*="display:flex"][style*="align-items:center"][style*="padding:16px 20px"] > div:last-child { justify-content: space-between !important; }
+    }
+    @media (max-width: 600px) {
+      /* Grids inline 1fr 1fr -> 1 coluna em mobile */
+      .form-row, [class*="grid-2"] { grid-template-columns: 1fr !important; }
+      /* Ações Rápidas: 2 colunas */
+      .actions-grid-5 { grid-template-columns: repeat(2, 1fr) !important; }
+      .inline-action-btns { flex-direction: column; }
+      .page-preview-iframe-wrap { height: 180px !important; }
+      .chart-card-inner { padding: 16px !important; }
+    }
     @media (max-width: 480px) {
-      .metrics-grid { grid-template-columns: 1fr; }
-      .content { padding: 10px; }
-      /* Topbar: título menor */
+      .metrics-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .content { padding: 8px; }
       .topbar-title { font-size: 13px; }
-      /* Cards: padding menor */
-      .card-header { padding: 12px 14px; }
-      .card-body { padding: 12px 14px; }
+      .card-header { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
+      .card-body { padding: 12px; }
+      /* Botões de ação menores */
+      .btn-action-edit, .btn-action-delete, .btn-action-toggle, .btn-action-view { padding: 4px 8px !important; font-size: 10px !important; }
+      /* Modais: padding menor */
+      #svcModal > div, #prdModal > div, #supModal > div { padding: 20px 16px !important; }
     }
     /* ─── Animações de Navegação ─────────────────────────────────────────────── */
     /* Barra de progresso na topbar */
@@ -3312,7 +3337,7 @@ async function renderFinanceiro(req: Request, res: Response) {
         </div>
       </div>
     </div>` : ""}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="relatorio-grid-2">
       <div class="card">
         <div class="card-header"><div class="card-title">Por Barbeiro</div></div>
         <div class="card-body">
@@ -6216,7 +6241,7 @@ async function renderClienteDetalhe(req: Request, res: Response) {
       </div>
     </div>
     <!-- Grid histórico + pontos -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="relatorio-grid-2">
       <div class="card">
         <div class="card-header"><div class="card-title">Histórico de Agendamentos</div></div>
         <div class="card-body" style="overflow-x:auto">
@@ -8170,7 +8195,7 @@ export function registerAdminRoutes(app: Express): void {
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:280px 1fr;gap:24px;">
+      <div style="display:grid;grid-template-columns:280px 1fr;gap:24px;" class="relatorio-grid-2">
         <!-- Distribuição -->
         <div class="card">
           <div class="card-header"><span class="card-title">Distribuição</span></div>
