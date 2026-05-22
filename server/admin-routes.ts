@@ -369,7 +369,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       from { opacity: 0; transform: translateY(14px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; overflow: visible; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; overflow: visible; }
     .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: border-color 0.15s, box-shadow 0.15s; animation: kpi-in 0.35s ease both; }
     .metric-card:nth-child(1) { animation-delay: 0ms; }
     .metric-card:nth-child(2) { animation-delay: 60ms; }
@@ -521,39 +521,47 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       /* Gráfico: padding menor */
       .chart-card-inner { padding: 16px !important; }
     }
+    /* ─── Tablet (≤900px) já definido acima ─── */
+
+    /* ─── Tablet pequeno (≤768px) ───────────────────────────────────────────── */
     @media (max-width: 768px) {
-      /* Tabelas: scroll horizontal */
       .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      /* Grids de 2 colunas nos formulários -> 1 coluna */
       .form-row { grid-template-columns: 1fr !important; }
-      /* Agenda: painel lateral fecha em tablet */
       .agenda-page { grid-template-columns: 1fr !important; }
-      /* Modais: ficam na base da tela como sheet */
+      .relatorio-grid-2 { grid-template-columns: 1fr !important; }
       #svcModal, #prdModal, #supModal { align-items: flex-end !important; padding: 0 !important; }
       #svcModal > div, #prdModal > div, #supModal > div { max-width: 100% !important; border-radius: 16px 16px 0 0 !important; max-height: 92vh; }
-      /* Headers das páginas: empilhar */
-      .content [style*="display:flex"][style*="align-items:center"][style*="padding:16px 20px"] { flex-direction: column !important; align-items: stretch !important; }
-      .content [style*="display:flex"][style*="align-items:center"][style*="padding:16px 20px"] > div:last-child { justify-content: space-between !important; }
     }
+
+    /* ─── Mobile (≤600px) ───────────────────────────────────────────────────── */
     @media (max-width: 600px) {
-      /* Grids inline 1fr 1fr -> 1 coluna em mobile */
-      .form-row, [class*="grid-2"] { grid-template-columns: 1fr !important; }
+      /* KPI cards: sempre 2 colunas */
+      .metrics-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
       /* Ações Rápidas: 2 colunas */
       .actions-grid-5 { grid-template-columns: repeat(2, 1fr) !important; }
+      /* Formulários: 1 coluna */
+      .form-row { grid-template-columns: 1fr !important; }
       .inline-action-btns { flex-direction: column; }
       .page-preview-iframe-wrap { height: 180px !important; }
-      .chart-card-inner { padding: 16px !important; }
+      /* Próximo agendamento: não cortar */
+      #next-appt-card { flex-wrap: wrap !important; }
+      /* Topbar: esconder elementos secundários */
+      .topbar-plan-badge { display: none; }
     }
+
+    /* ─── Mobile pequeno (≤480px) ───────────────────────────────────────────── */
     @media (max-width: 480px) {
-      .metrics-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
       .content { padding: 8px; }
       .topbar-title { font-size: 13px; }
       .card-header { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
       .card-body { padding: 12px; }
-      /* Botões de ação menores */
+      /* Botões de ação: menores */
       .btn-action-edit, .btn-action-delete, .btn-action-toggle, .btn-action-view { padding: 4px 8px !important; font-size: 10px !important; }
       /* Modais: padding menor */
       #svcModal > div, #prdModal > div, #supModal > div { padding: 20px 16px !important; }
+      /* Próximo agendamento: empilhar */
+      #next-appt-card { gap: 12px !important; }
+      #next-appt-card > div:first-child { display: none; }
     }
     /* ─── Animações de Navegação ─────────────────────────────────────────────── */
     /* Barra de progresso na topbar */
