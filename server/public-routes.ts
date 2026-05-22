@@ -188,20 +188,36 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
     /* Grid de cards dentro das abas */
-    .tab-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    @media (max-width: 700px) { .tab-cards-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
-    @media (max-width: 380px) { .tab-cards-grid { grid-template-columns: 1fr; gap: 10px; } }
-    .tab-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: border-color 0.2s, transform 0.15s; cursor: pointer; display: flex !important; flex-direction: column !important; text-decoration: none; color: inherit; min-height: 220px; }
-    .tab-card:hover { border-color: var(--primary); transform: translateY(-2px); }
-    .tab-card-thumb { width: 100%; height: 140px; object-fit: cover; background: var(--surface2); flex-shrink: 0; display: block; }
-    .tab-card-thumb-placeholder { width: 100%; height: 140px; background: var(--surface2); display: flex !important; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0; }
-    .tab-card-body { padding: 12px; flex: 1; display: flex !important; flex-direction: column !important; }
-    .tab-card-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
-    .tab-card-desc { font-size: 11px; color: var(--muted); margin-bottom: 8px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex: 1; }
-    .tab-card-meta { display: flex !important; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); }
-    .tab-card-price { font-size: 14px; font-weight: 900; color: var(--primary); }
-    .tab-card-duration { font-size: 11px; color: var(--muted); }
-    .tab-card-rating { font-size: 11px; color: #FBBF24; margin-top: 4px; }
+    .tab-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 700px) { .tab-cards-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+    @media (max-width: 380px) { .tab-cards-grid { grid-template-columns: 1fr; gap: 12px; } }
+
+    /* Card unificado — 1 card = 1 elemento completo */
+    .tab-card { background: #1a2035; border: 1px solid rgba(155,48,255,0.15); border-radius: 16px; overflow: hidden; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; cursor: pointer; display: flex !important; flex-direction: column !important; text-decoration: none; color: inherit; }
+    .tab-card:hover { border-color: rgba(155,48,255,0.5); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(155,48,255,0.15); }
+
+    /* Imagem do card */
+    .tab-card-img-wrap { position: relative; width: 100%; aspect-ratio: 4/3; overflow: hidden; flex-shrink: 0; }
+    .tab-card-img-wrap::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to bottom, transparent, #1a2035); pointer-events: none; }
+    .tab-card-thumb { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s ease; }
+    .tab-card:hover .tab-card-thumb { transform: scale(1.04); }
+    .tab-card-thumb-placeholder { width: 100%; height: 100%; background: linear-gradient(135deg, #1e1040 0%, #2d1b69 50%, #1a0a3d 100%); display: flex !important; align-items: center; justify-content: center; font-size: 48px; color: rgba(155,48,255,0.5); }
+
+    /* Corpo do card */
+    .tab-card-body { padding: 14px; flex: 1; display: flex !important; flex-direction: column !important; }
+    .tab-card-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; color: #fff; }
+    .tab-card-desc { font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex: 1; }
+    .tab-card-rating { font-size: 11px; color: #FBBF24; margin-bottom: 8px; }
+
+    /* Rodapé do card — preço + duração */
+    .tab-card-meta { display: flex !important; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(155,48,255,0.1); gap: 8px; }
+    .tab-card-price { font-size: 15px; font-weight: 900; color: var(--primary); }
+    .tab-card-duration { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 3px; white-space: nowrap; }
+
+    /* Estado preço bloqueado */
+    .tab-card-price-blur { font-size: 15px; font-weight: 900; color: var(--primary); filter: blur(5px); user-select: none; pointer-events: none; }
+    .tab-card-cta { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 9px 12px; background: linear-gradient(135deg, #9b30ff, #7c3aed); color: #fff; border-radius: 10px; font-weight: 600; font-size: 12px; border: none; cursor: pointer; text-decoration: none; margin-top: 8px; transition: opacity 0.2s; }
+    .tab-card-cta:hover { opacity: 0.85; }
     /* Steps dentro da aba Como Funciona */
     .how-tab { padding: 8px 0; }
 
@@ -323,7 +339,7 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
     .price-locked:hover { color: var(--primary); border-color: var(--primary); }
 
     /* Banner CTA de desbloqueio */
-    .cta-unlock-banner { background: linear-gradient(135deg, #1a1200 0%, #1a1a00 50%, #0f0f0f 100%); border: 1px solid var(--primary); border-radius: 20px; padding: 24px 28px; margin: 0 24px 8px; max-width: 900px; margin-left: auto; margin-right: auto; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .cta-unlock-banner { background: linear-gradient(135deg, rgba(155,48,255,0.12) 0%, rgba(124,58,237,0.06) 100%); border: 1px solid rgba(155,48,255,0.3); border-radius: 16px; padding: 20px 24px; margin: 0 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; backdrop-filter: blur(4px); }
     .cta-unlock-content { display: flex; align-items: center; gap: 16px; }
     .cta-unlock-icon { font-size: 32px; flex-shrink: 0; }
     .cta-unlock-title { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
@@ -558,27 +574,33 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   const saleProducts = productList.filter((p: any) => p.productType === 'sale' || !p.productType);
 
   // ── Helper: preço com lock para visitantes ───────────────────────────────
-  const priceHtml = (price: string | number) => isLoggedIn
+  const priceHtml = (price: string | number, duration?: string) => isLoggedIn
     ? `<span class="tab-card-price">${formatPrice(price)}</span>`
-    : `<a href="/pub/${slug}/login?redirect=" class="price-locked">🔒 Ver preço</a>`;
+    : `<span class="tab-card-price-blur">R$ ${formatPrice(price).replace('R$','').trim()}</span>`;
+  const ctaLoginHtml = (redirectUrl = '') => !isLoggedIn
+    ? `<a href="/pub/${slug}/login?redirect=${redirectUrl}" class="tab-card-cta">🔓 Entrar para ver preço</a>`
+    : '';
 
   // ── Seção: Cards de Serviços (para o painel de abas) ─────────────────────
   const servicesTabHtml = serviceList.length === 0
     ? `<div class="empty">Nenhum serviço cadastrado ainda.</div>`
     : serviceList.map((s) => `
       <a href="/pub/${slug}/servico/${s.id}" class="tab-card" style="text-decoration:none;color:inherit">
-        ${s.thumbnailUrl
-          ? `<img class="tab-card-thumb" src="${escapeHtml(s.thumbnailUrl)}" alt="${escapeHtml(s.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="tab-card-thumb-placeholder" style="display:none">✂</div>`
-          : `<div class="tab-card-thumb-placeholder">✂</div>`
-        }
+        <div class="tab-card-img-wrap">
+          ${s.thumbnailUrl
+            ? `<img class="tab-card-thumb" src="${escapeHtml(s.thumbnailUrl)}" alt="${escapeHtml(s.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="tab-card-thumb-placeholder" style="display:none">✂</div>`
+            : `<div class="tab-card-thumb-placeholder">✂</div>`
+          }
+        </div>
         <div class="tab-card-body">
           <div class="tab-card-name">${escapeHtml(s.name)}</div>
           ${s.description ? `<div class="tab-card-desc">${escapeHtml(s.description)}</div>` : ""}
           ${s.avgRating ? `<div class="tab-card-rating">★ ${s.avgRating} (${s.reviewCount})</div>` : ""}
           <div class="tab-card-meta">
             ${priceHtml(s.price)}
-            <span class="tab-card-duration">${formatDuration(s.durationMinutes)}</span>
+            <span class="tab-card-duration">⏱ ${formatDuration(s.durationMinutes)}</span>
           </div>
+          ${ctaLoginHtml(`servico/${s.id}`)}
         </div>
       </a>
     `).join("");
@@ -588,17 +610,20 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     ? `<div class="empty">Nenhum produto disponível.</div>`
     : saleProducts.map((p: any) => `
       <a href="/pub/${slug}/produto/${p.id}" class="tab-card" style="text-decoration:none;color:inherit">
-        ${p.thumbnailUrl
-          ? `<img class="tab-card-thumb" src="${escapeHtml(p.thumbnailUrl)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="tab-card-thumb-placeholder" style="display:none">🧴</div>`
-          : `<div class="tab-card-thumb-placeholder">🧴</div>`
-        }
+        <div class="tab-card-img-wrap">
+          ${p.thumbnailUrl
+            ? `<img class="tab-card-thumb" src="${escapeHtml(p.thumbnailUrl)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="tab-card-thumb-placeholder" style="display:none">🧴</div>`
+            : `<div class="tab-card-thumb-placeholder">🧴</div>`
+          }
+        </div>
         <div class="tab-card-body">
           <div class="tab-card-name">${escapeHtml(p.name)}</div>
           ${p.description ? `<div class="tab-card-desc">${escapeHtml(p.description)}</div>` : ""}
           <div class="tab-card-meta">
             ${priceHtml(p.price)}
-            ${p.stockQuantity != null ? `<span class="tab-card-duration">${(p.stockQuantity > 0 ? p.stockQuantity + " em estoque" : "Sem estoque")}</span>` : ""}
+            ${p.stockQuantity != null ? `<span class="tab-card-duration">${(p.stockQuantity > 0 ? "📦 " + p.stockQuantity + " em estoque" : "Sem estoque")}</span>` : ""}
           </div>
+          ${ctaLoginHtml(`produto/${p.id}`)}
         </div>
       </a>
     `).join("");
@@ -1029,7 +1054,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       <!-- Aba: Serviços -->
       <div class="tab-panel active" id="tab-services">
         ${!isLoggedIn ? `<div class="cta-unlock-banner" style="margin:0 0 20px">
-          <div class="cta-unlock-content"><div class="cta-unlock-icon">🔒</div><div><div class="cta-unlock-title">Faça login para ver os preços</div><div class="cta-unlock-sub">Crie uma conta gratuita e acesse todos os valores.</div></div></div>
+          <div class="cta-unlock-content"><div class="cta-unlock-icon">✨</div><div><div class="cta-unlock-title">Acesse preços exclusivos</div><div class="cta-unlock-sub">Cadastre-se grátis e veja os valores de todos os serviços e produtos.</div></div></div>
           <a href="/pub/${slug}/login" class="cta-unlock-btn">Entrar / Cadastrar</a>
         </div>` : ""}
         <div class="tab-cards-grid">${servicesTabHtml}</div>
@@ -1038,7 +1063,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       <!-- Aba: Produtos -->
       ${saleProducts.length > 0 ? `<div class="tab-panel" id="tab-products">
         ${!isLoggedIn ? `<div class="cta-unlock-banner" style="margin:0 0 20px">
-          <div class="cta-unlock-content"><div class="cta-unlock-icon">🔒</div><div><div class="cta-unlock-title">Faça login para ver os preços</div><div class="cta-unlock-sub">Crie uma conta gratuita e acesse todos os valores.</div></div></div>
+          <div class="cta-unlock-content"><div class="cta-unlock-icon">✨</div><div><div class="cta-unlock-title">Acesse preços exclusivos</div><div class="cta-unlock-sub">Cadastre-se grátis e veja os valores de todos os serviços e produtos.</div></div></div>
           <a href="/pub/${slug}/login" class="cta-unlock-btn">Entrar / Cadastrar</a>
         </div>` : ""}
         <div class="tab-cards-grid">${productsTabHtml}</div>
