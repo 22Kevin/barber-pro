@@ -348,6 +348,43 @@ export default function AgendaScreen() {
   }
 
   function handleStatusChange(id: number, status: string) {
+    if (status === "completed") {
+      // Ao concluir, primeiro atualiza o status e depois abre o modal de pagamento
+      Alert.alert("Alterar Status", `Mudar para "${STATUS_CONFIG[status]?.label}"?`, [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Confirmar",
+          onPress: () => {
+            updateMutation.mutate({ id, status: status as any }, {
+              onSuccess: () => {
+                // Busca o agendamento nos dados atuais para abrir o modal com preço correto
+                const allApts = [
+                  ...(appointmentsQuery.data ?? []),
+                  ...(allAppointmentsQuery.data ?? []),
+                ];
+                const apt = allApts.find((a: any) => a.id === id);
+                if (apt) {
+                  const service = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
+                  const client = (clientsQuery.data ?? []).find((c: any) => c.id === apt.clientId);
+                  setPaymentAppointment({
+                    ...apt,
+                    clientName: client?.name ?? apt.clientName,
+                    clientPhone: client?.phone ?? apt.clientPhone,
+                    serviceName: service?.name ?? apt.serviceName ?? "Serviço",
+                    servicePrice: service?.price ?? apt.servicePrice ?? "0",
+                    serviceId: apt.serviceId,
+                  });
+                  setShowDetailModal(false);
+                  setShowPaymentModal(true);
+                  setPaymentPendingMap(prev => ({ ...prev, [id]: true }));
+                }
+              },
+            });
+          },
+        },
+      ]);
+      return;
+    }
     Alert.alert("Alterar Status", `Mudar para "${STATUS_CONFIG[status]?.label}"?`, [
       { text: "Cancelar", style: "cancel" },
       { text: "Confirmar", onPress: () => updateMutation.mutate({ id, status: status as any }) },
@@ -627,12 +664,14 @@ export default function AgendaScreen() {
                 appointment={apt}
                 onPress={() => {
                   if (apt.status === "completed") {
+                    const svc = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
+                    const cli = (clientsQuery.data ?? []).find((c: any) => c.id === apt.clientId);
                     setPaymentAppointment({
                       ...apt,
-                      clientName: apt.clientName,
-                      clientPhone: apt.clientPhone,
-                      serviceName: apt.serviceName ?? "Serviço",
-                      servicePrice: apt.servicePrice ?? "0",
+                      clientName: cli?.name ?? apt.clientName,
+                      clientPhone: cli?.phone ?? apt.clientPhone,
+                      serviceName: svc?.name ?? apt.serviceName ?? "Serviço",
+                      servicePrice: svc?.price ?? apt.servicePrice ?? "0",
                       serviceId: apt.serviceId,
                     });
                     setShowPaymentModal(true);
@@ -734,7 +773,9 @@ export default function AgendaScreen() {
                           style={({ pressed }) => [styles.timelineCard, { borderLeftColor: statusColor, minHeight: cardHeight, opacity: pressed ? 0.8 : 1 }]}
                           onPress={() => {
                             if (apt.status === "completed") {
-                              setPaymentAppointment({ ...apt, serviceName: apt.serviceName ?? "Serviço", servicePrice: apt.servicePrice ?? "0" });
+                              const svc = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
+                              const cli = (clientsQuery.data ?? []).find((c: any) => c.id === apt.clientId);
+                              setPaymentAppointment({ ...apt, clientName: cli?.name ?? apt.clientName, clientPhone: cli?.phone ?? apt.clientPhone, serviceName: svc?.name ?? apt.serviceName ?? "Serviço", servicePrice: svc?.price ?? apt.servicePrice ?? "0" });
                               setShowPaymentModal(true);
                             } else {
                               setSelectedAppointment({ ...apt });

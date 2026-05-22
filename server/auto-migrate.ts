@@ -265,7 +265,6 @@ export async function runAutoMigrate(db: any): Promise<void> {
         "paymentStatus" payment_status NOT NULL DEFAULT 'pending',
         "couponId" INT,
         "couponCode" VARCHAR(50),
-        "mercadoPagoPaymentId" VARCHAR(255),
         notes TEXT,
         "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
         "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
@@ -378,8 +377,6 @@ export async function runAutoMigrate(db: any): Promise<void> {
         phone VARCHAR(20),
         whatsapp VARCHAR(20),
         "logoUrl" TEXT,
-        "mercadoPagoAccessToken" TEXT,
-        "mercadoPagoPublicKey" TEXT,
         "whatsappMessageTemplate" TEXT,
         "reminderMessageTemplate" TEXT,
         instagram VARCHAR(100),
@@ -781,7 +778,6 @@ export async function runAutoMigrate(db: any): Promise<void> {
     // sales
     { name: 'sales."couponId"',            sql: `ALTER TABLE sales ADD COLUMN IF NOT EXISTS "couponId" INT` },
     { name: 'sales."couponCode"',          sql: `ALTER TABLE sales ADD COLUMN IF NOT EXISTS "couponCode" VARCHAR(50)` },
-    { name: 'sales."mercadoPagoPaymentId"', sql: `ALTER TABLE sales ADD COLUMN IF NOT EXISTS "mercadoPagoPaymentId" VARCHAR(255)` },
     // shop_settings
     { name: 'shop_settings.instagram',    sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS instagram VARCHAR(100)` },
     { name: 'shop_settings.cnpj',         sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS cnpj VARCHAR(20)` },

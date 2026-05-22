@@ -229,10 +229,7 @@ export default function DashboardScreen() {
                       <Text style={[styles.statusText, { color: "#FF9800" }]}>Pendente</Text>
                     </View>
                   </View>
-                  <Text style={dyn.aptBarber}>Mercado Pago</Text>
-                  {sale.mercadoPagoPaymentId && (
-                    <Text style={dyn.aptNotes}>ID: {sale.mercadoPagoPaymentId}</Text>
-                  )}
+                  <Text style={dyn.aptBarber}>Pagamento Online</Text>
                 </View>
               </View>
             ))}

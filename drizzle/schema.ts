@@ -26,7 +26,7 @@ export const appointmentStatusEnum = pgEnum("appointment_status", [
   "scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "pending_approval"
 ]);
 export const paymentMethodEnum = pgEnum("payment_method", [
-  "cash", "credit_card", "debit_card", "pix", "mercado_pago", "other"
+  "cash", "credit_card", "debit_card", "pix", "mercado_pago", "asaas", "other"
 ]);
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "paid", "cancelled", "refunded"]);
 export const saleItemTypeEnum = pgEnum("sale_item_type", ["service", "product"]);
@@ -275,7 +275,6 @@ export const sales = pgTable("sales", {
   paymentStatus: paymentStatusEnum("paymentStatus").default("pending").notNull(),
   couponId: integer("couponId"),
   couponCode: varchar("couponCode", { length: 50 }),
-  mercadoPagoPaymentId: varchar("mercadoPagoPaymentId", { length: 255 }),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
@@ -375,8 +374,6 @@ export const shopSettings = pgTable("shop_settings", {
   phone: varchar("phone", { length: 20 }),
   whatsapp: varchar("whatsapp", { length: 20 }),
   logoUrl: text("logoUrl"),
-  mercadoPagoAccessToken: text("mercadoPagoAccessToken"),
-  mercadoPagoPublicKey: text("mercadoPagoPublicKey"),
   whatsappMessageTemplate: text("whatsappMessageTemplate"),
   reminderMessageTemplate: text("reminderMessageTemplate"),
   instagram: varchar("instagram", { length: 100 }),

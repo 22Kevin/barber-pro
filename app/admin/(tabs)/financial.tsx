@@ -280,7 +280,7 @@ export default function FinancialScreen() {
                       <Text style={styles.transactionMeta}>
                         {PAYMENT_METHODS.find(p => p.key === sale.paymentMethod)?.label ?? sale.paymentMethod} · {sale.createdAt ? new Date(sale.createdAt).toLocaleDateString("pt-BR") : "—"}
                       </Text>
-                      {(sale.paymentMethod === "asaas" || sale.paymentMethod === "mercado_pago") && (
+                      {(sale.paymentMethod === "asaas") && (
                         <View style={{ backgroundColor: sale.paymentStatus === "paid" ? "#009EE322" : "#F5A62322", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
                           <Text style={{ color: sale.paymentStatus === "paid" ? "#009EE3" : "#F5A623", fontSize: 10, fontWeight: "700" }}>
                             {sale.paymentStatus === "paid" ? "✓ Pago" : sale.paymentStatus === "pending" ? "⏳ Pendente" : sale.paymentStatus}
