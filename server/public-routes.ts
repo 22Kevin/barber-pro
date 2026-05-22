@@ -4880,7 +4880,6 @@ export function registerPublicRoutes(app: Express): void {
           const tenantRow = await dbConn.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${tenantForPix.id} LIMIT 1`);
           const tenantData = (tenantRow as any)?.rows?.[0];
           subApiKey = tenantData?.asaasApiKey || undefined;
-          console.log("[asaas-pix] tenantId:", tenantForPix.id, "subApiKey:", subApiKey ? "SET" : "NOT_SET", "tenantData:", JSON.stringify(tenantData));
         }
       }
       // Criar/recuperar cliente no Asaas (na subconta se configurada)

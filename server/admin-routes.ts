@@ -4139,8 +4139,17 @@ async function renderConfiguracoes(req: Request, res: Response) {
             ID da subconta: <code style="background:var(--bg);padding:2px 6px;border-radius:4px;font-size:11px">${esc(tenant?.asaasAccountId ?? '')}</code>
           </div>
           ${asaasStatus === 'pending' ? `
+            <div style="margin-top:14px;background:#FBBF2411;border:1px solid #FBBF2433;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.6">
+              <div style="font-weight:700;color:#FBBF24;margin-bottom:6px">&#9203; Ativacao pendente</div>
+              <div style="color:var(--muted)">Sua conta foi criada mas ainda precisa ser ativada. Siga os passos:</div>
+              <ol style="color:var(--muted);padding-left:18px;margin-top:8px">
+                <li>Verifique seu e-mail e clique no link de ativacao enviado pelo Asaas</li>
+                <li>Apos receber o e-mail, ative a conta no painel do Asaas</li>
+                <li>Clique em <strong style="color:var(--text)">Verificar status</strong> abaixo para atualizar</li>
+              </ol>
+            </div>
             <form method="POST" action="/admin/configuracoes/asaas/sync" style="margin-top:12px">
-              <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px">↻ Verificar status de aprovação</button>
+              <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px">&#8635; Verificar status de aprovacao</button>
             </form>
           ` : ''}
         ` : ''}
@@ -4148,11 +4157,11 @@ async function renderConfiguracoes(req: Request, res: Response) {
 
       ${asaasStatus === 'active' ? `
         <div style="background:#4ADE8011;border:1px solid #4ADE8033;border-radius:12px;padding:16px 20px;margin-bottom:24px;font-size:13px;color:var(--text)">
-          ✅ Sua conta de pagamentos está ativa. Os clientes já podem pagar online via Pix ou cartão de crédito diretamente na página de agendamento.
+          &#9989; Sua conta de pagamentos esta ativa. Os clientes ja podem pagar online via Pix ou cartao de credito.
         </div>
       ` : ''}
 
-      ${asaasStatus !== 'active' ? `
+            ${asaasStatus !== 'active' ? `
         <!-- Formulário de configuração -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px">
           <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">Configurar Pagamentos Online</div>
@@ -6631,11 +6640,20 @@ export function registerAdminRoutes(app: Express): void {
         normalizedStatus = "rejected";
       } else if (rawStatus === "PENDING" || rawStatus === "IN_ANALYSIS") {
         normalizedStatus = "pending";
+      } else if (rawStatus === "AWAITING_ACTIVATION" || rawStatus === "AWAITING_KYC") {
+        normalizedStatus = "pending";
       } else {
-        // Sem campo de status: conta existe e tem walletId → está ativa
-        const hasWallet = !!(accountData as any).walletId;
-        const hasAccount = !!(accountData as any).accountNumber?.account;
-        normalizedStatus = (hasWallet || hasAccount) ? "active" : "pending";
+        // Verificar pelo comercialInfo se disponível
+        const commercialStatus = (accountData as any).commercialInfo?.status;
+        if (commercialStatus === "APPROVED") {
+          normalizedStatus = "active";
+        } else if (commercialStatus && commercialStatus !== "APPROVED") {
+          normalizedStatus = "pending";
+        } else {
+          // Só marcar como ativo se tiver número de conta bancária ativa
+          const hasAccountNumber = !!(accountData as any).accountNumber?.account;
+          normalizedStatus = hasAccountNumber ? "active" : "pending";
+        }
       }
 
       await dbConn.execute(sql`UPDATE tenants SET "asaasAccountStatus" = ${normalizedStatus}, "updatedAt" = NOW() WHERE id = ${barber.tenantId}`);
