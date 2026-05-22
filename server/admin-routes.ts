@@ -1951,6 +1951,12 @@ async function renderAgenda(req: Request, res: Response) {
   // Aplicar filtros
   let appointments = allAppointments;
   if (filterBarberId) appointments = appointments.filter((a: any) => a.barberId === filterBarberId);
+  // Ordenar por horário
+  appointments = [...appointments].sort((a: any, b: any) => {
+    const ta = a.startTime ?? "00:00";
+    const tb = b.startTime ?? "00:00";
+    return ta.localeCompare(tb);
+  });
   if (filterSearch) {
     appointments = appointments.filter((a: any) => {
       const client = clientMap[a.clientId];
@@ -2609,6 +2615,51 @@ async function renderAgenda(req: Request, res: Response) {
             document.getElementById('btnViewTimeline').style.border = v === 'timeline' ? 'none' : '1px solid var(--border)';
             localStorage.setItem('agendaView', v);
           }
+          // ─── Auto-refresh da agenda a cada 60 segundos ───────────────────────
+          (function() {
+            var REFRESH_INTERVAL = 60000; // 60 segundos
+            var refreshTimer = null;
+            var lastActivity = Date.now();
+
+            // Reinicia o timer ao interagir com a página
+            document.addEventListener('click', function() { lastActivity = Date.now(); });
+            document.addEventListener('keydown', function() { lastActivity = Date.now(); });
+
+            function scheduleRefresh() {
+              if (refreshTimer) clearTimeout(refreshTimer);
+              refreshTimer = setTimeout(function() {
+                // Só recarrega se não houve atividade nos últimos 30s e a página está visível
+                var idleTime = Date.now() - lastActivity;
+                if (!document.hidden && idleTime > 30000) {
+                  window.location.reload();
+                } else {
+                  scheduleRefresh(); // reagendar
+                }
+              }, REFRESH_INTERVAL);
+            }
+
+            // Iniciar refresh automático
+            scheduleRefresh();
+
+            // Mostrar indicador de tempo até próximo refresh
+            var indicator = document.createElement('div');
+            indicator.id = 'refresh-indicator';
+            indicator.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--muted);z-index:100;pointer-events:none;opacity:0;transition:opacity .3s';
+            document.body.appendChild(indicator);
+
+            var countdown = REFRESH_INTERVAL / 1000;
+            setInterval(function() {
+              countdown--;
+              if (countdown <= 10) {
+                indicator.textContent = 'Atualizando em ' + countdown + 's...';
+                indicator.style.opacity = '1';
+              } else {
+                indicator.style.opacity = '0';
+              }
+              if (countdown <= 0) countdown = REFRESH_INTERVAL / 1000;
+            }, 1000);
+          })();
+
           // Restaurar vista salva
           (function() {
             const saved = localStorage.getItem('agendaView');
