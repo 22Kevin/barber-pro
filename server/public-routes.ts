@@ -2034,7 +2034,19 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         var status = document.getElementById('payment-status');
         btn.disabled = true; btn.textContent = 'Gerando QR Code...';
         try {
-          var r = await fetch('/pub-api/asaas-pix', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: SLUG, appointmentId, amount: price, description: 'Agendamento' }) });
+          // Verificar se cliente tem CPF cadastrado
+          var clientCpf = LOGGED_CLIENT && LOGGED_CLIENT.cpf ? LOGGED_CLIENT.cpf : null;
+          if (!clientCpf) {
+            var cpfInput = prompt('Para gerar o Pix, informe seu CPF (apenas números):');
+            if (!cpfInput || cpfInput.replace(/[^0-9]/g,'').length < 11) {
+              status.textContent = 'CPF inválido. Necessário para gerar a cobrança.';
+              status.style.color = '#F87171';
+              btn.disabled = false; btn.innerHTML = '📱 Pagar via Pix';
+              return;
+            }
+            clientCpf = cpfInput.replace(/[^0-9]/g,'');
+          }
+          var r = await fetch('/pub-api/asaas-pix', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: SLUG, appointmentId, amount: price, description: 'Agendamento', clientCpf }) });
           var data = await r.json();
           if (!r.ok) throw new Error(data.error || 'Erro ao gerar Pix');
           var paymentId = data.paymentId;
@@ -2073,9 +2085,28 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         } catch(e) { console.error('Erro ao verificar pagamento', e); }
       }
       // ─── Máscaras de campos ────────────────────────────────────────────────────
+      function detectCardBrand(value) {
+        var v = value.replace(/[^0-9]/g, '');
+        var brand = '';
+        if (/^4/.test(v)) brand = '💳 Visa';
+        else if (/^(5[1-5]|2[2-7])/.test(v)) brand = '💳 Master';
+        else if (/^3[47]/.test(v)) brand = '💳 Amex';
+        else if (/^606282/.test(v)) brand = '💳 Hiper';
+        else if (/^(6011|65|64[4-9]|622)/.test(v)) brand = '💳 Elo';
+        else if (/^36/.test(v)) brand = '💳 Diners';
+        var el = document.getElementById('cc-brand');
+        if (el) el.textContent = v.length >= 1 ? brand.split(' ')[1] || '' : '';
+      }
       function maskCardNumber(el) {
         var v = el.value.replace(/[^0-9]/g,'').substring(0,16);
         el.value = v.replace(/([0-9]{4})(?=[0-9])/g,'$1 ').trim();
+      }
+      function maskCpfInput(el) {
+        var v = el.value.replace(/[^0-9]/g,'').substring(0,11);
+        if (v.length > 9) v = v.replace(/([0-9]{3})([0-9]{3})([0-9]{3})([0-9]{1,2})/,'$1.$2.$3-$4');
+        else if (v.length > 6) v = v.replace(/([0-9]{3})([0-9]{3})([0-9]{1,3})/,'$1.$2.$3');
+        else if (v.length > 3) v = v.replace(/([0-9]{3})([0-9]{1,3})/,'$1.$2');
+        el.value = v;
       }
       function maskCpf(el) {
         var v = el.value.replace(/[^0-9]/g,'').substring(0,11);
@@ -2110,21 +2141,24 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
               '</div>' +
               '<div>' +
                 '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">Número do cartão</label>' +
-                '<input id="cc-number" placeholder="0000 0000 0000 0000" maxlength="19" inputmode="numeric" autocomplete="cc-number" oninput="maskCardNumber(this)" style="' + inpStyle + ';letter-spacing:1px" />' +
+                '<div style="position:relative">' +
+                  '<input id="cc-number" placeholder="0000 0000 0000 0000" maxlength="19" inputmode="numeric" autocomplete="cc-number" oninput="maskCardNumber(this);detectCardBrand(this.value)" style="' + inpStyle + ';letter-spacing:1px;padding-right:56px" />' +
+                  '<span id="cc-brand" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:22px;line-height:1"></span>' +
+                '</div>' +
               '</div>' +
               '<div style="display:flex;gap:10px">' +
-                '<div style="flex:1">' +
+                '<div style="flex:1;min-width:0">' +
                   '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">Mês</label>' +
                   '<input id="cc-month" placeholder="MM" maxlength="2" inputmode="numeric" autocomplete="cc-exp-month" oninput="maskMonth(this)" style="' + inpStyleFlex + '" />' +
                 '</div>' +
-                '<div style="flex:1">' +
+                '<div style="flex:1;min-width:0">' +
                   '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">Ano</label>' +
                   '<input id="cc-year" placeholder="AAAA" maxlength="4" inputmode="numeric" autocomplete="cc-exp-year" style="' + inpStyleFlex + '" />' +
                 '</div>' +
-                '<div style="flex:1">' +
-                  '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">CVV</label>' +
-                  '<input id="cc-cvv" placeholder="123" maxlength="4" inputmode="numeric" autocomplete="cc-csc" style="' + inpStyleFlex + '" />' +
-                '</div>' +
+              '</div>' +
+              '<div>' +
+                '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">CVV</label>' +
+                '<input id="cc-cvv" placeholder="123" maxlength="4" inputmode="numeric" autocomplete="cc-csc" style="' + inpStyle + ';max-width:120px" />' +
               '</div>' +
               '<div>' +
                 '<label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px">CPF do titular</label>' +
@@ -2331,6 +2365,10 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
             <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">TELEFONE</label>
             <input type="tel" id="phone-input" required placeholder="(11) 99999-9999" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" oninput="(function(e){var d=e.target.value.replace(/\\D/g,'').slice(0,11);if(d.length<=2)e.target.value=d.length?'('+d:'';else if(d.length<=6)e.target.value='('+d.slice(0,2)+') '+d.slice(2);else if(d.length<=10)e.target.value='('+d.slice(0,2)+') '+d.slice(2,6)+'-'+d.slice(6);else e.target.value='('+d.slice(0,2)+') '+d.slice(2,7)+'-'+d.slice(7)})(event)" />
           </div>` : ""}
+          ${!isLogin ? `<div style="margin-bottom:16px">
+            <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">CPF <span style="color:var(--muted);font-weight:400">(necessário para pagamento online)</span></label>
+            <input type="text" id="cpf-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" oninput="(function(e){var v=e.target.value.replace(/[^0-9]/g,'').slice(0,11);if(v.length>9)e.target.value=v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6,9)+'-'+v.slice(9);else if(v.length>6)e.target.value=v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6);else if(v.length>3)e.target.value=v.slice(0,3)+'.'+v.slice(3);else e.target.value=v;})(event)" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
+          </div>` : ""}`
           ${!isLogin ? `<div style="margin-bottom:24px">
             <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">DATA DE NASCIMENTO <span style="color:var(--muted);font-weight:400">(opcional — usamos para enviar um cupom no seu aniversário 🎂)</span></label>
             <input type="date" id="birth-date-input" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
@@ -2379,7 +2417,7 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
           password: document.getElementById('password-input').value,
           slug: '${slug}'
         };
-        ${!isLogin ? `body.name = document.getElementById('name-input').value; body.phone = document.getElementById('phone-input').value; body.lgpdConsent = true; var bdEl = document.getElementById('birth-date-input'); if (bdEl && bdEl.value) body.birthDate = bdEl.value;` : ""}
+        ${!isLogin ? `body.name = document.getElementById('name-input').value; body.phone = document.getElementById('phone-input').value; body.lgpdConsent = true; var bdEl = document.getElementById('birth-date-input'); if (bdEl && bdEl.value) body.birthDate = bdEl.value; var cpfEl = document.getElementById('cpf-input'); if (cpfEl && cpfEl.value) body.cpf = cpfEl.value.replace(/[^0-9]/g,'');` : ""}
         try {
           var r = await fetch('/pub-api/${isLogin ? "login" : "register"}', {
             method: 'POST',
@@ -4173,7 +4211,7 @@ export function registerPublicRoutes(app: Express): void {
       if (!valid) { res.status(401).json({ error: "Email ou senha incorretos" }); return; }
       const client = await db.getClientById(account.clientId);
       if (!client) { res.status(404).json({ error: "Cliente não encontrado" }); return; }
-      const sessionData = Buffer.from(JSON.stringify({ id: client.id, name: client.name, email: client.email })).toString("base64");
+      const sessionData = Buffer.from(JSON.stringify({ id: client.id, name: client.name, email: client.email, cpf: (client as any).cpf ?? null })).toString("base64");
       const slug = req.body.slug as string;
       res.cookie(`client_session_${slug}`, sessionData, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
       res.cookie("client_session", sessionData, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
@@ -4186,7 +4224,7 @@ export function registerPublicRoutes(app: Express): void {
   // POST /pub-api/register  { name, email, password, phone, slug }
   app.post("/pub-api/register", async (req: Request, res: Response) => {
     try {
-      const { name, email, password, phone, slug, lgpdConsent, birthDate } = req.body;
+      const { name, email, password, phone, slug, lgpdConsent, birthDate, cpf } = req.body;
       if (!name || !email || !password || !phone) { res.status(400).json({ error: "Todos os campos são obrigatórios" }); return; }
       if (password.length < 6) { res.status(400).json({ error: "A senha deve ter pelo menos 6 caracteres" }); return; }
       const existing = await db.getClientAccountByEmail(email);
@@ -4194,7 +4232,7 @@ export function registerPublicRoutes(app: Express): void {
       const passwordHash = await bcrypt.hash(password, 10);
       // Obter tenantId via slug para associar o cliente à barbearia correta
       const tenantForReg = slug ? await db.getTenantBySlug(slug) : null;
-      const clientId = await db.createClient({ name, email, phone, isActive: true, tenantId: tenantForReg?.id ?? null, birthDate: birthDate ?? null } as any);
+      const clientId = await db.createClient({ name, email, phone, cpf: cpf ?? null, isActive: true, tenantId: tenantForReg?.id ?? null, birthDate: birthDate ?? null } as any);
       await db.createClientAccount({ clientId, email, passwordHash });
       // Salvar consentimento LGPD se fornecido
       if (lgpdConsent && tenantForReg) {
@@ -4205,7 +4243,7 @@ export function registerPublicRoutes(app: Express): void {
           userAgent: req.headers["user-agent"]?.substring(0, 500) ?? undefined,
         });
       }
-      const sessionData = Buffer.from(JSON.stringify({ id: clientId, name, email })).toString("base64");
+      const sessionData = Buffer.from(JSON.stringify({ id: clientId, name, email, cpf: cpf ?? null })).toString("base64");
       res.cookie(`client_session_${slug}`, sessionData, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
       res.cookie("client_session", sessionData, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
       res.json({ id: clientId, name, email });

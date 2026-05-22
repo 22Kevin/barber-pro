@@ -769,6 +769,7 @@ export async function runAutoMigrate(db: any): Promise<void> {
     // clients
     { name: 'clients."birthDate"',         sql: `ALTER TABLE clients ADD COLUMN IF NOT EXISTS "birthDate" VARCHAR(10)` },
     { name: 'clients."preferredTenantId"', sql: `ALTER TABLE clients ADD COLUMN IF NOT EXISTS "preferredTenantId" INT` },
+    { name: 'clients."cpf"',               sql: `ALTER TABLE clients ADD COLUMN IF NOT EXISTS "cpf" VARCHAR(14)` },
     // barbers
     { name: 'barbers."pushToken"',         sql: `ALTER TABLE barbers ADD COLUMN IF NOT EXISTS "pushToken" TEXT` },
     { name: 'barbers."googleId"',          sql: `ALTER TABLE barbers ADD COLUMN IF NOT EXISTS "googleId" VARCHAR(128)` },

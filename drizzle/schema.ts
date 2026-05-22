@@ -137,6 +137,7 @@ export const clients = pgTable("clients", {
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 20 }).notNull(),
+  cpf: varchar("cpf", { length: 14 }),
   birthDate: varchar("birthDate", { length: 10 }),
   photoUrl: text("photoUrl"),
   notes: text("notes"),
