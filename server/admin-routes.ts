@@ -2692,6 +2692,8 @@ async function renderAgenda(req: Request, res: Response) {
           function showPaymentModal(pmt) {
             var overlay = document.createElement('div');
             overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px';
+            // Armazenar dados do pagamento no overlay para acesso seguro sem JSON inline
+            overlay._pmtData = pmt;
             var price = 'R$ ' + parseFloat(pmt.amount || 0).toFixed(2).replace('.',',');
 
             if (pmt.onlinePaid) {
@@ -2705,7 +2707,7 @@ async function renderAgenda(req: Request, res: Response) {
                   '<div style="font-size:24px;font-weight:900;color:#4ADE80">' + price + '</div>' +
                   '<div style="font-size:12px;color:#888;margin-top:2px">' + pmt.serviceName + '</div></div>' +
                   (pmt.waReview ? '<a href="' + pmt.waReview.waLink + '" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:#25D36618;border:1px solid #25D36644;border-radius:10px;color:#25D366;font-size:13px;font-weight:700;text-decoration:none;margin-bottom:12px">&#128172; Pedir avaliacao no WhatsApp</a>' : '') +
-                  '<button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:14px">Fechar</button>' +
+                  '<button class="pmt-close-btn" style="width:100%;padding:12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:14px">Fechar</button>' +
                 '</div>';
             } else {
               overlay.innerHTML =
@@ -2716,19 +2718,30 @@ async function renderAgenda(req: Request, res: Response) {
                   '<div style="font-size:28px;font-weight:900;color:var(--gold)">' + price + '</div></div>' +
                   '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Forma de pagamento</div>' +
                   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px">' +
-                    '<button onclick="registerSale(event,' + JSON.stringify(pmt) + ','cash')" style="padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">&#128181; Dinheiro</button>' +
-                    '<button onclick="registerSale(event,' + JSON.stringify(pmt) + ','pix')" style="padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">&#128247; Pix</button>' +
-                    '<button onclick="registerSale(event,' + JSON.stringify(pmt) + ','credit_card')" style="padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">&#128179; Cartao</button>' +
-                    '<button onclick="registerSale(event,' + JSON.stringify(pmt) + ','debit_card')" style="padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">&#128179; Debito</button>' +
+                    '<button class="pmt-method-btn" data-method="cash" style="padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600">&#128181; Dinheiro</button>' +
+                    '<button class="pmt-method-btn" data-method="pix" style="padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600">&#128247; Pix</button>' +
+                    '<button class="pmt-method-btn" data-method="credit_card" style="padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600">&#128179; Credito</button>' +
+                    '<button class="pmt-method-btn" data-method="debit_card" style="padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;font-weight:600">&#128179; Debito</button>' +
                   '</div>' +
-                  '<button onclick="this.closest('[style*=fixed]').remove()" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:13px">Cancelar</button>' +
+                  '<button class="pmt-close-btn" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:13px">Cancelar</button>' +
                 '</div>';
             }
             document.body.appendChild(overlay);
+            // Fechar ao clicar fora
+            overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+            // Botao fechar
+            overlay.querySelectorAll('.pmt-close-btn').forEach(function(b) { b.onclick = function() { overlay.remove(); }; });
+            // Botoes de forma de pagamento — usar dados do _pmtData sem JSON inline
+            overlay.querySelectorAll('.pmt-method-btn').forEach(function(b) {
+              b.addEventListener('mouseover', function() { this.style.borderColor = 'var(--gold)'; });
+              b.addEventListener('mouseout', function() { this.style.borderColor = 'var(--border)'; });
+              b.addEventListener('click', function() {
+                registerSale(this, overlay._pmtData, this.dataset.method);
+              });
+            });
           }
 
-          async function registerSale(e, pmt, paymentMethod) {
-            var btn = e.target;
+          async function registerSale(btn, pmt, paymentMethod) {
             btn.disabled = true; btn.style.opacity = '0.6';
             try {
               var r = await fetch('/admin-api/appointment-sale', {
