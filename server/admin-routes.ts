@@ -6432,7 +6432,7 @@ export function registerAdminRoutes(app: Express): void {
       const rememberMe = remember === "1" || remember === "true";
       const maxAge = rememberMe ? SESSION_MAX_AGE_REMEMBER : SESSION_MAX_AGE;
       const token = encodeSession(barber.id, barber.role);
-      res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/admin; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`);
+      res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`);
       res.redirect("/admin");
     } catch (err) {
       console.error("[login] Unexpected error:", err);
@@ -6533,7 +6533,7 @@ export function registerAdminRoutes(app: Express): void {
       }
 
       const token = encodeSession(barber.id, barber.role);
-      res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/admin; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_REMEMBER}`);
+      res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_REMEMBER}`);
       res.redirect("/admin");
     } catch (err) {
       console.error("[google-callback] Error:", err);
@@ -6543,7 +6543,7 @@ export function registerAdminRoutes(app: Express): void {
 
   // GET /admin/logout
   app.get("/admin/logout", (_req: Request, res: Response) => {
-    res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=; Path=/admin; HttpOnly; Max-Age=0`);
+    res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=; Path=/; HttpOnly; Max-Age=0`);
     res.redirect("/admin/login");
   });
 
