@@ -2353,18 +2353,23 @@ async function renderAgenda(req: Request, res: Response) {
                   <!-- Ações rápidas + badge -->
                   <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;" onclick="event.stopPropagation()">
                     <div style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${sc.bg};border:1px solid ${sc.border};color:${sc.text};white-space:nowrap;">${sl}</div>
-                    <div style="display:flex;gap:4px;">
-                      ${a.status === 'scheduled' ? `
-                        <button onclick="changeApptStatus(${a.id},'confirmed',this)" title="Confirmar" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:#4ADE80;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Confirmar</button>
-                        <button onclick="changeApptStatus(${a.id},'cancelled',this)" title="Cancelar" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#F87171;font-size:10px;font-weight:700;cursor:pointer">✕</button>
-                      ` : ''}
-                      ${a.status === 'confirmed' ? `
-                        <button onclick="changeApptStatus(${a.id},'in_progress',this)" title="Iniciar" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(33,150,243,0.3);background:rgba(33,150,243,0.08);color:#60A5FA;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">▶ Iniciar</button>
-                        <button onclick="changeApptStatus(${a.id},'cancelled',this)" title="Cancelar" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#F87171;font-size:10px;font-weight:700;cursor:pointer">✕</button>
-                      ` : ''}
-                      ${a.status === 'in_progress' ? `
-                        <button onclick="changeApptStatus(${a.id},'completed',this)" title="Concluir" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(201,168,76,0.4);background:rgba(201,168,76,0.12);color:var(--gold);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Concluir</button>
-                      ` : ''}
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                      ${a.status === 'scheduled' ? (
+                        '<button onclick="changeApptStatus(' + a.id + ',\'confirmed\',this)" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:#4ADE80;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">&#10003; Confirmar</button>' +
+                        '<button onclick="changeApptStatus(' + a.id + ',\'cancelled\',this)" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#F87171;font-size:10px;font-weight:700;cursor:pointer">&#10005;</button>'
+                      ) : ''}
+                      ${a.status === 'pending_approval' ? (
+                        '<button onclick="changeApptStatus(' + a.id + ',\'confirmed\',this)" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:#4ADE80;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">&#10003; Aprovar</button>' +
+                        '<button onclick="changeApptStatus(' + a.id + ',\'cancelled\',this)" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#F87171;font-size:10px;font-weight:700;cursor:pointer">&#10005; Recusar</button>'
+                      ) : ''}
+                      ${a.status === 'confirmed' ? (
+                        '<button onclick="changeApptStatus(' + a.id + ',\'in_progress\',this)" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(33,150,243,0.3);background:rgba(33,150,243,0.08);color:#60A5FA;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">&#9654; Iniciar</button>' +
+                        '<button onclick="changeApptStatus(' + a.id + ',\'cancelled\',this)" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#F87171;font-size:10px;font-weight:700;cursor:pointer">&#10005;</button>'
+                      ) : ''}
+                      ${a.status === 'in_progress' ? (
+                        '<button onclick="changeApptStatus(' + a.id + ',\'completed\',this)" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(201,168,76,0.4);background:rgba(201,168,76,0.12);color:var(--gold);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">&#10003; Concluir</button>' +
+                        '<button onclick="changeApptStatus(' + a.id + ',\'cancelled\',this)" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#F87171;font-size:10px;font-weight:700;cursor:pointer">&#10005;</button>'
+                      ) : ''}
                     </div>
                   </div>
                 </div>`;
@@ -7475,7 +7480,7 @@ export function registerAdminRoutes(app: Express): void {
       const tenantId = barber?.tenantId ?? null;
       const id = parseInt(req.body.id);
       const status = req.body.status as string;
-      const validStatuses = ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"];
+      const validStatuses = ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "pending_approval"];
       console.log("[appointment-status] id:", id, "status:", status);
       if (!id || isNaN(id) || !validStatuses.includes(status)) {
         res.status(400).json({ error: "Parâmetros inválidos: id=" + id + " status=" + status });
