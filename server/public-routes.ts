@@ -1151,6 +1151,8 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
   const loggedClientJson = loggedClient ? JSON.stringify(loggedClient) : "null";
   const hasMpJson = JSON.stringify(hasMp);
+  const hasAsaas = !!(process.env.ASAAS_API_KEY);
+  const hasAsaasJson = JSON.stringify(hasAsaas);
 
   // Gerar os próximos 30 dias para o calendário
   const today = new Date();
@@ -1409,6 +1411,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       var BARBERS = ${barbersJson};
       var CALENDAR = ${calendarJson};
       var HAS_MP = ${hasMpJson};
+      var HAS_ASAAS = ${hasAsaasJson};
       var WA_NUMBER = ${waNumberJson};
 
       var selectedService = null;   // serviço principal (compatibilidade)
@@ -1899,7 +1902,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           lastAppointmentId = data.id;
           lastServicePrice = parseFloat(selectedService.price);
           btn.style.display = 'none';
-          if (HAS_MP && lastServicePrice > 0) {
+          if ((HAS_MP || HAS_ASAAS) && lastServicePrice > 0) {
             showPaymentPanel(data.id, lastServicePrice, selectedDate, selectedSlot.startTime);
           } else {
             var dateFormatted = selectedDate.split('-').reverse().join('/');
