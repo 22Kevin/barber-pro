@@ -289,6 +289,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
+    html, body { overflow-x: hidden; max-width: 100%; }
       --gold: #C9A84C;
       --gold-dim: rgba(201,168,76,0.12);
       --gold-glow: rgba(201,168,76,0.20);
@@ -535,17 +536,21 @@ function adminLayout(title: string, activePage: string, body: string, barberName
 
     /* ─── Mobile (≤600px) ───────────────────────────────────────────────────── */
     @media (max-width: 600px) {
-      /* KPI cards: sempre 2 colunas */
-      .metrics-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
-      /* Ações Rápidas: 2 colunas */
-      .actions-grid-5 { grid-template-columns: repeat(2, 1fr) !important; }
+      /* Conteúdo: sem overflow lateral */
+      .main { overflow-x: hidden; }
+      .content { overflow-x: hidden; box-sizing: border-box; width: 100%; }
+      /* KPI cards: forçar 2 colunas com calc */
+      .metrics-grid { display: grid !important; grid-template-columns: calc(50% - 5px) calc(50% - 5px) !important; gap: 10px !important; }
+      /* Ações Rápidas: 2 colunas com largura controlada */
+      .actions-grid-5 { display: grid !important; grid-template-columns: calc(50% - 5px) calc(50% - 5px) !important; gap: 10px !important; }
       /* Formulários: 1 coluna */
       .form-row { grid-template-columns: 1fr !important; }
       .inline-action-btns { flex-direction: column; }
       .page-preview-iframe-wrap { height: 180px !important; }
+      /* Cards: sem overflow */
+      .card { overflow: hidden; }
       /* Próximo agendamento: não cortar */
-      #next-appt-card { flex-wrap: wrap !important; }
-      /* Topbar: esconder elementos secundários */
+      #next-appt-card { max-width: 100% !important; box-sizing: border-box !important; overflow: hidden !important; }
       .topbar-plan-badge { display: none; }
     }
 
@@ -555,13 +560,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       .topbar-title { font-size: 13px; }
       .card-header { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
       .card-body { padding: 12px; }
-      /* Botões de ação: menores */
       .btn-action-edit, .btn-action-delete, .btn-action-toggle, .btn-action-view { padding: 4px 8px !important; font-size: 10px !important; }
-      /* Modais: padding menor */
       #svcModal > div, #prdModal > div, #supModal > div { padding: 20px 16px !important; }
-      /* Próximo agendamento: empilhar */
-      #next-appt-card { gap: 12px !important; }
-      #next-appt-card > div:first-child { display: none; }
     }
     /* ─── Animações de Navegação ─────────────────────────────────────────────── */
     /* Barra de progresso na topbar */
