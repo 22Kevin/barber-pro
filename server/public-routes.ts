@@ -2368,7 +2368,7 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
           ${!isLogin ? `<div style="margin-bottom:16px">
             <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">CPF <span style="color:var(--muted);font-weight:400">(necessário para pagamento online)</span></label>
             <input type="text" id="cpf-input" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" oninput="(function(e){var v=e.target.value.replace(/[^0-9]/g,'').slice(0,11);if(v.length>9)e.target.value=v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6,9)+'-'+v.slice(9);else if(v.length>6)e.target.value=v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6);else if(v.length>3)e.target.value=v.slice(0,3)+'.'+v.slice(3);else e.target.value=v;})(event)" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
-          </div>` : ""}`
+          </div>` : ""}
           ${!isLogin ? `<div style="margin-bottom:24px">
             <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">DATA DE NASCIMENTO <span style="color:var(--muted);font-weight:400">(opcional — usamos para enviar um cupom no seu aniversário 🎂)</span></label>
             <input type="date" id="birth-date-input" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
