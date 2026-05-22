@@ -334,8 +334,9 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     .sidebar-logo-title { font-size: 13px; font-weight: 800; color: var(--gold); letter-spacing: 1.5px; line-height: 1.2; }
     .sidebar-logo-sub { font-size: 10px; color: var(--muted); margin-top: 1px; letter-spacing: 0.3px; }
     .sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
-    .nav-group { margin-bottom: 2px; }
-    .nav-group-label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 1.5px; padding: 14px 18px 5px; opacity: 0.5; text-transform: uppercase; }
+    .nav-group { margin-bottom: 4px; }
+    .nav-group-label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 1.2px; padding: 16px 18px 6px; opacity: 0.7; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+    .nav-group-label::after { content: ""; flex: 1; height: 1px; background: var(--border); opacity: 0.5; }
     .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 18px; font-size: 13px; color: var(--muted); text-decoration: none; transition: all 0.15s ease; cursor: pointer; margin: 1px 8px; border-radius: var(--radius-sm); }
     .nav-item:hover { background: var(--surface2); color: var(--text2); }
     .nav-item.active { background: var(--gold-dim); color: var(--gold); font-weight: 600; box-shadow: inset 3px 0 0 var(--gold); }
@@ -1364,7 +1365,7 @@ async function renderDashboard(req: Request, res: Response) {
       const naTime = ((nextAppointment as any).startTime ?? '').substring(0, 5);
       const naStatusColor = (nextAppointment as any).status === 'confirmed' ? '#22C55E' : '#C9A84C';
       const naStatusLabel = (nextAppointment as any).status === 'confirmed' ? 'Confirmado' : 'Agendado';
-      return `<div id="next-appt-card" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:20px;box-shadow:0 4px 24px rgba(0,0,0,0.3);position:relative;overflow:hidden;transition:opacity 0.3s ease">
+      return `<div id="next-appt-card" style="background:linear-gradient(135deg,#1e1a0e 0%,#2a2210 100%);border:1px solid rgba(201,168,76,0.3);border-left:4px solid #C9A84C;border-radius:16px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:20px;box-shadow:0 4px 24px rgba(0,0,0,0.3);position:relative;overflow:hidden;transition:opacity 0.3s ease">
         <div style="position:absolute;top:0;right:0;width:120px;height:120px;background:radial-gradient(circle,rgba(201,168,76,0.08) 0%,transparent 70%);pointer-events:none"></div>
         <div style="width:52px;height:52px;background:rgba(201,168,76,0.15);border:2px solid rgba(201,168,76,0.4);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -1388,33 +1389,33 @@ async function renderDashboard(req: Request, res: Response) {
     <div style="margin-bottom:20px;">
       <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;">Ações Rápidas</div>
       <div class="actions-grid-5" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
-        <a href="/admin/agenda/novo" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+        <a href="/admin/agenda/novo" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s,transform .2s,box-shadow .2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(0,0,0,0.3)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='';this.style.boxShadow=''">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
           </div>
           <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Novo Agendamento</span>
         </a>
         <a href="/admin/clientes?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="width:40px;height:40px;border-radius:12px;background:rgba(33,150,243,.12);display:flex;align-items:center;justify-content:center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2196F3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
           </div>
           <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Novo Cliente</span>
         </a>
         <a href="/admin/financeiro?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="width:40px;height:40px;border-radius:12px;background:rgba(76,175,80,.12);display:flex;align-items:center;justify-content:center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           </div>
           <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Nova Venda</span>
         </a>
         <a href="/admin/servicos" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="width:40px;height:40px;border-radius:12px;background:rgba(156,39,176,.12);display:flex;align-items:center;justify-content:center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9C27B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3L8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3L8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
           </div>
           <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Serviços</span>
         </a>
         <a href="/admin/promocoes" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="width:40px;height:40px;border-radius:12px;background:rgba(239,68,68,.12);display:flex;align-items:center;justify-content:center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
           </div>
           <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Nova Promoção</span>
         </a>
@@ -1469,15 +1470,15 @@ async function renderDashboard(req: Request, res: Response) {
           </linearGradient>
           <linearGradient id="barGradAppt" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="#93C5FD" stop-opacity="1"/>
-            <stop offset="100%" stop-color="#3B82F6" stop-opacity="0.7"/>
+            <stop offset="100%" stop-color="#C9A84C" stop-opacity="0.7"/>
           </linearGradient>
           <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="#C9A84C" stop-opacity="0.18"/>
             <stop offset="100%" stop-color="#C9A84C" stop-opacity="0"/>
           </linearGradient>
           <linearGradient id="areaGradAppt" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.18"/>
-            <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+            <stop offset="0%" stop-color="#C9A84C" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="#C9A84C" stop-opacity="0"/>
           </linearGradient>
           <filter id="barGlow" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
@@ -1600,21 +1601,21 @@ async function renderDashboard(req: Request, res: Response) {
           document.getElementById('btn-revenue').style.background = isRev ? '#C9A84C' : 'transparent';
           document.getElementById('btn-revenue').style.color = isRev ? '#0C0C0C' : 'var(--muted)';
           document.getElementById('btn-revenue').style.borderColor = isRev ? '#C9A84C' : 'var(--border)';
-          document.getElementById('btn-appointments').style.background = !isRev ? '#3B82F6' : 'transparent';
+          document.getElementById('btn-appointments').style.background = !isRev ? '#C9A84C' : 'transparent';
           document.getElementById('btn-appointments').style.color = !isRev ? '#fff' : 'var(--muted)';
-          document.getElementById('btn-appointments').style.borderColor = !isRev ? '#3B82F6' : 'var(--border)';
+          document.getElementById('btn-appointments').style.borderColor = !isRev ? '#C9A84C' : 'var(--border)';
           // Atualizar título e total
           var data = isRev ? chartData.revenue : chartData.appointments;
           var maxVal = Math.max.apply(null, data.concat([1]));
           var total = data.reduce(function(a,b){return a+b;},0);
           document.getElementById('chart-title').textContent = isRev ? 'Faturamento — Últimos 7 dias' : 'Agendamentos — Últimos 7 dias';
           var totalEl = document.getElementById('chart-total');
-          totalEl.style.color = isRev ? '#C9A84C' : '#3B82F6';
+          totalEl.style.color = isRev ? '#C9A84C' : '#C9A84C';
           if (isRev) {
             var t = total >= 1000 ? 'R$ ' + (total/1000).toFixed(1) + 'k' : 'R$ ' + total.toFixed(2).replace('.',',');
             document.getElementById('chart-subtitle').innerHTML = 'Total do período: <span style="color:#C9A84C;font-weight:700;" id="chart-total">' + t + '</span>';
           } else {
-            document.getElementById('chart-subtitle').innerHTML = 'Total do período: <span style="color:#3B82F6;font-weight:700;" id="chart-total">' + total + ' agendamento' + (total !== 1 ? 's' : '') + '</span>';
+            document.getElementById('chart-subtitle').innerHTML = 'Total do período: <span style="color:var(--gold);font-weight:700;" id="chart-total">' + total + ' agendamento' + (total !== 1 ? 's' : '') + '</span>';
           }
           // Atualizar barras
           var bars = document.querySelectorAll('#bars-group rect');
@@ -1642,7 +1643,7 @@ async function renderDashboard(req: Request, res: Response) {
           }
           areaPath += 'L ' + pts[pts.length-1][0] + ' 160 Z';
           document.getElementById('line-path').setAttribute('d', linePath);
-          document.getElementById('line-path').style.stroke = isRev ? '#C9A84C' : '#3B82F6';
+          document.getElementById('line-path').style.stroke = isRev ? '#C9A84C' : '#C9A84C';
           document.getElementById('area-path').setAttribute('d', areaPath);
           document.getElementById('area-path').setAttribute('fill', isRev ? 'url(#areaGrad)' : 'url(#areaGradAppt)');
           // Atualizar pontos
@@ -1651,7 +1652,7 @@ async function renderDashboard(req: Request, res: Response) {
             var val = data[i] || 0;
             var cy = maxVal > 0 ? 160 - Math.max(val / maxVal * 140, 0) : 160;
             dot.setAttribute('cy', cy);
-            dot.setAttribute('stroke', isRev ? '#C9A84C' : '#3B82F6');
+            dot.setAttribute('stroke', '#C9A84C');
           });
           // Atualizar labels
           var labelsG = document.getElementById('labels-group');
@@ -1667,7 +1668,7 @@ async function renderDashboard(req: Request, res: Response) {
             text.setAttribute('text-anchor', 'middle');
             text.setAttribute('font-size', '9');
             text.setAttribute('font-weight', '700');
-            text.setAttribute('fill', isRev ? '#C9A84C' : '#3B82F6');
+            text.setAttribute('fill', '#C9A84C');
             text.setAttribute('opacity', '0.9');
             text.textContent = label;
             labelsG.appendChild(text);
@@ -1784,7 +1785,7 @@ async function renderDashboard(req: Request, res: Response) {
           var statusLabel = d.status === 'confirmed' ? 'Confirmado' : 'Agendado';
           var service = d.serviceName || '';
           if (d.barberName) service += ' - ' + d.barberName;
-          return '<div id="next-appt-card" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border:1px solid rgba(201,168,76,0.3);border-radius:16px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:20px;box-shadow:0 4px 24px rgba(0,0,0,0.3);position:relative;overflow:hidden;opacity:0;transition:opacity 0.4s ease">'
+          return '<div id="next-appt-card" style="background:linear-gradient(135deg,#1e1a0e 0%,#2a2210 100%);border:1px solid rgba(201,168,76,0.3);border-left:4px solid #C9A84C;border-radius:16px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:20px;box-shadow:0 4px 24px rgba(0,0,0,0.3);position:relative;overflow:hidden;opacity:0;transition:opacity 0.4s ease">'
             + '<div style="position:absolute;top:0;right:0;width:120px;height:120px;background:radial-gradient(circle,rgba(201,168,76,0.08) 0%,transparent 70%);pointer-events:none"></div>'
             + '<div style="width:52px;height:52px;background:rgba(201,168,76,0.15);border:2px solid rgba(201,168,76,0.4);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">'
             + '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
@@ -4859,7 +4860,7 @@ async function renderRelatorios(req: Request, res: Response) {
       <div style="background:var(--border);border-radius:4px;height:8px">
         <div style="background:#C9A84C;height:8px;border-radius:4px;width:${Math.round(s.count / maxCount * 100)}%"></div>
       </div>
-    </div>`).join("") || '<div class="empty">Sem dados de serviços no período.</div>';
+    </div>`).join("") || '<div style="text-align:center;padding:32px 20px"><div style="font-size:32px;opacity:0.3;margin-bottom:10px">✂</div><div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px">Nenhum serviço registrado</div><div style="font-size:12px;color:var(--muted);opacity:0.7">Os dados aparecerão conforme os atendimentos forem realizados no período.</div></div>';
   // Formas de pagamento
   const paymentMap: Record<string, number> = {};
   allSales.forEach((s: any) => {
@@ -4896,7 +4897,7 @@ async function renderRelatorios(req: Request, res: Response) {
       <div style="flex:1;min-width:140px">${legend}</div>
     </div>`;
   } else {
-    pieSvg = '<div class="empty">Sem dados de pagamento no período.</div>';
+    pieSvg = '<div style="text-align:center;padding:32px 20px"><div style="font-size:32px;opacity:0.3;margin-bottom:10px">💳</div><div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px">Nenhum pagamento registrado</div><div style="font-size:12px;color:var(--muted);opacity:0.7">Os dados aparecerão conforme os pagamentos forem realizados.</div></div>';
   }
   // Gráfico de linha SVG — tendência de faturamento (acumulado por semana se > 14 dias)
   let lineSvg = "";
