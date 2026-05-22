@@ -2337,11 +2337,22 @@ async function renderAgenda(req: Request, res: Response) {
                     <div style="font-size:12px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(serviceNames)}</div>
                     <div style="font-size:11px;color:var(--muted);margin-top:2px;opacity:0.7;">${esc(a.barberName ?? "—")}</div>
                   </div>
-                  <!-- Badge de status -->
-                  <div style="flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;background:${sc.bg};border:1px solid ${sc.border};color:${sc.text};white-space:nowrap;">${sl}</div>
-                  <!-- Seta -->
-                  <div style="flex-shrink:0;color:var(--muted);">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                  <!-- Ações rápidas + badge -->
+                  <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;" onclick="event.stopPropagation()">
+                    <div style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${sc.bg};border:1px solid ${sc.border};color:${sc.text};white-space:nowrap;">${sl}</div>
+                    <div style="display:flex;gap:4px;">
+                      ${a.status === 'scheduled' ? `
+                        <button onclick="changeApptStatus(${a.id},'confirmed',this)" title="Confirmar" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:#4ADE80;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Confirmar</button>
+                        <button onclick="changeApptStatus(${a.id},'cancelled',this)" title="Cancelar" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#F87171;font-size:10px;font-weight:700;cursor:pointer">✕</button>
+                      ` : ''}
+                      ${a.status === 'confirmed' ? `
+                        <button onclick="changeApptStatus(${a.id},'in_progress',this)" title="Iniciar" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(33,150,243,0.3);background:rgba(33,150,243,0.08);color:#60A5FA;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">▶ Iniciar</button>
+                        <button onclick="changeApptStatus(${a.id},'cancelled',this)" title="Cancelar" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#F87171;font-size:10px;font-weight:700;cursor:pointer">✕</button>
+                      ` : ''}
+                      ${a.status === 'in_progress' ? `
+                        <button onclick="changeApptStatus(${a.id},'completed',this)" title="Concluir" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(201,168,76,0.4);background:rgba(201,168,76,0.12);color:var(--gold);font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap">✓ Concluir</button>
+                      ` : ''}
+                    </div>
                   </div>
                 </div>`;
               }).join("")}
@@ -2597,6 +2608,47 @@ async function renderAgenda(req: Request, res: Response) {
             if (saved === 'timeline') setView('timeline');
           })();
           // Modal Editar Agendamento
+          async function changeApptStatus(id, status, btn) {
+            var labels = {confirmed:'Confirmado',in_progress:'Em atendimento',completed:'Concluido',cancelled:'Cancelado'};
+            var colors = {confirmed:'#4ADE80',in_progress:'#60A5FA',completed:'#C9A84C',cancelled:'#F87171'};
+            btn.disabled = true; btn.style.opacity = '0.5';
+            try {
+              var r = await fetch('/admin-api/appointment-status', {
+                method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+                body: JSON.stringify({id:id, status:status})
+              });
+              var d = await r.json();
+              if (!d.ok) throw new Error(d.error || 'Erro');
+              var card = document.getElementById('appt-card-' + id);
+              if (card) {
+                var badge = card.querySelector('[style*="border-radius:20px"]');
+                if (badge) {
+                  badge.textContent = labels[status] || status;
+                  badge.style.color = colors[status] || '#888';
+                  badge.style.background = (colors[status] || '#888') + '18';
+                  badge.style.borderColor = (colors[status] || '#888') + '44';
+                }
+                var bar = card.querySelector('[style*="width:3px"]');
+                if (bar) bar.style.background = colors[status] || '#888';
+                var btnsDiv = card.querySelector('[style*="display:flex"][style*="gap:4px"]');
+                if (btnsDiv) btnsDiv.innerHTML = '';
+              }
+              if (status === 'confirmed' && d.whatsapp) {
+                var toast = document.createElement('div');
+                toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1a2035;border:1px solid rgba(74,222,128,0.3);border-radius:12px;padding:14px 18px;z-index:9999;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.4)';
+                toast.innerHTML = '<div style="font-size:13px;font-weight:700;color:#4ADE80;margin-bottom:6px">Agendamento confirmado!</div>' +
+                  '<div style="font-size:12px;color:#888;margin-bottom:10px">Notificar ' + d.whatsapp.clientName + ' pelo WhatsApp?</div>' +
+                  '<a href="' + d.whatsapp.waLink + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#25D36618;border:1px solid #25D36644;border-radius:8px;color:#25D366;font-size:12px;font-weight:700;text-decoration:none">Enviar WhatsApp</a>' +
+                  '<button onclick="this.parentElement.remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;color:#888;cursor:pointer;font-size:16px;line-height:1">x</button>';
+                document.body.appendChild(toast);
+                setTimeout(function(){ if(toast.parentElement) toast.remove(); }, 8000);
+              }
+            } catch(e) {
+              btn.disabled = false; btn.style.opacity = '1';
+              alert('Erro: ' + e.message);
+            }
+          }
+
           function openEditModal(data) {
             document.getElementById('editApptId').value = data.id;
             document.getElementById('editApptClient').textContent = data.clientName + (data.clientPhone ? ' — ' + data.clientPhone : '');
