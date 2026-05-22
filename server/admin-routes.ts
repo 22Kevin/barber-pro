@@ -499,7 +499,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
       .form-row { grid-template-columns: 1fr; }
       /* Ações Rápidas: 3 colunas em tablet */
-      .actions-grid-5 { grid-template-columns: repeat(3, 1fr) !important; }
+      /* actions-grid-5 usa auto-fill, não precisa override em tablet */
       /* Tabelas: scroll horizontal */
       .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       /* Botões do link de agendamento: empilhar */
@@ -541,8 +541,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       .content { overflow-x: hidden; box-sizing: border-box; width: 100%; }
       /* KPI cards: forçar 2 colunas com calc */
       .metrics-grid { display: grid !important; grid-template-columns: calc(50% - 5px) calc(50% - 5px) !important; gap: 10px !important; }
-      /* Ações Rápidas: 2 colunas com largura controlada */
-      .actions-grid-5 { display: grid !important; grid-template-columns: calc(50% - 5px) calc(50% - 5px) !important; gap: 10px !important; }
+      /* Ações Rápidas: auto-fill garante 2 colunas em mobile automaticamente */
       /* Formulários: 1 coluna */
       .form-row { grid-template-columns: 1fr !important; }
       .inline-action-btns { flex-direction: column; }
@@ -1433,7 +1432,7 @@ async function renderDashboard(req: Request, res: Response) {
     <!-- 2. Ações Rápidas -->
     <div style="margin-bottom:20px;">
       <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;">Ações Rápidas</div>
-      <div class="actions-grid-5" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+      <div class="actions-grid-5" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;">
         <a href="/admin/agenda/novo" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s,transform .2s,box-shadow .2s;" onmouseover="this.style.borderColor='var(--gold)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 20px rgba(0,0,0,0.3)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform='';this.style.boxShadow=''">
           <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
