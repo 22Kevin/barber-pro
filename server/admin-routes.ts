@@ -370,7 +370,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       from { opacity: 0; transform: translateY(14px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; overflow: visible; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; overflow: visible; }
     .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: border-color 0.15s, box-shadow 0.15s; animation: kpi-in 0.35s ease both; }
     .metric-card:nth-child(1) { animation-delay: 0ms; }
     .metric-card:nth-child(2) { animation-delay: 60ms; }
