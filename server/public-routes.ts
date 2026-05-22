@@ -2053,24 +2053,61 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           '<a href="/pub/' + SLUG + '" style="display:block;margin-top:10px;text-align:center;color:var(--primary);font-size:13px">← Voltar para a página da barbearia</a>';
       }
 
+      // ─── Modal de CPF para Pix ────────────────────────────────────────────────
+      function showCpfModal(onConfirm) {
+        var overlay = document.createElement('div');
+        overlay.id = 'cpf-modal-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+        overlay.innerHTML =
+          '<div style="background:#1a2035;border:1px solid rgba(155,48,255,0.3);border-radius:20px;padding:28px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.5)">' +
+            '<div style="text-align:center;margin-bottom:20px">' +
+              '<div style="font-size:36px;margin-bottom:8px">📱</div>' +
+              '<div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:4px">Informe seu CPF</div>' +
+              '<div style="font-size:13px;color:#8b949e">Necessário para gerar a cobrança Pix via Asaas</div>' +
+            '</div>' +
+            '<input id="cpf-modal-input" type="text" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" style="width:100%;padding:14px 16px;background:#0d1117;border:1px solid rgba(155,48,255,0.3);border-radius:12px;color:#fff;font-size:16px;text-align:center;letter-spacing:2px;box-sizing:border-box;margin-bottom:8px" />' +
+            '<div id="cpf-modal-error" style="color:#F87171;font-size:12px;text-align:center;min-height:18px;margin-bottom:12px"></div>' +
+            '<div style="display:flex;gap:10px">' +
+              '<button onclick="document.getElementById(&quot;cpf-modal-overlay&quot;).remove()" style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(155,48,255,0.3);background:transparent;color:#8b949e;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>' +
+              '<button id="cpf-modal-confirm" style="flex:1;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#9b30ff,#7c3aed);color:#fff;font-size:14px;font-weight:700;cursor:pointer">Confirmar</button>' +
+            '</div>' +
+          '</div>';
+        document.body.appendChild(overlay);
+        var input = document.getElementById('cpf-modal-input');
+        input.focus();
+        input.oninput = function() {
+          var v = this.value.replace(/[^0-9]/g,'').slice(0,11);
+          if (v.length > 9) this.value = v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6,9)+'-'+v.slice(9);
+          else if (v.length > 6) this.value = v.slice(0,3)+'.'+v.slice(3,6)+'.'+v.slice(6);
+          else if (v.length > 3) this.value = v.slice(0,3)+'.'+v.slice(3);
+          else this.value = v;
+        };
+        document.getElementById('cpf-modal-confirm').onclick = function() {
+          var cpf = input.value.replace(/[^0-9]/g,'');
+          if (cpf.length < 11) {
+            document.getElementById('cpf-modal-error').textContent = 'CPF inválido. Digite os 11 dígitos.';
+            input.style.borderColor = '#F87171';
+            return;
+          }
+          overlay.remove();
+          onConfirm(cpf);
+        };
+      }
+
       // ─── Pagamento via Pix (Asaas) ───────────────────────────────────────────────
       async function payPix(appointmentId, price) {
         var btn = document.getElementById('btn-pay-pix');
         var status = document.getElementById('payment-status');
+        var clientCpf = LOGGED_CLIENT && LOGGED_CLIENT.cpf ? LOGGED_CLIENT.cpf : null;
+        if (!clientCpf) {
+          showCpfModal(function(cpf) { doPix(appointmentId, price, cpf, btn, status); });
+          return;
+        }
+        doPix(appointmentId, price, clientCpf, btn, status);
+      }
+      async function doPix(appointmentId, price, clientCpf, btn, status) {
         btn.disabled = true; btn.textContent = 'Gerando QR Code...';
         try {
-          // Verificar se cliente tem CPF cadastrado
-          var clientCpf = LOGGED_CLIENT && LOGGED_CLIENT.cpf ? LOGGED_CLIENT.cpf : null;
-          if (!clientCpf) {
-            var cpfInput = prompt('Para gerar o Pix, informe seu CPF (apenas números):');
-            if (!cpfInput || cpfInput.replace(/[^0-9]/g,'').length < 11) {
-              status.textContent = 'CPF inválido. Necessário para gerar a cobrança.';
-              status.style.color = '#F87171';
-              btn.disabled = false; btn.innerHTML = '📱 Pagar via Pix';
-              return;
-            }
-            clientCpf = cpfInput.replace(/[^0-9]/g,'');
-          }
           var r = await fetch('/pub-api/asaas-pix', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug: SLUG, appointmentId, amount: price, description: 'Agendamento', clientCpf }) });
           var data = await r.json();
           if (!r.ok) throw new Error(data.error || 'Erro ao gerar Pix');
