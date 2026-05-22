@@ -225,7 +225,7 @@ export default function PixPaymentScreen() {
               {pixData.isFallback && (
                 <View style={styles.fallbackBanner}>
                   <Text style={styles.fallbackText}>
-                    ⚠️ QR Code gerado localmente. Configure as credenciais do Mercado Pago nas configurações para ativar a confirmação automática.
+                    ⚠️ QR Code gerado localmente. Configure as credenciais do Asaas nas configurações para ativar a confirmação automática.
                   </Text>
                 </View>
               )}

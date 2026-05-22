@@ -134,8 +134,6 @@ export default function BarbeariaScreen() {
 
   // Integrações
   const [shopPixKey, setShopPixKey] = useState("");
-  const [mpAccessToken, setMpAccessToken] = useState("");
-  const [mpPublicKey, setMpPublicKey] = useState("");
 
   // Google Places
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
@@ -168,8 +166,6 @@ export default function BarbeariaScreen() {
       if (d.cep) setCepFilled(true);
       setShopPhone(applyPhoneMask(d.phone ?? ""));
       setShopWhatsapp(applyPhoneMask(d.whatsapp ?? ""));
-      setMpAccessToken(d.mercadoPagoAccessToken ?? "");
-      setMpPublicKey(d.mercadoPagoPublicKey ?? "");
       setShopInstagram(d.instagram ?? "");
       setShopCnpj(applyDocumentMask(d.cnpj ?? ""));
       setShopGoogleMapsUrl(d.googleMapsUrl ?? "");
@@ -366,8 +362,6 @@ export default function BarbeariaScreen() {
   function handleSaveIntegracoes() {
     updateSettingsMutation.mutate({
       pixKey: shopPixKey.trim() || null,
-      mercadoPagoAccessToken: mpAccessToken.trim() || null,
-      mercadoPagoPublicKey: mpPublicKey.trim() || null,
       tenantId,
     } as any);
   }
@@ -846,27 +840,6 @@ export default function BarbeariaScreen() {
             </View>
 
             <View style={styles.divider} />
-
-            <View style={styles.integrationCard}>
-              <View style={styles.integrationHeader}>
-                <View style={[styles.integrationIcon, { backgroundColor: "#009EE322" }]}>
-                  <Text style={{ fontSize: 18, fontWeight: "800", color: "#009EE3" }}>MP</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.integrationTitle}>Mercado Pago</Text>
-                  <Text style={styles.integrationSubtitle}>Checkout Pro e pagamentos online</Text>
-                </View>
-              </View>
-              <View style={styles.infoCard}>
-                <IconSymbol name="info.circle.fill" size={16} color="#2196F3" />
-                <Text style={styles.infoText}>Acesse o Painel do Mercado Pago → Configurações → Credenciais para obter suas chaves.</Text>
-              </View>
-              <BarberPasswordField label="Access Token" value={mpAccessToken} onChangeText={setMpAccessToken} placeholder="APP_USR-..." />
-              <View style={{ marginBottom: 14 }}>
-                <Text style={styles.fieldLabel}>Public Key</Text>
-                <TextInput style={styles.input} value={mpPublicKey} onChangeText={setMpPublicKey} placeholder="APP_USR-..." placeholderTextColor="#555" autoCapitalize="none" autoCorrect={false} />
-              </View>
-            </View>
 
             <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleSaveIntegracoes} disabled={updateSettingsMutation.isPending}>
               {updateSettingsMutation.isPending ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>SALVAR INTEGRAÇÕES</Text>}

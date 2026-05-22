@@ -1128,7 +1128,6 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
     try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
   }
 
-  const hasMp = !!(settings as any)?.mercadoPagoAccessToken;
   const waNumber = ((settings as any)?.whatsapp || (settings as any)?.phone || "").replace(/\D/g, "");
   const waNumberJson = JSON.stringify(waNumber ? "55" + waNumber : "");
 
@@ -1150,7 +1149,6 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
   const firstBarberId = barberList[0]?.id ?? 1;
 
   const loggedClientJson = loggedClient ? JSON.stringify(loggedClient) : "null";
-  const hasMpJson = JSON.stringify(hasMp);
   const hasAsaas = !!(process.env.ASAAS_API_KEY);
   const hasAsaasJson = JSON.stringify(hasAsaas);
 
@@ -1410,7 +1408,6 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       var SERVICES = ${servicesJson};
       var BARBERS = ${barbersJson};
       var CALENDAR = ${calendarJson};
-      var HAS_MP = ${hasMpJson};
       var HAS_ASAAS = ${hasAsaasJson};
       var WA_NUMBER = ${waNumberJson};
 
@@ -1902,7 +1899,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           lastAppointmentId = data.id;
           lastServicePrice = parseFloat(selectedService.price);
           btn.style.display = 'none';
-          if ((HAS_MP || HAS_ASAAS) && lastServicePrice > 0) {
+          if (HAS_ASAAS && lastServicePrice > 0) {
             showPaymentPanel(data.id, lastServicePrice, selectedDate, selectedSlot.startTime);
           } else {
             var dateFormatted = selectedDate.split('-').reverse().join('/');
@@ -1962,7 +1959,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         goToStep(4);
       }
 
-      // ─── Pagamento (Mercado Pago) ────────────────────────────────────────────
+      // ─── Pagamento (Asaas) ────────────────────────────────────────────────────
       function showPaymentPanel(appointmentId, price, date, time) {
         var priceFormatted = 'R$ ' + price.toFixed(2).replace('.', ',');
         var successMsg = document.getElementById('success-msg');
@@ -1978,12 +1975,12 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
             '<div style="padding:24px">',
               '<div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:16px">Como deseja pagar?</div>',
               '<div style="display:flex;flex-direction:column;gap:10px">',
-                // Botão Pagar Online
+                // Botão Cartão
                 '<button onclick="payOnline(' + appointmentId + ',' + price + ')" id="btn-pay-online" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:800;border:none;border-radius:14px;cursor:pointer;text-align:left;box-shadow:0 4px 14px var(--primary)44">',
                   '<div style="width:40px;height:40px;border-radius:10px;background:#0A0A0A22;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💳</div>',
                   '<div style="flex:1">',
-                    '<div style="font-size:14px;font-weight:800">Pagar Online</div>',
-                    '<div style="font-size:12px;font-weight:600;opacity:0.75;margin-top:1px">Cartão, Pix ou boleto • ' + priceFormatted + '</div>',
+                    '<div style="font-size:14px;font-weight:800">Pagar com Cartão</div>',
+                    '<div style="font-size:12px;font-weight:600;opacity:0.75;margin-top:1px">Crédito ou Débito • ' + priceFormatted + '</div>',
                   '</div>',
                   '<div style="font-size:18px;opacity:0.6">›</div>',
                 '</button>',

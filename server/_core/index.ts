@@ -295,7 +295,7 @@ async function startServer() {
       { name: "Agendamentos Online", status: dbStatus === "operational" ? "operational" : "degraded", latency: null },
       { name: "Notificações Push", status: "operational", latency: null },
       { name: "E-mails Transacionais", status: "operational", latency: null },
-      { name: "Pagamentos (Mercado Pago)", status: "operational", latency: null },
+      { name: "Pagamentos (Asaas)", status: "operational", latency: null },
     ];
 
     function componentRow(c: { name: string; status: string; latency: number | null }) {
