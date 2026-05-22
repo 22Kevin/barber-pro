@@ -2966,7 +2966,18 @@ async function renderServicos(req: Request, res: Response) {
         <tbody>
           ${services.map((s: any) => `
             <tr>
-              <td><strong>${esc(s.name)}</strong>${s.description ? `<br><small style="color:var(--muted)">${esc(s.description.substring(0, 60))}${s.description.length > 60 ? "..." : ""}</small>` : ""}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:12px">
+                  ${s.thumbnailUrl
+                    ? `<img src="${esc(s.thumbnailUrl)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)" />`
+                    : `<div style="width:40px;height:40px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1px solid var(--border)">✂</div>`
+                  }
+                  <div>
+                    <div style="font-weight:700">${esc(s.name)}</div>
+                    ${s.description ? `<div style="font-size:11px;color:var(--muted)">${esc(s.description.substring(0, 50))}${s.description.length > 50 ? "..." : ""}</div>` : ""}
+                  </div>
+                </div>
+              </td>
               <td style="font-weight:700;color:var(--gold)">R$ ${parseFloat(s.price).toFixed(2).replace(".", ",")}</td>
               <td>${s.durationMinutes} min</td>
               <td>${s.isActive ? `<span class="badge badge-success">Ativo</span>` : `<span class="badge badge-muted">Inativo</span>`}</td>
@@ -2994,10 +3005,10 @@ async function renderServicos(req: Request, res: Response) {
     ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Serviço excluído com sucesso!</div>` : ""}
     ${formHtml}
     <div class="card">
-      <div class="card-header" style="gap:12px">
-        <div class="card-title">Serviços Cadastrados (${services.length})</div>
-        <input type="text" id="svc-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('svc-search').value.toLowerCase();document.querySelectorAll('#svc-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;min-width:200px" />
-        <button onclick="window._openSvcModal=true;document.getElementById('svcModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap">+ Novo Serviço</button>
+      <div class="card-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="card-title" style="flex:1;min-width:0">Serviços Cadastrados <span style="color:var(--muted);font-weight:500">(${services.length})</span></div>
+        <input type="text" id="svc-search" placeholder="🔍 Buscar serviço..." oninput="(function(){const q=document.getElementById('svc-search').value.toLowerCase();document.querySelectorAll('#svc-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;width:220px" />
+        <button onclick="window._openSvcModal=true;document.getElementById('svcModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap;gap:6px">&#43; Novo Serviço</button>
       </div>
       <div class="card-body"><div class="table-wrap"><div id="svc-table">${tableHtml}</div></div>
     </div>
@@ -3132,10 +3143,21 @@ async function renderProdutos(req: Request, res: Response) {
     ? `<div style="text-align:center;padding:40px;color:var(--muted)">Nenhum produto cadastrado ainda.</div>`
     : `<table class="table">
         <thead><tr><th>Nome</th><th>Tipo</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Ações</th></tr></thead>
-        <tbody>
+        <tbody id="prd-table">
           ${products.map((p: any) => `
             <tr>
-              <td><strong>${esc(p.name)}</strong>${p.description ? `<br><small style="color:var(--muted)">${esc(p.description.substring(0, 50))}${p.description.length > 50 ? "..." : ""}</small>` : ""}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:12px">
+                  ${(p as any).thumbnailUrl
+                    ? '<img src="' + esc((p as any).thumbnailUrl) + '" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--border)" />'
+                    : '<div style="width:40px;height:40px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:1px solid var(--border)">🧴</div>'
+                  }
+                  <div>
+                    <div style="font-weight:700">${esc(p.name)}</div>
+                    ${p.description ? '<div style="font-size:11px;color:var(--muted)">' + esc(p.description.substring(0, 50)) + (p.description.length > 50 ? '...' : '') + '</div>' : ''}
+                  </div>
+                </div>
+              </td>
               <td><span class="badge ${p.productType === "sale" ? "badge-success" : "badge-muted"}">${p.productType === "sale" ? "Venda" : "Interno"}</span></td>
               <td style="font-weight:700;color:var(--gold)">R$ ${parseFloat(p.price).toFixed(2).replace(".", ",")}</td>
               <td>
@@ -3170,8 +3192,9 @@ async function renderProdutos(req: Request, res: Response) {
     ${formHtml}
     <div class="card">
       <div class="card-header" style="gap:12px">
-        <div class="card-title">Produtos Cadastrados (${products.length})</div>
-        <button onclick="window._openPrdModal=true;document.getElementById('prdModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap">+ Novo Produto</button>
+        <div class="card-title" style="flex:1;min-width:0">Produtos Cadastrados <span style="color:var(--muted);font-weight:500">(${products.length})</span></div>
+        <input type="text" id="prd-search" placeholder="🔍 Buscar produto..." oninput="(function(){const q=document.getElementById('prd-search').value.toLowerCase();document.querySelectorAll('#prd-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;width:220px" />
+        <button onclick="window._openPrdModal=true;document.getElementById('prdModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap">&#43; Novo Produto</button>
         <input type="text" id="prod-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('prod-search').value.toLowerCase();document.querySelectorAll('#prod-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;min-width:200px" />
       </div>
       <div class="card-body"><div class="table-wrap"><div id="prod-table">${tableHtml}</div></div>
@@ -10737,7 +10760,7 @@ export function registerAdminRoutes(app: Express): void {
       ? `<div style="text-align:center;padding:40px;color:var(--muted)">Nenhum fornecedor cadastrado ainda.</div>`
       : `<table class="table">
           <thead><tr><th>Nome</th><th>CNPJ</th><th>Telefone / WhatsApp</th><th>E-mail</th><th>Endereço</th><th>Ações</th></tr></thead>
-          <tbody>
+          <tbody id="sup-table">
             ${suppliers.map((s: any) => `
               <tr>
                 <td><strong>${esc(s.name)}</strong>${s.notes ? `<br><small style="color:var(--muted)">${esc(s.notes.substring(0, 60))}${s.notes.length > 60 ? "..." : ""}</small>` : ""}</td>
@@ -10766,8 +10789,9 @@ export function registerAdminRoutes(app: Express): void {
       ${formHtml}
       <div class="card">
         <div class="card-header">
-          <div class="card-title">Fornecedores Cadastrados (${suppliers.length})</div>
-          <button onclick="window._openSupModal=true;document.getElementById('supModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap">+ Novo Fornecedor</button>
+          <div class="card-title" style="flex:1;min-width:0">Fornecedores Cadastrados <span style="color:var(--muted);font-weight:500">(${suppliers.length})</span></div>
+          <input type="text" id="sup-search" placeholder="🔍 Buscar fornecedor..." oninput="(function(){const q=document.getElementById('sup-search').value.toLowerCase();document.querySelectorAll('#sup-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;width:220px" />
+          <button onclick="window._openSupModal=true;document.getElementById('supModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap">&#43; Novo Fornecedor</button>
         </div>
         <div class="card-body" style="padding:0">
           ${tableHtml}
