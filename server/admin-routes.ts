@@ -4942,9 +4942,23 @@ async function renderRelatorios(req: Request, res: Response) {
       const y = 130 - Math.round((v / lMax) * 110);
       return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="#C9A84C"/>`;
     }).join("");
-    lineSvg = `<svg width="600" height="150" style="width:100%;max-width:600px">
-      <polyline points="${pts}" fill="none" stroke="#C9A84C" stroke-width="2.5" stroke-linejoin="round"/>
+    // Área de fill sob a linha
+    const fillPts = pts + ` ${(20 + (lineKeys.length-1) * (560/Math.max(lineKeys.length-1,1))).toFixed(1)},130 20,130`;
+    // Labels do eixo X
+    const xLabels = lineKeys.map((k, i) => {
+      const x = 20 + i * (560 / Math.max(lineKeys.length - 1, 1));
+      const parts = k.split("-");
+      const label = parts.length >= 3 ? parts[2] + "/" + parts[1] : k;
+      return `<text x="${x.toFixed(1)}" y="148" text-anchor="middle" font-size="9" fill="#888">${label}</text>`;
+    }).join("");
+    lineSvg = `<svg width="600" height="155" style="width:100%;max-width:600px">
+      <defs><linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#C9A84C" stop-opacity="0.18"/><stop offset="100%" stop-color="#C9A84C" stop-opacity="0"/></linearGradient></defs>
+      <line x1="20" y1="20" x2="20" y2="132" stroke="#333" stroke-width="1"/>
+      <line x1="20" y1="132" x2="590" y2="132" stroke="#333" stroke-width="1"/>
+      <polygon points="${fillPts}" fill="url(#lineGrad)"/>
+      <polyline points="${pts}" fill="none" stroke="#C9A84C" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
       ${dots}
+      ${xLabels}
     </svg>`;
   }
   // Desempenho por barbeiro
@@ -10690,8 +10704,8 @@ export function registerAdminRoutes(app: Express): void {
                 <td style="color:var(--muted);font-size:13px">${esc(s.address ?? "—")}</td>
                 <td>
                   <div style="display:flex;gap:8px">
-                    <a href="/admin/fornecedores/${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--gold);color:#0A0A0A">Ver detalhes</a>
-                    <a href="/admin/fornecedores?edit=${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">Editar</a>
+                    <a href="/admin/fornecedores/${s.id}" class="btn-action-view">👁 Ver</a>
+                    <a href="/admin/fornecedores?edit=${s.id}" class="btn-action-edit">✏ Editar</a>
                     <form method="POST" action="/admin/fornecedores/delete" style="display:inline" onsubmit="return confirm('Excluir este fornecedor?')">
                       <input type="hidden" name="id" value="${s.id}" />
                       <button type="submit" class="btn-action-delete">✕ Excluir</button>
