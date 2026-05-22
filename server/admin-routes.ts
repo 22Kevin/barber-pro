@@ -2793,8 +2793,23 @@ async function renderAgenda(req: Request, res: Response) {
                 );
               }
               // Concluido: modal de pagamento
-              if (status === 'completed' && d.payment) {
-                showPaymentModal(d.payment);
+              console.log('[concluir] payment:', JSON.stringify(d.payment));
+              if (status === 'completed') {
+                if (d.payment) {
+                  showPaymentModal(d.payment);
+                } else {
+                  // Fallback: abrir modal basico sem dados do servico
+                  showPaymentModal({
+                    onlinePaid: false,
+                    amount: '0',
+                    serviceName: 'Servico',
+                    clientName: 'Cliente',
+                    clientId: null,
+                    serviceId: null,
+                    barberId: null,
+                    appointmentId: id
+                  });
+                }
               }
             } catch(e) {
               btn.disabled = false; btn.style.opacity = '1';
