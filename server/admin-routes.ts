@@ -370,7 +370,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       from { opacity: 0; transform: translateY(14px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; overflow: visible; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; overflow: visible; }
     .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: border-color 0.15s, box-shadow 0.15s; animation: kpi-in 0.35s ease both; }
     .metric-card:nth-child(1) { animation-delay: 0ms; }
     .metric-card:nth-child(2) { animation-delay: 60ms; }
@@ -489,6 +489,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     .section-subtitle { font-size: 13px; color: var(--muted); margin-top: 3px; }
 
     /* ── Responsivo ── */
+    /* ─── Tablet (≤900px) ───────────────────────────────────────────────────── */
     @media (max-width: 900px) {
       .sidebar { transform: translateX(-100%); }
       .sidebar.open { transform: translateX(0); box-shadow: 4px 0 32px rgba(0,0,0,0.5); }
@@ -496,61 +497,41 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       .topbar-hamburger { display: flex; }
       .topbar-date { display: none; }
       .content { padding: 14px; }
-      .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .form-row { grid-template-columns: 1fr; }
-      /* Ações Rápidas: 3 colunas em tablet */
-      /* actions-grid-5 usa auto-fill, não precisa override em tablet */
-      /* Tabelas: scroll horizontal */
       .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      /* Botões do link de agendamento: empilhar */
       .booking-btns { flex-wrap: wrap; }
       .booking-btns .btn { flex: 1 1 auto; min-width: 80px; justify-content: center; }
-      /* Gráfico: botões de alternância */
       .chart-toggle-wrap { flex-wrap: wrap; gap: 6px; }
-      /* Card Baixe o App: header */
       .app-card-header { flex-wrap: wrap; gap: 10px; }
-      /* Topbar: esconder badge de plano em telas pequenas */
       .topbar-plan-badge { display: none; }
     }
-    @media (max-width: 600px) {
-      /* Ações Rápidas: 2 colunas em mobile */
-      .actions-grid-5 { grid-template-columns: repeat(2, 1fr) !important; }
-      /* Botões de ação inline: empilhar */
-      .inline-action-btns { flex-direction: column; }
-      /* Preview da página: altura menor */
-      .page-preview-iframe-wrap { height: 180px !important; }
-      /* Gráfico: padding menor */
-      .chart-card-inner { padding: 16px !important; }
-    }
-    /* ─── Tablet (≤900px) já definido acima ─── */
 
     /* ─── Tablet pequeno (≤768px) ───────────────────────────────────────────── */
     @media (max-width: 768px) {
-      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       .form-row { grid-template-columns: 1fr !important; }
       .agenda-page { grid-template-columns: 1fr !important; }
       .relatorio-grid-2 { grid-template-columns: 1fr !important; }
+      /* KPI: 2 colunas */
+      .metrics-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+      /* Ações Rápidas: 3 colunas */
+      .actions-grid-5 { grid-template-columns: repeat(3, 1fr) !important; }
+      /* Modais: bottom sheet */
       #svcModal, #prdModal, #supModal { align-items: flex-end !important; padding: 0 !important; }
       #svcModal > div, #prdModal > div, #supModal > div { max-width: 100% !important; border-radius: 16px 16px 0 0 !important; max-height: 92vh; }
     }
 
     /* ─── Mobile (≤600px) ───────────────────────────────────────────────────── */
     @media (max-width: 600px) {
-      /* Conteúdo: sem overflow lateral */
-      .main { overflow-x: hidden; }
-      .content { overflow-x: hidden; box-sizing: border-box; width: 100%; }
-      /* KPI cards: forçar 2 colunas com calc */
-      .metrics-grid { display: grid !important; grid-template-columns: calc(50% - 5px) calc(50% - 5px) !important; gap: 10px !important; }
-      /* Ações Rápidas: auto-fill garante 2 colunas em mobile automaticamente */
-      /* Formulários: 1 coluna */
-      .form-row { grid-template-columns: 1fr !important; }
+      html, body, .main { overflow-x: hidden; }
+      .content { overflow-x: hidden; box-sizing: border-box; width: 100%; padding: 10px; }
+      /* KPI: 2x2 */
+      .metrics-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+      /* Ações Rápidas: 2x2 */
+      .actions-grid-5 { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
       .inline-action-btns { flex-direction: column; }
       .page-preview-iframe-wrap { height: 180px !important; }
-      /* Cards: sem overflow */
+      .chart-card-inner { padding: 16px !important; }
       .card { overflow: hidden; }
-      /* Próximo agendamento: não cortar */
-      #next-appt-card { max-width: 100% !important; box-sizing: border-box !important; overflow: hidden !important; }
-      .topbar-plan-badge { display: none; }
+      #next-appt-card { max-width: 100% !important; box-sizing: border-box !important; }
     }
 
     /* ─── Mobile pequeno (≤480px) ───────────────────────────────────────────── */
@@ -562,7 +543,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       .btn-action-edit, .btn-action-delete, .btn-action-toggle, .btn-action-view { padding: 4px 8px !important; font-size: 10px !important; }
       #svcModal > div, #prdModal > div, #supModal > div { padding: 20px 16px !important; }
     }
-    /* ─── Animações de Navegação ─────────────────────────────────────────────── */
+
+        /* ─── Animações de Navegação ─────────────────────────────────────────────── */
     /* Barra de progresso na topbar */
     #nav-progress {
       position: fixed;
