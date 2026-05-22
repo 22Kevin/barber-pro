@@ -139,9 +139,16 @@ function decodeSession(token: string): { barberId: number; role: string } | null
 // ─── Middleware de autenticação ────────────────────────────────────────────────────────────
 function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.[ADMIN_SESSION_COOKIE];
-  if (!token) return res.redirect("/admin/login");
+  const isApiCall = req.path.startsWith('/admin-api/') || (req.headers['content-type'] ?? '').includes('application/json');
+  if (!token) {
+    if (isApiCall) return res.status(401).json({ error: 'Sessao expirada. Faca login novamente.' });
+    return res.redirect('/admin/login');
+  }
   const session = decodeSession(token);
-  if (!session) return res.redirect("/admin/login");
+  if (!session) {
+    if (isApiCall) return res.status(401).json({ error: 'Sessao invalida. Faca login novamente.' });
+    return res.redirect('/admin/login');
+  }
   (req as any).adminSession = session;
   next();
 }
@@ -7325,10 +7332,12 @@ export function registerAdminRoutes(app: Express): void {
       const session = (req as any).adminSession as { barberId: number; role: string };
       const barber = await db.getBarberById(session.barberId);
       const tenantId = barber?.tenantId ?? null;
-      const { id, status } = req.body as { id: number; status: string };
+      const id = parseInt(req.body.id);
+      const status = req.body.status as string;
       const validStatuses = ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"];
-      if (!id || !validStatuses.includes(status)) {
-        res.status(400).json({ error: "Parâmetros inválidos" });
+      console.log("[appointment-status] id:", id, "status:", status);
+      if (!id || isNaN(id) || !validStatuses.includes(status)) {
+        res.status(400).json({ error: "Parâmetros inválidos: id=" + id + " status=" + status });
         return;
       }
       // Verificar se o agendamento pertence ao tenant correto
