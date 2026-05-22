@@ -585,7 +585,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   const servicesTabHtml = serviceList.length === 0
     ? `<div class="empty">Nenhum serviço cadastrado ainda.</div>`
     : serviceList.map((s) => `
-      <a href="/pub/${slug}/servico/${s.id}" class="tab-card" style="text-decoration:none;color:inherit">
+      <div class="tab-card" onclick="location.href='/pub/${slug}/servico/${s.id}'" role="link" tabindex="0">
         <div class="tab-card-img-wrap">
           ${s.thumbnailUrl
             ? `<img class="tab-card-thumb" src="${escapeHtml(s.thumbnailUrl)}" alt="${escapeHtml(s.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="tab-card-thumb-placeholder" style="display:none">✂</div>`
@@ -602,14 +602,14 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
           </div>
           ${ctaLoginHtml(`servico/${s.id}`)}
         </div>
-      </a>
+      </div>
     `).join("");
 
   // ── Seção: Cards de Produtos (para o painel de abas) ─────────────────────
   const productsTabHtml = saleProducts.length === 0
     ? `<div class="empty">Nenhum produto disponível.</div>`
     : saleProducts.map((p: any) => `
-      <a href="/pub/${slug}/produto/${p.id}" class="tab-card" style="text-decoration:none;color:inherit">
+      <div class="tab-card" onclick="location.href='/pub/${slug}/produto/${p.id}'" role="link" tabindex="0">
         <div class="tab-card-img-wrap">
           ${p.thumbnailUrl
             ? `<img class="tab-card-thumb" src="${escapeHtml(p.thumbnailUrl)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="tab-card-thumb-placeholder" style="display:none">🧴</div>`
@@ -625,7 +625,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
           </div>
           ${ctaLoginHtml(`produto/${p.id}`)}
         </div>
-      </a>
+      </div>
     `).join("");
 
   // ── Seção: Galeria (Carrossel) ────────────────────────────────────────────
