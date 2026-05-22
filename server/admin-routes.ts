@@ -3005,10 +3005,20 @@ async function renderServicos(req: Request, res: Response) {
     ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Serviço excluído com sucesso!</div>` : ""}
     ${formHtml}
     <div class="card">
-      <div class="card-header" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <div class="card-title" style="flex:1;min-width:0">Serviços Cadastrados <span style="color:var(--muted);font-weight:500">(${services.length})</span></div>
-        <input type="text" id="svc-search" placeholder="🔍 Buscar serviço..." oninput="(function(){const q=document.getElementById('svc-search').value.toLowerCase();document.querySelectorAll('#svc-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;width:220px" />
-        <button onclick="window._openSvcModal=true;document.getElementById('svcModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap;gap:6px">&#43; Novo Serviço</button>
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+        <div style="font-size:16px;font-weight:700;color:var(--text);flex-shrink:0">Serviços <span style="font-size:13px;color:var(--muted);font-weight:500">${services.length} cadastrados</span></div>
+        <div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <div style="position:relative;flex:1;max-width:280px;min-width:160px">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px">🔍</span>
+            <input type="text" id="svc-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('svc-search').value.toLowerCase();document.querySelectorAll('#svc-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="width:100%;padding:8px 12px 8px 32px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box" />
+          </div>
+          <select onchange="(function(v){document.querySelectorAll('#svc-table tbody tr').forEach(r=>{if(v==='all')r.style.display='';else r.style.display=r.textContent.includes(v==='active'?'Ativo':'Inativo')?'':'none';});})(this.value)" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;cursor:pointer">
+            <option value="all">Todos</option>
+            <option value="active">Ativos</option>
+            <option value="inactive">Inativos</option>
+          </select>
+          <button onclick="window._openSvcModal=true;document.getElementById('svcModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap;flex-shrink:0">+ Novo Serviço</button>
+        </div>
       </div>
       <div class="card-body"><div class="table-wrap"><div id="svc-table">${tableHtml}</div></div>
     </div>
@@ -3191,11 +3201,22 @@ async function renderProdutos(req: Request, res: Response) {
     ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Produto excluído com sucesso!</div>` : ""}
     ${formHtml}
     <div class="card">
-      <div class="card-header" style="gap:12px">
-        <div class="card-title" style="flex:1;min-width:0">Produtos Cadastrados <span style="color:var(--muted);font-weight:500">(${products.length})</span></div>
-        <input type="text" id="prd-search" placeholder="🔍 Buscar produto..." oninput="(function(){const q=document.getElementById('prd-search').value.toLowerCase();document.querySelectorAll('#prd-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;width:220px" />
-        <button onclick="window._openPrdModal=true;document.getElementById('prdModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap">&#43; Novo Produto</button>
-        <input type="text" id="prod-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('prod-search').value.toLowerCase();document.querySelectorAll('#prod-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;min-width:200px" />
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+        <div style="font-size:16px;font-weight:700;color:var(--text);flex-shrink:0">Produtos <span style="font-size:13px;color:var(--muted);font-weight:500">${products.length} cadastrados</span></div>
+        <div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <div style="position:relative;flex:1;max-width:280px;min-width:160px">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px">🔍</span>
+            <input type="text" id="prd-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('prd-search').value.toLowerCase();document.querySelectorAll('#prd-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="width:100%;padding:8px 12px 8px 32px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box" />
+          </div>
+          <select onchange="(function(v){document.querySelectorAll('#prd-table tbody tr').forEach(r=>{if(v==='all')r.style.display='';else if(v==='sale')r.style.display=r.querySelector('td:nth-child(2)')?.textContent.includes('Venda')?'':'none';else if(v==='internal')r.style.display=r.querySelector('td:nth-child(2)')?.textContent.includes('Interno')?'':'none';else r.style.display=r.textContent.includes(v==='active'?'Ativo':'Inativo')?'':'none';});})(this.value)" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;cursor:pointer">
+            <option value="all">Todos</option>
+            <option value="sale">Venda</option>
+            <option value="internal">Interno</option>
+            <option value="active">Ativos</option>
+            <option value="inactive">Inativos</option>
+          </select>
+          <button onclick="window._openPrdModal=true;document.getElementById('prdModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap;flex-shrink:0">+ Novo Produto</button>
+        </div>
       </div>
       <div class="card-body"><div class="table-wrap"><div id="prod-table">${tableHtml}</div></div>
     </div>
@@ -10788,13 +10809,18 @@ export function registerAdminRoutes(app: Express): void {
       ${deleted ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✓ Fornecedor excluído com sucesso!</div>` : ""}
       ${formHtml}
       <div class="card">
-        <div class="card-header">
-          <div class="card-title" style="flex:1;min-width:0">Fornecedores Cadastrados <span style="color:var(--muted);font-weight:500">(${suppliers.length})</span></div>
-          <input type="text" id="sup-search" placeholder="🔍 Buscar fornecedor..." oninput="(function(){const q=document.getElementById('sup-search').value.toLowerCase();document.querySelectorAll('#sup-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;width:220px" />
-          <button onclick="window._openSupModal=true;document.getElementById('supModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap">&#43; Novo Fornecedor</button>
+        <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+          <div style="font-size:16px;font-weight:700;color:var(--text);flex-shrink:0">Fornecedores <span style="font-size:13px;color:var(--muted);font-weight:500">${suppliers.length} cadastrados</span></div>
+          <div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+            <div style="position:relative;flex:1;max-width:280px;min-width:160px">
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px">🔍</span>
+              <input type="text" id="sup-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('sup-search').value.toLowerCase();document.querySelectorAll('#sup-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="width:100%;padding:8px 12px 8px 32px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box" />
+            </div>
+            <button onclick="window._openSupModal=true;document.getElementById('supModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap;flex-shrink:0">+ Novo Fornecedor</button>
+          </div>
         </div>
         <div class="card-body" style="padding:0">
-          ${tableHtml}
+          <div id="sup-table">${tableHtml}</div>
         </div>
       </div>
     `;
