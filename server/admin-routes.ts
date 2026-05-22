@@ -444,6 +444,17 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     .btn-primary:hover { box-shadow: 0 4px 16px rgba(201,168,76,0.35); }
     .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
     .btn-danger { background: rgba(248,113,113,0.1); color: var(--error); border: 1px solid rgba(248,113,113,0.2); }
+    .btn-action-edit   { padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid rgba(201,168,76,0.3);background:rgba(201,168,76,0.08);color:var(--gold);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;transition:filter .15s,transform .15s; }
+    .btn-action-edit:hover { filter:brightness(1.2);transform:translateY(-1px); }
+    .btn-action-delete { padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#F87171;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;transition:filter .15s,transform .15s; }
+    .btn-action-delete:hover { filter:brightness(1.2);transform:translateY(-1px); }
+    .btn-action-toggle { padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;transition:filter .15s,transform .15s; }
+    .btn-action-toggle:hover { filter:brightness(1.2);transform:translateY(-1px); }
+    .btn-action-view   { padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);color:#4ADE80;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;transition:filter .15s,transform .15s; }
+    .btn-action-view:hover { filter:brightness(1.2);transform:translateY(-1px); }
+    .input-with-suffix { position:relative;display:flex;align-items:center; }
+    .input-with-suffix .form-input { padding-right:2.5rem; }
+    .input-suffix { position:absolute;right:.75rem;color:var(--muted);font-size:.875rem;pointer-events:none;font-weight:600; }
     .btn-sm { padding: 5px 12px; font-size: 12px; }
     .btn-icon { padding: 7px; }
 
@@ -591,9 +602,10 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         <div class="nav-group">
           <div class="nav-group-label">${group.label}</div>
           ${group.items.map((n) => `
-            <a href="${n.href}" class="nav-item ${activePage === n.id ? "active" : ""}">
+            <a href="${n.href}" class="nav-item ${activePage === n.id ? "active" : ""}" ${n.id === 'lista-espera' ? 'id="nav-lista-espera"' : ''}>
               <span class="nav-icon">${n.icon}</span>
               <span>${n.label}</span>
+              ${n.id === 'lista-espera' ? '<span id="waitlist-badge" style="margin-left:auto;background:var(--gold);color:#0A0A0A;font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;min-width:18px;text-align:center;display:none"></span>' : ''}
             </a>
           `).join("")}
         </div>
@@ -2540,7 +2552,21 @@ async function renderAgenda(req: Request, res: Response) {
             }
           });
 
-          // Toggle de vista
+          // Badge lista de espera
+  (async function() {
+    try {
+      var r = await fetch('/admin-api/waitlist-count');
+      if (r.ok) {
+        var d = await r.json();
+        if (d.count > 0) {
+          var badge = document.getElementById('waitlist-badge');
+          if (badge) { badge.textContent = d.count; badge.style.display = 'inline-block'; }
+        }
+      }
+    } catch(e) {}
+  })();
+
+  // Toggle de vista
           function setView(v) {
             document.getElementById('viewCards').style.display = v === 'cards' ? 'block' : 'none';
             document.getElementById('viewTimeline').style.display = v === 'timeline' ? 'block' : 'none';
@@ -2735,9 +2761,9 @@ async function renderClientes(req: Request, res: Response) {
                     <td style="white-space:nowrap">
                        <a href="/admin/clientes/${c.id}" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">Ver</a>
                       ${c.phone ? `<a href="https://wa.me/${(c.phone).replace(/\D/g,'')}" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px;color:#25D366">WhatsApp</a>` : ''}
-                      <button onclick="openEditClient(${c.id},'${esc(c.name).replace(/'/g,"\\'")}','${esc(c.phone ?? '')}','${esc(c.email ?? '')}','${c.birthDate ?? ''}','${esc(c.notes ?? '')}'" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;margin-right:4px">Editar</button>
+                      <button onclick="openEditClient(${c.id},'${esc(c.name).replace(/'/g,"\\'")}','${esc(c.phone ?? '')}','${esc(c.email ?? '')}','${c.birthDate ?? ''}','${esc(c.notes ?? '')}'" class="btn-action-edit">✏ Editar</button>
                       <form method="POST" action="/admin/clientes/${c.id}/excluir" style="display:inline" onsubmit="return confirm('Excluir ${esc(c.name).replace(/'/g,"\\'")}'? Esta ação não pode ser desfeita.')">
-                        <button type="submit" class="btn" style="font-size:11px;padding:4px 10px;background:#EF444422;color:#F87171;border:none">Excluir</button>
+                        <button type="submit" class="btn-action-delete">✕ Excluir</button>
                       </form>
                     </td>
                   </tr>`;
@@ -2932,15 +2958,15 @@ async function renderServicos(req: Request, res: Response) {
               <td>${s.isActive ? `<span class="badge badge-success">Ativo</span>` : `<span class="badge badge-muted">Inativo</span>`}</td>
               <td>
                 <div style="display:flex;gap:8px">
-                  <a href="/admin/servicos?edit=${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">Editar</a>
+                  <a href="/admin/servicos?edit=${s.id}" class="btn-action-edit">✏ Editar</a>
                   <form method="POST" action="/admin/servicos/toggle" style="display:inline" onsubmit="return confirm('Alterar status?')">
                     <input type="hidden" name="id" value="${s.id}" />
                     <input type="hidden" name="isActive" value="${!s.isActive}" />
-                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">${s.isActive ? "Desativar" : "Ativar"}</button>
+                    <button type="submit" class="btn-action-toggle">${s.isActive ? "Desativar" : "Ativar"}</button>
                   </form>
                   <form method="POST" action="/admin/servicos/delete" style="display:inline" onsubmit="return confirm('Excluir este serviço? Esta ação não pode ser desfeita.')">
                     <input type="hidden" name="id" value="${s.id}" />
-                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:#EF444422;color:#F87171">Excluir</button>
+                    <button type="submit" class="btn-action-delete">✕ Excluir</button>
                   </form>
                 </div>
               </td>
@@ -3093,15 +3119,15 @@ async function renderProdutos(req: Request, res: Response) {
               <td>${p.isActive ? `<span class="badge badge-success">Ativo</span>` : `<span class="badge badge-muted">Inativo</span>`}</td>
               <td>
                 <div style="display:flex;gap:8px">
-                  <a href="/admin/produtos?edit=${p.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">Editar</a>
+                  <a href="/admin/produtos?edit=${p.id}" class="btn-action-edit">✏ Editar</a>
                   <form method="POST" action="/admin/produtos/toggle" style="display:inline" onsubmit="return confirm('Alterar status?')">
                     <input type="hidden" name="id" value="${p.id}" />
                     <input type="hidden" name="isActive" value="${!p.isActive}" />
-                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">${p.isActive ? "Desativar" : "Ativar"}</button>
+                    <button type="submit" class="btn-action-toggle">${p.isActive ? "Desativar" : "Ativar"}</button>
                   </form>
                   <form method="POST" action="/admin/produtos/delete" style="display:inline" onsubmit="return confirm('Excluir este produto?')">
                     <input type="hidden" name="id" value="${p.id}" />
-                    <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:#EF444422;color:#F87171">Excluir</button>
+                    <button type="submit" class="btn-action-delete">✕ Excluir</button>
                   </form>
                 </div>
               </td>
@@ -8172,9 +8198,9 @@ export function registerAdminRoutes(app: Express): void {
               ${configs.map((b: any) => `
                 <div class="form-group">
                   <label class="form-label">${esc(b.name).toUpperCase()}</label>
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <input type="number" name="rate_${b.id}" class="form-input" value="${b.commissionRate}" min="0" max="100" step="1" style="width:80px" />
-                    <span style="color:var(--muted);font-size:13px">%</span>
+                  <div class="input-with-suffix" style="max-width:120px">
+                    <input type="number" name="rate_${b.id}" class="form-input" value="${b.commissionRate}" min="0" max="100" step="1" />
+                    <span class="input-suffix">%</span>
                   </div>
                 </div>
               `).join("")}
@@ -10533,6 +10559,22 @@ export function registerAdminRoutes(app: Express): void {
       res.status(500).json({ error: e.message });
     }
   });
+  // GET /admin-api/waitlist-count — Retorna contagem de lista de espera do dia
+  app.get("/admin-api/waitlist-count", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number };
+      const barber = await db.getBarberById(session.barberId);
+      const tenantId = barber?.tenantId;
+      if (!tenantId) { res.json({ count: 0 }); return; }
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.json({ count: 0 }); return; }
+      const today = new Date().toISOString().split('T')[0];
+      const rows = await dbConn.execute(sql`SELECT COUNT(*) as cnt FROM waitlist w JOIN barbers b ON b.id = w."barberId" WHERE b."tenantId" = ${tenantId} AND w.date >= ${today} AND w.status = 'waiting'`) as any;
+      const row = Array.isArray(rows) ? (rows[0] as any[])[0] : (rows?.rows ?? [])[0];
+      res.json({ count: parseInt(row?.cnt ?? '0') });
+    } catch(e) { res.json({ count: 0 }); }
+  });
+
   // GET /admin-api/next-appointment — Retorna JSON com o próximo agendamento do dia
   app.get("/admin-api/next-appointment", requireAdminAuth, async (req: Request, res: Response) => {
     try {
@@ -10652,7 +10694,7 @@ export function registerAdminRoutes(app: Express): void {
                     <a href="/admin/fornecedores?edit=${s.id}" class="btn" style="padding:6px 14px;font-size:12px;background:var(--surface2);color:var(--text)">Editar</a>
                     <form method="POST" action="/admin/fornecedores/delete" style="display:inline" onsubmit="return confirm('Excluir este fornecedor?')">
                       <input type="hidden" name="id" value="${s.id}" />
-                      <button type="submit" class="btn" style="padding:6px 14px;font-size:12px;background:#EF444422;color:#F87171">Excluir</button>
+                      <button type="submit" class="btn-action-delete">✕ Excluir</button>
                     </form>
                   </div>
                 </td>
