@@ -2870,17 +2870,19 @@ async function renderServicos(req: Request, res: Response) {
   const editService = editId ? services.find((s: any) => s.id === editId) : null;
 
   const formHtml = `
-    <div class="card" style="margin-bottom:24px">
-      <div class="card-header">
-        <div class="card-title">${editService ? "Editar Serviço" : "Novo Serviço"}</div>
-      </div>
-      <div class="card-body" style="padding:24px">
+    <!-- Modal Serviço -->
+    <div id="svcModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:1rem;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:28px;box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+          <h2 style="font-size:18px;font-weight:700;color:var(--text)">${editService ? "Editar Serviço" : "Novo Serviço"}</h2>
+          <a href="/admin/servicos" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;text-decoration:none;line-height:1;padding:4px 8px;border-radius:6px;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">&#10005;</a>
+        </div>
         <form method="POST" action="/admin/servicos${editService ? `?edit=${editService.id}` : ""}">
           <input type="hidden" name="tenantId" value="${tenantId ?? ""}" />
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
             <div class="form-group">
               <label class="form-label">Nome do Serviço *</label>
-              <input class="form-input" type="text" name="name" value="${esc(editService?.name ?? "")}" required />
+              <input class="form-input" type="text" name="name" value="${esc(editService?.name ?? "")}" required autofocus />
             </div>
             <div class="form-group">
               <label class="form-label">Preço (R$) *</label>
@@ -2898,18 +2900,16 @@ async function renderServicos(req: Request, res: Response) {
               </select>
             </div>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-bottom:16px">
             <label class="form-label">Descrição</label>
             <textarea class="form-input" name="description" rows="3" style="resize:vertical">${esc(editService?.description ?? "")}</textarea>
           </div>
-          <!-- Upload de mídia -->
-          <div class="form-group" style="margin-top:8px">
+          <div class="form-group" style="margin-bottom:20px">
             <label class="form-label">Foto / Vídeo <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
             <input type="file" id="svc-media-file" accept="image/*,video/*" style="display:none" onchange="svcPreviewMedia(this)" />
-            <div style="display:flex;align-items:center;gap:12px">
-              <button type="button" onclick="document.getElementById('svc-media-file').click()" class="btn" style="padding:10px 18px;background:var(--surface2);color:var(--text)">Selecionar arquivo</button>
-              <span id="svc-media-name" style="color:var(--muted);font-size:13px">Nenhum arquivo selecionado</span>
-            </div>
+            <label for="svc-media-file" style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px dashed var(--border);border-radius:10px;padding:10px 16px;cursor:pointer;color:var(--muted);font-size:13px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+              📎 <span id="svc-media-name">Selecionar arquivo</span>
+            </label>
             <div id="svc-media-preview" style="margin-top:10px;display:${editService?.thumbnailUrl ? 'block' : 'none'}">
               <img id="svc-media-img" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover" src="${editService?.thumbnailUrl ?? ''}" />
               <video id="svc-media-vid" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);display:none" controls></video>
@@ -2936,13 +2936,27 @@ async function renderServicos(req: Request, res: Response) {
               }
             </script>
           </div>
-          <div style="display:flex;gap:12px;margin-top:8px">
-            <button type="submit" class="btn btn-primary" style="padding:12px 28px">${editService ? "Salvar Alterações" : "Criar Serviço"}</button>
-            ${editService ? `<a href="/admin/servicos" class="btn" style="padding:12px 20px;background:var(--surface2);color:var(--text)">Cancelar</a>` : ""}
+          <div style="display:flex;gap:12px;justify-content:flex-end">
+            <a href="/admin/servicos" class="btn btn-ghost" style="padding:11px 22px">Cancelar</a>
+            <button type="submit" class="btn btn-primary" style="padding:11px 28px">${editService ? "Salvar Alterações" : "Criar Serviço"}</button>
           </div>
         </form>
       </div>
     </div>
+    <script>
+      // Abrir modal automaticamente se estiver em modo edição ou criação
+      (function() {
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('edit') || window._openSvcModal) {
+          var m = document.getElementById('svcModal');
+          if (m) { m.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+        }
+      })();
+      // Fechar ao clicar fora
+      document.getElementById('svcModal') && document.getElementById('svcModal').addEventListener('click', function(e) {
+        if (e.target === this) { window.location.href = '/admin/servicos'; }
+      });
+    </script>
   `;
 
   const tableHtml = services.length === 0
@@ -2983,6 +2997,7 @@ async function renderServicos(req: Request, res: Response) {
       <div class="card-header" style="gap:12px">
         <div class="card-title">Serviços Cadastrados (${services.length})</div>
         <input type="text" id="svc-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('svc-search').value.toLowerCase();document.querySelectorAll('#svc-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;min-width:200px" />
+        <button onclick="window._openSvcModal=true;document.getElementById('svcModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap">+ Novo Serviço</button>
       </div>
       <div class="card-body"><div class="table-wrap"><div id="svc-table">${tableHtml}</div></div>
     </div>
@@ -3004,14 +3019,16 @@ async function renderProdutos(req: Request, res: Response) {
   const editProduct = editId ? products.find((p: any) => p.id === editId) : null;
 
   const formHtml = `
-    <div class="card" style="margin-bottom:24px">
-      <div class="card-header">
-        <div class="card-title">${editProduct ? "Editar Produto" : "Novo Produto"}</div>
-      </div>
-      <div class="card-body" style="padding:24px">
+    <!-- Modal Produto -->
+    <div id="prdModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:1rem;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;padding:28px;box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+          <h2 style="font-size:18px;font-weight:700;color:var(--text)">${editProduct ? "Editar Produto" : "Novo Produto"}</h2>
+          <a href="/admin/produtos" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;text-decoration:none;line-height:1;padding:4px 8px;border-radius:6px;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">&#10005;</a>
+        </div>
         <form method="POST" action="/admin/produtos${editProduct ? `?edit=${editProduct.id}` : ""}">
           <input type="hidden" name="tenantId" value="${tenantId ?? ""}" />
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
             <div class="form-group">
               <label class="form-label">Nome do Produto *</label>
               <input class="form-input" type="text" name="name" value="${esc(editProduct?.name ?? "")}" required />
@@ -3061,10 +3078,9 @@ async function renderProdutos(req: Request, res: Response) {
           <div class="form-group" style="margin-top:8px">
             <label class="form-label">Foto / Vídeo <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
             <input type="file" id="prd-media-file" accept="image/*,video/*" style="display:none" onchange="prdPreviewMedia(this)" />
-            <div style="display:flex;align-items:center;gap:12px">
-              <button type="button" onclick="document.getElementById('prd-media-file').click()" class="btn" style="padding:10px 18px;background:var(--surface2);color:var(--text)">Selecionar arquivo</button>
-              <span id="prd-media-name" style="color:var(--muted);font-size:13px">Nenhum arquivo selecionado</span>
-            </div>
+            <label for="prd-media-file" style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px dashed var(--border);border-radius:10px;padding:10px 16px;cursor:pointer;color:var(--muted);font-size:13px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+              📎 <span id="prd-media-name">Selecionar arquivo</span>
+            </label>
             <div id="prd-media-preview" style="margin-top:10px;display:${editProduct?.thumbnailUrl ? 'block' : 'none'}">
               <img id="prd-media-img" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);object-fit:cover" src="${editProduct?.thumbnailUrl ?? ''}" />
               <video id="prd-media-vid" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid var(--border);display:none" controls></video>
@@ -3091,13 +3107,25 @@ async function renderProdutos(req: Request, res: Response) {
               }
             </script>
           </div>
-          <div style="display:flex;gap:12px;margin-top:8px">
-            <button type="submit" class="btn btn-primary" style="padding:12px 28px">${editProduct ? "Salvar Alterações" : "Criar Produto"}</button>
-            ${editProduct ? `<a href="/admin/produtos" class="btn" style="padding:12px 20px;background:var(--surface2);color:var(--text)">Cancelar</a>` : ""}
+          <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:4px">
+            <a href="/admin/produtos" class="btn btn-ghost" style="padding:11px 22px">Cancelar</a>
+            <button type="submit" class="btn btn-primary" style="padding:11px 28px">${editProduct ? "Salvar Alterações" : "Criar Produto"}</button>
           </div>
         </form>
       </div>
     </div>
+    <script>
+      (function() {
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('edit') || window._openPrdModal) {
+          var m = document.getElementById('prdModal');
+          if (m) { m.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+        }
+      })();
+      document.getElementById('prdModal') && document.getElementById('prdModal').addEventListener('click', function(e) {
+        if (e.target === this) { window.location.href = '/admin/produtos'; }
+      });
+    </script>
   `;
 
   const tableHtml = products.length === 0
@@ -3143,6 +3171,7 @@ async function renderProdutos(req: Request, res: Response) {
     <div class="card">
       <div class="card-header" style="gap:12px">
         <div class="card-title">Produtos Cadastrados (${products.length})</div>
+        <button onclick="window._openPrdModal=true;document.getElementById('prdModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap">+ Novo Produto</button>
         <input type="text" id="prod-search" placeholder="Buscar por nome..." oninput="(function(){const q=document.getElementById('prod-search').value.toLowerCase();document.querySelectorAll('#prod-table tbody tr').forEach(r=>{r.style.display=r.textContent.toLowerCase().includes(q)?'':'none';});})()" style="padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;min-width:200px" />
       </div>
       <div class="card-body"><div class="table-wrap"><div id="prod-table">${tableHtml}</div></div>
@@ -10649,16 +10678,18 @@ export function registerAdminRoutes(app: Express): void {
     const editSupplier = editId ? suppliers.find((s: any) => s.id === editId) : null;
 
     const formHtml = `
-      <div class="card" style="margin-bottom:24px">
-        <div class="card-header">
-          <div class="card-title">${editSupplier ? "Editar Fornecedor" : "Novo Fornecedor"}</div>
-        </div>
-        <div class="card-body" style="padding:24px">
+      <!-- Modal Fornecedor -->
+      <div id="supModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:1rem;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:28px;box-shadow:0 25px 60px rgba(0,0,0,0.5);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+            <h2 style="font-size:18px;font-weight:700;color:var(--text)">${editSupplier ? "Editar Fornecedor" : "Novo Fornecedor"}</h2>
+            <a href="/admin/fornecedores" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;text-decoration:none;line-height:1;padding:4px 8px;border-radius:6px;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='none'">&#10005;</a>
+          </div>
           <form method="POST" action="/admin/fornecedores${editSupplier ? `?edit=${editSupplier.id}` : ""}">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
               <div class="form-group">
                 <label class="form-label">Nome do Fornecedor *</label>
-                <input class="form-input" type="text" name="name" value="${esc((editSupplier as any)?.name ?? "")}" required />
+                <input class="form-input" type="text" name="name" value="${esc((editSupplier as any)?.name ?? "")}" required autofocus />
               </div>
               <div class="form-group">
                 <label class="form-label">CNPJ</label>
@@ -10672,22 +10703,34 @@ export function registerAdminRoutes(app: Express): void {
                 <label class="form-label">E-mail</label>
                 <input class="form-input" type="email" name="email" value="${esc((editSupplier as any)?.email ?? "")}" placeholder="email@fornecedor.com" />
               </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label">Endereço</label>
+                <input class="form-input" type="text" name="address" value="${esc((editSupplier as any)?.address ?? "")}" placeholder="Rua, número, cidade" />
+              </div>
+              <div class="form-group" style="grid-column:1/-1">
+                <label class="form-label">Observações</label>
+                <textarea class="form-input" name="notes" rows="3" style="resize:vertical">${esc((editSupplier as any)?.notes ?? "")}</textarea>
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Endereço</label>
-              <input class="form-input" type="text" name="address" value="${esc((editSupplier as any)?.address ?? "")}" placeholder="Rua, número, cidade" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Observações</label>
-              <textarea class="form-input" name="notes" rows="3" style="resize:vertical">${esc((editSupplier as any)?.notes ?? "")}</textarea>
-            </div>
-            <div style="display:flex;gap:12px;margin-top:8px">
-              <button type="submit" class="btn btn-primary" style="padding:12px 28px">${editSupplier ? "Salvar Alterações" : "Criar Fornecedor"}</button>
-              ${editSupplier ? `<a href="/admin/fornecedores" class="btn" style="padding:12px 20px;background:var(--surface2);color:var(--text)">Cancelar</a>` : ""}
+            <div style="display:flex;gap:12px;justify-content:flex-end">
+              <a href="/admin/fornecedores" class="btn btn-ghost" style="padding:11px 22px">Cancelar</a>
+              <button type="submit" class="btn btn-primary" style="padding:11px 28px">${editSupplier ? "Salvar Alterações" : "Criar Fornecedor"}</button>
             </div>
           </form>
         </div>
       </div>
+      <script>
+        (function() {
+          var urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('edit') || window._openSupModal) {
+            var m = document.getElementById('supModal');
+            if (m) { m.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+          }
+        })();
+        document.getElementById('supModal') && document.getElementById('supModal').addEventListener('click', function(e) {
+          if (e.target === this) { window.location.href = '/admin/fornecedores'; }
+        });
+      </script>
     `;
 
     const tableHtml = suppliers.length === 0
@@ -10724,6 +10767,7 @@ export function registerAdminRoutes(app: Express): void {
       <div class="card">
         <div class="card-header">
           <div class="card-title">Fornecedores Cadastrados (${suppliers.length})</div>
+          <button onclick="window._openSupModal=true;document.getElementById('supModal').style.display='flex';document.body.style.overflow='hidden';" class="btn btn-primary" style="white-space:nowrap">+ Novo Fornecedor</button>
         </div>
         <div class="card-body" style="padding:0">
           ${tableHtml}
