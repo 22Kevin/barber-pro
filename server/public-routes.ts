@@ -4419,6 +4419,10 @@ export function registerPublicRoutes(app: Express): void {
 
   // GET /pub-api/oauth-start — inicia o fluxo OAuth Google para clientes públicos
   app.get("/pub-api/oauth-start", (req: Request, res: Response) => {
+    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? "";
+    if (!GOOGLE_CLIENT_ID) {
+      return res.redirect(`/pub/${req.query.slug ?? ""}/login?error=google_not_configured`);
+    }
     const slug = req.query.slug as string;
     const redirect = (req.query.redirect as string) ?? "";
     const service = (req.query.service as string) ?? "";
@@ -4426,65 +4430,90 @@ export function registerPublicRoutes(app: Express): void {
     const barber = (req.query.barber as string) ?? "";
     const start = (req.query.start as string) ?? "";
     const end = (req.query.end as string) ?? "";
-    const appId = process.env.VITE_APP_ID ?? "";
-    const portalUrl = process.env.VITE_OAUTH_PORTAL_URL ?? "https://manus.im";
-    // Usar PUBLIC_BASE_URL (mesmo padrão do login admin) para garantir que o redirectUri
-    // corresponda ao domínio registrado no portal Manus OAuth
+
     const reqHost = req.headers["x-forwarded-host"] as string || req.headers.host || "localhost:3000";
     const reqProto = (req.headers["x-forwarded-proto"] as string || req.protocol || "http").split(",")[0].trim();
     const apiBaseUrl = process.env.PUBLIC_BASE_URL
       ?? process.env.EXPO_PUBLIC_API_BASE_URL
       ?? (reqHost.includes("localhost") ? `http://${reqHost}` : `${reqProto}://${reqHost}`);
-    // Callback URL com parâmetros de contexto codificados no state
+
     const callbackUrl = `${apiBaseUrl}/pub-api/oauth-callback`;
-    const stateData = Buffer.from(JSON.stringify({ slug, redirect, service, date, barber, start, end })).toString("base64");
-    const redirectUri = callbackUrl;
-    const state = Buffer.from(redirectUri).toString("base64");
-    const loginUrl = new URL(`${portalUrl}/app-auth`);
-    loginUrl.searchParams.set("appId", appId);
-    loginUrl.searchParams.set("redirectUri", redirectUri);
-    loginUrl.searchParams.set("state", state);
-    loginUrl.searchParams.set("type", "signIn");
-    loginUrl.searchParams.set("ctx", stateData);
-    res.redirect(loginUrl.toString());
+
+    // Codificar contexto no state para recuperar após o callback
+    const stateData = Buffer.from(JSON.stringify({ slug, redirect, service, date, barber, start, end })).toString("base64url");
+
+    const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    url.searchParams.set("client_id", GOOGLE_CLIENT_ID);
+    url.searchParams.set("redirect_uri", callbackUrl);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "openid email profile");
+    url.searchParams.set("state", stateData);
+    url.searchParams.set("access_type", "online");
+    url.searchParams.set("prompt", "select_account");
+    res.redirect(url.toString());
   });
 
   // GET /pub-api/oauth-callback — processa o retorno do OAuth e cria sessão de cliente público
   app.get("/pub-api/oauth-callback", async (req: Request, res: Response) => {
+    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? "";
+    const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
     const code = req.query.code as string;
     const state = req.query.state as string;
-    const ctx = req.query.ctx as string;
     if (!code || !state) { res.status(400).send("Parâmetros inválidos"); return; }
+
+    // Decodificar contexto do state
+    let slug = "", redirect = "", service = "", date = "", barber = "", start = "", end = "";
     try {
-      // Decodificar contexto
-      let slug = "", redirect = "", service = "", date = "", barber = "", start = "", end = "";
-      if (ctx) {
-        try {
-          const parsed = JSON.parse(Buffer.from(ctx, "base64").toString());
-          slug = parsed.slug ?? ""; redirect = parsed.redirect ?? "";
-          service = parsed.service ?? ""; date = parsed.date ?? "";
-          barber = parsed.barber ?? ""; start = parsed.start ?? ""; end = parsed.end ?? "";
-        } catch {}
-      }
-      // Trocar code por token via SDK
-      const { sdk } = await import("./_core/sdk.js");
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
+      const parsed = JSON.parse(Buffer.from(state, "base64url").toString());
+      slug = parsed.slug ?? ""; redirect = parsed.redirect ?? "";
+      service = parsed.service ?? ""; date = parsed.date ?? "";
+      barber = parsed.barber ?? ""; start = parsed.start ?? ""; end = parsed.end ?? "";
+    } catch {
+      // state inválido
+    }
+
+    try {
+      const reqHost = req.headers["x-forwarded-host"] as string || req.headers.host || "localhost:3000";
+      const reqProto = (req.headers["x-forwarded-proto"] as string || req.protocol || "http").split(",")[0].trim();
+      const apiBaseUrl = process.env.PUBLIC_BASE_URL
+        ?? process.env.EXPO_PUBLIC_API_BASE_URL
+        ?? (reqHost.includes("localhost") ? `http://${reqHost}` : `${reqProto}://${reqHost}`);
+      const callbackUrl = `${apiBaseUrl}/pub-api/oauth-callback`;
+
+      // Trocar code por access_token diretamente com o Google
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          redirect_uri: callbackUrl,
+          grant_type: "authorization_code",
+        }).toString(),
+      });
+      const tokenData = await tokenRes.json() as any;
+      if (!tokenData.access_token) throw new Error("Token não retornado: " + JSON.stringify(tokenData));
+
+      // Buscar informações do usuário
+      const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+      const userInfo = await userRes.json() as any;
       if (!userInfo.email) { res.status(400).send("E-mail não disponível na conta Google."); return; }
+
       // Buscar ou criar cliente público para o tenant
       let clientId: number | null = null;
       let clientName = userInfo.name ?? userInfo.email.split("@")[0];
       if (slug) {
         const tenant = await db.getTenantBySlug(slug);
         if (tenant) {
-          // Buscar cliente existente pelo e-mail
           const allClients = await db.getAllClients(tenant.id);
           const existing = allClients.find((c: any) => c.email === userInfo.email);
           if (existing) {
             clientId = existing.id;
             clientName = existing.name;
           } else {
-            // Criar novo cliente
             clientId = await db.createClient({
               name: clientName,
               email: userInfo.email,
@@ -4494,23 +4523,21 @@ export function registerPublicRoutes(app: Express): void {
           }
         }
       }
+
       // Criar sessão de cliente público
       const sessionData = { id: clientId, name: clientName, email: userInfo.email };
       const sessionCookie = Buffer.from(JSON.stringify(sessionData)).toString("base64");
       const cookieKey = slug ? `client_session_${slug}` : "client_session";
       res.cookie(cookieKey, sessionCookie, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+
       // Redirecionar de volta
       const qs = `?service=${service}&date=${date}&barber=${barber}&start=${start}&end=${end}`;
       const target = redirect ? `/pub/${slug}/${redirect}${qs}` : `/pub/${slug}`;
       res.redirect(target);
     } catch (e: any) {
       console.error("[OAuth Público] Erro:", e);
-      // Redirecionar de volta à página de login com mensagem de erro
-      const errCtx = req.query.ctx as string | undefined;
-      let errSlug = "";
-      try { if (errCtx) { const p = JSON.parse(Buffer.from(errCtx, "base64").toString()); errSlug = p.slug ?? ""; } } catch {}
-      if (errSlug) {
-        res.redirect(`/pub/${errSlug}/login?error=google_failed`);
+      if (slug) {
+        res.redirect(`/pub/${slug}/login?error=google_failed`);
       } else {
         res.status(500).send("Erro ao processar login com Google. Tente novamente.");
       }
