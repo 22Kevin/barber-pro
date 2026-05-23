@@ -14,8 +14,9 @@ export function Navbar() {
 
   const links = [
     { label: "Funcionalidades", href: "#features" },
+    { label: "O Sistema", href: "#sistema" },
+    { label: "Pagamentos", href: "#pagamentos" },
     { label: "Assinatura", href: "#subscription" },
-    { label: "Depoimentos", href: "#testimonials" },
     { label: "Preços", href: "#pricing" },
   ];
 

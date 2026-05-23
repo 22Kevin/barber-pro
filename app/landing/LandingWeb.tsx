@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { FeatureGrid } from "@/components/landing/FeatureGrid";
+import { SystemShowcase } from "@/components/landing/SystemShowcase";
+import { PaymentsSection } from "@/components/landing/PaymentsSection";
 import { SubscriptionSection } from "@/components/landing/SubscriptionSection";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { PricingSection } from "@/components/landing/PricingSection";
@@ -487,6 +489,8 @@ export default function LandingWeb() {
       <main>
         <HeroSection />
         <FeatureGrid />
+        <SystemShowcase />
+        <PaymentsSection />
         <SubscriptionSection />
         <TestimonialsSection />
         <PricingSection />
