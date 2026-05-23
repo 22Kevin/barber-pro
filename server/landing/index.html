@@ -348,6 +348,24 @@
     .sub-arrow{display:flex;align-items:center;flex-shrink:0;padding:0 4px}
   }
 
+
+  /* Pain cards V2 */
+  .pain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:48px}
+  .pain-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .pain-number{font-family:'Playfair Display',serif;font-size:48px;font-weight:900;color:rgba(220,53,69,0.15);line-height:1}
+  .pain-icon-wrap{font-size:32px}
+  .pain-solution{display:inline-flex;align-items:center;gap:6px;color:var(--gold);font-size:13px;font-weight:600;margin-top:14px;padding:7px 14px;background:rgba(201,168,76,0.08);border-radius:8px;border:1px solid rgba(201,168,76,0.2)}
+  .pain-sol-icon{font-size:11px}
+
+  /* Feat mini grid */
+  .feat-grid-mini{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:40px 0 48px}
+  .feat-mini-card{background:var(--black-3);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:18px;transition:border-color 0.2s,transform 0.2s}
+  .feat-mini-card:hover{border-color:rgba(201,168,76,0.3);transform:translateY(-2px)}
+  .feat-mini-card.feat-mini-highlight{background:rgba(201,168,76,0.05);border-color:rgba(201,168,76,0.25)}
+  .feat-mini-icon{font-size:24px;margin-bottom:10px}
+  .feat-mini-title{color:var(--white);font-size:14px;font-weight:700;margin-bottom:6px}
+  .feat-mini-desc{color:var(--gray-light);font-size:13px;line-height:1.55}
+
   /* === MELHORIAS V2 === */
 
   /* Social proof bar */
@@ -533,152 +551,101 @@
   <div class="container">
     <div class="text-center">
       <div class="section-label">O problema</div>
-      <h2 class="section-title">Cansado de perder<br/><span class="gold-gradient">tempo e dinheiro?</span></h2>
-      <p class="section-sub mx-auto" style="max-width:540px">A maioria dos barbeiros ainda gerencia a agenda pelo WhatsApp, anota no caderno e não sabe quanto lucrou no mês. Isso tem que acabar.</p>
+      <h2 class="section-title">Reconhece<br/><span class="gold-gradient">alguma dessas situações?</span></h2>
+      <p class="section-sub mx-auto" style="max-width:540px">A maioria dos barbeiros ainda gerencia a agenda pelo WhatsApp, anota no caderno e não sabe quanto lucrou no mês. Isso está te custando dinheiro agora.</p>
     </div>
     <div class="pain-grid">
       <div class="pain-card">
-        <div class="pain-icon">😤</div>
+        <div class="pain-card-header">
+          <div class="pain-number">01</div>
+          <div class="pain-icon-wrap">😤</div>
+        </div>
         <div class="pain-title">Dois clientes no mesmo horário</div>
-        <div class="pain-desc">Conflito de agenda é constrangimento na frente dos clientes e prejuízo direto para sua reputação.</div>
-        <div class="pain-solution">✦ Agenda inteligente com trava automática</div>
+        <div class="pain-desc">Conflito de agenda é constrangimento na frente dos clientes e prejuízo direto para sua reputação. Acontece todo mês.</div>
+        <div class="pain-solution"><span class="pain-sol-icon">✦</span> Agenda inteligente com trava automática</div>
       </div>
       <div class="pain-card">
-        <div class="pain-icon">💸</div>
+        <div class="pain-card-header">
+          <div class="pain-number">02</div>
+          <div class="pain-icon-wrap">💸</div>
+        </div>
         <div class="pain-title">Não sabe quanto lucrou hoje</div>
-        <div class="pain-desc">Sem controle financeiro, você trabalha muito mas não sabe se está crescendo ou apenas sobrevivendo.</div>
-        <div class="pain-solution">✦ Dashboard financeiro em tempo real</div>
+        <div class="pain-desc">Sem controle financeiro, você trabalha muito mas não sabe se está crescendo ou apenas sobrevivendo. Fim de mês sempre uma surpresa.</div>
+        <div class="pain-solution"><span class="pain-sol-icon">✦</span> Dashboard financeiro em tempo real</div>
       </div>
       <div class="pain-card">
-        <div class="pain-icon">📱</div>
-        <div class="pain-title">Perdido em apps de terceiros</div>
-        <div class="pain-desc">Você é apenas mais um na lista de um app genérico. Seus clientes não te encontram, te encontram o app.</div>
-        <div class="pain-solution">✦ Sua página própria em usebarberpro.com</div>
+        <div class="pain-card-header">
+          <div class="pain-number">03</div>
+          <div class="pain-icon-wrap">📱</div>
+        </div>
+        <div class="pain-title">WhatsApp o dia todo marcando horário</div>
+        <div class="pain-desc">Você vira secretário da própria barbearia. Cada mensagem que responde é tempo que poderia estar com a tesoura na mão.</div>
+        <div class="pain-solution"><span class="pain-sol-icon">✦</span> Agendamento online 24h, sem você tocar no celular</div>
       </div>
     </div>
   </div>
 </section>
 
-<hr class="section-divider">
-<!-- FUNCIONALIDADES -->
-<section id="funcionalidades" class="section" style="background:var(--black-2)">
-  <div class="container">
-    <div class="text-center">
-      <div class="section-label">Funcionalidades</div>
-      <h2 class="section-title">Tudo que sua barbearia<br/><span class="gold-gradient">precisa para crescer</span></h2>
-    </div>
-    <div class="features-grid">
-      <div class="feat-card">
-        <div class="feat-icon">📅</div>
-        <div>
-          <div class="feat-title">Agenda Inteligente</div>
-          <div class="feat-desc">Seu cliente agenda sozinho 24h por dia, 7 dias por semana. O sistema trava conflitos automaticamente. Chega de WhatsApp para marcar horário.</div>
-        </div>
-      </div>
-      <div class="feat-card">
-        <div class="feat-icon">💰</div>
-        <div>
-          <div class="feat-title">Controle Financeiro</div>
-          <div class="feat-desc">Dashboard com faturamento diário, semanal e mensal. Comissões, estoque e despesas em um só lugar. Você sabe exatamente quanto lucrou.</div>
-        </div>
-      </div>
-      <div class="feat-card">
-        <div class="feat-icon">💳</div>
-        <div>
-          <div class="feat-title">Clube de Assinatura</div>
-          <div class="feat-desc">Comece o mês com dinheiro garantido. Seus clientes VIP pagam mensalidade e já garantem a agenda. Faturamento recorrente e previsível.</div>
-          <div class="feat-tag">Exclusivo Barber Pro</div>
-        </div>
-      </div>
-      <div class="feat-card">
-        <div class="feat-icon">🔔</div>
-        <div>
-          <div class="feat-title">Notificações Push</div>
-          <div class="feat-desc">Receba alertas no celular a cada novo agendamento, cancelamento ou pagamento. Seus clientes recebem lembretes automáticos para não faltarem.</div>
-        </div>
-      </div>
-      <div class="feat-card wide">
-        <div class="feat-icon" style="width:56px;height:56px;font-size:26px">🌟</div>
-        <div>
-          <div class="feat-title">Sua Barbearia, Sua Marca</div>
-          <div class="feat-desc">Esqueça os apps onde você é apenas mais um na lista. Com o Barber Pro, você tem uma <strong style="color:var(--gold-light)">página de agendamento personalizada</strong> com seu nome, suas fotos e seu estilo — acessível em <strong>usebarberpro.com/sua-barbearia</strong>. É o link profissional que falta na sua bio do Instagram para converter seguidores em clientes fiéis.</div>
-          <div class="feat-tag">✦ Sua identidade, seu sucesso</div>
-        </div>
-      </div>
-      <div class="feat-card">
-        <div class="feat-icon">🏆</div>
-        <div>
-          <div class="feat-title">Programa de Fidelidade</div>
-          <div class="feat-desc">Recompense clientes frequentes com pontos, descontos e benefícios exclusivos. Aumente a retenção e faça seus clientes voltarem sempre.</div>
-        </div>
-      </div>
-      <div class="feat-card">
-        <div class="feat-icon">👥</div>
-        <div>
-          <div class="feat-title">Gestão de Equipe</div>
-          <div class="feat-desc">Adicione barbeiros, defina comissões e acompanhe o desempenho de cada um. Cada profissional tem sua própria agenda e perfil.</div>
-        </div>
-      </div>
-      <div class="feat-card">
-        <div class="feat-icon">🎁</div>
-        <div>
-          <div class="feat-title">Cupons e Promoções</div>
-          <div class="feat-desc">Crie campanhas de desconto, cupons de primeira visita e promoções segmentadas. Atraia novos clientes e reative os que sumiram.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 
-<!-- MASCOT -->
-<section class="section mascot-section">
-  <div class="container">
-    <div class="mascot-grid">
-      <div class="mascot-img-wrap">
-        <div class="mascot-img-glow"></div>
-        <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/VXepTARcqAFoAuYK.jpg" alt="Barbeiro profissional usando o Barber Pro" class="mascot-img" />
-      </div>
-      <div class="d1">
-        <div class="section-label">Por que o Barber Pro?</div>
-        <h2 class="section-title">Feito por quem<br/><span class="gold-gradient">entende de barbearia</span></h2>
-        <p class="section-sub">O Barber Pro foi desenvolvido especificamente para o dia a dia de quem trabalha com tesoura e navalha. Sem complicação, sem treinamento.</p>
-        <ul class="mascot-list">
-          <li>
-            <div class="mascot-list-icon">⚡</div>
-            <div>
-              <div class="mascot-list-title">Pronto em 5 minutos</div>
-              <div class="mascot-list-desc">Configure sua barbearia agora e comece a receber agendamentos ainda hoje. Sem burocracia.</div>
-            </div>
-          </li>
-          <li>
-            <div class="mascot-list-icon">📱</div>
-            <div>
-              <div class="mascot-list-title">Funciona em qualquer dispositivo</div>
-              <div class="mascot-list-desc">Celular, tablet ou computador — o painel admin é responsivo e funciona em qualquer tela.</div>
-            </div>
-          </li>
-          <li>
-            <div class="mascot-list-icon">🔒</div>
-            <div>
-              <div class="mascot-list-title">Seus clientes não precisam baixar nada</div>
-              <div class="mascot-list-desc">Eles agendam direto pelo navegador, sem criar conta, sem baixar app. Simples assim.</div>
-            </div>
-          </li>
-        </ul>
-        <button class="btn-primary" onclick="openModal('Equipe', 'R$89')">Começar agora — 14 dias grátis →</button>
-      </div>
-    </div>
-  </div>
-</section>
+
+
 
 <hr class="section-divider">
 <!-- SISTEMA: SHOWCASE DOS MOCKUPS -->
 <section id="sistema" class="section" style="background:var(--black-2)">
   <div class="container">
     <div class="text-center">
-      <div class="section-label">O Sistema</div>
-      <h2 class="section-title">Veja o sistema<br/><span class="gold-gradient">por dentro</span></h2>
-      <p class="section-sub mx-auto" style="max-width:560px">Tudo que você precisa para gerir sua barbearia em um só lugar — bonito, rápido e feito para o dia a dia do barbeiro.</p>
+      <div class="section-label">Funcionalidades + Sistema</div>
+      <h2 class="section-title">Cada real que sua barbearia<br/><span class="gold-gradient">pode estar perdendo, resolvido aqui</span></h2>
+      <p class="section-sub mx-auto" style="max-width:620px">Do agendamento ao financeiro, do pagamento online à assinatura recorrente — veja como cada parte do sistema converte diretamente em dinheiro no seu bolso.</p>
+    </div>
+
+    <!-- Funcionalidades em grid antes dos mockups -->
+    <div class="feat-grid-mini">
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">📅</div>
+        <div class="feat-mini-title">Agenda Inteligente</div>
+        <div class="feat-mini-desc">Cliente agenda sozinho 24h/dia. Zero conflito de horário. Zero WhatsApp.</div>
+      </div>
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">💰</div>
+        <div class="feat-mini-title">Financeiro em Tempo Real</div>
+        <div class="feat-mini-desc">Faturamento do dia na palma da mão. Sem planilha, sem anotação.</div>
+      </div>
+      <div class="feat-mini-card feat-mini-highlight">
+        <div class="feat-mini-icon">⭐</div>
+        <div class="feat-mini-title">Assinatura Recorrente</div>
+        <div class="feat-mini-desc">Dinheiro na conta antes de abrir a porta. Todo mês, automático.</div>
+      </div>
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">💳</div>
+        <div class="feat-mini-title">Pagamento Online</div>
+        <div class="feat-mini-desc">Pix, cartão ou boleto. Sem maquininha, sem cobrar pessoalmente.</div>
+      </div>
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">🔔</div>
+        <div class="feat-mini-title">Lembretes Automáticos</div>
+        <div class="feat-mini-desc">Taxa de no-show cai para menos de 5%. Sistema lembra o cliente.</div>
+      </div>
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">🏆</div>
+        <div class="feat-mini-title">Programa de Fidelidade</div>
+        <div class="feat-mini-desc">Pontos, descontos e benefícios. Cliente volta por conta própria.</div>
+      </div>
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">👥</div>
+        <div class="feat-mini-title">Gestão de Equipe</div>
+        <div class="feat-mini-desc">Comissões automáticas. Cada barbeiro com sua agenda e perfil.</div>
+      </div>
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">🌐</div>
+        <div class="feat-mini-title">Sua Página Própria</div>
+        <div class="feat-mini-desc">Link profissional para o Instagram. Seus clientes te encontram, não o app.</div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin:0 0 28px">
+      <p style="color:var(--gray-light);font-size:15px">Explore cada parte do sistema:</p>
     </div>
 
     <!-- Tabs -->
@@ -1082,46 +1049,7 @@
   </div>
 </section>
 
-<hr class="section-divider">
-<!-- DEPOIMENTOS -->
-<section class="section testimonials-section">
-  <div class="container">
-    <div class="text-center">
-      <div class="section-label">Depoimentos</div>
-      <h2 class="section-title">Quem usa, não volta<br/><span class="gold-gradient">para o caos de antes</span></h2>
-      <p class="section-sub mx-auto" style="max-width:520px">Mais de 1.200 barbearias já usam o Barber Pro. Veja o que eles dizem.</p>
-    </div>
-    <div class="testimonials-grid" style="margin-top:48px">
-      <div class="test-card fade-in-up">
-        <div class="test-stars">★★★★★</div>
-        <p class="test-text">"Antes eu perdia pelo menos 3 clientes por semana por conflito de horário. Hoje o sistema bloqueia tudo automaticamente. E o programa de assinatura? Tenho 28 assinantes — são R$ 3.360 garantidos todo mês antes de eu abrir a porta."</p>
-        <div class="test-author">
-          <div class="test-avatar" style="background:linear-gradient(135deg,#C9A84C,#8B6914)">RA</div>
-          <div><div class="test-name">Ricardo Alves</div><div class="test-role">Barbearia Corte & Arte — São Paulo, SP</div></div>
-          <div class="test-verified">✓ Verificado</div>
-        </div>
-      </div>
-      <div class="test-card fade-in-up">
-        <div class="test-stars">★★★★★</div>
-        <p class="test-text">"O WhatsApp automático mudou tudo. Antes ficava lembrando cliente manualmente. Agora o sistema manda confirmação, lembrete 24h antes e pede avaliação depois. Minha taxa de no-show caiu de 30% para menos de 5%."</p>
-        <div class="test-author">
-          <div class="test-avatar" style="background:linear-gradient(135deg,#1A3A5A,#0d2035)">MF</div>
-          <div><div class="test-name">Marcos Ferreira</div><div class="test-role">Studio MF — Belo Horizonte, MG</div></div>
-          <div class="test-verified">✓ Verificado</div>
-        </div>
-      </div>
-      <div class="test-card fade-in-up">
-        <div class="test-stars">★★★★★</div>
-        <p class="test-text">"O relatório financeiro em tempo real foi o que mais me impressionou. Antes não sabia quanto tinha faturado no dia sem fazer conta no papel. Agora abro o app e vejo tudo: faturamento, comissões, produtos. Profissional de verdade."</p>
-        <div class="test-author">
-          <div class="test-avatar" style="background:linear-gradient(135deg,#3A1A1A,#200d0d)">FS</div>
-          <div><div class="test-name">Felipe Souza</div><div class="test-role">Barber House Premium — Curitiba, PR</div></div>
-          <div class="test-verified">✓ Verificado</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+
 
 <!-- FAQ -->
 <section id="faq" class="section">
@@ -1163,51 +1091,7 @@
   </div>
 </section>
 
-<!-- FORMULÁRIO DE INTERESSE (LEAD CAPTURE) -->
-<section class="section" id="interesse" style="background:linear-gradient(180deg,#0A0A0A 0%,#111008 100%)">
-  <div class="container">
-    <div style="max-width:560px;margin:0 auto;text-align:center">
-      <div class="section-label" style="margin-bottom:16px">Quero saber mais</div>
-      <h2 style="font-size:clamp(22px,4vw,34px);font-weight:900;line-height:1.2;margin-bottom:12px">
-        Receba uma <span class="gold-gradient">demonstração gratuita</span><br/>do Barber Pro
-      </h2>
-      <p style="color:#888880;font-size:15px;margin-bottom:28px;line-height:1.6">
-        Deixe seus dados e nossa equipe entra em contato para mostrar como o sistema funciona na prática.
-      </p>
-      <form id="lead-form" style="display:flex;flex-direction:column;gap:12px" onsubmit="submitLead(event)">
-        <input type="text" id="lead-name" placeholder="Seu nome" style="
-          width:100%;padding:14px 16px;background:#141414;border:1px solid #2A2A2A;
-          border-radius:12px;color:#F0EEE8;font-size:15px;outline:none;font-family:inherit;
-          transition:border-color 0.2s;
-        " onfocus="this.style.borderColor='#C9A84C'" onblur="this.style.borderColor='#2A2A2A'" />
-        <input type="email" id="lead-email" placeholder="Seu e-mail" required style="
-          width:100%;padding:14px 16px;background:#141414;border:1px solid #2A2A2A;
-          border-radius:12px;color:#F0EEE8;font-size:15px;outline:none;font-family:inherit;
-          transition:border-color 0.2s;
-        " onfocus="this.style.borderColor='#C9A84C'" onblur="this.style.borderColor='#2A2A2A'" />
-        <input type="tel" id="lead-phone" placeholder="WhatsApp (com DDD)" style="
-          width:100%;padding:14px 16px;background:#141414;border:1px solid #2A2A2A;
-          border-radius:12px;color:#F0EEE8;font-size:15px;outline:none;font-family:inherit;
-          transition:border-color 0.2s;
-        " onfocus="this.style.borderColor='#C9A84C'" onblur="this.style.borderColor='#2A2A2A'" />
-        <button type="submit" id="lead-btn" style="
-          width:100%;padding:15px;background:linear-gradient(135deg,#C9A84C,#E8C96A);
-          color:#0A0A0A;font-size:16px;font-weight:800;border:none;border-radius:12px;
-          cursor:pointer;letter-spacing:0.5px;transition:opacity 0.2s;
-        " onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
-          QUERO UMA DEMONSTRAÇÃO GRATUITA
-        </button>
-        <p id="lead-msg" style="font-size:13px;color:#4ADE80;display:none;margin-top:4px">
-          ✓ Recebemos seu contato! Nossa equipe falará com você em breve.
-        </p>
-        <p id="lead-err" style="font-size:13px;color:#F87171;display:none;margin-top:4px">
-          Preencha o e-mail ou telefone para continuar.
-        </p>
-      </form>
-      <p style="font-size:12px;color:#555;margin-top:14px">Seus dados são 100% seguros. Sem spam.</p>
-    </div>
-  </div>
-</section>
+
 
 <!-- CTA FINAL -->
 <section class="section">
@@ -1698,6 +1582,7 @@ const statsObs = new IntersectionObserver(entries => {
 }, {threshold: 0.5});
 const heroStats = document.querySelector('.hero-stats');
 if(heroStats) statsObs.observe(heroStats);
+</script>
 
 <script>
 function showTab(id) {
