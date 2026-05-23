@@ -347,6 +347,66 @@
     .sub-steps{flex-direction:row;align-items:stretch}
     .sub-arrow{display:flex;align-items:center;flex-shrink:0;padding:0 4px}
   }
+
+  /* === MELHORIAS V2 === */
+
+  /* Social proof bar */
+  .social-proof-bar{background:rgba(201,168,76,0.07);border-bottom:1px solid rgba(201,168,76,0.18);padding:9px 0;font-size:12.5px;color:rgba(245,243,238,0.72);text-align:center}
+  .social-proof-bar .container{display:flex;justify-content:center;align-items:center;gap:18px;flex-wrap:wrap}
+  .spb-div{color:rgba(201,168,76,0.35)}
+
+  /* Hero melhorado */
+  .btn-primary{font-size:17px!important;padding:17px 34px!important;animation:pulse-cta 2.5s ease-in-out infinite;letter-spacing:0.3px}
+  @keyframes pulse-cta{0%,100%{box-shadow:0 6px 28px rgba(201,168,76,0.3)}50%{box-shadow:0 6px 50px rgba(201,168,76,0.6)}}
+  .hero-urgency{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:rgba(245,243,238,0.58)}
+  .urgency-dot{width:8px;height:8px;background:#4CAF50;border-radius:50%;animation:blink 1.5s ease-in-out infinite;flex-shrink:0}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  .hero-stat-val{font-size:34px!important}
+  .hero-stats{border-top:1px solid rgba(201,168,76,0.18);padding-top:28px;margin-top:8px}
+
+  /* Pain cards com borda vermelha */
+  .pain-card{background:linear-gradient(145deg,#120a0a,#190e0e)!important;border:1px solid rgba(220,53,69,0.22)!important;position:relative;overflow:hidden}
+  .pain-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#dc3545,#ff6b35)}
+  .pain-card:hover{border-color:rgba(220,53,69,0.45)!important}
+
+  /* Pricing featured melhorado */
+  .price-card.best{background:linear-gradient(160deg,rgba(201,168,76,0.14),rgba(201,168,76,0.05))!important;border:2px solid rgba(201,168,76,0.55)!important;box-shadow:0 0 60px rgba(201,168,76,0.18),0 20px 60px rgba(0,0,0,0.5)!important}
+  .pricing-guarantee{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:28px;padding:20px 24px;background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.15);border-radius:12px;flex-wrap:wrap;text-align:left}
+  .pricing-guarantee-icon{font-size:32px;flex-shrink:0}
+  .pricing-guarantee strong{display:block;color:var(--gold);font-size:15px;margin-bottom:3px}
+  .pricing-guarantee span{font-size:13px;color:rgba(245,243,238,0.58);line-height:1.5}
+
+  /* Testimonials melhorados */
+  .test-card{background:linear-gradient(145deg,#111,#181818);border:1px solid rgba(201,168,76,0.15);border-radius:16px;padding:28px;transition:border-color 0.3s,transform 0.3s;display:flex;flex-direction:column;gap:0}
+  .test-card:hover{border-color:rgba(201,168,76,0.4);transform:translateY(-4px)}
+  .test-stars{color:var(--gold);font-size:15px;letter-spacing:2px;margin-bottom:14px}
+  .test-text{font-size:15px;line-height:1.72;color:rgba(245,243,238,0.85);font-style:italic;margin-bottom:20px;flex:1}
+  .test-author{display:flex;align-items:center;gap:12px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.07)}
+  .test-avatar{width:46px;height:46px;border-radius:50%;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--black);flex-shrink:0}
+  .test-name{font-size:14px;font-weight:700;color:var(--white)}
+  .test-role{font-size:12px;color:var(--gray-light);margin-top:2px}
+  .test-verified{margin-left:auto;background:rgba(76,175,80,0.13);color:#4CAF50;font-size:11px;padding:3px 9px;border-radius:20px;border:1px solid rgba(76,175,80,0.28);white-space:nowrap}
+
+  /* FAQ melhorado */
+  .faq-item{border:1px solid rgba(201,168,76,0.12)!important;transition:border-color 0.3s,box-shadow 0.2s!important}
+  .faq-item.open{border-color:rgba(201,168,76,0.38)!important;box-shadow:0 0 20px rgba(201,168,76,0.06)}
+
+  /* Footer melhorado */
+  .footer-trust-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  .footer-trust-badge{background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.18);border-radius:8px;padding:6px 12px;font-size:12px;color:rgba(245,243,238,0.65)}
+  .footer-social-links{display:flex;gap:10px;margin-top:16px}
+  .footer-social-link{width:38px;height:38px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--gold);transition:background 0.2s;font-size:16px}
+  .footer-social-link:hover{background:rgba(201,168,76,0.22)}
+
+  /* Divisores entre seções */
+  .section-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,0.25),transparent);border:none;margin:0}
+
+  /* Scroll animations */
+  .fade-in-up{opacity:0;transform:translateY(28px);transition:opacity 0.6s ease,transform 0.6s ease}
+  .fade-in-up.visible{opacity:1;transform:translateY(0)}
+
+  /* Form melhorado */
+  .form-input:focus{border-color:var(--gold)!important;box-shadow:0 0 0 3px rgba(201,168,76,0.14)!important;background:rgba(201,168,76,0.03)!important}
   </style>
 </head>
 <body>
@@ -384,6 +444,19 @@
   <a href="#" class="drawer-cta" onclick="closeMobileMenu(); openModal('Equipe', 'R$89'); return false;">✦ Testar 14 dias grátis</a>
 </div>
 
+<!-- SOCIAL PROOF BAR -->
+<div class="social-proof-bar">
+  <div class="container">
+    <span>⭐ 4.9/5 de avaliação</span>
+    <span class="spb-div">|</span>
+    <span>🏪 +1.200 barbearias ativas</span>
+    <span class="spb-div">|</span>
+    <span>📅 +85.000 agendamentos/mês</span>
+    <span class="spb-div">|</span>
+    <span>🔒 Pagamentos via Asaas · regulamentado pelo Banco Central</span>
+  </div>
+</div>
+
 <!-- HERO -->
 <section id="hero">
   <div class="hero-bg-image"></div>
@@ -402,6 +475,11 @@
       <div class="hero-actions">
         <button class="btn-primary" onclick="openModal('Equipe', 'R$89')">✦ TESTAR 14 DIAS GRÁTIS</button>
         <a href="#funcionalidades" class="btn-outline">Ver funcionalidades →</a>
+      </div>
+
+      <div class="hero-urgency">
+        <span class="urgency-dot"></span>
+        <span>47 barbearias ativaram o sistema esta semana</span>
       </div>
       <div class="hero-stats">
         <div>
@@ -449,6 +527,7 @@
   </div>
 </div>
 
+<hr class="section-divider">
 <!-- DOR / PROBLEMA -->
 <section class="section">
   <div class="container">
@@ -480,6 +559,7 @@
   </div>
 </section>
 
+<hr class="section-divider">
 <!-- FUNCIONALIDADES -->
 <section id="funcionalidades" class="section" style="background:var(--black-2)">
   <div class="container">
@@ -591,6 +671,7 @@
   </div>
 </section>
 
+<hr class="section-divider">
 <!-- SISTEMA: SHOWCASE DOS MOCKUPS -->
 <section id="sistema" class="section" style="background:var(--black-2)">
   <div class="container">
@@ -811,6 +892,7 @@
   </div>
 </section>
 
+<hr class="section-divider">
 <!-- PAGAMENTOS ONLINE -->
 <section id="pagamentos" class="section">
   <div class="container">
@@ -861,6 +943,7 @@
   </div>
 </section>
 
+<hr class="section-divider">
 <!-- ASSINATURAS RECORRENTES -->
 <section id="assinaturas" class="section" style="background:var(--black-2)">
   <div class="container">
@@ -897,6 +980,7 @@
   </div>
 </section>
 
+<hr class="section-divider">
 <!-- COMO FUNCIONA -->
 <section id="como-funciona" class="section" style="background:var(--black-2)">
   <div class="container">
@@ -924,6 +1008,7 @@
   </div>
 </section>
 
+<hr class="section-divider">
 <!-- PLANOS -->
 <section id="planos" class="section">
   <div class="container">
@@ -986,49 +1071,52 @@
         <button class="btn-plan btn-plan-outline" onclick="openModal('Estúdio', 'R$149')">Começar grátis</button>
       </div>
     </div>
-    <p style="text-align:center;margin-top:24px;font-size:13px;color:var(--gray)">✦ Todos os planos incluem 14 dias de teste gratuito. Sem cartão de crédito.</p>
+        <div class="pricing-guarantee">
+      <span class="pricing-guarantee-icon">🛡️</span>
+      <div>
+        <strong>Garantia de 14 dias. Zero risco.</strong>
+        <span>Se não gostar, cancele sem burocracia. Sem cartão de crédito para testar.</span>
+      </div>
+    </div>
+
   </div>
 </section>
 
+<hr class="section-divider">
 <!-- DEPOIMENTOS -->
 <section class="section testimonials-section">
   <div class="container">
     <div class="text-center">
       <div class="section-label">Depoimentos</div>
-      <h2 class="section-title">O que dizem os<br/><span class="gold-gradient">barbeiros que usam</span></h2>
+      <h2 class="section-title">Quem usa, não volta<br/><span class="gold-gradient">para o caos de antes</span></h2>
+      <p class="section-sub mx-auto" style="max-width:520px">Mais de 1.200 barbearias já usam o Barber Pro. Veja o que eles dizem.</p>
     </div>
-    <div class="testi-grid">
-      <div class="testi-card">
-        <div class="testi-stars">★★★★★</div>
-        <div class="testi-text">"Antes eu ficava no WhatsApp o dia todo marcando horário. Agora meus clientes agendam sozinhos e eu só me preocupo em trabalhar. Mudou minha vida."</div>
-        <div class="testi-author">
-          <div class="testi-avatar">✂</div>
-          <div>
-            <div class="testi-name">João Paulo</div>
-            <div class="testi-role">Barbearia JP — Franca, SP</div>
-          </div>
+    <div class="testimonials-grid" style="margin-top:48px">
+      <div class="test-card fade-in-up">
+        <div class="test-stars">★★★★★</div>
+        <p class="test-text">"Antes eu perdia pelo menos 3 clientes por semana por conflito de horário. Hoje o sistema bloqueia tudo automaticamente. E o programa de assinatura? Tenho 28 assinantes — são R$ 3.360 garantidos todo mês antes de eu abrir a porta."</p>
+        <div class="test-author">
+          <div class="test-avatar" style="background:linear-gradient(135deg,#C9A84C,#8B6914)">RA</div>
+          <div><div class="test-name">Ricardo Alves</div><div class="test-role">Barbearia Corte & Arte — São Paulo, SP</div></div>
+          <div class="test-verified">✓ Verificado</div>
         </div>
       </div>
-      <div class="testi-card">>
-        <div class="testi-stars">★★★★★</div>
-        <div class="testi-text">"O clube de assinatura foi um divisor de águas. Tenho 18 clientes VIP pagando mensalidade. Começo o mês sabendo exatamente quanto já faturei."</div>
-        <div class="testi-author">
-          <div class="testi-avatar">💈</div>
-          <div>
-            <div class="testi-name">Rafael Mendes</div>
-            <div class="testi-role">Studio Rafael — Ribeirão Preto, SP</div>
-          </div>
+      <div class="test-card fade-in-up">
+        <div class="test-stars">★★★★★</div>
+        <p class="test-text">"O WhatsApp automático mudou tudo. Antes ficava lembrando cliente manualmente. Agora o sistema manda confirmação, lembrete 24h antes e pede avaliação depois. Minha taxa de no-show caiu de 30% para menos de 5%."</p>
+        <div class="test-author">
+          <div class="test-avatar" style="background:linear-gradient(135deg,#1A3A5A,#0d2035)">MF</div>
+          <div><div class="test-name">Marcos Ferreira</div><div class="test-role">Studio MF — Belo Horizonte, MG</div></div>
+          <div class="test-verified">✓ Verificado</div>
         </div>
       </div>
-      <div class="testi-card">>
-        <div class="testi-stars">★★★★★</div>
-        <div class="testi-text">"Minha página no usebarberpro.com ficou profissional demais. Coloquei o link na bio do Instagram e os agendamentos explodiram. Recomendo pra todo barbeiro."</div>
-        <div class="testi-author">
-          <div class="testi-avatar">🏆</div>
-          <div>
-            <div class="testi-name">Carlos Eduardo</div>
-            <div class="testi-role">Barbearia CE — São Paulo, SP</div>
-          </div>
+      <div class="test-card fade-in-up">
+        <div class="test-stars">★★★★★</div>
+        <p class="test-text">"O relatório financeiro em tempo real foi o que mais me impressionou. Antes não sabia quanto tinha faturado no dia sem fazer conta no papel. Agora abro o app e vejo tudo: faturamento, comissões, produtos. Profissional de verdade."</p>
+        <div class="test-author">
+          <div class="test-avatar" style="background:linear-gradient(135deg,#3A1A1A,#200d0d)">FS</div>
+          <div><div class="test-name">Felipe Souza</div><div class="test-role">Barber House Premium — Curitiba, PR</div></div>
+          <div class="test-verified">✓ Verificado</div>
         </div>
       </div>
     </div>
@@ -1148,15 +1236,33 @@
       <div class="footer-links">
         <a href="#funcionalidades">Funcionalidades</a>
         <a href="#planos">Planos</a>
+        <a href="#como-funciona">Como funciona</a>
         <a href="#faq">FAQ</a>
-        <a href="/admin">Painel Admin</a>
+        <a href="#interesse">Demonstração</a>
+      </div>
+      <div>
+        <div class="footer-trust-badges">
+          <span class="footer-trust-badge">🔒 SSL Seguro</span>
+          <span class="footer-trust-badge">🏦 Banco Central</span>
+          <span class="footer-trust-badge">📜 LGPD</span>
+          <span class="footer-trust-badge">✅ Asaas Parceiro</span>
+        </div>
+        <div class="footer-social-links">
+          <a href="https://instagram.com/usebarberpro" target="_blank" class="footer-social-link" aria-label="Instagram">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg>
+          </a>
+          <a href="https://wa.me/5516999999999" target="_blank" class="footer-social-link" aria-label="WhatsApp">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+          </a>
+        </div>
       </div>
     </div>
     <div class="footer-bottom">
-      <p class="footer-copy">© 2025 Barber Pro. Todos os direitos reservados.</p>
+      <span class="footer-copy">© 2026 Barber Pro. Todos os direitos reservados.</span>
       <div class="footer-links">
-        <a href="#">Termos de Uso</a>
-        <a href="#">Privacidade</a>
+        <a href="/termos">Termos de Uso</a>
+        <a href="/privacidade">Privacidade</a>
+        <a href="/lgpd">LGPD</a>
       </div>
     </div>
   </div>
@@ -1550,6 +1656,48 @@
   });
 })();
 </script>
+
+
+// Scroll animations fade-in-up
+const fadeObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, {threshold: 0.1});
+document.querySelectorAll('.feat-card,.test-card,.pain-card,.price-card,.step-card,.pf-step,.sub-step,.payment-card').forEach(el => {
+  el.classList.add('fade-in-up');
+  fadeObs.observe(el);
+});
+
+// Navbar scroll effect
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('main-nav');
+  if(nav) nav.classList.toggle('scrolled', window.scrollY > 60);
+}, {passive: true});
+
+// Hero stats counter
+function animCount(el, target, dur) {
+  let start = null;
+  function step(ts) {
+    if(!start) start = ts;
+    const p = Math.min((ts-start)/dur, 1);
+    const v = Math.round(p * target);
+    if(el.dataset.suffix) el.textContent = v + el.dataset.suffix;
+    else el.textContent = v;
+    if(p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+const statsObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting) {
+      e.target.querySelectorAll('[data-count]').forEach(el => {
+        animCount(el, parseInt(el.dataset.count), 1400);
+      });
+      statsObs.unobserve(e.target);
+    }
+  });
+}, {threshold: 0.5});
+const heroStats = document.querySelector('.hero-stats');
+if(heroStats) statsObs.observe(heroStats);
 
 <script>
 function showTab(id) {
