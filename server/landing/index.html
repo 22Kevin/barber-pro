@@ -46,16 +46,18 @@
     .section-sub { font-size: 17px; color: var(--gray-light); line-height: 1.8; }
 
     /* ── NAV ── */
-    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 68px; display: flex; align-items: center; background: rgba(8,8,8,0.90); backdrop-filter: blur(24px) saturate(180%); border-bottom: 1px solid rgba(255,255,255,0.05); transition: box-shadow 0.3s; }
-    nav.scrolled { box-shadow: 0 4px 40px rgba(0,0,0,0.8); }
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 68px; display: flex; align-items: center; background: rgba(8,8,8,0.92); backdrop-filter: blur(24px) saturate(180%); border-bottom: 1px solid rgba(255,255,255,0.05); transition: all 0.3s; }
+    nav.scrolled { background: rgba(8,8,8,0.97); border-bottom-color: rgba(201,168,76,0.15); box-shadow: 0 4px 40px rgba(0,0,0,0.6); }
     .nav-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; }
     .nav-logo { display: flex; align-items: center; gap: 10px; }
     .nav-logo img { width: 36px; height: 36px; border-radius: 8px; object-fit: contain; }
     .nav-logo-text { font-size: 16px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
     .nav-logo-text span { color: var(--gold); }
     .nav-links { display: flex; align-items: center; gap: 28px; list-style: none; }
-    .nav-links a { font-size: 13.5px; font-weight: 500; color: var(--gray-light); transition: color 0.2s; }
+    .nav-links a { font-size: 13.5px; font-weight: 500; color: var(--gray-light); transition: color 0.2s; position: relative; }
     .nav-links a:hover { color: var(--white); }
+    .nav-links a.active { color: var(--gold); }
+    .nav-links a.active::after { content: ''; position: absolute; bottom: -4px; left: 0; right: 0; height: 2px; background: var(--gold); border-radius: 2px; }
     .nav-actions { display: flex; align-items: center; gap: 10px; }
     .btn-ghost { font-size: 13px; font-weight: 600; color: var(--gray-mid); border: 1px solid rgba(255,255,255,0.1); padding: 8px 18px; border-radius: 8px; transition: all 0.2s; cursor: pointer; background: none; font-family: 'Inter', sans-serif; }
     .btn-ghost:hover { color: var(--white); border-color: rgba(255,255,255,0.28); }
@@ -437,15 +439,16 @@
       <span class="nav-logo-text">BARBER <span>PRO</span></span>
     </a>
     <ul class="nav-links">
-      <li><a href="#funcionalidades">Funcionalidades</a></li>
+      <li><a href="#sistema">O Sistema</a></li>
+      <li><a href="#pagamentos">Pagamentos</a></li>
+      <li><a href="#assinaturas">Assinaturas</a></li>
       <li><a href="#como-funciona">Como funciona</a></li>
       <li><a href="#planos">Planos</a></li>
       <li><a href="#faq">FAQ</a></li>
-      <li><a href="#interesse" style="color:var(--gold);font-weight:700">Demonstração</a></li>
     </ul>
     <div class="nav-actions">
-      <button class="btn-ghost" onclick="openLoginModal()">Entrar</button>
-      <button class="btn-gold" onclick="openModal('Equipe', 'R$89')">Testar grátis</button>
+      <a href="/admin/login" class="btn-ghost">Entrar</a>
+      <a href="/admin/login?register=1" class="btn-gold">Testar grátis</a>
     </div>
     <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Menu">
       <span></span><span></span><span></span>
@@ -453,13 +456,14 @@
   </div>
 </nav>
 <div class="nav-drawer" id="nav-drawer">
-  <a href="#funcionalidades" onclick="closeMobileMenu()">Funcionalidades</a>
+  <a href="#sistema" onclick="closeMobileMenu()">O Sistema</a>
+  <a href="#pagamentos" onclick="closeMobileMenu()">Pagamentos</a>
+  <a href="#assinaturas" onclick="closeMobileMenu()">Assinaturas</a>
   <a href="#como-funciona" onclick="closeMobileMenu()">Como funciona</a>
   <a href="#planos" onclick="closeMobileMenu()">Planos</a>
   <a href="#faq" onclick="closeMobileMenu()">FAQ</a>
-  <a href="#interesse" onclick="closeMobileMenu()" style="color:var(--gold);font-weight:700">Demonstração Gratuita</a>
-  <a href="#" onclick="closeMobileMenu(); openLoginModal(); return false;">Entrar no painel</a>
-  <a href="#" class="drawer-cta" onclick="closeMobileMenu(); openModal('Equipe', 'R$89'); return false;">✦ Testar 14 dias grátis</a>
+  <a href="/admin/login" onclick="closeMobileMenu()">Entrar no painel</a>
+  <a href="/admin/login?register=1" class="drawer-cta" onclick="closeMobileMenu()">✦ Testar 14 dias grátis</a>
 </div>
 
 <!-- SOCIAL PROOF BAR -->
@@ -1458,7 +1462,23 @@
   // Nav scroll
   window.addEventListener('scroll',function(){var n=document.getElementById('main-nav');n.classList[window.scrollY>20?'add':'remove']('scrolled');});
   // Mobile menu
-  function toggleMobileMenu(){var h=document.getElementById('nav-hamburger'),d=document.getElementById('nav-drawer'),o=d.classList.contains('open');if(o){d.classList.remove('open');h.classList.remove('open');document.body.style.overflow='';}else{d.classList.add('open');h.classList.add('open');document.body.style.overflow='hidden';}}
+  
+// Nav link ativo ao rolar
+const navSections = ['sistema','pagamentos','assinaturas','como-funciona','planos','faq'];
+const navLinks = document.querySelectorAll('.nav-links a');
+function updateActiveNav() {
+  let current = '';
+  navSections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && window.scrollY >= el.offsetTop - 120) current = id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+}
+window.addEventListener('scroll', updateActiveNav, {passive: true});
+
+function toggleMobileMenu(){var h=document.getElementById('nav-hamburger'),d=document.getElementById('nav-drawer'),o=d.classList.contains('open');if(o){d.classList.remove('open');h.classList.remove('open');document.body.style.overflow='';}else{d.classList.add('open');h.classList.add('open');document.body.style.overflow='hidden';}}
   function closeMobileMenu(){document.getElementById('nav-hamburger').classList.remove('open');document.getElementById('nav-drawer').classList.remove('open');document.body.style.overflow='';}
   // Animações removidas — elementos sempre visíveis via CSS
   // Modal signup
