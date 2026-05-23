@@ -291,6 +291,62 @@
       .hero-stats { gap: 20px; }
       .form-row { grid-template-columns: 1fr; }
     }
+
+  /* SHOWCASE TABS */
+  .showcase-tabs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:28px}
+  .showcase-tab{background:transparent;border:1px solid rgba(255,255,255,.08);color:#888;border-radius:100px;padding:9px 20px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+  .showcase-tab:hover{border-color:rgba(201,168,76,.3);color:#C9A84C}
+  .showcase-tab.active{background:rgba(201,168,76,.12);border-color:rgba(201,168,76,.35);color:#C9A84C}
+  .showcase-screen{display:none}
+  .showcase-screen.active{display:block}
+  .mockup-browser{background:#111;border:1px solid #1e1e1e;border-radius:14px;overflow:hidden}
+  .mockup-bar{background:#0A0A0A;padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1a1a1a}
+  .mockup-dots{display:flex;gap:6px}
+  .mockup-dots span{width:10px;height:10px;border-radius:50%;background:#333}
+  .mockup-dots span:nth-child(1){background:#ff5f57}
+  .mockup-dots span:nth-child(2){background:#febc2e}
+  .mockup-dots span:nth-child(3){background:#28c840}
+  .mockup-url{background:#1a1a1a;border-radius:5px;padding:4px 12px;color:#555;font-size:11px;flex:1}
+  .mockup-body{padding:16px}
+  /* PAYMENTS */
+  .payments-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:48px}
+  .payment-card{background:#0A0A0A;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:28px}
+  .payment-card.payment-highlight{background:rgba(201,168,76,.04);border-color:rgba(201,168,76,.22)}
+  .payment-icon{font-size:28px;margin-bottom:14px}
+  .payment-title{color:var(--white);font-size:17px;font-weight:700;margin-bottom:10px}
+  .payment-desc{color:var(--gray-light);font-size:14px;line-height:1.65}
+  .payment-flow{background:#0A0A0A;border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:40px 32px}
+  .payment-flow-title{color:var(--white);font-size:20px;font-weight:700;text-align:center;margin-bottom:32px}
+  .payment-flow-steps{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:8px;margin-bottom:28px}
+  .pf-step{text-align:center;flex:1;min-width:140px;max-width:180px}
+  .pf-num{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#C9A84C,#A07830);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:#050505;font-size:16px;font-weight:900}
+  .pf-title{color:var(--white);font-size:14px;font-weight:700;margin-bottom:6px}
+  .pf-desc{color:var(--gray-light);font-size:13px;line-height:1.5}
+  .pf-arrow{color:rgba(201,168,76,.4);font-size:24px;align-self:center;padding:0 4px;margin-top:-20px}
+  .asaas-badge{display:flex;align-items:center;gap:12px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06)}
+  .asaas-logo{width:36px;height:36px;background:#009EE3;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900;flex-shrink:0}
+  .asaas-badge p{color:var(--gray-light);font-size:13px;line-height:1.5;margin:0}
+  /* SUBSCRIPTION */
+  .sub-steps{display:flex;flex-direction:column;gap:20px;margin-bottom:56px}
+  .sub-step{background:#0F0F0F;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:28px;position:relative;flex:1}
+  .sub-step-num{position:absolute;top:20px;right:20px;font-size:40px;font-weight:900;color:rgba(201,168,76,.07);line-height:1}
+  .sub-step-icon{font-size:28px;margin-bottom:14px}
+  .sub-step-title{color:var(--white);font-size:17px;font-weight:700;margin-bottom:8px}
+  .sub-step-desc{color:var(--gray-light);font-size:14px;line-height:1.6;margin-bottom:14px}
+  .sub-step-tag{display:inline-block;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.2);color:var(--gold);font-size:13px;font-weight:600;padding:5px 14px;border-radius:8px}
+  .sub-arrow{display:none;color:rgba(201,168,76,.4);font-size:28px;align-self:center}
+  .sub-counter{background:linear-gradient(135deg,rgba(201,168,76,.08),rgba(201,168,76,.03));border:1px solid rgba(201,168,76,.2);border-radius:20px;padding:40px 32px;text-align:center;margin-bottom:40px}
+  .sub-counter-inner{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:32px}
+  .sub-counter-num{font-size:clamp(2rem,5vw,3.5rem);font-weight:900;color:var(--white);letter-spacing:-2px;line-height:1}
+  .sub-counter-rev{font-size:clamp(2.5rem,6vw,4rem);font-weight:900;background:linear-gradient(135deg,#C9A84C,#F0C060);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-3px;line-height:1}
+  .sub-benefits{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+  .sub-benefit{display:flex;align-items:flex-start;gap:12px;background:#0A0A0A;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px 16px}
+  .sub-benefit-icon{font-size:20px;flex-shrink:0}
+  .sub-benefit span:last-child{color:#C8C4BC;font-size:14px;line-height:1.5}
+  @media(min-width:900px){
+    .sub-steps{flex-direction:row;align-items:stretch}
+    .sub-arrow{display:flex;align-items:center;flex-shrink:0;padding:0 4px}
+  }
   </style>
 </head>
 <body>
@@ -531,6 +587,312 @@
         </ul>
         <button class="btn-primary" onclick="openModal('Equipe', 'R$89')">Começar agora — 14 dias grátis →</button>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- SISTEMA: SHOWCASE DOS MOCKUPS -->
+<section id="sistema" class="section" style="background:var(--black-2)">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-label">O Sistema</div>
+      <h2 class="section-title">Veja o sistema<br/><span class="gold-gradient">por dentro</span></h2>
+      <p class="section-sub mx-auto" style="max-width:560px">Tudo que você precisa para gerir sua barbearia em um só lugar — bonito, rápido e feito para o dia a dia do barbeiro.</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="showcase-tabs">
+      <button class="showcase-tab active" onclick="showTab('agenda')">📅 Agenda</button>
+      <button class="showcase-tab" onclick="showTab('financeiro')">💰 Financeiro</button>
+      <button class="showcase-tab" onclick="showTab('pagamentos')">💳 Pagamentos Online</button>
+      <button class="showcase-tab" onclick="showTab('assinaturas')">⭐ Planos de Assinatura</button>
+      <button class="showcase-tab" onclick="showTab('pagina')">🌐 Página da Barbearia</button>
+    </div>
+
+    <!-- Screens -->
+    <div id="tab-agenda" class="showcase-screen active">
+      <div class="mockup-browser">
+        <div class="mockup-bar"><div class="mockup-dots"><span></span><span></span><span></span></div><div class="mockup-url">usebarberpro.com/admin/agenda</div></div>
+        <div class="mockup-body" style="padding:0">
+          <div style="background:#0A0A0A;padding:10px 14px;border-bottom:1px solid #1a1a1a;display:flex;justify-content:space-between;align-items:center">
+            <div><div style="color:#F0EEE8;font-size:15px;font-weight:700">Agenda</div><div style="color:#555;font-size:11px;margin-top:2px">22/05/2026 · 12 agendamentos hoje</div></div>
+            <div style="display:flex;gap:8px"><div style="background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:5px 12px;color:#C9A84C;font-size:11px;font-weight:700">Linha do tempo</div><div style="background:#C9A84C;border-radius:6px;padding:5px 12px;color:#0A0A0A;font-size:11px;font-weight:700">+ Agendar</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px">
+            <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><div style="width:30px;height:30px;border-radius:50%;background:rgba(201,168,76,.15);display:flex;align-items:center;justify-content:center;color:#C9A84C;font-size:11px;font-weight:700">JS</div><div style="color:#F0EEE8;font-size:12px;font-weight:700">João Silva</div></div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">08:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(34,197,94,.06);border-left:2px solid #22C55E"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Matheus Lima</div><div style="color:#555;font-size:10px;margin-top:1px">Corte Simples · 30min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 30 · Concluído</div></div></div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">09:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(59,130,246,.06);border-left:2px solid #60A5FA"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Rafael Mendes</div><div style="color:#555;font-size:10px;margin-top:1px">Corte + Barba · 60min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 55 · Confirmado</div></div></div>
+              <div style="display:flex;gap:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">10:30</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(245,158,11,.06);border-left:2px solid #FCD34D"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Lucas Carvalho</div><div style="color:#555;font-size:10px;margin-top:1px">Corte Social · 30min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 35 · Em andamento</div></div></div>
+            </div>
+            <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><div style="width:30px;height:30px;border-radius:50%;background:rgba(96,165,250,.15);display:flex;align-items:center;justify-content:center;color:#60A5FA;font-size:11px;font-weight:700">CR</div><div style="color:#F0EEE8;font-size:12px;font-weight:700">Carlos Rocha</div></div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">09:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(34,197,94,.06);border-left:2px solid #22C55E"><div style="color:#F0EEE8;font-size:11px;font-weight:700">André Batista</div><div style="color:#555;font-size:10px;margin-top:1px">Corte + Barba · 60min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 55 · Concluído</div></div></div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">11:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(245,158,11,.06);border-left:2px solid #FCD34D"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Bruno Ferreira</div><div style="color:#555;font-size:10px;margin-top:1px">Degradê · 45min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 40 · Em andamento</div></div></div>
+              <div style="display:flex;gap:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">15:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(139,92,246,.06);border-left:2px solid #C4B5FD"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Paulo Henrique</div><div style="color:#555;font-size:10px;margin-top:1px">Corte Social · 30min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 35 · Agendado</div></div></div>
+            </div>
+            <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><div style="width:30px;height:30px;border-radius:50%;background:rgba(196,181,253,.15);display:flex;align-items:center;justify-content:center;color:#C4B5FD;font-size:11px;font-weight:700">PA</div><div style="color:#F0EEE8;font-size:12px;font-weight:700">Pedro Alves</div></div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">10:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(34,197,94,.06);border-left:2px solid #22C55E"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Felipe Nunes</div><div style="color:#555;font-size:10px;margin-top:1px">Corte Simples · 30min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 30 · Concluído</div></div></div>
+              <div style="display:flex;gap:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">16:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(59,130,246,.06);border-left:2px solid #60A5FA"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Rodrigo Lima</div><div style="color:#555;font-size:10px;margin-top:1px">Corte + Barba · 60min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 55 · Confirmado</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-financeiro" class="showcase-screen">
+      <div class="mockup-browser">
+        <div class="mockup-bar"><div class="mockup-dots"><span></span><span></span><span></span></div><div class="mockup-url">usebarberpro.com/admin/financeiro</div></div>
+        <div class="mockup-body" style="padding:0">
+          <div style="background:#0A0A0A;padding:10px 14px;border-bottom:1px solid #1a1a1a;display:flex;justify-content:space-between;align-items:center">
+            <div><div style="color:#F0EEE8;font-size:15px;font-weight:700">Financeiro</div><div style="color:#555;font-size:11px;margin-top:2px">maio 2026</div></div>
+            <div style="background:#1a1a1a;border:1px solid #252525;border-radius:6px;padding:5px 12px;color:#888;font-size:11px">Exportar CSV</div>
+          </div>
+          <div style="padding:14px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#22C55E;font-size:18px;font-weight:800">R$ 12.480</div><div style="color:#555;font-size:10px;margin-top:2px">Receita total</div><div style="color:#22C55E;font-size:10px;margin-top:3px">+18% vs abril</div></div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#EF4444;font-size:18px;font-weight:800">R$ 2.150</div><div style="color:#555;font-size:10px;margin-top:2px">Despesas</div><div style="color:#EF4444;font-size:10px;margin-top:3px">+5% vs abril</div></div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#C9A84C;font-size:18px;font-weight:800">R$ 10.330</div><div style="color:#555;font-size:10px;margin-top:2px">Lucro líquido</div><div style="color:#C9A84C;font-size:10px;margin-top:3px">margem 82%</div></div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#F0EEE8;font-size:18px;font-weight:800">R$ 94</div><div style="color:#555;font-size:10px;margin-top:2px">Ticket médio</div><div style="color:#22C55E;font-size:10px;margin-top:3px">132 vendas</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:12px">
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:14px">
+                <div style="color:#555;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Transações recentes</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Corte + Barba — Rafael Mendes</div><div style="color:#555;font-size:10px;margin-top:1px">Pix · João Silva</div></div><div style="color:#22C55E;font-size:11px;font-weight:800">+R$ 55,00</div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Assinatura Ouro — Bruno F.</div><div style="color:#555;font-size:10px;margin-top:1px">Asaas · recorrente</div></div><div style="color:#22C55E;font-size:11px;font-weight:800">+R$ 250,00</div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Degradê — Gabriel Souza</div><div style="color:#555;font-size:10px;margin-top:1px">Crédito · Carlos Rocha</div></div><div style="color:#22C55E;font-size:11px;font-weight:800">+R$ 45,00</div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Aluguel da loja — maio</div><div style="color:#555;font-size:10px;margin-top:1px">Despesa · 01/05/2026</div></div><div style="color:#EF4444;font-size:11px;font-weight:800">−R$ 1.200,00</div></div>
+              </div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:14px">
+                <div style="color:#555;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Por forma de pagamento</div>
+                <div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:#888;font-size:10px">Pix</span><span style="color:#C9A84C;font-size:10px;font-weight:700">R$ 5.840</span></div><div style="background:#1a1a1a;border-radius:3px;height:5px"><div style="background:#32BCAD;width:100%;height:100%;border-radius:3px"></div></div></div>
+                <div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:#888;font-size:10px">Dinheiro</span><span style="color:#C9A84C;font-size:10px;font-weight:700">R$ 3.120</span></div><div style="background:#1a1a1a;border-radius:3px;height:5px"><div style="background:#22C55E;width:53%;height:100%;border-radius:3px"></div></div></div>
+                <div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:#888;font-size:10px">Crédito</span><span style="color:#C9A84C;font-size:10px;font-weight:700">R$ 2.100</span></div><div style="background:#1a1a1a;border-radius:3px;height:5px"><div style="background:#7C3AED;width:36%;height:100%;border-radius:3px"></div></div></div>
+                <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:#888;font-size:10px">Online (Asaas)</span><span style="color:#C9A84C;font-size:10px;font-weight:700">R$ 600</span></div><div style="background:#1a1a1a;border-radius:3px;height:5px"><div style="background:#009EE3;width:10%;height:100%;border-radius:3px"></div></div></div>
+                <div style="border-top:1px solid #1a1a1a;padding-top:10px"><div style="color:#555;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px">Meta do mês</div><div style="background:#1a1a1a;border-radius:5px;height:7px;overflow:hidden"><div style="background:linear-gradient(90deg,#C9A84C,#A07830);width:74%;height:100%;border-radius:5px"></div></div><div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:#555;font-size:9px">Meta: R$ 16.800</span><span style="color:#C9A84C;font-size:9px;font-weight:700">74% atingido</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-pagamentos" class="showcase-screen">
+      <div class="mockup-browser">
+        <div class="mockup-bar"><div class="mockup-dots"><span></span><span></span><span></span></div><div class="mockup-url">usebarberpro.com/admin/configuracoes</div></div>
+        <div class="mockup-body" style="padding:0">
+          <div style="background:#0A0A0A;padding:10px 14px;border-bottom:1px solid #1a1a1a"><div style="color:#F0EEE8;font-size:15px;font-weight:700">Pagamentos Online</div><div style="color:#555;font-size:11px;margin-top:2px">Integração Asaas — subconta vinculada automaticamente</div></div>
+          <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+                <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#22C55E;font-size:18px;font-weight:800">R$ 4.800</div><div style="color:#555;font-size:10px;margin-top:2px">Recebido online</div></div>
+                <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#C9A84C;font-size:18px;font-weight:800">47</div><div style="color:#555;font-size:10px;margin-top:2px">Transações</div></div>
+              </div>
+              <div style="background:#111;border:1px solid rgba(0,158,227,.25);border-radius:10px;padding:14px">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                  <div style="width:36px;height:36px;background:#009EE3;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900;flex-shrink:0">A</div>
+                  <div style="flex:1"><div style="color:#F0EEE8;font-size:13px;font-weight:700">Asaas</div><div style="color:#555;font-size:10px">Subconta vinculada</div></div>
+                  <div style="background:rgba(74,222,128,.12);color:#4ADE80;font-size:9px;font-weight:700;padding:2px 8px;border-radius:6px">Ativo</div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a1a1a"><span style="color:#888;font-size:11px">💳 Cartão de crédito/débito</span><div style="width:16px;height:16px;border-radius:50%;background:rgba(74,222,128,.15);display:flex;align-items:center;justify-content:center;font-size:10px">✓</div></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a1a1a"><span style="color:#888;font-size:11px">⚡ Pix instantâneo</span><div style="width:16px;height:16px;border-radius:50%;background:rgba(74,222,128,.15);display:flex;align-items:center;justify-content:center;font-size:10px">✓</div></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a1a1a"><span style="color:#888;font-size:11px">📄 Boleto bancário</span><div style="width:16px;height:16px;border-radius:50%;background:rgba(74,222,128,.15);display:flex;align-items:center;justify-content:center;font-size:10px">✓</div></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0"><span style="color:#888;font-size:11px">🔄 Cobrança recorrente automática</span><div style="width:16px;height:16px;border-radius:50%;background:rgba(74,222,128,.15);display:flex;align-items:center;justify-content:center;font-size:10px">✓</div></div>
+              </div>
+            </div>
+            <div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:14px;margin-bottom:12px">
+                <div style="color:#555;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Últimos pagamentos online</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Carlos Silva</div><div style="color:#555;font-size:10px">Corte + Barba · Pix</div></div><div style="text-align:right"><div style="color:#C9A84C;font-size:11px;font-weight:700">R$ 55,00</div><div style="color:#22C55E;font-size:10px">Pago</div></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Bruno Fernandes</div><div style="color:#555;font-size:10px">Assinatura Ouro · Cartão</div></div><div style="text-align:right"><div style="color:#C9A84C;font-size:11px;font-weight:700">R$ 250,00</div><div style="color:#22C55E;font-size:10px">Pago</div></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Diego Martins</div><div style="color:#555;font-size:10px">Degradê · Pix</div></div><div style="text-align:right"><div style="color:#C9A84C;font-size:11px;font-weight:700">R$ 40,00</div><div style="color:#22C55E;font-size:10px">Pago</div></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Rafael Costa</div><div style="color:#555;font-size:10px">Assinatura Prata · Boleto</div></div><div style="text-align:right"><div style="color:#C9A84C;font-size:11px;font-weight:700">R$ 150,00</div><div style="color:#FCD34D;font-size:10px">Aguardando</div></div></div>
+              </div>
+              <div style="background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.2);border-radius:10px;padding:14px">
+                <div style="color:#C9A84C;font-size:12px;font-weight:700;margin-bottom:6px">💡 Dinheiro na conta na hora</div>
+                <p style="color:#888;font-size:12px;line-height:1.6;margin:0">Pix confirmado em segundos. Cartão aprovado na hora. O valor cai direto na sua conta Asaas — sem intermediário, sem D+2, sem esperar.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-assinaturas" class="showcase-screen">
+      <div class="mockup-browser">
+        <div class="mockup-bar"><div class="mockup-dots"><span></span><span></span><span></span></div><div class="mockup-url">usebarberpro.com/admin/planos</div></div>
+        <div class="mockup-body" style="padding:0">
+          <div style="background:#0A0A0A;padding:10px 14px;border-bottom:1px solid #1a1a1a;display:flex;justify-content:space-between;align-items:center">
+            <div><div style="color:#F0EEE8;font-size:15px;font-weight:700">Planos de Assinatura</div><div style="color:#555;font-size:11px;margin-top:2px">4 planos · 47 assinantes · <strong style="color:#C9A84C">R$ 4.230/mês garantidos</strong></div></div>
+            <div style="background:#C9A84C;border-radius:6px;padding:5px 12px;color:#0A0A0A;font-size:11px;font-weight:700">+ Novo plano</div>
+          </div>
+          <div style="padding:14px">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#22C55E;font-size:20px;font-weight:800">47</div><div style="color:#555;font-size:10px;margin-top:2px">Assinantes ativos</div></div>
+              <div style="background:#111;border:1px solid rgba(201,168,76,.3);border-radius:10px;padding:12px"><div style="color:#C9A84C;font-size:20px;font-weight:800">R$ 4.230</div><div style="color:#555;font-size:10px;margin-top:2px">Receita mensal garantida</div></div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#F0EEE8;font-size:20px;font-weight:800">R$ 89</div><div style="color:#555;font-size:10px;margin-top:2px">Ticket médio/assinante</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px"><span style="color:#F0EEE8;font-size:12px;font-weight:700">Plano Platina</span><span style="background:rgba(74,222,128,.12);color:#4ADE80;font-size:8px;font-weight:700;padding:2px 6px;border-radius:5px">Ativo</span></div><div style="color:#C9A84C;font-size:16px;font-weight:800;margin-bottom:6px">R$ 300<span style="color:#555;font-size:9px">/mês</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);background:#1A1A1A;border-radius:6px;padding:6px;margin-bottom:8px;gap:2px"><div style="text-align:center"><div style="color:#F0EEE8;font-size:12px;font-weight:700">6</div><div style="color:#555;font-size:7px">Recorr.</div></div><div style="text-align:center;border-left:1px solid #2E2E2E;border-right:1px solid #2E2E2E"><div style="color:#F0EEE8;font-size:12px;font-weight:700">4</div><div style="color:#555;font-size:7px">Serviços</div></div><div style="text-align:center"><div style="color:#4ADE80;font-size:12px;font-weight:700">1</div><div style="color:#555;font-size:7px">Assin.</div></div></div><div style="color:#888;font-size:9px;margin-bottom:8px">Barba, Alisamento, Corte+Barba+Sobrancelha, Pintura</div><div style="display:flex;gap:4px"><div style="flex:1;background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:4px 0;text-align:center;color:#888;font-size:9px">Editar</div><div style="flex:1;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 0;text-align:center;color:#F87171;font-size:9px">Desativar</div></div></div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px"><span style="color:#F0EEE8;font-size:12px;font-weight:700">Plano Bronze</span><span style="background:rgba(74,222,128,.12);color:#4ADE80;font-size:8px;font-weight:700;padding:2px 6px;border-radius:5px">Ativo</span></div><div style="color:#C9A84C;font-size:16px;font-weight:800;margin-bottom:6px">R$ 100<span style="color:#555;font-size:9px">/mês</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);background:#1A1A1A;border-radius:6px;padding:6px;margin-bottom:8px;gap:2px"><div style="text-align:center"><div style="color:#F0EEE8;font-size:12px;font-weight:700">2</div><div style="color:#555;font-size:7px">Recorr.</div></div><div style="text-align:center;border-left:1px solid #2E2E2E;border-right:1px solid #2E2E2E"><div style="color:#F0EEE8;font-size:12px;font-weight:700">2</div><div style="color:#555;font-size:7px">Serviços</div></div><div style="text-align:center"><div style="color:#F87171;font-size:12px;font-weight:700">0</div><div style="color:#555;font-size:7px">Assin.</div></div></div><div style="color:#888;font-size:9px;margin-bottom:8px">Barba, Corte+Barba+Sobrancelha</div><div style="display:flex;gap:4px"><div style="flex:1;background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:4px 0;text-align:center;color:#888;font-size:9px">Editar</div><div style="flex:1;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 0;text-align:center;color:#F87171;font-size:9px">Desativar</div></div></div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px"><span style="color:#F0EEE8;font-size:12px;font-weight:700">Plano Prata</span><span style="background:rgba(74,222,128,.12);color:#4ADE80;font-size:8px;font-weight:700;padding:2px 6px;border-radius:5px">Ativo</span></div><div style="color:#C9A84C;font-size:16px;font-weight:800;margin-bottom:6px">R$ 150<span style="color:#555;font-size:9px">/mês</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);background:#1A1A1A;border-radius:6px;padding:6px;margin-bottom:8px;gap:2px"><div style="text-align:center"><div style="color:#F0EEE8;font-size:12px;font-weight:700">2</div><div style="color:#555;font-size:7px">Recorr.</div></div><div style="text-align:center;border-left:1px solid #2E2E2E;border-right:1px solid #2E2E2E"><div style="color:#F0EEE8;font-size:12px;font-weight:700">2</div><div style="color:#555;font-size:7px">Serviços</div></div><div style="text-align:center"><div style="color:#F87171;font-size:12px;font-weight:700">0</div><div style="color:#555;font-size:7px">Assin.</div></div></div><div style="color:#888;font-size:9px;margin-bottom:8px">Barba, Corte+Barba+Sobrancelha, Pintura</div><div style="display:flex;gap:4px"><div style="flex:1;background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:4px 0;text-align:center;color:#888;font-size:9px">Editar</div><div style="flex:1;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 0;text-align:center;color:#F87171;font-size:9px">Desativar</div></div></div>
+              <div style="background:#111;border:1px solid rgba(201,168,76,.35);border-radius:10px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px"><span style="color:#F0EEE8;font-size:12px;font-weight:700">Plano Ouro</span><span style="background:rgba(74,222,128,.12);color:#4ADE80;font-size:8px;font-weight:700;padding:2px 6px;border-radius:5px">Ativo</span></div><div style="color:#C9A84C;font-size:16px;font-weight:800;margin-bottom:6px">R$ 250<span style="color:#555;font-size:9px">/mês</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);background:#1A1A1A;border-radius:6px;padding:6px;margin-bottom:8px;gap:2px"><div style="text-align:center"><div style="color:#F0EEE8;font-size:12px;font-weight:700">4</div><div style="color:#555;font-size:7px">Recorr.</div></div><div style="text-align:center;border-left:1px solid #2E2E2E;border-right:1px solid #2E2E2E"><div style="color:#F0EEE8;font-size:12px;font-weight:700">4</div><div style="color:#555;font-size:7px">Serviços</div></div><div style="text-align:center"><div style="color:#4ADE80;font-size:12px;font-weight:700">3</div><div style="color:#555;font-size:7px">Assin.</div></div></div><div style="color:#888;font-size:9px;margin-bottom:8px">Alisamento, Barba, Corte+Barba, Pintura</div><div style="display:flex;gap:4px"><div style="flex:1;background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:4px 0;text-align:center;color:#888;font-size:9px">Editar</div><div style="flex:1;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 0;text-align:center;color:#F87171;font-size:9px">Desativar</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-pagina" class="showcase-screen">
+      <div class="mockup-browser">
+        <div class="mockup-bar"><div class="mockup-dots"><span></span><span></span><span></span></div><div class="mockup-url">usebarberpro.com/admin/pagina-cliente</div></div>
+        <div class="mockup-body" style="padding:0;display:grid;grid-template-columns:280px 1fr">
+          <div style="background:#0D0D0D;border-right:1px solid #1a1a1a;padding:14px;overflow:hidden">
+            <div style="color:#F0EEE8;font-size:13px;font-weight:700;margin-bottom:12px">🎨 Aparência</div>
+            <div style="color:#555;font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px">Cor principal</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
+              <div style="width:20px;height:20px;border-radius:50%;background:#C9A84C"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#E63946"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#2196F3"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#4CAF50"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#9C27B0;border:2px solid #fff"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#FF5722"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#00BCD4"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#FF9800"></div>
+            </div>
+            <div style="color:#555;font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px">Estilo de texto</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:10px">
+              <div style="background:rgba(201,168,76,.08);border:1px solid #C9A84C;border-radius:6px;padding:5px;text-align:center"><div style="color:#C9A84C;font-size:10px">Barber</div><div style="color:#555;font-size:7px;margin-top:1px">Moderno</div></div>
+              <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:5px;text-align:center"><div style="color:#F2F0EA;font-size:10px;font-family:Georgia,serif">Barber</div><div style="color:#555;font-size:7px;margin-top:1px">Clássico</div></div>
+              <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:5px;text-align:center"><div style="color:#F2F0EA;font-size:10px;font-weight:900">Barber</div><div style="color:#555;font-size:7px;margin-top:1px">Bold</div></div>
+              <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:5px;text-align:center"><div style="color:#F2F0EA;font-size:10px;font-style:italic">Barber</div><div style="color:#555;font-size:7px;margin-top:1px">Elegante</div></div>
+              <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:5px;text-align:center"><div style="color:#F2F0EA;font-size:10px;font-weight:200;letter-spacing:.05em">Barber</div><div style="color:#555;font-size:7px;margin-top:1px">Minimal</div></div>
+              <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:5px;text-align:center"><div style="color:#F2F0EA;font-size:9px;font-weight:900;text-transform:uppercase">Barber</div><div style="color:#555;font-size:7px;margin-top:1px">Urbano</div></div>
+            </div>
+            <div style="color:#555;font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px">Logo e banner</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px">
+              <div style="background:#1A1A1A;border:1px dashed #2E2E2E;border-radius:7px;padding:9px;text-align:center"><div style="color:#555;font-size:16px">+</div><div style="color:#555;font-size:8px;margin-top:2px">Logo</div></div>
+              <div style="background:#1A1A1A;border:1px dashed #2E2E2E;border-radius:7px;padding:9px;text-align:center"><div style="color:#555;font-size:16px">+</div><div style="color:#555;font-size:8px;margin-top:2px">Banner</div></div>
+            </div>
+            <div style="background:#C9A84C;border-radius:7px;padding:9px;text-align:center;color:#0A0A0A;font-size:10px;font-weight:700">💾 Salvar aparência</div>
+          </div>
+          <div style="background:#1a1a2e;overflow:hidden">
+            <div style="background:rgba(10,10,10,.93);padding:0 12px;height:40px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(155,48,255,.15)">
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:26px;height:26px;border-radius:50%;background:#0d0d1e;border:2px solid #9C27B0;display:flex;align-items:center;justify-content:center;color:#9C27B0;font-size:10px;font-weight:900">M</div><span style="color:#F0EEE8;font-size:12px;font-weight:700">Mogiana</span></div>
+              <div style="background:#9C27B0;color:rgba(10,10,10,.9);font-size:9px;font-weight:800;border:none;border-radius:50px;padding:4px 11px">Entrar</div>
+            </div>
+            <div style="background:#1a1a2e;padding:16px 12px 12px;text-align:center;border-bottom:1px solid rgba(155,48,255,.1)">
+              <div style="width:48px;height:48px;border-radius:10px;background:#0d0d1e;border:2px solid #9C27B0;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;color:#9C27B0;font-size:18px;font-weight:900">M</div>
+              <div style="color:#F0EEE8;font-size:15px;font-weight:900">Mogiana</div>
+              <div style="display:inline-flex;align-items:center;gap:4px;background:rgba(20,20,20,.8);border:1px solid rgba(155,48,255,.2);border-radius:50px;padding:3px 9px;margin:5px 0"><div style="width:5px;height:5px;border-radius:50%;background:#EF4444"></div><span style="color:#F0EEE8;font-size:9px;opacity:.8">Fechado · abre às 09:00</span></div>
+              <div style="color:#F0EEE8;font-size:9px;opacity:.6;margin-bottom:9px">Rua Fernando Faleiros Lima 28</div>
+              <div style="background:#9C27B0;color:rgba(10,10,10,.9);font-size:10px;font-weight:800;border:none;border-radius:50px;padding:8px 20px;display:inline-block">Agendar Horário</div>
+            </div>
+            <div style="display:flex;background:rgba(10,10,10,.5);border-bottom:1px solid rgba(155,48,255,.15)">
+              <div style="flex:1;padding:7px 0;text-align:center;font-size:8px;font-weight:800;color:#F0EEE8;border-bottom:2px solid #9C27B0">Serviços</div>
+              <div style="flex:1;padding:7px 0;text-align:center;font-size:8px;font-weight:800;color:#888880;border-bottom:2px solid transparent">Produtos</div>
+              <div style="flex:1;padding:7px 0;text-align:center;font-size:8px;font-weight:800;color:#888880;border-bottom:2px solid transparent">Assinaturas</div>
+              <div style="flex:1;padding:7px 0;text-align:center;font-size:8px;font-weight:800;color:#888880;border-bottom:2px solid transparent">Como funciona</div>
+            </div>
+            <div style="padding:10px 10px 6px">
+              <div style="color:#F0EEE8;font-size:10px;font-weight:700;margin-bottom:7px">Serviços</div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+                <div style="background:rgb(26,32,53);border:1px solid rgba(155,48,255,.15);border-radius:8px;overflow:hidden"><div style="height:40px;background:linear-gradient(135deg,#1e1e3e,#2a1a3a);display:flex;align-items:center;justify-content:center;color:#9C27B0;font-size:16px">✂</div><div style="padding:6px"><div style="color:#F0EEE8;font-size:8px;font-weight:700">Corte+Barba+Sobrancelha</div><div style="color:#888880;font-size:7px;margin:2px 0;filter:blur(3px)">R$ ••,00</div><div style="background:#9C27B0;color:rgba(10,10,10,.9);font-size:7px;font-weight:800;border-radius:4px;padding:3px 0;width:100%;margin-top:4px;text-align:center">🔓 Entrar para ver</div></div></div>
+                <div style="background:rgb(26,32,53);border:1px solid rgba(155,48,255,.15);border-radius:8px;overflow:hidden"><div style="height:40px;background:linear-gradient(135deg,#1e1e3e,#2a1a3a);display:flex;align-items:center;justify-content:center;color:#9C27B0;font-size:16px">💈</div><div style="padding:6px"><div style="color:#F0EEE8;font-size:8px;font-weight:700">Barba</div><div style="color:#888880;font-size:7px;margin:2px 0;filter:blur(3px)">R$ ••,00</div><div style="background:#9C27B0;color:rgba(10,10,10,.9);font-size:7px;font-weight:800;border-radius:4px;padding:3px 0;width:100%;margin-top:4px;text-align:center">🔓 Entrar para ver</div></div></div>
+                <div style="background:rgb(26,32,53);border:1px solid rgba(155,48,255,.15);border-radius:8px;overflow:hidden"><div style="height:40px;background:linear-gradient(135deg,#1e1e3e,#2a1a3a);display:flex;align-items:center;justify-content:center;color:#9C27B0;font-size:16px">🎨</div><div style="padding:6px"><div style="color:#F0EEE8;font-size:8px;font-weight:700">Pintura de cabelo</div><div style="color:#888880;font-size:7px;margin:2px 0;filter:blur(3px)">R$ ••,00</div><div style="background:#9C27B0;color:rgba(10,10,10,.9);font-size:7px;font-weight:800;border-radius:4px;padding:3px 0;width:100%;margin-top:4px;text-align:center">🔓 Entrar para ver</div></div></div>
+              </div>
+            </div>
+            <div style="text-align:center;padding:8px;border-top:1px solid rgba(155,48,255,.1)"><span style="color:#555;font-size:9px">Powered by </span><span style="color:#9C27B0;font-size:9px;font-weight:800">Barber Pro</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PAGAMENTOS ONLINE -->
+<section id="pagamentos" class="section">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-label">Pagamentos Online</div>
+      <h2 class="section-title">Sem maquininha.<br/><span class="gold-gradient">Dinheiro na conta. Na hora.</span></h2>
+      <p class="section-sub mx-auto" style="max-width:560px">Integrado com o <strong style="color:var(--gold)">Asaas</strong> — a plataforma financeira mais completa do Brasil — o Barber Pro transforma sua página em uma máquina de receber dinheiro 24 horas por dia.</p>
+    </div>
+    <div class="payments-grid">
+      <div class="payment-card payment-highlight">
+        <div class="payment-icon">💰</div>
+        <h3 class="payment-title">Dinheiro na conta na hora</h3>
+        <p class="payment-desc">Pix confirmado em segundos. Cartão aprovado na hora. O valor cai direto na sua conta — sem intermediário, sem D+2, sem esperar.</p>
+      </div>
+      <div class="payment-card">
+        <div class="payment-icon">💳</div>
+        <h3 class="payment-title">Seus clientes pagam como quiserem</h3>
+        <p class="payment-desc">Pix, cartão de crédito, débito ou boleto — o cliente escolhe na hora de agendar. Você não precisa ter maquininha, não precisa cobrar.</p>
+      </div>
+      <div class="payment-card">
+        <div class="payment-icon">🔄</div>
+        <h3 class="payment-title">Zero inadimplência nas assinaturas</h3>
+        <p class="payment-desc">A cobrança dos planos mensais é automática. Se o cartão recusar, o sistema tenta de novo e notifica o cliente. Você não persegue ninguém.</p>
+      </div>
+      <div class="payment-card">
+        <div class="payment-icon">📊</div>
+        <h3 class="payment-title">Tudo registrado automaticamente</h3>
+        <p class="payment-desc">Cada pagamento vira uma linha no seu financeiro. Sem anotação no caderno, sem conferir extrato. O relatório fecha sozinho.</p>
+      </div>
+    </div>
+    <!-- Flow -->
+    <div class="payment-flow">
+      <div class="payment-flow-title">Do celular do cliente para a sua conta em segundos</div>
+      <div class="payment-flow-steps">
+        <div class="pf-step"><div class="pf-num">1</div><div class="pf-title">Cliente acessa sua página</div><div class="pf-desc">Entra no link da sua barbearia, vê os serviços e escolhe.</div></div>
+        <div class="pf-arrow">→</div>
+        <div class="pf-step"><div class="pf-num">2</div><div class="pf-title">Escolhe como pagar</div><div class="pf-desc">Pix, cartão ou boleto. Tela de pagamento direto no celular.</div></div>
+        <div class="pf-arrow">→</div>
+        <div class="pf-step"><div class="pf-num">3</div><div class="pf-title">Pagamento confirmado</div><div class="pf-desc">Você recebe a notificação e o agendamento é confirmado.</div></div>
+        <div class="pf-arrow">→</div>
+        <div class="pf-step"><div class="pf-num">4</div><div class="pf-title">Dinheiro na sua conta</div><div class="pf-desc">O valor cai direto na sua conta Asaas, sem intermediário.</div></div>
+      </div>
+      <div class="asaas-badge">
+        <div class="asaas-logo">A</div>
+        <p>Processado pelo <strong>Asaas</strong> — plataforma regulamentada pelo Banco Central, com subconta criada para sua barbearia em minutos.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ASSINATURAS RECORRENTES -->
+<section id="assinaturas" class="section" style="background:var(--black-2)">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-label">Programa de Assinatura</div>
+      <h2 class="section-title">Pare de acordar sem saber<br/><span class="gold-gradient">quanto vai entrar.</span></h2>
+      <p class="section-sub mx-auto" style="max-width:620px">Com o programa de assinatura do Barber Pro, você transforma clientes avulsos em <strong style="color:var(--white)">receita garantida todo mês.</strong> O dinheiro cai na conta antes de você abrir a porta.</p>
+    </div>
+    <div class="sub-steps">
+      <div class="sub-step"><div class="sub-step-num">01</div><div class="sub-step-icon">📝</div><h3 class="sub-step-title">Você monta o plano em 2 minutos</h3><p class="sub-step-desc">Dá o nome, escolhe os serviços incluídos e define o preço. O sistema calcula o desconto ideal automaticamente.</p><span class="sub-step-tag">Ex: Plano Corte + Barba — R$ 120/mês</span></div>
+      <div class="sub-arrow">→</div>
+      <div class="sub-step"><div class="sub-step-num">02</div><div class="sub-step-icon">📲</div><h3 class="sub-step-title">O cliente assina pelo celular</h3><p class="sub-step-desc">Acessa a página da sua barbearia, escolhe o plano e paga com Pix, cartão ou boleto — sem você precisar cobrar.</p><span class="sub-step-tag">Pagamento 100% online via Asaas</span></div>
+      <div class="sub-arrow">→</div>
+      <div class="sub-step"><div class="sub-step-num">03</div><div class="sub-step-icon">💸</div><h3 class="sub-step-title">Dinheiro na conta. Todo mês. Automático.</h3><p class="sub-step-desc">Na data certa, o sistema cobra o cliente sem você precisar fazer nada. Você acorda com a receita já garantida.</p><span class="sub-step-tag">Notificação em tempo real no painel</span></div>
+    </div>
+    <!-- Counter -->
+    <div class="sub-counter">
+      <div class="sub-counter-inner">
+        <div style="text-align:center"><div style="color:var(--gray-light);font-size:14px;margin-bottom:8px">Com apenas</div><div class="sub-counter-num" id="sub-count">0</div><div style="color:var(--gray-light);font-size:15px;margin-top:4px">assinantes</div></div>
+        <div style="color:var(--gold);font-size:40px;font-weight:900;align-self:center">→</div>
+        <div style="text-align:center"><div style="color:var(--gray-light);font-size:14px;margin-bottom:8px">você garante</div><div class="sub-counter-rev" id="sub-rev">R$ 0</div><div style="color:var(--gray-light);font-size:15px;margin-top:4px">todo mês, no automático</div></div>
+      </div>
+      <p style="color:var(--gray);font-size:13px;margin-top:20px;text-align:center;line-height:1.6">35 assinantes × R$ 120/mês — antes mesmo de atender o primeiro cliente do dia. <span style="color:var(--gold);font-style:italic">Isso é receita previsível, não sorte.</span></p>
+    </div>
+    <!-- Benefits grid -->
+    <div class="sub-benefits">
+      <div class="sub-benefit"><span class="sub-benefit-icon">📅</span><span>Corte garantido todo mês, sem o cliente precisar lembrar</span></div>
+      <div class="sub-benefit"><span class="sub-benefit-icon">📲</span><span>Cliente agenda pelo celular, você só aparece e trabalha</span></div>
+      <div class="sub-benefit"><span class="sub-benefit-icon">💸</span><span>Receita previsível mesmo em semanas paradas</span></div>
+      <div class="sub-benefit"><span class="sub-benefit-icon">🔄</span><span>Cobrança automática — zero inadimplência manual</span></div>
+      <div class="sub-benefit"><span class="sub-benefit-icon">📊</span><span>Acompanhe assinantes e receita mensal em tempo real</span></div>
+      <div class="sub-benefit"><span class="sub-benefit-icon">❌</span><span>Sem contrato. O cliente cancela quando quiser</span></div>
     </div>
   </div>
 </section>
@@ -1187,6 +1549,44 @@
     send({message:reason instanceof Error?reason.message:String(reason),stack:reason instanceof Error?reason.stack:undefined});
   });
 })();
+</script>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.showcase-screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.showcase-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  document.querySelectorAll('.showcase-tab').forEach(t => {
+    if (t.getAttribute('onclick') === "showTab('" + id + "')") t.classList.add('active');
+  });
+}
+
+// Contador animado de assinantes e receita
+function animateCounter(el, target, duration, prefix, suffix) {
+  let start = null;
+  function step(ts) {
+    if (!start) start = ts;
+    const progress = Math.min((ts - start) / duration, 1);
+    const val = Math.floor(progress * target);
+    el.textContent = prefix + val.toLocaleString('pt-BR') + suffix;
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+const counterObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const countEl = document.getElementById('sub-count');
+      const revEl = document.getElementById('sub-rev');
+      if (countEl) animateCounter(countEl, 35, 1600, '', '');
+      if (revEl) animateCounter(revEl, 4200, 1800, 'R$ ', '');
+      counterObs.disconnect();
+    }
+  });
+}, { threshold: 0.3 });
+const counterSection = document.getElementById('sub-count');
+if (counterSection) counterObs.observe(counterSection.closest('section'));
 </script>
 </body>
 </html>
