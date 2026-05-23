@@ -6550,19 +6550,54 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
+  // ─── Helpers OAuth Google ────────────────────────────────────────────────────
+  const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? "";
+  const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
+
+  function getGoogleAuthUrl(redirectUri: string, state: string): string {
+    const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    url.searchParams.set("client_id", GOOGLE_CLIENT_ID);
+    url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "openid email profile");
+    url.searchParams.set("state", state);
+    url.searchParams.set("access_type", "online");
+    url.searchParams.set("prompt", "select_account");
+    return url.toString();
+  }
+
+  async function exchangeGoogleCode(code: string, redirectUri: string): Promise<{ email: string; name: string; sub: string; picture?: string }> {
+    // Trocar code por access_token
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
+      }).toString(),
+    });
+    const tokenData = await tokenRes.json() as any;
+    if (!tokenData.access_token) throw new Error("Token não retornado: " + JSON.stringify(tokenData));
+
+    // Buscar informações do usuário
+    const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    const user = await userRes.json() as any;
+    if (!user.email) throw new Error("E-mail não retornado pelo Google.");
+    return { email: user.email, name: user.name ?? user.email, sub: user.sub, picture: user.picture };
+  }
+
   // GET /admin/google-signup — inicia o fluxo OAuth do Google para cadastro de nova barbearia
   app.get("/admin/google-signup", (req: Request, res: Response) => {
-    const appId = process.env.VITE_APP_ID ?? "";
-    const portalUrl = process.env.VITE_OAUTH_PORTAL_URL ?? "https://manus.im";
+    if (!GOOGLE_CLIENT_ID) return res.redirect("/?signup_error=1&msg=" + encodeURIComponent("Google OAuth não configurado."));
     const baseUrl = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.host}`;
     const redirectUri = `${baseUrl}/admin/google-signup-callback`;
-    const state = Buffer.from(redirectUri).toString("base64");
-    const url = new URL(`${portalUrl}/app-auth`);
-    url.searchParams.set("appId", appId);
-    url.searchParams.set("redirectUri", redirectUri);
-    url.searchParams.set("state", state);
-    url.searchParams.set("type", "signIn");
-    res.redirect(url.toString());
+    const state = Buffer.from(redirectUri).toString("base64url");
+    res.redirect(getGoogleAuthUrl(redirectUri, state));
   });
 
   // GET /admin/google-signup-callback — recebe o code e redireciona para landing com dados pré-preenchidos
@@ -6570,15 +6605,13 @@ export function registerAdminRoutes(app: Express): void {
     try {
       const code = req.query.code as string;
       const state = req.query.state as string;
-      if (!code || !state) return res.redirect("/?signup_error=1");
-      const { sdk } = await import("./_core/sdk.js");
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-      if (!userInfo.email) return res.redirect("/?signup_error=1");
+      if (!code) return res.redirect("/?signup_error=1");
+      const baseUrl = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.host}`;
+      const redirectUri = `${baseUrl}/admin/google-signup-callback`;
+      const userInfo = await exchangeGoogleCode(code, redirectUri);
       // Verificar se já existe conta com este e-mail
       const existingBarber = await db.getBarberByEmail(userInfo.email);
       if (existingBarber) {
-        // Já tem conta — redirecionar para login com aviso
         return res.redirect(`/admin/login?info=already_exists&email=${encodeURIComponent(userInfo.email)}`);
       }
       // Redirecionar para landing com dados do Google para pré-preencher o modal
@@ -6586,7 +6619,7 @@ export function registerAdminRoutes(app: Express): void {
         google_signup: "1",
         name: userInfo.name ?? "",
         email: userInfo.email,
-        openId: (userInfo as any).openId ?? "",
+        openId: userInfo.sub ?? "",
       });
       res.redirect(`/?${params.toString()}#cadastro`);
     } catch (err) {
@@ -6595,41 +6628,28 @@ export function registerAdminRoutes(app: Express): void {
     }
   });
 
-  // GET /admin/google-login — inicia o fluxo OAuth do Google via Manus
+  // GET /admin/google-login — inicia o fluxo OAuth do Google diretamente
   app.get("/admin/google-login", (req: Request, res: Response) => {
-    const appId = process.env.VITE_APP_ID ?? "";
-    const portalUrl = process.env.VITE_OAUTH_PORTAL_URL ?? "https://manus.im";
+    if (!GOOGLE_CLIENT_ID) return res.redirect("/admin/login?error=1&msg=" + encodeURIComponent("Google OAuth não configurado."));
     const baseUrl = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.host}`;
     const redirectUri = `${baseUrl}/admin/google-callback`;
-    const state = Buffer.from(redirectUri).toString("base64");
-    const url = new URL(`${portalUrl}/app-auth`);
-    url.searchParams.set("appId", appId);
-    url.searchParams.set("redirectUri", redirectUri);
-    url.searchParams.set("state", state);
-    url.searchParams.set("type", "signIn");
-    res.redirect(url.toString());
+    const state = Buffer.from(redirectUri).toString("base64url");
+    res.redirect(getGoogleAuthUrl(redirectUri, state));
   });
 
   // GET /admin/google-callback — recebe o code do OAuth e faz login
   app.get("/admin/google-callback", async (req: Request, res: Response) => {
     try {
       const code = req.query.code as string;
-      const state = req.query.state as string;
-      if (!code || !state) return res.redirect("/admin/login?error=1");
+      if (!code) return res.redirect("/admin/login?error=1");
+      const baseUrl = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.host}`;
+      const redirectUri = `${baseUrl}/admin/google-callback`;
+      const userInfo = await exchangeGoogleCode(code, redirectUri);
 
-      // Trocar code por token via SDK do Manus
-      const { sdk } = await import("./_core/sdk.js");
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-
-      if (!userInfo.email) {
-        return res.redirect("/admin/login?error=1&msg=" + encodeURIComponent("E-mail não retornado pelo Google."));
-      }
-
-      // Buscar barbeiro pelo email
+      // Buscar barbeiro pelo email ou pelo googleId (sub do Google)
       let barber = await db.getBarberByEmail(userInfo.email);
-      if (!barber && userInfo.openId) {
-        barber = await db.getBarberByGoogleId(userInfo.openId);
+      if (!barber && userInfo.sub) {
+        barber = await db.getBarberByGoogleId(userInfo.sub);
       }
 
       if (!barber || !barber.isActive) {
@@ -6638,8 +6658,8 @@ export function registerAdminRoutes(app: Express): void {
       }
 
       // Vincular googleId se ainda não estiver vinculado
-      if (userInfo.openId && !(barber as any).googleId) {
-        await db.updateBarber(barber.id, { googleId: userInfo.openId } as any);
+      if (userInfo.sub && !(barber as any).googleId) {
+        await db.updateBarber(barber.id, { googleId: userInfo.sub } as any);
       }
 
       const token = encodeSession(barber.id, barber.role);
