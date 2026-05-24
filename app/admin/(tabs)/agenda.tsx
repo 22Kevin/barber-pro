@@ -349,7 +349,6 @@ export default function AgendaScreen() {
 
   function handleStatusChange(id: number, status: string) {
     if (status === "completed") {
-      // Ao concluir, primeiro atualiza o status e depois abre o modal de pagamento
       Alert.alert("Alterar Status", `Mudar para "${STATUS_CONFIG[status]?.label}"?`, [
         { text: "Cancelar", style: "cancel" },
         {
@@ -357,7 +356,6 @@ export default function AgendaScreen() {
           onPress: () => {
             updateMutation.mutate({ id, status: status as any }, {
               onSuccess: () => {
-                // Busca o agendamento nos dados atuais para abrir o modal com preço correto
                 const allApts = [
                   ...(appointmentsQuery.data ?? []),
                   ...(allAppointmentsQuery.data ?? []),
@@ -366,13 +364,17 @@ export default function AgendaScreen() {
                 if (apt) {
                   const service = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
                   const client = (clientsQuery.data ?? []).find((c: any) => c.id === apt.clientId);
+                  // Calcular preço — tentar service.price, depois apt.servicePrice, depois 0
+                  const rawPrice = service?.price ?? apt.servicePrice ?? apt.price ?? "0";
+                  const numericPrice = parseFloat(String(rawPrice));
+                  const safePrice = isNaN(numericPrice) ? "0" : String(numericPrice);
                   setPaymentAppointment({
                     ...apt,
                     clientName: client?.name ?? apt.clientName,
                     clientPhone: client?.phone ?? apt.clientPhone,
-                    serviceName: service?.name ?? apt.serviceName ?? "Serviço",
-                    servicePrice: service?.price ?? apt.servicePrice ?? "0",
-                    serviceId: apt.serviceId,
+                    serviceName: service?.name ?? apt.serviceName ?? apt.serviceNames ?? "Serviço",
+                    servicePrice: safePrice,
+                    serviceId: apt.serviceId ?? service?.id ?? 0,
                   });
                   setShowDetailModal(false);
                   setShowPaymentModal(true);
@@ -666,13 +668,16 @@ export default function AgendaScreen() {
                   if (apt.status === "completed") {
                     const svc = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
                     const cli = (clientsQuery.data ?? []).find((c: any) => c.id === apt.clientId);
+                    const rawPrice = svc?.price ?? apt.servicePrice ?? apt.price ?? "0";
+                    const numericPrice = parseFloat(String(rawPrice));
+                    const safePrice = isNaN(numericPrice) ? "0" : String(numericPrice);
                     setPaymentAppointment({
                       ...apt,
                       clientName: cli?.name ?? apt.clientName,
                       clientPhone: cli?.phone ?? apt.clientPhone,
-                      serviceName: svc?.name ?? apt.serviceName ?? "Serviço",
-                      servicePrice: svc?.price ?? apt.servicePrice ?? "0",
-                      serviceId: apt.serviceId,
+                      serviceName: svc?.name ?? apt.serviceName ?? apt.serviceNames ?? "Serviço",
+                      servicePrice: safePrice,
+                      serviceId: apt.serviceId ?? svc?.id ?? 0,
                     });
                     setShowPaymentModal(true);
                   } else {
@@ -775,7 +780,10 @@ export default function AgendaScreen() {
                             if (apt.status === "completed") {
                               const svc = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
                               const cli = (clientsQuery.data ?? []).find((c: any) => c.id === apt.clientId);
-                              setPaymentAppointment({ ...apt, clientName: cli?.name ?? apt.clientName, clientPhone: cli?.phone ?? apt.clientPhone, serviceName: svc?.name ?? apt.serviceName ?? "Serviço", servicePrice: svc?.price ?? apt.servicePrice ?? "0" });
+                              const rawPrice = svc?.price ?? apt.servicePrice ?? apt.price ?? "0";
+                              const numericPrice = parseFloat(String(rawPrice));
+                              const safePrice = isNaN(numericPrice) ? "0" : String(numericPrice);
+                              setPaymentAppointment({ ...apt, clientName: cli?.name ?? apt.clientName, clientPhone: cli?.phone ?? apt.clientPhone, serviceName: svc?.name ?? apt.serviceName ?? apt.serviceNames ?? "Serviço", servicePrice: safePrice, serviceId: apt.serviceId ?? svc?.id ?? 0 });
                               setShowPaymentModal(true);
                             } else {
                               setSelectedAppointment({ ...apt });

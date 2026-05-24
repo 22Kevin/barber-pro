@@ -560,7 +560,8 @@ export const appRouter = router({
         notes: z.string().optional().nullable(),
       }))
       .mutation(async ({ input }) => {
-        const total = input.servicePrice.toFixed(2);
+        const numPrice = isNaN(input.servicePrice) ? 0 : input.servicePrice;
+        const total = numPrice.toFixed(2);
         const saleId = await db.createSale(
           {
             clientId: input.clientId ?? null,
