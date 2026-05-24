@@ -7572,11 +7572,11 @@ export function registerAdminRoutes(app: Express): void {
           }
           paymentData = {
             onlinePaid,
-            amount: svc ? String(svc.price) : "0",
+            amount: svc ? String(svc.price) : (appt as any)?.servicePrice ? String((appt as any).servicePrice) : "0",
             paidAmount: onlineAmount,
             billingType: onlineBillingType,
-            serviceId: svc?.id,
-            serviceName: svc?.name ?? "Servico",
+            serviceId: svc?.id ?? appt?.serviceId ?? 0,
+            serviceName: svc?.name ?? (appt as any)?.serviceName ?? (appt as any)?.serviceNames ?? "Serviço",
             clientId: client?.id,
             clientName: client?.name ?? "Cliente",
             clientPhone: client?.phone ?? "",
@@ -7603,21 +7603,26 @@ export function registerAdminRoutes(app: Express): void {
       const session = (req as any).adminSession as { barberId: number };
       const barber = await db.getBarberById(session.barberId);
       const { appointmentId, serviceId, serviceName, clientId, barberId, amount, paymentMethod } = req.body;
+      const numAmount = parseFloat(String(amount));
+      const safeAmount = isNaN(numAmount) || numAmount <= 0 ? "0.00" : numAmount.toFixed(2);
+      const safeServiceId = parseInt(serviceId) || 0;
       const saleId = await db.createSale({
         barberId: parseInt(barberId) || session.barberId,
-        clientId: parseInt(clientId),
+        clientId: parseInt(clientId) || null,
+        appointmentId: parseInt(appointmentId) || null,
         paymentMethod: paymentMethod || "cash",
-        totalAmount: String(amount),
-        status: "completed",
+        paymentStatus: "paid",
+        subtotal: safeAmount,
+        discount: "0",
+        total: safeAmount,
         notes: "Venda gerada automaticamente ao concluir agendamento #" + appointmentId,
-        tenantId: barber?.tenantId ?? null,
       } as any, [{
         itemType: "service",
-        itemId: parseInt(serviceId),
-        itemName: serviceName,
+        itemId: safeServiceId,
+        itemName: serviceName || "Serviço",
         quantity: 1,
-        unitPrice: String(amount),
-        total: String(amount),
+        unitPrice: safeAmount,
+        total: safeAmount,
       }]);
       res.json({ ok: true, saleId });
     } catch (e: any) {
