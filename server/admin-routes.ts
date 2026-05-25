@@ -2235,7 +2235,7 @@ async function renderAgenda(req: Request, res: Response) {
       <div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
           <div style="width:4px;height:30px;background:var(--gold);border-radius:2px;flex-shrink:0;"></div>
-          <h1 style="font-size:28px;font-weight:900;color:var(--text);margin:0;letter-spacing:-0.5px;">${fmtDate(dateStr)}</h1>
+          <h1 id="agenda-date-title" style="font-size:28px;font-weight:900;color:var(--text);margin:0;letter-spacing:-0.5px;">${fmtDate(dateStr)}</h1>
         </div>
         <p style="font-size:13px;color:var(--muted);margin:0 0 0 14px;">${appointments.length === 0 ? 'Nenhum agendamento' : appointments.length + ' agendamento' + (appointments.length !== 1 ? 's' : '')}${filterSearch || filterBarberId ? " — filtrado" : ""}</p>
       </div>
@@ -2919,11 +2919,11 @@ async function renderAgenda(req: Request, res: Response) {
     }
 
     function showSpinner() {
+      // Em vez de limpar o conteúdo, só aplica opacity para não piscar
       var vc = document.getElementById('viewCards');
       var vt = document.getElementById('viewTimeline');
-      var spinner = '<div style="padding:48px;text-align:center;color:var(--muted)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><div style="margin-top:10px;font-size:13px">Carregando...</div></div>';
-      if (vc) vc.innerHTML = spinner;
-      if (vt) vt.innerHTML = spinner;
+      if (vc) { vc.style.transition = 'opacity 0.15s'; vc.style.opacity = '0.35'; vc.style.pointerEvents = 'none'; }
+      if (vt) { vt.style.transition = 'opacity 0.15s'; vt.style.opacity = '0.35'; vt.style.pointerEvents = 'none'; }
     }
 
     function renderCards(appointments, dateStr) {
@@ -2931,16 +2931,14 @@ async function renderAgenda(req: Request, res: Response) {
       var vt = document.getElementById('viewTimeline');
       if (!vc) return;
 
-      // Atualizar título da data
-      var titles = document.querySelectorAll('[data-agenda-date]');
-      titles.forEach(function(el) { el.textContent = fmtDatePT(dateStr); });
+      // Atualizar título da página (ex: "25/05/2026" no topo)
+      var parts = dateStr.split('-');
+      var agendaTitle = document.getElementById('agenda-date-title');
+      if (agendaTitle) agendaTitle.textContent = parts[2] + '/' + parts[1] + '/' + parts[0];
 
-      // Atualizar data no header principal
-      var headerDate = document.querySelector('.page-title');
-      if (headerDate) {
-        var parts = dateStr.split('-');
-        headerDate.textContent = parts[2] + '/' + parts[1] + '/' + parts[0];
-      }
+      // Atualizar subtítulo "Nenhum agendamento" ou contagem
+      var pageSub = document.querySelector('.page-subtitle');
+      if (pageSub) pageSub.textContent = appointments.length === 0 ? 'Nenhum agendamento' : appointments.length + ' agendamento' + (appointments.length > 1 ? 's' : '');
 
       if (appointments.length === 0) {
         var empty = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:60px 40px;text-align:center;color:var(--muted);">' +
@@ -2973,11 +2971,21 @@ async function renderAgenda(req: Request, res: Response) {
           '</div>';
       });
       cardsHtml += '</div>';
-      if (vc) vc.innerHTML = cardsHtml;
+      if (vc) {
+        vc.innerHTML = cardsHtml;
+        vc.style.opacity = '0.35';
+        requestAnimationFrame(function() {
+          vc.style.transition = 'opacity 0.2s';
+          vc.style.opacity = '1';
+          vc.style.pointerEvents = '';
+        });
+      }
 
-      // Timeline simples (só mostra contagem)
+      // Timeline usa mesma view por enquanto
       if (vt) {
-        vt.innerHTML = cardsHtml; // usa mesma view por enquanto
+        vt.innerHTML = cardsHtml;
+        vt.style.opacity = '1';
+        vt.style.pointerEvents = '';
       }
     }
 
