@@ -11620,11 +11620,14 @@ export function registerAdminRoutes(app: Express): void {
 
     // Modo envio: manda o e-mail para o barbeiro logado
     if (send && barber?.email) {
+      console.log(`[email-preview] Tentando enviar template '${template}' para ${barber.email}`);
       try {
         await sendEmail({ to: barber.email, subject: current.subject, html: current.html });
+        console.log(`[email-preview] E-mail enviado com sucesso para ${barber.email}`);
         res.send(`<html><body style="background:#0A0A0A;color:#4ADE80;font-family:sans-serif;padding:40px;text-align:center"><h2>✅ E-mail enviado para ${barber.email}</h2><a href="/admin/email-preview?template=${template}" style="color:#C9A84C">← Voltar ao preview</a></body></html>`);
         return;
       } catch (e: any) {
+        console.error(`[email-preview] Erro ao enviar:`, e.message);
         res.send(`<html><body style="background:#0A0A0A;color:#F87171;font-family:sans-serif;padding:40px;text-align:center"><h2>❌ Erro ao enviar: ${e.message}</h2><a href="/admin/email-preview?template=${template}" style="color:#C9A84C">← Voltar ao preview</a></body></html>`);
         return;
       }
