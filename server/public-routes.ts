@@ -4529,6 +4529,7 @@ export function registerPublicRoutes(app: Express): void {
   });
 
   // POST /pub-api/order-product — Encomenda de produto individual (sem estoque)
+  app.post("/pub-api/order-product", async (req: Request, res: Response) => {
     try {
       const { productId, quantity, slug } = req.body;
       if (!productId || !quantity || !slug) { res.status(400).json({ error: "Dados incompletos" }); return; }
