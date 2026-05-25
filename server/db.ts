@@ -2238,13 +2238,33 @@ export async function saveClientConsent(data: {
   const db = await getDb();
   if (!db) return;
   try {
-    await db.execute(sql`
-      INSERT INTO client_consents (client_id, tenant_id, consent_type, terms_version, ip_address, user_agent)
-      VALUES (${data.clientId}, ${data.tenantId}, ${data.consentType ?? "lgpd_contact_sharing"}, ${data.termsVersion ?? "1.0"}, ${data.ipAddress ?? null}, ${data.userAgent ?? null})
-      ON DUPLICATE KEY UPDATE consented_at = CURRENT_TIMESTAMP, ip_address = VALUES(ip_address), user_agent = VALUES(user_agent)
+    const consentType = data.consentType ?? "lgpd_contact_sharing";
+    // Verificar se já existe registro para evitar duplicata
+    const existing = await db.execute(sql`
+      SELECT id FROM client_consents
+      WHERE "clientId" = ${data.clientId}
+        AND "tenantId" = ${data.tenantId}
+        AND "consentType" = ${consentType}
+      LIMIT 1
     `);
+    const rows = Array.isArray(existing) ? (existing[0] as any[]) : ((existing as any)?.rows ?? []);
+    if (rows.length > 0) {
+      // Atualizar registro existente
+      await db.execute(sql`
+        UPDATE client_consents
+        SET "updatedAt" = CURRENT_TIMESTAMP
+        WHERE "clientId" = ${data.clientId}
+          AND "tenantId" = ${data.tenantId}
+          AND "consentType" = ${consentType}
+      `);
+    } else {
+      // Inserir novo registro
+      await db.execute(sql`
+        INSERT INTO client_consents ("clientId", "tenantId", "consentType", granted, "createdAt", "updatedAt")
+        VALUES (${data.clientId}, ${data.tenantId}, ${consentType}, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `);
+    }
   } catch (err) {
-    // Ignorar erro silenciosamente — consentimento é best-effort
     console.error("[saveClientConsent] erro:", err);
   }
 }
