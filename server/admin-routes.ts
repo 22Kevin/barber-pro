@@ -2944,10 +2944,18 @@ async function renderAgenda(req: Request, res: Response) {
         var empty = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:60px 40px;text-align:center;color:var(--muted);">' +
           '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px;">Nenhum agendamento</div>' +
           '<div style="font-size:13px;color:var(--muted);">Não há agendamentos para ' + fmtDatePT(dateStr) + '.</div>' +
-          '<button type="button" onclick="document.getElementById(\'newApptModal\').style.display=\'flex\'" style="margin-top:20px;display:inline-flex;align-items:center;gap:7px;padding:10px 22px;background:var(--gold);color:#0A0A0A;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;">+ Criar Agendamento</button>' +
+          '<button type="button" id="btnCriarAppt" style="margin-top:20px;display:inline-flex;align-items:center;gap:7px;padding:10px 22px;background:var(--gold);color:#0A0A0A;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;">+ Criar Agendamento</button>' +
           '</div>';
-        if (vc) vc.innerHTML = empty;
-        if (vt) vt.innerHTML = empty;
+        if (vc) {
+          vc.innerHTML = empty;
+          var btnCriar = document.getElementById('btnCriarAppt');
+          if (btnCriar) btnCriar.onclick = function() { var m = document.getElementById('newApptModal'); if(m) m.style.display='flex'; };
+        }
+        if (vt) {
+          vt.innerHTML = empty;
+          var btnCriar2 = vt.querySelector('#btnCriarAppt');
+          if (btnCriar2) (btnCriar2 as any).onclick = function() { var m = document.getElementById('newApptModal'); if(m) m.style.display='flex'; };
+        }
         return;
       }
 
@@ -7719,46 +7727,51 @@ export function registerAdminRoutes(app: Express): void {
           const client = appt?.clientId ? await db.getClientById(appt.clientId) : null;
           const svc = appt?.serviceId ? await db.getServiceById(appt.serviceId) : null;
 
-          // Se serviceId é null (múltiplos serviços), buscar preço via JOIN
+          // Buscar preço — se serviceId for null, usar JOIN
           let servicePrice = "0";
           let serviceName = "Serviço";
           if (svc) {
             servicePrice = String(svc.price ?? 0);
             serviceName = svc.name ?? "Serviço";
           } else {
-            // Buscar via getAllAppointmentsByDate que faz JOIN com services
-            const dbConn2 = await db.getDb();
-            if (dbConn2 && appt) {
-              const rows = await dbConn2.execute(sql`
-                SELECT a."serviceNames", a."serviceId",
-                       s.price AS "servicePrice", s.name AS "serviceName"
-                FROM appointments a
-                LEFT JOIN services s ON s.id = a."serviceId"
-                WHERE a.id = ${id}
-                LIMIT 1
-              `) as any;
-              const row = Array.isArray(rows) ? rows[0]?.[0] : rows?.rows?.[0];
-              if (row) {
-                servicePrice = row.servicePrice ? String(row.servicePrice) : "0";
-                serviceName = row.serviceName ?? row.serviceNames ?? "Serviço";
+            try {
+              const dbConn2 = await db.getDb();
+              if (dbConn2 && appt) {
+                const rows = await dbConn2.execute(sql`
+                  SELECT a."serviceNames", s.price AS "servicePrice", s.name AS "serviceName"
+                  FROM appointments a
+                  LEFT JOIN services s ON s.id = a."serviceId"
+                  WHERE a.id = ${id}
+                  LIMIT 1
+                `) as any;
+                const row = Array.isArray(rows) ? rows[0]?.[0] : rows?.rows?.[0];
+                if (row) {
+                  servicePrice = row.servicePrice ? String(row.servicePrice) : "0";
+                  serviceName = row.serviceName ?? row.serviceNames ?? "Serviço";
+                }
               }
+            } catch (joinErr: any) {
+              console.error("[appointment-status/completed] JOIN error:", joinErr.message);
             }
           }
 
-          // Buscar pagamento online associado ao agendamento
-          const dbConn = await db.getDb();
+          // Verificar pagamento online — em bloco separado para não derrubar o paymentData
           let onlinePaid = false;
           let onlineAmount = "0";
           let onlineBillingType = "";
-          if (dbConn && appt) {
-            const pmtRows = await dbConn.execute(sql`
-              SELECT status, amount, "billingType" FROM online_payments
-              WHERE "referenceId" = ${id} AND "chargeType" = 'appointment'
-              AND status IN ('received', 'confirmed') LIMIT 1
-            `) as any;
-            const pmt = Array.isArray(pmtRows) ? pmtRows[0]?.[0] : pmtRows?.rows?.[0];
-            if (pmt) { onlinePaid = true; onlineAmount = pmt.amount; onlineBillingType = pmt.billingType; }
-          }
+          try {
+            const dbConn = await db.getDb();
+            if (dbConn && appt) {
+              const pmtRows = await dbConn.execute(sql`
+                SELECT status, amount, "billingType" FROM online_payments
+                WHERE "referenceId" = ${id} AND "chargeType" = 'appointment'
+                AND status IN ('received', 'confirmed') LIMIT 1
+              `) as any;
+              const pmt = Array.isArray(pmtRows) ? pmtRows[0]?.[0] : pmtRows?.rows?.[0];
+              if (pmt) { onlinePaid = true; onlineAmount = pmt.amount; onlineBillingType = pmt.billingType; }
+            }
+          } catch (_pmtErr) { /* tabela pode não existir — ignorar */ }
+
           paymentData = {
             onlinePaid,
             amount: servicePrice,
@@ -7773,6 +7786,7 @@ export function registerAdminRoutes(app: Express): void {
             barberId: appt?.barberId,
           };
           console.log("[appointment-status/completed] paymentData:", JSON.stringify({ amount: servicePrice, serviceId: svc?.id ?? appt?.serviceId, serviceName }));
+
           // WhatsApp de avaliação
           if (client?.phone) {
             const phone = client.phone.replace(/\D/g, "");
