@@ -2024,7 +2024,7 @@ async function renderAgenda(req: Request, res: Response) {
           const isSelected = d === dateStr;
           const isToday = d === todayStr;
           const dayNum = parseInt(d.split("-")[2]);
-          return `<a href="/admin/agenda?date=${d}${filterBarberId ? '&barberId=' + filterBarberId : ''}" style="text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;aspect-ratio:1;border-radius:10px;font-size:14px;font-weight:${isSelected || isToday ? '800' : '500'};color:${isSelected ? '#0A0A0A' : isToday ? 'var(--gold)' : 'var(--text)'};background:${isSelected ? 'var(--gold)' : isToday ? 'rgba(201,168,76,0.12)' : 'transparent'};border:${isToday && !isSelected ? '1.5px solid var(--gold)' : '1.5px solid transparent'};transition:all .15s;" onmouseover="if(this.style.background!='var(--gold)')this.style.background='rgba(201,168,76,0.08)'" onmouseout="if(this.style.background!='var(--gold)')this.style.background='${isSelected ? 'var(--gold)' : isToday ? 'rgba(201,168,76,0.12)' : 'transparent'}'">${dayNum}<span style="width:5px;height:5px;border-radius:50%;background:${isSelected ? 'rgba(10,10,10,0.6)' : 'var(--gold)'};margin-top:3px;opacity:${datesWithAppointments.has(d) ? '1' : '0'};display:block;"></span></a>`;
+          return `<a href="/admin/agenda?date=${d}${filterBarberId ? '&barberId=' + filterBarberId : ''}" data-cal-date="${d}" style="text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;aspect-ratio:1;border-radius:10px;font-size:14px;font-weight:${isSelected || isToday ? '800' : '500'};color:${isSelected ? '#0A0A0A' : isToday ? 'var(--gold)' : 'var(--text)'};background:${isSelected ? 'var(--gold)' : isToday ? 'rgba(201,168,76,0.12)' : 'transparent'};border:${isToday && !isSelected ? '1.5px solid var(--gold)' : '1.5px solid transparent'};transition:all .15s;" onmouseover="if(this.style.background!='var(--gold)')this.style.background='rgba(201,168,76,0.08)'" onmouseout="if(this.style.background!='var(--gold)')this.style.background='${isSelected ? 'var(--gold)' : isToday ? 'rgba(201,168,76,0.12)' : 'transparent'}'">${dayNum}<span style="width:5px;height:5px;border-radius:50%;background:${isSelected ? 'rgba(10,10,10,0.6)' : 'var(--gold)'};margin-top:3px;opacity:${datesWithAppointments.has(d) ? '1' : '0'};display:block;"></span></a>`;
         }).join("")}
       </div>
     </div>`;
@@ -2889,6 +2889,160 @@ async function renderAgenda(req: Request, res: Response) {
         </script>
     ${planModalHtml}
     ${planSaved ? `<div id="planSavedToast" style="position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#22C55E;color:#fff;padding:14px 28px;border-radius:12px;font-size:14px;font-weight:700;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.25);display:flex;align-items:center;gap:10px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Assinatura criada com sucesso!</div><script>setTimeout(function(){var t=document.getElementById('planSavedToast');if(t)t.style.display='none';},4000);</script>` : ''}
+
+  <script>
+  // ── Navegação dinâmica da agenda — sem reload de página ──────────────────────
+  (function() {
+    var _currentDate = '${dateStr}';
+    var _filterBarberId = ${filterBarberId ? `'${filterBarberId}'` : 'null'};
+
+    var STATUS_LABELS = {
+      scheduled:'Agendado', confirmed:'Confirmado', in_progress:'Em andamento',
+      completed:'Concluído', cancelled:'Cancelado', no_show:'Não compareceu', pending_approval:'Aguarda aprovação'
+    };
+    var STATUS_COLORS = {
+      scheduled: {bg:'rgba(201,168,76,0.08)', border:'rgba(201,168,76,0.3)', text:'#C9A84C'},
+      confirmed: {bg:'rgba(76,175,80,0.08)', border:'rgba(76,175,80,0.3)', text:'#4CAF50'},
+      in_progress: {bg:'rgba(33,150,243,0.08)', border:'rgba(33,150,243,0.3)', text:'#2196F3'},
+      completed: {bg:'rgba(136,136,128,0.08)', border:'rgba(136,136,128,0.3)', text:'#888880'},
+      cancelled: {bg:'rgba(244,67,54,0.08)', border:'rgba(244,67,54,0.3)', text:'#F44336'},
+      no_show: {bg:'rgba(255,152,0,0.08)', border:'rgba(255,152,0,0.3)', text:'#FF9800'},
+      pending_approval: {bg:'rgba(255,107,53,0.08)', border:'rgba(255,107,53,0.3)', text:'#FF6B35'},
+    };
+
+    function fmtDatePT(d) {
+      var parts = d.split('-');
+      var dt = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+      var days = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+      var months = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+      return days[dt.getDay()] + ', ' + dt.getDate() + ' de ' + months[dt.getMonth()] + ' de ' + dt.getFullYear();
+    }
+
+    function showSpinner() {
+      var vc = document.getElementById('viewCards');
+      var vt = document.getElementById('viewTimeline');
+      var spinner = '<div style="padding:48px;text-align:center;color:var(--muted)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><div style="margin-top:10px;font-size:13px">Carregando...</div></div>';
+      if (vc) vc.innerHTML = spinner;
+      if (vt) vt.innerHTML = spinner;
+    }
+
+    function renderCards(appointments, dateStr) {
+      var vc = document.getElementById('viewCards');
+      var vt = document.getElementById('viewTimeline');
+      if (!vc) return;
+
+      // Atualizar título da data
+      var titles = document.querySelectorAll('[data-agenda-date]');
+      titles.forEach(function(el) { el.textContent = fmtDatePT(dateStr); });
+
+      // Atualizar data no header principal
+      var headerDate = document.querySelector('.page-title');
+      if (headerDate) {
+        var parts = dateStr.split('-');
+        headerDate.textContent = parts[2] + '/' + parts[1] + '/' + parts[0];
+      }
+
+      if (appointments.length === 0) {
+        var empty = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:60px 40px;text-align:center;color:var(--muted);">' +
+          '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px;">Nenhum agendamento</div>' +
+          '<div style="font-size:13px;color:var(--muted);">Não há agendamentos para ' + fmtDatePT(dateStr) + '.</div>' +
+          '<button type="button" onclick="document.getElementById(\'newApptModal\').style.display=\'flex\'" style="margin-top:20px;display:inline-flex;align-items:center;gap:7px;padding:10px 22px;background:var(--gold);color:#0A0A0A;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;">+ Criar Agendamento</button>' +
+          '</div>';
+        if (vc) vc.innerHTML = empty;
+        if (vt) vt.innerHTML = empty;
+        return;
+      }
+
+      // Renderizar cards
+      var cardsHtml = '<div style="display:flex;flex-direction:column;gap:10px">';
+      appointments.forEach(function(a) {
+        var sc = STATUS_COLORS[a.status] || STATUS_COLORS.completed;
+        var sl = STATUS_LABELS[a.status] || a.status;
+        var initials = (a.clientName || '?').split(' ').map(function(w){ return w[0]; }).slice(0,2).join('').toUpperCase();
+        var editData = JSON.stringify({id:a.id,clientName:a.clientName,clientPhone:a.clientPhone,serviceId:a.serviceId,serviceName:a.serviceName,barberId:a.barberId,barberName:a.barberName,date:a.date,startTime:a.startTime,endTime:a.endTime,status:a.status,notes:a.notes});
+        cardsHtml += '<div id="appt-card-' + a.id + '" onclick="openEditModal(' + editData.replace(/"/g,'&quot;') + ')" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s;display:flex;align-items:center;gap:14px;" onmouseover="this.style.borderColor=\'rgba(201,168,76,0.5)\';this.style.boxShadow=\'0 4px 20px rgba(0,0,0,0.25)\';this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.boxShadow=\'none\';this.style.transform=\'none\'">' +
+          '<div style="flex-shrink:0;text-align:center;min-width:52px;"><div style="font-size:20px;font-weight:900;color:var(--text);line-height:1;">' + (a.startTime ? a.startTime.substring(0,5) : '—') + '</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">' + (a.endTime ? a.endTime.substring(0,5) : '') + '</div></div>' +
+          '<div style="width:1px;height:40px;background:var(--border);flex-shrink:0;"></div>' +
+          '<div style="width:40px;height:40px;border-radius:12px;background:' + sc.bg + ';border:1px solid ' + sc.border + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:800;color:' + sc.text + ';">' + initials + '</div>' +
+          '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:15px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (a.clientName || '—') + '</div>' +
+          '<div style="font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (a.serviceName || '—') + (a.barberName ? ' · ' + a.barberName : '') + '</div>' +
+          '</div>' +
+          '<span style="display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:' + sc.bg + ';border:1px solid ' + sc.border + ';color:' + sc.text + ';white-space:nowrap;">' + sl + '</span>' +
+          (a.status === 'completed' ? '<button onclick="event.stopPropagation();openPaymentModal(' + JSON.stringify({appointmentId:a.id,serviceId:a.serviceId,serviceName:a.serviceName,clientId:0,clientName:a.clientName,clientPhone:a.clientPhone,barberId:a.barberId,amount:a.servicePrice}).replace(/"/g,"'") + ')" style="flex-shrink:0;padding:6px 12px;border-radius:9px;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;">💰 Pagar</button>' : '') +
+          '</div>';
+      });
+      cardsHtml += '</div>';
+      if (vc) vc.innerHTML = cardsHtml;
+
+      // Timeline simples (só mostra contagem)
+      if (vt) {
+        vt.innerHTML = cardsHtml; // usa mesma view por enquanto
+      }
+    }
+
+    function navigateTo(dateStr, pushState) {
+      if (dateStr === _currentDate) return;
+      _currentDate = dateStr;
+      showSpinner();
+
+      // Atualizar calendário visual — marcar dia selecionado
+      document.querySelectorAll('[data-cal-date]').forEach(function(el) {
+        var d = el.getAttribute('data-cal-date');
+        var isSelected = d === dateStr;
+        var isToday = d === '${todayStr}';
+        el.style.background = isSelected ? 'var(--gold)' : isToday ? 'rgba(201,168,76,0.12)' : 'transparent';
+        el.style.color = isSelected ? '#0A0A0A' : isToday ? 'var(--gold)' : 'var(--text)';
+        el.style.fontWeight = (isSelected || isToday) ? '800' : '500';
+        el.style.border = isToday && !isSelected ? '1.5px solid var(--gold)' : '1.5px solid transparent';
+      });
+
+      // Atualizar URL sem reload
+      var url = '/admin/agenda?date=' + dateStr + (_filterBarberId ? '&barberId=' + _filterBarberId : '');
+      if (pushState !== false) history.pushState({date: dateStr}, '', url);
+
+      // Buscar dados do dia via API
+      fetch('/admin-api/agenda-day?date=' + dateStr + (_filterBarberId ? '&barberId=' + _filterBarberId : ''), {credentials:'include'})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d.ok) renderCards(d.appointments, dateStr);
+          else console.error('[agenda-day]', d.error);
+        })
+        .catch(function(e){ console.error('[agenda-day]', e); window.location.href = url; });
+    }
+
+    // Interceptar cliques em links de dia do calendário
+    document.addEventListener('click', function(e) {
+      var el = e.target;
+      while (el && el !== document) {
+        var href = el.getAttribute && el.getAttribute('href');
+        if (href && href.startsWith('/admin/agenda?date=')) {
+          // Só intercept se for troca de dia (mesmo mês)
+          var match = href.match(/[?&]date=(\d{4}-\d{2}-\d{2})/);
+          if (match) {
+            var newDate = match[1];
+            var newMonth = newDate.substring(0,7);
+            var curMonth = _currentDate.substring(0,7);
+            if (newMonth === curMonth) {
+              e.preventDefault();
+              navigateTo(newDate, true);
+              return;
+            }
+          }
+        }
+        el = el.parentElement;
+      }
+    });
+
+    // Botão "Próximo" e "Anterior" dia também interceptar
+    window.addEventListener('popstate', function(e) {
+      if (e.state && e.state.date) navigateTo(e.state.date, false);
+    });
+
+    // Expor para uso externo
+    window._agendaNavigateTo = navigateTo;
+  })();
+  </script>
   `;
   const tenantObj = barber?.tenantId ? await db.getTenantById(barber.tenantId) : null;
   const _tp = (tenantObj as any)?.plan ?? "";
@@ -10991,6 +11145,62 @@ export function registerAdminRoutes(app: Express): void {
       const row = Array.isArray(rows) ? (rows[0] as any[])[0] : (rows?.rows ?? [])[0];
       res.json({ count: parseInt(row?.cnt ?? '0') });
     } catch(e) { res.json({ count: 0 }); }
+  });
+
+  // GET /admin-api/agenda-day — Retorna JSON com agendamentos de um dia (para navegação sem reload)
+  app.get("/admin-api/agenda-day", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const tenantId = barber?.tenantId ?? null;
+      const dateStr = (req.query.date as string) || today();
+      const filterBarberId = req.query.barberId ? parseInt(req.query.barberId as string) : null;
+
+      const allAppointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
+      const filtered = filterBarberId
+        ? allAppointments.filter((a: any) => a.barberId === filterBarberId)
+        : allAppointments;
+
+      // Buscar pagamentos online associados
+      const dbConn = await db.getDb();
+      const paidAppointmentIds = new Set<number>();
+      if (dbConn && filtered.length > 0) {
+        try {
+          const ids = filtered.map((a: any) => a.id);
+          const pmtRows = await dbConn.execute(sql`
+            SELECT "referenceId" FROM online_payments
+            WHERE "referenceId" IN (${sql.raw(ids.join(","))})
+            AND "chargeType" = 'appointment'
+            AND status IN ('received','confirmed')
+          `) as any;
+          const rows = Array.isArray(pmtRows) ? (pmtRows[0] as any[]) : (pmtRows?.rows ?? []);
+          rows.forEach((r: any) => paidAppointmentIds.add(Number(r.referenceId)));
+        } catch {}
+      }
+
+      res.json({
+        ok: true,
+        date: dateStr,
+        appointments: filtered.map((a: any) => ({
+          id: a.id,
+          clientName: a.clientName ?? "",
+          clientPhone: a.clientPhone ?? "",
+          serviceId: a.serviceId,
+          serviceName: a.serviceNames ?? a.serviceName ?? "",
+          servicePrice: a.servicePrice ?? "0",
+          barberId: a.barberId,
+          barberName: a.barberName ?? "",
+          date: a.date,
+          startTime: a.startTime ?? "",
+          endTime: a.endTime ?? "",
+          status: a.status,
+          notes: a.notes ?? "",
+          onlinePaid: paidAppointmentIds.has(a.id),
+        })),
+      });
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
   });
 
   // GET /admin-api/next-appointment — Retorna JSON com o próximo agendamento do dia
