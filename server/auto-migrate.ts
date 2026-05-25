@@ -247,6 +247,7 @@ export async function runAutoMigrate(db: any): Promise<void> {
         "whatsappConfirmationSent" BOOLEAN NOT NULL DEFAULT FALSE,
         "whatsappReminder24hSent" BOOLEAN NOT NULL DEFAULT FALSE,
         "whatsappReminder1hSent" BOOLEAN NOT NULL DEFAULT FALSE,
+        "emailReminder24hSent" BOOLEAN NOT NULL DEFAULT FALSE,
         "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
         "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
       )`,
@@ -775,6 +776,7 @@ export async function runAutoMigrate(db: any): Promise<void> {
     { name: 'appointments."whatsappConfirmationSent"', sql: `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS "whatsappConfirmationSent" BOOLEAN NOT NULL DEFAULT FALSE` },
     { name: 'appointments."whatsappReminder24hSent"',  sql: `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS "whatsappReminder24hSent" BOOLEAN NOT NULL DEFAULT FALSE` },
     { name: 'appointments."whatsappReminder1hSent"',   sql: `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS "whatsappReminder1hSent" BOOLEAN NOT NULL DEFAULT FALSE` },
+    { name: 'appointments."emailReminder24hSent"',     sql: `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS "emailReminder24hSent" BOOLEAN NOT NULL DEFAULT FALSE` },
     // sales
     { name: 'sales."couponId"',            sql: `ALTER TABLE sales ADD COLUMN IF NOT EXISTS "couponId" INT` },
     { name: 'sales."couponCode"',          sql: `ALTER TABLE sales ADD COLUMN IF NOT EXISTS "couponCode" VARCHAR(50)` },
