@@ -21,7 +21,7 @@ import * as db from "./db";
 import { sql, eq, and, inArray } from "drizzle-orm";
 import { saleItems as saleItemsTable, sales as salesTable } from "../drizzle/schema";
 import { getDb } from "./db";
-import { asaasEnabled, asaasApi, createAsaasSubAccount, getAsaasSubAccount, ensureAsaasRootCustomer, createAsaasSubscription, cancelAsaasSubscription } from "./asaas";
+import { asaasEnabled, asaasApi, createAsaasSubAccount, getAsaasSubAccount, ensureAsaasRootCustomer, createAsaasSubscription, cancelAsaasSubscription, createAsaasCharge, getOrCreateAsaasCustomer, asaasDefaultDueDate } from "./asaas";
 import axios from "axios";
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
@@ -2741,9 +2741,127 @@ async function renderAgenda(req: Request, res: Response) {
               b.addEventListener('mouseover', function() { this.style.borderColor = 'var(--gold)'; });
               b.addEventListener('mouseout', function() { this.style.borderColor = 'var(--border)'; });
               b.addEventListener('click', function() {
-                registerSale(this, overlay._pmtData, this.dataset.method);
+                var method = this.dataset.method;
+                if (method === 'pix') {
+                  showPixQrModal(overlay._pmtData, overlay);
+                } else {
+                  registerSale(this, overlay._pmtData, method);
+                }
               });
             });
+          }
+
+          async function showPixQrModal(pmt, parentOverlay) {
+            // Substituir conteúdo do overlay pelo modal de Pix
+            var sheet = parentOverlay.querySelector('[style*="background:#1a2035"]');
+            if (!sheet) return;
+            sheet.innerHTML =
+              '<div style="text-align:center;margin-bottom:16px">' +
+                '<div style="font-size:17px;font-weight:800;color:var(--gold)">&#128247; Pagamento via Pix</div>' +
+                '<div style="font-size:13px;color:#888;margin-top:4px">' + (pmt.clientName || 'Cliente') + ' &mdash; ' + (pmt.serviceName || 'Serviço') + '</div>' +
+              '</div>' +
+              '<div id="pix-loading" style="text-align:center;padding:24px 0">' +
+                '<div style="font-size:13px;color:#888">Gerando QR Code...</div>' +
+              '</div>' +
+              '<div id="pix-content" style="display:none">' +
+                '<div style="background:#fff;border-radius:12px;padding:12px;display:flex;justify-content:center;margin-bottom:12px">' +
+                  '<img id="pix-qr-img" src="" alt="QR Code Pix" style="width:200px;height:200px;border-radius:8px" />' +
+                '</div>' +
+                '<div style="font-size:12px;color:#888;text-align:center;margin-bottom:8px">Valor: <strong style="color:var(--gold)" id="pix-value"></strong></div>' +
+                '<div style="font-size:11px;color:#888;text-align:center;margin-bottom:12px">Ou copie o código abaixo:</div>' +
+                '<div id="pix-code" style="font-family:monospace;font-size:10px;color:#ECEDEE;word-break:break-all;background:#111;border-radius:8px;padding:10px;margin-bottom:12px;max-height:80px;overflow-y:auto"></div>' +
+                '<div style="display:flex;gap:8px;margin-bottom:10px">' +
+                  '<button id="pix-copy-btn" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--gold);background:rgba(201,168,76,0.1);color:var(--gold);cursor:pointer;font-size:13px;font-weight:700">&#128203; Copiar código</button>' +
+                  '<button id="pix-whatsapp-btn" style="flex:1;padding:10px;border-radius:10px;border:1px solid #25D366;background:rgba(37,211,102,0.08);color:#25D366;cursor:pointer;font-size:13px;font-weight:700">&#128172; WhatsApp</button>' +
+                '</div>' +
+              '</div>' +
+              '<div id="pix-error" style="display:none;color:#F87171;font-size:13px;text-align:center;padding:16px 0"></div>' +
+              '<div style="display:flex;gap:8px;margin-top:8px">' +
+                '<button id="pix-confirm-btn" style="display:none;flex:1;padding:12px;border-radius:10px;border:none;background:#4ADE80;color:#050505;cursor:pointer;font-size:14px;font-weight:800">&#10003; Cliente pagou</button>' +
+                '<button id="pix-cancel-btn" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:13px">Cancelar</button>' +
+              '</div>';
+
+            // Fechar ao cancelar
+            sheet.querySelector('#pix-cancel-btn').onclick = function() { parentOverlay.remove(); };
+
+            // Gerar QR Code via API
+            try {
+              var r = await fetch('/admin-api/pix-for-appointment', {
+                method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'include',
+                body: JSON.stringify({
+                  appointmentId: pmt.appointmentId,
+                  clientId: pmt.clientId,
+                  clientName: pmt.clientName,
+                  clientPhone: pmt.clientPhone,
+                  amount: pmt.amount,
+                  description: pmt.serviceName
+                })
+              });
+              var d = await r.json();
+              if (!d.ok) throw new Error(d.error || 'Erro ao gerar Pix');
+
+              sheet.querySelector('#pix-loading').style.display = 'none';
+              sheet.querySelector('#pix-content').style.display = 'block';
+              sheet.querySelector('#pix-confirm-btn').style.display = 'block';
+
+              // QR Code como imagem
+              var qrImg = sheet.querySelector('#pix-qr-img');
+              if (d.pixQrCode) {
+                qrImg.src = 'data:image/png;base64,' + d.pixQrCode;
+              } else {
+                qrImg.parentElement.style.display = 'none';
+              }
+
+              // Código copia e cola
+              var pixCode = d.pixCopyCola || '';
+              sheet.querySelector('#pix-code').textContent = pixCode;
+              sheet.querySelector('#pix-value').textContent = 'R$ ' + parseFloat(d.value || pmt.amount).toFixed(2).replace('.', ',');
+
+              // Copiar código
+              sheet.querySelector('#pix-copy-btn').onclick = async function() {
+                try {
+                  await navigator.clipboard.writeText(pixCode);
+                  this.textContent = '&#10003; Copiado!';
+                  this.style.background = 'rgba(74,222,128,0.15)';
+                  this.style.borderColor = '#4ADE80';
+                  this.style.color = '#4ADE80';
+                  setTimeout(function() {
+                    var btn = sheet.querySelector('#pix-copy-btn');
+                    if (btn) { btn.innerHTML = '&#128203; Copiar código'; btn.style.background = 'rgba(201,168,76,0.1)'; btn.style.borderColor = 'var(--gold)'; btn.style.color = 'var(--gold)'; }
+                  }, 2500);
+                } catch(e) { alert('Código: ' + pixCode); }
+              };
+
+              // Enviar por WhatsApp
+              sheet.querySelector('#pix-whatsapp-btn').onclick = function() {
+                if (!pmt.clientPhone) { alert('Cliente sem telefone cadastrado.'); return; }
+                var phone = pmt.clientPhone.replace(/\D/g, '');
+                var msg = encodeURIComponent(
+                  'Olá ' + (pmt.clientName || '') + '! Segue o código Pix para pagamento do serviço *' + (pmt.serviceName || 'Serviço') + '* (R$ ' + parseFloat(pmt.amount).toFixed(2).replace('.', ',') + ').\n\nCopie e cole no seu banco:\n\n' + pixCode
+                );
+                window.open('https://wa.me/55' + phone + '?text=' + msg, '_blank');
+              };
+
+              // Confirmar pagamento manual
+              sheet.querySelector('#pix-confirm-btn').onclick = async function() {
+                this.disabled = true; this.textContent = 'Registrando...';
+                await registerSale({ disabled: false, style: { opacity: '1' } }, pmt, 'pix');
+                parentOverlay.remove();
+              };
+
+            } catch(err) {
+              sheet.querySelector('#pix-loading').style.display = 'none';
+              var errEl = sheet.querySelector('#pix-error');
+              errEl.style.display = 'block';
+              errEl.textContent = 'Erro ao gerar QR Code: ' + err.message;
+              // Fallback: oferecer registrar como Pix manual
+              sheet.querySelector('#pix-confirm-btn').style.display = 'block';
+              sheet.querySelector('#pix-confirm-btn').textContent = 'Registrar como Pix (manual)';
+              sheet.querySelector('#pix-confirm-btn').onclick = async function() {
+                await registerSale({ disabled: false, style: { opacity: '1' } }, pmt, 'pix');
+                parentOverlay.remove();
+              };
+            }
           }
 
           async function registerSale(btn, pmt, paymentMethod) {
@@ -2759,7 +2877,6 @@ async function renderAgenda(req: Request, res: Response) {
               });
               var d = await r.json();
               if (!d.ok) throw new Error(d.error || 'Erro ao registrar venda');
-              btn.closest('[style*="fixed"]').remove();
               showToast(
                 '<div style="font-size:13px;font-weight:800;color:#4ADE80;margin-bottom:6px">Pagamento registrado!</div>' +
                 '<div style="font-size:12px;color:#888;margin-bottom:10px">Venda criada no Financeiro automaticamente.</div>' +
@@ -11109,6 +11226,59 @@ export function registerAdminRoutes(app: Express): void {
       res.setHeader("Cache-Control", "public, max-age=86400");
       res.send(qrBuffer);
     } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /admin-api/pix-for-appointment — Gera cobrança Pix via Asaas para pagamento presencial
+  app.post("/admin-api/pix-for-appointment", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      if (!asaasEnabled) { res.status(503).json({ error: "Pagamento online não configurado." }); return; }
+      const session = (req as any).adminSession as { barberId: number };
+      const barber = await db.getBarberById(session.barberId);
+      if (!barber?.tenantId) { res.status(400).json({ error: "Tenant não encontrado." }); return; }
+
+      const { appointmentId, clientId, clientName, clientPhone, amount, description } = req.body;
+      if (!amount || parseFloat(amount) <= 0) { res.status(400).json({ error: "Valor inválido." }); return; }
+
+      // Buscar asaasApiKey da subconta do tenant — pagamento vai direto para a barbearia
+      const dbConn = await db.getDb();
+      let subAccountApiKey: string | undefined;
+      if (dbConn) {
+        const tenantRow = await dbConn.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${barber.tenantId} LIMIT 1`) as any;
+        const tenantData = Array.isArray(tenantRow) ? tenantRow[0]?.[0] : tenantRow?.rows?.[0];
+        subAccountApiKey = tenantData?.asaasApiKey || undefined;
+      }
+      if (!subAccountApiKey) { res.status(400).json({ error: "Subconta Asaas não configurada para esta barbearia. Ative os pagamentos online nas configurações." }); return; }
+
+      // Criar ou buscar cliente no Asaas
+      const asaasCustomerId = await getOrCreateAsaasCustomer({
+        name: clientName || "Cliente",
+        mobilePhone: clientPhone ? clientPhone.replace(/\D/g, "") : undefined,
+        externalReference: clientId ? String(clientId) : undefined,
+      }, subAccountApiKey);
+
+      // Criar cobrança Pix na subconta da barbearia
+      const charge = await createAsaasCharge({
+        customer: asaasCustomerId,
+        billingType: "PIX",
+        value: parseFloat(amount),
+        dueDate: asaasDefaultDueDate(),
+        description: description || "Serviço — Barber Pro",
+        externalReference: appointmentId ? String(appointmentId) : undefined,
+      }, subAccountApiKey);
+
+      res.json({
+        ok: true,
+        paymentId: charge.id,
+        pixQrCode: charge.pixQrCode ?? null,
+        pixCopyCola: charge.pixCopyCola ?? null,
+        invoiceUrl: charge.invoiceUrl ?? null,
+        value: charge.value,
+        dueDate: charge.dueDate,
+      });
+    } catch (e: any) {
+      console.error("[pix-for-appointment]", e.message);
       res.status(500).json({ error: e.message });
     }
   });
