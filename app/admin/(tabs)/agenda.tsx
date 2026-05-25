@@ -189,34 +189,55 @@ export default function AgendaScreen() {
   const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
   const clientsQuery = trpc.clients.list.useQuery({ tenantId });
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
-  const appointmentsQuery = trpc.appointments.byDate.useQuery(
-    { barberId: barber?.id ?? 0, date: dateStr },
-    { enabled: !!barber?.id && !isManager }
-  );
-  const allAppointmentsQuery = trpc.appointments.allByDate.useQuery(
-    { date: dateStr, tenantId },
-    { enabled: isManager }
-  );
-  const workingHoursQuery = trpc.barbers.workingHours.get.useQuery(
-    { barberId: barber?.id ?? 0 },
-    { enabled: !!barber?.id }
-  );
 
-  // Query para buscar datas com agendamentos no mês atual (pontos indicadores no calendário)
+  // ── Busca o mês inteiro de uma vez — sem query por dia ──────────────────────
   const monthStart = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-01`;
   const monthEnd = (() => {
     const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   })();
-  const datesWithApptQuery = trpc.appointments.datesWithAppointments.useQuery(
+
+  // Barbeiro individual: byDateRange do mês
+  const appointmentsByMonthQuery = trpc.appointments.byDateRange.useQuery(
+    { barberId: barber?.id ?? 0, startDate: monthStart, endDate: monthEnd },
+    { enabled: !!barber?.id && !isManager, staleTime: 60_000 }
+  );
+  // Manager: allByDateRange do mês
+  const allAppointmentsByMonthQuery = trpc.appointments.allByDateRange.useQuery(
     { startDate: monthStart, endDate: monthEnd, tenantId },
+    { enabled: isManager, staleTime: 60_000 }
+  );
+
+  // Filtrar localmente pelo dia selecionado (sem nova requisição)
+  const appointmentsQuery = useMemo(() => {
+    const data = (appointmentsByMonthQuery.data ?? []).filter((a: any) => a.date === dateStr);
+    return { data, isLoading: appointmentsByMonthQuery.isLoading, refetch: appointmentsByMonthQuery.refetch };
+  }, [appointmentsByMonthQuery.data, appointmentsByMonthQuery.isLoading, appointmentsByMonthQuery.refetch, dateStr]);
+
+  const allAppointmentsQuery = useMemo(() => {
+    const data = (allAppointmentsByMonthQuery.data ?? []).filter((a: any) => a.date === dateStr);
+    return { data, isLoading: allAppointmentsByMonthQuery.isLoading, refetch: allAppointmentsByMonthQuery.refetch };
+  }, [allAppointmentsByMonthQuery.data, allAppointmentsByMonthQuery.isLoading, allAppointmentsByMonthQuery.refetch, dateStr]);
+
+  const workingHoursQuery = trpc.barbers.workingHours.get.useQuery(
+    { barberId: barber?.id ?? 0 },
     { enabled: !!barber?.id }
   );
-  const datesWithAppt = useMemo(() => new Set(datesWithApptQuery.data ?? []), [datesWithApptQuery.data]);
+
+  // Datas com agendamentos — derivar do cache mensal (sem query extra)
+  const datesWithAppt = useMemo(() => {
+    const all = isManager
+      ? (allAppointmentsByMonthQuery.data ?? [])
+      : (appointmentsByMonthQuery.data ?? []);
+    return new Set(all.map((a: any) => a.date));
+  }, [isManager, allAppointmentsByMonthQuery.data, appointmentsByMonthQuery.data]);
+
+  // Manter compatibilidade com código que usa datesWithApptQuery
+  const datesWithApptQuery = { data: Array.from(datesWithAppt) };
 
   const createMutation = trpc.appointments.create.useMutation({
     onSuccess: async (result: any) => {
-      utils.appointments.byDate.invalidate();
+      utils.appointments.byDateRange.invalidate(); utils.appointments.allByDateRange.invalidate();
       utils.dashboard.stats.invalidate();
 
       const apptId = result?.apptId ?? result;
@@ -259,7 +280,7 @@ export default function AgendaScreen() {
 
   const approveMutation = trpc.appointments.approveOvertime.useMutation({
     onSuccess: (_data: unknown, variables: any) => {
-      utils.appointments.byDate.invalidate();
+      utils.appointments.byDateRange.invalidate(); utils.appointments.allByDateRange.invalidate();
       utils.dashboard.stats.invalidate();
       setShowDetailModal(false);
       Alert.alert(
@@ -277,7 +298,7 @@ export default function AgendaScreen() {
       if (variables.status === "cancelled" || variables.status === "no_show") {
         cancelAppointmentReminder(variables.id).catch(() => null);
       }
-      utils.appointments.byDate.invalidate();
+      utils.appointments.byDateRange.invalidate(); utils.appointments.allByDateRange.invalidate();
       utils.dashboard.stats.invalidate();
       setShowDetailModal(false);
     },
@@ -285,7 +306,7 @@ export default function AgendaScreen() {
   });
   const cancelWithReasonMutation = trpc.appointments.cancelWithReason.useMutation({
     onSuccess: () => {
-      utils.appointments.byDate.invalidate();
+      utils.appointments.byDateRange.invalidate(); utils.appointments.allByDateRange.invalidate();
       utils.dashboard.stats.invalidate();
       setShowCancelModal(false);
       setCancelReason("");
@@ -365,7 +386,7 @@ export default function AgendaScreen() {
                   const service = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
                   const client = (clientsQuery.data ?? []).find((c: any) => c.id === apt.clientId);
                   // Calcular preço — tentar service.price, depois apt.servicePrice, depois 0
-                  const rawPrice = service?.price ?? apt.servicePrice ?? apt.price ?? "0";
+                  const rawPrice = service?.price ?? apt.servicePrice ?? "0";
                   const numericPrice = parseFloat(String(rawPrice));
                   const safePrice = isNaN(numericPrice) ? "0" : String(numericPrice);
                   setPaymentAppointment({
@@ -668,7 +689,7 @@ export default function AgendaScreen() {
                   if (apt.status === "completed") {
                     const svc = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
                     const cli = (clientsQuery.data ?? []).find((c: any) => c.id === apt.clientId);
-                    const rawPrice = svc?.price ?? apt.servicePrice ?? apt.price ?? "0";
+                    const rawPrice = svc?.price ?? apt.servicePrice ?? "0";
                     const numericPrice = parseFloat(String(rawPrice));
                     const safePrice = isNaN(numericPrice) ? "0" : String(numericPrice);
                     setPaymentAppointment({
@@ -780,7 +801,7 @@ export default function AgendaScreen() {
                             if (apt.status === "completed") {
                               const svc = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
                               const cli = (clientsQuery.data ?? []).find((c: any) => c.id === apt.clientId);
-                              const rawPrice = svc?.price ?? apt.servicePrice ?? apt.price ?? "0";
+                              const rawPrice = svc?.price ?? apt.servicePrice ?? "0";
                               const numericPrice = parseFloat(String(rawPrice));
                               const safePrice = isNaN(numericPrice) ? "0" : String(numericPrice);
                               setPaymentAppointment({ ...apt, clientName: cli?.name ?? apt.clientName, clientPhone: cli?.phone ?? apt.clientPhone, serviceName: svc?.name ?? apt.serviceName ?? apt.serviceNames ?? "Serviço", servicePrice: safePrice, serviceId: apt.serviceId ?? svc?.id ?? 0 });
@@ -1140,7 +1161,7 @@ export default function AgendaScreen() {
           if (paymentAppointment) {
             setPaymentPendingMap(prev => ({ ...prev, [paymentAppointment.id]: false }));
           }
-          utils.appointments.byDate.invalidate();
+          utils.appointments.byDateRange.invalidate(); utils.appointments.allByDateRange.invalidate();
           utils.dashboard.stats.invalidate();
         }}
       />
