@@ -2954,7 +2954,7 @@ async function renderAgenda(req: Request, res: Response) {
         if (vt) {
           vt.innerHTML = empty;
           var btnCriar2 = vt.querySelector('#btnCriarAppt');
-          if (btnCriar2) (btnCriar2 as any).onclick = function() { var m = document.getElementById('newApptModal'); if(m) m.style.display='flex'; };
+          if (btnCriar2) { btnCriar2.onclick = function() { var m = document.getElementById('newApptModal'); if(m) m.style.display='flex'; }; }
         }
         return;
       }
