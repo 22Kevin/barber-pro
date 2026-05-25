@@ -7718,6 +7718,33 @@ export function registerAdminRoutes(app: Express): void {
           const appt = await db.getAppointmentById(id);
           const client = appt?.clientId ? await db.getClientById(appt.clientId) : null;
           const svc = appt?.serviceId ? await db.getServiceById(appt.serviceId) : null;
+
+          // Se serviceId é null (múltiplos serviços), buscar preço via JOIN
+          let servicePrice = "0";
+          let serviceName = "Serviço";
+          if (svc) {
+            servicePrice = String(svc.price ?? 0);
+            serviceName = svc.name ?? "Serviço";
+          } else {
+            // Buscar via getAllAppointmentsByDate que faz JOIN com services
+            const dbConn2 = await db.getDb();
+            if (dbConn2 && appt) {
+              const rows = await dbConn2.execute(sql`
+                SELECT a."serviceNames", a."serviceId",
+                       s.price AS "servicePrice", s.name AS "serviceName"
+                FROM appointments a
+                LEFT JOIN services s ON s.id = a."serviceId"
+                WHERE a.id = ${id}
+                LIMIT 1
+              `) as any;
+              const row = Array.isArray(rows) ? rows[0]?.[0] : rows?.rows?.[0];
+              if (row) {
+                servicePrice = row.servicePrice ? String(row.servicePrice) : "0";
+                serviceName = row.serviceName ?? row.serviceNames ?? "Serviço";
+              }
+            }
+          }
+
           // Buscar pagamento online associado ao agendamento
           const dbConn = await db.getDb();
           let onlinePaid = false;
@@ -7734,17 +7761,18 @@ export function registerAdminRoutes(app: Express): void {
           }
           paymentData = {
             onlinePaid,
-            amount: svc ? String(svc.price) : (appt as any)?.servicePrice ? String((appt as any).servicePrice) : "0",
+            amount: servicePrice,
             paidAmount: onlineAmount,
             billingType: onlineBillingType,
             serviceId: svc?.id ?? appt?.serviceId ?? 0,
-            serviceName: svc?.name ?? (appt as any)?.serviceName ?? (appt as any)?.serviceNames ?? "Serviço",
+            serviceName,
             clientId: client?.id,
             clientName: client?.name ?? "Cliente",
             clientPhone: client?.phone ?? "",
             appointmentId: id,
             barberId: appt?.barberId,
           };
+          console.log("[appointment-status/completed] paymentData:", JSON.stringify({ amount: servicePrice, serviceId: svc?.id ?? appt?.serviceId, serviceName }));
           // WhatsApp de avaliação
           if (client?.phone) {
             const phone = client.phone.replace(/\D/g, "");
