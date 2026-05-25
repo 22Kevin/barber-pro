@@ -253,6 +253,7 @@ export const appointments = pgTable("appointments", {
   whatsappConfirmationSent: boolean("whatsappConfirmationSent").default(false).notNull(),
   whatsappReminder24hSent: boolean("whatsappReminder24hSent").default(false).notNull(),
   whatsappReminder1hSent: boolean("whatsappReminder1hSent").default(false).notNull(),
+  emailReminder24hSent: boolean("emailReminder24hSent").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => [

@@ -4361,6 +4361,8 @@ export function registerPublicRoutes(app: Express): void {
       const tenant2 = slug ? await db.getTenantBySlug(slug) : null;
       const settings2 = await db.getShopSettings();
       const shopName2 = settings2?.shopName ?? tenant2?.name ?? "Barbearia";
+      const shopLogoUrl2 = (settings2 as any)?.logoUrl ?? (tenant2 as any)?.logoUrl ?? null;
+      const shopPhone2 = (settings2 as any)?.phone ?? (tenant2 as any)?.phone ?? null;
       // Enviar e-mail de confirmação ao cliente
       if (client?.email) {
         await sendBookingConfirmationEmail({
@@ -4374,6 +4376,8 @@ export function registerPublicRoutes(app: Express): void {
           startTime,
           endTime,
           price: service ? `R$ ${parseFloat(service.price).toFixed(2).replace(".", ",")}` : undefined,
+          shopLogoUrl: shopLogoUrl2,
+          shopPhone: shopPhone2,
         });
       }
       // Enviar e-mail de notificação ao barbeiro

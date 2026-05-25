@@ -11476,25 +11476,39 @@ export function registerAdminRoutes(app: Express): void {
 
       booking: {
         subject: "✅ Agendamento confirmado — Mogiana Barber",
-        html: emailLayout(`
-          ${alertBox("✅", "Agendamento confirmado!", "Olá, João Silva! Seu horário está reservado.", "#4ADE80")}
-          <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
-            Seu agendamento em <strong style="color:#ECEDEE">Mogiana Barber</strong> foi registrado com sucesso.
-            Confira os detalhes abaixo.
-          </p>
-          <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
-            <table width="100%" cellpadding="0" cellspacing="0">
-              ${detailRow("Serviço", "Corte + Barba")}
-              ${detailRow("Profissional", "Carlos Rocha")}
-              ${detailRow("Data", "25 de mai. de 2026")}
-              ${detailRow("Horário", "14:00 – 15:00", BRAND_COLOR)}
-              ${detailRow("Valor", "R$ 55,00", "#4ADE80", true)}
-            </table>
-          </div>
-          ${ctaButton("Ver meus agendamentos →", "https://usebarberpro.com/mogiana/meus-agendamentos")}
-          <p style="color:#555555;font-size:12px;text-align:center;margin:0">
-            Precisa cancelar ou reagendar? Acesse o link acima ou entre em contato com a barbearia.
-          </p>`, { headerSubtitle: "Mogiana Barber", previewText: "Seu agendamento de Corte + Barba está confirmado!" }),
+        html: emailLayout(
+          "<div style=\"text-align:center;margin-bottom:24px\">" +
+          "<div style=\"font-size:40px;margin-bottom:12px\">✂️</div>" +
+          "<div style=\"font-size:18px;font-weight:700;color:#ECEDEE;margin-bottom:6px\">Mogiana Barber</div></div>" +
+          alertBox("✅", "Agendamento confirmado!", "Olá, João Silva! Seu horário está reservado.", "#4ADE80") +
+          "<div style=\"background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:20px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">" +
+          detailRow("Serviço", "Corte + Barba") + detailRow("Profissional", "Carlos Rocha") +
+          detailRow("Data", "25/05/2026") + detailRow("Horário", "14:00 – 15:00", BRAND_COLOR) +
+          detailRow("Valor", "R$ 55,00", "#4ADE80", true) + "</table></div>" +
+          ctaButton("Ver meus agendamentos →", "https://usebarberpro.com/pub/mogiana") +
+          "<div style=\"text-align:center;margin-top:-10px;margin-bottom:20px\"><a href=\"https://wa.me/5516999999999\" style=\"display:inline-block;background:#25D36618;border:1px solid #25D36644;color:#25D366;font-size:13px;font-weight:600;padding:10px 24px;border-radius:9px;text-decoration:none\">💬 Falar com a barbearia</a></div>" +
+          "<p style=\"color:#555;font-size:12px;text-align:center\">Precisa cancelar? Acesse o link acima.</p>",
+          { headerSubtitle: "Mogiana Barber", previewText: "Seu agendamento de Corte + Barba está confirmado!" }
+        ),
+      },
+
+      reminder: {
+        subject: "⏰ Lembrete: seu horário é amanhã às 14:00 — Mogiana Barber",
+        html: emailLayout(
+          "<div style=\"text-align:center;margin-bottom:24px\">" +
+          "<div style=\"font-size:40px;margin-bottom:12px\">✂️</div>" +
+          "<div style=\"font-size:18px;font-weight:700;color:#ECEDEE;margin-bottom:6px\">Mogiana Barber</div>" +
+          "<div style=\"display:inline-block;background:#FBBF2418;border:1px solid #FBBF2444;border-radius:20px;padding:5px 16px;font-size:13px;color:#FBBF24;font-weight:600\">⏰ Lembrete de agendamento</div></div>" +
+          "<p style=\"color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 20px;text-align:center\">Olá, <strong style=\"color:#ECEDEE\">João Silva</strong>! Seu horário é <strong style=\"color:#ECEDEE\">amanhã</strong>.</p>" +
+          "<div style=\"background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:20px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">" +
+          detailRow("Data", "segunda-feira, 26 de maio") + detailRow("Horário", "14:00 – 15:00", BRAND_COLOR) +
+          detailRow("Serviço", "Corte + Barba") + detailRow("Profissional", "Carlos Rocha", "#ECEDEE", true) +
+          "</table></div>" +
+          ctaButton("Ver detalhes →", "https://usebarberpro.com/pub/mogiana") +
+          "<div style=\"text-align:center;margin-top:-10px;margin-bottom:20px\"><a href=\"https://wa.me/5516999999999\" style=\"display:inline-block;background:#25D36618;border:1px solid #25D36644;color:#25D366;font-size:13px;font-weight:600;padding:10px 24px;border-radius:9px;text-decoration:none\">💬 Falar com a barbearia</a></div>" +
+          "<p style=\"color:#555;font-size:12px;text-align:center\">Precisa cancelar? Entre em contato com a barbearia o quanto antes.</p>",
+          { headerSubtitle: "Mogiana Barber", previewText: "Lembrete: Corte + Barba amanhã às 14:00 — Mogiana Barber" }
+        ),
       },
 
       barber_notify: {
@@ -11634,7 +11648,7 @@ export function registerAdminRoutes(app: Express): void {
     }
 
     const tabs = Object.keys(templates);
-    const labels: Record<string, string> = { booking: "✅ Confirmação", barber_notify: "📅 Notif. Barbeiro", review: "⭐ Avaliação", reset_password: "🔑 Reset Senha", welcome: "🎉 Boas-vindas", subscription: "🌟 Assinatura" };
+    const labels: Record<string, string> = { booking: "✅ Confirmação", reminder: "⏰ Lembrete 24h", barber_notify: "📅 Notif. Barbeiro", review: "⭐ Avaliação", reset_password: "🔑 Reset Senha", welcome: "🎉 Boas-vindas", subscription: "🌟 Assinatura" };
 
     const nav = `
       <div style="position:fixed;top:0;left:0;right:0;background:#111;border-bottom:1px solid #222;padding:10px 20px;display:flex;gap:8px;flex-wrap:wrap;z-index:100;align-items:center">

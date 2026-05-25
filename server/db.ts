@@ -2127,6 +2127,12 @@ export async function markWhatsAppReminder24hSent(id: number) {
   await db.update(appointments).set({ whatsappReminder24hSent: true }).where(eq(appointments.id, id));
 }
 
+export async function markAppointmentEmailReminderSent(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(appointments).set({ emailReminder24hSent: true } as any).where(eq(appointments.id, id));
+}
+
 export async function markWhatsAppReminder1hSent(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

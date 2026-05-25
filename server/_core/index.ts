@@ -16,6 +16,7 @@ import { createContext } from "./context";
 import { startReviewEmailJob } from "../review-job";
 import { startWhatsAppReminderJob } from "../whatsapp-reminder-job";
 import { startSubscriptionReminderJob } from "../subscription-reminder-job";
+import { startEmailReminderJob } from "../email-reminder-job";
 import { startBackupJob } from "../backup-job";
 import { startTrialExpiryJob } from "../trial-expiry-job";
 
@@ -925,6 +926,8 @@ async function startServer() {
     startReviewEmailJob();
     // Iniciar job de lembretes WhatsApp (24h e 1h antes do agendamento)
     startWhatsAppReminderJob();
+    // Iniciar job de lembretes por e-mail (24h antes do agendamento)
+    startEmailReminderJob();
     // Iniciar job de lembretes de assinatura (3 dias antes)
     startSubscriptionReminderJob();
     // Iniciar job de notificação de trial expirando (3 dias antes)

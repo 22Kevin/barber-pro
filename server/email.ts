@@ -123,19 +123,45 @@ export function alertBox(icon: string, title: string, subtitle: string, color: s
 // ─── 1. Confirmação de Agendamento ────────────────────────────────────────────
 export interface BookingEmailData {
   clientName: string; clientEmail: string; shopName: string; shopSlug: string;
-  serviceName: string; barberName: string; date: string; startTime: string; endTime: string; price?: string;
+  serviceName: string; barberName: string; date: string; startTime: string; endTime: string;
+  price?: string; shopLogoUrl?: string | null; shopPhone?: string | null;
 }
 export async function sendBookingConfirmationEmail(data: BookingEmailData): Promise<void> {
   if (!isConfigured()) return;
-  const content = alertBox("✅", "Agendamento confirmado!", "Olá, " + data.clientName + "! Seu horário está reservado.", "#4ADE80") +
-    "<p style=\"color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px\">Seu agendamento em <strong style=\"color:#ECEDEE\">" + data.shopName + "</strong> foi registrado com sucesso.</p>" +
-    "<div style=\"background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">" +
-    detailRow("Serviço", data.serviceName) + detailRow("Profissional", data.barberName) +
-    detailRow("Data", fmtDate(data.date)) + detailRow("Horário", fmtTime(data.startTime) + " – " + fmtTime(data.endTime), BRAND_COLOR) +
-    (data.price ? detailRow("Valor", data.price, "#4ADE80", true) : "") + "</table></div>" +
-    ctaButton("Ver meus agendamentos →", SITE_URL + "/" + data.shopSlug + "/meus-agendamentos") +
-    "<p style=\"color:#555;font-size:12px;text-align:center;margin:0\">Precisa cancelar? Acesse o link acima.</p>";
-  await sendEmail({ to: data.clientEmail, subject: "✅ Agendamento confirmado — " + data.shopName, html: emailLayout(content, { headerSubtitle: data.shopName }), displayName: data.shopName });
+
+  const logoHtml = data.shopLogoUrl
+    ? "<img src=\"" + data.shopLogoUrl + "\" alt=\"" + data.shopName + "\" width=\"64\" height=\"64\" style=\"border-radius:14px;margin:0 auto 12px;display:block;object-fit:cover\">"
+    : "<div style=\"font-size:40px;margin-bottom:12px\">✂️</div>";
+
+  const waLink = data.shopPhone
+    ? "https://wa.me/55" + data.shopPhone.replace(/\D/g, "") + "?text=" + encodeURIComponent("Olá, " + data.shopName + "! Tenho um agendamento marcado para " + data.date + " às " + data.startTime.substring(0,5) + ".")
+    : null;
+
+  const content =
+    "<div style=\"text-align:center;margin-bottom:24px\">" +
+    logoHtml +
+    "<div style=\"font-size:18px;font-weight:700;color:#ECEDEE;margin-bottom:6px\">" + data.shopName + "</div>" +
+    "</div>" +
+    alertBox("✅", "Agendamento confirmado!", "Olá, " + data.clientName + "! Seu horário está reservado.", "#4ADE80") +
+    "<div style=\"background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:20px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">" +
+    detailRow("Serviço", data.serviceName) +
+    detailRow("Profissional", data.barberName) +
+    detailRow("Data", data.date.split("-").reverse().join("/")) +
+    detailRow("Horário", data.startTime.substring(0,5) + " – " + data.endTime.substring(0,5), BRAND_COLOR) +
+    (data.price ? detailRow("Valor", data.price, "#4ADE80", true) : "") +
+    "</table></div>" +
+    ctaButton("Ver meus agendamentos →", SITE_URL + "/pub/" + data.shopSlug) +
+    (waLink
+      ? "<div style=\"text-align:center;margin-top:-10px;margin-bottom:20px\"><a href=\"" + waLink + "\" style=\"display:inline-block;background:#25D36618;border:1px solid #25D36644;color:#25D366;font-size:13px;font-weight:600;padding:10px 24px;border-radius:9px;text-decoration:none\">💬 Falar com a barbearia</a></div>"
+      : "") +
+    "<p style=\"color:#555;font-size:12px;text-align:center\">Precisa cancelar ou reagendar? Acesse o link acima.</p>";
+
+  await sendEmail({
+    to: data.clientEmail,
+    subject: "✅ Agendamento confirmado — " + data.shopName,
+    html: emailLayout(content, { headerSubtitle: data.shopName, previewText: "Seu agendamento de " + data.serviceName + " está confirmado!" }),
+    displayName: data.shopName,
+  });
 }
 
 // ─── 2. Notificação ao Barbeiro ───────────────────────────────────────────────
@@ -261,3 +287,67 @@ export async function sendWelcomeEmail(opts: {
 
 // ─── Exportar para uso externo ────────────────────────────────────────────────
 export { getFrom };
+
+// ─── 10. Lembrete de agendamento (24h antes) ──────────────────────────────────
+export async function sendAppointmentReminderEmail(opts: {
+  clientEmail: string;
+  clientName: string;
+  shopName: string;
+  shopSlug: string;
+  shopLogoUrl?: string | null;
+  shopPhone?: string | null;
+  serviceName: string;
+  barberName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}): Promise<void> {
+  if (!isConfigured() || !opts.clientEmail) return;
+
+  const shopHeaderHtml = opts.shopLogoUrl
+    ? "<img src=\"" + opts.shopLogoUrl + "\" alt=\"" + opts.shopName + "\" width=\"64\" height=\"64\" style=\"border-radius:14px;margin:0 auto 12px;display:block;object-fit:cover\">"
+    : "<div style=\"width:64px;height:64px;border-radius:14px;background:#1A1A1A;border:1px solid #C9A84C33;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:28px\">✂️</div>";
+
+  const fmtDatePT = (d: string) => {
+    const [y, m, day] = d.split("-");
+    const months = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+    const days = ["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
+    const dt = new Date(parseInt(y), parseInt(m)-1, parseInt(day));
+    return days[dt.getDay()] + ", " + day + " de " + months[parseInt(m)-1];
+  };
+
+  const waLink = opts.shopPhone
+    ? "https://wa.me/55" + opts.shopPhone.replace(/\D/g, "") + "?text=" + encodeURIComponent("Olá! Tenho um agendamento amanhã às " + opts.startTime.substring(0,5) + " e gostaria de confirmar.")
+    : null;
+
+  const content =
+    "<div style=\"text-align:center;margin-bottom:24px\">" +
+    shopHeaderHtml +
+    "<div style=\"font-size:18px;font-weight:700;color:#ECEDEE;margin-bottom:6px\">" + opts.shopName + "</div>" +
+    "<div style=\"display:inline-block;background:#FBBF2418;border:1px solid #FBBF2444;border-radius:20px;padding:5px 16px;font-size:13px;color:#FBBF24;font-weight:600\">⏰ Lembrete de agendamento</div>" +
+    "</div>" +
+    "<p style=\"color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 20px;text-align:center\">Olá, <strong style=\"color:#ECEDEE\">" + opts.clientName + "</strong>! Seu horário é <strong style=\"color:#ECEDEE\">amanhã</strong>.</p>" +
+    "<div style=\"background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:20px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\">" +
+    detailRow("Data", fmtDatePT(opts.date)) +
+    detailRow("Horário", opts.startTime.substring(0,5) + " – " + opts.endTime.substring(0,5), BRAND_COLOR) +
+    detailRow("Serviço", opts.serviceName) +
+    detailRow("Profissional", opts.barberName, "#ECEDEE", true) +
+    "</table></div>" +
+    ctaButton("Ver detalhes do agendamento →", SITE_URL + "/pub/" + opts.shopSlug) +
+    (waLink
+      ? "<div style=\"text-align:center;margin-top:-10px;margin-bottom:20px\"><a href=\"" + waLink + "\" style=\"display:inline-block;background:#25D36618;border:1px solid #25D36644;color:#25D366;font-size:13px;font-weight:600;padding:10px 24px;border-radius:9px;text-decoration:none\">💬 Falar com a barbearia</a></div>"
+      : "") +
+    "<p style=\"color:#555;font-size:12px;text-align:center\">Precisa cancelar? Entre em contato com a barbearia o quanto antes.</p>";
+
+  const html = emailLayout(content, {
+    headerSubtitle: opts.shopName,
+    previewText: "Lembrete: " + opts.serviceName + " amanhã às " + opts.startTime.substring(0,5) + " — " + opts.shopName,
+  });
+
+  await sendEmail({
+    to: opts.clientEmail,
+    subject: "⏰ Lembrete: seu horário é amanhã às " + opts.startTime.substring(0,5) + " — " + opts.shopName,
+    html,
+    displayName: opts.shopName,
+  });
+}
