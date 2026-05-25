@@ -11464,6 +11464,189 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // GET /admin/download-apk — Redireciona para o APK ou Play Store
+  // GET /admin/email-preview — Preview visual de todos os templates de e-mail
+  app.get("/admin/email-preview", requireAdminAuth, async (req: Request, res: Response) => {
+    const template = (req.query.template as string) || "booking";
+    const send = req.query.send === "1";
+    const session = (req as any).adminSession as { barberId: number };
+    const barber = await db.getBarberById(session.barberId);
+
+    const { emailLayout, alertBox, ctaButton, detailRow, BRAND_COLOR, sendEmail,
+            sendBookingConfirmationEmail, sendBarberNotificationEmail,
+            sendReviewRequestEmail } = await import("./email.js");
+
+    const templates: Record<string, { subject: string; html: string }> = {
+
+      booking: {
+        subject: "✅ Agendamento confirmado — Mogiana Barber",
+        html: emailLayout(`
+          ${alertBox("✅", "Agendamento confirmado!", "Olá, João Silva! Seu horário está reservado.", "#4ADE80")}
+          <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+            Seu agendamento em <strong style="color:#ECEDEE">Mogiana Barber</strong> foi registrado com sucesso.
+            Confira os detalhes abaixo.
+          </p>
+          <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              ${detailRow("Serviço", "Corte + Barba")}
+              ${detailRow("Profissional", "Carlos Rocha")}
+              ${detailRow("Data", "25 de mai. de 2026")}
+              ${detailRow("Horário", "14:00 – 15:00", BRAND_COLOR)}
+              ${detailRow("Valor", "R$ 55,00", "#4ADE80", true)}
+            </table>
+          </div>
+          ${ctaButton("Ver meus agendamentos →", "https://usebarberpro.com/mogiana/meus-agendamentos")}
+          <p style="color:#555555;font-size:12px;text-align:center;margin:0">
+            Precisa cancelar ou reagendar? Acesse o link acima ou entre em contato com a barbearia.
+          </p>`, { headerSubtitle: "Mogiana Barber", previewText: "Seu agendamento de Corte + Barba está confirmado!" }),
+      },
+
+      barber_notify: {
+        subject: "📅 Novo agendamento: João Silva — 25 mai. às 14:00",
+        html: emailLayout(`
+          ${alertBox("📅", "Novo agendamento online!", "Mogiana Barber", BRAND_COLOR)}
+          <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+            Olá, <strong style="color:#ECEDEE">Carlos Rocha</strong>! Você recebeu um novo agendamento pelo site.
+          </p>
+          <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              ${detailRow("Cliente", "João Silva")}
+              ${detailRow("Telefone", "(16) 99999-9999")}
+              ${detailRow("Serviço", "Corte + Barba")}
+              ${detailRow("Data", "25 de mai. de 2026")}
+              ${detailRow("Horário", "14:00 – 15:00", BRAND_COLOR, true)}
+            </table>
+          </div>
+          ${ctaButton("Ver agenda no painel →", "https://usebarberpro.com/admin/agenda")}`, { headerSubtitle: "Mogiana Barber" }),
+      },
+
+      review: {
+        subject: "⭐ Como foi seu atendimento em Mogiana Barber?",
+        html: emailLayout(`
+          <div style="text-align:center;margin-bottom:24px">
+            <div style="font-size:36px;margin-bottom:12px">✂️</div>
+            <h2 style="margin:0 0 8px;font-size:22px;font-weight:800;color:#ECEDEE">Como foi sua experiência?</h2>
+            <p style="margin:0;color:#9BA1A6;font-size:14px;line-height:1.6">
+              Olá, <strong style="color:#ECEDEE">João Silva</strong>! Seu atendimento de
+              <strong style="color:#ECEDEE">Corte + Barba</strong> com
+              <strong style="color:#ECEDEE">Carlos Rocha</strong> foi concluído.
+            </p>
+          </div>
+          <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:24px;text-align:center;margin-bottom:24px">
+            <p style="margin:0 0 16px;font-size:13px;color:#9BA1A6">Toque em uma estrela para avaliar:</p>
+            <div>${[1,2,3,4,5].map(n => `<a href="https://usebarberpro.com/mogiana/avaliar/123?rating=${n}" style="display:inline-block;width:44px;height:44px;line-height:44px;text-align:center;font-size:26px;text-decoration:none;margin:0 2px">⭐</a>`).join("")}</div>
+          </div>
+          ${ctaButton("Deixar avaliação completa →", "https://usebarberpro.com/mogiana/avaliar/123")}
+          <div style="text-align:center;margin-top:-8px;margin-bottom:24px">
+            <a href="https://maps.google.com" style="display:inline-block;background:#4285F4;color:#fff;font-weight:700;font-size:13px;padding:12px 28px;border-radius:10px;text-decoration:none">
+              🌐 Avaliar no Google Maps
+            </a>
+          </div>`, { headerSubtitle: "Mogiana Barber" }),
+      },
+
+      reset_password: {
+        subject: "🔑 Recuperação de senha — Barber Pro",
+        html: emailLayout(`
+          ${alertBox("🔑", "Redefinir sua senha", "Solicitação de recuperação de acesso", "#FBBF24")}
+          <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+            Recebemos uma solicitação para redefinir a senha da sua conta no <strong style="color:#ECEDEE">Barber Pro</strong>.
+            O código expira em <strong style="color:${BRAND_COLOR}">15 minutos</strong>.
+          </p>
+          <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:24px;text-align:center;margin-bottom:24px">
+            <div style="font-size:12px;color:#9BA1A6;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px">Código de verificação</div>
+            <div style="font-size:42px;font-weight:900;color:${BRAND_COLOR};letter-spacing:10px">847291</div>
+          </div>
+          ${ctaButton("Redefinir minha senha →", "https://usebarberpro.com/admin/reset-password?token=847291")}`, { headerSubtitle: "Recuperação de Senha" }),
+      },
+
+      welcome: {
+        subject: "🎉 Bem-vindo ao Barber Pro, Mogiana Barber!",
+        html: emailLayout(`
+          ${alertBox("🎉", "Bem-vindo ao Barber Pro!", "Sua barbearia está pronta para decolar.", BRAND_COLOR)}
+          <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 8px">
+            Olá, <strong style="color:#ECEDEE">Kevin</strong>! É um prazer ter a <strong style="color:#ECEDEE">Mogiana Barber</strong> no Barber Pro.
+          </p>
+          <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+            Você tem <strong style="color:${BRAND_COLOR}">14 dias grátis</strong> para explorar tudo. Preparamos tudo para você começar agora mesmo.
+          </p>
+          <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              ${detailRow("Barbearia", "Mogiana Barber")}
+              ${detailRow("Plano", "Estúdio")}
+              ${detailRow("Período grátis", "até 08 de jun. de 2026", BRAND_COLOR)}
+              ${detailRow("Sua página", "usebarberpro.com/pub/mogiana", "#60A5FA", true)}
+            </table>
+          </div>
+          <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+            <div style="font-size:12px;color:#9BA1A6;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">🚀 Próximos passos</div>
+            ${[
+              ["1", "Configure seus serviços e preços", "Catálogo → Serviços"],
+              ["2", "Adicione fotos e personalize sua página", "Minha Página → Aparência"],
+              ["3", "Compartilhe seu link de agendamento", "usebarberpro.com/pub/mogiana"],
+              ["4", "Crie seus primeiros planos de assinatura", "Planos de Assinatura"],
+            ].map(([n, title, sub]) =>
+              `<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+                <div style="width:24px;height:24px;min-width:24px;border-radius:50%;background:${BRAND_COLOR};color:#0A0A0A;font-size:12px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px">${n}</div>
+                <div><div style="color:#ECEDEE;font-size:14px;font-weight:700">${title}</div><div style="color:#9BA1A6;font-size:12px;margin-top:2px">${sub}</div></div>
+              </div>`
+            ).join("")}
+          </div>
+          ${ctaButton("Acessar o painel agora →", "https://usebarberpro.com/admin")}
+          <p style="color:#555555;font-size:12px;text-align:center;margin:0">
+            Dúvidas? Fale com a gente pelo WhatsApp ou pelo suporte no painel.
+          </p>`, { headerSubtitle: "Bem-vindo!" }),
+      },
+
+      subscription: {
+        subject: "⭐ Assinatura ativada — Plano Ouro",
+        html: emailLayout(`
+          ${alertBox("⭐", "Assinatura ativada!", "Seu plano mensal está ativo.", "#4ADE80")}
+          <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
+            Olá, <strong style="color:#ECEDEE">João Silva</strong>! Sua assinatura na <strong style="color:#ECEDEE">Mogiana Barber</strong> foi ativada com sucesso.
+          </p>
+          <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              ${detailRow("Plano", "Plano Ouro")}
+              ${detailRow("Agendamentos", "4 por mês")}
+              ${detailRow("Serviços incluídos", "Corte + Barba, Degradê")}
+              ${detailRow("Valor mensal", "R$ 250,00", BRAND_COLOR)}
+              ${detailRow("Renovação automática", "todo mês", "#9BA1A6", true)}
+            </table>
+          </div>
+          ${ctaButton("Agendar meu horário →", "https://usebarberpro.com/pub/mogiana")}
+          <p style="color:#555555;font-size:12px;text-align:center;margin:0">
+            Para cancelar ou alterar sua assinatura, entre em contato com a barbearia.
+          </p>`, { headerSubtitle: "Mogiana Barber", previewText: "Sua assinatura do Plano Ouro está ativa!" }),
+      },
+    };
+
+    const current = templates[template] ?? templates.booking;
+
+    // Modo envio: manda o e-mail para o barbeiro logado
+    if (send && barber?.email) {
+      try {
+        await sendEmail({ to: barber.email, subject: current.subject, html: current.html });
+        res.send(`<html><body style="background:#0A0A0A;color:#4ADE80;font-family:sans-serif;padding:40px;text-align:center"><h2>✅ E-mail enviado para ${barber.email}</h2><a href="/admin/email-preview?template=${template}" style="color:#C9A84C">← Voltar ao preview</a></body></html>`);
+        return;
+      } catch (e: any) {
+        res.send(`<html><body style="background:#0A0A0A;color:#F87171;font-family:sans-serif;padding:40px;text-align:center"><h2>❌ Erro ao enviar: ${e.message}</h2><a href="/admin/email-preview?template=${template}" style="color:#C9A84C">← Voltar ao preview</a></body></html>`);
+        return;
+      }
+    }
+
+    const tabs = Object.keys(templates);
+    const labels: Record<string, string> = { booking: "✅ Confirmação", barber_notify: "📅 Notif. Barbeiro", review: "⭐ Avaliação", reset_password: "🔑 Reset Senha", welcome: "🎉 Boas-vindas", subscription: "🌟 Assinatura" };
+
+    const nav = `
+      <div style="position:fixed;top:0;left:0;right:0;background:#111;border-bottom:1px solid #222;padding:10px 20px;display:flex;gap:8px;flex-wrap:wrap;z-index:100;align-items:center">
+        <span style="color:#C9A84C;font-weight:800;font-size:13px;margin-right:8px">📧 Email Preview</span>
+        ${tabs.map(t => `<a href="/admin/email-preview?template=${t}" style="padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;background:${t === template ? "#C9A84C" : "#1a1a1a"};color:${t === template ? "#0A0A0A" : "#888"};border:1px solid ${t === template ? "#C9A84C" : "#333"}">${labels[t] || t}</a>`).join("")}
+        <a href="/admin/email-preview?template=${template}&send=1" style="margin-left:auto;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;background:#4ADE80;color:#050505">📤 Enviar teste para ${barber?.email ?? "mim"}</a>
+      </div>
+      <div style="height:52px"></div>`;
+
+    res.send(nav + current.html);
+  });
+
   app.get("/admin/download-apk", requireAdminAuth, (req: Request, res: Response) => {
     const apkUrl = process.env.APK_DOWNLOAD_URL ?? process.env.PLAY_STORE_URL ?? "https://play.google.com/store/apps/details?id=space.manus.barber.app";
     res.redirect(apkUrl);
