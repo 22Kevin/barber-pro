@@ -32,7 +32,8 @@ function createTransporter() {
   return nodemailer.createTransport({
     host,
     port,
-    secure: port === 465,
+    secure: port === 465,        // 465 = SSL direto, 587 = STARTTLS
+    requireTLS: port === 587,    // forçar upgrade para TLS na 587
     auth: { user, pass },
     connectionTimeout: 10000,
     greetingTimeout: 10000,
