@@ -593,5 +593,88 @@ export async function sendEmail(opts: {
   }
 }
 
-// ─── Exportar emailLayout para uso externo (webhook, jobs) ────────────────────
+// ─── 9. Boas-vindas — Nova Barbearia ─────────────────────────────────────────
+export async function sendWelcomeEmail(opts: {
+  barberName: string;
+  barberEmail: string;
+  shopName: string;
+  shopSlug: string;
+  trialDays?: number;
+}): Promise<void> {
+  const transporter = createTransporter();
+  if (!transporter) {
+    console.log("[email] SMTP não configurado — e-mail de boas-vindas não enviado.");
+    return;
+  }
+
+  const trialDays = opts.trialDays ?? 14;
+  const panelUrl = `${SITE_URL}/admin`;
+  const publicUrl = `${SITE_URL}/pub/${opts.shopSlug}`;
+
+  const content = `
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:48px;margin-bottom:16px">✂️</div>
+      <h2 style="margin:0 0 8px;font-size:24px;font-weight:900;color:#ECEDEE">
+        Bem-vindo ao Barber Pro, ${opts.barberName}!
+      </h2>
+      <p style="margin:0;color:#9BA1A6;font-size:15px;line-height:1.6">
+        Sua barbearia <strong style="color:${BRAND_COLOR}">${opts.shopName}</strong> está pronta.<br>
+        Você tem <strong style="color:${BRAND_COLOR}">${trialDays} dias grátis</strong> para explorar tudo.
+      </p>
+    </div>
+
+    <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:24px;margin-bottom:24px">
+      <div style="font-size:12px;color:#9BA1A6;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">Seus próximos passos</div>
+
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #2A2A2A">
+        <div style="width:32px;height:32px;border-radius:50%;background:${BRAND_COLOR}22;border:1px solid ${BRAND_COLOR}44;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:900;color:${BRAND_COLOR}">1</div>
+        <div><div style="color:#ECEDEE;font-size:14px;font-weight:700;margin-bottom:2px">Configure seus serviços e preços</div><div style="color:#9BA1A6;font-size:13px">Cadastre cortes, barba e outros serviços com duração e valor.</div></div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #2A2A2A">
+        <div style="width:32px;height:32px;border-radius:50%;background:${BRAND_COLOR}22;border:1px solid ${BRAND_COLOR}44;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:900;color:${BRAND_COLOR}">2</div>
+        <div><div style="color:#ECEDEE;font-size:14px;font-weight:700;margin-bottom:2px">Personalize sua página pública</div><div style="color:#9BA1A6;font-size:13px">Escolha as cores, adicione logo e fotos. Seus clientes vão amar.</div></div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #2A2A2A">
+        <div style="width:32px;height:32px;border-radius:50%;background:${BRAND_COLOR}22;border:1px solid ${BRAND_COLOR}44;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:900;color:${BRAND_COLOR}">3</div>
+        <div><div style="color:#ECEDEE;font-size:14px;font-weight:700;margin-bottom:2px">Compartilhe seu link de agendamento</div><div style="color:#9BA1A6;font-size:13px">Cole no Instagram, WhatsApp e onde quiser. Os clientes agendam sozinhos.</div></div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div style="width:32px;height:32px;border-radius:50%;background:${BRAND_COLOR}22;border:1px solid ${BRAND_COLOR}44;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:900;color:${BRAND_COLOR}">4</div>
+        <div><div style="color:#ECEDEE;font-size:14px;font-weight:700;margin-bottom:2px">Ative os pagamentos online</div><div style="color:#9BA1A6;font-size:13px">Pix, cartão e boleto direto na sua conta. Dinheiro na hora.</div></div>
+      </div>
+    </div>
+
+    <div style="background:${BRAND_COLOR}12;border:1.5px solid ${BRAND_COLOR}33;border-radius:14px;padding:18px 20px;margin-bottom:28px;text-align:center">
+      <div style="font-size:13px;color:#9BA1A6;margin-bottom:6px">Sua página de agendamentos</div>
+      <a href="${publicUrl}" style="font-size:15px;font-weight:700;color:${BRAND_COLOR};text-decoration:none;word-break:break-all">${publicUrl}</a>
+      <div style="font-size:12px;color:#666;margin-top:6px">Compartilhe este link com seus clientes</div>
+    </div>
+
+    ${ctaButton("Acessar o painel →", panelUrl)}
+
+    <p style="color:#555555;font-size:12px;text-align:center;margin:0">
+      Dúvidas? Fale com a gente pelo WhatsApp ou pelo suporte no painel.<br>
+      Estamos aqui para ajudar você a crescer. 💪
+    </p>`;
+
+  try {
+    await transporter.sendMail({
+      from: getFrom(),
+      to: opts.barberEmail,
+      subject: `✂️ Bem-vindo ao Barber Pro, ${opts.barberName}! Sua barbearia está pronta.`,
+      html: emailLayout(content, {
+        headerSubtitle: "Vamos colocar sua barbearia no próximo nível",
+        previewText: `Olá ${opts.barberName}! Sua barbearia ${opts.shopName} está pronta no Barber Pro. Veja seus próximos passos.`,
+      }),
+    });
+    console.log(`[email] Boas-vindas enviado para ${opts.barberEmail}`);
+  } catch (err) {
+    console.error("[email] Erro ao enviar e-mail de boas-vindas:", err);
+  }
+}
+
+
 export { emailLayout, ctaButton, alertBox, detailRow, BRAND_COLOR, BRAND_NAME, SITE_URL, LOGO_URL };

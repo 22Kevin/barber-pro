@@ -13,7 +13,7 @@ import * as QRCode from "qrcode";
 import { createRequire } from "module";
 const _require = createRequire(import.meta.url);
 const PDFDocument = _require("pdfkit") as typeof import("pdfkit");
-import { sendPasswordResetEmail, sendSupportTicketNotificationEmail, sendSupportReplyNotificationEmail } from "./email";
+import { sendPasswordResetEmail, sendSupportTicketNotificationEmail, sendSupportReplyNotificationEmail, sendWelcomeEmail } from "./email";
 import { invokeLLM } from "./_core/llm";
 import {
   asaasEnabled,
@@ -1937,68 +1937,14 @@ export const appRouter = router({
             isWorking: true,
           });
         }
-        // 7. Enviar e-mail de onboarding ao novo dono da barbearia (não bloqueia o retorno)
-        const trialEndsFormatted = trialEndsAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
-        import("./email").then(({ sendEmail, emailLayout, alertBox, ctaButton, detailRow }) => {
-          const planLabels: Record<string, string> = { solo: "Solo", team: "Equipe", studio: "Est\u00fadio" };
-          const planPrices: Record<string, string> = { solo: "R$ 49/m\u00eas", team: "R$ 89/m\u00eas", studio: "R$ 149/m\u00eas" };
-          const planLabel = planLabels[input.plan] ?? "Solo";
-          const planPrice = planPrices[input.plan] ?? "R$ 49/m\u00eas";
-          const adminUrl = `https://usebarberpro.com/${slug}/admin`;
-          const bookingUrl = `https://usebarberpro.com/${slug}`;
-
-          const body = `
-            ${alertBox("\uD83C\uDF89", "Bem-vindo ao Barber Pro!", `${input.shop.name} est\u00e1 pronto para decolar`, "#4ADE80")}
-
-            <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0 0 24px">
-              Ol\u00e1, <strong style="color:#ECEDEE">${input.admin.name}</strong>! Sua barbearia foi criada com sucesso.
-              Voc\u00ea tem <strong style="color:#C9A84C">14 dias gr\u00e1tis</strong> para explorar tudo que o Barber Pro oferece.
-            </p>
-
-            <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:24px">
-              <table width="100%" cellpadding="0" cellspacing="0">
-                ${detailRow("Barbearia", input.shop.name)}
-                ${detailRow("Plano selecionado", `Barber Pro ${planLabel} \u2014 ${planPrice}`, "#C9A84C")}
-                ${detailRow("Trial gratuito at\u00e9", trialEndsFormatted, "#4ADE80")}
-                ${detailRow("Link de agendamento", bookingUrl, "#60A5FA", true)}
-              </table>
-            </div>
-
-            <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:14px;padding:20px 24px;margin-bottom:28px">
-              <div style="font-size:12px;color:#9BA1A6;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px">\uD83D\uDE80 Primeiros passos</div>
-              <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:10px">
-                <span style="color:#C9A84C;font-weight:800;min-width:20px">1.</span>
-                <span style="color:#ECEDEE;font-size:13px;line-height:1.5">Acesse o painel e configure seus <strong>servi\u00e7os e pre\u00e7os</strong></span>
-              </div>
-              <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:10px">
-                <span style="color:#C9A84C;font-weight:800;min-width:20px">2.</span>
-                <span style="color:#ECEDEE;font-size:13px;line-height:1.5">Adicione seus <strong>barbeiros</strong> e defina os hor\u00e1rios de trabalho</span>
-              </div>
-              <div style="margin-bottom:10px;display:flex;align-items:flex-start;gap:10px">
-                <span style="color:#C9A84C;font-weight:800;min-width:20px">3.</span>
-                <span style="color:#ECEDEE;font-size:13px;line-height:1.5">Compartilhe o <strong>link de agendamento</strong> com seus clientes</span>
-              </div>
-              <div style="display:flex;align-items:flex-start;gap:10px">
-                <span style="color:#C9A84C;font-weight:800;min-width:20px">4.</span>
-                <span style="color:#ECEDEE;font-size:13px;line-height:1.5">Baixe o <strong>app Barber Pro</strong> para gerenciar tudo pelo celular</span>
-              </div>
-            </div>
-
-            ${ctaButton("Acessar meu painel \u2192", adminUrl)}
-
-            <p style="color:#555555;font-size:12px;text-align:center;margin:0">
-              Seu link de agendamento: <a href="${bookingUrl}" style="color:#C9A84C">${bookingUrl}</a>
-            </p>`;
-
-          sendEmail({
-            to: input.admin.email,
-            subject: `\uD83C\uDF89 Bem-vindo ao Barber Pro, ${input.admin.name}! Seu trial de 14 dias come\u00E7ou`,
-            html: emailLayout(body, {
-              headerSubtitle: "Bem-vindo ao Barber Pro",
-              previewText: `${input.shop.name} est\u00e1 pronto! Acesse o painel e comece a receber agendamentos online.`,
-            }),
-          }).catch((e: any) => console.error("[onboarding-email] Erro:", e.message));
-        }).catch((e: any) => console.error("[onboarding-email] Erro ao importar email:", e.message));
+        // 7. Enviar e-mail de boas-vindas ao novo dono da barbearia
+        sendWelcomeEmail({
+          barberName: input.admin.name,
+          barberEmail: input.admin.email,
+          shopName: input.shop.name,
+          shopSlug: slug,
+          trialDays: 14,
+        }).catch((e: any) => console.error("[welcome-email] Erro:", e.message));
 
         // 8. Retornar dados do admin para login automático
         return {

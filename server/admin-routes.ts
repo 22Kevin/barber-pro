@@ -22,6 +22,7 @@ import { sql, eq, and, inArray } from "drizzle-orm";
 import { saleItems as saleItemsTable, sales as salesTable } from "../drizzle/schema";
 import { getDb } from "./db";
 import { asaasEnabled, asaasApi, createAsaasSubAccount, getAsaasSubAccount, ensureAsaasRootCustomer, createAsaasSubscription, cancelAsaasSubscription, createAsaasCharge, getOrCreateAsaasCustomer, asaasDefaultDueDate } from "./asaas";
+import { sendEmail, sendPasswordResetEmail, sendBookingConfirmationEmail, sendBarberNotificationEmail, sendReviewRequestEmail, emailLayout, alertBox, ctaButton, detailRow, BRAND_COLOR } from "./email";
 import axios from "axios";
 import PDFDocument from "pdfkit";
 import bcrypt from "bcryptjs";
@@ -7022,7 +7023,7 @@ export function registerAdminRoutes(app: Express): void {
     if (!barber) return res.redirect("/admin/forgot-password?error=1");
     try {
       const token = await db.createPasswordResetToken(email);
-      const { sendPasswordResetEmail } = await import("./email");
+      // sendPasswordResetEmail já importado no topo
       const baseUrl = process.env.PUBLIC_BASE_URL ?? `${req.protocol}://${req.get("host")}`;
       await sendPasswordResetEmail({ toEmail: email, token, baseUrl });
     } catch (err) {
@@ -7518,7 +7519,7 @@ export function registerAdminRoutes(app: Express): void {
       try {
         const adminBarber = await db.getBarberById(session.barberId);
         if (tenantData.email || adminBarber?.email) {
-          const { sendEmail } = await import("../email");
+          // sendEmail já importado no topo
           const recipientEmail = tenantData.email ?? adminBarber?.email;
           const recipientName = adminBarber?.name ?? tenantData.name ?? 'Admin';
           const planLabelFull = planLabelMap[selectedPlan] ?? selectedPlan;
@@ -11470,10 +11471,6 @@ export function registerAdminRoutes(app: Express): void {
     const send = req.query.send === "1";
     const session = (req as any).adminSession as { barberId: number };
     const barber = await db.getBarberById(session.barberId);
-
-    const { emailLayout, alertBox, ctaButton, detailRow, BRAND_COLOR, sendEmail,
-            sendBookingConfirmationEmail, sendBarberNotificationEmail,
-            sendReviewRequestEmail } = await import("./email.js");
 
     const templates: Record<string, { subject: string; html: string }> = {
 
