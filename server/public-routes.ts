@@ -1186,23 +1186,22 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
     </style>
 
+    
+    ` : ""}
+
     <script>
+    // Funções do carrinho — sempre disponíveis globalmente
     var _cart = [];
     var _cartSlug = '${slug}';
 
     function cartFmt(v) {
       return 'R$ ' + Number(v).toFixed(2).replace('.', ',').replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.');
     }
-
-    function cartSave() {
-      try { localStorage.setItem('cart_' + _cartSlug, JSON.stringify(_cart)); } catch(e) {}
-    }
-
+    function cartSave() { try { localStorage.setItem('cart_' + _cartSlug, JSON.stringify(_cart)); } catch(e) {} }
     function cartLoad() {
       try { var s = localStorage.getItem('cart_' + _cartSlug); if(s) _cart = JSON.parse(s); } catch(e) {}
       cartUpdateUI();
     }
-
     function cartAdd(id, name, price, stock) {
       var existing = _cart.find(function(i){ return i.id === id; });
       if (existing) {
@@ -1211,93 +1210,64 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       } else {
         _cart.push({ id: id, name: name, price: price, qty: 1, stock: stock });
       }
-      cartSave();
-      cartUpdateUI();
+      cartSave(); cartUpdateUI();
       cartToast('✓ ' + name + ' adicionado');
       cartOpen();
     }
-
-    function cartRemove(id) {
-      _cart = _cart.filter(function(i){ return i.id !== id; });
-      cartSave();
-      cartUpdateUI();
-      cartRenderItems();
-    }
-
+    function cartRemove(id) { _cart = _cart.filter(function(i){ return i.id !== id; }); cartSave(); cartUpdateUI(); cartRenderItems(); }
     function cartQty(id, delta) {
       var item = _cart.find(function(i){ return i.id === id; });
       if (!item) return;
       item.qty = Math.max(1, Math.min(item.stock, item.qty + delta));
-      cartSave();
-      cartUpdateUI();
-      cartRenderItems();
+      cartSave(); cartUpdateUI(); cartRenderItems();
     }
-
-    function cartTotal() {
-      return _cart.reduce(function(s, i){ return s + i.price * i.qty; }, 0);
-    }
-
-    function cartCount() {
-      return _cart.reduce(function(s, i){ return s + i.qty; }, 0);
-    }
-
+    function cartTotal() { return _cart.reduce(function(s, i){ return s + i.price * i.qty; }, 0); }
+    function cartCount() { return _cart.reduce(function(s, i){ return s + i.qty; }, 0); }
     function cartUpdateUI() {
       var cnt = cartCount();
-      // Badge na navbar
       var navBadge = document.getElementById('cart-nav-badge');
-      if (navBadge) {
-        navBadge.textContent = cnt;
-        navBadge.style.display = cnt > 0 ? 'flex' : 'none';
-      }
+      if (navBadge) { navBadge.textContent = cnt; navBadge.style.display = cnt > 0 ? 'flex' : 'none'; }
       var cntBadge = document.getElementById('cart-count-badge');
       if (cntBadge) cntBadge.textContent = cnt;
-      // Total no drawer
       var totModal = document.getElementById('cart-total-modal');
       if (totModal) totModal.textContent = cartFmt(cartTotal());
-      // Footer
       var footer = document.getElementById('cart-footer');
       if (footer) footer.style.display = cnt > 0 ? 'block' : 'none';
     }
-
     function cartRenderItems() {
       var el = document.getElementById('cart-items');
       if (!el) return;
       if (_cart.length === 0) {
-        el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--muted)">' +
-          '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px;display:block;opacity:0.4"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>' +
-          '<div style="font-size:15px;font-weight:600;margin-bottom:6px">Carrinho vazio</div>' +
-          '<div style="font-size:13px">Adicione produtos para continuar</div></div>';
+        el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--muted)"><div style="font-size:48px;margin-bottom:12px;opacity:0.4">🛒</div><div style="font-size:15px;font-weight:600;margin-bottom:6px">Carrinho vazio</div><div style="font-size:13px">Adicione produtos para continuar</div></div>';
         return;
       }
       el.innerHTML = _cart.map(function(item) {
         return '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)">' +
-          '<div style="flex:1;min-width:0">' +
-          '<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + item.name + '</div>' +
-          '<div style="font-size:13px;color:var(--primary);font-weight:700">' + cartFmt(item.price * item.qty) + '</div>' +
-          '</div>' +
+          '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + item.name + '</div>' +
+          '<div style="font-size:13px;color:var(--primary);font-weight:700">' + cartFmt(item.price * item.qty) + '</div></div>' +
           '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">' +
-          '<button onclick="cartQty(' + item.id + ',-1)" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:14px;cursor:pointer;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:center">−</button>' +
+          '<button onclick="cartQty(' + item.id + ',-1)" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:14px;cursor:pointer;font-weight:700;color:var(--text)">−</button>' +
           '<span style="min-width:20px;text-align:center;font-size:15px;font-weight:800;color:var(--text)">' + item.qty + '</span>' +
-          '<button onclick="cartQty(' + item.id + ',1)" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:14px;cursor:pointer;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:center">+</button>' +
-          '<button onclick="cartRemove(' + item.id + ')" style="width:28px;height:28px;border-radius:8px;border:none;background:rgba(248,113,113,0.12);font-size:13px;cursor:pointer;color:#F87171;display:flex;align-items:center;justify-content:center">✕</button>' +
+          '<button onclick="cartQty(' + item.id + ',1)" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:14px;cursor:pointer;font-weight:700;color:var(--text)">+</button>' +
+          '<button onclick="cartRemove(' + item.id + ')" style="width:28px;height:28px;border-radius:8px;border:none;background:rgba(248,113,113,0.12);font-size:13px;cursor:pointer;color:#F87171">✕</button>' +
           '</div></div>';
       }).join('');
     }
-
     function cartOpen() {
-      cartRenderItems();
-      cartUpdateUI();
-      document.getElementById('cart-overlay').style.display = 'block';
+      cartRenderItems(); cartUpdateUI();
+      var overlay = document.getElementById('cart-overlay');
       var drawer = document.getElementById('cart-drawer');
+      if (!drawer) return;
+      if (overlay) overlay.style.display = 'block';
       drawer.style.display = 'flex';
       drawer.style.flexDirection = 'column';
     }
-
     function cartClose() {
-      document.getElementById('cart-overlay').style.display = 'none';
-      document.getElementById('cart-drawer').style.display = 'none';
+      var overlay = document.getElementById('cart-overlay');
+      var drawer = document.getElementById('cart-drawer');
+      if (overlay) overlay.style.display = 'none';
+      if (drawer) drawer.style.display = 'none';
     }
-
     function cartToast(msg) {
       var t = document.createElement('div');
       t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--primary);color:var(--text);padding:10px 20px;border-radius:50px;font-size:13px;font-weight:700;z-index:9999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
@@ -1305,105 +1275,69 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       document.body.appendChild(t);
       setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 2500);
     }
-
     function cartCheckout() {
       if (_cart.length === 0) return;
       cartClose();
       var body = document.getElementById('checkout-body');
       if (!body) return;
       var itemsHtml = _cart.map(function(item) {
-        return '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:14px">' +
-          '<span style="color:var(--text)">' + item.qty + 'x ' + item.name + '</span>' +
-          '<span style="color:var(--primary);font-weight:700">' + cartFmt(item.price * item.qty) + '</span></div>';
+        return '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:14px"><span style="color:var(--text)">' + item.qty + 'x ' + item.name + '</span><span style="color:var(--primary);font-weight:700">' + cartFmt(item.price * item.qty) + '</span></div>';
       }).join('');
       body.innerHTML =
         '<div style="background:var(--surface);border-radius:14px;padding:16px;margin-bottom:20px">' +
         '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Resumo do pedido</div>' +
         itemsHtml +
-        '<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between">' +
-        '<span style="font-size:15px;font-weight:700;color:var(--muted)">Total</span>' +
-        '<span style="font-size:18px;font-weight:900;color:var(--primary)">' + cartFmt(cartTotal()) + '</span></div></div>' +
-        '<div style="margin-bottom:20px">' +
-        '<div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px">Como deseja pagar?</div>' +
+        '<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between"><span style="font-size:15px;font-weight:700;color:var(--muted)">Total</span><span style="font-size:18px;font-weight:900;color:var(--primary)">' + cartFmt(cartTotal()) + '</span></div></div>' +
+        '<div style="margin-bottom:20px"><div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px">Como deseja pagar?</div>' +
         '<div style="display:flex;flex-direction:column;gap:10px">' +
-        '<button onclick="checkoutPay(\'pix\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">⚡ <div><div>Pix</div><div style="font-size:12px;color:var(--muted);font-weight:500">QR Code gerado na hora · Aprovação imediata</div></div></button>' +
+        '<button onclick="checkoutPay(\'pix\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">⚡ <div><div>Pix</div><div style="font-size:12px;color:var(--muted);font-weight:500">QR Code gerado na hora</div></div></button>' +
         '<button onclick="checkoutPay(\'credit\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">💳 <div><div>Cartão de Crédito</div><div style="font-size:12px;color:var(--muted);font-weight:500">Parcelamento disponível</div></div></button>' +
         '<button onclick="checkoutPay(\'debit\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">💳 <div><div>Cartão de Débito</div><div style="font-size:12px;color:var(--muted);font-weight:500">Aprovação imediata</div></div></button>' +
         '<button onclick="checkoutPay(\'boleto\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">📄 <div><div>Boleto</div><div style="font-size:12px;color:var(--muted);font-weight:500">Vence em 3 dias úteis</div></div></button>' +
-        '<button onclick="checkoutPay(\'pickup\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">🏪 <div><div>Pagar na retirada</div><div style="font-size:12px;color:var(--muted);font-weight:500">Pague quando for buscar na barbearia</div></div></button>' +
-        '</div></div>' +
-        '<div id="checkout-msg" style="min-height:20px;font-size:13px;text-align:center;margin-bottom:12px"></div>';
+        '<button onclick="checkoutPay(\'pickup\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">🏪 <div><div>Pagar na retirada</div><div style="font-size:12px;color:var(--muted);font-weight:500">Pague quando for buscar</div></div></button>' +
+        '</div></div><div id="checkout-msg" style="min-height:20px;font-size:13px;text-align:center;margin-bottom:12px"></div>';
       document.getElementById('checkout-modal').style.display = 'flex';
     }
-
-    function checkoutClose() {
-      document.getElementById('checkout-modal').style.display = 'none';
-    }
-
+    function checkoutClose() { document.getElementById('checkout-modal').style.display = 'none'; }
     async function checkoutPay(method) {
       var msg = document.getElementById('checkout-msg');
       if (!msg) return;
-
       if (method === 'credit' || method === 'debit') {
-        var itemsParam = encodeURIComponent(JSON.stringify(_cart));
-        window.location.href = '/pub/${slug}/checkout-card?method=' + method + '&items=' + itemsParam;
+        window.location.href = '/pub/${slug}/checkout-card?method=' + method + '&items=' + encodeURIComponent(JSON.stringify(_cart));
         return;
       }
-
       msg.style.color = 'var(--muted)';
       msg.textContent = method === 'pix' ? 'Gerando QR Code...' : method === 'boleto' ? 'Gerando boleto...' : 'Processando...';
       document.querySelectorAll('#checkout-body button').forEach(function(b){ b.disabled = true; b.style.opacity = '0.6'; });
-
       try {
-        var r = await fetch('/pub-api/cart-checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: _cart, slug: _cartSlug, paymentMethod: method })
-        });
+        var r = await fetch('/pub-api/cart-checkout', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ items: _cart, slug: _cartSlug, paymentMethod: method }) });
         var data = await r.json();
         if (!data.success) throw new Error(data.error || 'Erro ao processar pedido');
-
         if (method === 'pix' && data.pixQrCode) {
           document.getElementById('checkout-body').innerHTML =
             '<div style="text-align:center;padding:8px 0">' +
-            '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:16px">⚡ Escaneie o QR Code para pagar</div>' +
-            '<div style="background:#fff;border-radius:16px;padding:16px;display:inline-block;margin-bottom:16px">' +
-            '<img src="data:image/png;base64,' + data.pixQrCode + '" style="width:200px;height:200px;border-radius:8px" />' +
-            '</div>' +
-            '<div style="font-size:13px;color:var(--muted);margin-bottom:10px">Ou copie o código:</div>' +
+            '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:16px">⚡ Escaneie o QR Code</div>' +
+            '<div style="background:#fff;border-radius:16px;padding:16px;display:inline-block;margin-bottom:16px"><img src="data:image/png;base64,' + data.pixQrCode + '" style="width:200px;height:200px;border-radius:8px" /></div>' +
             '<div style="font-family:monospace;font-size:11px;color:var(--text);word-break:break-all;background:var(--surface);border-radius:10px;padding:12px;margin-bottom:16px;max-height:80px;overflow-y:auto" id="pix-code-cart">' + (data.pixCopyCola || '') + '</div>' +
-            '<button onclick="navigator.clipboard.writeText(document.getElementById(\\'pix-code-cart\\').textContent).then(function(){cartToast(\\'Código copiado!\\');})" style="padding:10px 24px;border-radius:10px;border:1px solid var(--primary);background:rgba(201,168,76,0.1);color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:20px">📋 Copiar código Pix</button>' +
-            '<div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:12px;padding:14px;font-size:14px;color:#4ADE80;margin-bottom:20px">Após o pagamento, o pedido será confirmado automaticamente.</div>' +
-            '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:block;width:100%;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:900;border-radius:12px;border:none;cursor:pointer">✓ Fechar</button></div>';
-        } else if (method === 'pix' && !data.pixQrCode) {
-          msg.style.color = '#F87171';
-          msg.textContent = '❌ Pagamento via Pix não disponível. Escolha outra forma.';
+            '<button onclick="navigator.clipboard.writeText(document.getElementById(\'pix-code-cart\').textContent).then(function(){cartToast(\'Código copiado!\');})" style="padding:10px 24px;border-radius:10px;border:1px solid var(--primary);background:rgba(201,168,76,0.1);color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:20px">📋 Copiar código</button><br>' +
+            '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:inline-block;padding:12px 28px;background:var(--primary);color:#0A0A0A;font-size:14px;font-weight:900;border-radius:12px;border:none;cursor:pointer;margin-top:8px">✓ Fechar</button></div>';
+        } else if (method === 'pix') {
+          msg.style.color = '#F87171'; msg.textContent = '❌ Pix não disponível. Escolha outra forma.';
           document.querySelectorAll('#checkout-body button').forEach(function(b){ b.disabled = false; b.style.opacity = '1'; });
-        } else if (method === 'boleto' && data.boletoUrl) {
-          document.getElementById('checkout-body').innerHTML =
-            '<div style="text-align:center;padding:20px 0">' +
-            '<div style="font-size:48px;margin-bottom:12px">📄</div>' +
-            '<h2 style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:12px">Boleto gerado!</h2>' +
-            '<a href="' + data.boletoUrl + '" target="_blank" style="display:block;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:900;border-radius:12px;text-decoration:none;margin-bottom:12px">📥 Abrir boleto</a>' +
-            '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:14px;border-radius:12px;cursor:pointer">Fechar</button></div>';
         } else {
           document.getElementById('checkout-body').innerHTML =
-            '<div style="text-align:center;padding:20px 0">' +
-            '<div style="font-size:56px;margin-bottom:16px">🎉</div>' +
+            '<div style="text-align:center;padding:20px 0"><div style="font-size:56px;margin-bottom:16px">🎉</div>' +
             '<h2 style="font-size:22px;font-weight:900;color:var(--text);margin-bottom:12px">Pedido realizado!</h2>' +
-            '<p style="font-size:15px;color:var(--muted);margin-bottom:20px">' + (method === 'pickup' ? 'Seu pedido foi registrado. Pague quando buscar na barbearia.' : 'Pedido confirmado!') + '</p>' +
-            '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:inline-block;padding:14px 32px;background:var(--primary);color:#0A0A0A;font-weight:900;border-radius:12px;border:none;cursor:pointer;font-size:15px">Fechar</button></div>';
+            '<p style="font-size:15px;color:var(--muted);margin-bottom:20px">' + (method === 'pickup' ? 'Pague quando buscar na barbearia.' : 'Pedido confirmado!') + '</p>' +
+            '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="padding:14px 32px;background:var(--primary);color:#0A0A0A;font-weight:900;border-radius:12px;border:none;cursor:pointer;font-size:15px">Fechar</button></div>';
         }
       } catch(err) {
-        msg.style.color = '#F87171';
-        msg.textContent = '❌ ' + err.message;
+        msg.style.color = '#F87171'; msg.textContent = '❌ ' + err.message;
         document.querySelectorAll('#checkout-body button').forEach(function(b){ b.disabled = false; b.style.opacity = '1'; });
       }
     }
-
     cartLoad();
     </script>
-    ` : ""}
   `;
 
    res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings, slug));
