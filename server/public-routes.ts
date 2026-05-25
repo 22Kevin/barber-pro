@@ -608,25 +608,32 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   // ── Seção: Cards de Produtos (para o painel de abas) ─────────────────────
   const productsTabHtml = saleProducts.length === 0
     ? `<div class="empty">Nenhum produto disponível.</div>`
-    : saleProducts.map((p: any) => `
-      <div class="tab-card" onclick="location.href='/pub/${slug}/produto/${p.id}'" role="link" tabindex="0">
-        <div class="tab-card-img-wrap">
+    : saleProducts.map((p: any) => {
+        const inStock = p.stockQuantity == null || p.stockQuantity > 0;
+        return `
+      <div class="tab-card" role="article">
+        <div class="tab-card-img-wrap" onclick="location.href='/pub/${slug}/produto/${p.id}'" style="cursor:pointer">
           ${p.thumbnailUrl
             ? `<img class="tab-card-thumb" src="${escapeHtml(p.thumbnailUrl)}" alt="${escapeHtml(p.name)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="tab-card-thumb-placeholder" style="display:none">🧴</div>`
             : `<div class="tab-card-thumb-placeholder">🧴</div>`
           }
         </div>
         <div class="tab-card-body">
-          <div class="tab-card-name">${escapeHtml(p.name)}</div>
+          <div class="tab-card-name" onclick="location.href='/pub/${slug}/produto/${p.id}'" style="cursor:pointer">${escapeHtml(p.name)}</div>
           ${p.description ? `<div class="tab-card-desc">${escapeHtml(p.description)}</div>` : ""}
           <div class="tab-card-meta">
             ${priceHtml(p.price)}
-            ${p.stockQuantity != null ? `<span class="tab-card-duration">${(p.stockQuantity > 0 ? "📦 " + p.stockQuantity + " em estoque" : "Sem estoque")}</span>` : ""}
+            ${p.stockQuantity != null ? `<span class="tab-card-duration">${inStock ? "📦 " + p.stockQuantity + " em estoque" : "Sem estoque"}</span>` : ""}
           </div>
-          ${ctaLoginHtml(`produto/${p.id}`)}
+          ${isLoggedIn
+            ? (inStock
+                ? `<button onclick="cartAdd(${p.id},'${escapeHtml(p.name).replace(/'/g,"\\'")}',${Number(p.price)},${p.stockQuantity ?? 99})" style="display:block;width:100%;padding:11px;background:var(--primary);color:#0A0A0A;font-size:14px;font-weight:800;border-radius:10px;border:none;cursor:pointer;margin-top:8px">🛒 Adicionar ao carrinho</button>`
+                : `<a href="/pub/${slug}/produto/${p.id}" style="display:block;width:100%;padding:11px;background:transparent;color:var(--primary);font-size:14px;font-weight:800;border-radius:10px;border:2px solid var(--primary);text-align:center;text-decoration:none;margin-top:8px;box-sizing:border-box">📦 Encomendar</a>`)
+            : `<a href="/pub/${slug}/login?redirect=produtos" style="display:block;width:100%;padding:11px;background:var(--primary);color:#0A0A0A;font-size:14px;font-weight:800;border-radius:10px;text-align:center;text-decoration:none;margin-top:8px">🔒 Entrar para comprar</a>`
+          }
         </div>
       </div>
-    `).join("");
+    `;}).join("");
 
   // ── Seção: Galeria (Carrossel) ────────────────────────────────────────────
   const galleryHtml = galleryUrls.length === 0 ? "" : `
@@ -1132,6 +1139,228 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
         setInterval(refreshBadge, 60000);
       })();
     </script>
+
+    ${isLoggedIn ? `
+    <!-- CARRINHO FLUTUANTE -->
+    <div id="cart-fab" onclick="cartOpen()" style="display:none;position:fixed;bottom:24px;right:20px;z-index:900;background:var(--primary);color:#0A0A0A;border:none;border-radius:50px;padding:13px 20px;font-size:15px;font-weight:900;cursor:pointer;box-shadow:0 4px 24px rgba(0,0,0,0.35);align-items:center;gap:8px">
+      🛒 <span id="cart-count">0</span> item<span id="cart-plural"></span> · <span id="cart-total-fab">R$ 0,00</span>
+    </div>
+
+    <!-- MODAL DO CARRINHO -->
+    <div id="cart-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.65);align-items:flex-end;justify-content:center">
+      <div style="background:var(--bg);border-radius:24px 24px 0 0;width:100%;max-width:520px;max-height:90vh;display:flex;flex-direction:column;animation:slideUp 0.3s ease">
+        <div style="padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+          <h2 style="font-size:20px;font-weight:900;color:var(--text);margin:0">🛒 Carrinho</h2>
+          <button onclick="cartClose()" style="background:none;border:none;font-size:24px;color:var(--muted);cursor:pointer">✕</button>
+        </div>
+        <div id="cart-items" style="flex:1;overflow-y:auto;padding:16px 20px"></div>
+        <div style="padding:16px 20px 32px;border-top:1px solid var(--border);flex-shrink:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <span style="font-size:15px;color:var(--muted);font-weight:600">Total</span>
+            <span id="cart-total-modal" style="font-size:22px;font-weight:900;color:var(--primary)">R$ 0,00</span>
+          </div>
+          <button onclick="cartCheckout()" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;border:none;cursor:pointer">Finalizar pedido →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE CHECKOUT -->
+    <div id="checkout-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:flex-end;justify-content:center">
+      <div style="background:var(--bg);border-radius:24px 24px 0 0;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;animation:slideUp 0.3s ease">
+        <div style="padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center">
+          <h2 style="font-size:20px;font-weight:900;color:var(--text);margin:0">💳 Finalizar Pedido</h2>
+          <button onclick="checkoutClose()" style="background:none;border:none;font-size:24px;color:var(--muted);cursor:pointer">✕</button>
+        </div>
+        <div id="checkout-body" style="padding:20px 20px 32px"></div>
+      </div>
+    </div>
+
+    <script>
+    var _cart = [];
+    var _cartSlug = '${slug}';
+
+    function cartFmt(v) {
+      return 'R$ ' + Number(v).toFixed(2).replace('.', ',').replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.');
+    }
+
+    function cartSave() {
+      try { localStorage.setItem('cart_' + _cartSlug, JSON.stringify(_cart)); } catch(e) {}
+    }
+
+    function cartLoad() {
+      try { var s = localStorage.getItem('cart_' + _cartSlug); if(s) _cart = JSON.parse(s); } catch(e) {}
+      cartUpdateUI();
+    }
+
+    function cartAdd(id, name, price, stock) {
+      var existing = _cart.find(function(i){ return i.id === id; });
+      if (existing) {
+        if (existing.qty < stock) { existing.qty++; }
+        else { cartToast('Quantidade máxima atingida'); return; }
+      } else {
+        _cart.push({ id: id, name: name, price: price, qty: 1, stock: stock });
+      }
+      cartSave();
+      cartUpdateUI();
+      cartToast('✓ ' + name + ' adicionado ao carrinho');
+    }
+
+    function cartRemove(id) {
+      _cart = _cart.filter(function(i){ return i.id !== id; });
+      cartSave();
+      cartUpdateUI();
+      cartRenderItems();
+    }
+
+    function cartQty(id, delta) {
+      var item = _cart.find(function(i){ return i.id === id; });
+      if (!item) return;
+      item.qty = Math.max(1, Math.min(item.stock, item.qty + delta));
+      cartSave();
+      cartUpdateUI();
+      cartRenderItems();
+    }
+
+    function cartTotal() {
+      return _cart.reduce(function(s, i){ return s + i.price * i.qty; }, 0);
+    }
+
+    function cartCount() {
+      return _cart.reduce(function(s, i){ return s + i.qty; }, 0);
+    }
+
+    function cartUpdateUI() {
+      var cnt = cartCount();
+      var fab = document.getElementById('cart-fab');
+      if (fab) {
+        fab.style.display = cnt > 0 ? 'flex' : 'none';
+        var cntEl = document.getElementById('cart-count');
+        var plurEl = document.getElementById('cart-plural');
+        var totEl = document.getElementById('cart-total-fab');
+        if (cntEl) cntEl.textContent = cnt;
+        if (plurEl) plurEl.textContent = cnt === 1 ? '' : 's';
+        if (totEl) totEl.textContent = cartFmt(cartTotal());
+      }
+      var totModal = document.getElementById('cart-total-modal');
+      if (totModal) totModal.textContent = cartFmt(cartTotal());
+    }
+
+    function cartRenderItems() {
+      var el = document.getElementById('cart-items');
+      if (!el) return;
+      if (_cart.length === 0) {
+        el.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--muted)"><div style="font-size:48px;margin-bottom:12px">🛒</div><div style="font-size:15px">Seu carrinho está vazio.</div></div>';
+        return;
+      }
+      el.innerHTML = _cart.map(function(item) {
+        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">' +
+          '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:2px">' + item.name + '</div>' +
+          '<div style="font-size:14px;color:var(--primary);font-weight:700">' + cartFmt(item.price) + ' / un.</div></div>' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">' +
+          '<button onclick="cartQty(' + item.id + ',-1)" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;font-weight:700;color:var(--text)">−</button>' +
+          '<span style="min-width:24px;text-align:center;font-size:16px;font-weight:800;color:var(--text)">' + item.qty + '</span>' +
+          '<button onclick="cartQty(' + item.id + ',1)" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;font-weight:700;color:var(--text)">+</button>' +
+          '<button onclick="cartRemove(' + item.id + ')" style="width:32px;height:32px;border-radius:8px;border:none;background:rgba(248,113,113,0.12);font-size:14px;cursor:pointer;color:#F87171">✕</button>' +
+          '</div></div>';
+      }).join('');
+    }
+
+    function cartOpen() {
+      cartRenderItems();
+      cartUpdateUI();
+      document.getElementById('cart-modal').style.display = 'flex';
+    }
+
+    function cartClose() {
+      document.getElementById('cart-modal').style.display = 'none';
+    }
+
+    function cartToast(msg) {
+      var t = document.createElement('div');
+      t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--primary);color:var(--text);padding:10px 20px;border-radius:50px;font-size:13px;font-weight:700;z-index:9999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 2500);
+    }
+
+    function cartCheckout() {
+      if (_cart.length === 0) return;
+      cartClose();
+      var body = document.getElementById('checkout-body');
+      if (!body) return;
+      var itemsHtml = _cart.map(function(item) {
+        return '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px">' +
+          '<span style="color:var(--text)">' + item.qty + 'x ' + item.name + '</span>' +
+          '<span style="color:var(--primary);font-weight:700">' + cartFmt(item.price * item.qty) + '</span></div>';
+      }).join('');
+      body.innerHTML =
+        '<div style="background:var(--surface);border-radius:14px;padding:16px;margin-bottom:20px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Resumo do pedido</div>' +
+        itemsHtml +
+        '<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between">' +
+        '<span style="font-size:15px;font-weight:700;color:var(--muted)">Total</span>' +
+        '<span style="font-size:18px;font-weight:900;color:var(--primary)">' + cartFmt(cartTotal()) + '</span></div></div>' +
+        '<div style="margin-bottom:20px">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px">Como deseja pagar?</div>' +
+        '<div style="display:flex;flex-direction:column;gap:10px">' +
+        '<button onclick="checkoutPay(\\'pix\\')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:15px;font-weight:700;color:var(--text);text-align:left">⚡ <div><div>Pix</div><div style=\\"font-size:12px;color:var(--muted);font-weight:500\\">QR Code gerado na hora · Aprovação imediata</div></div></button>' +
+        '<button onclick="checkoutPay(\\'pickup\\')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:15px;font-weight:700;color:var(--text);text-align:left">🏪 <div><div>Pagar na retirada</div><div style=\\"font-size:12px;color:var(--muted);font-weight:500\\">Pague quando for buscar na barbearia</div></div></button>' +
+        '</div></div>' +
+        '<div id="checkout-msg" style="min-height:20px;font-size:13px;text-align:center;margin-bottom:12px"></div>';
+      document.getElementById('checkout-modal').style.display = 'flex';
+    }
+
+    function checkoutClose() {
+      document.getElementById('checkout-modal').style.display = 'none';
+    }
+
+    async function checkoutPay(method) {
+      var msg = document.getElementById('checkout-msg');
+      if (!msg) return;
+      msg.style.color = 'var(--muted)';
+      msg.textContent = 'Processando...';
+      document.querySelectorAll('#checkout-body button').forEach(function(b){ b.disabled = true; b.style.opacity = '0.6'; });
+
+      try {
+        var r = await fetch('/pub-api/cart-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: _cart, slug: _cartSlug, paymentMethod: method })
+        });
+        var data = await r.json();
+        if (!data.success) throw new Error(data.error || 'Erro ao processar pedido');
+
+        if (method === 'pix' && data.pixQrCode) {
+          document.getElementById('checkout-body').innerHTML =
+            '<div style="text-align:center;padding:8px 0">' +
+            '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:16px">⚡ Escaneie o QR Code para pagar</div>' +
+            '<div style="background:#fff;border-radius:16px;padding:16px;display:inline-block;margin-bottom:16px">' +
+            '<img src="data:image/png;base64,' + data.pixQrCode + '" style="width:200px;height:200px;border-radius:8px" />' +
+            '</div>' +
+            '<div style="font-size:13px;color:var(--muted);margin-bottom:10px">Ou copie o código:</div>' +
+            '<div style="font-family:monospace;font-size:11px;color:var(--text);word-break:break-all;background:var(--surface);border-radius:10px;padding:12px;margin-bottom:16px;max-height:80px;overflow-y:auto" id="pix-code-cart">' + (data.pixCopyCola || '') + '</div>' +
+            '<button onclick="navigator.clipboard.writeText(document.getElementById(\\'pix-code-cart\\').textContent).then(function(){cartToast(\\'Código copiado!\\');})" style="padding:10px 24px;border-radius:10px;border:1px solid var(--primary);background:rgba(var(--primary-rgb,201,168,76),0.1);color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:20px">📋 Copiar código Pix</button>' +
+            '<div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:12px;padding:14px;font-size:14px;color:#4ADE80;margin-bottom:20px">Após o pagamento, o pedido será confirmado automaticamente.</div>' +
+            '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:block;width:100%;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:900;border-radius:12px;border:none;cursor:pointer">✓ Fechar</button>' +
+            '</div>';
+        } else {
+          document.getElementById('checkout-body').innerHTML =
+            '<div style="text-align:center;padding:20px 0">' +
+            '<div style="font-size:56px;margin-bottom:16px">🎉</div>' +
+            '<h2 style="font-size:22px;font-weight:900;color:var(--text);margin-bottom:12px">Pedido realizado!</h2>' +
+            '<p style="font-size:15px;color:var(--muted);margin-bottom:20px">' + (method === 'pickup' ? 'Seu pedido foi registrado. Pague quando buscar na barbearia.' : 'Pagamento confirmado! Seu pedido está sendo preparado.') + '</p>' +
+            '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:inline-block;padding:14px 32px;background:var(--primary);color:#0A0A0A;font-weight:900;border-radius:12px;border:none;cursor:pointer;font-size:15px">Fechar</button></div>';
+        }
+      } catch(err) {
+        msg.style.color = '#F87171';
+        msg.textContent = '❌ ' + err.message;
+        document.querySelectorAll('#checkout-body button').forEach(function(b){ b.disabled = false; b.style.opacity = '1'; });
+      }
+    }
+
+    cartLoad();
+    </script>
+    ` : ""}
   `;
 
    res.send(publicLayout(settings?.shopName ?? tenant.name, primaryColor, body, "", settings, slug));
@@ -4124,7 +4353,12 @@ async function renderProductDetailPage(slug: string, productId: number, res: Res
       function closeLightbox() { document.getElementById('lightboxOverlay').classList.remove('open'); }
       function lightboxMove(dir) { _cur=(_cur+dir+_imgs.length)%_imgs.length; document.getElementById('lightboxImg').src=_imgs[_cur]; }
       document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ closeLightbox(); closeOrderModal(); } if(e.key==='ArrowLeft') lightboxMove(-1); if(e.key==='ArrowRight') lightboxMove(1); });
-      function buyProduct() { window.location.href = '/pub/${slug}/agendar?buyProduct=${productId}'; }
+      function buyProduct() {
+        var inStock = ${JSON.stringify(inStock)};
+        if (!inStock) return;
+        cartAdd(${productId}, '${escapeHtml(product.name).replace(/'/g,"\\'")}', ${Number(product.price)}, ${product.stockQuantity ?? 99});
+        setTimeout(function() { window.location.href = '/pub/${slug}#tab-products'; }, 600);
+      }
       function openOrderModal() {
         _qty = 1;
         document.getElementById('qtyDisplay').textContent = '1';
@@ -4204,7 +4438,97 @@ export function registerPublicRoutes(app: Express): void {
       res.status(500).json({ error: "erro interno" });
     }
   });
-  app.post("/pub-api/order-product", async (req: Request, res: Response) => {
+  // POST /pub-api/cart-checkout — Checkout do carrinho (múltiplos produtos)
+  app.post("/pub-api/cart-checkout", async (req: Request, res: Response) => {
+    try {
+      const { items, slug, paymentMethod } = req.body;
+      if (!items?.length || !slug) { res.status(400).json({ error: "Dados incompletos" }); return; }
+
+      const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+      if (!sessionData) { res.status(401).json({ error: "Não autenticado" }); return; }
+      let clientInfo: any;
+      try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch { res.status(401).json({ error: "Sessão inválida" }); return; }
+
+      const tenant = await db.getTenantBySlug(slug);
+      if (!tenant) { res.status(404).json({ error: "Barbearia não encontrada" }); return; }
+
+      // Calcular total e validar produtos
+      let total = 0;
+      const orderItems: any[] = [];
+      for (const item of items) {
+        const product = await db.getProductById(parseInt(item.id));
+        if (!product) continue;
+        const qty = Math.max(1, parseInt(item.qty) || 1);
+        total += Number(product.price) * qty;
+        orderItems.push({ product, qty, unitPrice: Number(product.price) });
+      }
+      if (orderItems.length === 0) { res.status(400).json({ error: "Nenhum produto válido" }); return; }
+
+      // Criar pedidos no banco
+      for (const oi of orderItems) {
+        await db.createProductOrder({
+          tenantId: tenant.id,
+          clientId: clientInfo.id,
+          productId: oi.product.id,
+          quantity: oi.qty,
+          note: paymentMethod === "pickup" ? "Pagamento na retirada" : "Pagamento via Pix",
+        });
+      }
+
+      // Se Pix: gerar cobrança no Asaas
+      if (paymentMethod === "pix" && asaasEnabled) {
+        try {
+          const dbConn = await db.getDb();
+          let subApiKey: string | undefined;
+          if (dbConn) {
+            const tenantRow = await dbConn.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${tenant.id} LIMIT 1`) as any;
+            const td = Array.isArray(tenantRow) ? tenantRow[0]?.[0] : tenantRow?.rows?.[0];
+            subApiKey = td?.asaasApiKey || undefined;
+          }
+          if (subApiKey) {
+            const customerId = await getOrCreateAsaasCustomer({
+              name: clientInfo.name || "Cliente",
+              mobilePhone: clientInfo.phone ? clientInfo.phone.replace(/\D/g, "") : undefined,
+              externalReference: String(clientInfo.id),
+            }, subApiKey);
+            const description = orderItems.map(oi => `${oi.qty}x ${oi.product.name}`).join(", ");
+            const charge = await createAsaasCharge({
+              customer: customerId,
+              billingType: "PIX",
+              value: total,
+              dueDate: asaasDefaultDueDate(),
+              description: "Pedido — " + description,
+            }, subApiKey);
+            res.json({ success: true, pixQrCode: charge.pixQrCode ?? null, pixCopyCola: charge.pixCopyCola ?? null, total });
+            return;
+          }
+        } catch (pixErr: any) {
+          console.error("[cart-checkout] Pix error:", pixErr.message);
+          // Fallback: confirmar sem pagamento online
+        }
+      }
+
+      // Notificar barbeiros
+      const allBarbers = await db.getAllBarbers(tenant.id);
+      for (const barber of allBarbers.slice(0, 2)) {
+        try {
+          const pushToken = await db.getBarberPushToken(barber.id);
+          if (pushToken) {
+            await db.sendExpoPushNotification(pushToken, "🛒 Novo pedido de produtos",
+              `${clientInfo.name} pediu ${orderItems.length} produto(s) — Total: R$ ${total.toFixed(2).replace(".", ",")}`,
+              { type: "product_order" });
+          }
+        } catch {}
+      }
+
+      res.json({ success: true, total });
+    } catch (e: any) {
+      console.error("[cart-checkout]", e.message);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /pub-api/order-product — Encomenda de produto individual (sem estoque)
     try {
       const { productId, quantity, slug } = req.body;
       if (!productId || !quantity || !slug) { res.status(400).json({ error: "Dados incompletos" }); return; }
