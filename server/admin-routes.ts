@@ -2334,7 +2334,7 @@ async function renderAgenda(req: Request, res: Response) {
                 const sl = statusLabels[a.status] ?? a.status;
                 const serviceNames = a.serviceNames ?? a.serviceName ?? "—";
                 const initials = (a.clientName ?? '?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase();
-                return `<div id="appt-card-${a.id}" onclick="openEditModal(${JSON.stringify({id:a.id,clientName:a.clientName??'',clientPhone:a.clientPhone??'',serviceId:a.serviceId,serviceName:serviceNames,barberId:a.barberId,barberName:a.barberName??'',date:a.date,startTime:a.startTime??'',endTime:a.endTime??'',status:a.status,notes:a.notes??''})})" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s;display:flex;align-items:center;gap:14px;" onmouseover="this.style.borderColor='rgba(201,168,76,0.5)';this.style.boxShadow='0 4px 20px rgba(0,0,0,0.25)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none';this.style.transform='none'">
+                return `<div id="appt-card-${a.id}" onclick="openEditModal(${JSON.stringify({id:a.id,clientName:a.clientName??'',clientPhone:a.clientPhone??'',serviceId:a.serviceId,serviceName:serviceNames,barberId:a.barberId,barberName:a.barberName??'',date:a.date,startTime:a.startTime??'',endTime:a.endTime??'',status:a.status,notes:a.notes??''})})" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s;display:flex;align-items:center;gap:14px;" onmouseover="this.style.borderColor='#C9A84C';this.style.boxShadow='0 4px 20px #0004'";this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none';this.style.transform='none'">
                   <!-- Horário -->
                   <div style="flex-shrink:0;text-align:center;min-width:52px;">
                     <div style="font-size:20px;font-weight:900;color:var(--text);line-height:1;letter-spacing:-0.5px;">${a.startTime?.substring(0,5) ?? "—"}</div>
@@ -3018,13 +3018,13 @@ async function renderAgenda(req: Request, res: Response) {
       completed:'Concluído', cancelled:'Cancelado', no_show:'Não compareceu', pending_approval:'Aguarda aprovação'
     };
     var STATUS_COLORS = {
-      scheduled: {bg:'rgba(201,168,76,0.08)', border:'rgba(201,168,76,0.3)', text:'#C9A84C'},
-      confirmed: {bg:'rgba(76,175,80,0.08)', border:'rgba(76,175,80,0.3)', text:'#4CAF50'},
-      in_progress: {bg:'rgba(33,150,243,0.08)', border:'rgba(33,150,243,0.3)', text:'#2196F3'},
-      completed: {bg:'rgba(136,136,128,0.08)', border:'rgba(136,136,128,0.3)', text:'#888880'},
-      cancelled: {bg:'rgba(244,67,54,0.08)', border:'rgba(244,67,54,0.3)', text:'#F44336'},
-      no_show: {bg:'rgba(255,152,0,0.08)', border:'rgba(255,152,0,0.3)', text:'#FF9800'},
-      pending_approval: {bg:'rgba(255,107,53,0.08)', border:'rgba(255,107,53,0.3)', text:'#FF6B35'},
+      scheduled: {bg:'#C9A84C14', border:'#C9A84C4D', text:'#C9A84C'},
+      confirmed: {bg:'#4CAF5014', border:'#4CAF504D', text:'#4CAF50'},
+      in_progress: {bg:'#2196F314', border:'#2196F34D', text:'#2196F3'},
+      completed: {bg:'#88888814', border:'#8888884D', text:'#888880'},
+      cancelled: {bg:'#F4433614', border:'#F443364D', text:'#F44336'},
+      no_show: {bg:'#FF980014', border:'#FF98004D', text:'#FF9800'},
+      pending_approval: {bg:'#FF6B3514', border:'#FF6B354D', text:'#FF6B35'},
     };
 
     function fmtDatePT(d) {
@@ -3083,7 +3083,7 @@ async function renderAgenda(req: Request, res: Response) {
         var sl = STATUS_LABELS[a.status] || a.status;
         var initials = (a.clientName || '?').split(' ').map(function(w){ return w[0]; }).slice(0,2).join('').toUpperCase();
         var editData = JSON.stringify({id:a.id,clientName:a.clientName,clientPhone:a.clientPhone,serviceId:a.serviceId,serviceName:a.serviceName,barberId:a.barberId,barberName:a.barberName,date:a.date,startTime:a.startTime,endTime:a.endTime,status:a.status,notes:a.notes});
-        cardsHtml += '<div id="appt-card-' + a.id + '" onclick="openEditModal(' + editData.replace(/"/g,'&quot;') + ')" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s;display:flex;align-items:center;gap:14px;" onmouseover="this.style.borderColor=\'rgba(201,168,76,0.5)\';this.style.boxShadow=\'0 4px 20px rgba(0,0,0,0.25)\';this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.boxShadow=\'none\';this.style.transform=\'none\'">' +
+        cardsHtml += '<div id="appt-card-' + a.id + '" onclick="openEditModal(' + editData.replace(/"/g,'&quot;') + ')" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s;display:flex;align-items:center;gap:14px;" onmouseover="this.style.borderColor=\'#C9A84C\';this.style.boxShadow=\'0 4px 20px #0004\';this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.boxShadow=\'none\';this.style.transform=\'none\'">' +
           '<div style="flex-shrink:0;text-align:center;min-width:52px;"><div style="font-size:20px;font-weight:900;color:var(--text);line-height:1;">' + (a.startTime ? a.startTime.substring(0,5) : '—') + '</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">' + (a.endTime ? a.endTime.substring(0,5) : '') + '</div></div>' +
           '<div style="width:1px;height:40px;background:var(--border);flex-shrink:0;"></div>' +
           '<div style="width:40px;height:40px;border-radius:12px;background:' + sc.bg + ';border:1px solid ' + sc.border + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:800;color:' + sc.text + ';">' + initials + '</div>' +
@@ -3092,7 +3092,7 @@ async function renderAgenda(req: Request, res: Response) {
           '<div style="font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (a.serviceName || '—') + (a.barberName ? ' · ' + a.barberName : '') + '</div>' +
           '</div>' +
           '<span style="display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:' + sc.bg + ';border:1px solid ' + sc.border + ';color:' + sc.text + ';white-space:nowrap;">' + sl + '</span>' +
-          (a.status === 'completed' ? '<button onclick="event.stopPropagation();openPaymentModal(' + JSON.stringify({appointmentId:a.id,serviceId:a.serviceId,serviceName:a.serviceName,clientId:0,clientName:a.clientName,clientPhone:a.clientPhone,barberId:a.barberId,amount:a.servicePrice}).replace(/"/g,"'") + ')" style="flex-shrink:0;padding:6px 12px;border-radius:9px;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;">💰 Pagar</button>' : '') +
+          (a.status === 'completed' ? '<button onclick="event.stopPropagation();openPaymentModal(' + JSON.stringify({appointmentId:a.id,serviceId:a.serviceId,serviceName:a.serviceName,clientId:0,clientName:a.clientName,clientPhone:a.clientPhone,barberId:a.barberId,amount:a.servicePrice}).replace(/"/g,"&quot;") + ')" style="flex-shrink:0;padding:6px 12px;border-radius:9px;background:var(--gold-dim);border:1px solid var(--gold-glow);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer;">💰 Pagar</button>' : '') +
           '</div>';
       });
       cardsHtml += '</div>';
