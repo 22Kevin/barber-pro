@@ -993,6 +993,12 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
         <span class="pub-navbar-name">${escapeHtml(settings?.shopName ?? tenant.name)}</span>
       </a>
       <div class="pub-navbar-actions">
+        ${isLoggedIn && saleProducts.length > 0 ? `
+        <button id="cart-nav-btn" onclick="cartOpen()" style="position:relative;background:none;border:none;cursor:pointer;padding:6px;display:flex;align-items:center;color:var(--text)">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          <span id="cart-nav-badge" style="display:none;position:absolute;top:0;right:0;background:var(--primary);color:#0A0A0A;font-size:10px;font-weight:900;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;line-height:1">0</span>
+        </button>
+        ` : ""}
         ${isLoggedIn && loggedClient
           ? `<div class="pub-navbar-dropdown" id="navbarDropdown">
               <button onclick="toggleNavDropdown()" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--text);padding:0">
@@ -1141,26 +1147,27 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     </script>
 
     ${isLoggedIn ? `
-    <!-- CARRINHO FLUTUANTE -->
-    <div id="cart-fab" onclick="cartOpen()" style="display:none;position:fixed;bottom:24px;right:20px;z-index:900;background:var(--primary);color:#0A0A0A;border:none;border-radius:50px;padding:13px 20px;font-size:15px;font-weight:900;cursor:pointer;box-shadow:0 4px 24px rgba(0,0,0,0.35);align-items:center;gap:8px">
-      🛒 <span id="cart-count">0</span> item<span id="cart-plural"></span> · <span id="cart-total-fab">R$ 0,00</span>
-    </div>
-
-    <!-- MODAL DO CARRINHO -->
-    <div id="cart-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.65);align-items:flex-end;justify-content:center">
-      <div style="background:var(--bg);border-radius:24px 24px 0 0;width:100%;max-width:520px;max-height:90vh;display:flex;flex-direction:column;animation:slideUp 0.3s ease">
-        <div style="padding:20px 20px 0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
-          <h2 style="font-size:20px;font-weight:900;color:var(--text);margin:0">🛒 Carrinho</h2>
-          <button onclick="cartClose()" style="background:none;border:none;font-size:24px;color:var(--muted);cursor:pointer">✕</button>
+    <!-- DRAWER DO CARRINHO (lateral direita) -->
+    <div id="cart-overlay" onclick="cartClose()" style="display:none;position:fixed;inset:0;z-index:998;background:rgba(0,0,0,0.5)"></div>
+    <div id="cart-drawer" style="display:none;position:fixed;top:0;right:0;bottom:0;width:100%;max-width:380px;z-index:999;background:var(--bg);border-left:1px solid var(--border);flex-direction:column;animation:slideInRight 0.25s ease">
+      <!-- Header do drawer -->
+      <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:10px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          <span style="font-size:16px;font-weight:800;color:var(--text)">Carrinho</span>
+          <span id="cart-count-badge" style="background:var(--primary);color:#0A0A0A;font-size:11px;font-weight:900;padding:2px 8px;border-radius:20px">0</span>
         </div>
-        <div id="cart-items" style="flex:1;overflow-y:auto;padding:16px 20px"></div>
-        <div style="padding:16px 20px 32px;border-top:1px solid var(--border);flex-shrink:0">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-            <span style="font-size:15px;color:var(--muted);font-weight:600">Total</span>
-            <span id="cart-total-modal" style="font-size:22px;font-weight:900;color:var(--primary)">R$ 0,00</span>
-          </div>
-          <button onclick="cartCheckout()" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;border:none;cursor:pointer">Finalizar pedido →</button>
+        <button onclick="cartClose()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;padding:4px;line-height:1">✕</button>
+      </div>
+      <!-- Itens -->
+      <div id="cart-items" style="flex:1;overflow-y:auto;padding:16px 20px"></div>
+      <!-- Footer com total e checkout -->
+      <div id="cart-footer" style="display:none;padding:16px 20px 28px;border-top:1px solid var(--border);flex-shrink:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <span style="font-size:14px;color:var(--muted);font-weight:600">Total</span>
+          <span id="cart-total-modal" style="font-size:22px;font-weight:900;color:var(--primary)">R$ 0,00</span>
         </div>
+        <button onclick="cartCheckout()" style="display:block;width:100%;padding:15px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;border:none;cursor:pointer">Finalizar pedido →</button>
       </div>
     </div>
 
@@ -1174,6 +1181,10 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
         <div id="checkout-body" style="padding:20px 20px 32px"></div>
       </div>
     </div>
+
+    <style>
+      @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    </style>
 
     <script>
     var _cart = [];
@@ -1202,7 +1213,8 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       }
       cartSave();
       cartUpdateUI();
-      cartToast('✓ ' + name + ' adicionado ao carrinho');
+      cartToast('✓ ' + name + ' adicionado');
+      cartOpen();
     }
 
     function cartRemove(id) {
@@ -1231,36 +1243,43 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
 
     function cartUpdateUI() {
       var cnt = cartCount();
-      var fab = document.getElementById('cart-fab');
-      if (fab) {
-        fab.style.display = cnt > 0 ? 'flex' : 'none';
-        var cntEl = document.getElementById('cart-count');
-        var plurEl = document.getElementById('cart-plural');
-        var totEl = document.getElementById('cart-total-fab');
-        if (cntEl) cntEl.textContent = cnt;
-        if (plurEl) plurEl.textContent = cnt === 1 ? '' : 's';
-        if (totEl) totEl.textContent = cartFmt(cartTotal());
+      // Badge na navbar
+      var navBadge = document.getElementById('cart-nav-badge');
+      if (navBadge) {
+        navBadge.textContent = cnt;
+        navBadge.style.display = cnt > 0 ? 'flex' : 'none';
       }
+      var cntBadge = document.getElementById('cart-count-badge');
+      if (cntBadge) cntBadge.textContent = cnt;
+      // Total no drawer
       var totModal = document.getElementById('cart-total-modal');
       if (totModal) totModal.textContent = cartFmt(cartTotal());
+      // Footer
+      var footer = document.getElementById('cart-footer');
+      if (footer) footer.style.display = cnt > 0 ? 'block' : 'none';
     }
 
     function cartRenderItems() {
       var el = document.getElementById('cart-items');
       if (!el) return;
       if (_cart.length === 0) {
-        el.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--muted)"><div style="font-size:48px;margin-bottom:12px">🛒</div><div style="font-size:15px">Seu carrinho está vazio.</div></div>';
+        el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--muted)">' +
+          '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 16px;display:block;opacity:0.4"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>' +
+          '<div style="font-size:15px;font-weight:600;margin-bottom:6px">Carrinho vazio</div>' +
+          '<div style="font-size:13px">Adicione produtos para continuar</div></div>';
         return;
       }
       el.innerHTML = _cart.map(function(item) {
-        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">' +
-          '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:2px">' + item.name + '</div>' +
-          '<div style="font-size:14px;color:var(--primary);font-weight:700">' + cartFmt(item.price) + ' / un.</div></div>' +
-          '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">' +
-          '<button onclick="cartQty(' + item.id + ',-1)" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;font-weight:700;color:var(--text)">−</button>' +
-          '<span style="min-width:24px;text-align:center;font-size:16px;font-weight:800;color:var(--text)">' + item.qty + '</span>' +
-          '<button onclick="cartQty(' + item.id + ',1)" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:16px;cursor:pointer;font-weight:700;color:var(--text)">+</button>' +
-          '<button onclick="cartRemove(' + item.id + ')" style="width:32px;height:32px;border-radius:8px;border:none;background:rgba(248,113,113,0.12);font-size:14px;cursor:pointer;color:#F87171">✕</button>' +
+        return '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)">' +
+          '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + item.name + '</div>' +
+          '<div style="font-size:13px;color:var(--primary);font-weight:700">' + cartFmt(item.price * item.qty) + '</div>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">' +
+          '<button onclick="cartQty(' + item.id + ',-1)" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:14px;cursor:pointer;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:center">−</button>' +
+          '<span style="min-width:20px;text-align:center;font-size:15px;font-weight:800;color:var(--text)">' + item.qty + '</span>' +
+          '<button onclick="cartQty(' + item.id + ',1)" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:14px;cursor:pointer;font-weight:700;color:var(--text);display:flex;align-items:center;justify-content:center">+</button>' +
+          '<button onclick="cartRemove(' + item.id + ')" style="width:28px;height:28px;border-radius:8px;border:none;background:rgba(248,113,113,0.12);font-size:13px;cursor:pointer;color:#F87171;display:flex;align-items:center;justify-content:center">✕</button>' +
           '</div></div>';
       }).join('');
     }
@@ -1268,16 +1287,20 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     function cartOpen() {
       cartRenderItems();
       cartUpdateUI();
-      document.getElementById('cart-modal').style.display = 'flex';
+      document.getElementById('cart-overlay').style.display = 'block';
+      var drawer = document.getElementById('cart-drawer');
+      drawer.style.display = 'flex';
+      drawer.style.flexDirection = 'column';
     }
 
     function cartClose() {
-      document.getElementById('cart-modal').style.display = 'none';
+      document.getElementById('cart-overlay').style.display = 'none';
+      document.getElementById('cart-drawer').style.display = 'none';
     }
 
     function cartToast(msg) {
       var t = document.createElement('div');
-      t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--primary);color:var(--text);padding:10px 20px;border-radius:50px;font-size:13px;font-weight:700;z-index:9999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
+      t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--primary);color:var(--text);padding:10px 20px;border-radius:50px;font-size:13px;font-weight:700;z-index:9999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
       t.textContent = msg;
       document.body.appendChild(t);
       setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 2500);
@@ -1289,7 +1312,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       var body = document.getElementById('checkout-body');
       if (!body) return;
       var itemsHtml = _cart.map(function(item) {
-        return '<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:14px">' +
+        return '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:14px">' +
           '<span style="color:var(--text)">' + item.qty + 'x ' + item.name + '</span>' +
           '<span style="color:var(--primary);font-weight:700">' + cartFmt(item.price * item.qty) + '</span></div>';
       }).join('');
@@ -1303,11 +1326,11 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
         '<div style="margin-bottom:20px">' +
         '<div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px">Como deseja pagar?</div>' +
         '<div style="display:flex;flex-direction:column;gap:10px">' +
-        '<button onclick="checkoutPay(\\'pix\\')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:15px;font-weight:700;color:var(--text);text-align:left">⚡ <div><div>Pix</div><div style=\\"font-size:12px;color:var(--muted);font-weight:500\\">QR Code gerado na hora · Aprovação imediata</div></div></button>' +
-        '<button onclick="checkoutPay(\\'credit\\')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:15px;font-weight:700;color:var(--text);text-align:left">💳 <div><div>Cartão de Crédito</div><div style=\\"font-size:12px;color:var(--muted);font-weight:500\\">Parcelamento disponível</div></div></button>' +
-        '<button onclick="checkoutPay(\\'debit\\')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:15px;font-weight:700;color:var(--text);text-align:left">💳 <div><div>Cartão de Débito</div><div style=\\"font-size:12px;color:var(--muted);font-weight:500\\">Aprovação imediata</div></div></button>' +
-        '<button onclick="checkoutPay(\\'boleto\\')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:15px;font-weight:700;color:var(--text);text-align:left">📄 <div><div>Boleto</div><div style=\\"font-size:12px;color:var(--muted);font-weight:500\\">Vence em 3 dias úteis</div></div></button>' +
-        '<button onclick="checkoutPay(\\'pickup\\')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:15px;font-weight:700;color:var(--text);text-align:left">🏪 <div><div>Pagar na retirada</div><div style=\\"font-size:12px;color:var(--muted);font-weight:500\\">Pague quando for buscar na barbearia</div></div></button>' +
+        '<button onclick="checkoutPay(\'pix\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">⚡ <div><div>Pix</div><div style="font-size:12px;color:var(--muted);font-weight:500">QR Code gerado na hora · Aprovação imediata</div></div></button>' +
+        '<button onclick="checkoutPay(\'credit\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">💳 <div><div>Cartão de Crédito</div><div style="font-size:12px;color:var(--muted);font-weight:500">Parcelamento disponível</div></div></button>' +
+        '<button onclick="checkoutPay(\'debit\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">💳 <div><div>Cartão de Débito</div><div style="font-size:12px;color:var(--muted);font-weight:500">Aprovação imediata</div></div></button>' +
+        '<button onclick="checkoutPay(\'boleto\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">📄 <div><div>Boleto</div><div style="font-size:12px;color:var(--muted);font-weight:500">Vence em 3 dias úteis</div></div></button>' +
+        '<button onclick="checkoutPay(\'pickup\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">🏪 <div><div>Pagar na retirada</div><div style="font-size:12px;color:var(--muted);font-weight:500">Pague quando for buscar na barbearia</div></div></button>' +
         '</div></div>' +
         '<div id="checkout-msg" style="min-height:20px;font-size:13px;text-align:center;margin-bottom:12px"></div>';
       document.getElementById('checkout-modal').style.display = 'flex';
@@ -1321,7 +1344,6 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
       var msg = document.getElementById('checkout-msg');
       if (!msg) return;
 
-      // Cartão de crédito/débito — redirecionar para página de pagamento com os itens
       if (method === 'credit' || method === 'debit') {
         var itemsParam = encodeURIComponent(JSON.stringify(_cart));
         window.location.href = '/pub/${slug}/checkout-card?method=' + method + '&items=' + itemsParam;
@@ -1352,19 +1374,16 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
             '<div style="font-family:monospace;font-size:11px;color:var(--text);word-break:break-all;background:var(--surface);border-radius:10px;padding:12px;margin-bottom:16px;max-height:80px;overflow-y:auto" id="pix-code-cart">' + (data.pixCopyCola || '') + '</div>' +
             '<button onclick="navigator.clipboard.writeText(document.getElementById(\\'pix-code-cart\\').textContent).then(function(){cartToast(\\'Código copiado!\\');})" style="padding:10px 24px;border-radius:10px;border:1px solid var(--primary);background:rgba(201,168,76,0.1);color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:20px">📋 Copiar código Pix</button>' +
             '<div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:12px;padding:14px;font-size:14px;color:#4ADE80;margin-bottom:20px">Após o pagamento, o pedido será confirmado automaticamente.</div>' +
-            '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:block;width:100%;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:900;border-radius:12px;border:none;cursor:pointer">✓ Fechar</button>' +
-            '</div>';
+            '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:block;width:100%;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:900;border-radius:12px;border:none;cursor:pointer">✓ Fechar</button></div>';
         } else if (method === 'pix' && !data.pixQrCode) {
-          // Pix não disponível — mostrar erro claro
           msg.style.color = '#F87171';
-          msg.textContent = '❌ Pagamento online via Pix não disponível para esta barbearia. Escolha outra forma.';
+          msg.textContent = '❌ Pagamento via Pix não disponível. Escolha outra forma.';
           document.querySelectorAll('#checkout-body button').forEach(function(b){ b.disabled = false; b.style.opacity = '1'; });
         } else if (method === 'boleto' && data.boletoUrl) {
           document.getElementById('checkout-body').innerHTML =
             '<div style="text-align:center;padding:20px 0">' +
             '<div style="font-size:48px;margin-bottom:12px">📄</div>' +
             '<h2 style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:12px">Boleto gerado!</h2>' +
-            '<p style="font-size:14px;color:var(--muted);margin-bottom:20px">O boleto vence em 3 dias úteis.</p>' +
             '<a href="' + data.boletoUrl + '" target="_blank" style="display:block;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:900;border-radius:12px;text-decoration:none;margin-bottom:12px">📥 Abrir boleto</a>' +
             '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:14px;border-radius:12px;cursor:pointer">Fechar</button></div>';
         } else {
@@ -1372,7 +1391,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
             '<div style="text-align:center;padding:20px 0">' +
             '<div style="font-size:56px;margin-bottom:16px">🎉</div>' +
             '<h2 style="font-size:22px;font-weight:900;color:var(--text);margin-bottom:12px">Pedido realizado!</h2>' +
-            '<p style="font-size:15px;color:var(--muted);margin-bottom:20px">' + (method === 'pickup' ? 'Seu pedido foi registrado. Pague quando buscar na barbearia.' : 'Pedido confirmado! A barbearia irá preparar seus itens.') + '</p>' +
+            '<p style="font-size:15px;color:var(--muted);margin-bottom:20px">' + (method === 'pickup' ? 'Seu pedido foi registrado. Pague quando buscar na barbearia.' : 'Pedido confirmado!') + '</p>' +
             '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:inline-block;padding:14px 32px;background:var(--primary);color:#0A0A0A;font-weight:900;border-radius:12px;border:none;cursor:pointer;font-size:15px">Fechar</button></div>';
         }
       } catch(err) {

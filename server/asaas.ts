@@ -163,7 +163,14 @@ export async function createAsaasCharge(
 ): Promise<AsaasPaymentResult> {
   if (!asaasEnabled) throw new Error("Asaas não configurado. Adicione ASAAS_API_KEY.");
   const api = subAccountApiKey ? getAsaasSubAccountApi(subAccountApiKey) : asaasApi;
-  const res = await api.post("/payments", payload);
+  let res: any;
+  try {
+    res = await api.post("/payments", payload);
+  } catch (err: any) {
+    const body = err?.response?.data;
+    const msg = body?.errors?.[0]?.description ?? body?.message ?? err.message;
+    throw new Error("Asaas /payments: " + msg + (body ? " | " + JSON.stringify(body) : ""));
+  }
   const data = res.data;
   // Para Pix, buscar QR Code
   let pixQrCode: string | undefined;
