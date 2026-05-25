@@ -1304,6 +1304,9 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
         '<div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px">Como deseja pagar?</div>' +
         '<div style="display:flex;flex-direction:column;gap:10px">' +
         '<button onclick="checkoutPay(\\'pix\\')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:15px;font-weight:700;color:var(--text);text-align:left">⚡ <div><div>Pix</div><div style=\\"font-size:12px;color:var(--muted);font-weight:500\\">QR Code gerado na hora · Aprovação imediata</div></div></button>' +
+        '<button onclick="checkoutPay(\\'credit\\')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:15px;font-weight:700;color:var(--text);text-align:left">💳 <div><div>Cartão de Crédito</div><div style=\\"font-size:12px;color:var(--muted);font-weight:500\\">Parcelamento disponível</div></div></button>' +
+        '<button onclick="checkoutPay(\\'debit\\')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:15px;font-weight:700;color:var(--text);text-align:left">💳 <div><div>Cartão de Débito</div><div style=\\"font-size:12px;color:var(--muted);font-weight:500\\">Aprovação imediata</div></div></button>' +
+        '<button onclick="checkoutPay(\\'boleto\\')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:15px;font-weight:700;color:var(--text);text-align:left">📄 <div><div>Boleto</div><div style=\\"font-size:12px;color:var(--muted);font-weight:500\\">Vence em 3 dias úteis</div></div></button>' +
         '<button onclick="checkoutPay(\\'pickup\\')" style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:15px;font-weight:700;color:var(--text);text-align:left">🏪 <div><div>Pagar na retirada</div><div style=\\"font-size:12px;color:var(--muted);font-weight:500\\">Pague quando for buscar na barbearia</div></div></button>' +
         '</div></div>' +
         '<div id="checkout-msg" style="min-height:20px;font-size:13px;text-align:center;margin-bottom:12px"></div>';
@@ -1317,8 +1320,16 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     async function checkoutPay(method) {
       var msg = document.getElementById('checkout-msg');
       if (!msg) return;
+
+      // Cartão de crédito/débito — redirecionar para página de pagamento com os itens
+      if (method === 'credit' || method === 'debit') {
+        var itemsParam = encodeURIComponent(JSON.stringify(_cart));
+        window.location.href = '/pub/${slug}/checkout-card?method=' + method + '&items=' + itemsParam;
+        return;
+      }
+
       msg.style.color = 'var(--muted)';
-      msg.textContent = 'Processando...';
+      msg.textContent = method === 'pix' ? 'Gerando QR Code...' : method === 'boleto' ? 'Gerando boleto...' : 'Processando...';
       document.querySelectorAll('#checkout-body button').forEach(function(b){ b.disabled = true; b.style.opacity = '0.6'; });
 
       try {
@@ -1339,16 +1350,29 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
             '</div>' +
             '<div style="font-size:13px;color:var(--muted);margin-bottom:10px">Ou copie o código:</div>' +
             '<div style="font-family:monospace;font-size:11px;color:var(--text);word-break:break-all;background:var(--surface);border-radius:10px;padding:12px;margin-bottom:16px;max-height:80px;overflow-y:auto" id="pix-code-cart">' + (data.pixCopyCola || '') + '</div>' +
-            '<button onclick="navigator.clipboard.writeText(document.getElementById(\\'pix-code-cart\\').textContent).then(function(){cartToast(\\'Código copiado!\\');})" style="padding:10px 24px;border-radius:10px;border:1px solid var(--primary);background:rgba(var(--primary-rgb,201,168,76),0.1);color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:20px">📋 Copiar código Pix</button>' +
+            '<button onclick="navigator.clipboard.writeText(document.getElementById(\\'pix-code-cart\\').textContent).then(function(){cartToast(\\'Código copiado!\\');})" style="padding:10px 24px;border-radius:10px;border:1px solid var(--primary);background:rgba(201,168,76,0.1);color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:20px">📋 Copiar código Pix</button>' +
             '<div style="background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.3);border-radius:12px;padding:14px;font-size:14px;color:#4ADE80;margin-bottom:20px">Após o pagamento, o pedido será confirmado automaticamente.</div>' +
             '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:block;width:100%;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:900;border-radius:12px;border:none;cursor:pointer">✓ Fechar</button>' +
             '</div>';
+        } else if (method === 'pix' && !data.pixQrCode) {
+          // Pix não disponível — mostrar erro claro
+          msg.style.color = '#F87171';
+          msg.textContent = '❌ Pagamento online via Pix não disponível para esta barbearia. Escolha outra forma.';
+          document.querySelectorAll('#checkout-body button').forEach(function(b){ b.disabled = false; b.style.opacity = '1'; });
+        } else if (method === 'boleto' && data.boletoUrl) {
+          document.getElementById('checkout-body').innerHTML =
+            '<div style="text-align:center;padding:20px 0">' +
+            '<div style="font-size:48px;margin-bottom:12px">📄</div>' +
+            '<h2 style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:12px">Boleto gerado!</h2>' +
+            '<p style="font-size:14px;color:var(--muted);margin-bottom:20px">O boleto vence em 3 dias úteis.</p>' +
+            '<a href="' + data.boletoUrl + '" target="_blank" style="display:block;padding:14px;background:var(--primary);color:#0A0A0A;font-size:15px;font-weight:900;border-radius:12px;text-decoration:none;margin-bottom:12px">📥 Abrir boleto</a>' +
+            '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:14px;border-radius:12px;cursor:pointer">Fechar</button></div>';
         } else {
           document.getElementById('checkout-body').innerHTML =
             '<div style="text-align:center;padding:20px 0">' +
             '<div style="font-size:56px;margin-bottom:16px">🎉</div>' +
             '<h2 style="font-size:22px;font-weight:900;color:var(--text);margin-bottom:12px">Pedido realizado!</h2>' +
-            '<p style="font-size:15px;color:var(--muted);margin-bottom:20px">' + (method === 'pickup' ? 'Seu pedido foi registrado. Pague quando buscar na barbearia.' : 'Pagamento confirmado! Seu pedido está sendo preparado.') + '</p>' +
+            '<p style="font-size:15px;color:var(--muted);margin-bottom:20px">' + (method === 'pickup' ? 'Seu pedido foi registrado. Pague quando buscar na barbearia.' : 'Pedido confirmado! A barbearia irá preparar seus itens.') + '</p>' +
             '<button onclick="checkoutClose();_cart=[];cartSave();cartUpdateUI();" style="display:inline-block;padding:14px 32px;background:var(--primary);color:#0A0A0A;font-weight:900;border-radius:12px;border:none;cursor:pointer;font-size:15px">Fechar</button></div>';
         }
       } catch(err) {
@@ -4475,37 +4499,51 @@ export function registerPublicRoutes(app: Express): void {
         });
       }
 
-      // Se Pix: gerar cobrança no Asaas
-      if (paymentMethod === "pix" && asaasEnabled) {
-        try {
-          const dbConn = await db.getDb();
-          let subApiKey: string | undefined;
-          if (dbConn) {
-            const tenantRow = await dbConn.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${tenant.id} LIMIT 1`) as any;
-            const td = Array.isArray(tenantRow) ? tenantRow[0]?.[0] : tenantRow?.rows?.[0];
-            subApiKey = td?.asaasApiKey || undefined;
-          }
-          if (subApiKey) {
-            const customerId = await getOrCreateAsaasCustomer({
-              name: clientInfo.name || "Cliente",
-              mobilePhone: clientInfo.phone ? clientInfo.phone.replace(/\D/g, "") : undefined,
-              externalReference: String(clientInfo.id),
-            }, subApiKey);
-            const description = orderItems.map(oi => `${oi.qty}x ${oi.product.name}`).join(", ");
-            const charge = await createAsaasCharge({
-              customer: customerId,
-              billingType: "PIX",
-              value: total,
-              dueDate: asaasDefaultDueDate(),
-              description: "Pedido — " + description,
-            }, subApiKey);
-            res.json({ success: true, pixQrCode: charge.pixQrCode ?? null, pixCopyCola: charge.pixCopyCola ?? null, total });
-            return;
-          }
-        } catch (pixErr: any) {
-          console.error("[cart-checkout] Pix error:", pixErr.message);
-          // Fallback: confirmar sem pagamento online
+      // Se Pix ou Boleto: gerar cobrança no Asaas
+      if ((paymentMethod === "pix" || paymentMethod === "boleto") && asaasEnabled) {
+        const dbConn = await db.getDb();
+        let subApiKey: string | undefined;
+        if (dbConn) {
+          const tenantRow = await dbConn.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${tenant.id} LIMIT 1`) as any;
+          const td = Array.isArray(tenantRow) ? tenantRow[0]?.[0] : tenantRow?.rows?.[0];
+          subApiKey = td?.asaasApiKey || undefined;
         }
+        if (!subApiKey) {
+          res.json({ success: false, error: "Pagamentos online não configurados para esta barbearia. Use outra forma de pagamento." });
+          return;
+        }
+        try {
+          const customerId = await getOrCreateAsaasCustomer({
+            name: clientInfo.name || "Cliente",
+            mobilePhone: clientInfo.phone ? clientInfo.phone.replace(/\D/g, "") : undefined,
+            externalReference: String(clientInfo.id),
+          }, subApiKey);
+          const description = orderItems.map(oi => `${oi.qty}x ${oi.product.name}`).join(", ");
+          const billingType = paymentMethod === "boleto" ? "BOLETO" : "PIX";
+          const charge = await createAsaasCharge({
+            customer: customerId,
+            billingType,
+            value: total,
+            dueDate: asaasDefaultDueDate(),
+            description: "Pedido — " + description,
+          }, subApiKey);
+
+          if (paymentMethod === "pix") {
+            res.json({ success: true, pixQrCode: charge.pixQrCode ?? null, pixCopyCola: charge.pixCopyCola ?? null, total });
+          } else {
+            res.json({ success: true, boletoUrl: charge.bankSlipUrl ?? charge.invoiceUrl ?? null, total });
+          }
+          return;
+        } catch (pixErr: any) {
+          console.error("[cart-checkout] Asaas error:", pixErr.message);
+          res.json({ success: false, error: "Erro ao gerar cobrança: " + pixErr.message });
+          return;
+        }
+      }
+
+      if (paymentMethod === "pix" || paymentMethod === "boleto") {
+        res.json({ success: false, error: "Pagamentos online não disponíveis. Escolha outra forma." });
+        return;
       }
 
       // Notificar barbeiros
