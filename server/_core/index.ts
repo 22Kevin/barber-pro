@@ -213,6 +213,14 @@ async function startServer() {
     res.sendFile(landingPath);
   });
 
+  // Servir cart.js como arquivo estático
+  app.get("/cart.js", (_req, res) => {
+    const cartJsPath = path.join(__dirname, "..", "cart.js");
+    res.setHeader("Content-Type", "application/javascript");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.sendFile(cartJsPath);
+  });
+
   app.get("/api/health", async (_req, res) => {
     // Verificação rápida do banco de dados
     let dbOk = false;
