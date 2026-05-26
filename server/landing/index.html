@@ -507,7 +507,7 @@
     </ul>
     <div class="nav-actions">
       <a href="/admin/login" class="btn-ghost">Entrar</a>
-      <a href="/admin/login?register=1" class="btn-gold">Testar grátis</a>
+      <a href="#planos" class="btn-gold" onclick="openModal('Equipe','R$89');return false;">Testar grátis</a>
     </div>
     <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Menu">
       <span></span><span></span><span></span>
@@ -522,7 +522,7 @@
   <a href="#planos" onclick="closeMobileMenu()">Planos</a>
   <a href="#faq" onclick="closeMobileMenu()">FAQ</a>
   <a href="/admin/login" onclick="closeMobileMenu()">Entrar no painel</a>
-  <a href="/admin/login?register=1" class="drawer-cta" onclick="closeMobileMenu()">✦ Testar 14 dias grátis</a>
+  <a href="#planos" class="drawer-cta" onclick="closeMobileMenu();openModal('Equipe','R$89');">✦ Testar 14 dias grátis</a>
 </div>
 
 <!-- SOCIAL PROOF BAR -->
