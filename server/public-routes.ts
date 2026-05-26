@@ -4267,6 +4267,36 @@ export function registerPublicRoutes(app: Express): void {
       res.status(500).json({ error: "erro interno" });
     }
   });
+  // Funções auxiliares do carrinho
+  async function createOrdersAndDeductStock(orderItems: any[], tenantId: number, clientId: number, paymentMethod: string, dbRef: typeof db) {
+    for (const oi of orderItems) {
+      const note = paymentMethod === "pickup" ? "Pagamento na retirada" : paymentMethod === "credit" ? "Cartão de Crédito" : "Pix";
+      await dbRef.createProductOrder({ tenantId, clientId, productId: oi.product.id, quantity: oi.qty, note });
+      if (oi.product.stockQuantity != null && oi.product.stockQuantity > 0) {
+        const newStock = Math.max(0, oi.product.stockQuantity - oi.qty);
+        await dbRef.updateProduct(oi.product.id, { stockQuantity: newStock });
+        console.log(`[cart] Estoque "${oi.product.name}": ${oi.product.stockQuantity} → ${newStock}`);
+      }
+    }
+  }
+
+  async function notifyBarbers(tenantId: number, clientName: string, orderItems: any[], total: number, paymentMethod: string, dbRef: typeof db) {
+    try {
+      const allBarbers = await dbRef.getAllBarbers(tenantId);
+      const itemsList = orderItems.map(oi => `${oi.qty}x ${oi.product.name}`).join(", ");
+      const totalFmt = "R$ " + total.toFixed(2).replace(".", ",");
+      const payLabel = paymentMethod === "pickup" ? "Retirada" : paymentMethod === "credit" ? "Cartão" : "Pix";
+      for (const barber of allBarbers.slice(0, 3)) {
+        const pushToken = await dbRef.getBarberPushToken(barber.id);
+        if (pushToken) {
+          await dbRef.sendExpoPushNotification(pushToken, "🛒 Novo pedido de produtos",
+            `${clientName || "Cliente"}: ${itemsList} — ${totalFmt} (${payLabel})`,
+            { type: "product_order" });
+        }
+      }
+    } catch (e: any) { console.error("[cart] notifyBarbers:", e.message); }
+  }
+
   // POST /pub-api/cart-checkout — Checkout do carrinho (múltiplos produtos)
   app.post("/pub-api/cart-checkout", async (req: Request, res: Response) => {
     try {
@@ -4293,28 +4323,19 @@ export function registerPublicRoutes(app: Express): void {
       }
       if (orderItems.length === 0) { res.status(400).json({ error: "Nenhum produto válido" }); return; }
 
-      // Criar pedidos no banco
-      for (const oi of orderItems) {
-        await db.createProductOrder({
-          tenantId: tenant.id,
-          clientId: clientInfo.id,
-          productId: oi.product.id,
-          quantity: oi.qty,
-          note: paymentMethod === "pickup" ? "Pagamento na retirada" : "Pagamento via Pix",
-        });
+      // Buscar subconta Asaas do tenant
+      const dbConn2 = await db.getDb();
+      let subApiKey: string | undefined;
+      if (dbConn2) {
+        const tenantRow = await dbConn2.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${tenant.id} LIMIT 1`) as any;
+        const td = Array.isArray(tenantRow) ? tenantRow[0]?.[0] : tenantRow?.rows?.[0];
+        subApiKey = td?.asaasApiKey || undefined;
       }
 
-      // Se Pix ou Boleto: gerar cobrança no Asaas
-      if ((paymentMethod === "pix" || paymentMethod === "boleto") && asaasEnabled) {
-        const dbConn = await db.getDb();
-        let subApiKey: string | undefined;
-        if (dbConn) {
-          const tenantRow = await dbConn.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${tenant.id} LIMIT 1`) as any;
-          const td = Array.isArray(tenantRow) ? tenantRow[0]?.[0] : tenantRow?.rows?.[0];
-          subApiKey = td?.asaasApiKey || undefined;
-        }
+      // Pagamentos online via Asaas
+      if ((paymentMethod === "pix" || paymentMethod === "credit") && asaasEnabled) {
         if (!subApiKey) {
-          res.json({ success: false, error: "Pagamentos online não configurados para esta barbearia. Use outra forma de pagamento." });
+          res.json({ success: false, error: "Pagamentos online não configurados para esta barbearia. Use 'Pagar na retirada'." });
           return;
         }
         try {
@@ -4324,7 +4345,7 @@ export function registerPublicRoutes(app: Express): void {
             externalReference: String(clientInfo.id),
           }, subApiKey);
           const description = orderItems.map(oi => `${oi.qty}x ${oi.product.name}`).join(", ");
-          const billingType = paymentMethod === "boleto" ? "BOLETO" : "PIX";
+          const billingType = paymentMethod === "credit" ? "CREDIT_CARD" : "PIX";
           const charge = await createAsaasCharge({
             customer: customerId,
             billingType,
@@ -4333,36 +4354,32 @@ export function registerPublicRoutes(app: Express): void {
             description: "Pedido — " + description,
           }, subApiKey);
 
+          // Criar pedidos e abater estoque após geração da cobrança
+          await createOrdersAndDeductStock(orderItems, tenant.id, clientInfo.id, paymentMethod, db);
+          await notifyBarbers(tenant.id, clientInfo.name, orderItems, total, paymentMethod, db);
+
           if (paymentMethod === "pix") {
             res.json({ success: true, pixQrCode: charge.pixQrCode ?? null, pixCopyCola: charge.pixCopyCola ?? null, total });
           } else {
-            res.json({ success: true, boletoUrl: charge.bankSlipUrl ?? charge.invoiceUrl ?? null, total });
+            // Cartão: retornar link de pagamento do Asaas
+            res.json({ success: true, invoiceUrl: charge.invoiceUrl ?? null, total });
           }
           return;
-        } catch (pixErr: any) {
-          console.error("[cart-checkout] Asaas error:", pixErr.message);
-          res.json({ success: false, error: "Erro ao gerar cobrança: " + pixErr.message });
+        } catch (asaasErr: any) {
+          console.error("[cart-checkout] Asaas error:", asaasErr.message);
+          res.json({ success: false, error: "Erro ao gerar cobrança: " + asaasErr.message });
           return;
         }
       }
 
-      if (paymentMethod === "pix" || paymentMethod === "boleto") {
-        res.json({ success: false, error: "Pagamentos online não disponíveis. Escolha outra forma." });
+      if (paymentMethod === "pix" || paymentMethod === "credit") {
+        res.json({ success: false, error: "Pagamentos online não disponíveis. Escolha 'Pagar na retirada'." });
         return;
       }
 
-      // Notificar barbeiros
-      const allBarbers = await db.getAllBarbers(tenant.id);
-      for (const barber of allBarbers.slice(0, 2)) {
-        try {
-          const pushToken = await db.getBarberPushToken(barber.id);
-          if (pushToken) {
-            await db.sendExpoPushNotification(pushToken, "🛒 Novo pedido de produtos",
-              `${clientInfo.name} pediu ${orderItems.length} produto(s) — Total: R$ ${total.toFixed(2).replace(".", ",")}`,
-              { type: "product_order" });
-          }
-        } catch {}
-      }
+      // Retirada: criar pedidos e abater estoque
+      await createOrdersAndDeductStock(orderItems, tenant.id, clientInfo.id, paymentMethod, db);
+      await notifyBarbers(tenant.id, clientInfo.name, orderItems, total, paymentMethod, db);
 
       res.json({ success: true, total });
     } catch (e: any) {

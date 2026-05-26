@@ -124,7 +124,7 @@ function cartCheckout() {
       '<span style="color:var(--primary);font-weight:700">' + cartFmt(i.price * i.qty) + '</span></div>';
   }).join('');
 
-  var btns = ['pix|⚡|Pix|QR Code gerado na hora', 'credit|💳|Cartão de Crédito|Parcelamento disponível', 'debit|💳|Cartão de Débito|Aprovação imediata', 'boleto|📄|Boleto|Vence em 3 dias úteis', 'pickup|🏪|Pagar na retirada|Pague quando buscar'].map(function(b) {
+  var btns = ['pix|⚡|Pix|QR Code gerado na hora', 'credit|💳|Cartão de Crédito|Via link seguro do Asaas', 'pickup|🏪|Pagar na retirada|Pague quando buscar'].map(function(b) {
     var p = b.split('|');
     return '<button data-m="' + p[0] + '" onclick="checkoutPay(this.dataset.m)" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px;cursor:pointer;font-size:14px;font-weight:700;color:var(--text);text-align:left;width:100%">' + p[1] + ' <div><div>' + p[2] + '</div><div style="font-size:12px;color:var(--muted);font-weight:500">' + p[3] + '</div></div></button>';
   }).join('');
@@ -146,12 +146,8 @@ function cartCheckout() {
 async function checkoutPay(method) {
   var msg = document.getElementById('checkout-msg');
   if (!msg) return;
-  if (method === 'credit' || method === 'debit') {
-    window.location.href = '/pub/' + _cartSlug + '/checkout-card?method=' + method + '&items=' + encodeURIComponent(JSON.stringify(_cart));
-    return;
-  }
   msg.style.color = 'var(--muted)';
-  msg.textContent = method === 'pix' ? 'Gerando QR Code...' : method === 'boleto' ? 'Gerando boleto...' : 'Processando...';
+  msg.textContent = method === 'pix' ? 'Gerando QR Code...' : 'Processando...';
   document.querySelectorAll('#checkout-body button').forEach(function(b) { b.disabled = true; b.style.opacity = '0.6'; });
   try {
     var r = await fetch('/pub-api/cart-checkout', {
@@ -176,6 +172,18 @@ async function checkoutPay(method) {
         if (code) navigator.clipboard.writeText(code.textContent).then(function() { cartToast('Código copiado!'); });
       };
       document.getElementById('pix-close-btn').onclick = function() {
+        checkoutClose(); _cart = []; cartSave(); cartUpdateUI();
+      };
+    } else if (method === 'credit' && data.invoiceUrl) {
+      // Cartão: abrir link seguro do Asaas
+      window.open(data.invoiceUrl, '_blank');
+      document.getElementById('checkout-body').innerHTML =
+        '<div style="text-align:center;padding:20px 0">' +
+        '<div style="font-size:48px;margin-bottom:12px">💳</div>' +
+        '<h2 style="font-size:20px;font-weight:900;color:var(--text);margin-bottom:12px">Link de pagamento aberto!</h2>' +
+        '<p style="font-size:14px;color:var(--muted);margin-bottom:20px">Complete o pagamento na página que foi aberta.</p>' +
+        '<button id="card-close-btn" style="padding:14px 32px;background:var(--primary);color:#0A0A0A;font-weight:900;border-radius:12px;border:none;cursor:pointer;font-size:15px">Fechar</button></div>';
+      document.getElementById('card-close-btn').onclick = function() {
         checkoutClose(); _cart = []; cartSave(); cartUpdateUI();
       };
     } else if (method === 'pix') {
