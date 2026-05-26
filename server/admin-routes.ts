@@ -281,6 +281,12 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/pagina-cliente", icon: svgIcons["pagina-cliente"], label: "Página do Cliente", id: "pagina-cliente" },
       ],
     },
+    {
+      label: "SUPORTE",
+      items: [
+        { href: "/admin/suporte", icon: svgIcons.suporte, label: "Central de Ajuda", id: "suporte" },
+      ],
+    },
   ];
   // Logo URL: usa S3 se disponível, senão fallback para SVG inline
   const BARBER_PRO_LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/CHUXnjOFayrIGRtV.png";
@@ -11966,4 +11972,369 @@ export function registerAdminRoutes(app: Express): void {
     `;
     res.send(adminLayout(`${esc(supplier.name)} — Fornecedor`, "fornecedores", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fornecedores",href:"/admin/fornecedores"},{label:esc(supplier.name),href:"#"}]));
   }));
+
+  // ─── SUPORTE / CENTRAL DE AJUDA ────────────────────────────────────────────
+
+  // GET /admin/suporte — Central de Ajuda com tutoriais, chatbot e tickets
+  app.get("/admin/suporte", requireAdminAuth, withErrorPage("Suporte", "suporte", async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number };
+    const barber = await db.getBarberById(session.barberId);
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+    const tenantId = barber?.tenantId ?? 0;
+    const tickets = tenantId ? await db.getSupportTicketsByTenant(tenantId) : [];
+    const openTickets = tickets.filter((t: any) => ["open","waiting_admin"].includes(t.status));
+    const tab = (req.query.tab as string) || "ajuda";
+
+    const statusColors: Record<string,string> = { open:"#F87171", waiting_admin:"#FBBF24", answered:"#60A5FA", closed:"#4ADE80" };
+    const statusLabels: Record<string,string> = { open:"Aberto", waiting_admin:"Aguardando", answered:"Respondido", closed:"Fechado" };
+
+    const tutorials = [
+      { icon:"📅", title:"Como criar um agendamento", steps:["Acesse <strong>Agenda</strong> no menu lateral","Clique em <strong>+ Novo Agendamento</strong>","Selecione o cliente, serviço, barbeiro e horário","Clique em <strong>Confirmar</strong> — o cliente recebe WhatsApp automático"] },
+      { icon:"💰", title:"Como registrar um pagamento", steps:["Na Agenda, clique em um agendamento em andamento","Clique em <strong>Concluir</strong>","Selecione a forma de pagamento (Dinheiro, Pix, Cartão)","A venda é criada automaticamente no Financeiro"] },
+      { icon:"👤", title:"Como cadastrar um cliente", steps:["Acesse <strong>Clientes</strong> no menu","Clique em <strong>+ Novo Cliente</strong>","Preencha nome e telefone (obrigatórios)","Salve — o cliente já pode agendar pela página pública"] },
+      { icon:"🧴", title:"Como adicionar um serviço", steps:["Acesse <strong>Serviços</strong> no menu","Clique em <strong>+ Novo Serviço</strong>","Defina nome, duração e preço","O serviço aparece automaticamente na sua página de agendamentos"] },
+      { icon:"📦", title:"Como gerenciar o estoque", steps:["Acesse <strong>Estoque</strong> no menu","Cada produto tem quantidade atual e mínima","Clique em <strong>Entrada</strong> para registrar reposição","Alertas aparecem quando o estoque estiver abaixo do mínimo"] },
+      { icon:"📊", title:"Como ver o financeiro", steps:["Acesse <strong>Financeiro</strong> no menu","Veja receitas, despesas e saldo do período","Use os filtros por data e barbeiro","Clique em <strong>Relatórios</strong> para exportar em PDF ou CSV"] },
+      { icon:"🌐", title:"Como personalizar sua página pública", steps:["Acesse <strong>Página do Cliente</strong> no menu","Altere logo, cor principal e foto de capa","Configure horários de funcionamento","Compartilhe o link com seus clientes no Instagram e WhatsApp"] },
+      { icon:"💳", title:"Como ativar pagamentos online", steps:["Acesse <strong>Configurações</strong> → <strong>Pagamentos Online</strong>","Crie ou conecte sua conta Asaas","Aguarde a ativação (e-mail do Asaas)","Seus clientes já podem pagar Pix e cartão pelo app"] },
+      { icon:"🌟", title:"Como criar planos de assinatura", steps:["Acesse <strong>Planos de Assinatura</strong> no menu","Clique em <strong>+ Novo Plano</strong>","Defina nome, preço e serviços incluídos","Compartilhe — clientes assinam pela sua página pública"] },
+      { icon:"📱", title:"Como usar o app móvel", steps:["Baixe o app <strong>Barber Pro</strong> na App Store ou Play Store","Faça login com as mesmas credenciais do painel","Gerencie agenda, clientes e financeiro pelo celular","Ative notificações push para ser avisado de novos agendamentos"] },
+    ];
+
+    const tutorialsHtml = tutorials.map(t => `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;cursor:pointer;transition:border-color .15s" onclick="this.querySelector('.tutorial-steps').style.display=this.querySelector('.tutorial-steps').style.display==='block'?'none':'block';this.style.borderColor='var(--gold)'">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:0">
+          <span style="font-size:24px">${t.icon}</span>
+          <span style="font-size:15px;font-weight:700;color:var(--text);flex:1">${t.title}</span>
+          <span style="color:var(--muted);font-size:18px">›</span>
+        </div>
+        <div class="tutorial-steps" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+          <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px">
+            ${t.steps.map(s => `<li style="font-size:14px;color:var(--muted);line-height:1.6">${s}</li>`).join("")}
+          </ol>
+        </div>
+      </div>`).join("");
+
+    const ticketsHtml = tickets.length === 0
+      ? `<div style="text-align:center;padding:40px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">🎉</div><div style="font-size:15px">Nenhum ticket aberto. Tudo certo!</div></div>`
+      : tickets.map((t: any) => `
+        <a href="/admin/suporte/${t.id}" style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-decoration:none;color:inherit;margin-bottom:8px;transition:border-color .15s" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.title)}</div>
+            <div style="font-size:12px;color:var(--muted)">${t.messageCount} mensagem${t.messageCount !== 1 ? "s" : ""} · ${new Date(t.updatedAt).toLocaleDateString("pt-BR")}</div>
+          </div>
+          <span style="background:${statusColors[t.status] || "#888"}22;color:${statusColors[t.status] || "#888"};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap">${statusLabels[t.status] || t.status}</span>
+        </a>`).join("");
+
+    const body = `
+      <div style="max-width:860px;margin:0 auto">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+          <div>
+            <h1 style="font-size:22px;font-weight:900;color:var(--text);margin-bottom:4px">Central de Ajuda</h1>
+            <div style="font-size:13px;color:var(--muted)">Tutoriais, assistente IA e suporte humano</div>
+          </div>
+          ${openTickets.length > 0 ? `<span style="background:#F8717122;color:#F87171;border:1px solid #F8717144;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700">${openTickets.length} ticket${openTickets.length > 1 ? "s" : ""} aberto${openTickets.length > 1 ? "s" : ""}</span>` : ""}
+        </div>
+
+        <!-- Tabs -->
+        <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border-radius:12px;padding:4px;border:1px solid var(--border)">
+          ${["ajuda","assistente","tickets"].map(t => `
+            <a href="/admin/suporte?tab=${t}" style="flex:1;text-align:center;padding:10px;border-radius:9px;font-size:13px;font-weight:700;text-decoration:none;transition:all .15s;${tab === t ? "background:var(--gold);color:#0A0A0A" : "color:var(--muted)"}">${t === "ajuda" ? "📚 Tutoriais" : t === "assistente" ? "🤖 Assistente IA" : "🎫 Meus Tickets"}</a>
+          `).join("")}
+        </div>
+
+        ${tab === "ajuda" ? `
+          <div style="display:flex;flex-direction:column;gap:10px">
+            ${tutorialsHtml}
+          </div>
+          <div style="margin-top:24px;background:var(--gold)12;border:1px solid var(--gold)33;border-radius:16px;padding:20px;display:flex;align-items:center;gap:16px">
+            <span style="font-size:32px">🤖</span>
+            <div style="flex:1">
+              <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px">Não encontrou o que precisava?</div>
+              <div style="font-size:13px;color:var(--muted)">Use nosso Assistente IA — ele conhece todo o sistema e responde na hora.</div>
+            </div>
+            <a href="/admin/suporte?tab=assistente" style="background:var(--gold);color:#0A0A0A;font-size:13px;font-weight:800;padding:10px 20px;border-radius:10px;text-decoration:none;white-space:nowrap">Falar com IA →</a>
+          </div>
+        ` : tab === "assistente" ? `
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+            <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--gold)22;border:1px solid var(--gold)44;display:flex;align-items:center;justify-content:center;font-size:18px">🤖</div>
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--text)">Assistente Barber Pro</div>
+                <div style="font-size:12px;color:var(--muted)">Powered by Claude AI · Responde sobre qualquer funcionalidade do sistema</div>
+              </div>
+              <div style="margin-left:auto;width:8px;height:8px;border-radius:50%;background:#4ADE80"></div>
+            </div>
+            <div id="chat-messages" style="height:400px;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:flex-start;gap:10px">
+                <div style="width:30px;height:30px;border-radius:50%;background:var(--gold)22;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px">🤖</div>
+                <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;border-top-left-radius:4px;padding:12px 14px;max-width:80%;font-size:14px;color:var(--text);line-height:1.6">
+                  Olá! Sou o assistente do Barber Pro. Posso te ajudar com qualquer dúvida sobre o sistema — agenda, pagamentos, configurações, relatórios e muito mais. Como posso te ajudar?
+                  <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px">
+                    <button onclick="sendQuickQ('Como faço para configurar os horários de atendimento?')" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--muted);cursor:pointer">Horários de atendimento</button>
+                    <button onclick="sendQuickQ('Como ativar pagamentos online?')" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--muted);cursor:pointer">Pagamentos online</button>
+                    <button onclick="sendQuickQ('Como criar um plano de assinatura?')" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--muted);cursor:pointer">Planos de assinatura</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:16px;border-top:1px solid var(--border);display:flex;gap:8px">
+              <input id="chat-input" type="text" placeholder="Digite sua dúvida..." style="flex:1;padding:11px 16px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px" onkeydown="if(event.key==='Enter')sendMessage()">
+              <button onclick="sendMessage()" id="chat-send" style="padding:11px 20px;background:var(--gold);color:#0A0A0A;border:none;border-radius:10px;font-weight:800;cursor:pointer;font-size:14px">Enviar</button>
+            </div>
+          </div>
+          <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+            <span style="font-size:20px">🎫</span>
+            <div style="flex:1;font-size:13px;color:var(--muted)">A IA não resolveu? Abra um ticket e nossa equipe responde em até <strong style="color:var(--text)">24 horas</strong>.</div>
+            <a href="/admin/suporte?tab=tickets" style="background:transparent;border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:700;padding:8px 16px;border-radius:9px;text-decoration:none">Abrir ticket</a>
+          </div>
+          <script>
+          var chatHistory = [];
+          function addMessage(role, content) {
+            var msgs = document.getElementById('chat-messages');
+            var isAI = role === 'assistant';
+            var div = document.createElement('div');
+            div.style.cssText = 'display:flex;align-items:flex-start;gap:10px;' + (isAI ? '' : 'flex-direction:row-reverse');
+            var avatar = document.createElement('div');
+            avatar.style.cssText = 'width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;' + (isAI ? 'background:var(--gold)22' : 'background:#C9A84C;color:#0A0A0A;font-weight:800');
+            avatar.textContent = isAI ? '🤖' : 'V';
+            var bubble = document.createElement('div');
+            bubble.style.cssText = 'border-radius:12px;padding:12px 14px;max-width:80%;font-size:14px;line-height:1.6;white-space:pre-wrap;' + (isAI ? 'background:var(--surface2);border:1px solid var(--border);border-top-left-radius:4px;color:var(--text)' : 'background:var(--gold);color:#0A0A0A;border-top-right-radius:4px');
+            bubble.textContent = content;
+            div.appendChild(avatar);
+            div.appendChild(bubble);
+            msgs.appendChild(div);
+            msgs.scrollTop = msgs.scrollHeight;
+          }
+          function sendQuickQ(q) { document.getElementById('chat-input').value = q; sendMessage(); }
+          async function sendMessage() {
+            var input = document.getElementById('chat-input');
+            var msg = input.value.trim();
+            if (!msg) return;
+            input.value = '';
+            addMessage('user', msg);
+            chatHistory.push({role:'user', content:msg});
+            var btn = document.getElementById('chat-send');
+            btn.disabled = true; btn.textContent = '...';
+            try {
+              var r = await fetch('/admin-api/suporte-chat', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify({message: msg, history: chatHistory.slice(-10)})});
+              var d = await r.json();
+              var reply = d.reply || 'Desculpe, não consegui processar sua pergunta. Tente novamente.';
+              addMessage('assistant', reply);
+              chatHistory.push({role:'assistant', content:reply});
+            } catch(e) { addMessage('assistant', 'Erro de conexão. Tente novamente.'); }
+            btn.disabled = false; btn.textContent = 'Enviar';
+          }
+          </script>
+        ` : `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div style="font-size:15px;font-weight:700;color:var(--text)">${tickets.length} ticket${tickets.length !== 1 ? "s" : ""}</div>
+            <button onclick="document.getElementById('new-ticket-modal').style.display='flex'" style="background:var(--gold);color:#0A0A0A;border:none;border-radius:10px;padding:10px 20px;font-size:13px;font-weight:800;cursor:pointer">+ Abrir Ticket</button>
+          </div>
+          ${ticketsHtml}
+          <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--muted)">
+            ⏱️ Tempo de resposta: até <strong style="color:var(--text)">24 horas úteis</strong> · E-mail: <strong style="color:var(--text)">suporte@usebarberpro.com</strong>
+          </div>
+        `}
+      </div>
+
+      <!-- Modal novo ticket -->
+      <div id="new-ticket-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:520px;padding:28px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+            <h2 style="font-size:18px;font-weight:900;color:var(--text)">🎫 Abrir Ticket de Suporte</h2>
+            <button onclick="document.getElementById('new-ticket-modal').style.display='none'" style="background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer">✕</button>
+          </div>
+          <form method="POST" action="/admin/suporte/novo" style="display:flex;flex-direction:column;gap:14px">
+            <div>
+              <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Assunto *</label>
+              <input name="title" required placeholder="Ex: Não consigo configurar os horários" style="width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Categoria *</label>
+              <select name="category" style="width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px">
+                <option value="agenda">Agenda e Agendamentos</option>
+                <option value="pagamentos">Pagamentos e Financeiro</option>
+                <option value="clientes">Clientes e Cadastros</option>
+                <option value="produtos">Produtos e Estoque</option>
+                <option value="configuracoes">Configurações</option>
+                <option value="tecnico">Problema Técnico</option>
+                <option value="outros">Outros</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Descreva o problema *</label>
+              <textarea name="message" required rows="4" placeholder="Descreva com detalhes o que está acontecendo..." style="width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;resize:vertical"></textarea>
+            </div>
+            <button type="submit" style="background:var(--gold);color:#0A0A0A;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:800;cursor:pointer">Enviar Ticket</button>
+          </form>
+        </div>
+      </div>
+    `;
+    res.send(adminLayout("Central de Ajuda", "suporte", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Central de Ajuda",href:"/admin/suporte"}]));
+  }));
+
+  // POST /admin/suporte/novo — Criar novo ticket
+  app.post("/admin/suporte/novo", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number };
+    const barber = await db.getBarberById(session.barberId);
+    if (!barber?.tenantId) { res.redirect("/admin/suporte?tab=tickets"); return; }
+    const { title, category, message } = req.body;
+    if (!title?.trim() || !message?.trim()) { res.redirect("/admin/suporte?tab=tickets"); return; }
+    try {
+      const ticketId = await db.createSupportTicket({
+        tenantId: barber.tenantId,
+        title: title.trim(),
+        category: category || "outros",
+        priority: "normal",
+        firstMessage: message.trim(),
+        authorName: barber.name,
+      });
+      // Notificar equipe por e-mail
+      sendSupportTicketNotificationEmail({
+        adminEmail: process.env.SUPERADMIN_NOTIFY_EMAIL ?? "kevin.rayan25@gmail.com",
+        ticketId,
+        ticketTitle: title.trim(),
+        tenantName: barber.name ?? "Barbearia",
+        category: category || "outros",
+        priority: "normal",
+        firstMessage: message.trim(),
+      }).catch(() => {});
+      res.redirect(`/admin/suporte/${ticketId}?created=1`);
+    } catch (e: any) {
+      console.error("[suporte/novo]", e.message);
+      res.redirect("/admin/suporte?tab=tickets");
+    }
+  });
+
+  // GET /admin/suporte/:id — Ver ticket específico
+  app.get("/admin/suporte/:id", requireAdminAuth, withErrorPage("Suporte", "suporte", async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number };
+    const barber = await db.getBarberById(session.barberId);
+    const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+    const ticketId = parseInt(req.params.id);
+    if (isNaN(ticketId)) { res.redirect("/admin/suporte?tab=tickets"); return; }
+    const ticket = await db.getSupportTicketById(ticketId);
+    if (!ticket || ticket.tenantId !== barber?.tenantId) { res.redirect("/admin/suporte?tab=tickets"); return; }
+    const messages = await db.getSupportMessages(ticketId);
+    const created = req.query.created === "1";
+    const statusColors: Record<string,string> = { open:"#F87171", waiting_admin:"#FBBF24", answered:"#60A5FA", closed:"#4ADE80" };
+    const statusLabels: Record<string,string> = { open:"Aberto", waiting_admin:"Aguardando resposta", answered:"Respondido", closed:"Fechado" };
+
+    const messagesHtml = messages.map((m: any) => {
+      const isAdmin = m.authorType === "admin";
+      const isAI = m.authorType === "ai";
+      const align = isAdmin || isAI ? "flex-start" : "flex-end";
+      const bg = isAdmin ? "#C9A84C22" : isAI ? "#60A5FA22" : "var(--surface2)";
+      const border = isAdmin ? "#C9A84C44" : isAI ? "#60A5FA44" : "var(--border)";
+      const label = isAdmin ? "Suporte Barber Pro" : isAI ? "🤖 Assistente IA" : `Você`;
+      return `
+        <div style="display:flex;flex-direction:column;align-items:${align};gap:4px">
+          <div style="font-size:11px;color:var(--muted)">${label} · ${new Date(m.createdAt).toLocaleString("pt-BR")}</div>
+          <div style="background:${bg};border:1px solid ${border};border-radius:12px;padding:12px 14px;max-width:85%;font-size:14px;line-height:1.6;color:var(--text);white-space:pre-wrap">${esc(m.content)}</div>
+        </div>`;
+    }).join("");
+
+    const body = `
+      <div style="max-width:760px;margin:0 auto">
+        ${created ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;border-radius:12px;padding:12px 18px;margin-bottom:20px;color:#4ADE80;font-size:14px;font-weight:700">✅ Ticket aberto! Nossa equipe responderá em até 24 horas.</div>` : ""}
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+          <a href="/admin/suporte?tab=tickets" style="color:var(--muted);text-decoration:none;font-size:20px">←</a>
+          <div style="flex:1">
+            <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">${esc(ticket.title)}</div>
+            <div style="font-size:12px;color:var(--muted)">Ticket #${ticketId} · ${esc(ticket.category)} · Aberto em ${new Date(ticket.createdAt).toLocaleDateString("pt-BR")}</div>
+          </div>
+          <span style="background:${statusColors[ticket.status] || "#888"}22;color:${statusColors[ticket.status] || "#888"};font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;white-space:nowrap">${statusLabels[ticket.status] || ticket.status}</span>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px">
+          <div style="padding:20px;display:flex;flex-direction:column;gap:14px;max-height:500px;overflow-y:auto">
+            ${messagesHtml}
+          </div>
+        </div>
+        ${ticket.status !== "closed" ? `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px">
+          <form method="POST" action="/admin/suporte/${ticketId}/responder" style="display:flex;gap:10px;align-items:flex-end">
+            <textarea name="content" rows="3" placeholder="Adicionar informação ou responder..." required style="flex:1;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;resize:vertical"></textarea>
+            <button type="submit" style="background:var(--gold);color:#0A0A0A;border:none;border-radius:10px;padding:13px 20px;font-size:14px;font-weight:800;cursor:pointer;white-space:nowrap">Enviar</button>
+          </form>
+        </div>` : `<div style="text-align:center;padding:20px;color:var(--muted);font-size:14px">Este ticket foi fechado.</div>`}
+      </div>
+    `;
+    res.send(adminLayout(`Ticket #${ticketId}`, "suporte", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Suporte",href:"/admin/suporte?tab=tickets"},{label:`#${ticketId}`,href:"#"}]));
+  }));
+
+  // POST /admin/suporte/:id/responder — Cliente adiciona mensagem ao ticket
+  app.post("/admin/suporte/:id/responder", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number };
+    const barber = await db.getBarberById(session.barberId);
+    const ticketId = parseInt(req.params.id);
+    const { content } = req.body;
+    if (!isNaN(ticketId) && content?.trim() && barber) {
+      const ticket = await db.getSupportTicketById(ticketId);
+      if (ticket && ticket.tenantId === barber.tenantId) {
+        await db.addSupportMessage({ ticketId, authorType: "client", authorName: barber.name, content: content.trim() });
+        await db.updateTicketStatus(ticketId, "waiting_admin");
+      }
+    }
+    res.redirect(`/admin/suporte/${ticketId}`);
+  });
+
+  // POST /admin-api/suporte-chat — Chatbot IA para o suporte
+  app.post("/admin-api/suporte-chat", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const { message, history } = req.body;
+      if (!message) { res.status(400).json({ error: "Mensagem obrigatória" }); return; }
+
+      const systemPrompt = `Você é o assistente de suporte do Barber Pro, um sistema SaaS completo para gestão de barbearias.
+Responda de forma clara, objetiva e amigável em português brasileiro.
+Você conhece todas as funcionalidades do sistema:
+
+MÓDULOS DISPONÍVEIS:
+- Agenda: agendamentos, status (confirmado, em andamento, concluído, cancelado), navegação dinâmica por data
+- Clientes: cadastro, histórico, pontos de fidelidade, consentimento LGPD
+- Financeiro: receitas, despesas, vendas, relatórios por período
+- Serviços: nome, duração, preço, categoria, imagem
+- Produtos: estoque, fornecedores, encomendas, venda na página pública
+- Assinaturas: planos mensais com serviços e produtos incluídos
+- Pagamentos online: Pix e cartão via Asaas (subconta por barbearia)
+- Página pública: agendamento online, produtos, assinaturas, avaliações
+- Relatórios: exportação PDF e CSV, comissões, financeiro
+- Configurações: horários, cores, logo, WhatsApp, Google OAuth
+- App móvel: disponível para iOS e Android
+
+REGRAS:
+- Se não souber algo específico, diga que pode abrir um ticket de suporte
+- Seja direto e use passos numerados quando necessário
+- Máximo 3 parágrafos por resposta
+- Nunca invente funcionalidades que não existem`;
+
+      const msgs = [
+        ...(Array.isArray(history) ? history.slice(-8) : []),
+        { role: "user", content: message }
+      ];
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 600,
+          system: systemPrompt,
+          messages: msgs,
+        }),
+      });
+
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      const data = await response.json() as any;
+      const reply = data.content?.[0]?.text ?? "Desculpe, não consegui processar sua pergunta.";
+      res.json({ reply });
+    } catch (e: any) {
+      console.error("[suporte-chat]", e.message);
+      res.json({ reply: "Erro temporário. Tente novamente ou abra um ticket de suporte." });
+    }
+  });
 }
