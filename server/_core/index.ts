@@ -274,6 +274,339 @@ async function checkoutPay(method) {
 }
 `;
 
+const TERMOS_HTML = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Termos de Uso — Barber Pro</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0A0A0A;color:#ECEDEE;line-height:1.7}
+.top-bar{background:#111;border-bottom:1px solid #1E1E1E;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:18px;font-weight:900;color:#C9A84C;letter-spacing:1px;text-decoration:none}
+.back{font-size:13px;color:#9BA1A6;text-decoration:none;display:flex;align-items:center;gap:6px}
+.back:hover{color:#C9A84C}
+.container{max-width:760px;margin:0 auto;padding:48px 24px 80px}
+h1{font-size:32px;font-weight:900;color:#ECEDEE;margin-bottom:8px}
+.meta{font-size:13px;color:#666;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid #1E1E1E}
+h2{font-size:18px;font-weight:700;color:#C9A84C;margin:36px 0 12px}
+h3{font-size:15px;font-weight:700;color:#ECEDEE;margin:20px 0 8px}
+p{font-size:15px;color:#9BA1A6;margin-bottom:14px}
+ul,ol{padding-left:20px;margin-bottom:14px}
+li{font-size:15px;color:#9BA1A6;margin-bottom:6px}
+strong{color:#ECEDEE;font-weight:600}
+a{color:#C9A84C;text-decoration:none}
+a:hover{text-decoration:underline}
+.highlight{background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;margin:20px 0}
+.highlight p{margin:0;color:#ECEDEE;font-size:14px}
+.footer-note{margin-top:48px;padding-top:24px;border-top:1px solid #1E1E1E;font-size:13px;color:#555}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <a href="/" class="logo">✂ Barber Pro</a>
+  <a href="/" class="back">← Voltar</a>
+</div>
+<div class="container">
+
+<h1>Termos de Uso</h1>
+<div class="meta">Última atualização: 26 de maio de 2026 &nbsp;·&nbsp; Versão 1.0</div>
+
+<div class="highlight"><p>Ao criar uma conta no Barber Pro, você concorda com estes Termos de Uso. Leia com atenção antes de utilizar nossos serviços.</p></div>
+
+<h2>1. Sobre o Barber Pro</h2>
+<p>O <strong>Barber Pro</strong> é uma plataforma de gestão para barbearias, oferecida como serviço (SaaS), que permite o gerenciamento de agendamentos, financeiro, clientes, produtos, assinaturas e pagamentos online.</p>
+<p>O acesso à plataforma é feito por meio do site <strong>usebarberpro.com</strong> e do aplicativo móvel disponível nas lojas oficiais.</p>
+
+<h2>2. Cadastro e Conta</h2>
+<p>Para utilizar o Barber Pro, você deve:</p>
+<ul>
+  <li>Ser maior de 18 anos ou responsável legal por uma pessoa jurídica</li>
+  <li>Fornecer informações verdadeiras, completas e atualizadas</li>
+  <li>Manter a segurança de suas credenciais de acesso</li>
+  <li>Ser responsável por todas as atividades realizadas em sua conta</li>
+</ul>
+<p>O Barber Pro se reserva o direito de suspender contas que violem estes termos ou que forneçam informações falsas.</p>
+
+<h2>3. Planos e Pagamentos</h2>
+<h3>3.1 Período de teste</h3>
+<p>Novos usuários têm direito a <strong>14 dias gratuitos</strong> para testar todas as funcionalidades da plataforma, sem necessidade de cartão de crédito.</p>
+
+<h3>3.2 Cobrança</h3>
+<p>Após o período de teste, a continuidade do uso é condicionada à contratação de um dos planos disponíveis. Os valores são cobrados mensalmente, de forma antecipada, via Pix, cartão de crédito ou boleto bancário.</p>
+
+<h3>3.3 Cancelamento</h3>
+<p>Você pode cancelar sua assinatura a qualquer momento pelo painel. O acesso permanece ativo até o fim do período já pago. Não há reembolso proporcional para cancelamentos no meio do ciclo.</p>
+
+<h2>4. Uso Aceitável</h2>
+<p>Você concorda em não utilizar o Barber Pro para:</p>
+<ul>
+  <li>Atividades ilegais ou que violem direitos de terceiros</li>
+  <li>Enviar spam ou comunicações não solicitadas aos clientes</li>
+  <li>Tentar acessar dados de outras barbearias ou sistemas</li>
+  <li>Fazer engenharia reversa, copiar ou redistribuir o software</li>
+  <li>Sobrecarregar a infraestrutura com requisições automatizadas</li>
+</ul>
+
+<h2>5. Pagamentos Online (Asaas)</h2>
+<p>O processamento de pagamentos online é realizado por meio da plataforma <strong>Asaas</strong>, que opera como subconta da barbearia. Ao ativar os pagamentos online, você concorda também com os <a href="https://www.asaas.com/termos-de-uso" target="_blank">Termos de Uso do Asaas</a>.</p>
+<p>O Barber Pro não armazena dados de cartão de crédito. Todos os dados financeiros são gerenciados diretamente pela Asaas, uma instituição de pagamento regulada pelo Banco Central do Brasil.</p>
+
+<h2>6. Propriedade Intelectual</h2>
+<p>Todo o código, design, marca e conteúdo do Barber Pro são de propriedade exclusiva da empresa. O uso da plataforma não transfere nenhum direito de propriedade intelectual ao usuário.</p>
+<p>Os dados inseridos por você (clientes, agendamentos, produtos) permanecem de sua propriedade. O Barber Pro não reivindica nenhum direito sobre esses dados.</p>
+
+<h2>7. Disponibilidade e SLA</h2>
+<p>O Barber Pro se empenha em manter a plataforma disponível 24 horas por dia, 7 dias por semana. No entanto, podem ocorrer interrupções para manutenção, atualizações ou por motivos de força maior.</p>
+<p>Não garantimos disponibilidade de 100% e não somos responsáveis por perdas decorrentes de indisponibilidade temporária.</p>
+
+<h2>8. Limitação de Responsabilidade</h2>
+<p>O Barber Pro não se responsabiliza por:</p>
+<ul>
+  <li>Perdas de receita decorrentes de indisponibilidade do sistema</li>
+  <li>Dados inseridos incorretamente pelo usuário</li>
+  <li>Ações de terceiros (clientes, fornecedores) realizadas fora da plataforma</li>
+  <li>Problemas causados por conexão de internet do usuário</li>
+</ul>
+
+<h2>9. Alterações dos Termos</h2>
+<p>Podemos atualizar estes Termos a qualquer momento. Mudanças significativas serão comunicadas por e-mail com pelo menos 15 dias de antecedência. O uso continuado após a data de vigência das alterações constitui aceitação dos novos termos.</p>
+
+<h2>10. Legislação Aplicável</h2>
+<p>Estes Termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o foro da comarca de São Paulo — SP para resolução de quaisquer litígios.</p>
+
+<div class="footer-note">Dúvidas? Entre em contato: <a href="mailto:suporte@usebarberpro.com">suporte@usebarberpro.com</a></div>
+</div>
+</body>
+</html>`;
+const PRIVACIDADE_HTML = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Política de Privacidade — Barber Pro</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0A0A0A;color:#ECEDEE;line-height:1.7}
+.top-bar{background:#111;border-bottom:1px solid #1E1E1E;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:18px;font-weight:900;color:#C9A84C;letter-spacing:1px;text-decoration:none}
+.back{font-size:13px;color:#9BA1A6;text-decoration:none;display:flex;align-items:center;gap:6px}
+.back:hover{color:#C9A84C}
+.container{max-width:760px;margin:0 auto;padding:48px 24px 80px}
+h1{font-size:32px;font-weight:900;color:#ECEDEE;margin-bottom:8px}
+.meta{font-size:13px;color:#666;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid #1E1E1E}
+h2{font-size:18px;font-weight:700;color:#C9A84C;margin:36px 0 12px}
+h3{font-size:15px;font-weight:700;color:#ECEDEE;margin:20px 0 8px}
+p{font-size:15px;color:#9BA1A6;margin-bottom:14px}
+ul,ol{padding-left:20px;margin-bottom:14px}
+li{font-size:15px;color:#9BA1A6;margin-bottom:6px}
+strong{color:#ECEDEE;font-weight:600}
+a{color:#C9A84C;text-decoration:none}
+a:hover{text-decoration:underline}
+.highlight{background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;margin:20px 0}
+.highlight p{margin:0;color:#ECEDEE;font-size:14px}
+.footer-note{margin-top:48px;padding-top:24px;border-top:1px solid #1E1E1E;font-size:13px;color:#555}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <a href="/" class="logo">✂ Barber Pro</a>
+  <a href="/" class="back">← Voltar</a>
+</div>
+<div class="container">
+
+<h1>Política de Privacidade</h1>
+<div class="meta">Última atualização: 26 de maio de 2026 &nbsp;·&nbsp; Versão 1.0 &nbsp;·&nbsp; Em conformidade com a LGPD (Lei 13.709/2018)</div>
+
+<div class="highlight"><p>Respeitamos sua privacidade. Esta política explica quais dados coletamos, por que coletamos e como você pode exercer seus direitos.</p></div>
+
+<h2>1. Quem somos</h2>
+<p>O <strong>Barber Pro</strong> é uma plataforma SaaS de gestão para barbearias. Para fins desta política, atuamos como <strong>controlador de dados</strong> em relação às informações das barbearias cadastradas, e como <strong>operador de dados</strong> em relação às informações dos clientes finais das barbearias.</p>
+<p>Contato do encarregado (DPO): <a href="mailto:suporte@usebarberpro.com">suporte@usebarberpro.com</a></p>
+
+<h2>2. Dados que coletamos</h2>
+<h3>2.1 Dados das barbearias (proprietários e barbeiros)</h3>
+<ul>
+  <li><strong>Identificação:</strong> nome, e-mail, telefone, foto de perfil</li>
+  <li><strong>Empresa:</strong> nome da barbearia, endereço, CNPJ (opcional)</li>
+  <li><strong>Financeiro:</strong> dados bancários para recebimento via Asaas</li>
+  <li><strong>Uso:</strong> agendamentos, serviços, produtos, relatórios</li>
+</ul>
+
+<h3>2.2 Dados dos clientes das barbearias</h3>
+<ul>
+  <li>Nome, telefone, e-mail (quando fornecidos pelo cliente)</li>
+  <li>Histórico de agendamentos e serviços realizados</li>
+  <li>Preferências e notas cadastradas pelo barbeiro</li>
+</ul>
+
+<h3>2.3 Dados técnicos</h3>
+<ul>
+  <li>Endereço IP, tipo de dispositivo e navegador</li>
+  <li>Logs de acesso e atividade na plataforma</li>
+  <li>Cookies de sessão (necessários para autenticação)</li>
+</ul>
+
+<h2>3. Como usamos seus dados</h2>
+<ul>
+  <li>Prestação do serviço de gestão de barbearia</li>
+  <li>Envio de notificações sobre agendamentos (WhatsApp, e-mail, push)</li>
+  <li>Processamento de pagamentos via Asaas</li>
+  <li>Melhoria da plataforma e suporte ao usuário</li>
+  <li>Cumprimento de obrigações legais e regulatórias</li>
+</ul>
+<p>Não vendemos seus dados para terceiros. Não utilizamos seus dados para publicidade de terceiros.</p>
+
+<h2>4. Compartilhamento de dados</h2>
+<p>Compartilhamos dados somente com parceiros essenciais para a operação do serviço:</p>
+<ul>
+  <li><strong>Asaas</strong> — processamento de pagamentos</li>
+  <li><strong>Resend</strong> — envio de e-mails transacionais</li>
+  <li><strong>Cloudflare</strong> — hospedagem de arquivos de mídia (R2) e segurança</li>
+  <li><strong>Railway</strong> — infraestrutura de servidores</li>
+  <li><strong>Expo / Firebase</strong> — notificações push no aplicativo móvel</li>
+</ul>
+<p>Todos os parceiros são obrigados contratualmente a manter a confidencialidade dos dados.</p>
+
+<h2>5. Retenção de dados</h2>
+<p>Mantemos seus dados enquanto sua conta estiver ativa. Após o cancelamento:</p>
+<ul>
+  <li>Dados de uso são excluídos em até <strong>90 dias</strong></li>
+  <li>Dados financeiros são mantidos por <strong>5 anos</strong> para fins fiscais e legais</li>
+  <li>Backups são excluídos em até <strong>30 dias</strong> após a exclusão da conta</li>
+</ul>
+
+<h2>6. Segurança</h2>
+<p>Adotamos medidas técnicas e organizacionais para proteger seus dados:</p>
+<ul>
+  <li>Comunicações criptografadas com TLS/HTTPS</li>
+  <li>Senhas armazenadas com hash bcrypt</li>
+  <li>Backups automáticos criptografados</li>
+  <li>Acesso restrito aos dados por controle de permissões</li>
+</ul>
+
+<h2>7. Seus direitos (LGPD)</h2>
+<p>Como titular de dados, você tem direito a:</p>
+<ul>
+  <li><strong>Acesso</strong> — saber quais dados temos sobre você</li>
+  <li><strong>Correção</strong> — corrigir dados incompletos ou incorretos</li>
+  <li><strong>Exclusão</strong> — solicitar a exclusão dos seus dados</li>
+  <li><strong>Portabilidade</strong> — receber seus dados em formato estruturado</li>
+  <li><strong>Revogação</strong> — revogar consentimentos dados anteriormente</li>
+  <li><strong>Oposição</strong> — opor-se ao tratamento em determinadas situações</li>
+</ul>
+<p>Para exercer seus direitos, entre em contato: <a href="mailto:suporte@usebarberpro.com">suporte@usebarberpro.com</a>. Respondemos em até 15 dias úteis.</p>
+
+<h2>8. Cookies</h2>
+<p>Utilizamos apenas cookies estritamente necessários para autenticação e segurança da sessão. Não utilizamos cookies de rastreamento ou publicidade.</p>
+
+<h2>9. Transferência internacional</h2>
+<p>Alguns de nossos parceiros de infraestrutura (Railway, Cloudflare) operam servidores nos Estados Unidos e na Europa. Essas transferências são realizadas com garantias adequadas de proteção, nos termos da LGPD.</p>
+
+<h2>10. Atualizações</h2>
+<p>Esta política pode ser atualizada periodicamente. Notificaremos por e-mail sobre alterações relevantes. A data de última atualização fica sempre indicada no topo desta página.</p>
+
+<div class="footer-note">Dúvidas? Entre em contato: <a href="mailto:suporte@usebarberpro.com">suporte@usebarberpro.com</a></div>
+</div>
+</body>
+</html>`;
+const LGPD_HTML = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LGPD — Lei Geral de Proteção de Dados — Barber Pro</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0A0A0A;color:#ECEDEE;line-height:1.7}
+.top-bar{background:#111;border-bottom:1px solid #1E1E1E;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:18px;font-weight:900;color:#C9A84C;letter-spacing:1px;text-decoration:none}
+.back{font-size:13px;color:#9BA1A6;text-decoration:none;display:flex;align-items:center;gap:6px}
+.back:hover{color:#C9A84C}
+.container{max-width:760px;margin:0 auto;padding:48px 24px 80px}
+h1{font-size:32px;font-weight:900;color:#ECEDEE;margin-bottom:8px}
+.meta{font-size:13px;color:#666;margin-bottom:40px;padding-bottom:24px;border-bottom:1px solid #1E1E1E}
+h2{font-size:18px;font-weight:700;color:#C9A84C;margin:36px 0 12px}
+h3{font-size:15px;font-weight:700;color:#ECEDEE;margin:20px 0 8px}
+p{font-size:15px;color:#9BA1A6;margin-bottom:14px}
+ul,ol{padding-left:20px;margin-bottom:14px}
+li{font-size:15px;color:#9BA1A6;margin-bottom:6px}
+strong{color:#ECEDEE;font-weight:600}
+a{color:#C9A84C;text-decoration:none}
+a:hover{text-decoration:underline}
+.highlight{background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;margin:20px 0}
+.highlight p{margin:0;color:#ECEDEE;font-size:14px}
+.footer-note{margin-top:48px;padding-top:24px;border-top:1px solid #1E1E1E;font-size:13px;color:#555}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <a href="/" class="logo">✂ Barber Pro</a>
+  <a href="/" class="back">← Voltar</a>
+</div>
+<div class="container">
+
+<h1>LGPD — Como protegemos seus dados</h1>
+<div class="meta">Lei 13.709/2018 &nbsp;·&nbsp; Última atualização: 26 de maio de 2026</div>
+
+<div class="highlight"><p>O Barber Pro está comprometido com a Lei Geral de Proteção de Dados (LGPD). Esta página explica de forma clara como aplicamos a lei no nosso dia a dia.</p></div>
+
+<h2>O que é a LGPD?</h2>
+<p>A <strong>Lei Geral de Proteção de Dados (Lei 13.709/2018)</strong> é a legislação brasileira que regula o tratamento de dados pessoais. Ela entrou em vigor em setembro de 2020 e é fiscalizada pela <strong>Autoridade Nacional de Proteção de Dados (ANPD)</strong>.</p>
+
+<h2>Bases legais que utilizamos</h2>
+<p>Todo tratamento de dados no Barber Pro é baseado em uma das seguintes bases legais previstas na LGPD:</p>
+<ul>
+  <li><strong>Execução de contrato</strong> — para operar a plataforma e prestar o serviço contratado</li>
+  <li><strong>Consentimento</strong> — para envio de comunicações de marketing (quando aplicável)</li>
+  <li><strong>Legítimo interesse</strong> — para melhorias da plataforma e segurança</li>
+  <li><strong>Obrigação legal</strong> — para cumprimento de exigências fiscais e regulatórias</li>
+</ul>
+
+<h2>Encarregado de Dados (DPO)</h2>
+<p>Nosso Encarregado de Proteção de Dados está disponível para:</p>
+<ul>
+  <li>Receber comunicações dos titulares de dados</li>
+  <li>Orientar sobre o tratamento de dados pessoais</li>
+  <li>Atuar como canal de comunicação com a ANPD</li>
+</ul>
+<p>Contato: <a href="mailto:suporte@usebarberpro.com">suporte@usebarberpro.com</a></p>
+
+<h2>Como as barbearias devem usar o sistema</h2>
+<p>As barbearias que usam o Barber Pro são <strong>controladoras de dados</strong> dos seus próprios clientes. Isso significa que têm responsabilidades perante a LGPD, incluindo:</p>
+<ul>
+  <li>Informar os clientes sobre o uso dos seus dados (nome, telefone, histórico)</li>
+  <li>Coletar apenas os dados necessários para a prestação do serviço</li>
+  <li>Atender solicitações de exclusão de dados de clientes</li>
+  <li>Não compartilhar dados de clientes com terceiros sem base legal</li>
+</ul>
+<p>O Barber Pro oferece ferramentas para que as barbearias cumpram essas obrigações, como o registro de consentimento (LGPD) na criação de novos clientes.</p>
+
+<h2>Incidente de segurança</h2>
+<p>Em caso de incidente de segurança que possa afetar dados pessoais, o Barber Pro se compromete a:</p>
+<ul>
+  <li>Investigar e conter o incidente imediatamente</li>
+  <li>Notificar os usuários afetados em até <strong>72 horas</strong></li>
+  <li>Comunicar a ANPD quando exigido pela regulamentação</li>
+  <li>Tomar medidas para evitar a recorrência</li>
+</ul>
+
+<h2>Relatório de Impacto (RIPD)</h2>
+<p>Para operações de alto risco, mantemos Relatórios de Impacto à Proteção de Dados Pessoais (RIPD) conforme exigido pela LGPD. Esses relatórios estão disponíveis para consulta pela ANPD mediante solicitação.</p>
+
+<h2>Exercer seus direitos</h2>
+<p>Para exercer qualquer direito previsto na LGPD, entre em contato pelo e-mail <a href="mailto:suporte@usebarberpro.com">suporte@usebarberpro.com</a> com o assunto <strong>"Direitos LGPD"</strong>. Responderemos em até <strong>15 dias úteis</strong>.</p>
+<p>Se não ficar satisfeito com nossa resposta, você pode contatar a ANPD pelo site <a href="https://www.gov.br/anpd" target="_blank">gov.br/anpd</a>.</p>
+
+<h2>Versão e histórico</h2>
+<p>Esta página foi publicada em 26 de maio de 2026 em atendimento à Lei 13.709/2018 e será atualizada conforme novas regulamentações da ANPD.</p>
+
+<div class="footer-note">Dúvidas? Entre em contato: <a href="mailto:suporte@usebarberpro.com">suporte@usebarberpro.com</a></div>
+</div>
+</body>
+</html>`;
+
 // ESM-compatible __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -426,11 +759,10 @@ async function startServer() {
     res.sendFile(landingPath);
   });
 
-  // Páginas legais
-  const legalDir = path.join(__dirname, "..", "landing");
-  app.get("/termos", (_req, res) => res.sendFile(path.join(legalDir, "termos.html")));
-  app.get("/privacidade", (_req, res) => res.sendFile(path.join(legalDir, "privacidade.html")));
-  app.get("/lgpd", (_req, res) => res.sendFile(path.join(legalDir, "lgpd.html")));
+  // Páginas legais — conteúdo embutido no bundle
+  app.get("/termos", (_req, res) => { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.send(TERMOS_HTML); });
+  app.get("/privacidade", (_req, res) => { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.send(PRIVACIDADE_HTML); });
+  app.get("/lgpd", (_req, res) => { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.send(LGPD_HTML); });
 
   // Servir cart.js — conteúdo embutido no bundle para funcionar após o build
   app.get("/cart.js", (_req, res) => {
