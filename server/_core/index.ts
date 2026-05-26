@@ -426,6 +426,12 @@ async function startServer() {
     res.sendFile(landingPath);
   });
 
+  // Páginas legais
+  const legalDir = path.join(__dirname, "..", "landing");
+  app.get("/termos", (_req, res) => res.sendFile(path.join(legalDir, "termos.html")));
+  app.get("/privacidade", (_req, res) => res.sendFile(path.join(legalDir, "privacidade.html")));
+  app.get("/lgpd", (_req, res) => res.sendFile(path.join(legalDir, "lgpd.html")));
+
   // Servir cart.js — conteúdo embutido no bundle para funcionar após o build
   app.get("/cart.js", (_req, res) => {
     res.setHeader("Content-Type", "application/javascript; charset=utf-8");
