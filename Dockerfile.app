@@ -24,8 +24,11 @@ COPY scripts/ ./scripts/
 COPY tailwind.config.js ./
 COPY shared/ ./shared/
 
-# Criar metro.config.js CJS simples (sem .cjs — Node 20 não precisa)
+# Criar metro.config.js CJS simples
 RUN printf 'const { getDefaultConfig } = require("expo/metro-config");\nconst { withNativeWind } = require("nativewind/metro");\nconst config = getDefaultConfig(__dirname);\nmodule.exports = withNativeWind(config, { input: "./global.css", forceWriteFileSystem: true });\n' > metro.config.js
+
+# Testar se o metro.config.js carrega corretamente antes do export
+RUN node -e "const m = require('./metro.config.js'); console.log('metro.config OK:', typeof m);"
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
