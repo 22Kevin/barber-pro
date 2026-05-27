@@ -25,21 +25,23 @@ COPY theme.config.js ./
 RUN cat > metro.config.js << 'METROEOF'
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
+const path = require("path");
 
 const projectRoot = __dirname;
 const config = getDefaultConfig(projectRoot);
 
 config.projectRoot = projectRoot;
-config.watchFolders = [projectRoot];
+config.watchFolders = [
+  projectRoot,
+  path.join(projectRoot, "node_modules"),
+  path.join(projectRoot, "node_modules/react-native-css-interop/.cache"),
+];
 
 module.exports = withNativeWind(config, {
   input: "./global.css",
   forceWriteFileSystem: true,
 });
 METROEOF
-
-# Verificar que expo-router existe
-RUN ls node_modules/expo-router/entry.js && echo "expo-router OK"
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
