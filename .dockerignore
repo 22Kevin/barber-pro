@@ -2,15 +2,16 @@
 node_modules
 .pnpm-store
 
-# Build output — gerado durante o build
+# Build outputs
 dist
+dist-web
+web-build
 
-# Arquivos de desenvolvimento Expo/React Native
+# Arquivos de desenvolvimento Expo
 .expo
 .expo-shared
 android
 ios
-web-build
 
 # Logs
 *.log
@@ -38,17 +39,7 @@ Thumbs.db
 coverage
 __tests__
 
-# Imagens e assets do app mobile (não necessários para o servidor)
-assets
-
-# Arquivos de app mobile
-app
-components
-constants
-hooks
-lib
-global.css
-tailwind.config.js
-theme.config.js
-theme.config.d.ts
-expo-env.d.ts
+# Backups e docs
+backups
+docs
+*.pdf
