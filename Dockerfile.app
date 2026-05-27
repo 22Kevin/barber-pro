@@ -13,6 +13,7 @@ COPY assets/ ./assets/
 COPY hooks/ ./hooks/
 COPY lib/ ./lib/
 COPY global.css ./
+COPY metro.config.js ./
 COPY metro.config.cjs ./
 COPY babel.config.js ./
 COPY app.config.ts ./
