@@ -104,6 +104,7 @@ async function runTrialExpiryJob() {
         t.name AS "tenantName",
         t."trialEndsAt",
         t.phone AS "tenantPhone",
+        t.cnpj AS "tenantCnpj",
         b.id AS "adminBarberId",
         b.email AS "adminEmail",
         b.name AS "adminName",
@@ -188,11 +189,14 @@ Planos a partir de R$ 49/mês. 💈`;
           // Coluna pode não existir — ignorar silenciosamente
         }
 
-        // Registrar email em used_trials quando trial expirou (daysLeft <= 0)
+        // Registrar email e CPF/CNPJ em used_trials quando trial expirou (daysLeft <= 0)
         if (daysLeft <= 0 && tenant.adminEmail) {
           try {
+            const safeEmail = tenant.adminEmail.toLowerCase().replace(/'/g, "");
+            const cleanCnpj = tenant.tenantCnpj ? tenant.tenantCnpj.replace(/\D/g, "") : null;
+            const cnpjVal = cleanCnpj ? `'${cleanCnpj}'` : "NULL";
             await (dbConn as any).execute(
-              `INSERT INTO used_trials (email, "tenantId", reason) VALUES ('${tenant.adminEmail.toLowerCase().replace(/'/g, "")}', ${tenantId}, 'trial_expired') ON CONFLICT (email) DO NOTHING`
+              `INSERT INTO used_trials (email, "cpfCnpj", "tenantId", reason) VALUES ('${safeEmail}', ${cnpjVal}, ${tenantId}, 'trial_expired') ON CONFLICT DO NOTHING`
             );
           } catch {}
         }

@@ -7709,12 +7709,23 @@ export function registerAdminRoutes(app: Express): void {
         WHERE id = ${barber.tenantId}
       `);
 
-      // Registrar email do admin principal para impedir novo trial
+      // Registrar email e CPF/CNPJ do admin para impedir novo trial
       try {
+        const tenantRow = await dbConn.execute(
+          sql`SELECT cnpj FROM tenants WHERE id = ${barber.tenantId} LIMIT 1`
+        ) as any;
+        const tData = Array.isArray(tenantRow) ? tenantRow[0]?.[0] : tenantRow?.rows?.[0];
+        const cleanCpfCnpj = tData?.cnpj ? tData.cnpj.replace(/\D/g, "") : null;
+
         await dbConn.execute(sql`
-          INSERT INTO used_trials (email, "tenantId", reason)
-          VALUES (${barber.email.toLowerCase()}, ${barber.tenantId}, 'cancelled')
-          ON CONFLICT (email) DO NOTHING
+          INSERT INTO used_trials (email, "cpfCnpj", "tenantId", reason)
+          VALUES (
+            ${barber.email.toLowerCase()},
+            ${cleanCpfCnpj ?? null},
+            ${barber.tenantId},
+            'cancelled'
+          )
+          ON CONFLICT DO NOTHING
         `);
       } catch {}
 

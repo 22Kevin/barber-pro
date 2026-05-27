@@ -1875,15 +1875,29 @@ export const appRouter = router({
         const existingBarber = await db.getBarberByEmail(input.admin.email);
         if (existingBarber) throw new Error("Este email já está cadastrado");
 
-        // 1b. Verificar se este email já usou o trial gratuito anteriormente
+        // 1b. Verificar se este email ou CPF/CNPJ já usou o trial gratuito
         const dbConn = await db.getDb();
         if (dbConn) {
-          const usedTrial = await dbConn.execute(
+          const cleanCpfCnpj = input.shop.cnpj ? input.shop.cnpj.replace(/\D/g, "") : null;
+
+          // Checar por email
+          const byEmail = await dbConn.execute(
             sql`SELECT id FROM used_trials WHERE email = ${input.admin.email.toLowerCase()} LIMIT 1`
           ) as any;
-          const rows = Array.isArray(usedTrial) ? usedTrial[0] : usedTrial?.rows;
-          if (rows && rows.length > 0) {
+          const emailRows = Array.isArray(byEmail) ? byEmail[0] : byEmail?.rows;
+          if (emailRows && emailRows.length > 0) {
             throw new Error("Este e-mail já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
+          }
+
+          // Checar por CPF/CNPJ (mais difícil de burlar)
+          if (cleanCpfCnpj && cleanCpfCnpj.length >= 11) {
+            const byCpfCnpj = await dbConn.execute(
+              sql`SELECT id FROM used_trials WHERE "cpfCnpj" = ${cleanCpfCnpj} LIMIT 1`
+            ) as any;
+            const cpfRows = Array.isArray(byCpfCnpj) ? byCpfCnpj[0] : byCpfCnpj?.rows;
+            if (cpfRows && cpfRows.length > 0) {
+              throw new Error("Este CPF/CNPJ já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
+            }
           }
         }
         // 2. Gerar slug único para o tenant
