@@ -1,6 +1,7 @@
 [build]
-builder = "dockerfile"
+builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
+dockerTarget = "server-runner"
 
 [deploy]
 startCommand = "node dist/index.js"
