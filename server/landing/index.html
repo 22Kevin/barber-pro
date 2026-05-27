@@ -1514,6 +1514,10 @@
         var senhaConfirmGroup=document.getElementById('senhaConfirmGroup');
         if(senhaGroup)senhaGroup.style.display='none';
         if(senhaConfirmGroup)senhaConfirmGroup.style.display='none';
+        var senhaInput=document.getElementById('inputSenha');
+        var senhaConfirmInput=document.getElementById('inputSenhaConfirm');
+        if(senhaInput){senhaInput.removeAttribute('required');senhaInput.removeAttribute('minlength');}
+        if(senhaConfirmInput){senhaConfirmInput.removeAttribute('required');}
         // Mostrar badge Google
         var adminStep=document.querySelector('#step4Content .google-badge');
         if(!adminStep){var badge=document.createElement('div');badge.className='google-badge';badge.style.cssText='background:#1a2a1a;border:1px solid #4ADE8044;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#4ADE80;display:flex;align-items:center;gap:8px';badge.innerHTML='<span style="font-size:18px">✓</span> Autenticado pelo Google — sem necessidade de senha';var firstInput=document.querySelector("#step4Content input");if(firstInput&&firstInput.parentNode&&firstInput.parentNode.parentNode)firstInput.parentNode.parentNode.insertBefore(badge,firstInput.parentNode);}

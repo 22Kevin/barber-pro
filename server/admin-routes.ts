@@ -12727,14 +12727,18 @@ REGRAS:
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          model: "claude-haiku-4-5",
+          model: "claude-haiku-4-5-20251001",
           max_tokens: 600,
           system: systemPrompt,
           messages: msgs,
         }),
       });
 
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      if (!response.ok) {
+        const errBody = await response.text();
+        console.error(`[suporte-chat] API error ${response.status}:`, errBody.substring(0, 200));
+        throw new Error(`API error: ${response.status}`);
+      }
       const data = await response.json() as any;
       const reply = data.content?.[0]?.text ?? "Desculpe, não consegui processar sua pergunta.";
       res.json({ reply });
