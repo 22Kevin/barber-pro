@@ -1,10 +1,10 @@
 [build]
 builder = "dockerfile"
-dockerfilePath = "Dockerfile.app"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "serve dist-web -p 3000 --single"
-healthcheckPath = "/"
+startCommand = "node dist/index.js"
+healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "always"
 restartPolicyMaxRetries = 10
