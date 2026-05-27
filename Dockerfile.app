@@ -22,6 +22,10 @@ COPY tsconfig.json ./
 COPY tailwind.config.js ./
 COPY theme.config.js ./
 
+# Pré-criar o arquivo de cache do css-interop para o Metro encontrar
+RUN mkdir -p node_modules/react-native-css-interop/.cache && \
+    touch node_modules/react-native-css-interop/.cache/web.css
+
 RUN cat > metro.config.js << 'METROEOF'
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
@@ -31,11 +35,7 @@ const projectRoot = __dirname;
 const config = getDefaultConfig(projectRoot);
 
 config.projectRoot = projectRoot;
-config.watchFolders = [
-  projectRoot,
-  path.join(projectRoot, "node_modules"),
-  path.join(projectRoot, "node_modules/react-native-css-interop/.cache"),
-];
+config.watchFolders = [projectRoot];
 
 module.exports = withNativeWind(config, {
   input: "./global.css",
