@@ -13,20 +13,13 @@ COPY assets/ ./assets/
 COPY hooks/ ./hooks/
 COPY lib/ ./lib/
 COPY global.css ./
+COPY metro.config.cjs ./
 COPY babel.config.js ./
 COPY app.config.ts ./
 COPY tsconfig.json ./
 COPY scripts/ ./scripts/
 COPY tailwind.config.js ./
 COPY shared/ ./shared/
-
-# Remover type:module e criar metro.config.cjs (CommonJS explícito)
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));delete p.type;fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
-
-RUN printf 'const { getDefaultConfig } = require("expo/metro-config");\nconst { withNativeWind } = require("nativewind/metro");\nconst config = getDefaultConfig(__dirname);\nmodule.exports = withNativeWind(config, { input: "./global.css", forceWriteFileSystem: true });\n' > metro.config.cjs
-
-# Remover o metro.config.js original para evitar conflito
-RUN rm -f metro.config.js
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
