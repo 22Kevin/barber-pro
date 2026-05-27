@@ -91,7 +91,7 @@ export function emailLayout(content: string, opts?: {
     "<div style=\"font-size:12px;color:#666666;margin-top:4px\">" + subtitle + "</div></td></tr>" +
     "<tr><td class=\"email-body\" style=\"padding:36px 40px\">" + content + "</td></tr>" +
     "<tr><td style=\"background:#0A0A0A;padding:20px 40px;text-align:center;border-top:1px solid #1E1E1E\">" +
-    "<div style=\"font-size:11px;color:#444444;line-height:1.6\">" + BRAND_NAME + " — <a href=\"" + SITE_URL + "\" style=\"color:" + BRAND_COLOR + ";text-decoration:none\">" + SITE_URL.replace("https://", "") + "</a><br>Este e-mail foi enviado automaticamente.</div>" +
+    "<div style=\"font-size:11px;color:#444444;line-height:1.6\">" + BRAND_NAME + " — <a href=\"" + SITE_URL + "\" style=\"color:" + BRAND_COLOR + ";text-decoration:none\">" + SITE_URL.replace("https://", "") + "</a><br>Eldunari Ltda &middot; CNPJ 66.991.137/0001-63 &middot; R. Maria Amélia Faleiros, 4881, Franca/SP<br>Este e-mail foi enviado automaticamente.</div>" +
     "</td></tr></table></td></tr></table></body></html>";
 }
 

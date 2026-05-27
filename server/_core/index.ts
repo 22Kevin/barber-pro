@@ -316,7 +316,7 @@ a:hover{text-decoration:underline}
 <div class="highlight"><p>Ao criar uma conta no Barber Pro, você concorda com estes Termos de Uso. Leia com atenção antes de utilizar nossos serviços.</p></div>
 
 <h2>1. Sobre o Barber Pro</h2>
-<p>O <strong>Barber Pro</strong> é uma plataforma de gestão para barbearias, oferecida como serviço (SaaS), que permite o gerenciamento de agendamentos, financeiro, clientes, produtos, assinaturas e pagamentos online.</p>
+<p>O <strong>Barber Pro</strong> é uma plataforma de gestão para barbearias operada pela <strong>Eldunari Ltda</strong> (CNPJ 66.991.137/0001-63), com sede em R. Maria Amélia Faleiros, 4881 — Jardim Três Colinas, Franca/SP — CEP 14.403-871, oferecida como serviço (SaaS), que permite o gerenciamento de agendamentos, financeiro, clientes, produtos, assinaturas e pagamentos online.</p>
 <p>O acesso à plataforma é feito por meio do site <strong>usebarberpro.com</strong> e do aplicativo móvel disponível nas lojas oficiais.</p>
 
 <h2>2. Cadastro e Conta</h2>
@@ -423,7 +423,7 @@ a:hover{text-decoration:underline}
 
 <h2>1. Quem somos</h2>
 <p>O <strong>Barber Pro</strong> é uma plataforma SaaS de gestão para barbearias. Para fins desta política, atuamos como <strong>controlador de dados</strong> em relação às informações das barbearias cadastradas, e como <strong>operador de dados</strong> em relação às informações dos clientes finais das barbearias.</p>
-<p>Contato do encarregado (DPO): <a href="mailto:suporte@usebarberpro.com">suporte@usebarberpro.com</a></p>
+<p>Contato do encarregado (DPO): <a href="mailto:suporte@usebarberpro.com">suporte@usebarberpro.com</a><br>Razão social: Eldunari Ltda · CNPJ 66.991.137/0001-63<br>Endereço: R. Maria Amélia Faleiros, 4881 — Jardim Três Colinas, Franca/SP — CEP 14.403-871</p>
 
 <h2>2. Dados que coletamos</h2>
 <h3>2.1 Dados das barbearias (proprietários e barbeiros)</h3>
