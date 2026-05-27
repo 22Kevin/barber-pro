@@ -1,6 +1,7 @@
 [build]
 builder = "dockerfile"
 dockerfilePath = "Dockerfile"
+dockerTarget = "server-runner"
 
 [deploy]
 startCommand = "node dist/index.js"
@@ -8,25 +9,3 @@ healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "always"
 restartPolicyMaxRetries = 10
-
-[[services]]
-name = "barber-server"
-
-[services.build]
-dockerfilePath = "Dockerfile"
-
-[services.deploy]
-startCommand = "node dist/index.js"
-healthcheckPath = "/api/health"
-healthcheckTimeout = 300
-
-[[services]]
-name = "barber-app"
-
-[services.build]
-dockerfilePath = "Dockerfile.app"
-
-[services.deploy]
-startCommand = "serve dist-web -p 3000 --single"
-healthcheckPath = "/"
-healthcheckTimeout = 120
