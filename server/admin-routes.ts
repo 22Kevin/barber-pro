@@ -1272,7 +1272,7 @@ async function renderDashboard(req: Request, res: Response) {
   const dashPublicUrl = dashSlug ? `${dashBaseUrl}/pub/${dashSlug}` : "";
 
   // Métricas da página pública para o card do dashboard
-  const dashReviews = tenantId ? await db.getReviewsByTenant(tenantId).catch(() => []) : [];
+  const dashReviews = tenantId ? await db.getRecentReviews(999, tenantId).catch(() => []) : [];
   const dashAvgRating = dashReviews.length > 0
     ? (dashReviews.reduce((s: number, r: any) => s + (r.rating ?? 0), 0) / dashReviews.length).toFixed(1)
     : null;
