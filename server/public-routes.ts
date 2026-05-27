@@ -2993,6 +2993,25 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
     return { ...o, product };
   }));
 
+  // Buscar assinaturas ativas do cliente
+  const dbConn = await db.getDb();
+  let clientSubs: any[] = [];
+  if (dbConn) {
+    try {
+      const subsRows = await dbConn.execute(sql`
+        SELECT cs.id, cs."status", cs."startDate", cs."nextBillingDate",
+               sp.name AS "planName", sp.price AS "planPrice", sp.description AS "planDescription"
+        FROM client_subscriptions cs
+        JOIN subscription_plans sp ON sp.id = cs."planId"
+        WHERE cs."clientId" = ${loggedClient.id}
+          AND cs."tenantId" = ${tenant.id}
+          AND cs."status" IN ('active','pending')
+        ORDER BY cs."startDate" DESC
+      `) as any;
+      clientSubs = Array.isArray(subsRows) ? (subsRows[0] ?? []) : (subsRows?.rows ?? []);
+    } catch {}
+  }
+
   // Buscar agendamentos do cliente com dados de serviço e barbeiro
   const rawAppts = await db.getClientAppointments(loggedClient.id);
   const allServices = await db.getAllServicesWithMediaAndRatings(true, tenant.id);
@@ -3140,6 +3159,34 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
       </div>
 
       ${reminderBanner}
+
+      ${clientSubs.length > 0 ? `
+      <div style="margin-bottom:28px">
+        <div style="font-size:14px;font-weight:800;margin-bottom:16px;color:var(--muted);letter-spacing:1px">MINHAS ASSINATURAS</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${clientSubs.map((sub: any) => `
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 20px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+                <div style="flex:1">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                    <span style="font-size:15px;font-weight:800;color:var(--text)">${escapeHtml(sub.planName)}</span>
+                    <span style="background:${sub.status === 'active' ? '#4ADE8022' : '#F8717122'};color:${sub.status === 'active' ? '#4ADE80' : '#F87171'};font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px">${sub.status === 'active' ? 'Ativa' : 'Pendente'}</span>
+                  </div>
+                  <div style="font-size:14px;font-weight:700;color:var(--primary)">R$ ${Number(sub.planPrice).toFixed(2).replace('.', ',')}/mês</div>
+                  ${sub.planDescription ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">${escapeHtml(sub.planDescription)}</div>` : ''}
+                  ${sub.nextBillingDate ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">Próxima cobrança: ${new Date(sub.nextBillingDate).toLocaleDateString('pt-BR')}</div>` : ''}
+                </div>
+                <button
+                  onclick="cancelSub(${sub.id}, '${escapeHtml(sub.planName).replace(/'/g, '')}')"
+                  style="background:#F8717112;border:1px solid #F8717133;color:#F87171;font-size:12px;font-weight:700;padding:8px 14px;border-radius:10px;cursor:pointer;white-space:nowrap;flex-shrink:0">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
 
       <div style="font-size:14px;font-weight:800;margin-bottom:16px;color:var(--muted);letter-spacing:1px">PRÓXIMOS</div>
       ${upcomingHtml}
@@ -3412,6 +3459,22 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
           alert(e.message);
           btn.disabled = false;
           btn.textContent = 'Cancelar agendamento';
+        }
+      }
+
+      async function cancelSub(id, planName) {
+        if (!confirm('Deseja cancelar a assinatura do plano "' + planName + '"?\n\nVocê perderá acesso aos benefícios ao final do período atual.')) return;
+        try {
+          var r = await fetch('/pub-api/cancel-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscriptionId: id, slug: '${slug}' })
+          });
+          var data = await r.json();
+          if (!data.success) throw new Error(data.error || 'Erro ao cancelar assinatura');
+          window.location.reload();
+        } catch(e) {
+          alert(e.message);
         }
       }
     </script>
@@ -4860,6 +4923,60 @@ export function registerPublicRoutes(app: Express): void {
   // GET /pub/:slug/meus-agendamentos
   app.get("/pub/:slug/meus-agendamentos", async (req: Request, res: Response) => {
     await renderMyAppointmentsPage(req.params.slug, res, req);
+  });
+
+  // POST /pub-api/cancel-subscription — Cliente cancela sua assinatura
+  app.post("/pub-api/cancel-subscription", async (req: Request, res: Response) => {
+    try {
+      const { subscriptionId, slug } = req.body;
+      if (!subscriptionId || !slug) { res.status(400).json({ error: "Dados obrigatórios ausentes" }); return; }
+      const clientSessionRaw = req.cookies?.[`client_session_${slug}`];
+      if (!clientSessionRaw) { res.status(401).json({ error: "Não autenticado" }); return; }
+      let loggedClient: { id: number; name: string } | null = null;
+      try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+      if (!loggedClient) { res.status(401).json({ error: "Sessão inválida" }); return; }
+      const tenant = await db.getTenantBySlug(slug);
+      if (!tenant) { res.status(404).json({ error: "Barbearia não encontrada" }); return; }
+      // Verificar que a assinatura pertence ao cliente
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.status(500).json({ error: "Erro de banco de dados" }); return; }
+      const subRows = await dbConn.execute(sql`
+        SELECT id, status, "asaasSubscriptionId" FROM client_subscriptions
+        WHERE id = ${subscriptionId} AND "clientId" = ${loggedClient.id} AND "tenantId" = ${tenant.id}
+        LIMIT 1
+      `) as any;
+      const sub = Array.isArray(subRows) ? subRows[0]?.[0] : subRows?.rows?.[0];
+      if (!sub) { res.status(404).json({ error: "Assinatura não encontrada" }); return; }
+      if (sub.status === "cancelled") { res.status(400).json({ error: "Assinatura já cancelada" }); return; }
+      // Cancelar no Asaas se tiver ID
+      if (sub.asaasSubscriptionId) {
+        try {
+          const tenantSettings = await db.getShopSettings(tenant.id) as any;
+          const subApiKey = tenantSettings?.asaasApiKey;
+          if (subApiKey) {
+            const asaasBase = process.env.ASAAS_SANDBOX === "true"
+              ? "https://sandbox.asaas.com/api/v3"
+              : "https://api.asaas.com/api/v3";
+            await fetch(`${asaasBase}/subscriptions/${sub.asaasSubscriptionId}`, {
+              method: "DELETE",
+              headers: { "access_token": subApiKey },
+            });
+          }
+        } catch (asaasErr: any) {
+          console.error("[cancel-subscription] Asaas error:", asaasErr.message);
+        }
+      }
+      // Atualizar status no banco
+      await dbConn.execute(sql`
+        UPDATE client_subscriptions SET status = 'cancelled', "updatedAt" = NOW()
+        WHERE id = ${subscriptionId}
+      `);
+      console.log(`[cancel-subscription] Cliente ${loggedClient.name} cancelou assinatura #${subscriptionId}`);
+      res.json({ success: true });
+    } catch (e: any) {
+      console.error("[cancel-subscription]", e.message);
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // POST /pub-api/cancel-appointment

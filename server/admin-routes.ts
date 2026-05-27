@@ -692,6 +692,12 @@ function adminLayout(title: string, activePage: string, body: string, barberName
               Suporte
             </a>
             <div style="border-top:1px solid var(--border);">
+              <a href="/admin/configuracoes?tab=pagamentos#cancelar" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:#F87171;font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='rgba(248,113,113,0.08)'" onmouseout="this.style.background='transparent'">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                Cancelar assinatura
+              </a>
+            </div>
+            <div style="border-top:1px solid var(--border);">
               <a href="/admin/logout" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--error);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='rgba(239,68,68,0.08)'" onmouseout="this.style.background='transparent'">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 Sair da conta
@@ -1265,6 +1271,15 @@ async function renderDashboard(req: Request, res: Response) {
   const dashBookingUrl = dashSlug ? `${dashBaseUrl}/pub/${dashSlug}/agendar` : "";
   const dashPublicUrl = dashSlug ? `${dashBaseUrl}/pub/${dashSlug}` : "";
 
+  // Métricas da página pública para o card do dashboard
+  const dashReviews = tenantId ? await db.getReviewsByTenant(tenantId).catch(() => []) : [];
+  const dashAvgRating = dashReviews.length > 0
+    ? (dashReviews.reduce((s: number, r: any) => s + (r.rating ?? 0), 0) / dashReviews.length).toFixed(1)
+    : null;
+  const dashOnlineAppts = appointments.filter((a: any) => a.source === "online" || a.source === "public").length;
+  const dashShopName = dashSettings?.shopName ?? dashTenant?.name ?? "Minha Barbearia";
+  const dashLogoUrl = (dashSettings as any)?.logoUrl ?? null;
+
   // ─── Dados dos últimos 7 dias para o gráfico ─────────────────────────────
   const weekDays: { date: string; label: string; revenue: number; appointmentsCount: number }[] = [];
   for (let i = 6; i >= 0; i--) {
@@ -1724,38 +1739,55 @@ async function renderDashboard(req: Request, res: Response) {
       </script>
     </div>
 
-    <!-- 5. Link de Agendamento -->
+    <!-- 5. Página Pública -->
     ${dashBookingUrl ? `
-    <div class="card" style="background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);border:1px solid var(--gold)44;margin-bottom:20px;">
-      <div class="card-header">
-        <div class="card-title">Link de Agendamento Online</div>
-        <a href="/admin/pagina-cliente" class="btn btn-ghost btn-sm">Configurar página</a>
-      </div>
-      <div class="card-body">
-        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Compartilhe este link com seus clientes para que eles possam agendar online:</p>
-        <div class="booking-btns" style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
-          <input id="dash-booking-url" class="form-input" type="text" value="${esc(dashBookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1;min-width:0" />
-          <button onclick="(function(btn){navigator.clipboard.writeText(document.getElementById('dash-booking-url').value).then(()=>{var o=btn.innerHTML;btn.innerHTML='Copiado!';setTimeout(()=>btn.innerHTML=o,2000)});})(this)" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Copiar</button>
-          <a href="${esc(dashBookingUrl)}" target="_blank" class="btn btn-ghost" style="flex-shrink:0;padding:8px 14px;font-size:12px">Abrir</a>
-          <a href="https://wa.me/?text=${encodeURIComponent('Agende seu horário: ' + dashBookingUrl)}" target="_blank" class="btn btn-primary" style="flex-shrink:0;padding:8px 14px;font-size:12px">WhatsApp</a>
-        </div>
-        ${dashPublicUrl ? `
-        <div style="margin-top:8px;">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600;letter-spacing:0.3px;">PREVIEW DA SUA PÁGINA</div>
-          <div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);position:relative;">
-            <div style="background:var(--surface2);padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);">
-              <div style="display:flex;gap:5px;"><div style="width:10px;height:10px;border-radius:50%;background:#EF4444;"></div><div style="width:10px;height:10px;border-radius:50%;background:#F59E0B;"></div><div style="width:10px;height:10px;border-radius:50%;background:#22C55E;"></div></div>
-              <div style="flex:1;background:var(--surface);border-radius:6px;padding:4px 10px;font-size:10px;color:var(--muted);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(dashPublicUrl)}</div>
-              <a href="${esc(dashPublicUrl)}" target="_blank" class="btn btn-ghost btn-sm" style="font-size:10px;padding:4px 8px;">Abrir ↗</a>
-            </div>
-            <div class="page-preview-iframe-wrap" style="height:280px;overflow:hidden;position:relative;">
-              <iframe src="${esc(dashPublicUrl)}" style="width:1200px;height:900px;border:none;pointer-events:none;transform-origin:top left;transform:scale(0.685);" scrolling="no" loading="lazy" title="Preview da sua página"></iframe>
-              <a href="${esc(dashPublicUrl)}" target="_blank" style="position:absolute;inset:0;display:block;cursor:pointer" title="Abrir página pública"></a>
-            </div>
+    <div class="card" style="margin-bottom:20px;border:1px solid var(--gold)33;">
+      <div class="card-body" style="padding:0">
+
+        <!-- Header com logo, nome e botões -->
+        <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--border)">
+          ${dashLogoUrl
+            ? `<img src="${esc(dashLogoUrl)}" alt="${esc(dashShopName)}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0">`
+            : `<div style="width:40px;height:40px;border-radius:10px;background:var(--gold)18;border:1px solid var(--gold)33;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">✂️</div>`
+          }
+          <div style="flex:1;min-width:0">
+            <div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:2px">${esc(dashShopName)}</div>
+            <div style="font-size:11px;color:var(--muted);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(dashPublicUrl)}</div>
           </div>
-        </div>` : ''}
+          <div style="display:flex;gap:8px;flex-shrink:0">
+            <a href="/admin/pagina-cliente" class="btn btn-ghost btn-sm">Configurar</a>
+            <a href="${esc(dashPublicUrl)}" target="_blank" class="btn btn-ghost btn-sm">Abrir ↗</a>
+          </div>
+        </div>
+
+        <!-- Métricas -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border-bottom:1px solid var(--border)">
+          <div style="padding:14px 20px;text-align:center;border-right:1px solid var(--border)">
+            <div style="font-size:22px;font-weight:900;color:var(--gold)">${appointments.length}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">agendamentos hoje</div>
+          </div>
+          <div style="padding:14px 20px;text-align:center;border-right:1px solid var(--border)">
+            <div style="font-size:22px;font-weight:900;color:var(--gold)">${dashOnlineAppts}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">agendados online</div>
+          </div>
+          <div style="padding:14px 20px;text-align:center">
+            <div style="font-size:22px;font-weight:900;color:var(--gold)">${dashAvgRating ? dashAvgRating + " ★" : "—"}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${dashReviews.length} avaliação${dashReviews.length !== 1 ? "ões" : ""}</div>
+          </div>
+        </div>
+
+        <!-- Link + compartilhar -->
+        <div style="display:flex;gap:8px;align-items:center;padding:14px 20px;flex-wrap:wrap">
+          <input id="dash-booking-url" class="form-input" type="text" value="${esc(dashBookingUrl)}" readonly style="font-size:12px;font-family:monospace;flex:1;min-width:0;height:36px" />
+          <button onclick="(function(btn){navigator.clipboard.writeText(document.getElementById('dash-booking-url').value).then(()=>{var o=btn.innerHTML;btn.innerHTML='Copiado!';setTimeout(()=>btn.innerHTML=o,2000)});})(this)" class="btn btn-ghost" style="flex-shrink:0;height:36px;padding:0 14px;font-size:12px">Copiar</button>
+          <a href="https://wa.me/?text=${encodeURIComponent("Agende seu horário: " + dashBookingUrl)}" target="_blank" class="btn btn-primary" style="flex-shrink:0;height:36px;padding:0 14px;font-size:12px;display:flex;align-items:center;gap:6px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+            WhatsApp
+          </a>
+        </div>
+
       </div>
-    </div>` : ''}
+    </div>` : ""}
 
     <!-- 6. Card: Baixe o App -->
     <div id="download-app-card" style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);border:1px solid rgba(201,168,76,0.25);border-radius:16px;padding:0;margin-bottom:20px;display:none;overflow:hidden;position:relative">
