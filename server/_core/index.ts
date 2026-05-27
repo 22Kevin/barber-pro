@@ -671,6 +671,9 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
+  // Confiar no proxy reverso do Railway (necessário para rate limit e IP real)
+  app.set("trust proxy", 1);
+
   // Enable CORS for all routes - reflect the request origin to support credentials
   app.use((req, res, next) => {
     const origin = req.headers.origin;
