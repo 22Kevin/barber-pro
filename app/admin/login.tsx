@@ -1,308 +1,192 @@
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+  ActivityIndicator, Alert, Image, KeyboardAvoidingView,
+  Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { router } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc, saveBarberJwt, saveBarberRefreshJwt } from "@/lib/trpc";
-import { useColors } from "@/hooks/use-colors";
 import { getExpoPushToken } from "@/lib/use-notifications";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Google Sign-In — importação condicional para evitar crash na web/Expo Go
 let GoogleSignin: any = null;
 let statusCodes: any = null;
 try {
   const mod = require("@react-native-google-signin/google-signin");
   GoogleSignin = mod.GoogleSignin;
   statusCodes = mod.statusCodes;
-} catch {
-  // Pacote não disponível (Expo Go ou web)
-}
+} catch {}
 
 const REMEMBER_ME_KEY = "@barber_pro_remember_me";
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
 const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
-const GOOGLE_CONFIGURED = !!WEB_CLIENT_ID;
+const GOLD = "#C9A84C";
+const BG = "#0A0A0A";
+const SURFACE = "#111111";
+const SURFACE2 = "#1A1A1A";
+const BORDER = "#2A2A2A";
+const MUTED = "#9BA1A6";
+const TEXT = "#ECEDEE";
 
 export default function AdminLoginScreen() {
   const { login } = useBarberAuth();
-  const colors = useColors();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Carregar e-mail salvo se "Lembrar-me" estava ativo
   useEffect(() => {
     AsyncStorage.getItem(REMEMBER_ME_KEY).then((saved) => {
       if (saved) {
         try {
           const { email: savedEmail, remember } = JSON.parse(saved);
-          if (remember && savedEmail) {
-            setEmail(savedEmail);
-            setRememberMe(true);
-          }
-        } catch {
-          // ignore
-        }
+          if (remember && savedEmail) { setEmail(savedEmail); setRememberMe(true); }
+        } catch {}
       }
     });
   }, []);
 
-  // Configurar Google Sign-In
   useEffect(() => {
-    if (!GoogleSignin || !GOOGLE_CONFIGURED) return;
+    if (!GoogleSignin || !WEB_CLIENT_ID) return;
     try {
-      GoogleSignin.configure({
-        webClientId: WEB_CLIENT_ID,
-        iosClientId: IOS_CLIENT_ID || undefined,
-        offlineAccess: false,
-      });
-    } catch {
-      // ignore
-    }
+      GoogleSignin.configure({ webClientId: WEB_CLIENT_ID, iosClientId: IOS_CLIENT_ID || undefined, offlineAccess: false });
+    } catch {}
   }, []);
 
   const savePushToken = trpc.barbers.savePushToken.useMutation();
-  const loginMutation = trpc.admin.login.useMutation({
+
+  const loginMutation = trpc.auth.login.useMutation({
     onSuccess: async (data) => {
-      // Salvar preferência de "Lembrar-me"
-      await AsyncStorage.setItem(
-        REMEMBER_ME_KEY,
-        JSON.stringify({ email: rememberMe ? email.trim() : "", remember: rememberMe })
-      );
-      // Salvar JWT e refresh token para autenticar mutations protegidas
-      if ((data as any).token) await saveBarberJwt((data as any).token);
-      if ((data as any).refreshToken) await saveBarberRefreshJwt((data as any).refreshToken);
-      await login(data as any);
-      getExpoPushToken()
-        .then((token) => {
-          if (token && data.id) savePushToken.mutate({ barberId: data.id, pushToken: token });
-        })
-        .catch(() => null);
+      if (!data?.token) { Alert.alert("Erro", "Resposta inválida do servidor."); return; }
+      await saveBarberJwt(data.token);
+      if (data.refreshToken) await saveBarberRefreshJwt(data.refreshToken);
+      if (rememberMe) {
+        await AsyncStorage.setItem(REMEMBER_ME_KEY, JSON.stringify({ email, remember: true }));
+      } else {
+        await AsyncStorage.removeItem(REMEMBER_ME_KEY);
+      }
+      login(data.barber ?? data);
+      try {
+        const pushToken = await getExpoPushToken();
+        if (pushToken && data.barber?.id) savePushToken.mutate({ barberId: data.barber.id, token: pushToken });
+      } catch {}
       router.replace("/admin/(tabs)/dashboard" as any);
     },
-    onError: (err) => {
-      Alert.alert("Erro ao entrar", err.message);
-    },
+    onError: (e) => Alert.alert("Erro ao entrar", e.message ?? "Verifique suas credenciais."),
   });
 
-  const googleLoginMutation = trpc.admin.googleLogin.useMutation({
+  const googleLoginMutation = trpc.auth.googleLogin.useMutation({
     onSuccess: async (data) => {
-      // Salvar JWT e refresh token para autenticar mutations protegidas
-      if ((data as any).token) await saveBarberJwt((data as any).token);
-      if ((data as any).refreshToken) await saveBarberRefreshJwt((data as any).refreshToken);
-      await login(data as any);
-      getExpoPushToken()
-        .then((token) => {
-          if (token && data.id) savePushToken.mutate({ barberId: data.id, pushToken: token });
-        })
-        .catch(() => null);
+      if (!data?.token) { Alert.alert("Erro", "Falha na autenticação Google."); return; }
+      await saveBarberJwt(data.token);
+      if (data.refreshToken) await saveBarberRefreshJwt(data.refreshToken);
+      login(data.barber ?? data);
       router.replace("/admin/(tabs)/dashboard" as any);
     },
-    onError: (err) => {
-      Alert.alert("Erro ao entrar com Google", err.message);
-    },
+    onError: (e) => Alert.alert("Erro Google", e.message),
   });
 
-  const handleLogin = () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert("Atenção", "Preencha e-mail e senha.");
-      return;
-    }
-    loginMutation.mutate({ email: email.trim(), password });
-  };
+  async function handleLogin() {
+    if (!email.trim() || !password) { Alert.alert("Atenção", "Preencha e-mail e senha."); return; }
+    loginMutation.mutate({ email: email.trim().toLowerCase(), password });
+  }
 
-  const handleGoogleLogin = async () => {
-    if (!GoogleSignin) {
-      Alert.alert(
-        "Não disponível",
-        "O login com Google requer uma build nativa do aplicativo. Use o botão Publicar no painel para gerar o APK."
-      );
-      return;
-    }
-    if (!GOOGLE_CONFIGURED) {
-      Alert.alert(
-        "Google Sign-In não configurado",
-        "Configure as credenciais do Google no painel de Secrets (EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID)."
-      );
-      return;
-    }
+  async function handleGoogleLogin() {
+    if (!GoogleSignin || !WEB_CLIENT_ID) { Alert.alert("Google login não disponível"); return; }
     setGoogleLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
-      const user = userInfo.data?.user ?? userInfo.user;
-      if (!user?.id || !user?.email) throw new Error("Dados do Google incompletos");
-      googleLoginMutation.mutate({
-        googleId: user.id,
-        email: user.email,
-        name: user.name ?? user.email,
-        photoUrl: user.photo ?? undefined,
-      });
-    } catch (err: any) {
-      if (statusCodes && err.code === statusCodes.SIGN_IN_CANCELLED) {
-        // usuário cancelou — não mostrar erro
-      } else if (statusCodes && err.code === statusCodes.IN_PROGRESS) {
-        // já em andamento
-      } else {
-        Alert.alert("Erro", err.message ?? "Não foi possível fazer login com Google.");
-      }
+      const idToken = userInfo?.data?.idToken ?? userInfo?.idToken;
+      if (!idToken) throw new Error("Token Google não disponível");
+      googleLoginMutation.mutate({ idToken });
+    } catch (e: any) {
+      if (e?.code !== statusCodes?.SIGN_IN_CANCELLED) Alert.alert("Erro Google", e?.message ?? "Falha na autenticação");
     } finally {
       setGoogleLoading(false);
     }
-  };
+  }
 
   const isLoading = loginMutation.isPending || googleLoading || googleLoginMutation.isPending;
 
   return (
     <ScreenContainer containerClassName="bg-background" edges={["top", "left", "right", "bottom"]}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Logo */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+
+          {/* Logo + marca */}
           <View style={styles.logoArea}>
-            <Image
-              source={require("@/assets/images/icon.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={[styles.brandName, { color: colors.primary }]}>BARBER PRO</Text>
-            <Text style={[styles.brandSub, { color: colors.muted }]}>Painel Administrativo</Text>
+            <View style={styles.logoRing}>
+              <Image source={require("@/assets/images/icon.png")} style={styles.logo} resizeMode="contain" />
+            </View>
+            <Text style={styles.brand}>BARBER PRO</Text>
+            <Text style={styles.brandSub}>Painel Administrativo</Text>
           </View>
 
-          {/* Card */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Entrar</Text>
+          {/* Card de login */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Bem-vindo de volta</Text>
+            <Text style={styles.cardSub}>Entre com sua conta para acessar o painel</Text>
 
             {/* E-mail */}
             <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.muted }]}>E-mail</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="seu@email.com"
-                placeholderTextColor={colors.muted}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="next"
-              />
+              <Text style={styles.label}>E-mail</Text>
+              <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="seu@email.com" placeholderTextColor={MUTED} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} returnKeyType="next" />
             </View>
 
             {/* Senha */}
             <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.muted }]}>Senha</Text>
+              <Text style={styles.label}>Senha</Text>
               <View style={styles.passwordRow}>
-                <TextInput
-                  style={[styles.input, { flex: 1, marginBottom: 0, backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="••••••••"
-                  placeholderTextColor={colors.muted}
-                  secureTextEntry={!showPassword}
-                  returnKeyType="done"
-                  onSubmitEditing={handleLogin}
-                />
-                <Pressable
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeBtn}
-                >
-                  <IconSymbol name={showPassword ? "eye.slash.fill" : "eye.fill"} size={20} color={colors.muted} />
+                <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} value={password} onChangeText={setPassword} placeholder="••••••••" placeholderTextColor={MUTED} secureTextEntry={!showPassword} returnKeyType="done" onSubmitEditing={handleLogin} />
+                <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                  <IconSymbol name={showPassword ? "eye.slash.fill" : "eye.fill"} size={20} color={MUTED} />
                 </Pressable>
               </View>
             </View>
 
             {/* Lembrar-me */}
-            <Pressable
-              style={styles.rememberRow}
-              onPress={() => setRememberMe(!rememberMe)}
-            >
-              <View style={[
-                styles.checkbox,
-                { borderColor: rememberMe ? colors.primary : colors.border, backgroundColor: rememberMe ? colors.primary : "transparent" }
-              ]}>
-                {rememberMe && (
-                  <Text style={styles.checkmark}>✓</Text>
-                )}
+            <Pressable style={styles.rememberRow} onPress={() => setRememberMe(!rememberMe)}>
+              <View style={[styles.checkbox, { borderColor: rememberMe ? GOLD : BORDER, backgroundColor: rememberMe ? GOLD : "transparent" }]}>
+                {rememberMe && <Text style={styles.checkmark}>✓</Text>}
               </View>
-              <Text style={[styles.rememberText, { color: colors.muted }]}>Lembrar meu e-mail</Text>
+              <Text style={styles.rememberText}>Lembrar meu e-mail neste dispositivo</Text>
             </Pressable>
 
             {/* Botão Entrar */}
-            <Pressable
-              style={({ pressed }) => [styles.btn, { backgroundColor: colors.primary }, pressed && { opacity: 0.8 }]}
-              onPress={handleLogin}
-              disabled={isLoading}
-            >
-              {loginMutation.isPending ? (
-                <ActivityIndicator color={colors.background} />
-              ) : (
-                <Text style={[styles.btnText, { color: colors.background }]}>ENTRAR</Text>
-              )}
+            <Pressable style={({ pressed }) => [styles.btn, pressed && { opacity: 0.85 }]} onPress={handleLogin} disabled={isLoading}>
+              {loginMutation.isPending ? <ActivityIndicator color={BG} /> : <Text style={styles.btnText}>Entrar no Painel</Text>}
             </Pressable>
 
             {/* Divisor */}
-            <View style={styles.dividerRow}>
-              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.muted }]}>ou</Text>
-              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ou continue com</Text>
+              <View style={styles.dividerLine} />
             </View>
 
-            {/* Botão Google */}
-            <Pressable
-              style={({ pressed }) => [
-                styles.googleBtn,
-                { backgroundColor: colors.background, borderColor: colors.border },
-                pressed && { opacity: 0.8 },
-              ]}
-              onPress={handleGoogleLogin}
-              disabled={isLoading}
-            >
+            {/* Google */}
+            <Pressable style={({ pressed }) => [styles.googleBtn, pressed && { opacity: 0.8 }]} onPress={handleGoogleLogin} disabled={isLoading}>
               {(googleLoading || googleLoginMutation.isPending) ? (
-                <ActivityIndicator color={colors.foreground} size="small" />
+                <ActivityIndicator color={TEXT} size="small" />
               ) : (
                 <>
-                  {/* Ícone G do Google em SVG inline via Text */}
-                  <View style={styles.googleIconContainer}>
-                    <Text style={styles.googleIconText}>G</Text>
-                  </View>
-                  <Text style={[styles.googleBtnText, { color: colors.foreground }]}>
-                    Entrar com Google
-                  </Text>
+                  <View style={styles.googleIconBox}><Text style={styles.googleIconText}>G</Text></View>
+                  <Text style={styles.googleBtnText}>Entrar com Google</Text>
                 </>
               )}
             </Pressable>
 
             {/* Links */}
-            <Pressable onPress={() => router.push("/admin/forgot-password" as any)} style={styles.forgotLink}>
-              <Text style={[styles.forgotText, { color: colors.muted }]}>Esqueci minha senha</Text>
+            <Pressable onPress={() => router.push("/admin/forgot-password" as any)} style={styles.link}>
+              <Text style={styles.linkText}>Esqueci minha senha</Text>
             </Pressable>
 
-            <Pressable onPress={() => router.push("/admin/setup" as any)} style={styles.setupLink}>
-              <Text style={[styles.setupText, { color: colors.primary }]}>Primeiro acesso? Criar conta de administrador</Text>
+            <Pressable onPress={() => router.push("/admin/setup" as any)} style={styles.link}>
+              <Text style={[styles.linkText, { color: GOLD }]}>← Voltar ao app</Text>
             </Pressable>
           </View>
 
@@ -314,156 +198,33 @@ export default function AdminLoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: 24,
-  },
-  logoArea: {
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  logo: {
-    width: 90,
-    height: 90,
-    borderRadius: 20,
-    marginBottom: 12,
-  },
-  brandName: {
-    fontSize: 28,
-    fontWeight: "800",
-    letterSpacing: 4,
-  },
-  brandSub: {
-    fontSize: 13,
-    letterSpacing: 2,
-    marginTop: 4,
-  },
-  card: {
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-  },
-  cardTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 24,
-  },
-  field: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    marginBottom: 6,
-    fontWeight: "500",
-    letterSpacing: 0.5,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    marginBottom: 0,
-  },
-  passwordRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  eyeBtn: {
-    padding: 10,
-  },
-  rememberRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 20,
-    marginTop: 4,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkmark: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
-    lineHeight: 16,
-  },
-  rememberText: {
-    fontSize: 14,
-  },
-  btn: {
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: "center",
-    marginTop: 0,
-  },
-  btnText: {
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 2,
-  },
-  dividerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 20,
-    gap: 10,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  googleBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 12,
-    paddingVertical: 13,
-    borderWidth: 1.5,
-    gap: 10,
-  },
-  googleIconContainer: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#4285F4",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  googleIconText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "800",
-    lineHeight: 18,
-  },
-  googleBtnText: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  forgotLink: {
-    marginTop: 16,
-    alignItems: "center",
-  },
-  forgotText: {
-    fontSize: 13,
-    textDecorationLine: "underline",
-  },
-  setupLink: {
-    marginTop: 12,
-    alignItems: "center",
-  },
-  setupText: {
-    fontSize: 13,
-    textDecorationLine: "underline",
-  },
+  scroll: { flexGrow: 1, justifyContent: "center", padding: 24, backgroundColor: BG },
+  logoArea: { alignItems: "center", marginBottom: 36 },
+  logoRing: { width: 100, height: 100, borderRadius: 26, borderWidth: 2, borderColor: GOLD + "44", backgroundColor: SURFACE, alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  logo: { width: 72, height: 72, borderRadius: 18 },
+  brand: { fontSize: 26, fontWeight: "900", color: GOLD, letterSpacing: 5, marginBottom: 4 },
+  brandSub: { fontSize: 12, color: MUTED, letterSpacing: 2, textTransform: "uppercase" },
+  card: { backgroundColor: SURFACE, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: BORDER },
+  cardTitle: { fontSize: 22, fontWeight: "800", color: TEXT, marginBottom: 4 },
+  cardSub: { fontSize: 13, color: MUTED, marginBottom: 24 },
+  field: { marginBottom: 16 },
+  label: { fontSize: 11, color: MUTED, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 7 },
+  input: { backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: TEXT },
+  passwordRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  eyeBtn: { padding: 10 },
+  rememberRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 20 },
+  checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  checkmark: { color: BG, fontSize: 12, fontWeight: "900" },
+  rememberText: { fontSize: 13, color: MUTED },
+  btn: { backgroundColor: GOLD, borderRadius: 14, paddingVertical: 15, alignItems: "center", marginBottom: 16 },
+  btnText: { color: BG, fontSize: 15, fontWeight: "900", letterSpacing: 0.5 },
+  divider: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: BORDER },
+  dividerText: { fontSize: 12, color: MUTED },
+  googleBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingVertical: 14, marginBottom: 20 },
+  googleIconBox: { width: 24, height: 24, borderRadius: 12, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
+  googleIconText: { fontSize: 14, fontWeight: "900", color: "#4285F4" },
+  googleBtnText: { fontSize: 15, color: TEXT, fontWeight: "600" },
+  link: { alignItems: "center", paddingVertical: 6 },
+  linkText: { fontSize: 13, color: MUTED },
 });

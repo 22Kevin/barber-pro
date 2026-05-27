@@ -85,6 +85,7 @@ export default function ClientsScreen() {
   const [birthDate, setBirthDate] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [lgpdConsent, setLgpdConsent] = useState(false);
 
   const utils = trpc.useUtils();
   const clientsQuery = trpc.clients.list.useQuery({ tenantId });
@@ -123,13 +124,13 @@ export default function ClientsScreen() {
 
   function openCreate() {
     setEditing(null);
-    setName(""); setPhone(""); setEmail(""); setBirthDate(null); setNotes("");
+    setName(""); setPhone(""); setEmail(""); setBirthDate(null); setNotes(""); setLgpdConsent(false);
     setShowModal(true);
   }
 
   function openEdit(c: Client) {
     setEditing(c);
-    setName(c.name); setPhone(applyPhoneMask(c.phone)); setEmail(c.email ?? ""); setBirthDate(c.birthDate ?? null); setNotes(c.notes ?? "");
+    setName(c.name); setPhone(applyPhoneMask(c.phone)); setEmail(c.email ?? ""); setBirthDate(c.birthDate ?? null); setNotes(c.notes ?? ""); setLgpdConsent((c as any).lgpdConsent ?? false);
     setShowModal(true);
   }
 
@@ -139,7 +140,8 @@ export default function ClientsScreen() {
     if (!name.trim()) { Alert.alert("Atenção", "Informe o nome do cliente."); return; }
     const rawPhone = stripMask(phone);
     if (!rawPhone || rawPhone.length < 10) { Alert.alert("Atenção", "Informe um telefone válido."); return; }
-    const data = { name: name.trim(), phone: rawPhone, email: email.trim() || null, birthDate: birthDate || null, notes: notes.trim() || null };
+    const data = { name: name.trim(), phone: rawPhone, email: email.trim() || null, birthDate: birthDate || null, notes: notes.trim() || null, lgpdConsent };
+    if (!editing && !lgpdConsent) { Alert.alert("LGPD", "O cliente precisa consentir com o uso dos dados para ser cadastrado."); return; }
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data });
     } else {
@@ -391,6 +393,18 @@ export default function ClientsScreen() {
                 <View style={{ marginBottom: 14 }}>
                   <Text style={styles.fieldLabel}>Observações</Text>
                   <TextInput style={[styles.input, styles.textarea]} value={notes} onChangeText={setNotes} placeholder="Preferências, alergias, etc..." placeholderTextColor="#555" multiline numberOfLines={3} />
+
+                  {/* Consentimento LGPD */}
+                  {!editing && (
+                    <Pressable onPress={() => setLgpdConsent(!lgpdConsent)} style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, marginTop: 8, padding: 12, backgroundColor: lgpdConsent ? "#0d2818" : "#1a1a1a", borderRadius: 10, borderWidth: 1, borderColor: lgpdConsent ? "#4ADE8044" : "#2a2a2a" }}>
+                      <View style={{ width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: lgpdConsent ? "#4ADE80" : "#555", backgroundColor: lgpdConsent ? "#4ADE80" : "transparent", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                        {lgpdConsent && <Text style={{ color: "#0A0A0A", fontSize: 12, fontWeight: "900" }}>✓</Text>}
+                      </View>
+                      <Text style={{ flex: 1, fontSize: 12, color: lgpdConsent ? "#4ADE80" : "#888", lineHeight: 18 }}>
+                        O cliente autoriza o uso dos seus dados pessoais para gestão de agendamentos, comunicações e marketing da barbearia, conforme a LGPD (Lei 13.709/2018).
+                      </Text>
+                    </Pressable>
+                  )}
                 </View>
                 <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleSave} disabled={createMutation.isPending || updateMutation.isPending}>
                   {(createMutation.isPending || updateMutation.isPending) ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>{editing ? "SALVAR" : "CADASTRAR"}</Text>}
