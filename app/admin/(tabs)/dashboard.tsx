@@ -190,6 +190,35 @@ export default function DashboardScreen() {
           </Pressable>
         </View>
 
+        {/* Card Página Pública */}
+        {tenant?.slug && (
+          <View style={{ marginHorizontal: 16, marginBottom: 12, backgroundColor: '#1A1505', borderRadius: 14, borderWidth: 1, borderColor: '#C9A84C33', overflow: 'hidden' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderBottomWidth: 1, borderBottomColor: '#C9A84C22' }}>
+              <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: '#C9A84C22', borderWidth: 1, borderColor: '#C9A84C44', justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ fontSize: 18 }}>✂️</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#ECEDEE' }}>{tenant?.name}</Text>
+                <Text style={{ fontSize: 11, color: '#666', fontFamily: 'monospace' }} numberOfLines={1}>usebarberpro.com/pub/{tenant.slug}</Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row' }}>
+              <View style={{ flex: 1, padding: 12, alignItems: 'center', borderRightWidth: 1, borderRightColor: '#C9A84C22' }}>
+                <Text style={{ fontSize: 20, fontWeight: '900', color: '#C9A84C' }}>{appointments.length}</Text>
+                <Text style={{ fontSize: 10, color: '#888', marginTop: 2 }}>agendamentos hoje</Text>
+              </View>
+              <View style={{ flex: 1, padding: 12, alignItems: 'center', borderRightWidth: 1, borderRightColor: '#C9A84C22' }}>
+                <Text style={{ fontSize: 20, fontWeight: '900', color: '#C9A84C' }}>{appointments.filter((a: any) => a.source === 'online' || a.source === 'public').length}</Text>
+                <Text style={{ fontSize: 10, color: '#888', marginTop: 2 }}>agendados online</Text>
+              </View>
+              <View style={{ flex: 1, padding: 12, alignItems: 'center' }}>
+                <Text style={{ fontSize: 20, fontWeight: '900', color: '#C9A84C' }}>{String(stats?.avgRating ?? '—')}</Text>
+                <Text style={{ fontSize: 10, color: '#888', marginTop: 2 }}>avaliação</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Alerta de estoque mínimo */}
         {lowStockItems.length > 0 && (
           <Pressable
@@ -210,7 +239,7 @@ export default function DashboardScreen() {
           </Pressable>
         )}
 
-        {/* Pagamentos Pendentes MP */}
+        {/* Pagamentos Pendentes */}
         {(pendingPaymentsQuery.data?.length ?? 0) > 0 && (
           <>
             <View style={styles.sectionHeader}>
@@ -229,7 +258,7 @@ export default function DashboardScreen() {
                       <Text style={[styles.statusText, { color: "#FF9800" }]}>Pendente</Text>
                     </View>
                   </View>
-                  <Text style={dyn.aptBarber}>Pagamento Online</Text>
+                  <Text style={dyn.aptBarber}>Pagamento Pendente</Text>
                 </View>
               </View>
             ))}

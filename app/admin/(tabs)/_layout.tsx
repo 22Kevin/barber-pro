@@ -116,6 +116,20 @@ export default function AdminTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="subscriptions"
+        options={{
+          title: "Assinaturas",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="coupons"
+        options={{
+          title: "Cupons",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
         name="waitlist"
         options={{
           title: "Lista de Espera",

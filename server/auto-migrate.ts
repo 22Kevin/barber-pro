@@ -37,7 +37,7 @@ export async function runAutoMigrate(db: any): Promise<void> {
     `DO $$ BEGIN CREATE TYPE barber_role AS ENUM ('super_admin','barber','receptionist'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
     `DO $$ BEGIN CREATE TYPE product_type AS ENUM ('sale','internal'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
     `DO $$ BEGIN CREATE TYPE appointment_status AS ENUM ('scheduled','confirmed','in_progress','completed','cancelled','no_show','pending_approval'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
-    `DO $$ BEGIN CREATE TYPE payment_method AS ENUM ('cash','credit_card','debit_card','pix','mercado_pago','asaas','other'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
+    `DO $$ BEGIN CREATE TYPE payment_method AS ENUM ('cash','credit_card','debit_card','pix','asaas','other'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
     `DO $$ BEGIN ALTER TYPE payment_method ADD VALUE IF NOT EXISTS 'asaas'; EXCEPTION WHEN others THEN null; END $$`,
     `DO $$ BEGIN CREATE TYPE payment_status AS ENUM ('pending','paid','cancelled','refunded'); EXCEPTION WHEN duplicate_object THEN null; END $$`,
     `DO $$ BEGIN CREATE TYPE loyalty_reward_type AS ENUM ('free_service','discount_percent','discount_fixed','free_product'); EXCEPTION WHEN duplicate_object THEN null; END $$`,

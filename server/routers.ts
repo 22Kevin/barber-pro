@@ -2088,6 +2088,21 @@ export const appRouter = router({
         // Buscar dados da encomenda antes de atualizar (para notificação)
         const orderBefore = await db.getProductOrderById(input.id);
         await db.updateProductOrderStatus(input.id, input.status as any, Object.keys(extra).length > 0 ? extra : undefined);
+
+        // Abater estoque ao confirmar pedido
+        if (input.status === "confirmed" && orderBefore) {
+          try {
+            const product = await db.getProductById((orderBefore as any).productId);
+            if (product && product.stockQuantity != null && product.stockQuantity > 0) {
+              const qty = (orderBefore as any).quantity ?? 1;
+              const newStock = Math.max(0, product.stockQuantity - qty);
+              await db.updateProduct(product.id, { stockQuantity: newStock });
+              console.log(`[productOrders] Estoque "${product.name}": ${product.stockQuantity} → ${newStock}`);
+            }
+          } catch (stockErr: any) {
+            console.error("[productOrders] Erro ao abater estoque:", stockErr.message);
+          }
+        }
         // Enviar notificação push ao cliente
         if (orderBefore?.clientId) {
           const pushToken = await db.getClientPushToken(orderBefore.clientId);
@@ -2899,7 +2914,7 @@ Base de conhecimento:
 - Fidelidade: programa de pontos configurável.
 - WhatsApp: confirmações e lembretes automáticos via Z-API.
 - Planos: Solo (1 barbeiro), Equipe (5 barbeiros), Studio (ilimitado).
-- Pagamentos: Mercado Pago (cartão, Pix, boleto) e Asaas.
+- Pagamentos: Asaas (cartão, Pix).
 - Suporte: responda de forma clara, objetiva e amigável em português.
 - Se não souber a resposta, diga que a equipe de suporte entrará em contato em breve.
 `;

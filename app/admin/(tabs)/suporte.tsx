@@ -56,6 +56,11 @@ const CATEGORIES = [
 ];
 
 // ─── Componente principal ─────────────────────────────────────────────────────
+const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "https://usebarberpro.com";
+
+interface ChatMessage { role: 'user' | 'assistant'; content: string; }
+
+
 export default function SuporteScreen() {
   const colors = useColors();
   const styles = createStyles(colors);
@@ -77,6 +82,40 @@ export default function SuporteScreen() {
 
   // Estado do formulário de resposta
   const [replyText, setReplyText] = useState("");
+
+  // Estado do chatbot IA
+  const [activeTab, setActiveTab] = useState<"tutoriais" | "ia" | "tickets">("tutoriais");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    { role: 'assistant', content: 'Olá! Sou o assistente do Barber Pro. Posso te ajudar com qualquer dúvida sobre o sistema. Como posso te ajudar?' }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatScrollRef = useRef<any>(null);
+
+  async function sendChat() {
+    const msg = chatInput.trim();
+    if (!msg || chatLoading) return;
+    const userMsg: ChatMessage = { role: 'user', content: msg };
+    const newHistory = [...chatMessages, userMsg];
+    setChatMessages(newHistory);
+    setChatInput("");
+    setChatLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/admin-api/suporte-chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message: msg, history: newHistory.slice(-8) })
+      });
+      const data = await r.json();
+      setChatMessages(prev => [...prev, { role: 'assistant', content: data.reply || 'Desculpe, tente novamente.' }]);
+    } catch {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Erro de conexão. Tente novamente.' }]);
+    } finally {
+      setChatLoading(false);
+      setTimeout(() => chatScrollRef.current?.scrollToEnd?.({ animated: true }), 100);
+    }
+  }
 
   // ─── Queries ────────────────────────────────────────────────────────────────
   const ticketsQuery = trpc.support.getMyTickets.useQuery(
