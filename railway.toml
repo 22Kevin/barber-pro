@@ -6,5 +6,4 @@ dockerfilePath = "Dockerfile.app"
 startCommand = "serve dist-web -p 3000 --single"
 healthcheckPath = "/"
 healthcheckTimeout = 300
-restartPolicyType = "always"
-restartPolicyMaxRetries = 10
+restartPolicyType = "ALWAYS"
