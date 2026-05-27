@@ -1874,6 +1874,18 @@ export const appRouter = router({
         // 1. Verificar se email já está em uso globalmente
         const existingBarber = await db.getBarberByEmail(input.admin.email);
         if (existingBarber) throw new Error("Este email já está cadastrado");
+
+        // 1b. Verificar se este email já usou o trial gratuito anteriormente
+        const dbConn = await db.getDb();
+        if (dbConn) {
+          const usedTrial = await dbConn.execute(
+            sql`SELECT id FROM used_trials WHERE email = ${input.admin.email.toLowerCase()} LIMIT 1`
+          ) as any;
+          const rows = Array.isArray(usedTrial) ? usedTrial[0] : usedTrial?.rows;
+          if (rows && rows.length > 0) {
+            throw new Error("Este e-mail já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
+          }
+        }
         // 2. Gerar slug único para o tenant
         const baseSlug = input.shop.name
           .toLowerCase()

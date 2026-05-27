@@ -754,6 +754,16 @@ export async function runAutoMigrate(db: any): Promise<void> {
         "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
       )`,
     },
+    {
+      name: "used_trials",
+      sql: `CREATE TABLE IF NOT EXISTS used_trials (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(320) NOT NULL UNIQUE,
+        "usedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+        "tenantId" INT,
+        reason VARCHAR(100) DEFAULT 'trial_expired'
+      )`,
+    },
   ];
 
   // ─── ALTER TABLE: adicionar colunas faltantes ────────────────────────────

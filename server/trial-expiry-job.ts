@@ -188,6 +188,15 @@ Planos a partir de R$ 49/mês. 💈`;
           // Coluna pode não existir — ignorar silenciosamente
         }
 
+        // Registrar email em used_trials quando trial expirou (daysLeft <= 0)
+        if (daysLeft <= 0 && tenant.adminEmail) {
+          try {
+            await (dbConn as any).execute(
+              `INSERT INTO used_trials (email, "tenantId", reason) VALUES ('${tenant.adminEmail.toLowerCase().replace(/'/g, "")}', ${tenantId}, 'trial_expired') ON CONFLICT (email) DO NOTHING`
+            );
+          } catch {}
+        }
+
         notifiedCount++;
         console.log(`[trial-expiry] Notificado: ${tenant.tenantName} (${daysLeft} dias restantes)`);
       } catch (err: any) {

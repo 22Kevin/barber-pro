@@ -4737,6 +4737,11 @@ async function renderConfiguracoes(req: Request, res: Response) {
                 <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px;color:var(--error);border-color:var(--error)">Cancelar assinatura</button>
               </form>
             ` : ''}
+            ${bpStatus === 'trial' ? `
+              <form method="POST" action="/admin/configuracoes/asaas/cancel-subscription" onsubmit="return confirm('Deseja encerrar sua conta? O acesso será removido imediatamente e o período de teste não poderá ser reativado.')">
+                <button type="submit" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:4px 0;text-decoration:underline">Encerrar conta e cancelar trial</button>
+              </form>
+            ` : ''}
             ${bpStatus === 'overdue' ? `
               <div style="font-size:12px;color:var(--error);text-align:right">⚠️ Regularize o pagamento<br>para manter o acesso</div>
             ` : ''}
@@ -7703,6 +7708,15 @@ export function registerAdminRoutes(app: Express): void {
           "updatedAt" = NOW()
         WHERE id = ${barber.tenantId}
       `);
+
+      // Registrar email do admin principal para impedir novo trial
+      try {
+        await dbConn.execute(sql`
+          INSERT INTO used_trials (email, "tenantId", reason)
+          VALUES (${barber.email.toLowerCase()}, ${barber.tenantId}, 'cancelled')
+          ON CONFLICT (email) DO NOTHING
+        `);
+      } catch {}
 
       res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
     } catch (e: any) {
