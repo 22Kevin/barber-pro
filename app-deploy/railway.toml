@@ -1,0 +1,9 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "serve dist-web -p 3000 --single"
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "always"
