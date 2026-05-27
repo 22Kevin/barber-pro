@@ -22,27 +22,24 @@ COPY tsconfig.json ./
 COPY tailwind.config.js ./
 COPY theme.config.js ./
 
-# Metro config com watchFolders incluindo o cache do css-interop
 RUN cat > metro.config.js << 'METROEOF'
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
-const path = require("path");
 
-const config = getDefaultConfig(__dirname);
+const projectRoot = __dirname;
+const config = getDefaultConfig(projectRoot);
 
-// Incluir cache do react-native-css-interop no watchFolders
-const cssInteropCache = path.join(__dirname, "node_modules/react-native-css-interop/.cache");
-config.watchFolders = [...(config.watchFolders || []), __dirname];
-config.resolver = {
-  ...config.resolver,
-  blockList: [],
-};
+config.projectRoot = projectRoot;
+config.watchFolders = [projectRoot];
 
 module.exports = withNativeWind(config, {
   input: "./global.css",
   forceWriteFileSystem: true,
 });
 METROEOF
+
+# Verificar que expo-router existe
+RUN ls node_modules/expo-router/entry.js && echo "expo-router OK"
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
