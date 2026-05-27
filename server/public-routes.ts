@@ -531,7 +531,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   try { shopOpenStatus = await db.getShopOpenStatus(tenant.id); } catch {}
 
   // Verificar se o cliente está logado via cookie de sessão
-  const clientSessionRaw = req?.cookies?.[`client_session_${slug}`] ?? req?.cookies?.["client_session"];
+  const clientSessionRaw = req?.cookies?.[`client_session_${slug}`] ;
   let loggedClient: { id: number; name: string; email: string } | null = null;
   if (clientSessionRaw) {
     try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
@@ -1205,7 +1205,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
   const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
 
   // Verificar se o cliente está logado via cookie de sessão
-  const clientSessionRaw = req?.cookies?.[`client_session_${slug}`] ?? req?.cookies?.["client_session"];
+  const clientSessionRaw = req?.cookies?.[`client_session_${slug}`] ;
   let loggedClient: { id: number; name: string; email: string } | null = null;
   if (clientSessionRaw) {
     try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
@@ -2573,7 +2573,7 @@ async function renderPerfilPage(slug: string, res: Response, req: Request) {
   const shopName = settings?.shopName ?? tenant.name;
 
   // Verificar sessão do cliente
-  const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+  const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
   let loggedClient: { id: number; name: string; email: string; phone?: string } | null = null;
   if (clientSessionRaw) {
     try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
@@ -2975,7 +2975,7 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
   const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
 
   // Verificar sessão do cliente
-  const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+  const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
   let loggedClient: { id: number; name: string; email: string } | null = null;
   if (clientSessionRaw) {
     try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
@@ -3428,7 +3428,7 @@ async function renderServiceDetailPage(slug: string, serviceId: number, res: Res
   const service = await db.getServiceById(serviceId);
   if (!service || service.tenantId !== tenant.id) { res.redirect(`/pub/${slug}`); return; }
   const media = await db.getMediaByEntity("service", serviceId);
-  const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+  const sessionData = req.cookies?.[`client_session_${slug}`] ;
   const isLoggedIn = !!sessionData;
   let clientInfo: any = null;
   if (sessionData) { try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {} }
@@ -3491,7 +3491,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
   if (!tenant) { res.status(404).send(notFoundPage(slug)); return; }
   const settings = await db.getShopSettingsByTenantId(tenant.id);
   const primaryColor = (settings as any)?.primaryColor || "#C9A84C";
-  const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+  const sessionData = req.cookies?.[`client_session_${slug}`] ;
   const isLoggedIn = !!sessionData;
   let clientInfo: any = null;
   if (sessionData) { try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {} }
@@ -4082,7 +4082,7 @@ async function renderProductDetailPage(slug: string, productId: number, res: Res
   const product = await db.getProductById(productId);
   if (!product || product.tenantId !== tenant.id) { res.redirect(`/pub/${slug}`); return; }
   const media = await db.getMediaByEntity("product", productId);
-  const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+  const sessionData = req.cookies?.[`client_session_${slug}`] ;
   const isLoggedIn = !!sessionData;
   let clientInfo: any = null;
   if (sessionData) { try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {} }
@@ -4303,7 +4303,7 @@ export function registerPublicRoutes(app: Express): void {
       const { items, slug, paymentMethod } = req.body;
       if (!items?.length || !slug) { res.status(400).json({ error: "Dados incompletos" }); return; }
 
-      const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+      const sessionData = req.cookies?.[`client_session_${slug}`] ;
       if (!sessionData) { res.status(401).json({ error: "Não autenticado" }); return; }
       let clientInfo: any;
       try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch { res.status(401).json({ error: "Sessão inválida" }); return; }
@@ -4393,7 +4393,7 @@ export function registerPublicRoutes(app: Express): void {
     try {
       const { productId, quantity, slug } = req.body;
       if (!productId || !quantity || !slug) { res.status(400).json({ error: "Dados incompletos" }); return; }
-      const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+      const sessionData = req.cookies?.[`client_session_${slug}`] ;
       if (!sessionData) { res.status(401).json({ error: "Não autenticado" }); return; }
       let clientInfo: any;
       try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch { res.status(401).json({ error: "Sessão inválida" }); return; }
@@ -4461,7 +4461,6 @@ export function registerPublicRoutes(app: Express): void {
       const sessionData = Buffer.from(JSON.stringify({ id: client.id, name: client.name, email: client.email, cpf: (client as any).cpf ?? null })).toString("base64");
       const slug = req.body.slug as string;
       res.cookie(`client_session_${slug}`, sessionData, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
-      res.cookie("client_session", sessionData, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
       res.json({ id: client.id, name: client.name, email: client.email });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -4492,7 +4491,6 @@ export function registerPublicRoutes(app: Express): void {
       }
       const sessionData = Buffer.from(JSON.stringify({ id: clientId, name, email, cpf: cpf ?? null })).toString("base64");
       res.cookie(`client_session_${slug}`, sessionData, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
-      res.cookie("client_session", sessionData, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
       res.json({ id: clientId, name, email });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -4870,7 +4868,7 @@ export function registerPublicRoutes(app: Express): void {
       const { appointmentId, slug } = req.body;
       if (!appointmentId) { res.status(400).json({ error: "appointmentId é obrigatório" }); return; }
       // Verificar sessão do cliente
-      const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+      const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
       if (!clientSessionRaw) { res.status(401).json({ error: "Não autenticado" }); return; }
       let loggedClient: { id: number } | null = null;
       try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
@@ -4892,7 +4890,7 @@ export function registerPublicRoutes(app: Express): void {
     try {
       const { orderId, slug } = req.body;
       if (!orderId) { res.status(400).json({ error: "orderId é obrigatório" }); return; }
-      const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+      const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
       if (!clientSessionRaw) { res.status(401).json({ error: "Não autenticado" }); return; }
       let loggedClient: { id: number } | null = null;
       try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
@@ -4914,7 +4912,7 @@ export function registerPublicRoutes(app: Express): void {
     try {
       const { orderId, slug } = req.body;
       if (!orderId) { res.status(400).json({ error: "orderId é obrigatório" }); return; }
-      const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+      const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
       if (!clientSessionRaw) { res.status(401).json({ error: "Não autenticado" }); return; }
       let loggedClient: { id: number } | null = null;
       try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
@@ -4941,7 +4939,7 @@ export function registerPublicRoutes(app: Express): void {
     try {
       const { slug, name, phone, email } = req.body;
       if (!slug || !name) { res.redirect(`/pub/${slug}/perfil?error=${encodeURIComponent("Nome é obrigatório")}`); return; }
-      const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+      const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
       if (!clientSessionRaw) { res.redirect(`/pub/${slug}/login?redirect=perfil`); return; }
       let loggedClient: { id: number; name: string; email: string } | null = null;
       try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
@@ -5081,7 +5079,7 @@ export function registerPublicRoutes(app: Express): void {
       if (!slug || !amount) { res.status(400).json({ error: "slug e amount são obrigatórios" }); return; }
       if (!asaasEnabled) { res.status(503).json({ error: "Pagamento online não configurado. Configure ASAAS_API_KEY." }); return; }
       // Verificar sessão do cliente
-      const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+      const sessionData = req.cookies?.[`client_session_${slug}`] ;
       let clientInfo: any = null;
       if (sessionData) {
         try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {}
@@ -5149,7 +5147,7 @@ export function registerPublicRoutes(app: Express): void {
               holderName, holderCpfCnpj, holderPostalCode, holderAddressNumber, holderPhone } = req.body;
       if (!slug || !amount || !cardNumber) { res.status(400).json({ error: "Dados incompletos" }); return; }
       if (!asaasEnabled) { res.status(503).json({ error: "Pagamento online não configurado." }); return; }
-      const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+      const sessionData = req.cookies?.[`client_session_${slug}`] ;
       let clientInfo: any = null;
       if (sessionData) {
         try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {}
@@ -5255,7 +5253,7 @@ export function registerPublicRoutes(app: Express): void {
       const { slug, planId, barberId, selectedServiceIds, selectedProductIds, paymentMethod, appointments } = req.body;
       if (!slug || !planId) { res.status(400).json({ error: "slug e planId são obrigatórios" }); return; }
       // Verificar sessão do cliente
-      const sessionData = req.cookies?.[`client_session_${slug}`] || req.cookies?.["client_session"];
+      const sessionData = req.cookies?.[`client_session_${slug}`] ;
       if (!sessionData) { res.status(401).json({ error: "Faça login para assinar um plano" }); return; }
       let clientInfo: any = null;
       try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {}
@@ -5402,7 +5400,7 @@ export function registerPublicRoutes(app: Express): void {
     const settings = await db.getShopSettingsByTenantId(tenant.id);
     const primaryColor = (settings as any)?.primaryColor ?? "#C9A84C";
     const shopName = settings?.shopName ?? tenant.name;
-    const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ?? req.cookies?.["client_session"];
+    const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
     let loggedClient: { id: number; name: string; email: string; phone?: string } | null = null;
     if (clientSessionRaw) {
       try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
