@@ -31,12 +31,18 @@ RUN mkdir -p node_modules/react-native-css-interop/.cache .css-interop-cache && 
       touch node_modules/react-native-css-interop/.cache/$f .css-interop-cache/$f; \
     done
 
-# Overwrite Metro DependencyGraph.js with patched version that falls back
-# to on-disk SHA-1 for files outside hasteFS (fixes css-interop SHA-1 error).
-# Using find to hit both metro@0.83.2 and metro@0.83.3 if present.
+# Overwrite Metro Bundler.js with patched version that catches SHA-1 errors
+# and falls back to on-disk computation (fixes css-interop/.cache/web.css error).
+# Patching Bundler.js instead of DependencyGraph.js because this is where the
+# getOrComputeSha1 function is wrapped before being passed to the Transformer.
+RUN find node_modules -path "*/metro/src/Bundler.js" \
+      -exec sh -c 'echo "Patching: $1" && cp patches/metro-bundler.js "$1"' _ {} \; && \
+    echo "Metro Bundler.js patched."
+
+# Also patch DependencyGraph.js as defense in depth
 RUN find node_modules -path "*/metro/src/node-haste/DependencyGraph.js" \
-      -exec sh -c 'echo "Patching Metro: $1" && chmod 644 "$1" && cp patches/metro-dependency-graph.js "$1"' _ {} \; && \
-    echo "Metro DependencyGraph patched."
+      -exec sh -c 'echo "Patching: $1" && cp patches/metro-dependency-graph.js "$1"' _ {} \; && \
+    echo "Metro DependencyGraph.js patched."
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
