@@ -31,20 +31,29 @@ RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
     npx expo export --platform web --output-dir /app/dist-web
 
-# ─── Runner ──────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS runner
-WORKDIR /app
+# ─── Runner com nginx ─────────────────────────────────────────────────────────
+FROM nginx:alpine AS runner
 
-RUN npm install -g serve@14
+# Copiar build
+COPY --from=builder /app/dist-web /usr/share/nginx/html
 
-COPY --from=builder /app/dist-web ./dist-web
+# Config nginx: SPA mode + porta dinâmica via $PORT
+RUN echo 'server { \
+    listen ${PORT:-3000}; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    location / { \
+        try_files $uri $uri/ /index.html; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
 
-# Script de entrada que garante leitura da variável PORT
+# Script que substitui $PORT e inicia nginx
 RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'echo "Starting on port: ${PORT:-3000}"' >> /start.sh && \
-    echo 'exec serve /app/dist-web --listen tcp://0.0.0.0:${PORT:-3000} --single' >> /start.sh && \
+    echo 'PORT="${PORT:-3000}"' >> /start.sh && \
+    echo 'sed -i "s/\${PORT:-3000}/$PORT/g" /etc/nginx/conf.d/default.conf' >> /start.sh && \
+    echo 'echo "Serving on port $PORT"' >> /start.sh && \
+    echo 'nginx -g "daemon off;"' >> /start.sh && \
     chmod +x /start.sh
 
 EXPOSE 3000
-
 CMD ["/start.sh"]
