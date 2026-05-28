@@ -32,7 +32,12 @@ RUN mkdir -p node_modules/react-native-css-interop/.cache && \
 # Redirect css-interop outputDirectory from node_modules/.cache to .css-interop-cache
 # inside projectRoot, where Metro's hasteFS watches files automatically.
 # This fixes "Failed to get the SHA-1" during expo export (static build).
-RUN node scripts/patch-css-interop.js
+RUN echo "=== css-interop dist/metro/index.js lines 15-20 ===" && \
+    sed -n '15,20p' node_modules/react-native-css-interop/dist/metro/index.js && \
+    echo "=== running patch ===" && \
+    node scripts/patch-css-interop.js && \
+    echo "=== after patch, lines 15-20 ===" && \
+    sed -n '15,20p' node_modules/react-native-css-interop/dist/metro/index.js
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
