@@ -5,7 +5,8 @@ RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 COPY package.json pnpm-lock.yaml* .npmrc ./
 RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));delete p.type;fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
-RUN CI=true corepack pnpm install --prefer-offline --shamefully-hoist
+RUN CI=true corepack pnpm install --prefer-offline --shamefully-hoist \
+    --store-dir /app/.pnpm-store --package-import-method copy
 
 COPY app/ ./app/
 COPY components/ ./components/
