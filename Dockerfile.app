@@ -9,7 +9,8 @@ RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.
 
 # pnpm.patchedDependencies in package.json applies patches/react-native-css-interop@0.2.1.patch
 # automatically, redirecting outputDirectory from node_modules/.cache to .css-interop-cache/
-RUN CI=true corepack pnpm install --prefer-offline --shamefully-hoist
+# --no-frozen-lockfile needed because the lockfile doesn't yet have the patch hash recorded
+RUN CI=true corepack pnpm install --prefer-offline --shamefully-hoist --no-frozen-lockfile
 
 COPY app/ ./app/
 COPY components/ ./components/
