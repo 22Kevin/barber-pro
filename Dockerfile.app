@@ -35,10 +35,10 @@ RUN mkdir -p node_modules/react-native-css-interop/.cache .css-interop-cache && 
 RUN echo "=== All css-interop metro index.js locations ===" && \
     find node_modules -path "*/react-native-css-interop/dist/metro/index.js" 2>/dev/null && \
     find node_modules -path "*/react-native-css-interop/dist/metro/index.js" -exec sh -c \
-      'echo "Overwriting: $1" && cp patches/css-interop-metro-index.js "$1"' _ {} \; && \
-    echo "=== Done. Verifying line 17 of each ===" && \
+      'echo "Overwriting: $1" && chmod 644 "$1" && cp patches/css-interop-metro-index.js "$1" && echo "OK: $1"' _ {} \; && \
+    echo "=== Verifying line 17 of each ===" && \
     find node_modules -path "*/react-native-css-interop/dist/metro/index.js" \
-      -exec sh -c 'echo "$1:"; sed -n "17p" "$1"' _ {} \;
+      -exec sh -c 'echo "FILE: $1"; sed -n "17p" "$1"' _ {} \;
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
