@@ -31,29 +31,26 @@ RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
     npx expo export --platform web --output-dir /app/dist-web
 
-# ─── Runner com nginx ─────────────────────────────────────────────────────────
+# ─── Runner ───────────────────────────────────────────────────────────────────
 FROM nginx:alpine AS runner
 
-# Copiar build
 COPY --from=builder /app/dist-web /usr/share/nginx/html
 
-# Config nginx: SPA mode + porta dinâmica via $PORT
-RUN echo 'server { \
-    listen ${PORT:-3000}; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { \
-        try_files $uri $uri/ /index.html; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
+# Config nginx SPA com porta fixa 8080 (padrão Railway para nginx)
+RUN printf 'server {\n\
+    listen 8080;\n\
+    root /usr/share/nginx/html;\n\
+    index index.html;\n\
+    location / {\n\
+        try_files $uri $uri.html $uri/ /index.html;\n\
+    }\n\
+    gzip on;\n\
+    gzip_types text/plain text/css application/json application/javascript;\n\
+}\n' > /etc/nginx/conf.d/default.conf
 
-# Script que substitui $PORT e inicia nginx
-RUN echo '#!/bin/sh' > /start.sh && \
-    echo 'PORT="${PORT:-3000}"' >> /start.sh && \
-    echo 'sed -i "s/\${PORT:-3000}/$PORT/g" /etc/nginx/conf.d/default.conf' >> /start.sh && \
-    echo 'echo "Serving on port $PORT"' >> /start.sh && \
-    echo 'nginx -g "daemon off;"' >> /start.sh && \
-    chmod +x /start.sh
+# Remover config padrão que ocupa porta 80
+RUN rm -f /etc/nginx/conf.d/default.conf.bak
 
-EXPOSE 3000
-CMD ["/start.sh"]
+EXPOSE 8080
+
+CMD ["nginx", "-g", "daemon off;"]
