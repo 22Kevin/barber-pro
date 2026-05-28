@@ -46,6 +46,7 @@ RUN find node_modules -path "*/metro/src/node-haste/DependencyGraph.js" \
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
+    NODE_OPTIONS="--require /app/scripts/metro-sha1-fix.cjs" \
     npx expo export --platform web --output-dir /app/dist-web
 
 # ─── Runner ───────────────────────────────────────────────────────────────────
