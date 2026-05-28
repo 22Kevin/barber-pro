@@ -99,6 +99,36 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+    // Aliases para admin.login e admin.googleLogin (o app chama auth.login)
+    login: publicProcedure
+      .input(z.object({ email: z.string().email(), password: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        const barber = await db.getBarberByEmail(input.email);
+        if (!barber || !barber.isActive) throw new Error("Credenciais inválidas");
+        if (!barber.passwordHash) throw new Error("Senha não configurada");
+        const valid = await comparePassword(input.password, barber.passwordHash);
+        if (!valid) throw new Error("Credenciais inválidas");
+        const payload = { barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any };
+        const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
+        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, token, refreshToken };
+      }),
+    googleLogin: publicProcedure
+      .input(z.object({ googleId: z.string(), email: z.string().email(), name: z.string(), photoUrl: z.string().optional() }))
+      .mutation(async ({ input }) => {
+        let barber = await db.getBarberByGoogleId(input.googleId);
+        if (!barber) {
+          barber = await db.getBarberByEmail(input.email);
+          if (barber) {
+            await db.updateBarber(barber.id, { googleId: input.googleId } as any);
+            barber = { ...barber, googleId: input.googleId } as any;
+          }
+        }
+        if (!barber || !barber.isActive) throw new Error("Nenhuma conta de barbeiro encontrada para este e-mail Google. Solicite ao administrador que cadastre sua conta com o e-mail: " + input.email);
+        if (input.photoUrl && !barber.photoUrl) await db.updateBarber(barber.id, { photoUrl: input.photoUrl } as any);
+        const payload = { barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any };
+        const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
+        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: input.photoUrl ?? barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, token, refreshToken };
+      }),
   }),
 
   admin: router({
