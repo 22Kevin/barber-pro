@@ -33,6 +33,14 @@ RUN mkdir -p node_modules/react-native-css-interop/.cache && \
 # outside its watch set (e.g. react-native-css-interop/.cache/web.css).
 RUN node scripts/patch-metro.js
 
+# Diagnóstico: verificar se o patch foi aplicado e qual arquivo está sendo usado
+RUN echo "=== Metro location ===" && \
+    find node_modules -name "DependencyGraph.js" -path "*/node-haste/*" 2>/dev/null && \
+    echo "=== Patch marker check ===" && \
+    find node_modules -name "DependencyGraph.js" -path "*/node-haste/*" -exec grep -l "css-interop-sha1-patch" {} \; && \
+    echo "=== Line 188-195 of each DependencyGraph.js ===" && \
+    find node_modules -name "DependencyGraph.js" -path "*/node-haste/*" -exec sh -c 'echo "FILE: $1"; sed -n "188,195p" "$1"' _ {} \;
+
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
     npx expo export --platform web --output-dir /app/dist-web
