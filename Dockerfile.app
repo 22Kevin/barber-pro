@@ -31,15 +31,54 @@ RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
     npx expo export --platform web --output-dir /app/dist-web
 
-# ─── Runner ───────────────────────────────────────────────────────────────────
+# ─── Runner — servidor Node.js puro, sem dependências externas ────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-RUN npm install serve@14
-
 COPY --from=builder /app/dist-web ./dist-web
 
-EXPOSE 3000
+# Servidor HTTP estático em Node.js puro — zero dependências
+RUN cat > server.js << 'JSEOF'
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const PORT = process.env.PORT || 3000;
+const ROOT = path.join(__dirname, 'dist-web');
 
-# Usar o binário .bin/serve com porta fixa 3000 e listener explícito
-CMD ["node", "node_modules/serve/build/main.js", "dist-web", "-l", "tcp://0.0.0.0:3000", "--single"]
+const MIME = {
+  '.html': 'text/html',
+  '.js': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.map': 'application/json',
+};
+
+http.createServer((req, res) => {
+  let filePath = path.join(ROOT, req.url.split('?')[0]);
+  if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+    filePath = path.join(ROOT, 'index.html');
+  }
+  const ext = path.extname(filePath);
+  const ct = MIME[ext] || 'application/octet-stream';
+  try {
+    const data = fs.readFileSync(filePath);
+    res.writeHead(200, { 'Content-Type': ct });
+    res.end(data);
+  } catch {
+    res.writeHead(404);
+    res.end('Not found');
+  }
+}).listen(PORT, '0.0.0.0', () => {
+  console.log('Server running on port ' + PORT);
+});
+JSEOF
+
+EXPOSE 3000
+CMD ["node", "server.js"]
