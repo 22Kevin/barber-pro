@@ -52,7 +52,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 COPY package.json pnpm-lock.yaml* .npmrc ./
-RUN CI=true corepack pnpm install --prefer-offline --prod --shamefully-hoist
+RUN CI=true corepack pnpm install --prefer-offline --prod --shamefully-hoist --no-frozen-lockfile
 
 COPY --from=server-builder /app/dist ./dist
 COPY server/landing ./server/landing
