@@ -4,9 +4,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 COPY package.json pnpm-lock.yaml* .npmrc ./
-
 RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));delete p.type;fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
-
 RUN CI=true corepack pnpm install --prefer-offline --shamefully-hoist
 
 COPY app/ ./app/
@@ -33,15 +31,20 @@ RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
     npx expo export --platform web --output-dir /app/dist-web
 
+# ─── Runner ──────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Usar http-server — mais simples e confiável que serve
-RUN npm install -g http-server
+RUN npm install -g serve@14
 
 COPY --from=builder /app/dist-web ./dist-web
 
+# Script de entrada que garante leitura da variável PORT
+RUN echo '#!/bin/sh' > /start.sh && \
+    echo 'echo "Starting on port: ${PORT:-3000}"' >> /start.sh && \
+    echo 'exec serve /app/dist-web --listen tcp://0.0.0.0:${PORT:-3000} --single' >> /start.sh && \
+    chmod +x /start.sh
+
 EXPOSE 3000
 
-# http-server com SPA mode (--proxy para redirecionar 404s para index.html)
-CMD ["sh", "-c", "http-server dist-web -p ${PORT:-3000} --proxy http://localhost:${PORT:-3000}? -c-1"]
+CMD ["/start.sh"]
