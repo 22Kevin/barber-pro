@@ -102,7 +102,7 @@ function ServiceDetail({ service, onClose, onBook, tenantId }: { service: any; o
   // Fade-in de entrada
   const fadeAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: require('react-native').Platform.OS !== 'web' }).start();
   }, []);
 
   return (
@@ -243,7 +243,7 @@ export default function ClientServices() {
   // Fade-in de entrada
   const fadeAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: require('react-native').Platform.OS !== 'web' }).start();
   }, []);
 
   if (selectedService) {

@@ -22,25 +22,25 @@ export default function HomeScreen() {
     Animated.sequence([
       // 1. Logo aparece com fade + spring
       Animated.parallel([
-        Animated.spring(logoScale, { toValue: 1, tension: 60, friction: 8, useNativeDriver: true }),
-        Animated.timing(logoOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.spring(logoScale, { toValue: 1, tension: 60, friction: 8, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
+        Animated.timing(logoOpacity, { toValue: 1, duration: 400, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
       ]),
       // 2. Nome sobe com fade
       Animated.parallel([
-        Animated.timing(nameOpacity, { toValue: 1, duration: 280, useNativeDriver: true }),
-        Animated.timing(nameSlide, { toValue: 0, duration: 280, useNativeDriver: true }),
+        Animated.timing(nameOpacity, { toValue: 1, duration: 280, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
+        Animated.timing(nameSlide, { toValue: 0, duration: 280, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
       ]),
       // 3. Tagline aparece
-      Animated.timing(taglineOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.timing(taglineOpacity, { toValue: 1, duration: 220, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
       // 4. Divisor expande
-      Animated.timing(dividerScale, { toValue: 1, duration: 320, useNativeDriver: true }),
+      Animated.timing(dividerScale, { toValue: 1, duration: 320, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
       // 5. Botões sobem com fade
       Animated.parallel([
-        Animated.timing(optionsOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(optionsSlide, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(optionsOpacity, { toValue: 1, duration: 300, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
+        Animated.timing(optionsSlide, { toValue: 0, duration: 300, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
       ]),
       // 6. Rodapé aparece
-      Animated.timing(footerOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.timing(footerOpacity, { toValue: 1, duration: 200, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
     ]).start();
   }, []);
 

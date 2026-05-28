@@ -94,7 +94,7 @@ function ProductDetail({ product, onClose }: { product: any; onClose: () => void
   // Fade-in de entrada
   const fadeAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 280, useNativeDriver: require('react-native').Platform.OS !== 'web' }).start();
   }, []);
 
   return (
@@ -263,7 +263,7 @@ export default function ClientShop() {
   // Fade-in de entrada
   const fadeAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: require('react-native').Platform.OS !== 'web' }).start();
   }, []);
 
   if (selectedProduct) {

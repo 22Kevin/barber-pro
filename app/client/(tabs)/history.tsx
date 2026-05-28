@@ -177,7 +177,7 @@ export default function ClientHistory() {
   // Fade-in de entrada
   const fadeAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: require('react-native').Platform.OS !== 'web' }).start();
   }, []);
 
   const cancelMutation = trpc.appointments.update.useMutation({

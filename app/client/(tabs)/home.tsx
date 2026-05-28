@@ -127,9 +127,9 @@ function PhotoCarousel({ images }: { images: string[] }) {
     const timer = setInterval(() => {
       setActiveIndex(prev => {
         const next = (prev + 1) % images.length;
-        Animated.timing(fadeAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() => {
+        Animated.timing(fadeAnim, { toValue: 0, duration: 220, useNativeDriver: require('react-native').Platform.OS !== 'web' }).start(() => {
           flatRef.current?.scrollToIndex({ index: next, animated: false });
-          Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+          Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: require('react-native').Platform.OS !== 'web' }).start();
         });
         return next;
       });
@@ -253,14 +253,14 @@ export default function ClientHome() {
   useEffect(() => {
     Animated.sequence([
       Animated.parallel([
-        Animated.timing(headerFade, { toValue: 1, duration: 350, useNativeDriver: true }),
-        Animated.timing(headerSlide, { toValue: 0, duration: 350, useNativeDriver: true }),
+        Animated.timing(headerFade, { toValue: 1, duration: 350, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
+        Animated.timing(headerSlide, { toValue: 0, duration: 350, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
       ]),
       Animated.parallel([
-        Animated.timing(carouselFade, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(carouselSlide, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(carouselFade, { toValue: 1, duration: 300, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
+        Animated.timing(carouselSlide, { toValue: 0, duration: 300, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
       ]),
-      Animated.timing(contentFade, { toValue: 1, duration: 280, useNativeDriver: true }),
+      Animated.timing(contentFade, { toValue: 1, duration: 280, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
     ]).start();
   }, []);
 

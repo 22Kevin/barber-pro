@@ -36,8 +36,8 @@ export default function AdminForgotPasswordScreen() {
     fadeAnim.setValue(0);
     slideAnim.setValue(24);
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 320, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 320, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
     ]).start();
   };
 

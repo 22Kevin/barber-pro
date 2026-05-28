@@ -24,6 +24,9 @@ export function useNotifications() {
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
+    // Notificações não têm suporte completo na web
+    if (Platform.OS === "web") return;
+
     // Configura canais Android (obrigatório para Android 8+)
     if (Platform.OS === "android") {
       // Canal padrão: lembretes de agendamento

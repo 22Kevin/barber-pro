@@ -127,13 +127,13 @@ export function AdminDrawer({ visible, onClose }: AdminDrawerProps) {
     if (visible) {
       setShouldRender(true);
       Animated.parallel([
-        Animated.timing(translateX, { toValue: 0, duration: 280, useNativeDriver: true }),
-        Animated.timing(overlayOpacity, { toValue: 1, duration: 280, useNativeDriver: true }),
+        Animated.timing(translateX, { toValue: 0, duration: 280, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
+        Animated.timing(overlayOpacity, { toValue: 1, duration: 280, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(translateX, { toValue: -DRAWER_WIDTH, duration: 240, useNativeDriver: true }),
-        Animated.timing(overlayOpacity, { toValue: 0, duration: 240, useNativeDriver: true }),
+        Animated.timing(translateX, { toValue: -DRAWER_WIDTH, duration: 240, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
+        Animated.timing(overlayOpacity, { toValue: 0, duration: 240, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
       ]).start(({ finished }) => {
         if (finished) setShouldRender(false);
       });

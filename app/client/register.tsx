@@ -47,8 +47,8 @@ export default function ClientRegister() {
   const slideAnim = useRef(new Animated.Value(24)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 350, useNativeDriver: require('react-native').Platform.OS !== 'web' }),
     ]).start();
   }, []);
 

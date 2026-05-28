@@ -48,9 +48,9 @@ export function DiscountSheet({
 
   useEffect(() => {
     if (visible) {
-      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 20, stiffness: 200 }).start();
+      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: require('react-native').Platform.OS !== 'web', damping: 20, stiffness: 200 }).start();
     } else {
-      Animated.timing(slideAnim, { toValue: 400, duration: 200, useNativeDriver: true }).start();
+      Animated.timing(slideAnim, { toValue: 400, duration: 200, useNativeDriver: require('react-native').Platform.OS !== 'web' }).start();
     }
   }, [visible]);
 
