@@ -1554,6 +1554,11 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           if (btnNext) { btnNext.classList.remove('ready'); }
 
           if (!selectEl) return;
+          if (SERVICES.length === 0) {
+            selectEl.style.display = 'block';
+            selectEl.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--muted);font-size:14px">Nenhum servi&ccedil;o dispon&iacute;vel no momento.</div>';
+            return;
+          }
           selectEl.style.display = 'grid';
           var html = '';
           SERVICES.forEach(function(s) {
@@ -1673,7 +1678,11 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       function selectService(id) {
         var svc = SERVICES.find(function(s) { return s.id === id; });
-        if (!svc) return;
+        if (!svc) {
+          // Serviço não encontrado na lista (pode estar inativo) — exibe grade normalmente
+          renderMainServiceCard();
+          return;
+        }
         selectedService = svc;
         // Remover o serviço principal dos extras se ele estiver lá
         selectedServices = selectedServices.filter(function(s) { return s.id !== id; });
