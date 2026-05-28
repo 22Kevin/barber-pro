@@ -1,0 +1,14 @@
+--- a/node_modules/react-native-css-interop/dist/metro/index.js
++++ b/node_modules/react-native-css-interop/dist/metro/index.js
+@@ -14,7 +14,12 @@
+ let haste;
+ let virtualModulesPossible = undefined;
+ const virtualModules = new Map();
+-const outputDirectory = path_1.default.resolve(__dirname, "../../.cache");
++// patched: use process.cwd()/.css-interop-cache so Metro hasteFS watches it
++const outputDirectory = (() => {
++    const d = path_1.default.resolve(process.cwd(), ".css-interop-cache");
++    require("fs").mkdirSync(d, { recursive: true });
++    return d;
++})();
+ const isRadonIDE = "REACT_NATIVE_IDE_LIB_PATH" in process.env;

@@ -19,25 +19,26 @@ COPY babel.config.js ./
 COPY app.config.ts ./
 COPY tsconfig.json ./
 COPY scripts/ ./scripts/
+COPY patches/ ./patches/
 COPY tailwind.config.js ./
 COPY theme.config.js ./
 COPY theme.config.d.ts* ./
 COPY shared/ ./shared/
 
-RUN mkdir -p node_modules/react-native-css-interop/.cache && \
+RUN mkdir -p node_modules/react-native-css-interop/.cache .css-interop-cache && \
     for f in web.css ios.js android.js native.js macos.js windows.js; do \
-      touch node_modules/react-native-css-interop/.cache/$f; \
+      touch node_modules/react-native-css-interop/.cache/$f .css-interop-cache/$f; \
     done
 
-# Redirect css-interop outputDirectory from node_modules/.cache to .css-interop-cache
-# inside projectRoot, where Metro's hasteFS watches files automatically.
-# This fixes "Failed to get the SHA-1" during expo export (static build).
-RUN echo "=== css-interop dist/metro/index.js lines 15-20 ===" && \
-    sed -n '15,20p' node_modules/react-native-css-interop/dist/metro/index.js && \
-    echo "=== running patch ===" && \
-    node scripts/patch-css-interop.js && \
-    echo "=== after patch, lines 15-20 ===" && \
-    sed -n '15,20p' node_modules/react-native-css-interop/dist/metro/index.js
+# Apply unix patch to redirect css-interop outputDirectory into projectRoot
+# so Metro hasteFS watches the cache files from startup (fixes SHA-1 error).
+RUN echo "=== css-interop line 17 before patch ===" && \
+    sed -n '17p' node_modules/react-native-css-interop/dist/metro/index.js && \
+    patch --forward --fuzz=3 \
+      node_modules/react-native-css-interop/dist/metro/index.js \
+      patches/css-interop-metro.patch && \
+    echo "=== css-interop line 17 after patch ===" && \
+    sed -n '17p' node_modules/react-native-css-interop/dist/metro/index.js
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
