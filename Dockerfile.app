@@ -38,5 +38,10 @@ WORKDIR /app
 COPY --from=builder /app/dist-web ./dist-web
 COPY app-server.cjs ./
 
+# Verificar que os arquivos existem antes de iniciar
+RUN ls -la /app/ && ls -la /app/dist-web/ | head -5 && echo "Files OK"
+
 EXPOSE 3000
-CMD ["node", "app-server.cjs"]
+
+# Usar sh -c para garantir que $PORT seja lido em runtime
+CMD ["sh", "-c", "echo 'Starting on PORT='$PORT && node /app/app-server.cjs"]
