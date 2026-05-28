@@ -20,7 +20,10 @@ COPY drizzle.config.ts ./
 COPY tsconfig.json ./
 COPY scripts/ ./scripts/
 
-RUN pnpm build
+RUN pnpm build && \
+    echo "=== dist/ contents ===" && \
+    ls -la dist/ && \
+    test -f dist/index.js || (echo "ERROR: dist/index.js not generated!" && exit 1)
 
 # ════════════════════════════════════════════════════════════════════════════════
 # BUILD STAGE — APP WEB
