@@ -43,7 +43,16 @@ RUN echo "=== Metro location ===" && \
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
-    npx expo export --platform web --output-dir /app/dist-web
+    EXPO_DEBUG=1 \
+    npx expo export --platform web --output-dir /app/dist-web 2>&1 | tee /tmp/expo-export.log; \
+    EXIT=$?; \
+    if [ $EXIT -ne 0 ]; then \
+      echo "=== FULL ERROR LOG ==="; \
+      cat /tmp/expo-export.log; \
+      echo "=== LAST 100 LINES ==="; \
+      tail -100 /tmp/expo-export.log; \
+      exit $EXIT; \
+    fi
 
 # ─── Runner ───────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
