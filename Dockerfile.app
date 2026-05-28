@@ -29,28 +29,18 @@ RUN mkdir -p node_modules/react-native-css-interop/.cache && \
       touch node_modules/react-native-css-interop/.cache/$f; \
     done
 
-# Patch Metro DependencyGraph.js so it falls back to on-disk SHA-1 for files
-# outside its watch set (e.g. react-native-css-interop/.cache/web.css).
-RUN node scripts/patch-metro.js
-
-# Diagnóstico: verificar se o patch foi aplicado e qual arquivo está sendo usado
-RUN echo "=== Metro location ===" && \
-    find node_modules -name "DependencyGraph.js" -path "*/node-haste/*" 2>/dev/null && \
-    echo "=== Patch marker check ===" && \
-    find node_modules -name "DependencyGraph.js" -path "*/node-haste/*" -exec grep -l "css-interop-sha1-patch" {} \; && \
-    echo "=== Line 188-195 of each DependencyGraph.js ===" && \
-    find node_modules -name "DependencyGraph.js" -path "*/node-haste/*" -exec sh -c 'echo "FILE: $1"; sed -n "188,195p" "$1"' _ {} \;
+# Redirect css-interop outputDirectory from node_modules/.cache to .css-interop-cache
+# inside projectRoot, where Metro's hasteFS watches files automatically.
+# This fixes "Failed to get the SHA-1" during expo export (static build).
+RUN node scripts/patch-css-interop.js
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
-    EXPO_DEBUG=1 \
-    npx expo export --platform web --output-dir /app/dist-web 2>&1 | tee /tmp/expo-export.log; \
+    npx expo export --platform web --output-dir /app/dist-web 2>&1; \
     EXIT=$?; \
     if [ $EXIT -ne 0 ]; then \
-      echo "=== FULL ERROR LOG ==="; \
-      cat /tmp/expo-export.log; \
-      echo "=== LAST 100 LINES ==="; \
-      tail -100 /tmp/expo-export.log; \
+      echo "=== EXPO EXPORT FAILED — searching for error details ==="; \
+      find /tmp -name "*.log" 2>/dev/null | xargs cat 2>/dev/null || true; \
       exit $EXIT; \
     fi
 
