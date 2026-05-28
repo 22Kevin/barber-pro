@@ -1,86 +1,70 @@
 #!/usr/bin/env node
 // Patches Metro's DependencyGraph.js to fall back to on-disk SHA-1 computation
 // for files outside its hasteFS watch set (e.g. react-native-css-interop/.cache/web.css).
-// This is a workaround for a bug in react-native-css-interop@0.2.x where the plugin
-// registers .cache/web.css as a module dependency but its SHA-1 patch only runs
-// inside enhanceMiddleware (dev server), never during `expo export` (static build).
+//
+// Bug: react-native-css-interop registers .cache/web.css as a module dependency
+// but its SHA-1 patch only runs inside enhanceMiddleware (dev server), never
+// during `expo export` (static build). Metro throws "Failed to get the SHA-1".
+//
+// Supports metro@0.83.x (used by this project via pnpm shamefully-hoist).
 
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 
-const file = path.resolve(__dirname, '../node_modules/metro/src/node-haste/DependencyGraph.js');
+// Find the metro DependencyGraph.js — with shamefully-hoist it lands at top-level node_modules
+const candidates = [
+  path.resolve(__dirname, '../node_modules/metro/src/node-haste/DependencyGraph.js'),
+];
+const file = candidates.find(fs.existsSync);
+if (!file) {
+  console.error('ERROR: Could not find Metro DependencyGraph.js at:', candidates);
+  process.exit(1);
+}
+
 let src = fs.readFileSync(file, 'utf8');
-
 const MARKER = '/* css-interop-sha1-patch */';
+
 if (src.includes(MARKER)) {
   console.log('Metro DependencyGraph.js already patched, skipping.');
   process.exit(0);
 }
 
-// Patch getSha1: fall back to on-disk read if hasteFS has no entry
-const oldGetSha1 = [
-  '  getSha1(filename) {',
-  '    const sha1 = this._fileSystem.getSha1(filename);',
-  '    if (!sha1) {',
-  '      throw missingSha1Error(filename);',
-  '    }',
-  '    return sha1;',
-  '  }',
+// metro@0.83.x: single async getOrComputeSha1 method, error thrown inline
+const oldMethod = [
+  '  async getOrComputeSha1(mixedPath) {',
+  '    const result = await this._fileSystem.getOrComputeSha1(mixedPath);',
+  '    if (!result || !result.sha1) {',
 ].join('\n');
 
-const newGetSha1 = [
-  '  getSha1(filename) {',
+if (!src.includes(oldMethod)) {
+  // Fallback: try to find and patch any throw after getOrComputeSha1 result check
+  console.error('ERROR: expected pattern not found in', file);
+  console.error('Metro version may differ. Printing lines 185-205 for diagnosis:');
+  const lines = src.split('\n');
+  lines.slice(184, 205).forEach((l, i) => console.error(i + 185 + ':', JSON.stringify(l)));
+  process.exit(1);
+}
+
+const newMethod = [
+  '  async getOrComputeSha1(mixedPath) {',
   '    ' + MARKER,
-  '    const sha1 = this._fileSystem.getSha1(filename);',
-  '    if (!sha1) {',
-  '      try {',
-  '        const data = require("fs").readFileSync(filename);',
-  '        return require("crypto").createHash("sha1").update(data).digest("hex");',
-  '      } catch (_) {}',
-  '      throw missingSha1Error(filename);',
-  '    }',
-  '    return sha1;',
-  '  }',
-].join('\n');
-
-// Patch unstable_getOrComputeSha1: fall back to on-disk read
-const oldGetOrCompute = [
-  '  async unstable_getOrComputeSha1(mixedPath) {',
   '    const result = await this._fileSystem.getOrComputeSha1(mixedPath);',
   '    if (!result || !result.sha1) {',
-  '      throw missingSha1Error(mixedPath);',
-  '    }',
-  '    return result;',
-  '  }',
-].join('\n');
-
-const newGetOrCompute = [
-  '  async unstable_getOrComputeSha1(mixedPath) {',
-  '    const result = await this._fileSystem.getOrComputeSha1(mixedPath);',
-  '    if (!result || !result.sha1) {',
+  '      // css-interop-patch: fall back to on-disk SHA-1 for files outside hasteFS',
   '      try {',
   '        const data = require("fs").readFileSync(mixedPath);',
   '        const sha1 = require("crypto").createHash("sha1").update(data).digest("hex");',
   '        return { sha1, content: data };',
   '      } catch (_) {}',
-  '      throw missingSha1Error(mixedPath);',
-  '    }',
-  '    return result;',
-  '  }',
+  '      // original error below',
 ].join('\n');
 
-if (!src.includes(oldGetSha1)) {
-  console.error('ERROR: getSha1 pattern not found in DependencyGraph.js');
-  console.error('Metro version may have changed. Inspect the file manually.');
-  process.exit(1);
-}
-if (!src.includes(oldGetOrCompute)) {
-  console.error('ERROR: unstable_getOrComputeSha1 pattern not found in DependencyGraph.js');
-  console.error('Metro version may have changed. Inspect the file manually.');
+src = src.replace(oldMethod, newMethod);
+
+if (!src.includes(MARKER)) {
+  console.error('ERROR: replace failed — marker not found after replace.');
   process.exit(1);
 }
 
-src = src.replace(oldGetSha1, newGetSha1).replace(oldGetOrCompute, newGetOrCompute);
 fs.writeFileSync(file, src);
-console.log('Metro DependencyGraph.js patched successfully.');
+console.log('Metro DependencyGraph.js patched successfully at:', file);
