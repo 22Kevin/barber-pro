@@ -5,7 +5,6 @@ RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 COPY package.json pnpm-lock.yaml* .npmrc ./
 
-# Remover type:module antes do install
 RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));delete p.type;fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
 
 RUN CI=true corepack pnpm install --prefer-offline --shamefully-hoist
@@ -27,8 +26,6 @@ COPY theme.config.js ./
 COPY theme.config.d.ts* ./
 COPY shared/ ./shared/
 
-# Pré-criar o diretório e arquivo web.css que o css-interop vai gerar
-# Isso garante que o Metro já conhece o arquivo antes de iniciar
 RUN mkdir -p node_modules/react-native-css-interop/.cache && \
     touch node_modules/react-native-css-interop/.cache/web.css
 
@@ -38,7 +35,13 @@ RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
 
 FROM node:20-alpine AS runner
 WORKDIR /app
-RUN npm install -g serve@14
+
+# Usar http-server — mais simples e confiável que serve
+RUN npm install -g http-server
+
 COPY --from=builder /app/dist-web ./dist-web
+
 EXPOSE 3000
-CMD ["sh", "-c", "serve dist-web -p ${PORT:-3000} --single --no-clipboard"]
+
+# http-server com SPA mode (--proxy para redirecionar 404s para index.html)
+CMD ["sh", "-c", "http-server dist-web -p ${PORT:-3000} --proxy http://localhost:${PORT:-3000}? -c-1"]
