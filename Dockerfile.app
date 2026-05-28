@@ -25,7 +25,8 @@ COPY theme.config.d.ts* ./
 COPY shared/ ./shared/
 
 RUN mkdir -p node_modules/react-native-css-interop/.cache && \
-    touch node_modules/react-native-css-interop/.cache/web.css
+    printf '/* nativewind css-interop cache */\n' > node_modules/react-native-css-interop/.cache/web.css && \
+    chmod 644 node_modules/react-native-css-interop/.cache/web.css
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \

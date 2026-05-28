@@ -4,23 +4,28 @@ const path = require("path");
 
 const config = getDefaultConfig(__dirname);
 
-// Garantir que o cache do react-native-css-interop seja observado pelo Metro
-const cssInteropCache = path.join(
+// Bloquear o cache interno do react-native-css-interop para o Metro não tentar
+// calcular SHA-1 de arquivos gerados em runtime (causa build failure no Docker)
+const cssInteropCacheDir = path.join(
   __dirname,
   "node_modules/react-native-css-interop/.cache"
 );
 
-config.watchFolders = [
-  ...(config.watchFolders || []),
-  cssInteropCache,
-];
-
-// Garantir que arquivos .css sejam resolvidos
 config.resolver = {
   ...config.resolver,
   sourceExts: [
     ...(config.resolver?.sourceExts || []),
     "css",
+  ],
+  blockList: [
+    ...(Array.isArray(config.resolver?.blockList)
+      ? config.resolver.blockList
+      : config.resolver?.blockList
+        ? [config.resolver.blockList]
+        : []),
+    new RegExp(
+      cssInteropCacheDir.replace(/[/\\]/g, "[/\\\\]") + ".*"
+    ),
   ],
 };
 
