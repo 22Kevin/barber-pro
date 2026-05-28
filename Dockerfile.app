@@ -32,25 +32,14 @@ RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     npx expo export --platform web --output-dir /app/dist-web
 
 # ─── Runner ───────────────────────────────────────────────────────────────────
-FROM nginx:alpine AS runner
+FROM node:20-alpine AS runner
+WORKDIR /app
 
-COPY --from=builder /app/dist-web /usr/share/nginx/html
+RUN npm install serve@14
 
-# Config nginx SPA com porta fixa 8080 (padrão Railway para nginx)
-RUN printf 'server {\n\
-    listen 8080;\n\
-    root /usr/share/nginx/html;\n\
-    index index.html;\n\
-    location / {\n\
-        try_files $uri $uri.html $uri/ /index.html;\n\
-    }\n\
-    gzip on;\n\
-    gzip_types text/plain text/css application/json application/javascript;\n\
-}\n' > /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist-web ./dist-web
 
-# Remover config padrão que ocupa porta 80
-RUN rm -f /etc/nginx/conf.d/default.conf.bak
+EXPOSE 3000
 
-EXPOSE 8080
-
-CMD ["nginx", "-g", "daemon off;"]
+# Usar o binário .bin/serve com porta fixa 3000 e listener explícito
+CMD ["node", "node_modules/serve/build/main.js", "dist-web", "-l", "tcp://0.0.0.0:3000", "--single"]
