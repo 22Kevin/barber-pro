@@ -1,6 +1,3 @@
-# ─── Detecta qual serviço buildar via variável SERVICE_TYPE ───────────────────
-ARG SERVICE_TYPE=server
-
 # ════════════════════════════════════════════════════════════════════════════════
 # BUILD STAGE — SERVER
 # ════════════════════════════════════════════════════════════════════════════════
@@ -11,7 +8,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 COPY package.json pnpm-lock.yaml* .npmrc ./
-RUN CI=true corepack pnpm install --prefer-offline --prod=false --shamefully-hoist
+RUN CI=true corepack pnpm install --prefer-offline --prod=false --shamefully-hoist --no-frozen-lockfile
 
 COPY server/ ./server/
 COPY shared/ ./shared/
@@ -21,8 +18,6 @@ COPY tsconfig.json ./
 COPY scripts/ ./scripts/
 
 RUN pnpm build && \
-    echo "=== dist/ contents ===" && \
-    ls -la dist/ && \
     test -f dist/index.js || (echo "ERROR: dist/index.js not generated!" && exit 1)
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -35,7 +30,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 COPY package.json pnpm-lock.yaml* .npmrc ./
-RUN CI=true corepack pnpm install --prefer-offline --shamefully-hoist
+RUN CI=true corepack pnpm install --prefer-offline --shamefully-hoist --no-frozen-lockfile
 
 COPY . .
 
@@ -46,7 +41,25 @@ RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     npx expo export --platform web --output-dir /app/dist-web
 
 # ════════════════════════════════════════════════════════════════════════════════
-# PRODUCTION STAGE — SERVER
+# PRODUCTION STAGE — APP WEB
+# ════════════════════════════════════════════════════════════════════════════════
+FROM node:22-alpine AS app-runner
+
+WORKDIR /app
+
+RUN npm install -g serve@14
+
+COPY --from=app-builder /app/dist-web ./dist-web
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD wget -qO- http://localhost:3000/ || exit 1
+
+CMD ["serve", "dist-web", "-p", "3000", "--single"]
+
+# ════════════════════════════════════════════════════════════════════════════════
+# PRODUCTION STAGE — SERVER (last = default when no dockerTarget set)
 # ════════════════════════════════════════════════════════════════════════════════
 FROM node:22-alpine AS server-runner
 
@@ -68,21 +81,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/health || exit 1
 
 CMD ["node", "dist/index.js"]
-
-# ════════════════════════════════════════════════════════════════════════════════
-# PRODUCTION STAGE — APP WEB
-# ════════════════════════════════════════════════════════════════════════════════
-FROM node:22-alpine AS app-runner
-
-WORKDIR /app
-
-RUN npm install -g serve@14
-
-COPY --from=app-builder /app/dist-web ./dist-web
-
-EXPOSE 3000
-
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget -qO- http://localhost:3000/ || exit 1
-
-CMD ["serve", "dist-web", "-p", "3000", "--single"]
