@@ -64,3 +64,4 @@ dist/
 
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
+.css-interop-cache/
