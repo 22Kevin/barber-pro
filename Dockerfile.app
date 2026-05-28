@@ -22,7 +22,6 @@ COPY tsconfig.json ./
 COPY tailwind.config.js ./
 COPY theme.config.js ./
 
-# Pré-criar o arquivo de cache do css-interop para o Metro encontrar
 RUN mkdir -p node_modules/react-native-css-interop/.cache && \
     touch node_modules/react-native-css-interop/.cache/web.css
 
@@ -30,13 +29,10 @@ RUN cat > metro.config.js << 'METROEOF'
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
 const path = require("path");
-
 const projectRoot = __dirname;
 const config = getDefaultConfig(projectRoot);
-
 config.projectRoot = projectRoot;
 config.watchFolders = [projectRoot];
-
 module.exports = withNativeWind(config, {
   input: "./global.css",
   forceWriteFileSystem: true,
@@ -47,9 +43,19 @@ RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
     npx expo export --platform web --output-dir /app/dist-web
 
+# ─── Runner ────────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
-RUN npm install -g serve@14
+
+# Usar npx serve em vez de instalar globalmente
+RUN npm install -g serve@14.2.4
+
 COPY --from=builder /app/dist-web ./dist-web
+
+# Verificar que os arquivos existem
+RUN ls dist-web/ && echo "dist-web OK"
+
 EXPOSE 3000
-CMD ["serve", "dist-web", "-p", "3000", "--single"]
+
+# PORT é injetado pelo Railway — usar variável de ambiente
+CMD ["sh", "-c", "serve dist-web -p ${PORT:-3000} --single --no-clipboard"]
