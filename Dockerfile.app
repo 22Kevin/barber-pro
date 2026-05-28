@@ -30,14 +30,11 @@ RUN mkdir -p node_modules/react-native-css-interop/.cache .css-interop-cache && 
       touch node_modules/react-native-css-interop/.cache/$f .css-interop-cache/$f; \
     done
 
-# Apply unix patch to redirect css-interop outputDirectory into projectRoot
-# so Metro hasteFS watches the cache files from startup (fixes SHA-1 error).
-RUN echo "=== css-interop line 17 before patch ===" && \
-    sed -n '17p' node_modules/react-native-css-interop/dist/metro/index.js && \
-    patch --forward --fuzz=3 \
-      node_modules/react-native-css-interop/dist/metro/index.js \
-      patches/css-interop-metro.patch && \
-    echo "=== css-interop line 17 after patch ===" && \
+# Overwrite css-interop metro index with pre-patched version that redirects
+# outputDirectory to .css-interop-cache inside projectRoot (Metro watches it).
+RUN cp patches/css-interop-metro-index.js \
+       node_modules/react-native-css-interop/dist/metro/index.js && \
+    echo "=== line 17 after overwrite ===" && \
     sed -n '17p' node_modules/react-native-css-interop/dist/metro/index.js
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
