@@ -4,13 +4,8 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 COPY package.json pnpm-lock.yaml* .npmrc ./
-COPY patches/ ./patches/
 RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));delete p.type;fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
-
-# pnpm.patchedDependencies in package.json applies patches/react-native-css-interop@0.2.1.patch
-# automatically, redirecting outputDirectory from node_modules/.cache to .css-interop-cache/
-# --no-frozen-lockfile needed because the lockfile doesn't yet have the patch hash recorded
-RUN CI=true corepack pnpm install --prefer-offline --shamefully-hoist --no-frozen-lockfile
+RUN CI=true corepack pnpm install --prefer-offline --shamefully-hoist
 
 COPY app/ ./app/
 COPY components/ ./components/
@@ -19,6 +14,7 @@ COPY assets/ ./assets/
 COPY hooks/ ./hooks/
 COPY lib/ ./lib/
 COPY global.css ./
+COPY metro.config.js ./
 COPY metro.config.cjs ./
 COPY babel.config.js ./
 COPY app.config.ts ./
@@ -28,12 +24,6 @@ COPY tailwind.config.js ./
 COPY theme.config.js ./
 COPY theme.config.d.ts* ./
 COPY shared/ ./shared/
-
-# Pre-create .css-interop-cache/ so Metro hasteFS knows about it from startup
-RUN mkdir -p .css-interop-cache && \
-    for f in web.css ios.js android.js native.js macos.js windows.js; do \
-      touch .css-interop-cache/$f; \
-    done
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
