@@ -1,4 +1,3 @@
-# Node 20 LTS — comportamento de módulos mais compatível com Expo/Metro
 FROM node:20-alpine AS builder
 WORKDIR /app
 
@@ -6,7 +5,7 @@ RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 COPY package.json pnpm-lock.yaml* .npmrc ./
 
-# Remover type:module ANTES de instalar para que pnpm use resolução CJS
+# Remover type:module antes do install
 RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));delete p.type;fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
 
 RUN CI=true corepack pnpm install --prefer-offline --shamefully-hoist
@@ -27,6 +26,11 @@ COPY tailwind.config.js ./
 COPY theme.config.js ./
 COPY theme.config.d.ts* ./
 COPY shared/ ./shared/
+
+# Pré-criar o diretório e arquivo web.css que o css-interop vai gerar
+# Isso garante que o Metro já conhece o arquivo antes de iniciar
+RUN mkdir -p node_modules/react-native-css-interop/.cache && \
+    touch node_modules/react-native-css-interop/.cache/web.css
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
     EXPO_PUBLIC_API_URL=https://usebarberpro.com \
