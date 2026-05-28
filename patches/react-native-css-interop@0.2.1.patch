@@ -1,0 +1,11 @@
+--- a/dist/metro/index.js
++++ b/dist/metro/index.js
+@@ -14,7 +14,7 @@
+ let haste;
+ let virtualModulesPossible = undefined;
+ const virtualModules = new Map();
+-const outputDirectory = path_1.default.resolve(__dirname, "../../.cache");
++const outputDirectory = require("path").resolve(process.cwd(), ".css-interop-cache");
+ const isRadonIDE = "REACT_NATIVE_IDE_LIB_PATH" in process.env;
+ function withCssInterop(config, options) {
+     return typeof config === "function"
