@@ -26,7 +26,7 @@ COPY theme.config.d.ts* ./
 COPY shared/ ./shared/
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
-    EXPO_PUBLIC_API_URL=https://usebarberpro.com \
+    EXPO_PUBLIC_API_BASE_URL=https://usebarberpro.com \
     npx expo export --platform web --output-dir /app/dist-web
 
 # ─── Runner ───────────────────────────────────────────────────────────────────

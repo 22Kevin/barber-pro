@@ -37,7 +37,7 @@ COPY . .
 RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));delete p.type;fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
 
 RUN EXPO_NO_METRO_WORKSPACE_ROOT=1 \
-    EXPO_PUBLIC_API_URL=https://usebarberpro.com \
+    EXPO_PUBLIC_API_BASE_URL=https://usebarberpro.com \
     npx expo export --platform web --output-dir /app/dist-web
 
 # ════════════════════════════════════════════════════════════════════════════════
