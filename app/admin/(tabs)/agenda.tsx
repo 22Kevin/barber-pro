@@ -526,7 +526,7 @@ export default function AgendaScreen() {
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable
               style={({ pressed }) => [styles.addBtn, { backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#C9A84C" }, pressed && { opacity: 0.8 }]}
-              onPress={() => router.push("/admin/plan-booking" as any)}
+              onPress={() => router.push("/admin/subscription-plans" as any)}
             >
               <IconSymbol name="star.fill" size={14} color="#C9A84C" />
               <Text style={[styles.addBtnText, { color: "#C9A84C" }]}>Plano</Text>
