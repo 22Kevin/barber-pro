@@ -5,20 +5,22 @@ const BG = "#0A0A0A";
 
 export interface ScreenContainerProps extends ViewProps {
   edges?: Edge[];
+  // These props are accepted for API compatibility but styles come from StyleSheet
   className?: string;
   containerClassName?: string;
   safeAreaClassName?: string;
 }
 
-/**
- * Screen container with explicit dark background.
- * Uses StyleSheet instead of NativeWind classes to guarantee
- * correct rendering on both web and native builds.
- */
 export function ScreenContainer({
   children,
   edges = ["top", "left", "right"],
   style,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  className: _c,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  containerClassName: _cc,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  safeAreaClassName: _sc,
   ...props
 }: ScreenContainerProps) {
   return (

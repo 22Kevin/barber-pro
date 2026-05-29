@@ -74,16 +74,24 @@ export default function SubscriptionsScreen() {
         {/* Métricas */}
         <View style={{ flexDirection: "row", gap: 10, padding: 16, paddingBottom: 8 }}>
           <View style={dyn.metricCard}>
-            <Text style={dyn.metricVal}>{stats.active}</Text>
-            <Text style={dyn.metricLabel}>ativas</Text>
+            <Text style={[dyn.metricVal, { color: "#4CAF50" }]}>{stats.active}</Text>
+            <Text style={dyn.metricLabel}>ATIVAS</Text>
           </View>
           <View style={dyn.metricCard}>
-            <Text style={dyn.metricVal}>{formatCurrency(stats.revenue)}</Text>
+            <Text style={[dyn.metricVal, { color: "#4CAF50" }]}>{formatCurrency(stats.revenue)}</Text>
             <Text style={dyn.metricLabel}>MRR</Text>
           </View>
           <View style={dyn.metricCard}>
             <Text style={[dyn.metricVal, { color: "#F87171" }]}>{stats.cancelled}</Text>
-            <Text style={dyn.metricLabel}>canceladas</Text>
+            <Text style={dyn.metricLabel}>CANCELADAS</Text>
+          </View>
+          <View style={dyn.metricCard}>
+            <Text style={[dyn.metricVal, { color: "#FB923C" }]}>
+              {stats.active + stats.cancelled > 0
+                ? ((stats.cancelled / (stats.active + stats.cancelled)) * 100).toFixed(1) + "%"
+                : "0%"}
+            </Text>
+            <Text style={dyn.metricLabel}>CHURN</Text>
           </View>
         </View>
 
