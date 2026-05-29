@@ -17,7 +17,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  RefreshControl,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { DatePickerModal } from "@/components/date-picker-modal";
