@@ -200,12 +200,12 @@ export default function AgendaScreen() {
   // Barbeiro individual: byDateRange do mês
   const appointmentsByMonthQuery = trpc.appointments.byDateRange.useQuery(
     { barberId: barber?.id ?? 0, startDate: monthStart, endDate: monthEnd },
-    { enabled: !!barber?.id && !isManager, staleTime: 60_000 }
+    { enabled: !!barber?.id && !isManager, staleTime: 0 }
   );
   // Manager: allByDateRange do mês
   const allAppointmentsByMonthQuery = trpc.appointments.allByDateRange.useQuery(
     { startDate: monthStart, endDate: monthEnd, tenantId },
-    { enabled: isManager, staleTime: 60_000 }
+    { enabled: isManager, staleTime: 0 }
   );
 
   // Filtrar localmente pelo dia selecionado (sem nova requisição)
@@ -237,8 +237,11 @@ export default function AgendaScreen() {
 
   const createMutation = trpc.appointments.create.useMutation({
     onSuccess: async (result: any) => {
-      utils.appointments.byDateRange.invalidate(); utils.appointments.allByDateRange.invalidate();
-      utils.dashboard.stats.invalidate();
+      await Promise.all([
+        utils.appointments.byDateRange.invalidate(),
+        utils.appointments.allByDateRange.invalidate(),
+        utils.dashboard.stats.invalidate(),
+      ]);
 
       const apptId = result?.apptId ?? result;
 

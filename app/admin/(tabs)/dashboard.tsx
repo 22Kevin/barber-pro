@@ -54,7 +54,7 @@ export default function DashboardScreen() {
   const pendingPaymentsQuery = trpc.payments.pendingList.useQuery({ tenantId });
   const lowStockQuery = trpc.stock.lowStock.useQuery(
     { tenantId: tenantId ?? undefined },
-    { enabled: !!tenantId, staleTime: 5 * 60 * 1000 }
+    { enabled: !!tenantId }
   );
   const lowStockItems = lowStockQuery.data ?? [];
 
@@ -99,7 +99,7 @@ export default function DashboardScreen() {
   // Banner de trial
   const tenantQuery = trpc.onboarding.getById.useQuery(
     { id: tenantId! },
-    { enabled: !!tenantId, staleTime: 5 * 60 * 1000 }
+    { enabled: !!tenantId }
   );
   const tenant = tenantQuery.data;
   const trialDaysLeft = tenant?.trialEndsAt
@@ -283,7 +283,11 @@ export default function DashboardScreen() {
           appointments.slice(0, 5).map((apt) => {
             const status = STATUS_LABELS[apt.status] ?? { label: apt.status, color: colors.muted };
             return (
-              <View key={apt.id} style={dyn.appointmentCard}>
+              <Pressable
+                key={apt.id}
+                style={({ pressed }) => [dyn.appointmentCard, pressed && { opacity: 0.75 }]}
+                onPress={() => router.push("/admin/(tabs)/agenda" as any)}
+              >
                 <View style={[styles.statusBar, { backgroundColor: status.color }]} />
                 <View style={styles.aptContent}>
                   <View style={styles.aptRow}>
@@ -295,7 +299,7 @@ export default function DashboardScreen() {
                   <Text style={dyn.aptBarber}>{getBarberName(apt.barberId)}</Text>
                   {apt.notes ? <Text style={dyn.aptNotes}>{apt.notes}</Text> : null}
                 </View>
-              </View>
+              </Pressable>
             );
           })
         )}
