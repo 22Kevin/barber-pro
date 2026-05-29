@@ -4,126 +4,231 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
-const USE_NATIVE_DRIVER = Platform.OS !== "web";
+
+const ND = Platform.OS !== "web";
 
 export default function WelcomeScreen() {
   const router = useRouter();
 
-  const aLogo = useRef(new Animated.Value(0.6)).current;
+  const aLogo   = useRef(new Animated.Value(0.7)).current;
   const aLogoOp = useRef(new Animated.Value(0)).current;
-  const aName = useRef(new Animated.Value(30)).current;
+  const aName   = useRef(new Animated.Value(20)).current;
   const aNameOp = useRef(new Animated.Value(0)).current;
-  const aTag = useRef(new Animated.Value(0)).current;
+  const aTag    = useRef(new Animated.Value(0)).current;
   const aDivider = useRef(new Animated.Value(0)).current;
-  const aOpts = useRef(new Animated.Value(0)).current;
-  const aOptsY = useRef(new Animated.Value(24)).current;
+  const aOpts   = useRef(new Animated.Value(0)).current;
+  const aOptsY  = useRef(new Animated.Value(16)).current;
   const aFooter = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.sequence([
       Animated.parallel([
-        Animated.spring(aLogo, { toValue: 1, tension: 60, friction: 8, useNativeDriver: USE_NATIVE_DRIVER }),
-        Animated.timing(aLogoOp, { toValue: 1, duration: 400, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.spring(aLogo,   { toValue: 1, tension: 50, friction: 7, useNativeDriver: ND }),
+        Animated.timing(aLogoOp, { toValue: 1, duration: 500, useNativeDriver: ND }),
       ]),
       Animated.parallel([
-        Animated.timing(aNameOp, { toValue: 1, duration: 280, useNativeDriver: USE_NATIVE_DRIVER }),
-        Animated.timing(aName, { toValue: 0, duration: 280, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(aNameOp, { toValue: 1, duration: 300, useNativeDriver: ND }),
+        Animated.timing(aName,   { toValue: 0, duration: 300, useNativeDriver: ND }),
       ]),
-      Animated.timing(aTag, { toValue: 1, duration: 220, useNativeDriver: USE_NATIVE_DRIVER }),
-      Animated.timing(aDivider, { toValue: 1, duration: 320, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(aTag,     { toValue: 1, duration: 250, useNativeDriver: ND }),
+      Animated.timing(aDivider, { toValue: 1, duration: 400, useNativeDriver: ND }),
       Animated.parallel([
-        Animated.timing(aOpts, { toValue: 1, duration: 300, useNativeDriver: USE_NATIVE_DRIVER }),
-        Animated.timing(aOptsY, { toValue: 0, duration: 300, useNativeDriver: USE_NATIVE_DRIVER }),
+        Animated.timing(aOpts,  { toValue: 1, duration: 350, useNativeDriver: ND }),
+        Animated.timing(aOptsY, { toValue: 0, duration: 350, useNativeDriver: ND }),
       ]),
-      Animated.timing(aFooter, { toValue: 1, duration: 200, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(aFooter, { toValue: 1, duration: 200, useNativeDriver: ND }),
     ]).start();
   }, []);
 
   return (
     <View style={s.root}>
+            {/* Fundo sutil */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#0C0C08" }]} />
+
       <SafeAreaView style={s.safe} edges={["top", "left", "right", "bottom"]}>
         <View style={s.container}>
-          <View style={s.logoContainer}>
-            <Animated.View style={[s.logoWrapper, { opacity: aLogoOp, transform: [{ scale: aLogo }] }]}>
-              <View style={s.logoGlow} />
-              <Image source={require("../../assets/images/icon.png")} style={s.logo} resizeMode="contain" />
+
+          {/* ── Logo ─────────────────────────────────────────── */}
+          <View style={s.logoSection}>
+            <Animated.View style={[s.logoWrapper, {
+              opacity: aLogoOp,
+              transform: [{ scale: aLogo }],
+            }]}>
+              {/* Glow externo */}
+              <View style={s.glowOuter} />
+              {/* Glow interno */}
+              <View style={s.glowInner} />
+              {/* Imagem circular */}
+              <Image
+                source={require("../../assets/images/icon.png")}
+                style={s.logo}
+                resizeMode="cover"
+              />
             </Animated.View>
-            <Animated.Text style={[s.appName, { opacity: aNameOp, transform: [{ translateY: aName }] }]}>
+
+            <Animated.Text style={[s.appName, {
+              opacity: aNameOp,
+              transform: [{ translateY: aName }],
+            }]}>
               BARBER PRO
             </Animated.Text>
+
             <Animated.Text style={[s.tagline, { opacity: aTag }]}>
               Sistema Completo de Barbearia
             </Animated.Text>
           </View>
 
-          <Animated.View style={[s.divider, { transform: [{ scaleX: aDivider }] }]} />
+          {/* ── Divisor ──────────────────────────────────────── */}
+          <Animated.View style={[s.dividerRow, { transform: [{ scaleX: aDivider }] }]}>
+            <View style={s.dividerLine} />
+            <View style={s.dividerDot} />
+            <View style={s.dividerLine} />
+          </Animated.View>
 
-          <Animated.View style={[s.options, { opacity: aOpts, transform: [{ translateY: aOptsY }] }]}>
+          {/* ── Opções ───────────────────────────────────────── */}
+          <Animated.View style={[s.options, {
+            opacity: aOpts,
+            transform: [{ translateY: aOptsY }],
+          }]}>
             <Text style={s.optionsLabel}>SELECIONE O ACESSO</Text>
 
+            {/* Cadastrar */}
             <Pressable
-              style={({ pressed }) => [s.optionCard, s.registerCard, pressed && s.pressed]}
+              style={({ pressed }) => [s.card, s.cardOutline, pressed && s.pressed]}
               onPress={() => router.push("/onboarding/plan-selection" as any)}
             >
-              <View style={[s.optionIconBox, { backgroundColor: "#C9A84C22" }]}>
-                <IconSymbol name="building.2.fill" size={28} color="#C9A84C" />
+              <View style={[s.cardIconBox, s.cardIconBoxOutline]}>
+                <IconSymbol name="building.2.fill" size={26} color="#C9A84C" />
               </View>
-              <View style={s.flex1}>
-                <Text style={[s.optionTitle, { color: "#C9A84C" }]}>Cadastrar minha barbearia</Text>
-                <Text style={[s.optionSubtitle, { color: "#888880" }]}>Comece seu período gratuito de 14 dias</Text>
+              <View style={s.cardText}>
+                <Text style={[s.cardTitle, { color: "#C9A84C" }]}>Cadastrar minha barbearia</Text>
+                <Text style={[s.cardSub, { color: "#777770" }]}>Comece seu período gratuito de 14 dias</Text>
               </View>
-              <IconSymbol name="chevron.right" size={20} color="#C9A84C" />
+              <IconSymbol name="chevron.right" size={18} color="#C9A84C66" />
             </Pressable>
 
+            {/* Login admin */}
             <Pressable
-              style={({ pressed }) => [s.optionCard, s.adminCard, pressed && s.pressed]}
+              style={({ pressed }) => [s.card, s.cardSolid, pressed && s.pressed]}
               onPress={() => router.push("/admin/login" as any)}
             >
-              <View style={s.optionIconBox}>
-                <IconSymbol name="scissors" size={28} color="#0A0A0A" />
+              <View style={[s.cardIconBox, s.cardIconBoxSolid]}>
+                <IconSymbol name="scissors" size={26} color="#1A1A0E" />
               </View>
-              <View style={s.flex1}>
-                <Text style={s.optionTitle}>Painel Administrativo</Text>
-                <Text style={s.optionSubtitle}>Barbeiros e gestão da barbearia</Text>
+              <View style={s.cardText}>
+                <Text style={[s.cardTitle, { color: "#1A1A0E" }]}>Painel Administrativo</Text>
+                <Text style={[s.cardSub, { color: "#1A1A0E99" }]}>Barbeiros e gestão da barbearia</Text>
               </View>
-              <IconSymbol name="chevron.right" size={20} color="#0A0A0A" />
+              <IconSymbol name="chevron.right" size={18} color="#1A1A0E66" />
             </Pressable>
           </Animated.View>
 
+          {/* ── Footer ───────────────────────────────────────── */}
           <Animated.Text style={[s.footer, { opacity: aFooter }]}>
             Barber Pro © 2025 · Todos os direitos reservados
           </Animated.Text>
+
         </View>
       </SafeAreaView>
     </View>
   );
 }
 
+const GOLD = "#C9A84C";
+
 const s = StyleSheet.create({
   root:  { flex: 1, backgroundColor: "#0A0A0A" },
-  safe:  { flex: 1, backgroundColor: "#0A0A0A" },
-  container: { flex: 1, justifyContent: "center", paddingHorizontal: 24 },
-  logoContainer: { alignItems: "center", marginBottom: 32 },
-  logoWrapper: { position: "relative", alignItems: "center", justifyContent: "center", marginBottom: 4 },
-  logoGlow: {
-    position: "absolute", width: 120, height: 120, borderRadius: 60,
-    backgroundColor: "#C9A84C", opacity: 0.12,
-    shadowColor: "#C9A84C", shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8, shadowRadius: 30, elevation: 20,
+  safe:  { flex: 1 },
+  container: { flex: 1, justifyContent: "center", paddingHorizontal: 28 },
+
+  // Logo
+  logoSection: { alignItems: "center", marginBottom: 36 },
+  logoWrapper: {
+    width: 118, height: 118,
+    alignItems: "center", justifyContent: "center",
+    marginBottom: 20,
   },
-  logo: { width: 100, height: 100, borderRadius: 22 },
-  appName: { fontSize: 32, fontWeight: "900", color: "#C9A84C", letterSpacing: 6, marginTop: 10 },
-  tagline: { fontSize: 13, color: "#666660", letterSpacing: 1.5, marginTop: 6 },
-  divider: { height: 1, backgroundColor: "#2A2A2A", marginBottom: 32 },
-  options: { gap: 14 },
-  optionsLabel: { fontSize: 11, color: "#444", letterSpacing: 2.5, textAlign: "center", marginBottom: 10 },
-  optionCard: { flexDirection: "row", alignItems: "center", borderRadius: 18, padding: 18, borderWidth: 1 },
-  adminCard: { backgroundColor: "#C9A84C", borderColor: "#C9A84C", elevation: 8 },
-  registerCard: { backgroundColor: "#0A0A0A", borderColor: "#C9A84C44", borderWidth: 1.5 },
-  optionIconBox: { width: 52, height: 52, borderRadius: 14, backgroundColor: "#0A0A0A22", justifyContent: "center", alignItems: "center", marginRight: 14 },
-  flex1: { flex: 1 },
-  optionTitle: { fontSize: 16, fontWeight: "700", color: "#0A0A0A", marginBottom: 2 },
-  optionSubtitle: { fontSize: 12, color: "#0A0A0A99" },
-  footer: { fontSize: 11, color: "#333", textAlign: "center", marginTop: 32 },
-  pressed: { opacity: 0.8 },
+  glowOuter: {
+    position: "absolute",
+    width: 140, height: 140, borderRadius: 70,
+    backgroundColor: GOLD,
+    opacity: 0.08,
+  },
+  glowInner: {
+    position: "absolute",
+    width: 118, height: 118, borderRadius: 59,
+    backgroundColor: GOLD,
+    opacity: 0.12,
+    shadowColor: GOLD,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 24,
+    elevation: 16,
+  },
+  logo: {
+    width: 108, height: 108,
+    borderRadius: 54,
+    borderWidth: 2,
+    borderColor: GOLD + "55",
+  },
+  appName: {
+    fontSize: 30,
+    fontWeight: "900",
+    color: GOLD,
+    letterSpacing: 4,
+    marginBottom: 6,
+  },
+  tagline: {
+    fontSize: 12,
+    color: "#555550",
+    letterSpacing: 2,
+    textTransform: "uppercase",
+  },
+
+  // Divisor
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 32,
+    gap: 10,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "#222218" },
+  dividerDot:  { width: 4, height: 4, borderRadius: 2, backgroundColor: GOLD + "66" },
+
+  // Opções
+  options:      { gap: 12 },
+  optionsLabel: {
+    fontSize: 10, color: "#444440",
+    letterSpacing: 3, textAlign: "center",
+    textTransform: "uppercase", marginBottom: 12,
+  },
+  card: {
+    flexDirection: "row", alignItems: "center",
+    borderRadius: 16, padding: 16, gap: 14,
+  },
+  cardOutline: {
+    backgroundColor: "#0F0F0B",
+    borderWidth: 1, borderColor: GOLD + "33",
+  },
+  cardSolid: {
+    backgroundColor: GOLD,
+    shadowColor: GOLD,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  cardIconBox: {
+    width: 48, height: 48, borderRadius: 12,
+    alignItems: "center", justifyContent: "center",
+  },
+  cardIconBoxOutline: { backgroundColor: GOLD + "18" },
+  cardIconBoxSolid:   { backgroundColor: "#1A1A0E33" },
+  cardText: { flex: 1 },
+  cardTitle: { fontSize: 15, fontWeight: "700", marginBottom: 3 },
+  cardSub:   { fontSize: 12, lineHeight: 17 },
+  pressed:   { opacity: 0.82, transform: [{ scale: 0.98 }] },
+
+  // Footer
+  footer: { fontSize: 11, color: "#2A2A25", textAlign: "center", marginTop: 36 },
 });

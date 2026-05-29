@@ -62,16 +62,16 @@ export default function DashboardScreen() {
   const utils = trpc.useUtils();
 
   const dyn = useMemo(() => StyleSheet.create({
-    greeting:        { fontSize: 22, fontWeight: "700", color: colors.foreground },
-    date:            { fontSize: 13, color: colors.muted, marginTop: 2 },
-    metricCard:      { flex: 1, minWidth: "45%", backgroundColor: colors.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.border, alignItems: "flex-start" },
-    metricValue:     { fontSize: 20, fontWeight: "800", color: colors.foreground, marginBottom: 2 },
-    metricLabel:     { fontSize: 12, color: colors.muted },
-    sectionTitle:    { fontSize: 17, fontWeight: "700", color: colors.foreground, paddingHorizontal: 20, marginTop: 16, marginBottom: 10 },
+    greeting:        { fontSize: 24, fontWeight: "800", color: colors.foreground },
+    date:            { fontSize: 12, color: colors.muted, marginTop: 3, letterSpacing: 0.5 },
+    metricCard:      { flex: 1, minWidth: "45%", backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border, alignItems: "flex-start", borderLeftWidth: 3 },
+    metricValue:     { fontSize: 28, fontWeight: "900", color: colors.foreground, marginBottom: 4, lineHeight: 32 },
+    metricLabel:     { fontSize: 11, color: colors.muted, letterSpacing: 0.5, textTransform: "uppercase" },
+    sectionTitle:    { fontSize: 13, fontWeight: "700", color: colors.muted, paddingHorizontal: 20, marginTop: 20, marginBottom: 10, letterSpacing: 2, textTransform: "uppercase" },
     seeAll:          { fontSize: 13, color: colors.primary },
-    quickActionBtn:  { flex: 1, minWidth: "45%", backgroundColor: "#1A1A1A", borderRadius: 12, padding: 14, alignItems: "center", borderWidth: 1, borderColor: "#C9A84C" },
-    quickActionIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primary + "22", justifyContent: "center", alignItems: "center", marginBottom: 8 },
-    quickActionLabel:{ fontSize: 12, color: colors.foreground, fontWeight: "600", textAlign: "center" },
+    quickActionBtn:  { flex: 1, minWidth: "45%", backgroundColor: "#141410", borderRadius: 14, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#C9A84C33" },
+    quickActionIcon: { width: 48, height: 48, borderRadius: 14, backgroundColor: colors.primary + "18", justifyContent: "center", alignItems: "center", marginBottom: 10 },
+    quickActionLabel:{ fontSize: 12, color: colors.foreground, fontWeight: "600", textAlign: "center", lineHeight: 16 },
     emptyCard:       { marginHorizontal: 20, backgroundColor: colors.surface, borderRadius: 12, padding: 20, alignItems: "center", borderWidth: 1, borderColor: colors.border },
     emptyText:       { color: colors.muted, fontSize: 14 },
     appointmentCard: { marginHorizontal: 20, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, flexDirection: "row", overflow: "hidden" },
@@ -144,28 +144,28 @@ export default function DashboardScreen() {
           <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
         ) : (
           <View style={styles.metricsGrid}>
-            <View style={dyn.metricCard}>
+            <View style={[dyn.metricCard, { borderLeftColor: "#C9A84C" }]}>
               <View style={[styles.metricIcon, { backgroundColor: colors.primary + "22" }]}>
                 <IconSymbol name="calendar" size={22} color={colors.primary} />
               </View>
               <Text style={dyn.metricValue}>{String(stats?.appointmentsToday ?? 0)}</Text>
               <Text style={dyn.metricLabel}>Agendamentos</Text>
             </View>
-            <View style={dyn.metricCard}>
+            <View style={[dyn.metricCard, { borderLeftColor: "#4CAF50" }]}>
               <View style={[styles.metricIcon, { backgroundColor: "#4CAF5022" }]}>
                 <IconSymbol name="dollarsign.circle.fill" size={22} color="#4CAF50" />
               </View>
               <Text style={dyn.metricValue}>{formatCurrency(stats?.revenueToday ?? 0)}</Text>
               <Text style={dyn.metricLabel}>Receita Hoje</Text>
             </View>
-            <View style={dyn.metricCard}>
+            <View style={[dyn.metricCard, { borderLeftColor: "#2196F3" }]}>
               <View style={[styles.metricIcon, { backgroundColor: "#2196F322" }]}>
                 <IconSymbol name="person.2.fill" size={22} color="#2196F3" />
               </View>
               <Text style={dyn.metricValue}>{String(stats?.clientsToday ?? 0)}</Text>
               <Text style={dyn.metricLabel}>Clientes</Text>
             </View>
-            <View style={dyn.metricCard}>
+            <View style={[dyn.metricCard, { borderLeftColor: "#FF9800" }]}>
               <View style={[styles.metricIcon, { backgroundColor: "#FF980022" }]}>
                 <IconSymbol name="clock.fill" size={22} color="#FF9800" />
               </View>
@@ -328,10 +328,10 @@ const styles = StyleSheet.create({
   aptRow:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   statusBadge:  { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   statusText:   { fontSize: 11, fontWeight: "600" },
-  trialBanner:  { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 16, marginTop: 12, marginBottom: 4, backgroundColor: "#1A1500", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: "#C9A84C44" },
-  trialBannerUrgent: { backgroundColor: "#1A0000", borderColor: "#F8717144" },
-  trialBannerIcon:  { fontSize: 14 },
-  trialBannerText:  { flex: 1, fontSize: 13, color: "#C9A84C", fontWeight: "600" },
+  trialBanner:       { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginTop: 12, marginBottom: 4, backgroundColor: "#C9A84C15", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, borderWidth: 1, borderColor: "#C9A84C33" },
+  trialBannerUrgent: { backgroundColor: "#F8717115", borderColor: "#F8717133" },
+  trialBannerIcon:   { fontSize: 14 },
+  trialBannerText:   { flex: 1, fontSize: 13, color: "#C9A84C", fontWeight: "600" },
   trialBannerTextUrgent: { color: "#F87171" },
   lowStockBanner: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginTop: 12, marginBottom: 4, backgroundColor: "#1A0D00", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: "#F9730044" },
   lowStockIcon: { fontSize: 20 },
