@@ -1,5 +1,3 @@
-// Load environment variables with proper priority (system > .env)
-import "./scripts/load-env.cjs";
 import type { ExpoConfig } from "expo/config";
 
 // Bundle ID definitivo para as lojas (Google Play e App Store)
