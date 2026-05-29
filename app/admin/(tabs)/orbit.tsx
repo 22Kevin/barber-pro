@@ -301,13 +301,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   emptyEmoji: {
-    fontSize: 48,
+    fontSize: 56,
+    marginBottom: 4,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#F9FAFB",
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#C9A84C",
     textAlign: "center",
+    letterSpacing: 0.5,
   },
   emptyText: {
     fontSize: 13,
