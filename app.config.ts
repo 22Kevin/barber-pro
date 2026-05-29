@@ -101,7 +101,7 @@ const config: ExpoConfig = {
       ? [["@react-native-google-signin/google-signin", { iosUrlScheme: env.googleIosUrlScheme }] as [string, any]]
       : []),
   ],
-  experiments: { typedRoutes: true, reactCompiler: true },
+  experiments: { typedRoutes: true, reactCompiler: false },
 };
 
 export default config;

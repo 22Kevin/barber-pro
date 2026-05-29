@@ -1,0 +1,11 @@
+# Ignore build artifacts and caches
+dist/
+dist-web/
+.expo/
+node_modules/.cache/
+*.log
+server/
+scripts/
+patches/
+docs/
+backups/
