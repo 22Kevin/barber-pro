@@ -60,6 +60,284 @@ const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? "https://usebarberpro.com";
 
 interface ChatMessage { role: 'user' | 'assistant'; content: string; }
 
+// ─── Dados dos tutoriais ──────────────────────────────────────────────────────
+interface TutorialStep { title: string; desc: string; tip?: string; }
+interface Tutorial { id: string; icon: string; title: string; desc: string; steps: TutorialStep[]; color: string; }
+
+const TUTORIALS: Tutorial[] = [
+  {
+    id: "agenda",
+    icon: "📅",
+    title: "Como criar um agendamento",
+    desc: "Agende um horário para seu cliente em segundos",
+    color: "#C9A84C",
+    steps: [
+      { title: "Abra a Agenda", desc: "Toque em 'Agenda' na barra inferior ou no menu lateral." },
+      { title: "Selecione o dia", desc: "Toque em qualquer dia no calendário. Dias com agendamentos têm um ponto dourado abaixo." },
+      { title: "Toque em '+ Novo'", desc: "Botão no canto superior direito da tela da agenda." },
+      { title: "Escolha o cliente", desc: "Toque em 'Selecionar cliente...' e busque pelo nome ou telefone.", tip: "Você pode cadastrar um novo cliente diretamente pela tela de Clientes." },
+      { title: "Selecione os serviços", desc: "Deslize os chips horizontalmente e toque nos serviços desejados. O resumo aparece abaixo.", tip: "Você pode selecionar múltiplos serviços — a duração total é calculada automaticamente." },
+      { title: "Escolha o horário", desc: "Deslize os chips de horário e toque no horário disponível. Horários ocupados aparecem acinzentados." },
+      { title: "Confirme", desc: "Toque em 'CONFIRMAR AGENDAMENTO'. O agendamento aparece na lista e no calendário imediatamente." },
+    ],
+  },
+  {
+    id: "cliente",
+    icon: "👤",
+    title: "Como cadastrar um cliente",
+    desc: "Adicione clientes à sua base com todas as informações",
+    color: "#3B82F6",
+    steps: [
+      { title: "Acesse Clientes", desc: "Toque em 'Clientes' na barra inferior." },
+      { title: "Toque em '+ Novo'", desc: "Botão no canto superior direito." },
+      { title: "Preencha os dados", desc: "Nome completo e telefone são obrigatórios. E-mail e data de nascimento são opcionais.", tip: "A data de nascimento é usada para enviar parabéns automáticos no aniversário do cliente." },
+      { title: "Aceite os termos", desc: "Marque o checkbox de consentimento LGPD para poder enviar mensagens ao cliente." },
+      { title: "Salve", desc: "Toque em 'Cadastrar'. O cliente aparece na lista e você pode agendar para ele imediatamente." },
+    ],
+  },
+  {
+    id: "servicos",
+    icon: "✂️",
+    title: "Como gerenciar serviços",
+    desc: "Crie e edite os serviços que sua barbearia oferece",
+    color: "#8B5CF6",
+    steps: [
+      { title: "Acesse Serviços", desc: "Menu lateral → Catálogo → Serviços." },
+      { title: "Toque em '+ Novo'", desc: "Botão no canto superior direito." },
+      { title: "Preencha o serviço", desc: "Nome e preço são obrigatórios. A duração define os slots disponíveis na agenda.", tip: "Use a duração real do serviço para evitar conflitos de horário na agenda." },
+      { title: "Ativar/Desativar", desc: "Serviços inativos não aparecem na seleção durante o agendamento. Use para serviços temporariamente fora de operação." },
+      { title: "Editar ou excluir", desc: "Toque no lápis para editar ou na lixeira vermelha para excluir. Serviços com agendamentos vinculados não podem ser excluídos." },
+    ],
+  },
+  {
+    id: "financeiro",
+    icon: "💰",
+    title: "Como usar o Financeiro",
+    desc: "Registre vendas, despesas e acompanhe o lucro",
+    color: "#22C55E",
+    steps: [
+      { title: "Acesse Financeiro", desc: "Toque em 'Financeiro' na barra inferior." },
+      { title: "Nova venda", desc: "Toque em '+ Venda' (dourado) para registrar uma receita. Informe o serviço ou produto, valor e forma de pagamento." },
+      { title: "Nova despesa", desc: "Toque em '− Despesa' (vermelho) para registrar uma saída. Ex: aluguel, produtos, energia.", tip: "Categorize suas despesas para ter relatórios mais detalhados." },
+      { title: "Aba Resumo", desc: "Mostra o Lucro Líquido do período com barra de progresso, grid de métricas e breakdown por forma de pagamento." },
+      { title: "Navegue pelos períodos", desc: "Use as setas < > no topo para navegar entre meses. Os dados são filtrados automaticamente." },
+      { title: "Relatórios", desc: "Menu lateral → Financeiro → Relatórios para análises detalhadas com comparativos e projeções." },
+    ],
+  },
+  {
+    id: "planos",
+    icon: "⭐",
+    title: "Como configurar planos de assinatura",
+    desc: "Crie pacotes mensais para fidelizar seus clientes",
+    color: "#F59E0B",
+    steps: [
+      { title: "Acesse Assinaturas", desc: "Menu lateral → Catálogo → Assinaturas, ou toque no botão '⭐ Plano' na Agenda." },
+      { title: "Crie um plano", desc: "Toque em '+ Novo Plano'. Defina o nome, descrição e quantos atendimentos por mês." },
+      { title: "Selecione serviços", desc: "Escolha quais serviços fazem parte do plano e quantos o cliente pode escolher por visita.", tip: "O sistema calcula automaticamente uma sugestão de preço com 15% de desconto." },
+      { title: "Defina o preço", desc: "Use a sugestão ou defina seu próprio preço. Toque em '↑ usar' para aceitar o preço sugerido." },
+      { title: "Gerencie assinantes", desc: "Acesse 'Assinaturas' no menu para ver quem assinou, MRR e taxa de cancelamento." },
+      { title: "Nova assinatura", desc: "Na tela de Assinaturas, toque em '+ Nova Assinatura' para vincular um cliente a um plano existente." },
+    ],
+  },
+  {
+    id: "primeiros-passos",
+    icon: "🚀",
+    title: "Primeiros passos no Barber Pro",
+    desc: "Configure sua barbearia do zero em 5 minutos",
+    color: "#EF4444",
+    steps: [
+      { title: "Configure a barbearia", desc: "Menu lateral → Sistema → Barbearia. Adicione nome, telefone, Instagram e Google Maps." },
+      { title: "Defina os horários", desc: "Na aba 'Horários', configure os dias e horários de funcionamento de cada barbeiro.", tip: "Os horários definidos aqui determinam quais slots aparecem na tela de agendamento." },
+      { title: "Cadastre sua equipe", desc: "Na aba 'Equipe', adicione os barbeiros com e-mail e role (barbeiro ou recepcionista)." },
+      { title: "Adicione seus serviços", desc: "Menu lateral → Catálogo → Serviços. Cadastre todos os cortes e serviços que você oferece." },
+      { title: "Compartilhe sua página", desc: "Menu lateral → Página do Cliente. Copie o link ou QR Code e envie para seus clientes pelo WhatsApp.", tip: "Seus clientes podem agendar diretamente pela página pública sem precisar do app." },
+      { title: "Pronto!", desc: "Sua barbearia está configurada. Comece criando seus primeiros agendamentos e cadastrando clientes." },
+    ],
+  },
+];
+
+// ─── Sub-componentes ──────────────────────────────────────────────────────────
+
+function TutoriaisTab({ colors, styles, tabBarHeight }: any) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  return (
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ padding: 16, paddingBottom: tabBarHeight + 24 }}
+    >
+      <Text style={styles.tutorialSectionTitle}>Guias passo a passo</Text>
+      <Text style={styles.tutorialSectionDesc}>Aprenda a usar todos os recursos do Barber Pro</Text>
+
+      {TUTORIALS.map(tutorial => {
+        const isOpen = expanded === tutorial.id;
+        return (
+          <View key={tutorial.id} style={styles.tutorialCard}>
+            <Pressable
+              style={styles.tutorialHeader}
+              onPress={() => setExpanded(isOpen ? null : tutorial.id)}
+            >
+              <View style={[styles.tutorialIconBox, { backgroundColor: tutorial.color + "22" }]}>
+                <Text style={styles.tutorialIcon}>{tutorial.icon}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.tutorialTitle}>{tutorial.title}</Text>
+                <Text style={styles.tutorialDesc}>{tutorial.desc}</Text>
+              </View>
+              <View style={[styles.tutorialChevron, isOpen && styles.tutorialChevronOpen]}>
+                <IconSymbol name="chevron.down" size={16} color="#888" />
+              </View>
+            </Pressable>
+
+            {isOpen && (
+              <View style={styles.tutorialSteps}>
+                <View style={[styles.tutorialDivider, { backgroundColor: tutorial.color + "33" }]} />
+                {tutorial.steps.map((step, idx) => (
+                  <View key={idx} style={styles.stepRow}>
+                    <View style={[styles.stepNum, { backgroundColor: tutorial.color + "22", borderColor: tutorial.color + "44" }]}>
+                      <Text style={[styles.stepNumText, { color: tutorial.color }]}>{idx + 1}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.stepTitle}>{step.title}</Text>
+                      <Text style={styles.stepDesc}>{step.desc}</Text>
+                      {step.tip && (
+                        <View style={styles.stepTip}>
+                          <Text style={styles.stepTipText}>💡 {step.tip}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        );
+      })}
+
+      <View style={[styles.helpCard, { marginTop: 8 }]}>
+        <Text style={styles.helpTitle}>Ainda com dúvidas?</Text>
+        <Text style={styles.helpDesc}>Use a aba 🤖 IA para perguntar qualquer coisa, ou abra um ticket na aba 🎫 Tickets para falar com nossa equipe.</Text>
+      </View>
+    </ScrollView>
+  );
+}
+
+function IATab({ chatMessages, chatInput, setChatInput, chatLoading, sendChat, chatScrollRef, colors, styles, tabBarHeight }: any) {
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+      <ScrollView
+        ref={chatScrollRef}
+        contentContainerStyle={{ padding: 16, paddingBottom: 16 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {chatMessages.map((msg: ChatMessage, idx: number) => (
+          <View key={idx} style={[
+            styles.messageBubble,
+            msg.role === "user" ? styles.messageBubbleClient : styles.messageBubbleAdmin,
+          ]}>
+            <Text style={styles.messageAuthor}>{msg.role === "user" ? "Você" : "IA Assistente"}</Text>
+            <Text style={styles.messageContent}>{msg.content}</Text>
+          </View>
+        ))}
+        {chatLoading && (
+          <View style={styles.messageBubble}>
+            <ActivityIndicator size="small" color="#C9A84C" />
+          </View>
+        )}
+      </ScrollView>
+      <View style={[styles.replyBox, { paddingHorizontal: 16, paddingBottom: tabBarHeight + 8 }]}>
+        <TextInput
+          style={[styles.input, styles.replyInput]}
+          placeholder="Pergunte qualquer coisa sobre o sistema..."
+          placeholderTextColor="#555"
+          value={chatInput}
+          onChangeText={setChatInput}
+          multiline
+          returnKeyType="send"
+          onSubmitEditing={sendChat}
+        />
+        <TouchableOpacity
+          style={[styles.sendBtn, (!chatInput.trim() || chatLoading) && styles.sendBtnDisabled]}
+          onPress={sendChat}
+          disabled={!chatInput.trim() || chatLoading}
+        >
+          <IconSymbol name="paperplane.fill" size={18} color="#0A0A0A" />
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+function TicketsTab({ tickets, openCount, isLoading, onNewTicket, onOpenTicket, styles, tabBarHeight }: any) {
+  return (
+    <>
+      <View style={styles.listHeader}>
+        <View>
+          <Text style={styles.listTitle}>Meus Tickets</Text>
+          {openCount > 0 && (
+            <Text style={styles.listSub}>{openCount} ticket{openCount > 1 ? "s" : ""} em aberto</Text>
+          )}
+        </View>
+        <TouchableOpacity style={styles.newBtn} onPress={onNewTicket} activeOpacity={0.8}>
+          <IconSymbol name="plus" size={16} color="#0A0A0A" />
+          <Text style={styles.newBtnText}>Novo Ticket</Text>
+        </TouchableOpacity>
+      </View>
+      {isLoading ? (
+        <View style={styles.centered}><ActivityIndicator color="#C9A84C" /></View>
+      ) : tickets.length === 0 ? (
+        <View style={styles.emptyState}>
+          <IconSymbol name="questionmark.circle.fill" size={48} color="#333" />
+          <Text style={styles.emptyTitle}>Nenhum ticket ainda</Text>
+          <Text style={styles.emptySub}>Abra um ticket para falar com nosso suporte.</Text>
+          <TouchableOpacity style={styles.newBtn} onPress={onNewTicket} activeOpacity={0.8}>
+            <IconSymbol name="plus" size={16} color="#0A0A0A" />
+            <Text style={styles.newBtnText}>Abrir Ticket</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={tickets}
+          keyExtractor={(item: any) => String(item.id)}
+          contentContainerStyle={{ padding: 16, paddingBottom: tabBarHeight + 16 }}
+          renderItem={({ item }: any) => {
+            const status = item.status as TicketStatus;
+            const color = STATUS_COLORS[status] ?? "#888";
+            const hasNew = status === "answered";
+            return (
+              <TouchableOpacity
+                style={[styles.ticketCard, hasNew && styles.ticketCardHighlight]}
+                onPress={() => onOpenTicket(item.id)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.ticketCardTop}>
+                  <Text style={styles.ticketTitle} numberOfLines={1}>{item.title}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: color + "22", borderColor: color + "44" }]}>
+                    <Text style={[styles.statusText, { color }]}>{STATUS_LABELS[status] ?? status}</Text>
+                  </View>
+                </View>
+                <View style={styles.ticketCardMeta}>
+                  <Text style={styles.ticketMeta}>
+                    {CATEGORIES.find((c: any) => c.value === item.category)?.label ?? item.category}
+                  </Text>
+                  <Text style={styles.ticketMeta}>
+                    {new Date(item.updatedAt).toLocaleDateString("pt-BR")}
+                  </Text>
+                </View>
+                {hasNew && (
+                  <View style={styles.newResponseBadge}>
+                    <Text style={styles.newResponseText}>Nova resposta</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      )}
+    </>
+  );
+}
+
 
 export default function SuporteScreen() {
   const colors = useColors();
@@ -219,74 +497,56 @@ export default function SuporteScreen() {
     return (
       <ScreenContainer containerClassName="bg-background">
         <AdminHeader title="Suporte" />
-        <View style={styles.listHeader}>
-          <View>
-            <Text style={styles.listTitle}>Meus Tickets</Text>
-            {openCount > 0 && (
-              <Text style={styles.listSub}>{openCount} ticket{openCount > 1 ? "s" : ""} em aberto</Text>
-            )}
-          </View>
-          <TouchableOpacity
-            style={styles.newBtn}
-            onPress={() => setView("new")}
-            activeOpacity={0.8}
-          >
-            <IconSymbol name="plus" size={16} color="#0A0A0A" />
-            <Text style={styles.newBtnText}>Novo Ticket</Text>
-          </TouchableOpacity>
+
+        {/* ── Abas ───────────────────────────────────────────────────── */}
+        <View style={styles.tabBar}>
+          {([
+            { key: "tutoriais", label: "📚 Tutoriais" },
+            { key: "ia",        label: "🤖 IA" },
+            { key: "tickets",   label: openCount > 0 ? `🎫 Tickets (${openCount})` : "🎫 Tickets" },
+          ] as const).map(tab => (
+            <Pressable
+              key={tab.key}
+              style={[styles.tabBtn, activeTab === tab.key && styles.tabBtnActive]}
+              onPress={() => setActiveTab(tab.key)}
+            >
+              <Text style={[styles.tabBtnText, activeTab === tab.key && styles.tabBtnTextActive]}>
+                {tab.label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
-        {ticketsQuery.isLoading ? (
-          <View style={styles.centered}>
-            <ActivityIndicator color="#C9A84C" />
-          </View>
-        ) : tickets.length === 0 ? (
-          <View style={styles.emptyState}>
-            <IconSymbol name="questionmark.circle.fill" size={48} color="#333" />
-            <Text style={styles.emptyTitle}>Nenhum ticket ainda</Text>
-            <Text style={styles.emptySub}>Abra um ticket para falar com nosso suporte.</Text>
-            <TouchableOpacity style={styles.newBtn} onPress={() => setView("new")} activeOpacity={0.8}>
-              <IconSymbol name="plus" size={16} color="#0A0A0A" />
-              <Text style={styles.newBtnText}>Abrir Ticket</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <FlatList
-            data={tickets}
-            keyExtractor={(item) => String(item.id)}
-            contentContainerStyle={{ padding: 16, paddingBottom: tabBarHeight + 16 }}
-            renderItem={({ item }) => {
-              const status = item.status as TicketStatus;
-              const color = STATUS_COLORS[status] ?? "#888";
-              const hasNew = status === "answered";
-              return (
-                <TouchableOpacity
-                  style={[styles.ticketCard, hasNew && styles.ticketCardHighlight]}
-                  onPress={() => handleOpenTicket(item.id)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.ticketCardTop}>
-                    <Text style={styles.ticketTitle} numberOfLines={1}>{item.title}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: color + "22", borderColor: color + "44" }]}>
-                      <Text style={[styles.statusText, { color }]}>{STATUS_LABELS[status] ?? status}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.ticketCardMeta}>
-                    <Text style={styles.ticketMeta}>
-                      {CATEGORIES.find(c => c.value === item.category)?.label ?? item.category}
-                    </Text>
-                    <Text style={styles.ticketMeta}>
-                      {new Date(item.updatedAt).toLocaleDateString("pt-BR")}
-                    </Text>
-                  </View>
-                  {hasNew && (
-                    <View style={styles.newResponseBadge}>
-                      <Text style={styles.newResponseText}>Nova resposta</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            }}
+        {/* ── Tutoriais ───────────────────────────────────────────────── */}
+        {activeTab === "tutoriais" && (
+          <TutoriaisTab colors={colors} styles={styles} tabBarHeight={tabBarHeight} />
+        )}
+
+        {/* ── IA Chat ─────────────────────────────────────────────────── */}
+        {activeTab === "ia" && (
+          <IATab
+            chatMessages={chatMessages}
+            chatInput={chatInput}
+            setChatInput={setChatInput}
+            chatLoading={chatLoading}
+            sendChat={sendChat}
+            chatScrollRef={chatScrollRef}
+            colors={colors}
+            styles={styles}
+            tabBarHeight={tabBarHeight}
+          />
+        )}
+
+        {/* ── Tickets ─────────────────────────────────────────────────── */}
+        {activeTab === "tickets" && (
+          <TicketsTab
+            tickets={tickets}
+            openCount={openCount}
+            isLoading={ticketsQuery.isLoading}
+            onNewTicket={() => setView("new")}
+            onOpenTicket={handleOpenTicket}
+            styles={styles}
+            tabBarHeight={tabBarHeight}
           />
         )}
       </ScreenContainer>
@@ -539,6 +799,55 @@ export default function SuporteScreen() {
 function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
   return StyleSheet.create({
   centered: { flex: 1, alignItems: "center", justifyContent: "center" },
+
+  // ── Abas ─────────────────────────────────────────────────────────────────
+  tabBar: {
+    flexDirection: "row", paddingHorizontal: 16, paddingVertical: 10, gap: 8,
+    borderBottomWidth: 1, borderBottomColor: "#1A1A1A",
+  },
+  tabBtn: {
+    flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: "center",
+    backgroundColor: "#141414", borderWidth: 1, borderColor: "#2A2A2A",
+  },
+  tabBtnActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C44" },
+  tabBtnText: { fontSize: 12, color: "#666", fontWeight: "600" },
+  tabBtnTextActive: { color: "#C9A84C" },
+
+  // ── Tutoriais ─────────────────────────────────────────────────────────────
+  tutorialSectionTitle: { fontSize: 20, fontWeight: "800", color: "#F0EEE8", marginBottom: 4 },
+  tutorialSectionDesc: { fontSize: 13, color: "#666", marginBottom: 20 },
+  tutorialCard: {
+    backgroundColor: "#141414", borderRadius: 14, marginBottom: 10,
+    borderWidth: 1, borderColor: "#2A2A2A", overflow: "hidden",
+  },
+  tutorialHeader: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  tutorialIconBox: { width: 46, height: 46, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  tutorialIcon: { fontSize: 22 },
+  tutorialTitle: { fontSize: 14, fontWeight: "700", color: "#F0EEE8", marginBottom: 2 },
+  tutorialDesc: { fontSize: 12, color: "#666", lineHeight: 16 },
+  tutorialChevron: { padding: 4 },
+  tutorialChevronOpen: { transform: [{ rotate: "180deg" }] },
+  tutorialDivider: { height: 1, marginHorizontal: 14, marginBottom: 14 },
+  tutorialSteps: { paddingHorizontal: 14, paddingBottom: 16 },
+  stepRow: { flexDirection: "row", gap: 12, marginBottom: 14 },
+  stepNum: {
+    width: 28, height: 28, borderRadius: 14, borderWidth: 1,
+    alignItems: "center", justifyContent: "center", marginTop: 1, flexShrink: 0,
+  },
+  stepNumText: { fontSize: 13, fontWeight: "800" },
+  stepTitle: { fontSize: 14, fontWeight: "700", color: "#F0EEE8", marginBottom: 3 },
+  stepDesc: { fontSize: 13, color: "#AAAAAA", lineHeight: 19 },
+  stepTip: {
+    marginTop: 6, backgroundColor: "#C9A84C11", borderRadius: 8,
+    padding: 8, borderLeftWidth: 3, borderLeftColor: "#C9A84C",
+  },
+  stepTipText: { fontSize: 12, color: "#C9A84C", lineHeight: 17 },
+  helpCard: {
+    backgroundColor: "#0F1A0F", borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: "#22C55E33",
+  },
+  helpTitle: { fontSize: 15, fontWeight: "700", color: "#22C55E", marginBottom: 6 },
+  helpDesc: { fontSize: 13, color: "#9CA3AF", lineHeight: 19 },
 
   listHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
