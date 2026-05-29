@@ -6,7 +6,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 
 const ND = Platform.OS !== "web";
 
-export default function HomeScreen() {
+export default function BarberProHomeScreen() {
   const router = useRouter();
 
   const logoScale = useRef(new Animated.Value(0.6)).current;
