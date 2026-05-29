@@ -35,6 +35,7 @@ config.resolver = {
 const nativeWindConfig = withNativeWind(config, {
   input: "./global.css",
   forceWriteFileSystem: true,
+  configPath: "./tailwind.config.cjs",
 });
 
 // Wrap the resolver AFTER withNativeWind to intercept css-interop's resolution
