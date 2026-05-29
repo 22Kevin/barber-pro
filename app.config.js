@@ -1,24 +1,23 @@
-import type { ExpoConfig } from "expo/config";
-
-// Bundle ID definitivo para as lojas (Google Play e App Store)
-// Domínio: usebarberpro.com
 const bundleId = "com.usebarberpro.app";
 const appScheme = "usebarberpro";
 
 const env = {
   appName: "Barber Pro",
   appSlug: "barber_app",
-  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/CHUXnjOFayrIGRtV.png",
   scheme: appScheme,
   iosBundleId: bundleId,
   androidPackage: bundleId,
-  // Google Sign-In credentials (configure via Secrets panel)
   googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "",
   googleIosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "",
   googleIosUrlScheme: process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME ?? "",
 };
 
-const config: ExpoConfig = {
+const googleSignInPlugin = env.googleIosUrlScheme
+  ? [["@react-native-google-signin/google-signin", { iosUrlScheme: env.googleIosUrlScheme }]]
+  : [];
+
+/** @type {import('expo/config').ExpoConfig} */
+const config = {
   name: env.appName,
   slug: env.appSlug,
   version: "1.0.0",
@@ -61,10 +60,9 @@ const config: ExpoConfig = {
     bundler: "metro",
     output: "static",
     favicon: "./assets/images/favicon.png",
-    // PWA configuration
     name: "Barber Pro",
     shortName: "Barber Pro",
-    description: "Sistema completo de gestão para barbearias: agendamentos, financeiro, estoque e muito mais.",
+    description: "Sistema completo de gestão para barbearias.",
     themeColor: "#C9A84C",
     backgroundColor: "#0A0A0A",
     lang: "pt-BR",
@@ -78,8 +76,8 @@ const config: ExpoConfig = {
     [
       "expo-location",
       {
-        "locationWhenInUsePermission": "Permitir que o Barber Pro acesse sua localização para encontrar barbearias próximas."
-      }
+        locationWhenInUsePermission: "Permitir que o Barber Pro acesse sua localização para encontrar barbearias próximas.",
+      },
     ],
     ["expo-audio", { microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone." }],
     ["expo-video", { supportsBackgroundPlayback: true, supportsPictureInPicture: true }],
@@ -94,12 +92,9 @@ const config: ExpoConfig = {
       },
     ],
     ["expo-build-properties", { android: { buildArchs: ["armeabi-v7a", "arm64-v8a"] } }],
-    // Google Sign-In (requires native build — does not work in Expo Go)
-    ...(env.googleIosUrlScheme
-      ? [["@react-native-google-signin/google-signin", { iosUrlScheme: env.googleIosUrlScheme }] as [string, any]]
-      : []),
+    ...googleSignInPlugin,
   ],
   experiments: { typedRoutes: true, reactCompiler: false },
 };
 
-export default config;
+module.exports = config;
