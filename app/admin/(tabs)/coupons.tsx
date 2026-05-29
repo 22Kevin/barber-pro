@@ -81,7 +81,7 @@ export default function CouponsScreen() {
           <Text style={{ fontSize: 13, fontWeight: "700", color: "#0A0A0A" }}>{showForm ? "Cancelar" : "+ Novo"}</Text>
         </Pressable>
       } />
-      <ScrollView
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >

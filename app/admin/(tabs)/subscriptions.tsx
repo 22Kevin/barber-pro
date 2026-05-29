@@ -67,7 +67,7 @@ export default function SubscriptionsScreen() {
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader title="Assinaturas" />
-      <ScrollView
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
