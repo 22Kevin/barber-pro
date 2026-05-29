@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { DashboardSkeleton } from "@/components/skeleton";
 import {
   ActivityIndicator,
   FlatList,
@@ -108,9 +109,14 @@ export default function DashboardScreen() {
   const showTrialBanner = tenant?.status === "trial" && trialDaysLeft !== null && trialDaysLeft <= 14;
   const planLabel = tenant?.plan === "team" ? "Equipe" : tenant?.plan === "studio" ? "Estúdio" : "Solo";
 
+  const isLoadingInitial = statsQuery.isLoading && !statsQuery.data;
+
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader title="Dashboard" />
+      {isLoadingInitial ? (
+        <DashboardSkeleton />
+      ) : (
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
@@ -306,6 +312,7 @@ export default function DashboardScreen() {
 
         <View style={{ height: tabBarHeight }} />
       </ScrollView>
+      )}
     </ScreenContainer>
   );
 }

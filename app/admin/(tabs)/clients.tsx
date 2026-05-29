@@ -1,4 +1,6 @@
 import { hapticSuccess, hapticError } from "@/lib/haptics";
+import { toast } from "@/components/toast";
+import { ClientListSkeleton } from "@/components/skeleton";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -223,7 +225,7 @@ export default function ClientsScreen() {
 
       {/* Lista */}
       {clientsQuery.isLoading ? (
-        <ActivityIndicator color="#C9A84C" style={{ marginTop: 40 }} />
+        <ClientListSkeleton />
       ) : (
         <FlatList
           data={clients}

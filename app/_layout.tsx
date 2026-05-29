@@ -2,6 +2,7 @@ import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { NetworkBanner } from "@/components/network-banner";
+import { ToastProvider } from "@/components/toast";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -144,6 +145,7 @@ export default function RootLayout() {
       <SafeAreaProvider initialMetrics={providerInitialMetrics}>
         {content}
         <NetworkBanner />
+        <ToastProvider />
       </SafeAreaProvider>
     </ThemeProvider>
   );

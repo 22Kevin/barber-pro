@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { hapticSuccess, hapticError, hapticMedium, hapticLight } from "@/lib/haptics";
+import { toast } from "@/components/toast";
 import {
   ActivityIndicator,
   Alert,
@@ -262,8 +263,7 @@ export default function AgendaScreen() {
       }
 
       closeNewModal();
-
-      if (result?.requiresApproval) {
+      toast.success("Agendamento criado com sucesso!");      if (result?.requiresApproval) {
         // Agendamento ultrapassa horário de fechamento — informa o barbeiro
         const endHHMM = addMinutes(selectedTime, totalDuration).substring(0, 5);
         const closeHHMM = (result.closingTime ?? "").substring(0, 5);
