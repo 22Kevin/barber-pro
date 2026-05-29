@@ -7,12 +7,14 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  RefreshControl,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { DatePickerModal } from "@/components/date-picker-modal";
@@ -88,6 +90,12 @@ export default function ClientsScreen() {
   const [lgpdConsent, setLgpdConsent] = useState(false);
 
   const utils = trpc.useUtils();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await utils.clients.list.invalidate();
+    setRefreshing(false);
+  };
   const clientsQuery = trpc.clients.list.useQuery({ tenantId });
   const exportQuery = trpc.export.clientsCsv.useQuery(
     { tenantId },
@@ -220,6 +228,7 @@ export default function ClientsScreen() {
           data={clients}
           keyExtractor={item => String(item.id)}
           contentContainerStyle={{ padding: 16, paddingTop: 4, paddingBottom: tabBarHeight }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A84C" colors={["#C9A84C"]} />}
           ListEmptyComponent={
             <View style={styles.emptyCard}>
               <IconSymbol name="person.2.fill" size={40} color="#2A2A2A" />

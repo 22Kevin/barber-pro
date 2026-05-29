@@ -10,6 +10,7 @@ import {
   Text,
   TextInput,
   View,
+  RefreshControl,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
@@ -281,6 +282,7 @@ export default function CommissionsScreen() {
             <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
           ) : (
             <FlatList
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A84C" colors={["#C9A84C"]} />}
               data={configs}
               keyExtractor={(c) => String(c.id)}
               contentContainerStyle={{ paddingTop: 12, paddingBottom: 40 }}

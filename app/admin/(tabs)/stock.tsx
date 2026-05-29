@@ -10,6 +10,7 @@ import {
   Text,
   TextInput,
   View,
+  RefreshControl,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
@@ -42,6 +43,8 @@ export default function StockScreen() {
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
   const utils = trpc.useUtils();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => { setRefreshing(true); await utils.invalidate(); setRefreshing(false); };
 
   const exportStockQuery = trpc.export.estoqueCsv.useQuery(
     { tenantId },
@@ -441,6 +444,7 @@ export default function StockScreen() {
               </Text>
             ) : (
               <FlatList
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A84C" colors={["#C9A84C"]} />}
                 data={movementsQuery.data ?? []}
                 keyExtractor={(item) => String(item.id)}
                 style={{ maxHeight: 300 }}

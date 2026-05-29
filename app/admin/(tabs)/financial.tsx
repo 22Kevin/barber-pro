@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   View,
+  RefreshControl,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -79,6 +80,8 @@ export default function FinancialScreen() {
 
   const range = getMonthRange(monthOffset);
   const utils = trpc.useUtils();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => { setRefreshing(true); await utils.invalidate(); setRefreshing(false); };
 
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
   const productsQuery = trpc.products.list.useQuery({ activeOnly: true, tenantId });

@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   View,
+  RefreshControl,
 } from "react-native";
 import Svg, { Rect, Line, Text as SvgText, G } from "react-native-svg";
 import { ScreenContainer } from "@/components/screen-container";
@@ -722,7 +723,7 @@ export default function ReportsScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background">
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A84C" colors={["#C9A84C"]} />}>
         {/* Header */}
         <AdminHeader title="Relatórios" />
 

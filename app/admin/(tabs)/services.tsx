@@ -13,6 +13,7 @@ import {
   Text,
   TextInput,
   View,
+  RefreshControl,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -58,6 +59,8 @@ export default function ServicesScreen() {
   const [showDurationPicker, setShowDurationPicker] = useState(false);
 
   const utils = trpc.useUtils();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => { setRefreshing(true); await utils.invalidate(); setRefreshing(false); };
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: false, tenantId });
   const createMutation = trpc.services.create.useMutation({
     onSuccess: (newId) => {
@@ -153,6 +156,7 @@ export default function ServicesScreen() {
         <ActivityIndicator color="#C9A84C" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A84C" colors={["#C9A84C"]} />}
           data={services}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={{ padding: 16, paddingTop: 8, paddingBottom: tabBarHeight }}

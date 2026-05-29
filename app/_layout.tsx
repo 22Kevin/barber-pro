@@ -1,8 +1,12 @@
 import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+// Keep splash screen visible while fonts/resources load
+SplashScreen.preventAutoHideAsync().catch(() => {});
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { Platform } from "react-native";
@@ -33,6 +37,15 @@ export default function RootLayout() {
 
   const [insets, setInsets] = useState<EdgeInsets>(initialInsets);
   const [frame, setFrame] = useState<Rect>(initialFrame);
+  const [appReady, setAppReady] = useState(false);
+
+  // Hide splash screen once layout is ready
+  useEffect(() => {
+    if (!appReady) {
+      setAppReady(true);
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [appReady]);
 
   // Initialize Manus runtime for cookie injection from parent container
   useEffect(() => {

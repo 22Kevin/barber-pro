@@ -14,6 +14,7 @@ import {
   Text,
   TextInput,
   View,
+  RefreshControl,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -78,6 +79,8 @@ export default function ProductsScreen() {
   const [savedProductId, setSavedProductId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => { setRefreshing(true); await utils.invalidate(); setRefreshing(false); };
 
   const movementsQuery = trpc.stock.movements.useQuery(
     { productId: historyProduct?.id ?? 0 },
@@ -304,6 +307,7 @@ export default function ProductsScreen() {
         <ActivityIndicator color="#C9A84C" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A84C" colors={["#C9A84C"]} />}
           data={products}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={{ padding: 16, paddingTop: 8, paddingBottom: tabBarHeight }}
@@ -508,6 +512,7 @@ export default function ProductsScreen() {
               </View>
             ) : (
               <FlatList
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A84C" colors={["#C9A84C"]} />}
                 data={movements}
                 keyExtractor={(m: any) => String(m.id)}
                 showsVerticalScrollIndicator={false}
