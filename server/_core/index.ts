@@ -1382,7 +1382,7 @@ async function startServer() {
 
   // ─── Rotas /:slug — usebarberpro.com/:slug serve a página pública de cada barbearia ───
   // Slugs de sistema reservados (não são barbearias)
-  const SYSTEM_PATHS = new Set(["api", "admin", "superadmin", "pub", "pub-api", "landing", "status", "marketplace", "internal", "app", "www", "_next", "static", "assets", "favicon.ico"]);
+  const SYSTEM_PATHS = new Set(["api", "admin", "superadmin", "pub", "pub-api", "landing", "status", "marketplace", "internal", "app", "www", "_next", "static", "assets", "favicon.ico", "privacidade"]);
 
   // GET /:slug → página principal da barbearia
   // GET /:slug → página principal da barbearia

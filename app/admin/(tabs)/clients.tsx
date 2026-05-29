@@ -1,3 +1,4 @@
+import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -121,12 +122,12 @@ export default function ClientsScreen() {
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: false });
 
   const createMutation = trpc.clients.create.useMutation({
-    onSuccess: () => { utils.clients.list.invalidate(); closeModal(); },
+    onSuccess: () => { hapticSuccess(); utils.clients.list.invalidate(); closeModal(); },
     onError: (e: any) => Alert.alert("Erro", e.message),
   });
 
   const updateMutation = trpc.clients.update.useMutation({
-    onSuccess: () => { utils.clients.list.invalidate(); closeModal(); },
+    onSuccess: () => { hapticSuccess(); utils.clients.list.invalidate(); closeModal(); },
     onError: (e: any) => Alert.alert("Erro", e.message),
   });
 

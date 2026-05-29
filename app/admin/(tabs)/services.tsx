@@ -1,3 +1,4 @@
+import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -69,15 +70,15 @@ export default function ServicesScreen() {
       if (newId) setSavedServiceId(newId as any);
       else closeModal(); // fallback: fecha o modal se não retornou ID
     },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
   });
   const updateMutation = trpc.services.update.useMutation({
-    onSuccess: () => { utils.services.list.invalidate(); closeModal(); },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onSuccess: () => { hapticSuccess(); utils.services.list.invalidate(); closeModal(); },
+    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
   });
   const deleteMutation = trpc.services.delete.useMutation({
     onSuccess: () => utils.services.list.invalidate(),
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
   });
 
   function openCreate() {

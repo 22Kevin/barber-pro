@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { hapticSuccess, hapticError, hapticMedium, hapticLight } from "@/lib/haptics";
 import {
   ActivityIndicator,
   Alert,
@@ -237,6 +238,7 @@ export default function AgendaScreen() {
 
   const createMutation = trpc.appointments.create.useMutation({
     onSuccess: async (result: any) => {
+      hapticSuccess();
       await Promise.all([
         utils.appointments.byDateRange.invalidate(),
         utils.appointments.allByDateRange.invalidate(),
@@ -278,7 +280,7 @@ export default function AgendaScreen() {
         Alert.alert("Sucesso", "Agendamento criado! O cliente receberá um lembrete 1 hora antes.");
       }
     },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
   });
 
   const approveMutation = trpc.appointments.approveOvertime.useMutation({
@@ -293,7 +295,7 @@ export default function AgendaScreen() {
           : "Agendamento cancelado. O cliente será notificado."
       );
     },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
   });
 
   const updateMutation = trpc.appointments.update.useMutation({
@@ -305,7 +307,7 @@ export default function AgendaScreen() {
       utils.dashboard.stats.invalidate();
       setShowDetailModal(false);
     },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
   });
   const cancelWithReasonMutation = trpc.appointments.cancelWithReason.useMutation({
     onSuccess: () => {
@@ -315,7 +317,7 @@ export default function AgendaScreen() {
       setCancelReason("");
       setCancelApptId(null);
     },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
   });
   function handleCancelWithReason(id: number) {
     setCancelApptId(id);

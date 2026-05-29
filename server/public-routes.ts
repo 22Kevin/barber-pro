@@ -5670,4 +5670,103 @@ export function registerPublicRoutes(app: Express): void {
       next();
     }
   });
+
+  // ─── Política de Privacidade (obrigatório para Play Store / App Store) ──────
+  app.get("/privacidade", (_req: Request, res: Response) => {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Política de Privacidade — Barber Pro</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0A0A0A;color:#E5E5E5;line-height:1.7;padding:24px 16px 64px}
+  .container{max-width:760px;margin:0 auto}
+  h1{font-size:28px;font-weight:800;color:#C9A84C;margin-bottom:8px}
+  .updated{font-size:13px;color:#666;margin-bottom:40px}
+  h2{font-size:18px;font-weight:700;color:#C9A84C;margin:32px 0 12px}
+  p,li{font-size:15px;color:#CCCCCC;margin-bottom:10px}
+  ul{padding-left:20px}
+  a{color:#C9A84C}
+  .logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+  .logo-text{font-size:22px;font-weight:900;color:#C9A84C;letter-spacing:4px}
+  hr{border:none;border-top:1px solid #2A2A2A;margin:32px 0}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">
+    <div class="logo-text">BARBER PRO</div>
+  </div>
+  <h1>Política de Privacidade</h1>
+  <p class="updated">Última atualização: 29 de maio de 2026</p>
+
+  <p>A <strong>Barber Pro</strong> (&ldquo;nós&rdquo;, &ldquo;nosso&rdquo;) opera o aplicativo móvel Barber Pro e o site usebarberpro.com. Esta política descreve como coletamos, usamos e protegemos suas informações.</p>
+
+  <h2>1. Informações que Coletamos</h2>
+  <ul>
+    <li><strong>Dados de conta:</strong> nome, e-mail, telefone e foto de perfil fornecidos no cadastro.</li>
+    <li><strong>Dados de uso:</strong> agendamentos, serviços realizados, histórico de compras e avaliações.</li>
+    <li><strong>Dados do dispositivo:</strong> token de notificação push (apenas com sua autorização), modelo do dispositivo e versão do sistema operacional.</li>
+    <li><strong>Dados de pagamento:</strong> processados pelo Asaas — não armazenamos dados de cartão de crédito.</li>
+  </ul>
+
+  <h2>2. Como Usamos suas Informações</h2>
+  <ul>
+    <li>Criar e gerenciar sua conta e agendamentos.</li>
+    <li>Enviar lembretes de agendamento por WhatsApp, e-mail ou notificação push.</li>
+    <li>Processar pagamentos e emitir cobranças.</li>
+    <li>Melhorar a experiência do aplicativo e resolver problemas técnicos.</li>
+    <li>Cumprir obrigações legais.</li>
+  </ul>
+
+  <h2>3. Compartilhamento de Dados</h2>
+  <p>Não vendemos suas informações pessoais. Compartilhamos dados apenas com:</p>
+  <ul>
+    <li><strong>Barbearias parceiras:</strong> para gerenciar seus agendamentos.</li>
+    <li><strong>Asaas:</strong> processadora de pagamentos, para cobranças e assinaturas.</li>
+    <li><strong>Google:</strong> para autenticação via Google Sign-In (opcional).</li>
+    <li><strong>Autoridades:</strong> quando exigido por lei ou ordem judicial.</li>
+  </ul>
+
+  <h2>4. Armazenamento e Segurança</h2>
+  <p>Seus dados são armazenados em servidores seguros nos Estados Unidos (Railway). Utilizamos HTTPS para todas as comunicações e senhas são armazenadas com hash bcrypt.</p>
+
+  <h2>5. Notificações Push</h2>
+  <p>Enviamos notificações push apenas com sua autorização explícita. Você pode revogar essa permissão nas configurações do seu dispositivo a qualquer momento.</p>
+
+  <h2>6. Seus Direitos (LGPD)</h2>
+  <p>Conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018), você tem direito a:</p>
+  <ul>
+    <li>Acessar, corrigir ou excluir seus dados pessoais.</li>
+    <li>Revogar consentimentos concedidos.</li>
+    <li>Solicitar portabilidade dos seus dados.</li>
+    <li>Ser informado sobre o uso dos seus dados.</li>
+  </ul>
+  <p>Para exercer esses direitos, entre em contato pelo e-mail: <a href="mailto:contato@usebarberpro.com">contato@usebarberpro.com</a></p>
+
+  <h2>7. Retenção de Dados</h2>
+  <p>Mantemos seus dados enquanto sua conta estiver ativa. Após o encerramento da conta, dados pessoais são excluídos em até 90 dias, exceto onde a lei exigir retenção por mais tempo.</p>
+
+  <h2>8. Cookies e Tecnologias Similares</h2>
+  <p>Utilizamos cookies de sessão para manter você autenticado. Não utilizamos cookies de rastreamento ou publicidade.</p>
+
+  <h2>9. Menores de Idade</h2>
+  <p>O Barber Pro não é destinado a menores de 13 anos. Não coletamos intencionalmente dados de crianças.</p>
+
+  <h2>10. Alterações nesta Política</h2>
+  <p>Podemos atualizar esta política periodicamente. Notificaremos sobre mudanças significativas por e-mail ou dentro do aplicativo.</p>
+
+  <h2>11. Contato</h2>
+  <p>Dúvidas sobre esta política: <a href="mailto:contato@usebarberpro.com">contato@usebarberpro.com</a></p>
+  <p>Site: <a href="https://usebarberpro.com">usebarberpro.com</a></p>
+
+  <hr />
+  <p style="font-size:13px;color:#555;text-align:center">Barber Pro &copy; 2026 &mdash; Todos os direitos reservados</p>
+</div>
+</body>
+</html>`);
+  });
 }
