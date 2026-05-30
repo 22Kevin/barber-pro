@@ -4,7 +4,7 @@
  * IMPORTANTE — Nomes de colunas no PostgreSQL:
  *
  * subscription_plans → criada SEM aspas → colunas em minúsculas:
- *   tenantid, isactive, maxservices, maxproducts, suggestedprice, createdat, updatedat
+ *   "tenantId", "isActive", "maxServices", "maxProducts", "suggestedPrice", "createdAt", "updatedAt"
  *
  * subscription_plan_services / subscription_plan_products / client_subscriptions /
  * subscription_appointments → criadas COM aspas → colunas preservadas em camelCase:
@@ -82,8 +82,8 @@ export const subscriptionPlanRouter = router({
           (SELECT COUNT(*) FROM subscription_plan_products WHERE "planId" = sp.id) as "productCount",
           (SELECT COUNT(*) FROM client_subscriptions WHERE "planId" = sp.id AND status = 'active') as "activeSubscribers"
         FROM subscription_plans sp
-        WHERE sp.tenantid = ${tenantId}
-        ORDER BY sp.createdat DESC`
+        WHERE sp."tenantId" = ${tenantId}
+        ORDER BY sp."createdAt" DESC`
       );
 
       if (plans.length === 0) return [];
@@ -95,13 +95,13 @@ export const subscriptionPlanRouter = router({
         name: p.name,
         description: p.description ?? null,
         recurrences: Number(p.recurrences ?? 4),
-        maxServices: Number(p.maxservices ?? 1),
-        maxProducts: Number(p.maxproducts ?? 0),
+        maxServices: Number(p."maxServices" ?? 1),
+        maxProducts: Number(p."maxProducts" ?? 0),
         price: p.price,
-        suggestedPrice: p.suggestedprice ?? null,
-        isActive: p.isactive === true || p.isactive === 1 || p.isactive === "1" || p.isactive === "true",
-        createdAt: p.createdat,
-        updatedAt: p.updatedat,
+        suggestedPrice: p."suggestedPrice" ?? null,
+        isActive: p."isActive" === true || p."isActive" === 1 || p."isActive" === "1" || p."isActive" === "true",
+        createdAt: p."createdAt",
+        updatedAt: p."updatedAt",
         serviceCount: Number(p.serviceCount ?? 0),
         productCount: Number(p.productCount ?? 0),
         activeSubscribers: Number(p.activeSubscribers ?? 0),
@@ -139,7 +139,7 @@ export const subscriptionPlanRouter = router({
     .input(z.object({ id: z.number(), tenantId: z.number() }))
     .query(async ({ input }) => {
       const rows = await selectRaw(
-        `SELECT * FROM subscription_plans WHERE id = ${input.id} AND tenantid = ${input.tenantId}`
+        `SELECT * FROM subscription_plans WHERE id = ${input.id} AND "tenantId" = ${input.tenantId}`
       );
       const p = rows[0];
       if (!p) return null;
@@ -151,13 +151,13 @@ export const subscriptionPlanRouter = router({
         name: p.name,
         description: p.description ?? null,
         recurrences: Number(p.recurrences ?? 4),
-        maxServices: Number(p.maxservices ?? 1),
-        maxProducts: Number(p.maxproducts ?? 0),
+        maxServices: Number(p."maxServices" ?? 1),
+        maxProducts: Number(p."maxProducts" ?? 0),
         price: p.price,
-        suggestedPrice: p.suggestedprice ?? null,
-        isActive: p.isactive === true || p.isactive === 1 || p.isactive === "1" || p.isactive === "true",
-        createdAt: p.createdat,
-        updatedAt: p.updatedat,
+        suggestedPrice: p."suggestedPrice" ?? null,
+        isActive: p."isActive" === true || p."isActive" === 1 || p."isActive" === "1" || p."isActive" === "true",
+        createdAt: p."createdAt",
+        updatedAt: p."updatedAt",
         services: [] as any[],
         products: [] as any[],
       };
@@ -193,7 +193,7 @@ export const subscriptionPlanRouter = router({
     .mutation(async ({ input }) => {
       // subscription_plans: colunas minúsculas, usar RETURNING id para PostgreSQL
       const planId = await insertReturningId(sql`
-        INSERT INTO subscription_plans (tenantid, name, description, recurrences, maxservices, maxproducts, price, suggestedprice)
+        INSERT INTO subscription_plans ("tenantId", name, description, recurrences, "maxServices", "maxProducts", price, "suggestedPrice")
         VALUES (
           ${input.tenantId}, ${input.name}, ${input.description ?? null},
           ${input.recurrences}, ${input.maxServices}, ${input.maxProducts},
@@ -241,10 +241,10 @@ export const subscriptionPlanRouter = router({
       await mutateSql(sql`
         UPDATE subscription_plans
         SET name=${input.name}, description=${input.description ?? null},
-            recurrences=${input.recurrences}, maxservices=${input.maxServices},
-            maxproducts=${input.maxProducts}, price=${input.price},
-            suggestedprice=${input.suggestedPrice ?? null}, isactive=${isActiveVal},
-            updatedat=NOW()
+            recurrences=${input.recurrences}, "maxServices"=${input.maxServices},
+            "maxProducts"=${input.maxProducts}, price=${input.price},
+            "suggestedPrice"=${input.suggestedPrice ?? null}, "isActive"=${isActiveVal},
+            "updatedAt"=NOW()
         WHERE id=${input.id} AND tenantid=${input.tenantId}
       `);
 
@@ -292,7 +292,7 @@ export const subscriptionPlanRouter = router({
     .mutation(async ({ input }) => {
       // subscription_plans: colunas minúsculas
       await mutateSql(sql`
-        UPDATE subscription_plans SET isactive=${input.isActive}, updatedat=NOW()
+        UPDATE subscription_plans SET "isActive"=${input.isActive}, "updatedAt"=NOW()
         WHERE id=${input.id} AND tenantid=${input.tenantId}
       `);
       return { ok: true };
@@ -341,7 +341,7 @@ export const subscriptionPlanRouter = router({
       const rows = await selectSql(sql`
         SELECT cs.*,
           sp.name as "planName", sp.recurrences as "planRecurrences",
-          sp.maxservices as "maxServices", sp.maxproducts as "maxProducts",
+          sp."maxServices" as "maxServices", sp."maxProducts" as "maxProducts",
           c.name as "clientName", c.phone as "clientPhone", c.email as "clientEmail",
           b.name as "barberName"
         FROM client_subscriptions cs
@@ -486,7 +486,7 @@ export const subscriptionPlanRouter = router({
       `);
       // subscription_plans: colunas minúsculas
       const plansRows = await selectSql(sql`
-        SELECT COUNT(*) as cnt FROM subscription_plans WHERE tenantid=${input.tenantId} AND isactive=true
+        SELECT COUNT(*) as cnt FROM subscription_plans WHERE "tenantId"=${input.tenantId} AND "isActive"=true
       `);
 
       const active = activeRows[0] ?? {};
@@ -513,10 +513,10 @@ export const subscriptionPlanRouter = router({
       // subscription_plans: colunas minúsculas com alias camelCase
       const plans = await selectSql(sql`
         SELECT id, name, description, recurrences,
-          maxservices as "maxServices", maxproducts as "maxProducts",
-          price, suggestedprice as "suggestedPrice"
+          "maxServices" as "maxServices", "maxProducts" as "maxProducts",
+          price, "suggestedPrice" as "suggestedPrice"
         FROM subscription_plans
-        WHERE tenantid=${input.tenantId} AND isactive=true
+        WHERE "tenantId"=${input.tenantId} AND "isActive"=true
         ORDER BY price ASC
       `);
 
