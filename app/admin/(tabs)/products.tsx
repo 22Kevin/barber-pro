@@ -307,6 +307,7 @@ export default function ProductsScreen() {
         <ActivityIndicator color="#C9A84C" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
+          style={{ flex: 1 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A84C" colors={["#C9A84C"]} />}
           data={products}
           keyExtractor={(item) => String(item.id)}

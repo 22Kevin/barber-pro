@@ -737,6 +737,24 @@ export async function getAllAppointmentsByDateRange(barberId: number, startDate:
     .orderBy(appointments.date, appointments.startTime);
 }
 
+export async function getAllAppointmentsByDateRangeFullForTenant(startDate: string, endDate: string, tenantId?: number | null) {
+  const db = await getDb();
+  if (!db) return [];
+  if (tenantId == null) return [];
+  return db
+    .select(appointmentFields)
+    .from(appointments)
+    .leftJoin(services, eq(appointments.serviceId, services.id))
+    .leftJoin(clients, eq(appointments.clientId, clients.id))
+    .innerJoin(barbers, eq(appointments.barberId, barbers.id))
+    .where(and(
+      gte(appointments.date, startDate),
+      lte(appointments.date, endDate),
+      eq(barbers.tenantId, tenantId)
+    ))
+    .orderBy(appointments.date, appointments.startTime);
+}
+
 export async function getAllAppointmentsByDateRangeForTenant(startDate: string, endDate: string, tenantId?: number | null) {
   const db = await getDb();
   if (!db) return [] as string[];
