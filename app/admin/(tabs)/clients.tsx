@@ -290,6 +290,7 @@ export default function ClientsScreen() {
                 </Pressable>
               </View>
             </Pressable>
+            </Swipeable>
           )}
         />
       )}
