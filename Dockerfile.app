@@ -16,12 +16,12 @@ COPY lib/ ./lib/
 COPY global.css ./
 COPY metro.config.js ./
 COPY metro.config.cjs ./
-COPY babel.config.js ./
-COPY app.config.ts ./
+COPY babel.config.cjs ./
+COPY app.config.js ./
 COPY tsconfig.json ./
 COPY scripts/ ./scripts/
-COPY tailwind.config.js ./
-COPY theme.config.js ./
+COPY tailwind.config.cjs ./
+COPY theme.config.cjs ./
 COPY theme.config.d.ts* ./
 COPY shared/ ./shared/
 
