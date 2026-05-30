@@ -45,7 +45,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 function dateToString(d: Date) {
-  return d.toISOString().split("T")[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function addMinutes(time: string, minutes: number) {
@@ -240,10 +243,16 @@ export default function AgendaScreen() {
   const createMutation = trpc.appointments.create.useMutation({
     onSuccess: async (result: any) => {
       hapticSuccess();
+      // Invalidar E buscar imediatamente — não aguarda re-render
       await Promise.all([
         utils.appointments.byDateRange.invalidate(),
         utils.appointments.allByDateRange.invalidate(),
         utils.dashboard.stats.invalidate(),
+      ]);
+      // Refetch explícito para garantir atualização imediata na UI
+      await Promise.all([
+        appointmentsByMonthQuery.refetch(),
+        allAppointmentsByMonthQuery.refetch(),
       ]);
 
       const apptId = result?.apptId ?? result;
