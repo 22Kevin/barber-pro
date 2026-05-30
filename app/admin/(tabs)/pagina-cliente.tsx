@@ -677,11 +677,17 @@ export default function PaginaClienteScreen() {
                   <Text style={[styles.qrActionBtnText, { color: "#C9A84C" }]}>Baixar QR Code</Text>
                 </Pressable>
                 <Pressable
-                  style={({ pressed }) => [styles.qrActionBtn, { borderColor: colors.border, backgroundColor: colors.background }, pressed && { opacity: 0.75 }]}
-                  onPress={() => handleCopy(publicUrl, "Link da página")}
+                  style={({ pressed }) => [styles.qrActionBtn, { borderColor: "#25D36644", backgroundColor: "#25D36618" }, pressed && { opacity: 0.75 }]}
+                  onPress={async () => {
+                    const shopName = barber?.name ?? "nossa barbearia";
+                    const msg = `✂️ Agende agora na ${shopName}!\n\n👇 Acesse pelo link ou QR Code:\n${publicUrl}\n\n📲 É rápido, fácil e sem precisar ligar!`;
+                    try {
+                      await Share.share({ message: msg, title: `Agendar em ${shopName}` });
+                    } catch {}
+                  }}
                 >
-                  <IconSymbol name="doc.on.doc" size={16} color={colors.muted} />
-                  <Text style={[styles.qrActionBtnText, { color: colors.muted }]}>Copiar link</Text>
+                  <Text style={{ fontSize: 14 }}>💬</Text>
+                  <Text style={[styles.qrActionBtnText, { color: "#25D366" }]}>Enviar no WhatsApp</Text>
                 </Pressable>
               </View>
             </View>
