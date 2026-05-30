@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { EmptyState } from "@/components/empty-state";
 import { hapticSuccess, hapticError, hapticMedium, hapticLight } from "@/lib/haptics";
 import { toast } from "@/components/toast";
 import {
@@ -988,7 +989,10 @@ export default function AgendaScreen() {
                   disabled={createMutation.isPending}
                 >
                   {createMutation.isPending ? (
-                    <ActivityIndicator color="#0A0A0A" />
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <ActivityIndicator color="#0A0A0A" size="small" />
+                      <Text style={styles.saveBtnText}>Salvando...</Text>
+                    </View>
                   ) : (
                     <Text style={styles.saveBtnText}>CONFIRMAR AGENDAMENTO</Text>
                   )}

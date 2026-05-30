@@ -2,6 +2,7 @@ import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { toast } from "@/components/toast";
 import { ClientListSkeleton } from "@/components/skeleton";
 import { useState } from "react";
+import { Swipeable } from "react-native-gesture-handler";
 import {
   ActivityIndicator,
   Alert,
@@ -238,6 +239,26 @@ export default function ClientsScreen() {
             </View>
           }
           renderItem={({ item }) => (
+            <Swipeable
+              renderRightActions={() => (
+                <View style={styles.swipeActions}>
+                  <Pressable
+                    style={[styles.swipeBtn, { backgroundColor: "#25D366" }]}
+                    onPress={() => handleWhatsApp(item.phone, item.name)}
+                  >
+                    <Text style={styles.swipeBtnIcon}>💬</Text>
+                    <Text style={styles.swipeBtnText}>WhatsApp</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.swipeBtn, { backgroundColor: "#C9A84C22", borderWidth: 1, borderColor: "#C9A84C44" }]}
+                    onPress={() => openEdit(item)}
+                  >
+                    <IconSymbol name="pencil" size={20} color="#C9A84C" />
+                    <Text style={[styles.swipeBtnText, { color: "#C9A84C" }]}>Editar</Text>
+                  </Pressable>
+                </View>
+              )}
+            >
             <Pressable
               style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}
               onPress={() => openDetail(item)}
@@ -549,6 +570,10 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   cardRight: { alignItems: "flex-end", gap: 8 },
   pointsBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#C9A84C22", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   pointsText: { fontSize: 12, color: "#C9A84C", fontWeight: "600" },
+  swipeActions: { flexDirection: "row", alignItems: "center", paddingLeft: 8, gap: 6, paddingVertical: 4 },
+  swipeBtn: { width: 72, borderRadius: 12, alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 10 },
+  swipeBtnIcon: { fontSize: 20 },
+  swipeBtnText: { fontSize: 10, color: "#fff", fontWeight: "700" },
   editBtn: { padding: 4 },
   // Birthday panel
   birthdaySectionTitle: { fontSize: 14, fontWeight: "700", color: c.muted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 },

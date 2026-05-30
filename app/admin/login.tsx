@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Animated } from "react-native";
 import {
   ActivityIndicator, Alert, Image, KeyboardAvoidingView,
   Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
@@ -158,7 +159,14 @@ export default function AdminLoginScreen() {
 
             {/* Botão Entrar */}
             <Pressable style={({ pressed }) => [styles.btn, pressed && { opacity: 0.85 }]} onPress={handleLogin} disabled={isLoading}>
-              {loginMutation.isPending ? <ActivityIndicator color={BG} /> : <Text style={styles.btnText}>Entrar no Painel</Text>}
+              {loginMutation.isPending ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <ActivityIndicator color={BG} size="small" />
+                <Text style={styles.btnText}>Entrando...</Text>
+              </View>
+            ) : (
+              <Text style={styles.btnText}>Entrar no Painel</Text>
+            )}
             </Pressable>
 
             {/* Divisor */}
@@ -200,8 +208,8 @@ export default function AdminLoginScreen() {
 const styles = StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: "center", padding: 24, backgroundColor: BG },
   logoArea: { alignItems: "center", marginBottom: 36 },
-  logoRing: { width: 100, height: 100, borderRadius: 26, borderWidth: 2, borderColor: GOLD + "44", backgroundColor: SURFACE, alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  logo: { width: 72, height: 72, borderRadius: 18 },
+  logoRing: { width: 104, height: 104, borderRadius: 52, borderWidth: 2, borderColor: GOLD + '55', backgroundColor: SURFACE, alignItems: 'center', justifyContent: 'center', marginBottom: 16, shadowColor: GOLD, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8 },
+  logo: { width: 88, height: 88, borderRadius: 44 },
   brand: { fontSize: 26, fontWeight: "900", color: GOLD, letterSpacing: 5, marginBottom: 4 },
   brandSub: { fontSize: 12, color: MUTED, letterSpacing: 2, textTransform: "uppercase" },
   card: { backgroundColor: SURFACE, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: BORDER },
@@ -209,7 +217,8 @@ const styles = StyleSheet.create({
   cardSub: { fontSize: 13, color: MUTED, marginBottom: 24 },
   field: { marginBottom: 16 },
   label: { fontSize: 11, color: MUTED, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 7 },
-  input: { backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: TEXT },
+  input: { backgroundColor: SURFACE2, borderWidth: 1.5, borderColor: BORDER, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, color: TEXT },
+  inputFocused: { borderColor: GOLD, backgroundColor: '#141410' },
   passwordRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   eyeBtn: { padding: 10 },
   rememberRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 20 },

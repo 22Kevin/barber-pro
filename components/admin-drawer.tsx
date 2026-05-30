@@ -325,6 +325,9 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
     alignItems: "center",
     paddingHorizontal: 4,
   },
+  trialBar: { height: 3, backgroundColor: "#2A2A2A", borderRadius: 2, marginTop: 6, marginBottom: 2, width: "100%", overflow: "hidden" },
+  trialBarFill: { height: 3, borderRadius: 2 },
+  trialText: { fontSize: 10, color: "#666", marginTop: 1 },
   pendingBadgeText: { color: "#FFF", fontSize: 10, fontWeight: "800" },
 });
 }

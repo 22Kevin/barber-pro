@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
+import { useCountUp } from "@/hooks/use-animated-number";
 import { DashboardSkeleton } from "@/components/skeleton";
 import {
+  Animated,
   ActivityIndicator,
   FlatList,
   Pressable,
@@ -95,6 +97,11 @@ export default function DashboardScreen() {
   const appointments = appointmentsQuery.data ?? [];
   const barbers = barbersQuery.data ?? [];
 
+  // Animated counters for metrics
+  const animAppts    = useCountUp(stats?.appointmentsToday ?? 0);
+  const animPending  = useCountUp(stats?.pendingAppointments ?? 0);
+  const animClients  = useCountUp(stats?.clientsToday ?? 0);
+
   const getBarberName = (id: number) => barbers.find(b => b.id === id)?.name ?? "—";
 
   // Banner de trial
@@ -148,7 +155,7 @@ export default function DashboardScreen() {
               <View style={[styles.metricIcon, { backgroundColor: colors.primary + "22" }]}>
                 <IconSymbol name="calendar" size={22} color={colors.primary} />
               </View>
-              <Text style={dyn.metricValue}>{String(stats?.appointmentsToday ?? 0)}</Text>
+              <Animated.Text style={dyn.metricValue}>{animAppts.interpolate({ inputRange: [0, stats?.appointmentsToday || 1], outputRange: ["0", String(stats?.appointmentsToday ?? 0)] })}</Animated.Text>
               <Text style={dyn.metricLabel}>Agendamentos</Text>
             </View>
             <View style={[dyn.metricCard, { borderLeftColor: "#4CAF50" }]}>
@@ -162,14 +169,14 @@ export default function DashboardScreen() {
               <View style={[styles.metricIcon, { backgroundColor: "#2196F322" }]}>
                 <IconSymbol name="person.2.fill" size={22} color="#2196F3" />
               </View>
-              <Text style={dyn.metricValue}>{String(stats?.clientsToday ?? 0)}</Text>
+              <Animated.Text style={dyn.metricValue}>{animClients.interpolate({ inputRange: [0, stats?.clientsToday || 1], outputRange: ["0", String(stats?.clientsToday ?? 0)] })}</Animated.Text>
               <Text style={dyn.metricLabel}>Clientes</Text>
             </View>
             <View style={[dyn.metricCard, { borderLeftColor: "#FF9800" }]}>
               <View style={[styles.metricIcon, { backgroundColor: "#FF980022" }]}>
                 <IconSymbol name="clock.fill" size={22} color="#FF9800" />
               </View>
-              <Text style={dyn.metricValue}>{String(stats?.pendingAppointments ?? 0)}</Text>
+              <Animated.Text style={dyn.metricValue}>{animPending.interpolate({ inputRange: [0, stats?.pendingAppointments || 1], outputRange: ["0", String(stats?.pendingAppointments ?? 0)] })}</Animated.Text>
               <Text style={dyn.metricLabel}>Pendentes</Text>
             </View>
           </View>
