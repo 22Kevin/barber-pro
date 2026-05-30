@@ -272,7 +272,12 @@ export default function AgendaScreen() {
       }
 
       closeNewModal();
-      toast.success("Agendamento criado com sucesso!");      if (result?.requiresApproval) {
+      const clientName = clients.find((c: any) => c.id === selectedClientId)?.name ?? "Cliente";
+      const serviceNames = selectedServices.map((s: any) => s.name).join(", ");
+      toast.confirm(
+        "Agendamento confirmado! ✓",
+        `${clientName} · ${selectedTime} · ${serviceNames}`
+      );      if (result?.requiresApproval) {
         // Agendamento ultrapassa horário de fechamento — informa o barbeiro
         const endHHMM = addMinutes(selectedTime, totalDuration).substring(0, 5);
         const closeHHMM = (result.closingTime ?? "").substring(0, 5);
@@ -286,7 +291,7 @@ export default function AgendaScreen() {
           [{ text: "Entendido" }]
         );
       } else {
-        Alert.alert("Sucesso", "Agendamento criado! O cliente receberá um lembrete 1 hora antes.");
+        // Agendamento criado normalmente — toast já foi exibido acima
       }
     },
     onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
@@ -920,25 +925,50 @@ export default function AgendaScreen() {
                     <Text style={[styles.infoText, { color: "#F44336" }]}>Barbeiro não trabalha neste dia</Text>
                   </View>
                 ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
-                    <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-                      {timeSlots.map(slot => {
-                        const isBooked = bookedTimes.has(slot);
-                        return (
-                          <Pressable
-                            key={slot}
-                            style={[styles.timeSlot, selectedTime === slot && styles.timeSlotActive, isBooked && styles.timeSlotBooked]}
-                            onPress={() => !isBooked && setSelectedTime(slot)}
-                            disabled={isBooked}
-                          >
-                            <Text style={[styles.timeSlotText, selectedTime === slot && styles.timeSlotTextActive, isBooked && styles.timeSlotTextBooked]}>
-                              {slot}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  </ScrollView>
+                  <View style={{ marginBottom: 14 }}>
+                    {[
+                      { label: "🌅 Manhã",  range: [6,  12] },
+                      { label: "☀️ Tarde",  range: [12, 18] },
+                      { label: "🌙 Noite",  range: [18, 24] },
+                    ].map(({ label, range }) => {
+                      const slots = timeSlots.filter(s => {
+                        const h = parseInt(s.split(":")[0]);
+                        return h >= range[0] && h < range[1];
+                      });
+                      if (slots.length === 0) return null;
+                      return (
+                        <View key={label} style={{ marginBottom: 12 }}>
+                          <Text style={styles.timePeriodLabel}>{label}</Text>
+                          <View style={styles.timeSlotsGrid}>
+                            {slots.map(slot => {
+                              const isBooked = bookedTimes.has(slot);
+                              const isActive = selectedTime === slot;
+                              return (
+                                <Pressable
+                                  key={slot}
+                                  style={[
+                                    styles.timeSlot,
+                                    isActive && styles.timeSlotActive,
+                                    isBooked && styles.timeSlotBooked,
+                                  ]}
+                                  onPress={() => !isBooked && setSelectedTime(slot)}
+                                  disabled={isBooked}
+                                >
+                                  <Text style={[
+                                    styles.timeSlotText,
+                                    isActive && styles.timeSlotTextActive,
+                                    isBooked && styles.timeSlotTextBooked,
+                                  ]}>
+                                    {slot}
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
                 )}
 
                 <Text style={styles.fieldLabel}>Observações</Text>
@@ -1276,10 +1306,12 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   serviceChipText: { fontSize: 13, color: c.muted, fontWeight: "600", marginBottom: 4 },
   serviceChipTextActive: { color: "#C9A84C" },
   serviceChipPrice: { fontSize: 12, color: c.muted },
-  timeSlot: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, backgroundColor: c.background, borderWidth: 1, borderColor: c.border },
+  timePeriodLabel: { fontSize: 11, fontWeight: "700", color: "#666", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 },
+  timeSlotsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  timeSlot: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: "#141414", borderWidth: 1, borderColor: "#2A2A2A", minWidth: 64, alignItems: "center" },
   timeSlotActive: { backgroundColor: "#C9A84C22", borderColor: "#C9A84C" },
-  timeSlotBooked: { backgroundColor: c.background, borderColor: "#F4433633", opacity: 0.4 },
-  timeSlotText: { fontSize: 13, color: c.foreground, fontWeight: "600" },
+  timeSlotBooked: { backgroundColor: "#141414", borderColor: "#F4433622", opacity: 0.4 },
+  timeSlotText: { fontSize: 13, color: "#E5E5E5", fontWeight: "600" },
   timeSlotTextActive: { color: "#C9A84C" },
   timeSlotTextBooked: { color: "#F44336" },
   input: { backgroundColor: c.background, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.foreground, marginBottom: 14 },
