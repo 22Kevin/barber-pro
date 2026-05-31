@@ -82,8 +82,8 @@ export const subscriptionPlanRouter = router({
           (SELECT COUNT(*) FROM subscription_plan_products WHERE "planId" = sp.id) as "productCount",
           (SELECT COUNT(*) FROM client_subscriptions WHERE "planId" = sp.id AND status = 'active') as "activeSubscribers"
         FROM subscription_plans sp
-        WHERE sp["tenantId"] = ${tenantId}
-        ORDER BY sp["createdAt"] DESC`
+        WHERE sp."tenantId" = ${tenantId}
+        ORDER BY sp."createdAt" DESC`
       );
 
       if (plans.length === 0) return [];
@@ -121,10 +121,10 @@ export const subscriptionPlanRouter = router({
 
       // subscription_plan_products: colunas camelCase
       const allProducts = await selectRaw(
-        `SELECT spp["planId"], spp["productId"], p.name, p.price
+        `SELECT spp"planId", spp"productId", p.name, p.price
         FROM subscription_plan_products spp
-        JOIN products p ON p.id = spp["productId"]
-        WHERE spp["planId"] IN (${planIds})`
+        JOIN products p ON p.id = spp"productId"
+        WHERE spp"planId" IN (${planIds})`
       );
 
       for (const plan of normalized) {
@@ -169,10 +169,10 @@ export const subscriptionPlanRouter = router({
         WHERE sps."planId" = ${pid}`
       );
       plan.products = await selectRaw(
-        `SELECT spp["productId"], p.name, p.price
+        `SELECT spp"productId", p.name, p.price
         FROM subscription_plan_products spp
-        JOIN products p ON p.id = spp["productId"]
-        WHERE spp["planId"] = ${pid}`
+        JOIN products p ON p.id = spp"productId"
+        WHERE spp"planId" = ${pid}`
       );
       return plan;
     }),
@@ -341,7 +341,7 @@ export const subscriptionPlanRouter = router({
       const rows = await selectSql(sql`
         SELECT cs.*,
           sp.name as "planName", sp.recurrences as "planRecurrences",
-          sp["maxServices"] as "maxServices", sp["maxProducts"] as "maxProducts",
+          sp"maxServices" as "maxServices", sp"maxProducts" as "maxProducts",
           c.name as "clientName", c.phone as "clientPhone", c.email as "clientEmail",
           b.name as "barberName"
         FROM client_subscriptions cs
@@ -529,10 +529,10 @@ export const subscriptionPlanRouter = router({
           WHERE sps."planId" = ${pid}`
         );
         plan.products = await selectRaw(
-          `SELECT spp["productId"], p.name, p.price
+          `SELECT spp"productId", p.name, p.price
           FROM subscription_plan_products spp
-          JOIN products p ON p.id = spp["productId"]
-          WHERE spp["planId"] = ${pid}`
+          JOIN products p ON p.id = spp"productId"
+          WHERE spp"planId" = ${pid}`
         );
       }
 
