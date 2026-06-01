@@ -571,9 +571,7 @@ export default function OrdersScreen() {
             )}
             {/* Mensagem */}
             <Text style={{ fontSize: 14, color: "#888", textAlign: "center", marginBottom: 24, lineHeight: 20 }}>
-              Confirma avançar para{"
-"}
-              <Text style={{ color: "#C9A84C", fontWeight: "700" }}>"{pendingConfirm?.label}"</Text>?
+              {"Confirma avançar para "}{"\""}{pendingConfirm?.label}{"\""}{" ?"}
             </Text>
             {/* Botões */}
             <View style={{ flexDirection: "row", gap: 10 }}>
