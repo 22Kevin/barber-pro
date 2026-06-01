@@ -138,9 +138,7 @@ export const subscriptionPlanRouter = router({
   getPlan: publicProcedure
     .input(z.object({ id: z.number(), tenantId: z.number() }))
     .query(async ({ input }) => {
-      const rows = await selectRaw(
-        `SELECT * FROM subscription_plans WHERE id = ${input.id} AND "tenantId" = ${input.tenantId}`
-      );
+      const rows = await selectSql(sql`SELECT * FROM subscription_plans WHERE id = ${input.id} AND "tenantId" = ${input.tenantId}`);
       const p = rows[0];
       if (!p) return null;
 
@@ -162,18 +160,18 @@ export const subscriptionPlanRouter = router({
         products: [] as any[],
       };
 
-      plan.services = await selectRaw(
-        `SELECT sps."serviceId", s.name, s.price, s."durationMinutes" as duration
+      plan.services = await selectSql(sql`
+        SELECT sps."serviceId", s.name, s.price, s."durationMinutes" as duration
         FROM subscription_plan_services sps
         JOIN services s ON s.id = sps."serviceId"
-        WHERE sps."planId" = ${pid}`
-      );
-      plan.products = await selectRaw(
-        `SELECT spp"productId", p.name, p.price
+        WHERE sps."planId" = ${pid}
+      `);
+      plan.products = await selectSql(sql`
+        SELECT spp."productId", p.name, p.price
         FROM subscription_plan_products spp
-        JOIN products p ON p.id = spp"productId"
-        WHERE spp"planId" = ${pid}`
-      );
+        JOIN products p ON p.id = spp."productId"
+        WHERE spp."planId" = ${pid}
+      `);
       return plan;
     }),
 
@@ -419,9 +417,7 @@ export const subscriptionPlanRouter = router({
       let serviceDurationMinutes = 30;
       if (primaryServiceId > 0) {
         try {
-          const svcRows = await selectRaw(
-            `SELECT "durationMinutes" FROM services WHERE id = ${primaryServiceId} LIMIT 1`
-          ) as { durationMinutes: number }[];
+          const svcRows = await selectSql(sql`SELECT "durationMinutes" FROM services WHERE id = ${primaryServiceId} LIMIT 1`) as { durationMinutes: number }[];
           if (svcRows.length > 0 && svcRows[0].durationMinutes > 0) {
             serviceDurationMinutes = svcRows[0].durationMinutes;
           }
@@ -522,18 +518,18 @@ export const subscriptionPlanRouter = router({
 
       for (const plan of plans) {
         const pid = parseInt(String(plan.id), 10);
-        plan.services = await selectRaw(
-          `SELECT sps."serviceId", s.name, s.price, s."durationMinutes" as duration
+        plan.services = await selectSql(sql`
+          SELECT sps."serviceId", s.name, s.price, s."durationMinutes" as duration
           FROM subscription_plan_services sps
           JOIN services s ON s.id = sps."serviceId"
-          WHERE sps."planId" = ${pid}`
-        );
-        plan.products = await selectRaw(
-          `SELECT spp"productId", p.name, p.price
+          WHERE sps."planId" = ${pid}
+        `);
+        plan.products = await selectSql(sql`
+          SELECT spp."productId", p.name, p.price
           FROM subscription_plan_products spp
-          JOIN products p ON p.id = spp"productId"
-          WHERE spp"planId" = ${pid}`
-        );
+          JOIN products p ON p.id = spp."productId"
+          WHERE spp."planId" = ${pid}
+        `);
       }
 
       return plans;
