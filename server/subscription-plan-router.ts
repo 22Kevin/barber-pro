@@ -76,15 +76,15 @@ export const subscriptionPlanRouter = router({
       // subscription_plans: colunas em minúsculas (criada sem aspas)
       // subscription_plan_services/products: colunas camelCase (criadas com aspas)
       // client_subscriptions: colunas camelCase (criada com aspas)
-      const plans = await selectRaw(
-        `SELECT sp.*,
+      const plans = await selectSql(sql`
+        SELECT sp.*,
           (SELECT COUNT(*) FROM subscription_plan_services WHERE "planId" = sp.id) as "serviceCount",
           (SELECT COUNT(*) FROM subscription_plan_products WHERE "planId" = sp.id) as "productCount",
           (SELECT COUNT(*) FROM client_subscriptions WHERE "planId" = sp.id AND status = 'active') as "activeSubscribers"
         FROM subscription_plans sp
         WHERE sp."tenantId" = ${tenantId}
-        ORDER BY sp."createdAt" DESC`
-      );
+        ORDER BY sp."createdAt" DESC
+      `);
 
       if (plans.length === 0) return [];
 
@@ -112,20 +112,20 @@ export const subscriptionPlanRouter = router({
       const planIds = normalized.map((p) => p.id).join(',');
 
       // subscription_plan_services: colunas camelCase
-      const allServices = await selectRaw(
-        `SELECT sps."planId", sps."serviceId", s.name, s.price, s."durationMinutes" as duration
+      const allServices = planIds.length > 0 ? await selectSql(sql`
+        SELECT sps."planId", sps."serviceId", s.name, s.price, s."durationMinutes" as duration
         FROM subscription_plan_services sps
         JOIN services s ON s.id = sps."serviceId"
-        WHERE sps."planId" IN (${planIds})`
-      );
+        WHERE sps."planId" = ANY(ARRAY[${sql.raw(planIds)}]::int[])
+      `) : [];
 
       // subscription_plan_products: colunas camelCase
-      const allProducts = await selectRaw(
-        `SELECT spp"planId", spp"productId", p.name, p.price
+      const allProducts = planIds.length > 0 ? await selectSql(sql`
+        SELECT spp."planId", spp."productId", p.name, p.price
         FROM subscription_plan_products spp
-        JOIN products p ON p.id = spp"productId"
-        WHERE spp"planId" IN (${planIds})`
-      );
+        JOIN products p ON p.id = spp."productId"
+        WHERE spp."planId" = ANY(ARRAY[${sql.raw(planIds)}]::int[])
+      `) : [];
 
       for (const plan of normalized) {
         plan.services = allServices.filter((s: any) => Number(s.planId) === plan.id);
