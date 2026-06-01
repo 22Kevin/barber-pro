@@ -195,7 +195,7 @@ export default function AdminLoginScreen() {
               <Text style={styles.linkText}>Esqueci minha senha</Text>
             </Pressable>
 
-            <Pressable onPress={() => router.push("/admin/setup" as any)} style={styles.link}>
+            <Pressable onPress={() => router.replace("/(tabs)/" as any)} style={styles.link}>
               <Text style={[styles.linkText, { color: GOLD }]}>← Voltar ao app</Text>
             </Pressable>
           </View>
