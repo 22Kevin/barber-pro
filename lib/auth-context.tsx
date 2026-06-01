@@ -47,7 +47,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
       if (stored) {
-        setBarber(JSON.parse(stored));
+        const barberData = JSON.parse(stored);
+        setBarber(barberData);
+        // Silently try to refresh token in background
+        // This ensures the session stays alive without asking user to login again
+        try {
+          const { tryRefreshBarberToken, getBarberJwt, isJwtValid } = await import("@/lib/trpc");
+          const currentToken = await getBarberJwt?.();
+          if (currentToken) {
+            // Token exists - let the tRPC client handle refresh automatically
+            // No action needed here
+          } else {
+            // No token but have barber data - try to get a new token via refresh
+            const newToken = await tryRefreshBarberToken();
+            if (!newToken) {
+              // Refresh failed - keep barber data but token will fail on next request
+              // tRPC will handle the 401 response
+              console.log("[auth] No valid token, will need re-login");
+            }
+          }
+        } catch {
+          // Ignore refresh errors on startup
+        }
       }
     } catch (error) {
       console.error("Erro ao carregar autenticação:", error);

@@ -1084,7 +1084,7 @@ function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: 
     .form-input { width: 100%; padding: 11px 13px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 9px; color: var(--text); font-size: 14px; font-family: inherit; transition: border-color 0.12s, box-shadow 0.12s; }
     .form-input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
     .form-input::placeholder { color: var(--muted); }
-    .remember-row { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; cursor: pointer; }
+    .remember-row { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; cursor: pointer; padding: 10px 12px; background: var(--surface-2, #1a1a1a); border-radius: 8px; border: 1px solid var(--border); }
     .remember-row input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--gold); cursor: pointer; }
     .remember-row span { font-size: 13px; color: var(--muted); }
     .btn-submit { width: 100%; padding: 13px; background: var(--gold); color: #0A0A0A; border: none; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity 0.12s, transform 0.1s, box-shadow 0.12s; box-shadow: 0 2px 12px rgba(201,168,76,0.25); }
@@ -1155,10 +1155,10 @@ function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: 
           <label class="form-label">Senha</label>
           <input class="form-input" type="password" name="password" placeholder="••••••••" required />
         </div>
-        <input type="hidden" name="remember" id="rememberInput" value="0" />
+        <input type="hidden" name="remember" id="rememberInput" value="1" />
         <label class="remember-row" onclick="toggleRemember()">
-          <input type="checkbox" id="rememberCheck" />
-          <span>Lembrar meu e-mail neste dispositivo</span>
+          <input type="checkbox" id="rememberCheck" checked />
+          <span>Mantenha-me conectado por 30 dias</span>
         </label>
         <button type="submit" class="btn-submit">Entrar no Painel</button>
       </form>

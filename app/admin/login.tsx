@@ -36,7 +36,7 @@ export default function AdminLoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true); // Default: manter conectado
   const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
@@ -65,9 +65,11 @@ export default function AdminLoginScreen() {
       await saveBarberJwt(data.token);
       if (data.refreshToken) await saveBarberRefreshJwt(data.refreshToken);
       if (rememberMe) {
-        await AsyncStorage.setItem(REMEMBER_ME_KEY, JSON.stringify({ email, remember: true }));
+        // Salvar email E flag de auto-login
+        await AsyncStorage.setItem(REMEMBER_ME_KEY, JSON.stringify({ email, remember: true, autoLogin: true }));
       } else {
-        await AsyncStorage.removeItem(REMEMBER_ME_KEY);
+        // Sem "mantenha conectado" - só salva a sessão atual sem auto-renovação
+        await AsyncStorage.setItem(REMEMBER_ME_KEY, JSON.stringify({ email, remember: false, autoLogin: false }));
       }
       login(data.barber ?? data);
       try {
@@ -154,7 +156,7 @@ export default function AdminLoginScreen() {
               <View style={[styles.checkbox, { borderColor: rememberMe ? GOLD : BORDER, backgroundColor: rememberMe ? GOLD : "transparent" }]}>
                 {rememberMe && <Text style={styles.checkmark}>✓</Text>}
               </View>
-              <Text style={styles.rememberText}>Lembrar meu e-mail neste dispositivo</Text>
+              <Text style={styles.rememberText}>Mantenha-me conectado</Text>
             </Pressable>
 
             {/* Botão Entrar */}
