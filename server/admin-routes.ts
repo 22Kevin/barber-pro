@@ -1772,7 +1772,7 @@ async function renderDashboard(req: Request, res: Response) {
           </div>
           <div style="padding:14px 20px;text-align:center">
             <div style="font-size:22px;font-weight:900;color:var(--gold)">${dashAvgRating ? dashAvgRating + " ★" : "—"}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">${dashReviews.length} avaliação${dashReviews.length !== 1 ? "ões" : ""}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${dashReviews.length} ${dashReviews.length !== 1 ? "avaliações" : "avaliação"}</div>
           </div>
         </div>
 
@@ -2536,7 +2536,7 @@ async function renderAgenda(req: Request, res: Response) {
                     onfocus="document.getElementById('newApptClientDropdown').style.display='block'"
                     onblur="setTimeout(()=>{document.getElementById('newApptClientDropdown').style.display='none'},200)" />
                   <div id="newApptClientDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-height:200px;overflow-y:auto;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.4);margin-top:4px">
-                    ${clients.map((c: any) => `<div class="new-appt-client-opt" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="selectNewApptClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='rgba(201,168,76,0.08)'" onmouseout="this.style.background=''"><strong style="color:var(--text)">${esc(c.name)}</strong>${c.phone ? `<span style="color:var(--muted);font-size:12px">${esc(c.phone)}</span>` : ''}</div>`).join("")}
+                    ${clients.map((c: any) => `<div class="new-appt-client-opt" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="selectNewApptClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='rgba(201,168,76,0.08)'" onmouseout="this.style.background=''"><strong style="color:var(--text)">${esc(c.name)}</strong>${c.phone ? `<span style="color:var(--muted);font-size:12px">${fmtPhone(c.phone)}</span>` : ''}</div>`).join("")}
                   </div>
                 </div>
               </div>
@@ -2594,7 +2594,11 @@ async function renderAgenda(req: Request, res: Response) {
             }
             var picker = document.getElementById('newApptTimePicker');
             var display = document.getElementById('newApptTimeDisplay');
-            if (!date || !barberId) { picker.style.display = 'none'; return; }
+            if (!date || !barberId) {
+              picker.innerHTML = '<div style="padding:8px;color:var(--muted);font-size:13px">Selecione o profissional e a data primeiro.</div>';
+              picker.style.display = 'block';
+              return;
+            }
             picker.innerHTML = '<div style="padding:8px;color:var(--muted);font-size:13px">Carregando...</div>';
             picker.style.display = 'block';
             try {
@@ -3450,7 +3454,7 @@ async function renderServicos(req: Request, res: Response) {
             </div>
             <div class="form-group">
               <label class="form-label">Duração (minutos) *</label>
-              <input class="form-input" type="number" name="durationMinutes" min="5" step="5" value="${editService?.durationMinutes ?? 30}" required />
+              <input class="form-input" type="number" name="durationMinutes" min="1" step="5" value="${editService?.durationMinutes ?? 30}" required />
             </div>
             <div class="form-group">
               <label class="form-label">Status</label>
@@ -4081,7 +4085,7 @@ async function renderFinanceiro(req: Request, res: Response) {
         FROM online_payments op
         LEFT JOIN clients c ON c.id = op."clientId"
         WHERE op."tenantId" = ${tenantId}
-          AND op."createdAt" >= ${start} AND op."createdAt" <= CONCAT(${end}, ' 23:59:59')
+          AND op."createdAt"::date >= ${start}::date AND op."createdAt"::date <= ${end}::date
           AND op.status = ${pmtStatusFilter}
         ORDER BY op."createdAt" DESC
         LIMIT 200`
@@ -4091,7 +4095,7 @@ async function renderFinanceiro(req: Request, res: Response) {
         FROM online_payments op
         LEFT JOIN clients c ON c.id = op."clientId"
         WHERE op."tenantId" = ${tenantId}
-          AND op."createdAt" >= ${start} AND op."createdAt" <= CONCAT(${end}, ' 23:59:59')
+          AND op."createdAt"::date >= ${start}::date AND op."createdAt"::date <= ${end}::date
         ORDER BY op."createdAt" DESC
         LIMIT 200`;
       const raw = await dbConn.execute(pmtQueryObj) as any;
@@ -4822,7 +4826,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
 
       ${asaasStatus === 'active' ? `
         <div style="background:#4ADE8011;border:1px solid #4ADE8033;border-radius:12px;padding:16px 20px;margin-bottom:24px;font-size:13px;color:var(--text)">
-          &#9989; Sua conta de pagamentos esta ativa. Os clientes ja podem pagar online via Pix ou cartao de credito.
+          &#9989; Sua conta de pagamentos está ativa. Os clientes já podem pagar online via Pix ou cartão de crédito.
         </div>
       ` : ''}
 
@@ -5370,7 +5374,7 @@ async function renderNovoAgendamento(req: Request, res: Response) {
             <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none"></span>
             <input type="hidden" name="clientId" id="clientId" required />
             <div id="clientDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-height:220px;overflow-y:auto;z-index:100;box-shadow:0 4px 16px #0004;margin-top:4px">
-              ${clients.map((c: any) => `<div class="client-opt" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="selectClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--gold-dim)'" onmouseout="this.style.background=''"><strong>${esc(c.name)}</strong>${c.phone ? `<span style='color:var(--muted);margin-left:8px'>${esc(c.phone)}</span>` : ''}</div>`).join("")}
+              ${clients.map((c: any) => `<div class="client-opt" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="selectClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--gold-dim)'" onmouseout="this.style.background=''"><strong>${esc(c.name)}</strong>${c.phone ? `<span style='color:var(--muted);margin-left:8px'>${fmtPhone(c.phone)}</span>` : ''}</div>`).join("")}
             </div>
           </div>
           <script>
@@ -8427,10 +8431,14 @@ export function registerAdminRoutes(app: Express): void {
     const _svcTenantId = _svcBarber?.tenantId ?? null;
     let serviceId: number;
     if (editId) {
-      await db.updateService(editId, { name, description, price, durationMinutes: parseInt(durationMinutes), isActive: isActive === "true" });
+      const dur = parseInt(durationMinutes);
+      if (!dur || dur < 1) return res.redirect("/admin/servicos?error=A+duração+deve+ser+de+pelo+menos+1+minuto");
+      await db.updateService(editId, { name, description, price, durationMinutes: dur, isActive: isActive === "true" });
       serviceId = editId;
     } else {
-      const newService = await db.createService({ name, description, price: String(price), durationMinutes: parseInt(durationMinutes), isActive: isActive === "true", tenantId: _svcTenantId } as any);
+      const durNew = parseInt(durationMinutes);
+      if (!durNew || durNew < 1) return res.redirect("/admin/servicos?error=A+duração+deve+ser+de+pelo+menos+1+minuto");
+      const newService = await db.createService({ name, description, price: String(price), durationMinutes: durNew, isActive: isActive === "true", tenantId: _svcTenantId } as any);
       serviceId = (newService as any) ?? 0;
     }
     // Processar upload de mídia
@@ -10130,7 +10138,7 @@ export function registerAdminRoutes(app: Express): void {
               </div>
               <div class="form-group">
                 <label class="form-label">Mensagem (use {nome} para o nome do cliente)</label>
-                <textarea name="messageTemplate" class="form-input" rows="4" required placeholder="Olá {nome}! Já faz um tempo desde o seu último {servico}. Que tal agendar uma visita? :)"></textarea>
+                <textarea name="messageTemplate" class="form-input" rows="4" required placeholder="Olá {nome}! Já faz um tempo desde o seu último {serviço}. Que tal agendar uma visita? :)"></textarea>
               </div>
               <div class="form-group" style="display:flex;align-items:center;gap:8px;">
                 <input type="checkbox" name="isActive" id="isActive" value="1" checked style="width:16px;height:16px;" />
@@ -10240,7 +10248,7 @@ export function registerAdminRoutes(app: Express): void {
                   <button type="button" onclick="clearClientSelection()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted)"></button>
                 </div>
                 <div id="client-dropdown" style="border:1px solid var(--border);border-radius:10px;overflow:hidden;display:none;max-height:220px;overflow-y:auto">
-                  ${activeClients.map((c: any) => `<div class="client-option" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? "")}" onclick="selectClient(this)" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''"><strong style="font-size:14px">${esc(c.name)}</strong>${c.phone ? `<br><small style="color:var(--muted)">${esc(c.phone)}</small>` : ""}</div>`).join("")}
+                  ${activeClients.map((c: any) => `<div class="client-option" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? "")}" onclick="selectClient(this)" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''"><strong style="font-size:14px">${esc(c.name)}</strong>${c.phone ? `<br><small style="color:var(--muted)">${fmtPhone(c.phone)}</small>` : ""}</div>`).join("")}
                   <div id="client-no-results" style="display:none;padding:12px;color:var(--muted);font-size:13px;text-align:center">Nenhum cliente encontrado.</div>
                 </div>
               </div>
@@ -10452,10 +10460,27 @@ export function registerAdminRoutes(app: Express): void {
               </div>
               <div class="form-group">
                 <label class="form-label">Confirmar nova senha</label>
-                <input type="password" name="confirmPassword" class="form-input" required placeholder="Repita a nova senha" />
+                <input type="password" name="confirmPassword" id="confirmPasswordInput" class="form-input" required placeholder="Repita a nova senha" />
+                <div id="pwMatchError" style="display:none;color:#F87171;font-size:12px;margin-top:4px;">As senhas não coincidem.</div>
               </div>
               <button type="submit" class="btn btn-primary" style="width:100%;">Alterar Senha</button>
             </form>
+            <script>
+              document.querySelector('[action="/admin/meu-perfil/senha"]').addEventListener('submit', function(e) {
+                var pw = document.querySelector('[name="newPassword"]').value;
+                var cf = document.querySelector('[name="confirmPassword"]').value;
+                var err = document.getElementById('pwMatchError');
+                var inp = document.getElementById('confirmPasswordInput');
+                if (pw !== cf) {
+                  e.preventDefault();
+                  err.style.display = 'block';
+                  inp.style.borderColor = '#F87171';
+                } else {
+                  err.style.display = 'none';
+                  inp.style.borderColor = '';
+                }
+              });
+            </script>
           </div>
         </div>
        </div>
