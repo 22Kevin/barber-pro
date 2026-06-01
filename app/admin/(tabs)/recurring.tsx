@@ -1,5 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
+function toLocalDate(d: Date): string {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
+
   ActivityIndicator,
   Alert,
   FlatList,
@@ -43,7 +48,7 @@ const EMPTY_FORM: NewRecurring = {
   clientId: null,
   barberId: null,
   serviceId: null,
-  startDate: new Date().toISOString().slice(0, 10),
+  startDate: toLocalDate(new Date()),
   startTime: "09:00",
   endTime: "10:00",
   intervalWeeks: 2,

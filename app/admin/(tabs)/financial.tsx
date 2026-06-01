@@ -21,6 +21,11 @@ import { trpc } from "@/lib/trpc";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { useColors } from "@/hooks/use-colors";
+function toLocalDate(d: Date): string {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
+
 
 type Tab = "overview" | "sales" | "expenses" | "online";
 
@@ -47,8 +52,8 @@ function getMonthRange(offset = 0) {
   const start = new Date(year, month, 1);
   const end = new Date(year, month + 1, 0);
   return {
-    start: start.toISOString().split("T")[0],
-    end: end.toISOString().split("T")[0],
+    start: toLocalDate(start),
+    end: toLocalDate(end),
     label: start.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }),
   };
 }
@@ -87,7 +92,7 @@ export default function FinancialScreen() {
   const productsQuery = trpc.products.list.useQuery({ activeOnly: true, tenantId });
   const salesQuery = trpc.sales.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
   const expensesQuery = trpc.expenses.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
-  const statsQuery = trpc.dashboard.stats.useQuery({ date: new Date().toISOString().split("T")[0] });
+  const statsQuery = trpc.dashboard.stats.useQuery({ date: new Date().toLocalDate(new Date()) });
 
   const createSaleMutation = trpc.sales.create.useMutation({
     onSuccess: () => {
@@ -152,7 +157,7 @@ export default function FinancialScreen() {
       description: expenseDescription.trim(),
       amount: amount.toFixed(2),
       category: expenseCategory,
-      date: new Date().toISOString().split("T")[0],
+      date: new Date().toLocalDate(new Date()),
     });
   }
 

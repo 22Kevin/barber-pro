@@ -1,5 +1,10 @@
 import React, { useState } from "react";
 import {
+function toLocalDate(d: Date): string {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
+
   ActivityIndicator,
   Alert,
   FlatList,
@@ -15,7 +20,7 @@ import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 
 function getToday() {
-  return new Date().toISOString().split("T")[0];
+  return toLocalDate(new Date());
 }
 
 function formatDate(dateStr: string) {

@@ -1,5 +1,10 @@
 import React, { useState } from "react";
 import {
+function toLocalDate(d: Date): string {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
+
   ActivityIndicator,
   Alert,
   FlatList,
@@ -35,7 +40,7 @@ const TYPE_COLORS: Record<MovementType, string> = {
 };
 
 function today() {
-  return new Date().toISOString().split("T")[0];
+  return toLocalDate(new Date());
 }
 
 export default function StockScreen() {

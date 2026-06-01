@@ -665,6 +665,14 @@ export const appRouter = router({
     update: barberProcedure
       .input(z.object({ id: z.number(), isActive: z.boolean().optional(), description: z.string().optional(), maxUses: z.number().optional().nullable(), validUntil: z.string().optional().nullable() }))
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateCoupon(id, data as any); }),
+    toggle: barberProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const coupons = await db.getAllCoupons();
+        const coupon = (coupons as any[]).find((c: any) => c.id === input.id);
+        if (!coupon) throw new Error("Cupom não encontrado");
+        return db.updateCoupon(input.id, { isActive: !coupon.isActive } as any);
+      }),
     getAvailableForClient: publicProcedure
       .input(z.object({ clientId: z.number().optional().nullable(), orderValue: z.number(), tenantId: z.number().optional().nullable() }))
       .query(async ({ input }) => {

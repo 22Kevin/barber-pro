@@ -63,14 +63,19 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
+
 function getDateRange(period: Period): { startDate: string; endDate: string } {
   const today = new Date();
-  const end = today.toISOString().split("T")[0];
+  const end = toLocalDateStr(today);
   const start = new Date(today);
   if (period === "week") start.setDate(today.getDate() - 6);
   else if (period === "month") start.setDate(today.getDate() - 29);
   else start.setFullYear(today.getFullYear() - 1);
-  return { startDate: start.toISOString().split("T")[0], endDate: end };
+  return { startDate: toLocalDateStr(start), endDate: end };
 }
 
 // ─── Gráfico de barras SVG ────────────────────────────────────────────────────
