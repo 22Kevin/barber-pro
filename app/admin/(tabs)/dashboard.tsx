@@ -166,6 +166,13 @@ export default function DashboardScreen() {
               </View>
               <Text style={dyn.metricValue}>{formatCurrency(stats?.revenueToday ?? 0)}</Text>
               <Text style={dyn.metricLabel}>Receita Hoje</Text>
+              {stats?.revenuePct !== undefined && stats.revenuePct !== 0 && (
+                <View style={[styles.pctBadge, { backgroundColor: (stats.revenuePct > 0 ? "#22C55E" : "#EF4444") + "22" }]}>
+                  <Text style={[styles.pctText, { color: stats.revenuePct > 0 ? "#22C55E" : "#EF4444" }]}>
+                    {stats.revenuePct > 0 ? "↑" : "↓"} {Math.abs(stats.revenuePct)}% vs ontem
+                  </Text>
+                </View>
+              )}
             </View>
             <View style={[dyn.metricCard, { borderLeftColor: "#2196F3" }]}>
               <View style={[styles.metricIcon, { backgroundColor: "#2196F322" }]}>
@@ -337,6 +344,8 @@ const styles = StyleSheet.create({
   aptRow:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   statusBadge:  { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   statusText:   { fontSize: 11, fontWeight: "600" },
+  pctBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginTop: 4, alignSelf: "flex-start" },
+  pctText:  { fontSize: 10, fontWeight: "700" },
   trialBanner:       { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginTop: 12, marginBottom: 4, backgroundColor: "#C9A84C15", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, borderWidth: 1, borderColor: "#C9A84C33" },
   trialBannerUrgent: { backgroundColor: "#F8717115", borderColor: "#F8717133" },
   trialBannerIcon:   { fontSize: 14 },

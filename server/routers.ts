@@ -673,6 +673,39 @@ export const appRouter = router({
         if (!coupon) throw new Error("Cupom não encontrado");
         return db.updateCoupon(input.id, { isActive: !coupon.isActive } as any);
       }),
+    inactive: publicProcedure
+      .input(z.object({ tenantId: z.number(), days: z.number().default(30) }))
+      .query(async ({ input }) => {
+        const db2 = await db.getDb();
+        if (!db2) return [];
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - input.days);
+        const cutoffStr = cutoff.toISOString().slice(0, 10);
+        // Get all clients with their last appointment date
+        const result = await db2.execute(sql`
+          SELECT c.id, c.name, c.phone,
+            MAX(a.date) as "lastVisit",
+            CASE WHEN MAX(a.date) IS NULL THEN NULL
+              ELSE (CURRENT_DATE - MAX(a.date)::date)
+            END as "daysSince"
+          FROM clients c
+          LEFT JOIN appointments a ON a."clientId" = c.id
+            AND a.status NOT IN ('cancelled', 'no_show')
+          WHERE c."tenantId" = ${input.tenantId}
+          GROUP BY c.id, c.name, c.phone
+          HAVING MAX(a.date) IS NULL OR MAX(a.date)::date < ${cutoffStr}::date
+          ORDER BY "lastVisit" ASC NULLS FIRST
+          LIMIT 100
+        `) as any;
+        const rows = Array.isArray(result) ? result[0] ?? result : result?.rows ?? [];
+        return rows.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          phone: r.phone,
+          lastVisit: r.lastVisit ?? null,
+          daysSince: r.daysSince != null ? Number(r.daysSince) : null,
+        }));
+      }),
     getAvailableForClient: publicProcedure
       .input(z.object({ clientId: z.number().optional().nullable(), orderValue: z.number(), tenantId: z.number().optional().nullable() }))
       .query(async ({ input }) => {

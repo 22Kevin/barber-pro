@@ -22,7 +22,7 @@ import { useBarberAuth } from "@/lib/auth-context";
 import { useColors } from "@/hooks/use-colors";
 
 type Period = "week" | "month" | "year";
-type Tab = "financeiro" | "servicos" | "encomendas" | "barbeiros" | "inadimplencia";
+type Tab = "financeiro" | "servicos" | "encomendas" | "barbeiros" | "inadimplencia" | "inativos";
 
 const CAT_COLORS = ["#EF4444", "#F59E0B", "#6366F1", "#10B981", "#EC4899", "#14B8A6", "#8B5CF6", "#F97316"];
 
@@ -207,7 +207,14 @@ export default function ReportsScreen() {
     { key: "encomendas", label: "Encomendas", emoji: "📦" },
     { key: "barbeiros", label: "Barbeiros", emoji: "👤" },
     { key: "inadimplencia", label: "Inadimplência", emoji: "⚠️" },
+    { key: "inativos", label: "Inativos", emoji: "👻" },
   ];
+
+  const inactiveDays = 30;
+  const inactiveClientsQuery = trpc.clients.inactive.useQuery(
+    { tenantId: tenantId ?? 0, days: inactiveDays },
+    { enabled: !!tenantId && activeTab === "inativos" }
+  );
 
   const overdueQuery = trpc.asaasPayments.listOverdue.useQuery(
     { tenantId: tenantId ?? 0 },
@@ -777,6 +784,46 @@ export default function ReportsScreen() {
           {activeTab === "servicos" && renderServicos()}
           {activeTab === "encomendas" && renderEncomendas()}
           {activeTab === "barbeiros" && renderBarbeiros()}
+          {activeTab === "inativos" && (
+            <View style={{ padding: 16 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0EEE8" }}>Clientes sem visitar há mais de {inactiveDays} dias</Text>
+              </View>
+              {inactiveClientsQuery.isLoading ? (
+                <ActivityIndicator color="#C9A84C" style={{ marginTop: 40 }} />
+              ) : !inactiveClientsQuery.data?.length ? (
+                <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                  <Text style={{ fontSize: 40, marginBottom: 12 }}>🎉</Text>
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: "#F0EEE8", marginBottom: 8 }}>Nenhum cliente inativo</Text>
+                  <Text style={{ fontSize: 13, color: "#666", textAlign: "center" }}>Todos os clientes visitaram nos últimos {inactiveDays} dias.</Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>{inactiveClientsQuery.data.length} cliente(s) sem visitar há mais de {inactiveDays} dias</Text>
+                  {inactiveClientsQuery.data.map((client: any) => (
+                    <View key={client.id} style={{ backgroundColor: "#141414", borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: "#2A2A2A", flexDirection: "row", alignItems: "center" }}>
+                      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#C9A84C22", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                        <Text style={{ fontSize: 16, fontWeight: "900", color: "#C9A84C" }}>{client.name?.charAt(0).toUpperCase()}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: "#F0EEE8", marginBottom: 2 }}>{client.name}</Text>
+                        <Text style={{ fontSize: 12, color: "#666" }}>
+                          {client.lastVisit
+                            ? `Última visita: ${new Date(client.lastVisit).toLocaleDateString("pt-BR")}`
+                            : "Nunca visitou"}
+                          {client.daysSince != null ? ` (${client.daysSince} dias atrás)` : ""}
+                        </Text>
+                      </View>
+                      <View style={{ backgroundColor: "#F59E0B22", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={{ fontSize: 11, color: "#F59E0B", fontWeight: "700" }}>👻 Inativo</Text>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+            </View>
+          )}
+
           {activeTab === "inadimplencia" && (
             <View style={{ paddingHorizontal: 16 }}>
               <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "700", marginBottom: 4 }}>⚠️ Cobranças Vencidas</Text>

@@ -52,6 +52,18 @@ function dateToString(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
+
+function getWeekDays(date: Date): Date[] {
+  const start = new Date(date);
+  const day = start.getDay();
+  start.setDate(start.getDate() - day); // domingo da semana
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
+}
+
 function addMinutes(time: string, minutes: number) {
   const [h, m] = time.split(":").map(Number);
   const total = h * 60 + m + minutes;
@@ -151,6 +163,7 @@ export default function AgendaScreen() {
     setShowDetailModal(true);
   }, [openApptQuery.data, openApptId]);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [calendarMode, setCalendarMode] = useState<'month' | 'week'>('month');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showNewModal, setShowNewModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -562,14 +575,57 @@ export default function AgendaScreen() {
 
         {/* Calendário */}
         <View style={styles.calendarCard}>
+          {/* Toggle Mês / Semana */}
+          <View style={{ flexDirection: "row", justifyContent: "center", gap: 8, marginBottom: 12 }}>
+            {(['month', 'week'] as const).map(mode => (
+              <Pressable
+                key={mode}
+                style={[{
+                  paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20,
+                  backgroundColor: calendarMode === mode ? "#C9A84C" : "#1A1A1A",
+                  borderWidth: 1, borderColor: calendarMode === mode ? "#C9A84C" : "#2A2A2A",
+                }]}
+                onPress={() => setCalendarMode(mode)}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "700", color: calendarMode === mode ? "#0A0A0A" : "#888" }}>
+                  {mode === 'month' ? '📅 Mês' : '📆 Semana'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
           <View style={styles.calendarHeader}>
-            <Pressable onPress={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}>
+            <Pressable onPress={() => {
+              if (calendarMode === 'month') {
+                setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+              } else {
+                const prev = new Date(selectedDate);
+                prev.setDate(prev.getDate() - 7);
+                setSelectedDate(prev);
+                setCurrentMonth(new Date(prev.getFullYear(), prev.getMonth(), 1));
+              }
+            }}>
               <IconSymbol name="chevron.left" size={22} color="#C9A84C" />
             </Pressable>
             <Text style={styles.calendarTitle}>
-              {MONTHS_PT[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+              {calendarMode === 'month'
+                ? `${MONTHS_PT[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`
+                : (() => {
+                    const days = getWeekDays(selectedDate);
+                    return `${days[0].getDate()} – ${days[6].getDate()} de ${MONTHS_PT[days[3].getMonth()]}`;
+                  })()
+              }
             </Text>
-            <Pressable onPress={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}>
+            <Pressable onPress={() => {
+              if (calendarMode === 'month') {
+                setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+              } else {
+                const next = new Date(selectedDate);
+                next.setDate(next.getDate() + 7);
+                setSelectedDate(next);
+                setCurrentMonth(new Date(next.getFullYear(), next.getMonth(), 1));
+              }
+            }}>
               <IconSymbol name="chevron.right" size={22} color="#C9A84C" />
             </Pressable>
           </View>
@@ -578,7 +634,39 @@ export default function AgendaScreen() {
             {DAYS_PT.map(d => <Text key={d} style={styles.dayLabel}>{d}</Text>)}
           </View>
 
-          <View style={styles.daysGrid}>
+          {/* Vista semanal */}
+          {calendarMode === 'week' && (
+            <View style={{ flexDirection: "row", justifyContent: "space-around", paddingHorizontal: 4, paddingBottom: 8 }}>
+              {getWeekDays(selectedDate).map((day, i) => {
+                const dayStr = dateToString(day);
+                const hasAppt = datesWithAppt.has(dayStr);
+                const sel = isSelected(day);
+                const tod = isToday(day);
+                return (
+                  <Pressable
+                    key={i}
+                    style={[{
+                      alignItems: "center", flex: 1, paddingVertical: 8, borderRadius: 12,
+                      backgroundColor: sel ? "#C9A84C" : tod ? "#C9A84C22" : "transparent",
+                      borderWidth: tod && !sel ? 1.5 : 0,
+                      borderColor: "#C9A84C",
+                    }]}
+                    onPress={() => setSelectedDate(day)}
+                  >
+                    <Text style={{ fontSize: 10, color: sel ? "#0A0A0A" : "#888", fontWeight: "700", marginBottom: 4 }}>
+                      {DAYS_PT[i]}
+                    </Text>
+                    <Text style={{ fontSize: 18, fontWeight: "900", color: sel ? "#0A0A0A" : tod ? "#C9A84C" : "#E5E5E5" }}>
+                      {day.getDate()}
+                    </Text>
+                    {hasAppt && <View style={[styles.dayDot, sel && { backgroundColor: "#0A0A0A" }]} />}
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+
+          {calendarMode === 'month' && <View style={styles.daysGrid}>
             {daysInMonth().map((day, idx) => {
               const dayStr = day ? dateToString(day) : null;
               const hasAppt = dayStr ? datesWithAppt.has(dayStr) : false;
@@ -613,7 +701,7 @@ export default function AgendaScreen() {
                 </Pressable>
               );
             })}
-          </View>
+          </View>}
         </View>
 
         {/* Filtro de barbeiro (apenas para managers) */}

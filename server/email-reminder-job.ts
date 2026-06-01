@@ -81,6 +81,60 @@ async function runEmailReminderJob() {
       }
     }
     if (sent > 0) console.log("[email-reminder] " + sent + " lembrete(s) enviado(s)");
+
+    // ── Lembrete push 1h antes ──────────────────────────────────────────────
+    const window1hStart = new Date(nowMs + 50 * 60 * 1000);  // 50min a partir de agora
+    const window1hEnd   = new Date(nowMs + 70 * 60 * 1000);  // 70min a partir de agora
+
+    let pushSent = 0;
+    for (const appt of upcomingAppts) {
+      try {
+        const apptDate = appt.date as string;
+        const apptTime = (appt.startTime as string)?.substring(0, 5);
+        if (!apptDate || !apptTime) continue;
+        const [h2, m2] = apptTime.split(":").map(Number);
+        const apptDt2 = new Date(apptDate + "T00:00:00");
+        apptDt2.setHours(h2, m2, 0, 0);
+        const apptMs2 = apptDt2.getTime();
+        if (apptMs2 < window1hStart.getTime() || apptMs2 > window1hEnd.getTime()) continue;
+        if ((appt as any).reminderSent) continue; // já enviou push de 1h
+
+        // Enviar push para o cliente
+        if ((appt as any).clientId) {
+          const pushToken = await db.getClientPushToken((appt as any).clientId);
+          if (pushToken) {
+            const serviceName = (appt as any).serviceName ?? "seu serviço";
+            const barberName  = (appt as any).barberName  ?? "seu barbeiro";
+            await db.sendExpoPushNotification(
+              pushToken,
+              "⏰ Seu horário é em 1 hora!",
+              `Lembrete: ${serviceName} com ${barberName} às ${apptTime}. Não se atrase! ✂️`,
+              { type: "appointment_reminder", appointmentId: appt.id }
+            );
+            pushSent++;
+          }
+        }
+
+        // Enviar push para o barbeiro também
+        if ((appt as any).barberId) {
+          const barberPushToken = await db.getBarberPushToken((appt as any).barberId);
+          if (barberPushToken) {
+            const clientName  = (appt as any).clientName  ?? "Cliente";
+            const serviceName = (appt as any).serviceName ?? "serviço";
+            await db.sendExpoPushNotification(
+              barberPushToken,
+              "📅 Agendamento em 1 hora",
+              `${clientName} — ${serviceName} às ${apptTime}`,
+              { type: "appointment_reminder_barber", appointmentId: appt.id }
+            );
+          }
+        }
+      } catch (err2: any) {
+        console.error("[push-reminder] Erro no agendamento #" + appt.id + ":", err2.message);
+      }
+    }
+    if (pushSent > 0) console.log("[push-reminder] " + pushSent + " lembrete(s) push enviado(s)");
+
   } catch (err: any) {
     console.error("[email-reminder] Erro no job:", err.message);
   }
