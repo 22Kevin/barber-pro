@@ -291,8 +291,19 @@ export default function OrdersScreen() {
       >
         {/* Header do card */}
         <View style={styles.cardHeader}>
-          <View style={[styles.statusBadge, { backgroundColor: color + "22", borderColor: color }]}>
-            <Text style={[styles.statusText, { color }]}>{STATUS_LABELS[status] ?? status}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View style={[styles.statusBadge, { backgroundColor: color + "22", borderColor: color }]}>
+              <Text style={[styles.statusText, { color }]}>{STATUS_LABELS[status] ?? status}</Text>
+            </View>
+            {/* Tipo: Compra (estoque) vs Encomenda (sem estoque) */}
+            <View style={[styles.statusBadge, {
+              backgroundColor: item.status === "confirmed" ? "#22C55E22" : "#F59E0B22",
+              borderColor: item.status === "confirmed" ? "#22C55E44" : "#F59E0B44",
+            }]}>
+              <Text style={[styles.statusText, { color: item.status === "confirmed" ? "#22C55E" : "#F59E0B" }]}>
+                {item.status === "confirmed" ? "🛒 Compra" : "📦 Encomenda"}
+              </Text>
+            </View>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             {isOverdue && (
@@ -359,7 +370,7 @@ export default function OrdersScreen() {
             >
               <IconSymbol name="chevron.right" size={13} color="#0A0A0A" />
               <Text style={styles.advanceBtnText}>
-                {STATUS_LABELS[STATUS_FLOW[currentIdx + 1]]}
+                {status === "confirmed" ? "✂️ Separar Produto" : STATUS_LABELS[STATUS_FLOW[currentIdx + 1]]}
               </Text>
             </TouchableOpacity>
           )}

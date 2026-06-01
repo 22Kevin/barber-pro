@@ -4343,7 +4343,7 @@ export function registerPublicRoutes(app: Express): void {
   async function createOrdersAndDeductStock(orderItems: any[], tenantId: number, clientId: number, paymentMethod: string, dbRef: typeof db) {
     for (const oi of orderItems) {
       const note = paymentMethod === "pickup" ? "Pagamento na retirada" : paymentMethod === "credit" ? "Cartão de Crédito" : "Pix";
-      await dbRef.createProductOrder({ tenantId, clientId, productId: oi.product.id, quantity: oi.qty, note });
+      await dbRef.createProductOrder({ tenantId, clientId, productId: oi.product.id, quantity: oi.qty, note, status: "confirmed" as any });
       if (oi.product.stockQuantity != null && oi.product.stockQuantity > 0) {
         const newStock = Math.max(0, oi.product.stockQuantity - oi.qty);
         await dbRef.updateProduct(oi.product.id, { stockQuantity: newStock });
@@ -4361,8 +4361,8 @@ export function registerPublicRoutes(app: Express): void {
       for (const barber of allBarbers.slice(0, 3)) {
         const pushToken = await dbRef.getBarberPushToken(barber.id);
         if (pushToken) {
-          await dbRef.sendExpoPushNotification(pushToken, "🛒 Novo pedido de produtos",
-            `${clientName || "Cliente"}: ${itemsList} — ${totalFmt} (${payLabel})`,
+          await dbRef.sendExpoPushNotification(pushToken, "🛒 Nova compra — Separar produto!",
+            `${clientName || "Cliente"} comprou: ${itemsList} — ${totalFmt} (${payLabel}) ⚡ Pronto para separar`,
             { type: "product_order" });
         }
       }
@@ -4490,7 +4490,7 @@ export function registerPublicRoutes(app: Express): void {
           if (pushToken) {
             await db.sendExpoPushNotification(
               pushToken,
-              "📦 Nova Encomenda",
+              "📦 Nova Encomenda — Sem estoque",
               `${clientInfo.name} encomendou ${quantity}x ${product.name}`,
               { type: "product_order", productId, quantity, clientId: clientInfo.id }
             );
