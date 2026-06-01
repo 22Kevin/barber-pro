@@ -122,6 +122,8 @@ export default function OrdersScreen() {
   // Modal de pagamento (ao marcar como Entregue)
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingDeliverOrder, setPendingDeliverOrder] = useState<Order | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<{ order: Order; nextStatus: string; label: string } | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<string>("");
 
   const utils = trpc.useUtils();
@@ -186,14 +188,8 @@ export default function OrdersScreen() {
       setSelectedPayment("");
       setShowPaymentModal(true);
     } else {
-      Alert.alert(
-        "Atualizar Status",
-        `Avançar para "${STATUS_LABELS[nextStatus]}"?`,
-        [
-          { text: "Cancelar", style: "cancel" },
-          { text: "Confirmar", onPress: () => updateStatusMutation.mutate({ id: order.id, status: nextStatus }) },
-        ]
-      );
+      setPendingConfirm({ order, nextStatus, label: STATUS_LABELS[nextStatus] ?? nextStatus });
+      setShowConfirmModal(true);
     }
   }
 
@@ -543,6 +539,67 @@ export default function OrdersScreen() {
       </Modal>
 
       {/* Modal de prazo estimado */}
+      {/* ── Modal de Confirmação de Status ──────────────────────────────── */}
+      <Modal visible={showConfirmModal} transparent animationType="fade" onRequestClose={() => setShowConfirmModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { maxWidth: 340, alignSelf: "center", width: "90%" }]}>
+            {/* Ícone */}
+            <View style={{ alignItems: "center", marginBottom: 16 }}>
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#C9A84C22", alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 28 }}>
+                  {pendingConfirm?.nextStatus === "preparing" ? "✂️" :
+                   pendingConfirm?.nextStatus === "ready" ? "✅" :
+                   pendingConfirm?.nextStatus === "confirmed" ? "📋" : "📦"}
+                </Text>
+              </View>
+            </View>
+            {/* Título */}
+            <Text style={[styles.modalTitle, { textAlign: "center", marginBottom: 8 }]}>
+              Avançar Status
+            </Text>
+            {/* Produto e cliente */}
+            {pendingConfirm?.order && (
+              <View style={{ backgroundColor: "#0F0F0B", borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: "#C9A84C22" }}>
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#F0EEE8", marginBottom: 4 }}>
+                  {pendingConfirm.order.productName}
+                </Text>
+                <Text style={{ fontSize: 12, color: "#888" }}>
+                  {pendingConfirm.order.clientName} · {pendingConfirm.order.quantity}x
+                  {pendingConfirm.order.totalPrice ? ` · R$ ${pendingConfirm.order.totalPrice}` : ""}
+                </Text>
+              </View>
+            )}
+            {/* Mensagem */}
+            <Text style={{ fontSize: 14, color: "#888", textAlign: "center", marginBottom: 24, lineHeight: 20 }}>
+              Confirma avançar para{"
+"}
+              <Text style={{ color: "#C9A84C", fontWeight: "700" }}>"{pendingConfirm?.label}"</Text>?
+            </Text>
+            {/* Botões */}
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Pressable
+                style={({ pressed }) => [styles.modalCancelBtn, { flex: 1 }, pressed && { opacity: 0.7 }]}
+                onPress={() => { setShowConfirmModal(false); setPendingConfirm(null); }}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.modalConfirmBtn, { flex: 1 }, pressed && { opacity: 0.8 }]}
+                onPress={() => {
+                  if (pendingConfirm) {
+                    updateStatusMutation.mutate({ id: pendingConfirm.order.id, status: pendingConfirm.nextStatus as any });
+                  }
+                  setShowConfirmModal(false);
+                  setPendingConfirm(null);
+                }}
+              >
+                <Text style={styles.modalConfirmText}>Confirmar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={showDaysModal} transparent animationType="fade" onRequestClose={() => setShowDaysModal(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.centeredOverlay}>
           <Pressable style={styles.centeredOverlay} onPress={() => setShowDaysModal(false)}>
@@ -770,8 +827,22 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
     justifyContent: "center",
     alignItems: "center",
   },
+  modalCancelBtn: {
+    paddingVertical: 13, borderRadius: 12,
+    backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#333",
+    alignItems: "center",
+  },
+  modalCancelText: { fontSize: 14, fontWeight: "700", color: "#888" },
+  modalConfirmBtn: {
+    paddingVertical: 13, borderRadius: 12,
+    backgroundColor: "#C9A84C",
+    alignItems: "center",
+    shadowColor: "#C9A84C", shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+  },
+  modalConfirmText: { fontSize: 14, fontWeight: "800", color: "#0A0A0A" },
   // Modal de detalhe (bottom sheet)
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "flex-end" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 20 },
   modalSheet: {
     backgroundColor: c.surface,
     borderTopLeftRadius: 20,

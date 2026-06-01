@@ -92,7 +92,7 @@ export default function FinancialScreen() {
   const productsQuery = trpc.products.list.useQuery({ activeOnly: true, tenantId });
   const salesQuery = trpc.sales.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
   const expensesQuery = trpc.expenses.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
-  const statsQuery = trpc.dashboard.stats.useQuery({ date: new Date().toLocalDate(new Date()) });
+  const statsQuery = trpc.dashboard.stats.useQuery({ date: toLocalDate(new Date()) });
 
   const createSaleMutation = trpc.sales.create.useMutation({
     onSuccess: () => {
@@ -157,7 +157,7 @@ export default function FinancialScreen() {
       description: expenseDescription.trim(),
       amount: amount.toFixed(2),
       category: expenseCategory,
-      date: new Date().toLocalDate(new Date()),
+      date: toLocalDate(new Date()),
     });
   }
 
