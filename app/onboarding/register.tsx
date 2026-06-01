@@ -47,6 +47,10 @@ interface Step3Data {
   hasLunch: boolean;
 }
 
+interface Step5Data {
+  paymentMethod: "card" | "pix" | "boleto" | null;
+}
+
 interface Step4Data {
   adminName: string;
   adminEmail: string;
@@ -66,7 +70,7 @@ export default function OnboardingRegisterScreen() {
   const selectedPlan = (params.plan as "solo" | "team" | "studio") ?? "solo";
 
   const [currentStep, setCurrentStep] = useState(1);
-  const progressAnim = useRef(new Animated.Value(0.25)).current;
+  const progressAnim = useRef(new Animated.Value(0.2)).current;
 
   // Dados de cada etapa
   const [step1, setStep1] = useState<Step1Data>({
@@ -98,6 +102,7 @@ export default function OnboardingRegisterScreen() {
     adminConfirm: "",
   });
 
+  const [step5, setStep5] = useState<Step5Data>({ paymentMethod: null });
   const [loadingCep, setLoadingCep] = useState(false);
   const planLabel = selectedPlan === "team" ? "Equipe" : selectedPlan === "studio" ? "Estúdio" : "Solo";
   const planPrice = selectedPlan === "team" ? "R$89" : selectedPlan === "studio" ? "R$149" : "R$49";
@@ -135,7 +140,7 @@ export default function OnboardingRegisterScreen() {
   function goToStep(step: number) {
     setCurrentStep(step);
     Animated.spring(progressAnim, {
-      toValue: step * 0.25,
+      toValue: step * 0.2,
       useNativeDriver: false,
       tension: 60,
       friction: 10,
@@ -150,6 +155,11 @@ export default function OnboardingRegisterScreen() {
     }
     if (!step1.phone.trim()) {
       Alert.alert("Atenção", "Informe o telefone/WhatsApp.");
+      return false;
+    }
+    const cnpjDigits = step1.cnpj.replace(/\D/g, "");
+    if (!cnpjDigits || (cnpjDigits.length !== 11 && cnpjDigits.length !== 14)) {
+      Alert.alert("Atenção", "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.");
       return false;
     }
     return true;
@@ -218,8 +228,16 @@ export default function OnboardingRegisterScreen() {
 
   // ─── Submit final ──────────────────────────────────────────────────────────
 
-  function handleSubmit() {
+  function goToStep5FromStep4() {
     if (!validateStep4()) return;
+    goToStep(5);
+  }
+
+  function handleSubmit() {
+    if (!step5.paymentMethod) {
+      Alert.alert("Atenção", "Selecione uma forma de pagamento para continuar.");
+      return;
+    }
     registerMutation.mutate({
       plan: selectedPlan,
       shop: {
@@ -268,7 +286,7 @@ export default function OnboardingRegisterScreen() {
           <Image source={require("@/assets/images/icon.png")} style={styles.logo} resizeMode="contain" />
           <Text style={styles.brandName}>BARBER PRO</Text>
           <View style={styles.planBadgeRow}>
-            <Text style={styles.stepLabel}>Etapa {currentStep} de 4</Text>
+            <Text style={styles.stepLabel}>Etapa {currentStep} de 5</Text>
             <View style={styles.planBadge}>
               <Text style={styles.planBadgeText}>Plano {planLabel} · {planPrice}/mês</Text>
             </View>
@@ -282,7 +300,7 @@ export default function OnboardingRegisterScreen() {
 
         {/* Títulos das etapas */}
         <View style={styles.stepTitleRow}>
-          {["Barbearia", "Endereço", "Horários", "Acesso"].map((label, i) => (
+          {["Barbearia", "Endereço", "Horários", "Acesso", "Pagamento"].map((label, i) => (
             <View key={label} style={styles.stepTitleItem}>
               <View style={[styles.stepDot, currentStep > i + 1 && styles.stepDotDone, currentStep === i + 1 && styles.stepDotActive]}>
                 <Text style={[styles.stepDotText, (currentStep >= i + 1) && styles.stepDotTextActive]}>
@@ -321,9 +339,9 @@ export default function OnboardingRegisterScreen() {
                 />
               </View>
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>CNPJ</Text>
+                <Text style={styles.fieldLabel}>CPF / CNPJ *</Text>
                 <MaskInput
-                  mask={Masks.BRL_CNPJ}
+                  mask={step1.cnpj.replace(/\D/g, "").length <= 11 ? Masks.BRL_CPF : Masks.BRL_CNPJ}
                   value={step1.cnpj}
                   onChangeText={(masked) => setStep1((p) => ({ ...p, cnpj: masked }))}
                   placeholder="00.000.000/0001-00 (opcional)"
@@ -494,11 +512,89 @@ export default function OnboardingRegisterScreen() {
                 </Pressable>
                 <Pressable
                   style={({ pressed }) => [styles.btn, styles.btnFlex, pressed && { opacity: 0.8 }]}
+                  onPress={goToStep5FromStep4}
+                >
+                  <Text style={styles.btnText}>PRÓXIMO →</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {/* ─── ETAPA 5: Forma de Pagamento ──────────────────────────── */}
+          {currentStep === 5 && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Como prefere pagar?</Text>
+              <Text style={styles.cardDesc}>
+                Você terá 14 dias gratuitos. A cobrança começa apenas após o trial.
+              </Text>
+
+              {/* Trial banner */}
+              <View style={{ backgroundColor: "#C9A84C18", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#C9A84C33", marginBottom: 20 }}>
+                <Text style={{ fontSize: 13, color: "#C9A84C", fontWeight: "700", marginBottom: 4 }}>🎁 14 dias grátis</Text>
+                <Text style={{ fontSize: 12, color: "#888", lineHeight: 18 }}>
+                  Explore todos os recursos sem pagar nada agora. Cancele a qualquer momento.
+                </Text>
+              </View>
+
+              {/* Payment options */}
+              {([
+                { key: "card", icon: "💳", label: "Cartão de Crédito", desc: "Débito automático mensal" },
+                { key: "pix",  icon: "⚡", label: "Pix",              desc: "Pagamento manual por Pix" },
+                { key: "boleto", icon: "📄", label: "Boleto Bancário", desc: "Boleto gerado mensalmente" },
+              ] as const).map((opt) => {
+                const isSelected = step5.paymentMethod === opt.key;
+                return (
+                  <Pressable
+                    key={opt.key}
+                    style={[{
+                      flexDirection: "row", alignItems: "center", gap: 14,
+                      borderRadius: 14, padding: 16, marginBottom: 10,
+                      borderWidth: 1.5,
+                      backgroundColor: isSelected ? "#C9A84C15" : "#141414",
+                      borderColor: isSelected ? "#C9A84C" : "#2A2A2A",
+                    }]}
+                    onPress={() => {
+                      setStep5({ paymentMethod: opt.key });
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                  >
+                    <Text style={{ fontSize: 24 }}>{opt.icon}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 15, fontWeight: "700", color: isSelected ? "#C9A84C" : "#F0EEE8", marginBottom: 2 }}>
+                        {opt.label}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: "#666" }}>{opt.desc}</Text>
+                    </View>
+                    <View style={{
+                      width: 22, height: 22, borderRadius: 11, borderWidth: 2,
+                      borderColor: isSelected ? "#C9A84C" : "#333",
+                      backgroundColor: isSelected ? "#C9A84C" : "transparent",
+                      alignItems: "center", justifyContent: "center",
+                    }}>
+                      {isSelected && <Text style={{ fontSize: 12, color: "#0A0A0A", fontWeight: "900" }}>✓</Text>}
+                    </View>
+                  </Pressable>
+                );
+              })}
+
+              <Text style={{ fontSize: 11, color: "#555", textAlign: "center", marginTop: 8, lineHeight: 16 }}>
+                Seus dados de pagamento são processados com segurança. Não cobramos nada durante o trial.
+              </Text>
+
+              <View style={styles.btnRow}>
+                <Pressable style={({ pressed }) => [styles.btnSecondary, pressed && { opacity: 0.7 }]} onPress={() => goToStep(4)}>
+                  <Text style={styles.btnSecondaryText}>← VOLTAR</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.btn, styles.btnFlex, !step5.paymentMethod && { opacity: 0.5 }, pressed && { opacity: 0.8 }]}
                   onPress={handleSubmit}
-                  disabled={registerMutation.isPending}
+                  disabled={registerMutation.isPending || !step5.paymentMethod}
                 >
                   {registerMutation.isPending ? (
-                    <ActivityIndicator color="#0A0A0A" />
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <ActivityIndicator color="#0A0A0A" size="small" />
+                      <Text style={styles.btnText}>Criando...</Text>
+                    </View>
                   ) : (
                     <Text style={styles.btnText}>CRIAR CONTA ✓</Text>
                   )}
