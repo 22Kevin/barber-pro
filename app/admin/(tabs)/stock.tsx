@@ -1,10 +1,5 @@
 import React, { useState } from "react";
 import {
-function toLocalDate(d: Date): string {
-  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
-  return `${y}-${m}-${dd}`;
-}
-
   ActivityIndicator,
   Alert,
   FlatList,
@@ -24,6 +19,12 @@ import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { exportCsv } from "@/hooks/use-csv-export";
 import { useBarberAuth } from "@/lib/auth-context";
+
+
+function toLocalDate(d: Date): string {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
 
 type MovementType = "in" | "out" | "adjustment";
 

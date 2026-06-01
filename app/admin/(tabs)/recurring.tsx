@@ -1,10 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
-function toLocalDate(d: Date): string {
-  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
-  return `${y}-${m}-${dd}`;
-}
-
   ActivityIndicator,
   Alert,
   FlatList,
@@ -24,6 +19,12 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { useBarberAuth } from "@/lib/auth-context";
+
+
+function toLocalDate(d: Date): string {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), dd = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
 
 const INTERVAL_LABELS: Record<number, string> = {
   1: "Toda semana",
