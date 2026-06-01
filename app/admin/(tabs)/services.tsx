@@ -102,6 +102,7 @@ export default function ServicesScreen() {
     const priceNum = parsePriceMask(price);
     if (isNaN(priceNum) || priceNum <= 0) { Alert.alert("Atenção", "Informe um preço válido (ex: 35,00)."); return; }
     if (!tenantId) { Alert.alert("Erro", "Sessão expirada. Faça login novamente."); return; }
+    if (!duration || duration < 1) { Alert.alert("Atenção", "A duração deve ser de pelo menos 1 minuto."); return; }
     const data = { name: name.trim(), description: description.trim() || null, price: priceNum.toFixed(2), durationMinutes: duration, isActive };
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data });

@@ -21,7 +21,7 @@ import { useBarberAuth } from "@/lib/auth-context";
 
 const PLACEHOLDERS = [
   "{nome}" ,
-  "{servico}",
+  "{serviço}",
   "{dias}",
 ];
 
@@ -67,7 +67,7 @@ export default function ReturnMessagesScreen() {
       delayDays: existing?.delayDays ?? 21,
       messageTemplate:
         existing?.messageTemplate ??
-        `Olá {nome}! Faz {dias} dias desde o seu último {servico}. Que tal agendar um horário? 😊`,
+        `Olá {nome}! Faz {dias} dias desde o seu último {serviço}. Que tal agendar um horário? 😊`,
       isActive: existing?.isActive ?? true,
     });
     setServiceSearch(serviceName);
@@ -329,7 +329,7 @@ export default function ReturnMessagesScreen() {
               value={editing?.messageTemplate ?? ""}
               onChangeText={(t) => setEditing((e) => e ? { ...e, messageTemplate: t } : e)}
               multiline
-              placeholder="Ex: Olá {nome}! Faz {dias} dias desde seu último {servico}..."
+              placeholder="Ex: Olá {nome}! Faz {dias} dias desde seu último {serviço}..."
               placeholderTextColor={colors.muted}
             />
 

@@ -2,6 +2,14 @@ import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { toast } from "@/components/toast";
 import { ClientListSkeleton } from "@/components/skeleton";
 import { useState } from "react";
+
+function formatPhone(phone: string): string {
+  if (!phone) return "";
+  const d = phone.replace(/\D/g, "");
+  if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return phone;
+}
 import { Swipeable } from "react-native-gesture-handler";
 import {
   ActivityIndicator,
@@ -270,7 +278,7 @@ export default function ClientsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.clientName}>{item.name}</Text>
-                <Text style={styles.clientPhone}>{item.phone}</Text>
+                <Text style={styles.clientPhone}>{formatPhone(item.phone)}</Text>
                 {item.email ? <Text style={styles.clientEmail}>{item.email}</Text> : null}
                 {item.birthDate && (
                   <Text style={{ fontSize: 11, color: isBirthdayToday(item.birthDate) ? "#EAB308" : "#555", marginTop: 2 }}>
@@ -351,7 +359,7 @@ export default function ClientsScreen() {
                           {c.name} {isToday && <Text style={{ color: "#EAB308" }}>• Hoje!</Text>}
                         </Text>
                         <Text style={styles.birthdayClientPhone}>
-                          {c.phone} · {formatBirthDate(c.birthDate)}
+                          {formatPhone(c.phone)} · {formatBirthDate(c.birthDate)}
                         </Text>
                       </View>
                       <TouchableOpacity

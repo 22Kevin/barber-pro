@@ -228,7 +228,7 @@ export default function DashboardScreen() {
               </View>
               <View style={{ flex: 1, padding: 12, alignItems: 'center' }}>
                 <Text style={{ fontSize: 20, fontWeight: '900', color: '#C9A84C' }}>{String(stats?.avgRating ?? '—')}</Text>
-                <Text style={{ fontSize: 10, color: '#888', marginTop: 2 }}>avaliação</Text>
+                <Text style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{(stats?.reviewCount ?? 0) === 1 ? 'avaliação' : 'avaliações'}</Text>
               </View>
             </View>
           </View>
