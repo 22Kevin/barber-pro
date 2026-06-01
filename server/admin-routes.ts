@@ -2264,6 +2264,12 @@ async function renderAgenda(req: Request, res: Response) {
       .agenda-day-nav-link:hover { border-color:var(--gold); color:var(--gold); background:rgba(201,168,76,0.08); }
       .agenda-today-link { display:block; text-align:center; padding:9px; background:var(--bg); border:1px solid var(--border); border-radius:12px; text-decoration:none; color:var(--muted); font-size:12px; font-weight:700; transition:all .15s; letter-spacing:0.3px; }
       .agenda-today-link:hover { border-color:var(--gold); color:var(--gold); }
+      
+      .table-cell-nowrap { white-space: nowrap; }
+      .btn-action-edit, .btn-action-delete { white-space: nowrap !important; min-width: 60px !important; }
+      td .btn { white-space: nowrap !important; }
+      .table th, .table td { min-width: 60px; }
+
       .agenda-view-toggle { display:flex; gap:4px; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:4px; width:fit-content; margin-bottom:18px; }
       .agenda-view-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; border:none; }
       .agenda-filter-bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:18px; }
@@ -7058,6 +7064,68 @@ export function registerAdminRoutes(app: Express): void {
     <a href="/admin/reset-password" style="display:block;text-align:center;background:#C9A84C;color:#0C0C0C;font-weight:800;padding:14px;border-radius:12px;text-decoration:none;margin-top:8px">Inserir código →</a>`}
     <a href="/admin/login" class="back">← Voltar ao login</a>
   </div>
+
+<script>
+// Universal inline form validation
+(function() {
+  function validateForm(form) {
+    var valid = true;
+    form.querySelectorAll('[required]').forEach(function(el) {
+      var wrap = el.closest('.form-group') || el.parentElement;
+      var errId = 'err_' + (el.name || el.id || Math.random().toString(36).slice(2));
+      el.id = el.id || errId.replace('err_','inp_');
+      var existing = document.getElementById(errId);
+      if (!el.value || !el.value.trim()) {
+        el.style.borderColor = '#F87171';
+        if (!existing) {
+          var msg = document.createElement('div');
+          msg.id = errId;
+          msg.style.cssText = 'color:#F87171;font-size:12px;margin-top:4px';
+          msg.textContent = 'Este campo é obrigatório.';
+          el.insertAdjacentElement('afterend', msg);
+        }
+        valid = false;
+      } else {
+        el.style.borderColor = '';
+        if (existing) existing.remove();
+      }
+    });
+    return valid;
+  }
+  function clearFieldError(el) {
+    el.style.borderColor = '';
+    var wrap = el.closest('.form-group') || el.parentElement;
+    var siblings = wrap.querySelectorAll('div[style*="color:#F87171"]');
+    siblings.forEach(function(s) { s.remove(); });
+  }
+  document.addEventListener('submit', function(e) {
+    var form = e.target;
+    if (form.tagName === 'FORM' && form.dataset.novalidate !== 'true') {
+      if (!validateForm(form)) e.preventDefault();
+    }
+  });
+  document.addEventListener('input', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+      clearFieldError(e.target);
+    }
+  });
+})();
+</script>
+
+<script>
+// Dynamic phone mask - handles 10 and 11 digit numbers
+document.addEventListener('input', function(e) {
+  if (e.target.dataset.mask === 'phone') {
+    var v = e.target.value.replace(/\D/g, '').slice(0, 11);
+    if (v.length <= 10) {
+      e.target.value = v.replace(/(\d{2})(\d{4})(\d{0,4})/, function(_,a,b,c){ return c ? '('+a+') '+b+'-'+c : b ? '('+a+') '+b : a ? '('+a : v; });
+    } else {
+      e.target.value = v.replace(/(\d{2})(\d{5})(\d{0,4})/, function(_,a,b,c){ return c ? '('+a+') '+b+'-'+c : b ? '('+a+') '+b : a ? '('+a : v; });
+    }
+  }
+});
+</script>
+<!-- /admin-validation -->
 </body>
 </html>`);
   });
