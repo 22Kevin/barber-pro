@@ -90,8 +90,8 @@ export default function FinancialScreen() {
 
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
   const productsQuery = trpc.products.list.useQuery({ activeOnly: true, tenantId });
-  const salesQuery = trpc.sales.byDateRange.useQuery({ startDate: range.start, endDate: range.end, barberId: barber?.id });
-  const expensesQuery = trpc.expenses.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
+  const salesQuery = trpc.sales.byDateRange.useQuery({ startDate: range.start, endDate: range.end, tenantId: barber?.tenantId ?? null });
+  const expensesQuery = trpc.expenses.byDateRange.useQuery({ startDate: range.start, endDate: range.end, tenantId: barber?.tenantId ?? null });
   const statsQuery = trpc.dashboard.stats.useQuery({ date: toLocalDate(new Date()) });
 
   const createSaleMutation = trpc.sales.create.useMutation({
@@ -343,22 +343,33 @@ export default function FinancialScreen() {
           <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
             {/* Filtro de status */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-              <View style={{ flexDirection: "row", gap: 8 }}>
+              <View style={{ flexDirection: "row", gap: 8, paddingBottom: 4 }}>
                 {[
-                  { key: "all", label: "Todos" },
-                  { key: "RECEIVED", label: "✅ Pago" },
-                  { key: "PENDING", label: "⏳ Pendente" },
-                  { key: "OVERDUE", label: "⚠️ Vencido" },
-                  { key: "CANCELLED", label: "✖ Cancelado" },
-                ].map(opt => (
-                  <Pressable
-                    key={opt.key}
-                    onPress={() => setPmtStatusFilter(opt.key)}
-                    style={[styles.tab, pmtStatusFilter === opt.key && styles.tabActive, { paddingHorizontal: 12 }]}
-                  >
-                    <Text style={[styles.tabText, pmtStatusFilter === opt.key && styles.tabTextActive]}>{opt.label}</Text>
-                  </Pressable>
-                ))}
+                  { key: "all",       label: "Todos",     color: "#888" },
+                  { key: "RECEIVED",  label: "Pago",      color: "#22C55E" },
+                  { key: "PENDING",   label: "Pendente",  color: "#F59E0B" },
+                  { key: "OVERDUE",   label: "Vencido",   color: "#EF4444" },
+                  { key: "CANCELLED", label: "Cancelado", color: "#6B7280" },
+                ].map(opt => {
+                  const isActive = pmtStatusFilter === opt.key;
+                  return (
+                    <Pressable
+                      key={opt.key}
+                      onPress={() => setPmtStatusFilter(opt.key)}
+                      style={{
+                        paddingHorizontal: 14, paddingVertical: 7,
+                        borderRadius: 20, borderWidth: 1.5,
+                        backgroundColor: isActive ? opt.color + "22" : "#141414",
+                        borderColor: isActive ? opt.color : "#2A2A2A",
+                      }}
+                    >
+                      <Text style={{
+                        fontSize: 13, fontWeight: "700",
+                        color: isActive ? opt.color : "#666",
+                      }}>{opt.label}</Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </ScrollView>
 

@@ -217,8 +217,11 @@ export default function DashboardScreen() {
               </View>
               <Animated.Text style={dyn.metricValue}>{animAppts.interpolate({ inputRange: [0, stats?.appointmentsToday || 1], outputRange: ["0", String(stats?.appointmentsToday ?? 0)] })}</Animated.Text>
               <Text style={dyn.metricLabel}>Agendamentos</Text>
-            </View>
-            <View style={[dyn.metricCard, { borderLeftColor: "#4CAF50" }]}>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [dyn.metricCard, { borderLeftColor: "#4CAF50" }, pressed && { opacity: 0.75 }]}
+              onPress={() => router.push("/admin/(tabs)/financial" as any)}
+            >
               <View style={[styles.metricIcon, { backgroundColor: "#4CAF5022" }]}>
                 <IconSymbol name="dollarsign.circle.fill" size={22} color="#4CAF50" />
               </View>
@@ -231,21 +234,30 @@ export default function DashboardScreen() {
                   </Text>
                 </View>
               )}
-            </View>
-            <View style={[dyn.metricCard, { borderLeftColor: "#2196F3" }]}>
+              <Text style={{ fontSize: 10, color: "#4CAF5066", marginTop: 2 }}>→ Financeiro</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [dyn.metricCard, { borderLeftColor: "#2196F3" }, pressed && { opacity: 0.75 }]}
+              onPress={() => router.push("/admin/(tabs)/clients" as any)}
+            >
               <View style={[styles.metricIcon, { backgroundColor: "#2196F322" }]}>
                 <IconSymbol name="person.2.fill" size={22} color="#2196F3" />
               </View>
               <Animated.Text style={dyn.metricValue}>{animClients.interpolate({ inputRange: [0, stats?.clientsToday || 1], outputRange: ["0", String(stats?.clientsToday ?? 0)] })}</Animated.Text>
               <Text style={dyn.metricLabel}>Clientes</Text>
-            </View>
-            <View style={[dyn.metricCard, { borderLeftColor: "#FF9800" }]}>
+              <Text style={{ fontSize: 10, color: "#2196F366", marginTop: 6 }}>→ Clientes</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [dyn.metricCard, { borderLeftColor: "#FF9800" }, pressed && { opacity: 0.75 }]}
+              onPress={() => router.push("/admin/(tabs)/agenda" as any)}
+            >
               <View style={[styles.metricIcon, { backgroundColor: "#FF980022" }]}>
                 <IconSymbol name="clock.fill" size={22} color="#FF9800" />
               </View>
               <Animated.Text style={dyn.metricValue}>{animPending.interpolate({ inputRange: [0, stats?.pendingAppointments || 1], outputRange: ["0", String(stats?.pendingAppointments ?? 0)] })}</Animated.Text>
               <Text style={dyn.metricLabel}>Pendentes</Text>
-            </View>
+              <Text style={{ fontSize: 10, color: "#FF980066", marginTop: 6 }}>→ Agenda</Text>
+            </Pressable>
           </View>
         )}
 
