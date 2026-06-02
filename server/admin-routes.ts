@@ -3950,26 +3950,87 @@ async function renderFinanceiro(req: Request, res: Response) {
         <div class="metric-sub">receita − despesas</div>
       </div>
     </div>
-    ${Object.keys(revenueByDay).length > 0 ? `
+    ${(() => {
+      // Fill every day in the range with 0 if no sales
+      const allDays: Record<string, number> = {};
+      const sd = new Date(start); const ed = new Date(end);
+      for (let d = new Date(sd); d <= ed; d.setDate(d.getDate() + 1)) {
+        const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        allDays[k] = revenueByDay[k] ?? 0;
+      }
+      const days = Object.entries(allDays).sort(([a],[b]) => a.localeCompare(b));
+      if (days.every(([,v]) => v === 0)) return '';
+      const maxVal = Math.max(...days.map(([,v]) => v), 1);
+      const W = 860, H = 180, PAD = { top: 28, right: 16, bottom: 32, left: 56 };
+      const chartW = W - PAD.left - PAD.right;
+      const chartH = H - PAD.top - PAD.bottom;
+      const n = days.length;
+      const barW = Math.max(2, Math.floor(chartW / n) - 3);
+      const gap = (chartW - barW * n) / (n + 1);
+
+      // Y-axis grid lines & labels
+      const yTicks = 4;
+      let gridLines = '';
+      let yLabels = '';
+      for (let i = 0; i <= yTicks; i++) {
+        const yVal = (maxVal / yTicks) * i;
+        const y = PAD.top + chartH - (chartH * i / yTicks);
+        const yRounded = Math.round(y);
+        gridLines += `<line x1="${PAD.left}" y1="${yRounded}" x2="${W - PAD.right}" y2="${yRounded}" stroke="#ffffff08" stroke-width="1"/>`;
+        const label = yVal >= 1000 ? 'R$' + (yVal/1000).toFixed(1) + 'k' : yVal > 0 ? 'R$' + yVal.toFixed(0) : '';
+        yLabels += `<text x="${PAD.left - 6}" y="${yRounded + 4}" text-anchor="end" font-size="9" fill="#555" font-family="system-ui">${label}</text>`;
+      }
+
+      // Bars + X labels
+      let bars = '';
+      let xLabels = '';
+      const showEvery = n > 20 ? 5 : n > 10 ? 3 : 1;
+      days.forEach(([day, val], i) => {
+        const x = PAD.left + gap + i * (barW + gap);
+        const barH2 = val === 0 ? 0 : Math.max(3, Math.round((val / maxVal) * chartH));
+        const y = PAD.top + chartH - barH2;
+        const dayNum = day.split('-')[2];
+        const isToday = day === new Date().toISOString().slice(0,10);
+        const alpha = val === 0 ? '20' : val >= maxVal * 0.8 ? 'FF' : val >= maxVal * 0.4 ? 'CC' : '88';
+        const barColor = isToday ? '#60A5FA' : `#C9A84C${alpha}`;
+        const tooltipVal = val > 0 ? fmtCurrency(val) : 'R$ 0,00';
+        if (val > 0) {
+          bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="${barH2}" rx="3" ry="3" fill="${barColor}"><title>${day}: ${tooltipVal}</title></rect>`;
+          // Value label on top for bigger bars
+          if (barH2 > 20 && barW > 20) {
+            const labelVal = val >= 1000 ? (val/1000).toFixed(1)+'k' : val.toFixed(0);
+            bars += `<text x="${(x + barW/2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" font-size="8" fill="#C9A84CAA" font-family="system-ui" font-weight="600">${labelVal}</text>`;
+          }
+        } else {
+          bars += `<rect x="${x.toFixed(1)}" y="${(PAD.top + chartH - 2).toFixed(1)}" width="${barW}" height="2" rx="1" fill="#ffffff10"><title>${day}: R$ 0,00</title></rect>`;
+        }
+        if (i % showEvery === 0 || i === n - 1) {
+          xLabels += `<text x="${(x + barW/2).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="9" fill="${isToday ? '#60A5FA' : '#555'}" font-family="system-ui" font-weight="${isToday ? '700' : '400'}">${dayNum}</text>`;
+        }
+      });
+
+      // Axis lines
+      const axes = `<line x1="${PAD.left}" y1="${PAD.top}" x2="${PAD.left}" y2="${PAD.top + chartH}" stroke="#2A2A2A" stroke-width="1"/>
+        <line x1="${PAD.left}" y1="${PAD.top + chartH}" x2="${W - PAD.right}" y2="${PAD.top + chartH}" stroke="#2A2A2A" stroke-width="1"/>`;
+
+      return `
     <div class="card" style="margin-bottom:24px">
-      <div class="card-header"><div class="card-title">Receita por Dia</div></div>
-      <div class="card-body" style="padding:20px">
-        <div style="display:flex;align-items:flex-end;gap:6px;height:130px;overflow-x:auto;padding-bottom:2px">
-          ${Object.entries(revenueByDay).sort(([a], [b]) => a.localeCompare(b)).map(([day, val]) => {
-            const barH = Math.max(4, Math.round((val / maxRevDay) * 100));
-            const pct = Math.round((val / maxRevDay) * 100);
-            const dayNum = day.split('-')[2];
-            const color = pct === 100 ? '#C9A84C' : pct >= 60 ? '#C9A84CAA' : '#C9A84C66';
-            return `
-            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:28px;max-width:48px;flex:1" title="${day}: ${fmtCurrency(val)}">
-              <div style="font-size:9px;color:var(--muted);font-weight:600">${fmtCurrency(val).replace('R$\u00a0','').replace('R$ ','')}</div>
-              <div style="width:100%;background:${color};border-radius:4px 4px 0 0;height:${barH}px;transition:opacity 0.2s;cursor:default" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'"></div>
-              <div style="font-size:9px;color:var(--muted);font-weight:700">${dayNum}</div>
-            </div>`;
-          }).join('')}
-        </div>
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+        <div class="card-title">Receita por Dia</div>
+        <div style="font-size:11px;color:var(--muted)">${period === 'month' ? start.slice(0,7).split('-').reverse().join('/') : start + ' → ' + end}</div>
       </div>
-    </div>` : ""}
+      <div class="card-body" style="padding:16px 20px 8px">
+        <svg viewBox="0 0 ${W} ${H}" width="100%" style="overflow:visible;display:block">
+          ${gridLines}
+          ${axes}
+          ${bars}
+          ${xLabels}
+          ${yLabels}
+        </svg>
+      </div>
+    </div>`;
+    })()}
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px" class="relatorio-grid-2">
       <div class="card">
         <div class="card-header"><div class="card-title">Por Barbeiro</div></div>
