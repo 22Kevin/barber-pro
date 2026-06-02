@@ -3916,10 +3916,11 @@ async function renderFinanceiro(req: Request, res: Response) {
   const totalExpenses = expenses.reduce((sum: number, e: any) => sum + parseFloat(e.amount), 0);
   const profit = totalRevenue - totalExpenses;
 
-  // Gráfico de barras por dia
+  // Gráfico de barras por dia — usar data local (não UTC)
   const revenueByDay: Record<string, number> = {};
   for (const s of salesData.filter((s: any) => s.paymentStatus === "paid")) {
-    const day = new Date(s.createdAt).toISOString().split("T")[0];
+    const d = new Date(s.createdAt);
+    const day = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     revenueByDay[day] = (revenueByDay[day] ?? 0) + parseFloat(s.total);
   }
   const maxRevDay = Math.max(...Object.values(revenueByDay), 1);
@@ -3953,13 +3954,19 @@ async function renderFinanceiro(req: Request, res: Response) {
     <div class="card" style="margin-bottom:24px">
       <div class="card-header"><div class="card-title">Receita por Dia</div></div>
       <div class="card-body" style="padding:20px">
-        <div style="display:flex;align-items:flex-end;gap:4px;height:120px">
-          ${Object.entries(revenueByDay).sort(([a], [b]) => a.localeCompare(b)).map(([day, val]) => `
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" title="${day}: ${fmtCurrency(val)}">
-              <div style="width:100%;background:var(--gold);border-radius:4px 4px 0 0;height:${Math.round((val / maxRevDay) * 100)}px;min-height:4px"></div>
-              <div style="font-size:9px;color:var(--muted);writing-mode:vertical-rl;transform:rotate(180deg)">${day.split("-")[2]}</div>
-            </div>
-          `).join("")}
+        <div style="display:flex;align-items:flex-end;gap:6px;height:130px;overflow-x:auto;padding-bottom:2px">
+          ${Object.entries(revenueByDay).sort(([a], [b]) => a.localeCompare(b)).map(([day, val]) => {
+            const barH = Math.max(4, Math.round((val / maxRevDay) * 100));
+            const pct = Math.round((val / maxRevDay) * 100);
+            const dayNum = day.split('-')[2];
+            const color = pct === 100 ? '#C9A84C' : pct >= 60 ? '#C9A84CAA' : '#C9A84C66';
+            return `
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:28px;max-width:48px;flex:1" title="${day}: ${fmtCurrency(val)}">
+              <div style="font-size:9px;color:var(--muted);font-weight:600">${fmtCurrency(val).replace('R$\u00a0','').replace('R$ ','')}</div>
+              <div style="width:100%;background:${color};border-radius:4px 4px 0 0;height:${barH}px;transition:opacity 0.2s;cursor:default" onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'"></div>
+              <div style="font-size:9px;color:var(--muted);font-weight:700">${dayNum}</div>
+            </div>`;
+          }).join('')}
         </div>
       </div>
     </div>` : ""}
