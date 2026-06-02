@@ -13154,4 +13154,56 @@ REGRAS:
       res.json({ reply: "Erro temporário. Tente novamente ou abra um ticket de suporte." });
     }
   });
+
+  // GET /admin/export/:type — Exportar dados do tenant em CSV
+  app.get("/admin/export/:type", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const tenantId = barber?.tenantId ?? null;
+      if (!tenantId) { res.status(403).send("Sem permissão"); return; }
+      const type = req.params.type;
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.status(503).send("Banco indisponível"); return; }
+      let csv = ""; let filename = "";
+      if (type === "clientes") {
+        const rows = await dbConn.execute(sql`SELECT id, name, phone, email, "birthDate", notes, "createdAt" FROM clients WHERE "tenantId" = ${tenantId} ORDER BY name`) as any;
+        const data = Array.isArray(rows) ? (rows[0] ?? rows) : (rows?.rows ?? []);
+        filename = "clientes.csv";
+        csv = "ID,Nome,Telefone,Email,Nascimento,Notas,Cadastrado\n" + data.map((r: any) => [r.id,esc(r.name),esc(r.phone??''),esc(r.email??''),r.birthDate??'',esc(r.notes??''),r.createdAt??''].join(",")).join("\n");
+      } else if (type === "agendamentos") {
+        const rows = await dbConn.execute(sql`SELECT a.id, a.date, a."startTime", a.status, c.name as cn, b.name as bn, s.name as sn FROM appointments a LEFT JOIN clients c ON c.id=a."clientId" LEFT JOIN barbers b ON b.id=a."barberId" LEFT JOIN services s ON s.id=a."serviceId" INNER JOIN barbers bx ON bx.id=a."barberId" WHERE bx."tenantId"=${tenantId} ORDER BY a.date DESC`) as any;
+        const data = Array.isArray(rows) ? (rows[0] ?? rows) : (rows?.rows ?? []);
+        filename = "agendamentos.csv";
+        csv = "ID,Data,Horário,Status,Cliente,Barbeiro,Serviço\n" + data.map((r: any) => [r.id,r.date,r.startTime,r.status,esc(r.cn??''),esc(r.bn??''),esc(r.sn??'')].join(",")).join("\n");
+      } else if (type === "financeiro") {
+        const rows = await dbConn.execute(sql`SELECT s.id, s."createdAt", s.total, s."paymentMethod", s."paymentStatus", b.name as bn, c.name as cn FROM sales s LEFT JOIN barbers b ON b.id=s."barberId" LEFT JOIN clients c ON c.id=s."clientId" WHERE s."tenantId"=${tenantId} ORDER BY s."createdAt" DESC`) as any;
+        const data = Array.isArray(rows) ? (rows[0] ?? rows) : (rows?.rows ?? []);
+        filename = "financeiro.csv";
+        csv = "ID,Data,Total,Pagamento,Status,Barbeiro,Cliente\n" + data.map((r: any) => [r.id,r.createdAt??'',r.total,r.paymentMethod,r.paymentStatus,esc(r.bn??''),esc(r.cn??'')].join(",")).join("\n");
+      } else if (type === "servicos") {
+        const rows = await dbConn.execute(sql`SELECT id, name, price, "durationMinutes", "isActive" FROM services WHERE "tenantId"=${tenantId} ORDER BY name`) as any;
+        const data = Array.isArray(rows) ? (rows[0] ?? rows) : (rows?.rows ?? []);
+        filename = "servicos.csv";
+        csv = "ID,Nome,Preço,Duração (min),Ativo\n" + data.map((r: any) => [r.id,esc(r.name),r.price,r.durationMinutes,r.isActive?'Sim':'Não'].join(",")).join("\n");
+      } else if (type === "produtos") {
+        const rows = await dbConn.execute(sql`SELECT p.id, p.name, p.price, p."stockQuantity", s.name as sn FROM products p LEFT JOIN suppliers s ON s.id=p."supplierId" WHERE p."tenantId"=${tenantId} ORDER BY p.name`) as any;
+        const data = Array.isArray(rows) ? (rows[0] ?? rows) : (rows?.rows ?? []);
+        filename = "produtos.csv";
+        csv = "ID,Nome,Preço,Estoque,Fornecedor\n" + data.map((r: any) => [r.id,esc(r.name),r.price,r.stockQuantity??0,esc(r.sn??'')].join(",")).join("\n");
+      } else if (type === "fornecedores") {
+        const rows = await dbConn.execute(sql`SELECT id, name, phone, email, "contactName" FROM suppliers WHERE "tenantId"=${tenantId} ORDER BY name`) as any;
+        const data = Array.isArray(rows) ? (rows[0] ?? rows) : (rows?.rows ?? []);
+        filename = "fornecedores.csv";
+        csv = "ID,Nome,Telefone,Email,Contato\n" + data.map((r: any) => [r.id,esc(r.name),esc(r.phone??''),esc(r.email??''),esc(r.contactName??'')].join(",")).join("\n");
+      } else { res.status(400).send("Tipo inválido"); return; }
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send("\uFEFF" + csv);
+    } catch (e: any) {
+      console.error("[export]", e.message);
+      res.status(500).send("Erro: " + e.message);
+    }
+  });
+
 }

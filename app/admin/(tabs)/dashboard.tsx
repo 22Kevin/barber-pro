@@ -177,9 +177,22 @@ export default function DashboardScreen() {
             <Text style={styles.monthRevenueLabel}>
               💵 FATURAMENTO · {monthLabel.toUpperCase()}
             </Text>
-            <Text style={[styles.monthRevenueValue, !revenueVisible && styles.monthRevenueBlurred]}>
-              {formatCurrency(monthRevenue)}
-            </Text>
+            <View style={{ position: "relative" }}>
+              <Text style={[styles.monthRevenueValue, !revenueVisible && { opacity: 0 }]}>
+                {formatCurrency(monthRevenue)}
+              </Text>
+              {!revenueVisible && (
+                <View style={styles.monthRevenueMask}>
+                  <View style={styles.monthRevenueDot} />
+                  <View style={styles.monthRevenueDot} />
+                  <View style={styles.monthRevenueDot} />
+                  <View style={styles.monthRevenueDot} />
+                  <View style={styles.monthRevenueDot} />
+                  <View style={styles.monthRevenueDot} />
+                  <View style={styles.monthRevenueDot} />
+                </View>
+              )}
+            </View>
             <Text style={styles.monthRevenueHint}>
               {revenueVisible ? "Toque para ocultar" : "Toque para revelar"}
             </Text>
@@ -400,7 +413,8 @@ const styles = StyleSheet.create({
   },
   monthRevenueLabel: { fontSize: 10, color: "#C9A84C88", fontWeight: "800", letterSpacing: 2, marginBottom: 6 },
   monthRevenueValue: { fontSize: 28, fontWeight: "900", color: "#C9A84C", letterSpacing: -0.5, marginBottom: 4 },
-  monthRevenueBlurred: { color: "transparent", textShadowColor: "#C9A84C", textShadowRadius: 12 },
+  monthRevenueMask: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 },
+  monthRevenueDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#C9A84C" },
   monthRevenueHint: { fontSize: 11, color: "#444" },
   monthRevenueEye: {
     width: 44, height: 44, borderRadius: 12,
