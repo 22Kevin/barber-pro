@@ -4147,10 +4147,16 @@ async function renderFinanceiro(req: Request, res: Response) {
       const pmtRowsHtml = pmtRows.map((p: any, i: number) => {
         const payLink = tenantSlug && p.referenceId ? '/pub/' + tenantSlug + '/pagar/' + p.referenceId : (p.invoiceUrl || '');
         const cancelBtn = (p.status === 'pending' && p.asaasPaymentId)
-          ? '<button onclick="cancelAsaasCharge(\'' + p.asaasPaymentId + '\',this)" style="background:#EF444422;color:#F87171;border:1px solid #EF444444;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">Cancelar</button>'
+          ? '<button onclick="cancelAsaasCharge(\'' + p.asaasPaymentId + '\',this)" style="background:#EF444422;color:#F87171;border:1px solid #EF444444;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">✖ Cancelar</button>'
+          : '';
+        const markPaidBtn = (p.status === 'pending' && p.asaasPaymentId)
+          ? '<button onclick="markAsPaidManual(\'' + p.asaasPaymentId + '\',this)" style="background:#22C55E22;color:#4ADE80;border:1px solid #22C55E44;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;margin-right:4px">✓ Marcar pago</button>'
           : '';
         const resendBtn = (p.status === 'pending' && payLink)
-          ? '<a href="https://wa.me/?text=' + encodeURIComponent('Olá! Segue o link para pagamento do seu agendamento: ' + payLink) + '" target="_blank" rel="noopener" style="display:inline-block;background:#25D36622;color:#25D366;border:1px solid #25D36644;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;margin-right:4px">WhatsApp</a>'
+          ? '<a href="https://wa.me/?text=' + encodeURIComponent('Olá! Segue o link para pagamento do seu serviço na barbearia: ' + payLink) + '" target="_blank" rel="noopener" style="display:inline-block;background:#25D36622;color:#25D366;border:1px solid #25D36644;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;margin-right:4px">💬 WhatsApp</a>'
+          : '';
+        const viewBtn = (p.invoiceUrl)
+          ? '<a href="' + p.invoiceUrl + '" target="_blank" rel="noopener" style="display:inline-block;background:transparent;color:var(--muted);border:1px solid var(--border);padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;white-space:nowrap;margin-right:4px">🔗 Link</a>'
           : '';
         const rowBg = i % 2 === 0 ? 'transparent' : 'var(--surface2)';
         return '<tr id="pmt-row-' + p.asaasPaymentId + '" style="border-bottom:1px solid var(--border);background:' + rowBg + '">'
@@ -4160,7 +4166,7 @@ async function renderFinanceiro(req: Request, res: Response) {
           + '<td style="padding:12px 16px;text-align:center" id="pmt-status-' + p.asaasPaymentId + '">' + statusBadge(p.status) + '</td>'
           + '<td style="padding:12px 16px;color:var(--muted);font-size:12px">' + fmtDate(p.createdAt) + '</td>'
           + '<td style="padding:12px 16px;color:var(--muted);font-size:12px">' + fmtDate(p.paidAt) + '</td>'
-          + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">' + resendBtn + cancelBtn + '</td>'
+          + '<td style="padding:12px 16px;text-align:center;white-space:nowrap">' + resendBtn + viewBtn + markPaidBtn + cancelBtn + '</td>'
           + '</tr>';
       }).join('');
       pmtTableHtml = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden">'
@@ -4192,6 +4198,39 @@ async function renderFinanceiro(req: Request, res: Response) {
         + '}'
         + '</script>';
     }
+
+    // Script para ações dos pagamentos (dentro do template para ficar no DOM correto)
+    const pmtActionsScript = `
+      <script>
+        async function cancelAsaasCharge(asaasPaymentId, btn) {
+          if (!confirm('Cancelar esta cobrança? Esta ação não pode ser desfeita.')) return;
+          btn.disabled = true; btn.textContent = '⏳ Cancelando...';
+          try {
+            const r = await fetch('/admin-api/cancel-asaas-charge', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'include', body: JSON.stringify({ asaasPaymentId }) });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || 'Erro ao cancelar');
+            const row = document.getElementById('pmt-row-' + asaasPaymentId);
+            if (row) { row.style.opacity = '0.5'; row.style.textDecoration = 'line-through'; }
+            const statusCell = document.getElementById('pmt-status-' + asaasPaymentId);
+            if (statusCell) statusCell.innerHTML = '<span style="background:#6B728022;color:#9BA1A6;border:1px solid #6B728044;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✖ Cancelado</span>';
+            btn.style.display = 'none';
+          } catch(e) { alert('Erro: ' + e.message); btn.disabled = false; btn.textContent = 'Cancelar'; }
+        }
+        async function markAsPaidManual(asaasPaymentId, btn) {
+          if (!confirm('Marcar como pago manualmente? Use apenas se confirmou o pagamento fora do sistema.')) return;
+          btn.disabled = true; btn.textContent = '⏳ Salvando...';
+          try {
+            const r = await fetch('/admin-api/mark-payment-paid', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'include', body: JSON.stringify({ asaasPaymentId }) });
+            const data = await r.json();
+            if (!r.ok) throw new Error(data.error || 'Erro ao marcar como pago');
+            const statusCell = document.getElementById('pmt-status-' + asaasPaymentId);
+            if (statusCell) statusCell.innerHTML = '<span style="background:#22C55E22;color:#4ADE80;border:1px solid #22C55E44;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✅ Pago</span>';
+            btn.closest('td').innerHTML = '<span style="color:#4ADE80;font-size:12px">✓ Confirmado</span>';
+          } catch(e) { alert('Erro: ' + e.message); btn.disabled = false; btn.textContent = 'Marcar pago'; }
+        }
+      </script>
+    `;
+
     tabPagamentos = `
       ${pmtStatus !== 'all' ? `
       <div style="background:#C9A84C15;border:1px solid #C9A84C33;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#C9A84C;display:flex;align-items:center;gap:8px">
@@ -4219,6 +4258,7 @@ async function renderFinanceiro(req: Request, res: Response) {
         </div>
       </div>
       ${pmtTableHtml}
+      ${pmtActionsScript}
     `;
   }
     const tabs = [
@@ -11488,6 +11528,28 @@ document.addEventListener('input', function(e) {
     }
   });
   // POST /admin-api/payment-link — Buscar ou gerar link de pagamento para reenvio por WhatsApp
+  app.post("/admin-api/mark-payment-paid", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const { asaasPaymentId } = req.body;
+      if (!asaasPaymentId) { res.status(400).json({ error: "asaasPaymentId é obrigatório" }); return; }
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      const barber = await db.getBarberById(session.barberId);
+      const tenantId = barber?.tenantId ?? null;
+      if (!tenantId) { res.status(403).json({ error: "Sem permissão" }); return; }
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.status(503).json({ error: "Banco indisponível" }); return; }
+      // Verificar se o pagamento pertence ao tenant antes de atualizar
+      const rows = await dbConn.execute(sql`SELECT id FROM online_payments WHERE "asaasPaymentId" = ${asaasPaymentId} AND "tenantId" = ${tenantId}`) as any;
+      const found = Array.isArray(rows) ? rows[0]?.[0] : rows?.rows?.[0];
+      if (!found) { res.status(404).json({ error: "Pagamento não encontrado" }); return; }
+      await dbConn.execute(sql`UPDATE online_payments SET status = 'paid', "paidAt" = NOW() WHERE "asaasPaymentId" = ${asaasPaymentId} AND "tenantId" = ${tenantId}`);
+      res.json({ ok: true });
+    } catch (e: any) {
+      console.error("[mark-payment-paid]", e.message);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.post("/admin-api/payment-link", requireAdminAuth, async (req: Request, res: Response) => {
     try {
       const { appointmentId, slug } = req.body;
