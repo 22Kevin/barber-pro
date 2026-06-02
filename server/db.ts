@@ -1129,23 +1129,28 @@ export async function getDashboardStats(date: string, tenantId?: number | null) 
   const pending = todayAppointments.filter((a: any) => a.status === "scheduled").length;
 
   // ── Dados de ontem para comparação % ─────────────────────────────────────
-  const yesterday = new Date(date);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().slice(0, 10);
-  const prevApptConds: any[] = [eq(appointments.date, yesterdayStr), sql`${appointments.status} NOT IN ('cancelled', 'no_show')`];
-  if (barberIds) prevApptConds.push(sql`${appointments.barberId} IN (${sql.join(barberIds.map((id: number) => sql`${id}`), sql`, `)})`);
-  const prevAppointments = await db.select().from(appointments).where(and(...prevApptConds));
-  const prevSalesConds: any[] = [
-    gte(sales.createdAt, new Date(yesterdayStr)) as any,
-    lte(sales.createdAt, new Date(yesterdayStr + "T23:59:59")) as any,
-    eq(sales.paymentStatus, "paid") as any,
-  ];
-  if (barberIds) prevSalesConds.push(sql`${sales.barberId} IN (${sql.join(barberIds.map((id: number) => sql`${id}`), sql`, `)})`);
-  const prevSales = await db.select().from(sales).where(and(...prevSalesConds));
-  const revenuePrev = prevSales.reduce((sum: number, s: any) => sum + parseFloat(s.total), 0);
-  const clientsPrev = new Set(prevAppointments.map((a: any) => a.clientId)).size;
-
-  const pct = (curr: number, prev: number) => prev === 0 ? (curr > 0 ? 100 : 0) : Math.round(((curr - prev) / prev) * 100);
+  let appointmentsPct = 0, revenuePct = 0, clientsPct = 0;
+  try {
+    const yesterday = new Date(date);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    const prevApptConds: any[] = [eq(appointments.date, yesterdayStr), sql`${appointments.status} NOT IN ('cancelled', 'no_show')`];
+    if (barberIds) prevApptConds.push(sql`${appointments.barberId} IN (${sql.join(barberIds.map((id: number) => sql`${id}`), sql`, `)})`);
+    const prevAppointments = await db.select().from(appointments).where(and(...prevApptConds));
+    const prevSalesConds: any[] = [
+      gte(sales.createdAt, new Date(yesterdayStr)) as any,
+      lte(sales.createdAt, new Date(yesterdayStr + "T23:59:59")) as any,
+      eq(sales.paymentStatus, "paid") as any,
+    ];
+    if (barberIds) prevSalesConds.push(sql`${sales.barberId} IN (${sql.join(barberIds.map((id: number) => sql`${id}`), sql`, `)})`);
+    const prevSales = await db.select().from(sales).where(and(...prevSalesConds));
+    const revenuePrev = prevSales.reduce((sum: number, s: any) => sum + parseFloat(s.total), 0);
+    const clientsPrev = new Set(prevAppointments.map((a: any) => a.clientId)).size;
+    const pct = (curr: number, prev: number) => prev === 0 ? (curr > 0 ? 100 : 0) : Math.round(((curr - prev) / prev) * 100);
+    appointmentsPct = pct(todayAppointments.length, prevAppointments.length);
+    revenuePct = pct(revenueToday, revenuePrev);
+    clientsPct = pct(uniqueClients, clientsPrev);
+  } catch { /* dados de comparação opcionais */ }
 
   return {
     appointmentsToday: todayAppointments.length,
@@ -1154,10 +1159,9 @@ export async function getDashboardStats(date: string, tenantId?: number | null) 
     pendingAppointments: pending,
     avgRating: 0,
     reviewCount: 0,
-    // Variações % em relação a ontem
-    appointmentsPct: pct(todayAppointments.length, prevAppointments.length),
-    revenuePct: pct(revenueToday, revenuePrev),
-    clientsPct: pct(uniqueClients, clientsPrev),
+    appointmentsPct,
+    revenuePct,
+    clientsPct,
   };
 }
 

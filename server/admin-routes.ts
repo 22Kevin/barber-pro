@@ -1488,7 +1488,7 @@ async function renderDashboard(req: Request, res: Response) {
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     </a>` : ''}
     ${pendingOnlineCount > 0 ? `
-    <a href="/admin/relatorios?tab=pagamentos" style="text-decoration:none;display:flex;align-items:center;gap:12px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.3);border-radius:12px;padding:14px 16px;margin-bottom:20px;transition:background .2s;" onmouseover="this.style.background='rgba(96,165,250,.14)'" onmouseout="this.style.background='rgba(96,165,250,.08)'">
+    <a href="/admin/financeiro?tab=pagamentos&pmtStatus=pending" style="text-decoration:none;display:flex;align-items:center;gap:12px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.3);border-radius:12px;padding:14px 16px;margin-bottom:20px;transition:background .2s;" onmouseover="this.style.background='rgba(96,165,250,.14)'" onmouseout="this.style.background='rgba(96,165,250,.08)'">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
       <div style="flex:1">
         <div style="font-size:13px;font-weight:700;color:#60A5FA;">${pendingOnlineCount} pagamento${pendingOnlineCount !== 1 ? 's' : ''} online pendente${pendingOnlineCount !== 1 ? 's' : ''}</div>
@@ -3825,9 +3825,11 @@ async function renderFinanceiro(req: Request, res: Response) {
     const r = monthRange(); start = r.start; end = r.end;
   }
 
-  const salesData = await db.getSalesByDateRange(start, end, undefined, tenantId);
-  const expenses = await db.getExpensesByDateRange(start, end, tenantId);
-  const allBarbers = await db.getAllBarbers(tenantId);
+  const [salesData, expenses, allBarbers] = await Promise.all([
+    db.getSalesByDateRange(start, end, undefined, tenantId).catch(() => [] as any[]),
+    db.getExpensesByDateRange(start, end, tenantId).catch(() => [] as any[]),
+    db.getAllBarbers(tenantId).catch(() => [] as any[]),
+  ]);
 
   const totalRevenue = salesData
     .filter((s: any) => s.paymentStatus === "paid")
