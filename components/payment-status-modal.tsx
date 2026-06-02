@@ -92,36 +92,25 @@ export function PaymentStatusModal({
 
   const handleRegisterPayment = (method: PaymentMethod) => {
     if (!appointment) return;
-    Alert.alert(
-      "Confirmar pagamento",
-      `Registrar pagamento de R$ ${parseFloat(String(appointment.servicePrice)).toFixed(2)} via ${METHOD_LABELS[method]}?`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Confirmar",
-          onPress: () =>
-            registerPaymentMutation.mutate(
-              {
-                appointmentId: appointment.id,
-                barberId: appointment.barberId,
-                clientId: appointment.clientId ?? null,
-                serviceId: appointment.serviceId,
-                serviceName: appointment.serviceName,
-                servicePrice: parseFloat(String(appointment.servicePrice)),
-                paymentMethod: method,
-              },
-              {
-                onSuccess: () => {
-                  if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => null);
-                  paymentStatusQuery.refetch();
-                  onPaymentRegistered?.();
-                  setView("status");
-                },
-                onError: (err: any) => Alert.alert("Erro ao registrar pagamento", err.message),
-              }
-            ),
+    registerPaymentMutation.mutate(
+      {
+        appointmentId: appointment.id,
+        barberId: appointment.barberId,
+        clientId: appointment.clientId ?? null,
+        serviceId: appointment.serviceId,
+        serviceName: appointment.serviceName,
+        servicePrice: parseFloat(String(appointment.servicePrice)),
+        paymentMethod: method,
+      },
+      {
+        onSuccess: () => {
+          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => null);
+          paymentStatusQuery.refetch();
+          onPaymentRegistered?.();
+          onClose();
         },
-      ]
+        onError: (err: any) => Alert.alert("Erro ao registrar pagamento", err.message),
+      }
     );
   };
 

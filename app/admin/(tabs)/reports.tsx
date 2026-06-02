@@ -217,10 +217,7 @@ export default function ReportsScreen() {
 
   async function handleExportCsv() {
     try {
-      const result = await exportCsvQuery.refetch();
-      if (result.data) {
-        await exportCsv(result.data, `financeiro-${dateRange.startDate}.csv`);
-      }
+      await Linking.openURL(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://usebarberpro.com"}/admin/export/financeiro`);
     } catch (e: any) {
       Alert.alert("Erro ao exportar", e?.message ?? "Falha na exportação");
     }
