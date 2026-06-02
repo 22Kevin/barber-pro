@@ -1187,7 +1187,7 @@ export const appRouter = router({
       return { labels, data, totalRevenue };
     }),
 
-  topServices: publicProcedure
+    topServices: publicProcedure
     .input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number() }))
     .query(async ({ input }) => {
       const sales = await db.getSalesByDateRange(input.startDate, input.endDate, undefined, input.tenantId);
@@ -1208,7 +1208,7 @@ export const appRouter = router({
       return Object.values(serviceMap).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
     }),
 
-  topClients: publicProcedure
+    topClients: publicProcedure
     .input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number() }))
     .query(async ({ input }) => {
       const sales = await db.getSalesByDateRange(input.startDate, input.endDate, undefined, input.tenantId);
@@ -1229,7 +1229,7 @@ export const appRouter = router({
         .map(c => ({ ...c, name: clientsById[c.clientId]?.name ?? "Cliente", phone: clientsById[c.clientId]?.phone ?? "" }));
     }),
 
-  barberOccupancy: publicProcedure
+    barberOccupancy: publicProcedure
     .input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number() }))
     .query(async ({ input }) => {
       const allBarbers = await db.getAllBarbers(input.tenantId);
@@ -1268,7 +1268,7 @@ export const appRouter = router({
       }
       return result.sort((a, b) => b.revenue - a.revenue);
     }),
-  exportPdf: publicProcedure
+    exportPdf: publicProcedure
     .input(z.object({ startDate: z.string(), endDate: z.string(), period: z.string().optional(), tenantId: z.number() }))
     .mutation(async ({ input }) => {
       const settings = await db.getShopSettings(input.tenantId).catch(() => null) as any;
@@ -1383,7 +1383,7 @@ export const appRouter = router({
       const pdfBuffer = await pdfPromise;
       return { pdfBase64: pdfBuffer.toString("base64") };
     }),
-  ordersTimeline: publicProcedure
+    ordersTimeline: publicProcedure
     .input(z.object({ tenantId: z.number(), period: z.enum(["week", "month", "year"]).default("month") }))
     .query(async ({ input }) => {
       const orders = await db.getProductOrdersByTenant(input.tenantId);
@@ -1435,7 +1435,7 @@ export const appRouter = router({
       const total = data.reduce((a, b) => a + b, 0);
       return { labels, data, total };
     }),
-  ordersSummary: publicProcedure
+    ordersSummary: publicProcedure
     .input(z.object({ tenantId: z.number(), startDate: z.string(), endDate: z.string() }))
     .query(async ({ input }) => {
       const orders = await db.getProductOrdersByTenant(input.tenantId);
@@ -1465,7 +1465,7 @@ export const appRouter = router({
         topProducts,
       };
     }),
-  exportOrdersPdf: publicProcedure
+    exportOrdersPdf: publicProcedure
     .input(z.object({ tenantId: z.number(), startDate: z.string(), endDate: z.string() }))
     .mutation(async ({ input }) => {
       const settings = await db.getShopSettings(input.tenantId).catch(() => null) as any;
@@ -1548,14 +1548,14 @@ export const appRouter = router({
       const pdfBuffer = await pdfPromise;
       return { pdfBase64: pdfBuffer.toString("base64") };
     }),
-  expensesBySupplier: publicProcedure
+    expensesBySupplier: publicProcedure
     .input(z.object({ tenantId: z.number(), startDate: z.string(), endDate: z.string() }))
     .query(async ({ input }) => {
       return db.getExpensesBySupplier(input.tenantId, input.startDate, input.endDate);
     }),
 
   // DRE simplificado com comparativo ao período anterior
-  dreComparative: publicProcedure
+    dreComparative: publicProcedure
     .input(z.object({ tenantId: z.number(), startDate: z.string(), endDate: z.string() }))
     .query(async ({ input }) => {
       // Período atual
@@ -1606,7 +1606,7 @@ export const appRouter = router({
     }),
 
   // Breakdown de despesas por categoria
-  expensesByCategory: publicProcedure
+    expensesByCategory: publicProcedure
     .input(z.object({ tenantId: z.number(), startDate: z.string(), endDate: z.string() }))
     .query(async ({ input }) => {
       const expList = await db.getExpensesByDateRange(input.startDate, input.endDate, input.tenantId);
@@ -1624,7 +1624,7 @@ export const appRouter = router({
     }),
 
   // Ticket médio por sub-período (para gráfico de tendência)
-  ticketAvgTimeline: publicProcedure
+    ticketAvgTimeline: publicProcedure
     .input(z.object({ tenantId: z.number(), period: z.enum(["week", "month", "year"]).default("month") }))
     .query(async ({ input }) => {
       const today = new Date();
@@ -1679,7 +1679,7 @@ export const appRouter = router({
     }),
 
   // Projeção de receita do mês atual
-  revenueProjection: publicProcedure
+    revenueProjection: publicProcedure
     .input(z.object({ tenantId: z.number() }))
     .query(async ({ input }) => {
       const today = new Date();
