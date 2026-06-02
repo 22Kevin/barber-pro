@@ -14,10 +14,7 @@ import {
 import Svg, { Rect, Line, Text as SvgText, G } from "react-native-svg";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
-import * as FileSystem from "expo-file-system/legacy";
-import * as Sharing from "expo-sharing";
 import { AdminHeader } from "@/components/admin-header";
-import { exportCsv } from "@/hooks/use-csv-export";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useColors } from "@/hooks/use-colors";
 
@@ -176,10 +173,7 @@ export default function ReportsScreen() {
     { tenantId },
     { enabled: !!tenantId && activeTab === "financeiro" }
   );
-  const exportCsvQuery = trpc.export.financeiroCsv.useQuery(
-    { tenantId, days: periodDays },
-    { enabled: false }
-  );
+  
   const exportPdfMutation = trpc.reports.exportPdf.useMutation();
   const exportOrdersPdfMutation = trpc.reports.exportOrdersPdf.useMutation();
 
@@ -247,12 +241,7 @@ export default function ReportsScreen() {
         a.click();
         URL.revokeObjectURL(url);
       } else {
-        const fileUri = `${FileSystem.cacheDirectory}relatorio-${dateRange.startDate}.pdf`;
-        await FileSystem.writeAsStringAsync(fileUri, result.pdfBase64, { encoding: FileSystem.EncodingType.Base64 });
-        const canShare = await Sharing.isAvailableAsync();
-        if (canShare) {
-          await Sharing.shareAsync(fileUri, { mimeType: "application/pdf", dialogTitle: "Exportar Relatório" });
-        } else {
+        await Linking.openURL(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://usebarberpro.com"}/admin/export/financeiro`); else {
           Alert.alert("PDF salvo", `Arquivo salvo em: ${fileUri}`);
         }
       }
@@ -278,12 +267,7 @@ export default function ReportsScreen() {
         a.click();
         URL.revokeObjectURL(url);
       } else {
-        const fileUri = `${FileSystem.cacheDirectory}encomendas-${dateRange.startDate}.pdf`;
-        await FileSystem.writeAsStringAsync(fileUri, result.pdfBase64, { encoding: FileSystem.EncodingType.Base64 });
-        const canShare = await Sharing.isAvailableAsync();
-        if (canShare) {
-          await Sharing.shareAsync(fileUri, { mimeType: "application/pdf", dialogTitle: "Exportar Encomendas" });
-        } else {
+        await Linking.openURL(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://usebarberpro.com"}/admin/export/financeiro`); else {
           Alert.alert("PDF salvo", `Arquivo salvo em: ${fileUri}`);
         }
       }
