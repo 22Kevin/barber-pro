@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppState, AppStateStatus } from "react-native";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { removeBarberJwt } from "@/lib/trpc";
 
@@ -41,6 +42,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadStoredAuth();
+
+    // When app comes back to foreground, silently verify token is still valid
+    // This prevents the appearance of being "logged out" after switching apps
+    const subscription = AppState.addEventListener("change", async (state: AppStateStatus) => {
+      if (state === "active") {
+        try {
+          const { getBarberJwt, isJwtExpiredOrExpiringSoon, tryRefreshBarberToken } = await import("@/lib/trpc") as any;
+          if (getBarberJwt && isJwtExpiredOrExpiringSoon) {
+            const token = await getBarberJwt();
+            if (token && isJwtExpiredOrExpiringSoon(token)) {
+              // Token about to expire — refresh silently
+              await tryRefreshBarberToken?.();
+            }
+          }
+        } catch {
+          // Ignore errors — user stays logged in with existing token
+        }
+      }
+    });
+    return () => subscription?.remove();
   }, []);
 
   async function loadStoredAuth() {

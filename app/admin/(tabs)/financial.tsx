@@ -212,18 +212,26 @@ export default function FinancialScreen() {
         </Pressable>
       </View>
 
-      {/* Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 44 }}>
-        <View style={[styles.tabs, { paddingHorizontal: 16 }]}>
-          {(["overview", "sales", "expenses", "online"] as Tab[]).map(tab => (
-            <Pressable key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)}>
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab === "overview" ? "Resumo" : tab === "sales" ? "Receitas" : tab === "expenses" ? "Despesas" : "Pgto Online"}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-      </ScrollView>
+      {/* Tabs — segmented control style */}
+      <View style={styles.tabsWrapper}>
+        {([
+          { key: "overview",  label: "Resumo",     icon: "📊" },
+          { key: "sales",     label: "Receitas",   icon: "💰" },
+          { key: "expenses",  label: "Despesas",   icon: "📉" },
+          { key: "online",    label: "Online",     icon: "💳" },
+        ] as { key: Tab; label: string; icon: string }[]).map(tab => (
+          <Pressable
+            key={tab.key}
+            style={[styles.tabItem, activeTab === tab.key && styles.tabItemActive]}
+            onPress={() => setActiveTab(tab.key)}
+          >
+            <Text style={styles.tabIcon}>{tab.icon}</Text>
+            <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
+              {tab.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: tabBarHeight }}>
         {/* Overview */}
@@ -571,11 +579,31 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   monthSelector: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 12 },
   monthArrow: { padding: 8 },
   monthLabel: { fontSize: 15, fontWeight: "700", color: c.foreground, textTransform: "capitalize" },
-  tabs: { flexDirection: "row", marginHorizontal: 16, backgroundColor: "#1A1A1A", borderRadius: 12, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: "#333" },
-  tab: { paddingVertical: 8, paddingHorizontal: 14, alignItems: "center", borderRadius: 8, minWidth: 80 },
-  tabActive: { backgroundColor: "#C9A84C" },
-  tabText: { fontSize: 12, color: "#888", fontWeight: "700", textAlign: "center" },
-  tabTextActive: { color: "#0A0A0A" },
+  tabsWrapper: {
+    flexDirection: "row",
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: "#0F0F0B",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+    padding: 4,
+    gap: 2,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 2,
+  },
+  tabItemActive: {
+    backgroundColor: "#C9A84C",
+  },
+  tabIcon: { fontSize: 14 },
+  tabLabel: { fontSize: 10, color: "#666", fontWeight: "700", letterSpacing: 0.3 },
+  tabLabelActive: { color: "#0A0A0A" },
   profitCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: c.surface, borderRadius: 14, padding: 20, borderWidth: 1, borderColor: c.border },
   profitLabel: { fontSize: 13, color: c.muted, marginBottom: 4 },
   profitValue: { fontSize: 34, fontWeight: "800", marginBottom: 12 },

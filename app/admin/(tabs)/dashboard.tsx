@@ -107,8 +107,8 @@ export default function DashboardScreen() {
     return { start: `${y}-${m}-01`, end: `${y}-${m}-${String(lastDay).padStart(2,"0")}` };
   }, []);
   const monthlySalesQuery = trpc.sales.byDateRange.useQuery(
-    { startDate: monthStart, endDate: monthEnd },
-    { enabled: !!barber?.id }
+    { startDate: monthStart, endDate: monthEnd, tenantId: barber?.tenantId ?? null },
+    { enabled: !!barber?.tenantId }
   );
   const monthRevenue = useMemo(() => {
     return (monthlySalesQuery.data ?? [])
