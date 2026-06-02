@@ -113,21 +113,49 @@ export const appRouter = router({
         return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, token, refreshToken };
       }),
     googleLogin: publicProcedure
-      .input(z.object({ googleId: z.string(), email: z.string().email(), name: z.string(), photoUrl: z.string().optional() }))
+      .input(z.object({
+        idToken: z.string().optional(),
+        googleId: z.string().optional(),
+        email: z.string().email().optional(),
+        name: z.string().optional(),
+        photoUrl: z.string().optional()
+      }))
       .mutation(async ({ input }) => {
-        let barber = await db.getBarberByGoogleId(input.googleId);
-        if (!barber) {
-          barber = await db.getBarberByEmail(input.email);
-          if (barber) {
-            await db.updateBarber(barber.id, { googleId: input.googleId } as any);
-            barber = { ...barber, googleId: input.googleId } as any;
+        let googleId = input.googleId;
+        let email = input.email;
+        let name = input.name;
+        let photoUrl = input.photoUrl;
+
+        // Se veio idToken, decodificar para extrair dados
+        if (input.idToken && (!googleId || !email)) {
+          try {
+            const parts = input.idToken.split('.');
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+            googleId = googleId ?? payload.sub;
+            email = email ?? payload.email;
+            name = name ?? payload.name ?? payload.given_name;
+            photoUrl = photoUrl ?? payload.picture;
+          } catch (e) {
+            throw new Error("Token Google inválido");
           }
         }
-        if (!barber || !barber.isActive) throw new Error("Nenhuma conta de barbeiro encontrada para este e-mail Google. Solicite ao administrador que cadastre sua conta com o e-mail: " + input.email);
-        if (input.photoUrl && !barber.photoUrl) await db.updateBarber(barber.id, { photoUrl: input.photoUrl } as any);
-        const payload = { barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any };
+
+        if (!googleId || !email) throw new Error("Dados do Google incompletos");
+
+        let barber = await db.getBarberByGoogleId(googleId);
+        let barber2 = await db.getBarberByGoogleId(googleId);
+        if (!barber2) {
+          barber2 = await db.getBarberByEmail(email);
+          if (barber2) {
+            await db.updateBarber(barber2.id, { googleId } as any);
+            barber2 = { ...barber2, googleId } as any;
+          }
+        }
+        if (!barber2 || !barber2.isActive) throw new Error("Nenhuma conta de barbeiro encontrada para este e-mail Google. Solicite ao administrador que cadastre sua conta com o e-mail: " + email);
+        if (photoUrl && !barber2.photoUrl) await db.updateBarber(barber2.id, { photoUrl } as any);
+        const payload = { barberId: barber2.id, tenantId: barber2.tenantId ?? null, role: barber2.role as any };
         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
-        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: input.photoUrl ?? barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, token, refreshToken };
+        return { id: barber2.id, name: barber2.name, email: barber2.email, phone: barber2.phone, photoUrl: photoUrl ?? barber2.photoUrl, role: barber2.role, specialties: barber2.specialties, tenantId: barber2.tenantId, token, refreshToken };
       }),
   }),
 
