@@ -241,9 +241,7 @@ export default function ReportsScreen() {
         a.click();
         URL.revokeObjectURL(url);
       } else {
-        await Linking.openURL(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://usebarberpro.com"}/admin/export/financeiro`); else {
-          Alert.alert("PDF salvo", `Arquivo salvo em: ${fileUri}`);
-        }
+        await Linking.openURL(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://usebarberpro.com"}/admin/export/financeiro`);
       }
     } catch (err: any) {
       Alert.alert("Erro ao exportar", err.message);
@@ -267,9 +265,7 @@ export default function ReportsScreen() {
         a.click();
         URL.revokeObjectURL(url);
       } else {
-        await Linking.openURL(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://usebarberpro.com"}/admin/export/financeiro`); else {
-          Alert.alert("PDF salvo", `Arquivo salvo em: ${fileUri}`);
-        }
+        await Linking.openURL(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://usebarberpro.com"}/admin/export/financeiro`);
       }
     } catch (err: any) {
       Alert.alert("Erro ao exportar", err.message);
