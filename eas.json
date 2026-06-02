@@ -12,7 +12,8 @@
         "gradleCommand": ":app:assembleDebug"
       },
       "env": {
-        "EAS_SKIP_AUTO_FINGERPRINT": "1"
+        "EAS_SKIP_AUTO_FINGERPRINT": "1",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "398675034994-8do72mahbndf5olf7rt4njteprr4vh0i.apps.googleusercontent.com"
       }
     },
     "preview": {
@@ -22,7 +23,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://usebarberpro.com",
-        "EAS_SKIP_AUTO_FINGERPRINT": "1"
+        "EAS_SKIP_AUTO_FINGERPRINT": "1",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "398675034994-8do72mahbndf5olf7rt4njteprr4vh0i.apps.googleusercontent.com"
       }
     },
     "production": {
@@ -32,7 +34,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://usebarberpro.com",
-        "EAS_SKIP_AUTO_FINGERPRINT": "1"
+        "EAS_SKIP_AUTO_FINGERPRINT": "1",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "398675034994-8do72mahbndf5olf7rt4njteprr4vh0i.apps.googleusercontent.com"
       }
     }
   },
