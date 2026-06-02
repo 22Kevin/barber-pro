@@ -1305,13 +1305,18 @@ async function renderDashboard(req: Request, res: Response) {
   // ─── Pagamentos online pendentes ────────────────────────────────────────────
   let pendingOnlineCount = 0;
   let pendingOnlineTotal = 0;
+  let oldestPendingDate: string | null = null;
   try {
     const dbConn = await db.getDb();
     if (dbConn && tenantId) {
-      const raw = await dbConn.execute(sql`SELECT COUNT(*) AS cnt, COALESCE(SUM(CAST(amount AS NUMERIC)), 0) AS total FROM online_payments WHERE "tenantId" = ${tenantId} AND status = 'pending'`) as any;
+      const raw = await dbConn.execute(sql`SELECT COUNT(*) AS cnt, COALESCE(SUM(CAST(amount AS NUMERIC)), 0) AS total, MIN("createdAt") AS oldest FROM online_payments WHERE "tenantId" = ${tenantId} AND status = 'pending'`) as any;
       const row = Array.isArray(raw) ? (raw[0] as any[])[0] : (raw?.rows?.[0]);
       pendingOnlineCount = parseInt(row?.cnt ?? '0', 10);
       pendingOnlineTotal = parseFloat(row?.total ?? '0');
+      if (row?.oldest) {
+        const d = new Date(row.oldest);
+        oldestPendingDate = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      }
     }
   } catch (_e) { /* silently ignore */ }
 
@@ -1501,7 +1506,7 @@ async function renderDashboard(req: Request, res: Response) {
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
       <div style="flex:1">
         <div style="font-size:13px;font-weight:700;color:#60A5FA;">${pendingOnlineCount} pagamento${pendingOnlineCount !== 1 ? 's' : ''} online pendente${pendingOnlineCount !== 1 ? 's' : ''}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px;">Total aguardando: R$ ${pendingOnlineTotal.toFixed(2).replace('.', ',')}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">Total: R$ ${pendingOnlineTotal.toFixed(2).replace('.', ',')}${oldestPendingDate ? ` · Mais antigo: ${oldestPendingDate}` : ''}</div>
       </div>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     </a>` : ''}
@@ -4095,6 +4100,8 @@ async function renderFinanceiro(req: Request, res: Response) {
     let pmtRows: any[] = [];
     if (dbConn && tenantId) {
       const pmtStatusFilter = pmtStatus !== "all" ? pmtStatus : null;
+      // Quando filtrando por status específico (ex: pending), não filtrar por data
+      // para mostrar TODOS os pendentes, inclusive de meses anteriores
       const pmtQueryObj = pmtStatusFilter
         ? sql`SELECT op.id, op."billingType", op.amount, op.status, op."createdAt", op."paidAt", op."invoiceUrl",
                op."chargeType", op."referenceId", op."asaasPaymentId",
@@ -4102,7 +4109,6 @@ async function renderFinanceiro(req: Request, res: Response) {
         FROM online_payments op
         LEFT JOIN clients c ON c.id = op."clientId"
         WHERE op."tenantId" = ${tenantId}
-          AND op."createdAt"::date >= ${start}::date AND op."createdAt"::date <= ${end}::date
           AND op.status = ${pmtStatusFilter}
         ORDER BY op."createdAt" DESC
         LIMIT 200`
@@ -4187,6 +4193,12 @@ async function renderFinanceiro(req: Request, res: Response) {
         + '</script>';
     }
     tabPagamentos = `
+      ${pmtStatus !== 'all' ? `
+      <div style="background:#C9A84C15;border:1px solid #C9A84C33;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#C9A84C;display:flex;align-items:center;gap:8px">
+        <span>🔍</span>
+        <span>Mostrando <strong>todos os períodos</strong> filtrados por status: <strong>${pmtStatus === 'pending' ? '⏳ Pendente' : pmtStatus}</strong></span>
+        <a href="/admin/financeiro?tab=pagamentos&period=${period}" style="margin-left:auto;color:#C9A84C;font-size:12px;text-decoration:underline">Limpar filtro</a>
+      </div>` : ''}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-width:240px">
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px">
