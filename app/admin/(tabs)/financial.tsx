@@ -90,7 +90,7 @@ export default function FinancialScreen() {
 
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
   const productsQuery = trpc.products.list.useQuery({ activeOnly: true, tenantId });
-  const salesQuery = trpc.sales.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
+  const salesQuery = trpc.sales.byDateRange.useQuery({ startDate: range.start, endDate: range.end, barberId: barber?.id });
   const expensesQuery = trpc.expenses.byDateRange.useQuery({ startDate: range.start, endDate: range.end });
   const statsQuery = trpc.dashboard.stats.useQuery({ date: toLocalDate(new Date()) });
 
@@ -571,10 +571,10 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   monthSelector: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 12 },
   monthArrow: { padding: 8 },
   monthLabel: { fontSize: 15, fontWeight: "700", color: c.foreground, textTransform: "capitalize" },
-  tabs: { flexDirection: "row", marginHorizontal: 16, backgroundColor: c.surface, borderRadius: 12, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: c.border },
-  tab: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: 8 },
+  tabs: { flexDirection: "row", marginHorizontal: 16, backgroundColor: "#1A1A1A", borderRadius: 12, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: "#333" },
+  tab: { paddingVertical: 8, paddingHorizontal: 14, alignItems: "center", borderRadius: 8, minWidth: 80 },
   tabActive: { backgroundColor: "#C9A84C" },
-  tabText: { fontSize: 13, color: c.muted, fontWeight: "600" },
+  tabText: { fontSize: 12, color: "#888", fontWeight: "700", textAlign: "center" },
   tabTextActive: { color: "#0A0A0A" },
   profitCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: c.surface, borderRadius: 14, padding: 20, borderWidth: 1, borderColor: c.border },
   profitLabel: { fontSize: 13, color: c.muted, marginBottom: 4 },

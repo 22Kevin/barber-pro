@@ -213,7 +213,7 @@ export default function ReportsScreen() {
   const inactiveDays = 30;
   const inactiveClientsQuery = trpc.clients.inactive.useQuery(
     { tenantId: tenantId ?? 0, days: inactiveDays },
-    { enabled: !!tenantId && activeTab === "inativos" }
+    { enabled: !!tenantId && activeTab === "inativos", retry: false }
   );
 
   const overdueQuery = trpc.asaasPayments.listOverdue.useQuery(

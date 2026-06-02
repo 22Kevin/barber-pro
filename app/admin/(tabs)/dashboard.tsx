@@ -99,6 +99,25 @@ export default function DashboardScreen() {
   const appointments = appointmentsQuery.data ?? [];
   const barbers = barbersQuery.data ?? [];
 
+  // Monthly revenue query (for bank balance card)
+  const { start: monthStart, end: monthEnd } = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,"0");
+    const lastDay = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    return { start: `${y}-${m}-01`, end: `${y}-${m}-${String(lastDay).padStart(2,"0")}` };
+  }, []);
+  const monthlySalesQuery = trpc.sales.byDateRange.useQuery(
+    { startDate: monthStart, endDate: monthEnd },
+    { enabled: !!barber?.id }
+  );
+  const monthRevenue = useMemo(() => {
+    return (monthlySalesQuery.data ?? [])
+      .filter((s: any) => s.paymentStatus === "paid")
+      .reduce((sum: number, s: any) => sum + parseFloat(s.total || "0"), 0);
+  }, [monthlySalesQuery.data]);
+  const [revenueVisible, setRevenueVisible] = useState(false);
+  const monthLabel = new Date().toLocaleDateString("pt-BR", { month: "long" });
+
   // Animated counters for metrics
   const animAppts    = useCountUp(stats?.appointmentsToday ?? 0);
   const animPending  = useCountUp(stats?.pendingAppointments ?? 0);
@@ -147,6 +166,32 @@ export default function DashboardScreen() {
           <Text style={dyn.greeting}>Olá, {barber?.name?.split(" ")[0]} 👋</Text>
           <Text style={dyn.date}>{formatDatePT(today)} — Hoje</Text>
         </View>
+
+        {/* Card de faturamento do mês - estilo saldo bancário */}
+        <Pressable
+          style={styles.monthRevenueCard}
+          onPress={() => setRevenueVisible(v => !v)}
+          accessible accessibilityLabel={revenueVisible ? "Ocultar faturamento" : "Revelar faturamento"}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.monthRevenueLabel}>
+              💵 FATURAMENTO · {monthLabel.toUpperCase()}
+            </Text>
+            <Text style={[styles.monthRevenueValue, !revenueVisible && styles.monthRevenueBlurred]}>
+              {formatCurrency(monthRevenue)}
+            </Text>
+            <Text style={styles.monthRevenueHint}>
+              {revenueVisible ? "Toque para ocultar" : "Toque para revelar"}
+            </Text>
+          </View>
+          <View style={styles.monthRevenueEye}>
+            <IconSymbol
+              name={revenueVisible ? "eye.fill" : "eye.slash.fill"}
+              size={22}
+              color="#C9A84C"
+            />
+          </View>
+        </Pressable>
 
         {/* Métricas */}
         {statsQuery.isLoading ? (
@@ -346,6 +391,22 @@ const styles = StyleSheet.create({
   statusText:   { fontSize: 11, fontWeight: "600" },
   pctBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginTop: 4, alignSelf: "flex-start" },
   pctText:  { fontSize: 10, fontWeight: "700" },
+  monthRevenueCard: {
+    flexDirection: "row", alignItems: "center", gap: 16,
+    backgroundColor: "#141410",
+    borderRadius: 16, padding: 20,
+    borderWidth: 1, borderColor: "#C9A84C33",
+    marginBottom: 16,
+  },
+  monthRevenueLabel: { fontSize: 10, color: "#C9A84C88", fontWeight: "800", letterSpacing: 2, marginBottom: 6 },
+  monthRevenueValue: { fontSize: 28, fontWeight: "900", color: "#C9A84C", letterSpacing: -0.5, marginBottom: 4 },
+  monthRevenueBlurred: { color: "transparent", textShadowColor: "#C9A84C", textShadowRadius: 12 },
+  monthRevenueHint: { fontSize: 11, color: "#444" },
+  monthRevenueEye: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: "#C9A84C18", borderWidth: 1, borderColor: "#C9A84C33",
+    alignItems: "center", justifyContent: "center",
+  },
   trialBanner:       { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginTop: 12, marginBottom: 4, backgroundColor: "#C9A84C15", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, borderWidth: 1, borderColor: "#C9A84C33" },
   trialBannerUrgent: { backgroundColor: "#F8717115", borderColor: "#F8717133" },
   trialBannerIcon:   { fontSize: 14 },

@@ -98,7 +98,14 @@ export default function AdminLoginScreen() {
   }
 
   async function handleGoogleLogin() {
-    if (!GoogleSignin || !WEB_CLIENT_ID) { Alert.alert("Google login não disponível"); return; }
+    if (!GoogleSignin || !WEB_CLIENT_ID) {
+      Alert.alert(
+        "Login com Google",
+        "Para usar o login com Google no app, é necessário configurar o ID do cliente Google nas configurações do projeto.\n\nAlternativamente, acesse o painel pelo navegador em usebarberpro.com",
+        [{ text: "Entendi" }]
+      );
+      return;
+    }
     setGoogleLoading(true);
     try {
       await GoogleSignin.hasPlayServices();

@@ -630,7 +630,27 @@ export const appRouter = router({
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getSaleById(input.id)),
     create: barberProcedure
       .input(z.object({ clientId: z.number().optional().nullable(), barberId: z.number(), appointmentId: z.number().optional().nullable(), subtotal: z.string(), discount: z.string().default("0"), total: z.string(), paymentMethod: z.enum(["cash", "credit_card", "debit_card", "pix", "asaas", "other"]), paymentStatus: z.enum(["pending", "paid", "cancelled", "refunded"]).default("paid"), couponCode: z.string().optional().nullable(), notes: z.string().optional().nullable(), items: z.array(z.object({ itemType: z.enum(["service", "product"]), itemId: z.number(), itemName: z.string(), quantity: z.number().min(1), unitPrice: z.string(), total: z.string() })) }))
-      .mutation(({ input }) => { const { items, ...saleData } = input; return db.createSale(saleData as any, items); }),
+      .mutation(async ({ input }) => {
+        const { items, ...saleData } = input;
+        const saleId = await db.createSale(saleData as any, items);
+        // Record stock movement (out) for each product item sold
+        const today = new Date().toISOString().slice(0, 10);
+        for (const item of items) {
+          if (item.itemType === "product" && item.itemId) {
+            try {
+              await db.addStockMovement({
+                productId: item.itemId,
+                type: "out",
+                quantity: item.quantity,
+                reason: `Venda #${saleId} — ${item.itemName}`,
+                barberId: input.barberId ?? undefined,
+                date: today,
+              } as any);
+            } catch { /* não bloquear a venda se o movimento falhar */ }
+          }
+        }
+        return saleId;
+      }),
   }),
 
   expenses: router({

@@ -227,13 +227,16 @@ export default function ProductsScreen() {
       {/* Banner de alertas de estoque baixo */}
       {lowStockProducts.length > 0 && (
         <View style={styles.alertBanner}>
-          <View style={styles.alertBannerHeader}>
+          <Pressable style={styles.alertBannerHeader} onPress={() => setLowStockExpanded(e => !e)}>
             <IconSymbol name="exclamationmark.triangle.fill" size={16} color="#FF9800" />
-            <Text style={styles.alertBannerTitle}>
+            <Text style={[styles.alertBannerTitle, { flex: 1 }]}>
               {lowStockProducts.length} produto{lowStockProducts.length > 1 ? "s" : ""} com estoque baixo
             </Text>
-          </View>
-          {lowStockProducts.map(p => {
+            <Text style={{ color: "#FF9800", fontSize: 12, fontWeight: "700" }}>
+              {lowStockExpanded ? "▲ Recolher" : "▼ Ver todos"}
+            </Text>
+          </Pressable>
+          {(lowStockExpanded ? lowStockProducts : lowStockProducts.slice(0, 2)).map(p => {
             const supplier = suppliersList.find(s => s.id === p.supplierId);
             return (
               <View key={p.id} style={styles.alertItem}>
