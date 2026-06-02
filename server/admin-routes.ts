@@ -47,6 +47,14 @@ function fmtCurrency(val: number | string): string {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function fmtPhone(phone: string): string {
+  if (!phone) return "";
+  const d = phone.replace(/\D/g, "");
+  if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return phone;
+}
+
 function fmtDate(dateStr: string): string {
   const [y, m, d] = dateStr.split("-");
   return `${d}/${m}/${y}`;
@@ -5712,7 +5720,7 @@ async function renderRelatorios(req: Request, res: Response) {
           COALESCE(SUM(CASE WHEN status = 'overdue' THEN CAST(amount AS NUMERIC) ELSE 0 END), 0) AS total_overdue
         FROM online_payments
         WHERE "tenantId" = ${tenantId}
-          AND "createdAt" >= NOW() - ${sql.raw(`INTERVAL '${days} days'`)}
+          AND "createdAt" >= NOW() - INTERVAL '30 days'
       `) as any;
       const methodRow = Array.isArray(rawByMethod) ? (rawByMethod[0] as any[])?.[0] : (rawByMethod?.rows?.[0] ?? null);
       if (methodRow) {
@@ -5733,7 +5741,7 @@ async function renderRelatorios(req: Request, res: Response) {
         FROM online_payments op
         LEFT JOIN clients c ON c.id = op."clientId"
         WHERE op."tenantId" = ${tenantId}
-          AND op."createdAt" >= NOW() - ${sql.raw(`INTERVAL '${days} days'`)}
+          AND op."createdAt"::date >= ${startStr}::date
         ORDER BY op."createdAt" DESC
         LIMIT 50
       `) as any;
