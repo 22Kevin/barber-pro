@@ -32,9 +32,10 @@ const SESSION_MAX_AGE = 8 * 60 * 60; // 8 horas
 const SESSION_MAX_AGE_REMEMBER = 30 * 24 * 60 * 60; // 30 dias
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function esc(str: string | null | undefined): string {
-  if (!str) return "";
-  return str
+function esc(str: any): string {
+  if (str == null || str === false) return "";
+  const s = typeof str !== "string" ? String(str) : str;
+  return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
