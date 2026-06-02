@@ -644,12 +644,13 @@ export const appRouter = router({
             },
           ]
         );
-        return { saleId };
         // Atualizar status do agendamento para "completed" após registrar pagamento
         try {
           await db.updateAppointmentStatus(input.appointmentId, "completed");
         } catch { /* não bloquear se falhar */ }
-        return { saleId }; router({
+        return { saleId };
+      }),
+    blockedSlots: router({
       get: publicProcedure.input(z.object({ barberId: z.number(), date: z.string() })).query(({ input }) => db.getBlockedSlots(input.barberId, input.date)),
       create: barberProcedure.input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), reason: z.string().optional() })).mutation(({ input }) => db.createBlockedSlot(input)),
       delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBlockedSlot(input.id)),
