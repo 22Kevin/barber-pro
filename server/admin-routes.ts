@@ -1247,6 +1247,14 @@ async function renderDashboard(req: Request, res: Response) {
   const yesterdayStr = yesterday();
   const statsYesterday = await db.getDashboardStats(yesterdayStr, tenantId).catch(() => ({ appointmentsToday: 0, revenueToday: 0, clientsToday: 0, pendingAppointments: 0 }));
   const appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
+  // ─── Faturamento do mês ────────────────────────────────────────────────────
+  const { start: monthStart, end: monthEnd } = monthRange();
+  const monthlySales = await db.getSalesByDateRange(monthStart, monthEnd, undefined, tenantId).catch(() => []);
+  const monthRevenue = (monthlySales as any[]).filter((s: any) => s.paymentStatus === 'paid').reduce((sum: number, s: any) => sum + parseFloat(s.total || '0'), 0);
+  const monthExpenses = await db.getExpensesByDateRange(monthStart, monthEnd, tenantId).catch(() => []);
+  const monthExpenseTotal = (monthExpenses as any[]).reduce((sum: number, e: any) => sum + parseFloat(e.amount || '0'), 0);
+  const monthProfit = monthRevenue - monthExpenseTotal;
+  const now2 = new Date(); const monthLabel = now2.toLocaleDateString('pt-BR', { month: 'long' });
   // ─── Próximo agendamento do dia ───────────────────────────────────────────
   const nowMinutes = (() => {
     const now = new Date();
@@ -1373,6 +1381,63 @@ async function renderDashboard(req: Request, res: Response) {
       </table>`;
 
   const body = `
+    <!-- 0. Card Faturamento do Mês com olhinho -->
+    <div id="monthRevenueCard" style="background:linear-gradient(135deg,#1A1500 0%,#141410 60%,#0F0F0B 100%);border:1px solid #C9A84C33;border-radius:18px;padding:22px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:default;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(201,168,76,0.1) 0%,transparent 70%);pointer-events:none;"></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span style="font-size:11px;font-weight:700;color:#C9A84C;letter-spacing:1.5px;text-transform:uppercase">Faturamento de ${monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+          <div id="dashMonthReveal" style="font-size:32px;font-weight:900;color:#C9A84C;letter-spacing:-1px;line-height:1;filter:blur(8px);user-select:none;transition:filter 0.3s" onclick="toggleMonthRevenue()">${fmtCurrency(monthRevenue)}</div>
+          <div style="display:flex;gap:16px">
+            <div>
+              <div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Despesas</div>
+              <div id="dashMonthExpense" style="font-size:14px;font-weight:700;color:#F87171;filter:blur(6px);transition:filter 0.3s" onclick="toggleMonthRevenue()">-${fmtCurrency(monthExpenseTotal)}</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Lucro</div>
+              <div id="dashMonthProfit" style="font-size:14px;font-weight:700;color:${monthProfit >= 0 ? '#4ADE80' : '#F87171'};filter:blur(6px);transition:filter 0.3s" onclick="toggleMonthRevenue()">${fmtCurrency(monthProfit)}</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:#555">Toque no valor ou no olhinho para revelar &nbsp;·&nbsp; <a href="/admin/financeiro" style="color:#C9A84C88;text-decoration:none">Ver detalhes →</a></div>
+      </div>
+      <button onclick="toggleMonthRevenue()" id="dashEyeBtn" title="Mostrar/ocultar valores" style="background:#C9A84C18;border:1px solid #C9A84C33;border-radius:12px;padding:12px;cursor:pointer;flex-shrink:0;transition:background 0.2s" onmouseover="this.style.background='#C9A84C30'" onmouseout="this.style.background='#C9A84C18'">
+        <svg id="dashEyeIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+      </button>
+    </div>
+    <script>
+      var _dashRevealed = false;
+      // Restaurar preferência salva
+      try { _dashRevealed = localStorage.getItem('dashReveal') === '1'; } catch(e){}
+      function toggleMonthRevenue() {
+        _dashRevealed = !_dashRevealed;
+        try { localStorage.setItem('dashReveal', _dashRevealed ? '1' : '0'); } catch(e){}
+        applyDashReveal();
+      }
+      function applyDashReveal() {
+        var blur = _dashRevealed ? '0px' : '8px';
+        var blur2 = _dashRevealed ? '0px' : '6px';
+        var el = document.getElementById('dashMonthReveal');
+        var ep = document.getElementById('dashMonthProfit');
+        var ee = document.getElementById('dashMonthExpense');
+        if (el) el.style.filter = 'blur(' + blur + ')';
+        if (ep) ep.style.filter = 'blur(' + blur2 + ')';
+        if (ee) ee.style.filter = 'blur(' + blur2 + ')';
+        var icon = document.getElementById('dashEyeIcon');
+        if (icon) {
+          icon.innerHTML = _dashRevealed
+            ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+            : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>';
+        }
+      }
+      // Aplicar ao carregar
+      document.addEventListener('DOMContentLoaded', applyDashReveal);
+      if (document.readyState !== 'loading') applyDashReveal();
+    </script>
+
     <!-- 1. KPI Cards -->
     <div class="metrics-grid">
       <div class="metric-card kpi-tooltip">
