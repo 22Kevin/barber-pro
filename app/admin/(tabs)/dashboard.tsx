@@ -211,7 +211,10 @@ export default function DashboardScreen() {
           <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
         ) : (
           <View style={styles.metricsGrid}>
-            <View style={[dyn.metricCard, { borderLeftColor: "#C9A84C" }]}>
+            <Pressable
+              style={({ pressed }) => [dyn.metricCard, { borderLeftColor: "#C9A84C" }, pressed && { opacity: 0.75 }]}
+              onPress={() => router.push("/admin/(tabs)/agenda" as any)}
+            >
               <View style={[styles.metricIcon, { backgroundColor: colors.primary + "22" }]}>
                 <IconSymbol name="calendar" size={22} color={colors.primary} />
               </View>
