@@ -4201,32 +4201,71 @@ async function renderFinanceiro(req: Request, res: Response) {
 
     // Script para ações dos pagamentos (dentro do template para ficar no DOM correto)
     const pmtActionsScript = `
+      <!-- Modal de confirmação customizado -->
+      <div id="pmtConfirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center">
+        <div style="background:#141414;border:1px solid #2A2A2A;border-radius:20px;padding:32px 28px;width:100%;max-width:380px;box-shadow:0 24px 60px rgba(0,0,0,0.6);text-align:center;margin:16px">
+          <div id="pmtConfirmIcon" style="width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px"></div>
+          <h3 id="pmtConfirmTitle" style="font-size:18px;font-weight:800;color:#F0EEE8;margin:0 0 10px"></h3>
+          <p id="pmtConfirmDesc" style="font-size:14px;color:#888;line-height:1.6;margin:0 0 28px"></p>
+          <div style="display:flex;gap:10px">
+            <button onclick="pmtConfirmClose()" style="flex:1;padding:13px;background:#1A1A1A;border:1px solid #333;border-radius:12px;color:#888;font-size:14px;font-weight:700;cursor:pointer">Cancelar</button>
+            <button id="pmtConfirmOkBtn" style="flex:1;padding:13px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;border:none"></button>
+          </div>
+        </div>
+      </div>
       <script>
+        var _pmtConfirmResolve = null;
+        function pmtConfirm(opts) {
+          return new Promise(function(resolve) {
+            _pmtConfirmResolve = resolve;
+            var modal = document.getElementById('pmtConfirmModal');
+            var icon = document.getElementById('pmtConfirmIcon');
+            icon.textContent = opts.icon || '?';
+            icon.style.background = opts.iconBg || '#C9A84C22';
+            document.getElementById('pmtConfirmTitle').textContent = opts.title || 'Confirmar';
+            document.getElementById('pmtConfirmDesc').textContent = opts.desc || '';
+            var okBtn = document.getElementById('pmtConfirmOkBtn');
+            okBtn.textContent = opts.btnLabel || 'Confirmar';
+            okBtn.style.background = opts.btnColor || '#C9A84C';
+            okBtn.style.color = opts.btnTextColor || '#0A0A0A';
+            okBtn.onclick = function() { pmtConfirmClose(); resolve(true); };
+            modal.style.display = 'flex';
+          });
+        }
+        function pmtConfirmClose() {
+          document.getElementById('pmtConfirmModal').style.display = 'none';
+          if (_pmtConfirmResolve) { _pmtConfirmResolve(false); _pmtConfirmResolve = null; }
+        }
+        document.getElementById('pmtConfirmModal').addEventListener('click', function(e) {
+          if (e.target === this) pmtConfirmClose();
+        });
         async function cancelAsaasCharge(asaasPaymentId, btn) {
-          if (!confirm('Cancelar esta cobrança? Esta ação não pode ser desfeita.')) return;
-          btn.disabled = true; btn.textContent = '⏳ Cancelando...';
+          var ok = await pmtConfirm({ icon: '✕', iconBg: '#EF444420', title: 'Cancelar cobrança?', desc: 'Esta ação cancela a cobrança no Asaas e não pode ser desfeita.', btnLabel: 'Sim, cancelar', btnColor: '#EF4444', btnTextColor: '#fff' });
+          if (!ok) return;
+          btn.disabled = true; btn.textContent = '⏳';
           try {
             const r = await fetch('/admin-api/cancel-asaas-charge', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'include', body: JSON.stringify({ asaasPaymentId }) });
             const data = await r.json();
             if (!r.ok) throw new Error(data.error || 'Erro ao cancelar');
             const row = document.getElementById('pmt-row-' + asaasPaymentId);
-            if (row) { row.style.opacity = '0.5'; row.style.textDecoration = 'line-through'; }
-            const statusCell = document.getElementById('pmt-status-' + asaasPaymentId);
-            if (statusCell) statusCell.innerHTML = '<span style="background:#6B728022;color:#9BA1A6;border:1px solid #6B728044;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✖ Cancelado</span>';
+            if (row) row.style.opacity = '0.45';
+            const sc = document.getElementById('pmt-status-' + asaasPaymentId);
+            if (sc) sc.innerHTML = '<span style="background:#6B728022;color:#9BA1A6;border:1px solid #6B728044;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✕ Cancelado</span>';
             btn.style.display = 'none';
-          } catch(e) { alert('Erro: ' + e.message); btn.disabled = false; btn.textContent = 'Cancelar'; }
+          } catch(e) { await pmtConfirm({ icon: '⚠', iconBg: '#F59E0B20', title: 'Erro', desc: e.message, btnLabel: 'Fechar', btnColor: '#C9A84C', btnTextColor: '#0A0A0A' }); btn.disabled = false; btn.textContent = '✖ Cancelar'; }
         }
         async function markAsPaidManual(asaasPaymentId, btn) {
-          if (!confirm('Marcar como pago manualmente? Use apenas se confirmou o pagamento fora do sistema.')) return;
-          btn.disabled = true; btn.textContent = '⏳ Salvando...';
+          var ok = await pmtConfirm({ icon: '✓', iconBg: '#22C55E20', title: 'Marcar como pago?', desc: 'Use apenas se confirmou o recebimento fora do sistema. O status será atualizado manualmente.', btnLabel: 'Confirmar pagamento', btnColor: '#22C55E', btnTextColor: '#fff' });
+          if (!ok) return;
+          btn.disabled = true; btn.textContent = '⏳';
           try {
             const r = await fetch('/admin-api/mark-payment-paid', { method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'include', body: JSON.stringify({ asaasPaymentId }) });
             const data = await r.json();
-            if (!r.ok) throw new Error(data.error || 'Erro ao marcar como pago');
-            const statusCell = document.getElementById('pmt-status-' + asaasPaymentId);
-            if (statusCell) statusCell.innerHTML = '<span style="background:#22C55E22;color:#4ADE80;border:1px solid #22C55E44;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✅ Pago</span>';
-            btn.closest('td').innerHTML = '<span style="color:#4ADE80;font-size:12px">✓ Confirmado</span>';
-          } catch(e) { alert('Erro: ' + e.message); btn.disabled = false; btn.textContent = 'Marcar pago'; }
+            if (!r.ok) throw new Error(data.error || 'Erro');
+            const sc = document.getElementById('pmt-status-' + asaasPaymentId);
+            if (sc) sc.innerHTML = '<span style="background:#22C55E22;color:#4ADE80;border:1px solid #22C55E44;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">✅ Pago</span>';
+            btn.closest('td').innerHTML = '<span style="color:#4ADE80;font-size:13px;font-weight:700">✓ Confirmado</span>';
+          } catch(e) { await pmtConfirm({ icon: '⚠', iconBg: '#F59E0B20', title: 'Erro', desc: e.message, btnLabel: 'Fechar', btnColor: '#C9A84C', btnTextColor: '#0A0A0A' }); btn.disabled = false; btn.textContent = '✓ Marcar pago'; }
         }
       </script>
     `;
