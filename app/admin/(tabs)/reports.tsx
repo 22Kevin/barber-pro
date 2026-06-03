@@ -36,7 +36,7 @@ function DreRow({ label, value, change, color, bold, invertChange }: {
       <Text style={[dreRowStyles.label, bold && dreRowStyles.bold]}>{label}</Text>
       <View style={dreRowStyles.right}>
         <Text style={[dreRowStyles.value, { color }, bold && dreRowStyles.bold]}>
-          {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)}
+          {formatCurrency(value)}
         </Text>
         {change !== 0 && (
           <Text style={[dreRowStyles.change, { color: changeColor }]}>
@@ -56,8 +56,11 @@ const dreRowStyles = StyleSheet.create({
   change: { fontSize: 11, marginTop: 1 },
 });
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+function formatCurrency(value: number): string {
+  if (value == null || isNaN(value)) return "R$ 0,00";
+  try {
+    return "R$ " + value.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  } catch { return "R$ 0,00"; }
 }
 
 function toLocalDateStr(d: Date): string {
@@ -77,13 +80,14 @@ function getDateRange(period: Period): { startDate: string; endDate: string } {
 
 // ─── Gráfico de barras SVG ────────────────────────────────────────────────────
 function BarChart({ labels, data }: { labels: string[]; data: number[] }) {
+  if (!data || data.length === 0) return null;
   const W = 340;
   const H = 160;
   const PAD = { top: 10, right: 10, bottom: 28, left: 48 };
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
-  const maxVal = Math.max(...data, 1);
-  const barW = chartW / data.length - 6;
+  const maxVal = Math.max(...data.filter(v => !isNaN(v)), 1);
+  const barW = Math.max(1, chartW / data.length - 6);
 
   return (
     <Svg width={W} height={H}>
@@ -776,8 +780,8 @@ export default function ReportsScreen() {
                 </View>
               ) : (
                 <>
-                  <Text style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>{inactiveClientsQuery.data.length} cliente(s) sem visitar há mais de {inactiveDays} dias</Text>
-                  {inactiveClientsQuery.data.map((client: any) => (
+                  <Text style={{ fontSize: 13, color: "#666", marginBottom: 12 }}>{inactiveClientsQuery.data?.length ?? 0} cliente(s) sem visitar há mais de {inactiveDays} dias</Text>
+                  {(inactiveClientsQuery.data ?? []).map((client: any) => (
                     <View key={client.id} style={{ backgroundColor: "#141414", borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: "#2A2A2A", flexDirection: "row", alignItems: "center" }}>
                       <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#C9A84C22", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
                         <Text style={{ fontSize: 16, fontWeight: "900", color: "#C9A84C" }}>{client.name?.charAt(0).toUpperCase()}</Text>
