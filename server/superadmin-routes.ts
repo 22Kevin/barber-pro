@@ -94,76 +94,93 @@ function esc(s: string | null | undefined): string {
 
 function layout(title: string, session: BOSession | null, body: string): string {
   const nav = session ? `
-    <aside class="sidebar">
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+    <aside class="sidebar" id="main-sidebar">
       <div class="sidebar-brand">
-        <span class="sidebar-brand-logo">BARBER PRO</span>
-        <span class="sidebar-brand-sub">BACKOFFICE ADMIN</span>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="sidebar-section-label">Principal</div>
-        <a href="/superadmin" class="sidebar-link ${title === "Dashboard" ? "active" : ""}">
-          <span class="icon">📊</span> Dashboard
-        </a>
-        <a href="/superadmin/tenants" class="sidebar-link ${["Barbearias", "Tenant"].includes(title) ? "active" : ""}">
-          <span class="icon">🏪</span> Barbearias
-        </a>
-        <a href="/superadmin/planos" class="sidebar-link ${title === "Planos" ? "active" : ""}">
-          <span class="icon">💳</span> Planos & Assinaturas
-        </a>
-        <a href="/superadmin/leads" class="sidebar-link ${title === "Leads" ? "active" : ""}">
-          <span class="icon">🎯</span> Leads
-        </a>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="sidebar-section-label">Operacional</div>
-        <a href="/superadmin/suporte" class="sidebar-link ${title === "Suporte" ? "active" : ""}">
-          <span class="icon">🎧</span> Suporte
-        </a>
-        <a href="/superadmin/erros" class="sidebar-link ${title === "Erros" ? "active" : ""}">
-          <span class="icon">🚨</span> Log de Erros
-        </a>
-        <a href="/superadmin/monitoramento" class="sidebar-link ${title === "Monitoramento" ? "active" : ""}">
-          <span class="icon">⚙️</span> Monitoramento
-        </a>
-      </div>
-
-      ${session.role === "super_admin" ? `
-      <div class="sidebar-section">
-        <div class="sidebar-section-label">Configuração</div>
-        <a href="/superadmin/usuarios" class="sidebar-link ${title === "Usuários" ? "active" : ""}">
-          <span class="icon">👤</span> Usuários BO
-        </a>
-        <a href="/superadmin/cms" class="sidebar-link ${title.startsWith("CMS") ? "active" : ""}">
-          <span class="icon">✏️</span> CMS / Conteúdo
-        </a>
-        <a href="/superadmin/email-preview" class="sidebar-link ${title === "E-mails" ? "active" : ""}">
-          <span class="icon">📧</span> Templates E-mail
-        </a>
-      </div>
-      ` : ""}
-
-      <div class="sidebar-user">
-        <div class="sidebar-user-name">${esc(session.name)}</div>
-        <div class="sidebar-user-role">
-          <span class="role-chip ${session.role}">${session.role === "super_admin" ? "Super Admin" : session.role === "admin" ? "Admin" : "Suporte"}</span>
+        <div class="sidebar-brand-icon">✂️</div>
+        <div class="sidebar-brand-text">
+          <div class="sidebar-brand-title">BARBER PRO</div>
+          <div class="sidebar-brand-sub">Backoffice Admin</div>
         </div>
-        <div class="sidebar-user-actions">
-          <a href="/superadmin/logout" style="color:var(--error)">→ Sair</a>
+      </div>
+
+      <button class="sidebar-toggle" onclick="toggleSidebar()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+        <span class="toggle-label" style="font-size:12px">Recolher</span>
+      </button>
+
+      <nav class="sidebar-nav">
+        <div class="sidebar-group">
+          <span class="sidebar-group-label">Principal</span>
+          <a href="/superadmin" class="sidebar-item ${title === "Dashboard" ? "active" : ""}" data-tip="Dashboard">
+            <span class="s-icon">🏠</span><span class="s-label">Dashboard</span>
+          </a>
+          <a href="/superadmin/tenants" class="sidebar-item ${["Barbearias","Tenant"].some(t => title.includes(t)) ? "active" : ""}" data-tip="Barbearias">
+            <span class="s-icon">🏪</span><span class="s-label">Barbearias</span>
+          </a>
+          <a href="/superadmin/planos" class="sidebar-item ${title === "Planos" ? "active" : ""}" data-tip="Planos">
+            <span class="s-icon">💳</span><span class="s-label">Planos & Assinaturas</span>
+          </a>
+          <a href="/superadmin/leads" class="sidebar-item ${title === "Leads" ? "active" : ""}" data-tip="Leads">
+            <span class="s-icon">🎯</span><span class="s-label">Leads</span>
+          </a>
         </div>
+
+        <div class="sidebar-group">
+          <span class="sidebar-group-label">Operacional</span>
+          <a href="/superadmin/suporte" class="sidebar-item ${title === "Suporte" ? "active" : ""}" data-tip="Suporte">
+            <span class="s-icon">🎧</span><span class="s-label">Suporte</span>
+          </a>
+          <a href="/superadmin/erros" class="sidebar-item ${title === "Erros" ? "active" : ""}" data-tip="Log de Erros">
+            <span class="s-icon">🚨</span><span class="s-label">Log de Erros</span>
+          </a>
+          <a href="/superadmin/monitoramento" class="sidebar-item ${title === "Monitoramento" ? "active" : ""}" data-tip="Monitoramento">
+            <span class="s-icon">📡</span><span class="s-label">Monitoramento</span>
+          </a>
+        </div>
+
+        ${session.role === "super_admin" ? `
+        <div class="sidebar-group">
+          <span class="sidebar-group-label">Configuração</span>
+          <a href="/superadmin/usuarios" class="sidebar-item ${title === "Usuários" ? "active" : ""}" data-tip="Usuários BO">
+            <span class="s-icon">👥</span><span class="s-label">Usuários BO</span>
+          </a>
+          <a href="/superadmin/cms" class="sidebar-item ${title.startsWith("CMS") ? "active" : ""}" data-tip="CMS">
+            <span class="s-icon">📝</span><span class="s-label">CMS / Conteúdo</span>
+          </a>
+          <a href="/superadmin/email-preview" class="sidebar-item ${title === "E-mails" ? "active" : ""}" data-tip="Templates">
+            <span class="s-icon">✉️</span><span class="s-label">Templates E-mail</span>
+          </a>
+        </div>
+        ` : ""}
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar">${session.name?.charAt(0)?.toUpperCase() ?? "?"}</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name">${esc(session.name)}</div>
+            <div class="sidebar-user-role">${session.role === "super_admin" ? "Super Admin" : session.role === "admin" ? "Admin" : "Suporte"}</div>
+          </div>
+        </div>
+        <a href="/superadmin/logout" class="sidebar-logout" style="margin-top:6px;padding-left:4px">→ Sair da conta</a>
       </div>
     </aside>
 
     <div class="topbar">
-      <div class="topbar-search">
-        <form action="/superadmin/busca" method="GET" style="margin:0">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" name="q" placeholder="Buscar barbearia, slug, e-mail..." autocomplete="off" />
-        </form>
+      <button class="topbar-menu-btn" onclick="openMobileSidebar()">☰</button>
+      <div class="topbar-title-block">
+        <div class="topbar-page-title">${esc(title)}</div>
+        <div class="topbar-page-sub">${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
       </div>
-      <div class="topbar-right">
-        <span class="topbar-date">${new Date().toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</span>
+      <div class="topbar-actions">
+        <a href="/superadmin/busca" class="topbar-search-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Buscar
+          <span class="kbd">⌘K</span>
+        </a>
       </div>
     </div>
   ` : "";
@@ -177,281 +194,444 @@ function layout(title: string, session: BOSession | null, body: string): string 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --gold: #C9A84C; --gold-dim: rgba(201,168,76,0.12); --gold-border: rgba(201,168,76,0.25);
-      --bg: #080808; --surface: #111111; --surface2: #1A1A1A; --surface3: #222222;
-      --border: #252525; --border2: #2E2E2E;
-      --text: #F0EEE8; --text2: #B8B6B0; --muted: #666660;
-      --success: #4ADE80; --success-dim: rgba(74,222,128,0.12);
-      --warning: #FBBF24; --warning-dim: rgba(251,191,36,0.12);
-      --error: #F87171; --error-dim: rgba(248,113,113,0.12);
-      --info: #60A5FA; --info-dim: rgba(96,165,250,0.12);
-      --purple: #C084FC; --purple-dim: rgba(192,132,252,0.12);
+      --bg-base: #0a0a0a; --bg-surface: #141414; --bg-surface-hover: #1c1c1c;
+      --bg-sidebar: #111111; --bg-input: #1a1a1a;
+      --border-subtle: #2a2a2a; --border-focus: #c9a227; --border-hover: #3a3a3a;
+      --gold-500: #c9a227; --gold-400: #dbb84a; --gold-300: #e8cc7a; --gold-600: #a8861f;
+      --gold-dim: rgba(201,162,39,0.12); --gold-border: rgba(201,162,39,0.25);
+      --success: #22c55e; --success-dim: rgba(34,197,94,0.12);
+      --warning: #f59e0b; --warning-dim: rgba(245,158,11,0.12);
+      --danger: #ef4444; --danger-dim: rgba(239,68,68,0.12);
+      --info: #3b82f6; --info-dim: rgba(59,130,246,0.12);
+      --purple: #a855f7; --purple-dim: rgba(168,85,247,0.12);
+      --text-primary: #f5f5f5; --text-secondary: #a3a3a3;
+      --text-muted: #666666; --text-label: #737373;
     }
     html { scroll-behavior: smooth; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
-    a { color: var(--gold); text-decoration: none; transition: opacity 0.15s; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      background: var(--bg-base); color: var(--text-primary);
+      min-height: 100vh; font-size: 14px; line-height: 1.5;
+    }
+    a { color: var(--gold-400); text-decoration: none; transition: opacity 0.15s; }
     a:hover { opacity: 0.75; }
-    ::selection { background: var(--gold-dim); color: var(--gold); }
+    ::selection { background: var(--gold-dim); color: var(--gold-400); }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+    ::-webkit-scrollbar-track { background: var(--bg-base); }
+    ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 99px; }
 
-    /* ── Sidebar Navigation ───────────────────────────────────────────────── */
-    .layout { display: flex; min-height: 100vh; }
+    /* ── Shell ─────────────────────────────────────────────────── */
+    .admin-shell { display: flex; min-height: 100vh; }
+    .admin-content {
+      flex: 1; margin-left: 240px; min-height: 100vh;
+      display: flex; flex-direction: column;
+      transition: margin-left 0.25s ease;
+    }
+    .admin-shell.sidebar-collapsed .admin-content { margin-left: 64px; }
+
+    /* ── Sidebar ────────────────────────────────────────────────── */
     .sidebar {
-      width: 220px; min-width: 220px; background: var(--surface);
-      border-right: 1px solid var(--border); display: flex; flex-direction: column;
-      position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
-      overflow-y: auto;
+      width: 240px; background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-subtle);
+      display: flex; flex-direction: column;
+      height: 100vh; position: fixed; top: 0; left: 0;
+      transition: width 0.25s ease, transform 0.25s ease;
+      z-index: 50; overflow: hidden;
     }
+    .admin-shell.sidebar-collapsed .sidebar { width: 64px; }
     .sidebar-brand {
-      padding: 20px 20px 16px;
-      border-bottom: 1px solid var(--border);
+      padding: 18px 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border-subtle); flex-shrink: 0;
     }
-    .sidebar-brand-logo {
-      font-size: 13px; font-weight: 900; color: var(--gold);
-      letter-spacing: 2.5px; text-transform: uppercase; display: block;
+    .sidebar-brand-icon {
+      width: 32px; height: 32px; background: var(--gold-dim);
+      border: 1px solid var(--gold-border); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .sidebar-brand-text { overflow: hidden; }
+    .sidebar-brand-title {
+      font-size: 12px; font-weight: 800; color: var(--gold-400);
+      letter-spacing: 2px; white-space: nowrap;
     }
     .sidebar-brand-sub {
-      font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-top: 2px;
+      font-size: 9px; color: var(--text-muted); letter-spacing: 1px;
+      white-space: nowrap; text-transform: uppercase;
     }
-    .sidebar-section { padding: 8px 0; border-bottom: 1px solid var(--border); }
-    .sidebar-section:last-child { border-bottom: none; }
-    .sidebar-section-label {
-      font-size: 9px; font-weight: 700; color: var(--muted);
-      letter-spacing: 1.5px; text-transform: uppercase;
-      padding: 8px 20px 4px;
+    .sidebar-toggle {
+      margin: 8px 12px; padding: 7px 10px; border-radius: 8px;
+      background: transparent; border: 1px solid var(--border-subtle);
+      color: var(--text-secondary); cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; transition: all 0.15s; flex-shrink: 0;
     }
-    .sidebar-link {
-      display: flex; align-items: center; gap: 10px;
-      padding: 8px 20px; font-size: 13px; color: var(--text2);
-      transition: all 0.15s; cursor: pointer;
-      border-left: 2px solid transparent;
+    .sidebar-toggle:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
+    .admin-shell.sidebar-collapsed .sidebar-toggle .toggle-label { display: none; }
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 4px 0; }
+    .sidebar-group { padding: 4px 12px; }
+    .sidebar-group-label {
+      font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: var(--text-muted);
+      text-transform: uppercase; padding: 10px 4px 4px; display: block;
+      white-space: nowrap; overflow: hidden; transition: opacity 0.2s;
     }
-    .sidebar-link:hover { color: var(--text); background: var(--surface2); opacity: 1; }
-    .sidebar-link.active {
-      color: var(--gold); background: var(--gold-dim);
-      border-left-color: var(--gold); font-weight: 600;
+    .admin-shell.sidebar-collapsed .sidebar-group-label { opacity: 0; height: 0; padding: 0; }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+      border-radius: 8px; color: var(--text-secondary); font-size: 13px;
+      text-decoration: none; position: relative; transition: all 0.15s;
+      white-space: nowrap; overflow: hidden; margin-bottom: 1px;
     }
-    .sidebar-link .icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
-    .sidebar-badge {
-      margin-left: auto; background: var(--error-dim); color: var(--error);
-      font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px;
+    .sidebar-item:hover { background: var(--bg-surface-hover); color: var(--text-primary); opacity: 1; }
+    .sidebar-item.active { background: var(--gold-dim); color: var(--gold-400); font-weight: 600; }
+    .sidebar-item.active::before {
+      content: ''; position: absolute; left: -12px; top: 50%;
+      transform: translateY(-50%); width: 3px; height: 55%;
+      background: var(--gold-500); border-radius: 0 2px 2px 0;
     }
-    .sidebar-user {
-      padding: 14px 20px; margin-top: auto;
-      border-top: 1px solid var(--border);
-      background: var(--surface);
+    .sidebar-item .s-icon { width: 18px; text-align: center; flex-shrink: 0; font-size: 15px; }
+    .admin-shell.sidebar-collapsed .sidebar-item { justify-content: center; padding: 9px; }
+    .admin-shell.sidebar-collapsed .sidebar-item .s-label { display: none; }
+    .admin-shell.sidebar-collapsed .sidebar-item:hover::after {
+      content: attr(data-tip); position: absolute; left: calc(100% + 10px); top: 50%;
+      transform: translateY(-50%); background: #222; border: 1px solid var(--border-subtle);
+      color: var(--text-primary); font-size: 11px; padding: 5px 10px;
+      border-radius: 6px; white-space: nowrap; z-index: 100;
     }
-    .sidebar-user-name { font-size: 13px; font-weight: 600; color: var(--text); }
-    .sidebar-user-role { font-size: 10px; color: var(--muted); margin-top: 2px; }
-    .sidebar-user-actions { display: flex; gap: 8px; margin-top: 8px; }
-    .sidebar-user-actions a { font-size: 11px; color: var(--muted); }
-    .sidebar-user-actions a:hover { color: var(--error); }
+    .sidebar-footer {
+      border-top: 1px solid var(--border-subtle); padding: 12px; flex-shrink: 0;
+    }
+    .sidebar-user { display: flex; align-items: center; gap: 10px; padding: 6px 4px; }
+    .sidebar-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--gold-600); display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; color: #000; flex-shrink: 0;
+    }
+    .sidebar-user-info { flex: 1; min-width: 0; overflow: hidden; }
+    .sidebar-user-name { font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-role { font-size: 10px; color: var(--gold-400); white-space: nowrap; }
+    .sidebar-logout { display: block; font-size: 11px; color: var(--text-muted); padding: 4px 0; transition: color 0.15s; }
+    .sidebar-logout:hover { color: var(--danger); opacity: 1; }
+    .admin-shell.sidebar-collapsed .sidebar-user-info,
+    .admin-shell.sidebar-collapsed .sidebar-logout { display: none; }
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65); z-index: 49;
+    }
 
-    /* ── Main content ─────────────────────────────────────────────────────── */
-    .main { margin-left: 220px; flex: 1; min-width: 0; }
+    /* ── Topbar ─────────────────────────────────────────────────── */
     .topbar {
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 0 28px; height: 52px;
-      display: flex; align-items: center; gap: 16px;
+      height: 60px; background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex; align-items: center; padding: 0 28px; gap: 16px;
       position: sticky; top: 0; z-index: 40;
     }
-    .topbar-search {
-      flex: 1; max-width: 320px; position: relative;
+    .topbar-menu-btn {
+      display: none; background: none; border: none;
+      color: var(--text-secondary); cursor: pointer;
+      padding: 8px; border-radius: 6px; font-size: 18px;
     }
-    .topbar-search input {
-      width: 100%; background: var(--surface2); border: 1px solid var(--border2);
-      border-radius: 8px; padding: 6px 12px 6px 34px;
-      font-size: 12px; color: var(--text); outline: none;
+    .topbar-title-block { flex: 1; }
+    .topbar-page-title { font-size: 17px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+    .topbar-page-sub { font-size: 11px; color: var(--text-muted); }
+    .topbar-actions { display: flex; align-items: center; gap: 8px; }
+    .topbar-search-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg-input); border: 1px solid var(--border-subtle);
+      border-radius: 8px; padding: 6px 12px; color: var(--text-muted);
+      font-size: 12px; cursor: pointer; transition: border-color 0.15s;
+      text-decoration: none;
     }
-    .topbar-search input:focus { border-color: var(--gold); }
-    .topbar-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; }
-    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-    .topbar-date { font-size: 12px; color: var(--muted); }
-    .role-chip {
-      padding: 3px 10px; border-radius: 99px; font-size: 10px; font-weight: 700;
-    }
-    .role-chip.super_admin { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold-border); }
-    .role-chip.admin { background: var(--info-dim); color: var(--info); border: 1px solid rgba(96,165,250,0.25); }
-    .role-chip.suporte { background: var(--success-dim); color: var(--success); border: 1px solid rgba(74,222,128,0.25); }
+    .topbar-search-btn:hover { border-color: var(--gold-600); color: var(--text-secondary); opacity: 1; }
+    .kbd { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 1px 5px; font-size: 10px; color: var(--text-muted); }
 
-    /* ── Page layout ──────────────────────────────────────────────────────── */
-    .container { max-width: 1320px; margin: 0 auto; padding: 28px 28px 60px; }
-    .page-header { margin-bottom: 24px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-    .page-header-left {}
-    .page-title { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; }
-    .page-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+    /* ── Page layout ─────────────────────────────────────────────── */
+    .page-wrapper { padding: 28px 32px 60px; flex: 1; }
+    .page-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 16px; margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .page-title { font-size: 22px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.3px; }
+    .page-sub { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
     .page-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-    .breadcrumb { display: flex; align-items: center; gap: 6px; margin-bottom: 18px; font-size: 12px; }
-    .bc-link { color: var(--muted); }
-    .bc-link:hover { color: var(--gold); opacity: 1; }
-    .bc-sep { color: var(--border2); }
-    .bc-current { color: var(--text2); font-weight: 600; }
+    .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 6px; }
+    .bc-link { color: var(--text-muted); transition: color 0.15s; }
+    .bc-link:hover { color: var(--text-secondary); opacity: 1; }
+    .bc-sep { color: var(--border-subtle); }
+    .bc-current { color: var(--text-secondary); font-weight: 600; }
 
-    /* ── KPI Cards ────────────────────────────────────────────────────────── */
-    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 14px; margin-bottom: 24px; }
-    .metric-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 14px; padding: 18px 20px;
+    /* ── KPI Cards ──────────────────────────────────────────────── */
+    .kpi-grid { display: grid; gap: 16px; margin-bottom: 24px; }
+    .kpi-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+    .kpi-grid.cols-6 { grid-template-columns: repeat(6, 1fr); }
+    .kpi-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+    .kpi-card {
+      background: var(--bg-surface); border: 1px solid var(--border-subtle);
+      border-radius: 12px; padding: 20px; position: relative; overflow: hidden;
       transition: border-color 0.2s, transform 0.2s;
-      position: relative; overflow: hidden;
     }
-    .metric-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, var(--accent-color, var(--gold)), transparent);
+    .kpi-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+    .kpi-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      border-radius: 12px 12px 0 0;
     }
-    .metric-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-    .metric-icon { font-size: 22px; margin-bottom: 10px; }
-    .metric-label { font-size: 10px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 6px; font-weight: 600; }
-    .metric-value { font-size: 28px; font-weight: 900; color: var(--text); line-height: 1; }
-    .metric-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
-    .metric-delta { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; margin-top: 4px; }
-    .delta-up { color: var(--success); }
-    .delta-down { color: var(--error); }
+    .kpi-card.gold::before { background: var(--gold-500); }
+    .kpi-card.green::before { background: var(--success); }
+    .kpi-card.warning::before { background: var(--warning); }
+    .kpi-card.danger::before { background: var(--danger); }
+    .kpi-card.info::before { background: var(--info); }
+    .kpi-card.purple::before { background: var(--purple); }
+    .kpi-card.primary {
+      background: linear-gradient(135deg, #1a1500 0%, var(--bg-surface) 65%);
+      border-color: var(--gold-border);
+    }
+    .kpi-card.primary .kpi-value { color: var(--gold-400); font-size: 2.25rem; }
+    .kpi-icon { position: absolute; top: 16px; right: 16px; font-size: 22px; opacity: 0.45; }
+    .kpi-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+      color: var(--text-label); margin-bottom: 8px; display: flex; align-items: center; gap: 5px;
+    }
+    .kpi-value { font-size: 1.875rem; font-weight: 900; color: var(--text-primary); line-height: 1; margin-bottom: 5px; }
+    .kpi-sub { font-size: 11px; color: var(--text-muted); }
+    /* Compatibility aliases */
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .metric-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; transition: all 0.2s; }
+    .metric-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+    .metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 12px 12px 0 0; background: var(--accent-color, var(--gold-500)); }
+    .metric-icon { font-size: 20px; margin-bottom: 10px; }
+    .metric-label { font-size: 10px; color: var(--text-label); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; font-weight: 700; }
+    .metric-value { font-size: 28px; font-weight: 900; color: var(--text-primary); line-height: 1; }
+    .metric-sub { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
 
-    /* ── Cards ────────────────────────────────────────────────────────────── */
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
-    .card-header {
-      padding: 16px 22px; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    /* ── Table ──────────────────────────────────────────────────── */
+    .table-wrap, .table-wrapper {
+      background: var(--bg-surface); border: 1px solid var(--border-subtle);
+      border-radius: 14px; overflow: hidden; margin-bottom: 20px;
     }
-    .card-title { font-size: 14px; font-weight: 700; }
-    .card-sub { font-size: 12px; color: var(--muted); }
-    .card-body { padding: 20px 22px; }
-    .card-footer { padding: 12px 22px; border-top: 1px solid var(--border); background: var(--surface2); }
-
-    /* ── Table ────────────────────────────────────────────────────────────── */
-    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
-    .table-header { padding: 16px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .table-header {
+      padding: 16px 22px; border-bottom: 1px solid var(--border-subtle);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
     .table-header h2 { font-size: 14px; font-weight: 700; }
-    table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; padding: 10px 22px; font-size: 10px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; font-weight: 700; background: var(--surface2); }
-    td { padding: 12px 22px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    table, table.data-table { width: 100%; border-collapse: collapse; }
+    th {
+      padding: 11px 20px; text-align: left; font-size: 10px; font-weight: 700;
+      color: var(--text-label); letter-spacing: 1px; text-transform: uppercase;
+      border-bottom: 1px solid var(--border-subtle); background: var(--bg-surface-hover);
+      white-space: nowrap;
+    }
+    td {
+      padding: 13px 20px; font-size: 13px; color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-subtle); vertical-align: middle;
+    }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,0.018); }
+    tr { transition: background 0.15s; }
+    tr:hover td { background: var(--bg-surface-hover); color: var(--text-primary); }
+    .table-name .name { font-weight: 600; color: var(--text-primary); font-size: 13px; }
+    .table-name .slug { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-family: monospace; }
 
-    /* ── Badges ───────────────────────────────────────────────────────────── */
-    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; white-space: nowrap; }
-    .badge-active { background: var(--success-dim); color: var(--success); border: 1px solid rgba(74,222,128,0.2); }
-    .badge-trial { background: var(--warning-dim); color: var(--warning); border: 1px solid rgba(251,191,36,0.2); }
-    .badge-suspended { background: var(--error-dim); color: var(--error); border: 1px solid rgba(248,113,113,0.2); }
-    .badge-cancelled { background: rgba(80,80,80,0.15); color: var(--muted); border: 1px solid var(--border); }
-    .badge-open { background: var(--info-dim); color: var(--info); border: 1px solid rgba(96,165,250,0.2); }
-    .badge-closed { background: rgba(80,80,80,0.15); color: var(--muted); border: 1px solid var(--border); }
+    /* ── Badges ─────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+    .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+    .badge-active, .badge.ativo { background: var(--success-dim); color: var(--success); }
+    .badge-active::before, .badge.ativo::before { background: var(--success); }
+    .badge-trial, .badge.trial { background: var(--warning-dim); color: var(--warning); }
+    .badge-trial::before, .badge.trial::before { background: var(--warning); }
+    .badge-suspended, .badge.suspenso { background: var(--danger-dim); color: var(--danger); }
+    .badge-suspended::before, .badge.suspenso::before { background: var(--danger); }
+    .badge-cancelled, .badge.cancelado { background: rgba(100,100,100,0.15); color: var(--text-muted); }
+    .badge-cancelled::before, .badge.cancelado::before { background: var(--text-muted); }
+    .badge-open { background: var(--info-dim); color: var(--info); }
+    .badge-open::before { background: var(--info); }
     .badge-low { background: var(--warning-dim); color: var(--warning); }
     .badge-medium { background: var(--info-dim); color: var(--info); }
-    .badge-high { background: var(--error-dim); color: var(--error); }
-    .plan-solo { color: var(--text2); }
-    .plan-team { color: var(--gold); }
+    .badge-high { background: var(--danger-dim); color: var(--danger); }
+    .plan-solo { color: var(--text-secondary); }
+    .plan-team { color: var(--gold-400); }
     .plan-studio { color: var(--purple); }
+    .role-chip { padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; }
+    .role-chip.super_admin { background: var(--gold-dim); color: var(--gold-400); border: 1px solid var(--gold-border); }
+    .role-chip.admin { background: var(--info-dim); color: var(--info); border: 1px solid rgba(59,130,246,0.25); }
+    .role-chip.suporte { background: var(--success-dim); color: var(--success); border: 1px solid rgba(34,197,94,0.25); }
 
-    /* ── Buttons ──────────────────────────────────────────────────────────── */
+    /* ── Buttons ─────────────────────────────────────────────────── */
     .btn {
       display: inline-flex; align-items: center; gap: 5px;
-      padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
       cursor: pointer; border: 1px solid transparent; text-decoration: none;
-      transition: opacity 0.15s, transform 0.1s; white-space: nowrap;
+      transition: all 0.15s; white-space: nowrap;
     }
     .btn:hover { opacity: 0.8; text-decoration: none; transform: translateY(-1px); }
     .btn:active { transform: translateY(0); }
-    .btn-primary { background: var(--gold); color: #0A0A0A; border-color: var(--gold); font-weight: 700; }
-    .btn-gold { background: var(--gold-dim); color: var(--gold); border-color: var(--gold-border); }
-    .btn-green { background: var(--success-dim); color: var(--success); border-color: rgba(74,222,128,0.25); }
-    .btn-red { background: var(--error-dim); color: var(--error); border-color: rgba(248,113,113,0.25); }
-    .btn-blue { background: var(--info-dim); color: var(--info); border-color: rgba(96,165,250,0.25); }
-    .btn-purple { background: var(--purple-dim); color: var(--purple); border-color: rgba(192,132,252,0.25); }
-    .btn-gray { background: var(--surface2); color: var(--text2); border-color: var(--border); }
+    .btn-primary { background: var(--gold-500); color: #000; border-color: var(--gold-500); font-weight: 700; }
+    .btn-primary:hover { background: var(--gold-400); opacity: 1; }
+    .btn-gold { background: var(--gold-dim); color: var(--gold-400); border-color: var(--gold-border); }
+    .btn-green { background: var(--success-dim); color: var(--success); border-color: rgba(34,197,94,0.25); }
+    .btn-red { background: var(--danger-dim); color: var(--danger); border-color: rgba(239,68,68,0.25); }
+    .btn-blue { background: var(--info-dim); color: var(--info); border-color: rgba(59,130,246,0.25); }
+    .btn-purple { background: var(--purple-dim); color: var(--purple); border-color: rgba(168,85,247,0.25); }
+    .btn-gray { background: var(--bg-input); color: var(--text-secondary); border-color: var(--border-subtle); }
     .btn-sm { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
     .btn-lg { padding: 10px 22px; font-size: 14px; border-radius: 10px; }
+    .btn-submit { width: 100%; padding: 12px; background: var(--gold-500); color: #000; font-size: 14px; font-weight: 800; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; transition: opacity 0.15s; }
+    .btn-submit:hover { opacity: 0.9; }
     .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
-    /* ── Forms ────────────────────────────────────────────────────────────── */
+    /* ── Filters ────────────────────────────────────────────────── */
+    .filters-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .filter-tabs { display: flex; gap: 5px; flex-wrap: wrap; }
+    .filter-btn, .filter-tab {
+      padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: 1px solid var(--border-subtle); background: transparent;
+      color: var(--text-muted); transition: all 0.15s; text-decoration: none; white-space: nowrap;
+    }
+    .filter-btn:hover, .filter-tab:hover { border-color: #444; color: var(--text-secondary); opacity: 1; text-decoration: none; }
+    .filter-btn.active, .filter-tab.active { background: var(--gold-500); border-color: var(--gold-500); color: #000; }
+    .search-wrapper { position: relative; }
+    .search-wrapper svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+    .search-input {
+      background: var(--bg-input); border: 1px solid var(--border-subtle);
+      border-radius: 8px; padding: 7px 12px 7px 34px; font-size: 13px;
+      color: var(--text-primary); outline: none; transition: border-color 0.15s;
+    }
+    .search-input:focus { border-color: var(--gold-600); }
+    .search-input::placeholder { color: var(--text-muted); }
+
+    /* ── Forms ──────────────────────────────────────────────────── */
     .form-group { margin-bottom: 16px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+    label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
     input[type=email], input[type=password], input[type=text], input[type=number], textarea, select {
-      width: 100%; padding: 10px 13px; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 10px; color: var(--text); font-size: 13px; outline: none; font-family: inherit;
-      transition: border-color 0.15s;
+      width: 100%; padding: 10px 13px; background: var(--bg-input); border: 1px solid var(--border-subtle);
+      border-radius: 10px; color: var(--text-primary); font-size: 13px; outline: none; font-family: inherit; transition: border-color 0.15s;
     }
-    input:focus, textarea:focus, select:focus { border-color: var(--gold); background: var(--surface); }
+    input:focus, textarea:focus, select:focus { border-color: var(--gold-500); background: var(--bg-surface); }
     textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
     select { cursor: pointer; }
-    .btn-submit { width: 100%; padding: 12px; background: var(--gold); color: #0A0A0A; font-size: 14px; font-weight: 800; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; transition: opacity 0.15s; }
-    .btn-submit:hover { opacity: 0.9; }
     .alert { padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; display: flex; gap: 8px; align-items: center; }
-    .alert-error { background: var(--error-dim); border: 1px solid rgba(248,113,113,0.2); color: var(--error); }
-    .alert-success { background: var(--success-dim); border: 1px solid rgba(74,222,128,0.2); color: var(--success); }
+    .alert-error { background: var(--danger-dim); border: 1px solid rgba(239,68,68,0.2); color: var(--danger); }
+    .alert-success { background: var(--success-dim); border: 1px solid rgba(34,197,94,0.2); color: var(--success); }
 
-    /* ── Login page ───────────────────────────────────────────────────────── */
-    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
-    .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 24px 60px rgba(0,0,0,0.5); }
-    .login-logo { font-size: 14px; font-weight: 900; color: var(--gold); letter-spacing: 3px; text-align: center; text-transform: uppercase; margin-bottom: 4px; }
-    .login-sub { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 28px; letter-spacing: 1px; }
+    /* ── Card ───────────────────────────────────────────────────── */
+    .card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 14px; overflow: hidden; margin-bottom: 20px; }
+    .card-header { padding: 16px 22px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .card-title { font-size: 14px; font-weight: 700; }
+    .card-sub { font-size: 12px; color: var(--text-muted); }
+    .card-body { padding: 22px; }
+    .chart-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+    .chart-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .chart-card-title { font-size: 15px; font-weight: 700; }
+    .chart-card-sub { font-size: 12px; color: var(--text-muted); }
 
-    /* ── Filters ──────────────────────────────────────────────────────────── */
-    .filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
-    .filter-btn { padding: 5px 14px; border-radius: 99px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); text-decoration: none; transition: all 0.15s; white-space: nowrap; }
-    .filter-btn:hover { border-color: var(--gold); color: var(--gold); opacity: 1; text-decoration: none; }
-    .filter-btn.active { background: var(--gold-dim); border-color: var(--gold-border); color: var(--gold); }
-
-    /* ── Modal ────────────────────────────────────────────────────────────── */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+    /* ── Modal ──────────────────────────────────────────────────── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
     .modal-overlay.open { display: flex; }
-    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: 100%; max-width: 460px; box-shadow: 0 24px 60px rgba(0,0,0,0.6); }
+    .modal { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 18px; padding: 28px; width: 100%; max-width: 460px; box-shadow: 0 24px 60px rgba(0,0,0,0.6); }
     .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
     .modal h3 { font-size: 16px; font-weight: 800; }
-    .modal-close { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 16px; }
-    .modal-close:hover { color: var(--text); }
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .modal-close { background: var(--bg-input); border: 1px solid var(--border-subtle); border-radius: 8px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 14px; }
+    .modal-close:hover { color: var(--text-primary); }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
 
-    /* ── Empty state ──────────────────────────────────────────────────────── */
-    .empty { text-align: center; padding: 64px 24px; color: var(--muted); }
-    .empty-icon { font-size: 44px; margin-bottom: 14px; opacity: 0.6; }
-    .empty-title { font-size: 15px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
+    /* ── Login ──────────────────────────────────────────────────── */
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg-base); }
+    .login-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 24px 60px rgba(0,0,0,0.5); }
+    .login-logo { font-size: 13px; font-weight: 900; color: var(--gold-400); letter-spacing: 3px; text-align: center; text-transform: uppercase; }
+    .login-sub { font-size: 12px; color: var(--text-muted); text-align: center; margin-bottom: 28px; letter-spacing: 1px; margin-top: 4px; }
 
-    /* ── Misc ─────────────────────────────────────────────────────────────── */
-    .text-sm { font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .text-mono { font-family: "Menlo", "Monaco", "Consolas", monospace; font-size: 12px; }
-    .stack-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 11px; font-family: monospace; color: var(--muted); white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; margin-top: 6px; }
-    .divider { height: 1px; background: var(--border); margin: 20px 0; }
-    .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    /* ── States ─────────────────────────────────────────────────── */
+    .empty { text-align: center; padding: 64px 24px; }
+    .empty-icon { font-size: 42px; margin-bottom: 14px; opacity: 0.5; }
+    .empty-title { font-size: 15px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; }
+    .empty-sub { font-size: 13px; color: var(--text-muted); }
+    .error-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 60px 24px; text-align: center; background: var(--bg-surface);
+      border: 1px solid rgba(239,68,68,0.2); border-radius: 12px; margin-top: 20px;
+    }
+    .error-state-icon { font-size: 48px; margin-bottom: 16px; }
+    .error-state-title { font-size: 17px; font-weight: 700; color: var(--danger); margin-bottom: 8px; }
+    .error-state-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+
+    /* ── Misc ───────────────────────────────────────────────────── */
+    .text-sm { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .text-mono { font-family: monospace; font-size: 12px; }
+    .stack-box { background: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 12px; font-size: 11px; font-family: monospace; color: var(--text-muted); white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; margin-top: 6px; }
+    .divider { height: 1px; background: var(--border-subtle); margin: 20px 0; }
+    .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-subtle); }
     .stat-row:last-child { border-bottom: none; }
-    .stat-label { font-size: 13px; color: var(--muted); }
+    .stat-label { font-size: 13px; color: var(--text-muted); }
     .stat-value { font-size: 13px; font-weight: 700; }
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
-    .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; background: var(--surface3); color: var(--muted); border: 1px solid var(--border); }
-
-    /* ── CMS ──────────────────────────────────────────────────────────────── */
-    .cms-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; margin-bottom: 18px; }
-    .cms-card h3 { font-size: 13px; font-weight: 700; margin-bottom: 14px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
+    .cms-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 22px; margin-bottom: 18px; }
+    .cms-card h3 { font-size: 12px; font-weight: 700; margin-bottom: 14px; color: var(--gold-400); text-transform: uppercase; letter-spacing: 1px; }
     .cms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .container { max-width: 1320px; margin: 0 auto; }
 
-    /* ── Responsive ───────────────────────────────────────────────────────── */
-    @media (max-width: 900px) {
-      .sidebar { display: none; }
-      .main { margin-left: 0; }
+    /* ── Responsive ─────────────────────────────────────────────── */
+    @media (max-width: 1023px) {
+      .kpi-grid.cols-4, .kpi-grid.cols-6 { grid-template-columns: repeat(2, 1fr); }
+      .three-col { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 767px) {
+      .admin-content { margin-left: 0; }
+      .sidebar { transform: translateX(-100%); width: 240px; }
+      .sidebar.mobile-open { transform: translateX(0); }
+      .sidebar-overlay { display: none; }
+      .sidebar-overlay.visible { display: block; }
+      .topbar-menu-btn { display: flex; }
+      .page-wrapper { padding: 20px 16px 60px; }
       .two-col, .three-col, .form-row { grid-template-columns: 1fr; }
       .cms-grid { grid-template-columns: 1fr; }
-      .metrics { grid-template-columns: repeat(2, 1fr); }
     }
-    @media (max-width: 640px) {
-      .container { padding: 16px; }
+    @media (max-width: 639px) {
       th, td { padding: 10px 14px; }
-      .metrics { grid-template-columns: 1fr 1fr; }
+      .kpi-grid.cols-4, .kpi-grid.cols-6, .kpi-grid.cols-3 { grid-template-columns: 1fr 1fr; }
       .page-header { flex-direction: column; }
     }
   </style>
 </head>
 <body>
-  <div class="layout">
+  <div class="admin-shell" id="admin-shell">
     ${nav}
-    <div class="main">
-      ${body}
+    <div class="admin-content">
+      ${session ? "" : ""}
+      <div class="page-wrapper">
+        ${body}
+      </div>
     </div>
   </div>
+  <script>
+    // Sidebar toggle
+    var COLLAPSED_KEY = 'bp_sidebar_collapsed';
+    function toggleSidebar() {
+      var shell = document.getElementById('admin-shell');
+      var collapsed = shell.classList.toggle('sidebar-collapsed');
+      localStorage.setItem(COLLAPSED_KEY, collapsed ? '1' : '0');
+    }
+    function openMobileSidebar() {
+      var sidebar = document.getElementById('main-sidebar');
+      var overlay = document.getElementById('sidebar-overlay');
+      sidebar && sidebar.classList.add('mobile-open');
+      overlay && overlay.classList.add('visible');
+    }
+    function closeMobileSidebar() {
+      var sidebar = document.getElementById('main-sidebar');
+      var overlay = document.getElementById('sidebar-overlay');
+      sidebar && sidebar.classList.remove('mobile-open');
+      overlay && overlay.classList.remove('visible');
+    }
+    // Restore sidebar state
+    (function() {
+      if (localStorage.getItem(COLLAPSED_KEY) === '1') {
+        var shell = document.getElementById('admin-shell');
+        shell && shell.classList.add('sidebar-collapsed');
+      }
+    })();
+  </script>
   <script>
     function openModal(id) { document.getElementById(id)?.classList.add('open'); }
     function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
@@ -475,10 +655,15 @@ function layout(title: string, session: BOSession | null, body: string): string 
 
 function statusBadge(status: string): string {
   const map: Record<string, string> = {
-    active: '<span class="badge badge-active">Ativo</span>',
-    trial: '<span class="badge badge-trial">Trial</span>',
+    active:    '<span class="badge badge-active">Ativo</span>',
+    trial:     '<span class="badge badge-trial">Trial</span>',
     suspended: '<span class="badge badge-suspended">Suspenso</span>',
     cancelled: '<span class="badge badge-cancelled">Cancelado</span>',
+    open:      '<span class="badge badge-open">Aberto</span>',
+    closed:    '<span class="badge badge-cancelled">Fechado</span>',
+    low:       '<span class="badge badge-low">Baixa</span>',
+    medium:    '<span class="badge badge-medium">Média</span>',
+    high:      '<span class="badge badge-high">Alta</span>',
   };
   return map[status] ?? `<span class="badge">${esc(status)}</span>`;
 }
@@ -665,24 +850,29 @@ export function registerSuperAdminRoutes(app: Express): void {
       // Últimas 5 barbearias
       const recent = allTenants.slice(0, 5).map((t) => `
         <tr>
-          <td><div style="font-weight:600">${esc(t.name)}</div><div class="text-sm">${esc(t.slug)}</div></td>
+          <td>
+            <div class="table-name">
+              <div class="name">${esc(t.name)}</div>
+              <div class="slug">${esc(t.slug)}</div>
+            </div>
+          </td>
           <td>${planLabel(t.plan)}</td>
           <td>${statusBadge(t.status)}</td>
-          <td style="color:var(--muted)">${new Date(t.createdAt).toLocaleDateString("pt-BR")}</td>
-          <td><a href="/superadmin/tenants" class="btn btn-gray" style="font-size:11px">Ver todos</a></td>
+          <td style="color:var(--text-muted);font-size:12px">${new Date(t.createdAt).toLocaleDateString("pt-BR")}</td>
+          <td><a href="/superadmin/tenants/${t.id}" class="btn btn-gray btn-sm">Detalhes →</a></td>
         </tr>
       `).join("");
 
       res.send(layout("Dashboard", session, `
         <div class="container">
           <div class="page-header">
-            <div class="page-header-left">
-              <div class="page-title">Dashboard da Plataforma</div>
-              <div class="page-sub">Visão geral do Barber Pro · ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
+            <div>
+              <div class="page-title">📊 Dashboard da Plataforma</div>
+              <div class="page-sub">Visão geral e métricas do Barber Pro em tempo real</div>
             </div>
             <div class="page-actions">
-              <a href="/superadmin/tenants" class="btn btn-gray btn-sm">Ver Barbearias →</a>
-              <a href="/superadmin/monitoramento" class="btn btn-gold btn-sm">⚙️ Monitor</a>
+              <a href="/superadmin/tenants" class="btn btn-gray btn-sm">🏪 Barbearias</a>
+              <a href="/superadmin/monitoramento" class="btn btn-gold btn-sm">📡 Monitor</a>
             </div>
           </div>
 
@@ -726,12 +916,9 @@ export function registerSuperAdminRoutes(app: Express): void {
             </div>
           </div>
 
-          <!-- GRÁFICO DE CRESCIMENTO -->
-          <div class="table-wrap" style="margin-bottom:24px">
-            <div class="table-header">
-              <h2>Crescimento Semanal</h2>
-              <span style="font-size:12px;color:var(--muted)">Novos cadastros por semana (12 semanas)</span>
-            </div>
+          <div class="two-col">
+          <div class="chart-card">
+            <div class="chart-card-header"><div class="chart-card-title">📈 Crescimento Semanal</div><div class="chart-card-sub">Novos cadastros por semana (12 sem.)</div></div>
             <div style="padding:20px 16px">
               <canvas id="growthChart" height="80"></canvas>
             </div>
@@ -795,25 +982,22 @@ export function registerSuperAdminRoutes(app: Express): void {
             })();
           </script>
 
-          <!-- GRÁFICO DE MRR -->
-          <div class="table-wrap" style="margin-bottom:24px">
-            <div class="table-header">
-              <h2>Evolução do MRR</h2>
-              <span style="font-size:12px;color:var(--muted)">Receita mensal recorrente acumulada (12 semanas)</span>
-            </div>
+          <div class="chart-card">
+            <div class="chart-card-header"><div class="chart-card-title">💰 Evolução do MRR</div><div class="chart-card-sub">MRR acumulado (12 semanas)</div></div>
             <div style="padding:20px 16px">
               <canvas id="mrrChart" height="80"></canvas>
             </div>
           </div>
 
+          </div>
           <div class="table-wrap">
             <div class="table-header">
-              <h2>Cadastros Recentes</h2>
-              <a href="/superadmin/tenants" class="btn btn-gray" style="font-size:12px">Ver todas →</a>
+              <h2>🏪 Cadastros Recentes</h2>
+              <a href="/superadmin/tenants" class="btn btn-gray btn-sm">Ver todas →</a>
             </div>
-            <table>
-              <thead><tr><th>Barbearia</th><th>Plano</th><th>Status</th><th>Cadastro</th><th></th></tr></thead>
-              <tbody>${recent || '<tr><td colspan="5"><div class="empty"><div class="empty-icon">🏪</div><div>Nenhuma barbearia ainda.</div></div></td></tr>'}</tbody>
+            <table class="data-table">
+              <thead><tr><th>Barbearia</th><th>Plano</th><th>Status</th><th>Cadastro</th><th>Ações</th></tr></thead>
+              <tbody>${recent || '<tr><td colspan="5"><div class="empty"><div class="empty-icon">🏪</div><div class="empty-title">Nenhuma barbearia cadastrada</div></div></td></tr>'}</tbody>
             </table>
           </div>
         </div>
@@ -936,6 +1120,101 @@ export function registerSuperAdminRoutes(app: Express): void {
     auditLog.unshift({ ts: new Date().toLocaleString("pt-BR"), user, action, target });
     if (auditLog.length > 100) auditLog.pop();
   }
+
+
+  // ── GET /superadmin/tenants/:id — Detalhes da barbearia ──────────────────
+  app.get("/superadmin/tenants/:id", requireAuth, async (req: Request, res: Response) => {
+    const session = (req as any).boSession as BOSession;
+    try {
+      const tenantId = parseInt(req.params.id);
+      const allTenants = await db.getAllTenants();
+      const tenant = allTenants.find((t: any) => t.id === tenantId);
+      if (!tenant) { res.redirect("/superadmin/tenants"); return; }
+      const dbConn = await db.getDb();
+      const { sql } = await import("drizzle-orm");
+      let stats = { appointments: 0, clients: 0, sales: 0, revenue: 0 };
+      if (dbConn) {
+        try {
+          const [a, c, s] = await Promise.all([
+            dbConn.execute(sql`SELECT COUNT(*) as cnt FROM appointments INNER JOIN barbers b ON b.id=appointments."barberId" WHERE b."tenantId"=${tenantId}`),
+            dbConn.execute(sql`SELECT COUNT(*) as cnt FROM clients WHERE "tenantId"=${tenantId}`),
+            dbConn.execute(sql`SELECT COUNT(*) as cnt, COALESCE(SUM(CAST(total AS NUMERIC)),0) as rev FROM sales WHERE "tenantId"=${tenantId} AND "paymentStatus"='paid'`),
+          ]) as any[];
+          stats.appointments = Number((a[0]?.[0]??a?.rows?.[0])?.cnt??0);
+          stats.clients = Number((c[0]?.[0]??c?.rows?.[0])?.cnt??0);
+          stats.sales = Number((s[0]?.[0]??s?.rows?.[0])?.cnt??0);
+          stats.revenue = parseFloat((s[0]?.[0]??s?.rows?.[0])?.rev??0);
+        } catch {}
+      }
+      const PLAN_PRICES: Record<string,number> = { solo:49, team:89, studio:149 };
+      res.send(layout(`Barbearia — ${esc(tenant.name)}`, session, `
+        <div class="container">
+          <div class="breadcrumb">
+            <a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">/</span>
+            <a href="/superadmin/tenants" class="bc-link">Barbearias</a><span class="bc-sep">/</span>
+            <span class="bc-current">${esc(tenant.name)}</span>
+          </div>
+          <div class="page-header">
+            <div>
+              <div class="page-title">${esc(tenant.name)}</div>
+              <div class="page-sub">slug: <code style="font-family:monospace;color:var(--gold-400)">${esc(tenant.slug)}</code> · ID: ${tenant.id}</div>
+            </div>
+            <div class="page-actions">
+              ${statusBadge(tenant.status)}
+              <a href="/pub/${esc(tenant.slug)}" target="_blank" class="btn btn-gray btn-sm">🌐 Página pública</a>
+              <a href="/superadmin/tenants/action?id=${tenant.id}&act=extend-trial" class="btn btn-gold btn-sm">⏳ Estender trial</a>
+            </div>
+          </div>
+          <div class="metrics">
+            <div class="metric-card" style="--accent-color:#60A5FA">
+              <div class="metric-icon">📅</div>
+              <div class="metric-label">Agendamentos</div>
+              <div class="metric-value" style="color:#60A5FA">${stats.appointments.toLocaleString("pt-BR")}</div>
+            </div>
+            <div class="metric-card" style="--accent-color:#C084FC">
+              <div class="metric-icon">👥</div>
+              <div class="metric-label">Clientes</div>
+              <div class="metric-value" style="color:#C084FC">${stats.clients.toLocaleString("pt-BR")}</div>
+            </div>
+            <div class="metric-card" style="--accent-color:var(--gold-500)">
+              <div class="metric-icon">💰</div>
+              <div class="metric-label">Receita Total</div>
+              <div class="metric-value" style="color:var(--gold-400)">R$${Math.round(stats.revenue).toLocaleString("pt-BR")}</div>
+            </div>
+            <div class="metric-card" style="--accent-color:#22c55e">
+              <div class="metric-icon">🛒</div>
+              <div class="metric-label">Plano Atual</div>
+              <div class="metric-value" style="font-size:18px">${planLabel(tenant.plan)}</div>
+              <div class="metric-sub">R$${PLAN_PRICES[tenant.plan??'solo']??49}/mês</div>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="card">
+              <div class="card-header"><div class="card-title">Informações</div></div>
+              <div class="card-body">
+                <div class="stat-row"><span class="stat-label">Status</span><span class="stat-value">${statusBadge(tenant.status)}</span></div>
+                <div class="stat-row"><span class="stat-label">Criado em</span><span class="stat-value">${new Date(tenant.createdAt).toLocaleDateString("pt-BR")}</span></div>
+                <div class="stat-row"><span class="stat-label">Trial até</span><span class="stat-value">${trialDaysLeft(tenant.trialEndsAt)}</span></div>
+                <div class="stat-row"><span class="stat-label">Plano</span><span class="stat-value">${planLabel(tenant.plan)}</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><div class="card-title">Ações</div></div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+                ${tenant.status === "active" || tenant.status === "trial"
+                  ? `<a href="/superadmin/tenants/action?id=${tenant.id}&act=suspend" class="btn btn-red" onclick="return confirm('Suspender ${esc(tenant.name)}?')">🔒 Suspender acesso</a>`
+                  : `<a href="/superadmin/tenants/action?id=${tenant.id}&act=reactivate" class="btn btn-green">🔓 Reativar</a>`
+                }
+                <a href="/superadmin/planos/extend-trial?id=${tenant.id}" class="btn btn-gold">⏳ Estender trial</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      `));
+    } catch (e: any) {
+      res.status(500).send(layout("Erro", session, `<div class="error-state"><div class="error-state-icon">⚠️</div><h3 class="error-state-title">Erro</h3><p class="error-state-desc">${esc(e.message)}</p></div>`));
+    }
+  });
 
   app.get("/superadmin/tenants/action", requireAuth, requireRole("super_admin", "admin"), async (req: Request, res: Response) => {
     const { id, action, plan } = req.query as { id: string; action: string; plan?: string };
