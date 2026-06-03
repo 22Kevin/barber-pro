@@ -2960,13 +2960,21 @@ export async function insertErrorLog(data: {
 export async function getErrorLogs(limit = 100): Promise<any[]> {
   const db = await getDb();
   if (!db) return [];
-  const rows = await db.execute(sql`
-    SELECT id, source, message, stack, url, userAgent, tenantId, context, createdAt
-    FROM error_logs
-    ORDER BY createdAt DESC
-    LIMIT ${limit}
-  `);
-  return ((rows as any).rows);
+  try {
+    const rows = await db.execute(sql`
+      SELECT id, source, message, stack, url, "userAgent", "tenantId", context, "createdAt"
+      FROM error_logs
+      ORDER BY "createdAt" DESC
+      LIMIT ${limit}
+    `);
+    // Handle both Neon formats: { rows: [...] } or direct array
+    if (Array.isArray(rows)) return rows;
+    if (rows && Array.isArray((rows as any).rows)) return (rows as any).rows;
+    return [];
+  } catch (e: any) {
+    console.error("[getErrorLogs]", e.message);
+    return [];
+  }
 }
 
 export async function clearErrorLogs(): Promise<void> {
