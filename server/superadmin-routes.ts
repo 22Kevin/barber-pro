@@ -1362,42 +1362,42 @@ export function registerSuperAdminRoutes(app: Express): void {
           </div>
 
           <!-- KPIs principais -->
-          <div class="kpi-grid g6">
+          <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px">
             <div class="metric-card" style="--accent-color: var(--gold-500)">
               <div class="metric-icon">💰</div>
               <div class="metric-label">MRR Real</div>
               <div class="metric-value" style="color:var(--gold-500)">R$${mrr.toLocaleString('pt-BR')}</div>
               <div class="metric-sub">receita mensal recorrente</div>
             </div>
-            <div class="metric-card" style="--accent-color:#4ADE80">
-              <div class="metric-icon">✅</div>
-              <div class="metric-label">Assinaturas Ativas</div>
-              <div class="metric-value" style="color:#4ADE80">${active}</div>
-              <div class="metric-sub">${conversionRate}% conversão trial→pago</div>
+            <div class="kpi-card green">
+              <span class="kpi-icon">✅</span>
+              <div class="kpi-label">Assinaturas Ativas</div>
+              <div class="kpi-value" style="color:var(--green)">${active}</div>
+              <div class="kpi-sub">${active} pagando mensalmente</div>
             </div>
-            <div class="metric-card" style="--accent-color:#FBBF24">
-              <div class="metric-icon">⏳</div>
-              <div class="metric-label">Em Trial</div>
-              <div class="metric-value" style="color:#FBBF24">${trial}</div>
-              <div class="metric-sub">potencial +R$${(trial * 49).toLocaleString('pt-BR')}/mês</div>
+            <div class="kpi-card amber">
+              <span class="kpi-icon">⏳</span>
+              <div class="kpi-label">Em Trial</div>
+              <div class="kpi-value" style="color:var(--amber)">${trial}</div>
+              <div class="kpi-sub">+R$${(trial*49).toLocaleString('pt-BR')}/mês potencial</div>
             </div>
-            <div class="metric-card" style="--accent-color:#F87171">
-              <div class="metric-icon">📉</div>
-              <div class="metric-label">Churn (30 dias)</div>
-              <div class="metric-value" style="color:${churnLast30 > 0 ? '#F87171' : '#4ADE80'}">${churnLast30}</div>
-              <div class="metric-sub">${suspended} suspensos total</div>
+            <div class="kpi-card ${churnLast30 > 0 ? 'red' : 'green'}">
+              <span class="kpi-icon">📉</span>
+              <div class="kpi-label">Churn (30 dias)</div>
+              <div class="kpi-value" style="color:${churnLast30 > 0 ? 'var(--red)' : 'var(--green)'}">${churnLast30}</div>
+              <div class="kpi-sub">${suspended} suspensos total</div>
             </div>
-            <div class="metric-card" style="--accent-color:#60A5FA">
-              <div class="metric-icon">🏪</div>
-              <div class="metric-label">Total Barbearias</div>
-              <div class="metric-value" style="color:#60A5FA">${total}</div>
-              <div class="metric-sub">tenants cadastrados</div>
+            <div class="kpi-card blue">
+              <span class="kpi-icon">🏪</span>
+              <div class="kpi-label">Total Barbearias</div>
+              <div class="kpi-value" style="color:var(--blue)">${total}</div>
+              <div class="kpi-sub">${total} tenants cadastrados</div>
             </div>
-            <div class="metric-card" style="--accent-color:#C084FC">
-              <div class="metric-icon">🎯</div>
-              <div class="metric-label">Leads</div>
-              <div class="metric-value" style="color:#C084FC">${totalLeads}</div>
-              <div class="metric-sub">capturados na landing</div>
+            <div class="kpi-card purple">
+              <span class="kpi-icon">🎯</span>
+              <div class="kpi-label">Leads Landing</div>
+              <div class="kpi-value" style="color:var(--purple)">${totalLeads}</div>
+              <div class="kpi-sub">capturados na landing page</div>
             </div>
           </div>
 
@@ -1408,6 +1408,15 @@ export function registerSuperAdminRoutes(app: Express): void {
               <canvas id="growthChart" height="80"></canvas>
             </div>
           </div>
+
+          <div class="chart-card">
+            <div class="chart-card-header"><div class="chart-card-title">💰 Evolução do MRR</div><div class="chart-card-sub">MRR acumulado (12 semanas)</div></div>
+            <div style="padding:20px 16px">
+              <canvas id="mrrChart" height="80"></canvas>
+            </div>
+          </div>
+
+
           <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
           <script>
             (function(){
@@ -1466,14 +1475,6 @@ export function registerSuperAdminRoutes(app: Express): void {
               });
             })();
           </script>
-
-          <div class="chart-card">
-            <div class="chart-card-header"><div class="chart-card-title">💰 Evolução do MRR</div><div class="chart-card-sub">MRR acumulado (12 semanas)</div></div>
-            <div style="padding:20px 16px">
-              <canvas id="mrrChart" height="80"></canvas>
-            </div>
-          </div>
-
           </div>
           <div class="table-wrap">
             <div class="table-header">
@@ -3151,7 +3152,7 @@ export function registerSuperAdminRoutes(app: Express): void {
             <div class="page-sub">Saúde do servidor e atividade recente</div>
           </div>
 
-          <div class="kpi-grid g6">
+          <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px">
             <div class="metric-card" style="border-left:3px solid #4ADE80">
               <div class="metric-label">Uptime</div>
               <div class="metric-value" style="color:#4ADE80;font-size:22px">${uptimeStr}</div>
