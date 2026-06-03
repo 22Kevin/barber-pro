@@ -77,7 +77,7 @@ function requireRole(...roles: BORoleType[]) {
             <div class="empty-icon">🔒</div>
             <div style="font-size:18px;font-weight:700;margin-bottom:8px">Acesso Negado</div>
             <div>Você não tem permissão para acessar esta seção.</div>
-            <a href="/superadmin" style="display:inline-block;margin-top:20px;padding:10px 24px;background:var(--gold);color:#0A0A0A;border-radius:10px;font-weight:700;text-decoration:none">Voltar ao Dashboard</a>
+            <a href="/superadmin" style="display:inline-block;margin-top:20px;padding:10px 24px;background:var(--gold-500);color:#0A0A0A;border-radius:10px;font-weight:700;text-decoration:none">Voltar ao Dashboard</a>
           </div>
         </div>
       `));
@@ -687,7 +687,7 @@ function trialDaysLeft(trialEndsAt: Date | null): string {
 
 function roleBadge(role: string): string {
   const map: Record<string, string> = {
-    super_admin: '<span class="badge" style="background:#C9A84C22;color:var(--gold)">Super Admin</span>',
+    super_admin: '<span class="badge" style="background:#C9A84C22;color:var(--gold-500)">Super Admin</span>',
     admin: '<span class="badge" style="background:#60A5FA22;color:#60A5FA">Admin</span>',
     suporte: '<span class="badge" style="background:#4ADE8022;color:#4ADE80">Suporte</span>',
   };
@@ -878,10 +878,10 @@ export function registerSuperAdminRoutes(app: Express): void {
 
           <!-- KPIs principais -->
           <div class="metrics" style="margin-bottom:28px">
-            <div class="metric-card" style="--accent-color: var(--gold)">
+            <div class="metric-card" style="--accent-color: var(--gold-500)">
               <div class="metric-icon">💰</div>
               <div class="metric-label">MRR Real</div>
-              <div class="metric-value" style="color:var(--gold)">R$${mrr.toLocaleString('pt-BR')}</div>
+              <div class="metric-value" style="color:var(--gold-500)">R$${mrr.toLocaleString('pt-BR')}</div>
               <div class="metric-sub">receita mensal recorrente</div>
             </div>
             <div class="metric-card" style="--accent-color:#4ADE80">
@@ -1004,7 +1004,7 @@ export function registerSuperAdminRoutes(app: Express): void {
       `));
     } catch (e) {
       console.error("[BO Dashboard]", e);
-      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--error);margin-top:40px">Erro ao carregar dashboard.</p></div>`));
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--danger);margin-top:40px">Erro ao carregar dashboard.</p></div>`));
     }
   });
 
@@ -1032,7 +1032,7 @@ export function registerSuperAdminRoutes(app: Express): void {
           <td>${planLabel(t.plan)}</td>
           <td>${statusBadge(t.status)}</td>
           <td>${t.status === "trial" ? trialDaysLeft(t.trialEndsAt) : "—"}</td>
-          <td style="color:var(--muted)">${new Date(t.createdAt).toLocaleDateString("pt-BR")}</td>
+          <td style="color:var(--text-muted)">${new Date(t.createdAt).toLocaleDateString("pt-BR")}</td>
           <td>
             ${session.role !== "suporte" ? `
             <div class="actions">
@@ -1059,12 +1059,12 @@ export function registerSuperAdminRoutes(app: Express): void {
 
           <form method="GET" action="/superadmin/tenants" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
             <div style="flex:1;min-width:200px">
-              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">BUSCAR</label>
-              <input name="search" value="${esc(searchTenant)}" placeholder="Nome ou slug da barbearia..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">BUSCAR</label>
+              <input name="search" value="${esc(searchTenant)}" placeholder="Nome ou slug da barbearia..." style="width:100%;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
             </div>
             <div>
-              <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">PLANO</label>
-              <select name="plan" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px">
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">PLANO</label>
+              <select name="plan" style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px">
                 ${planFilters.map((p) => `<option value="${p}" ${filterPlan === p ? "selected" : ""}>${planFilterLabels[p]}</option>`).join("")}
               </select>
             </div>
@@ -1109,7 +1109,7 @@ export function registerSuperAdminRoutes(app: Express): void {
       `));
     } catch (e) {
       console.error("[BO Tenants]", e);
-      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--error);margin-top:40px">Erro ao carregar barbearias.</p></div>`));
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--danger);margin-top:40px">Erro ao carregar barbearias.</p></div>`));
     }
   });
 
@@ -1258,38 +1258,38 @@ export function registerSuperAdminRoutes(app: Express): void {
 
       const rows = logs.map((l: any) => `
         <tr>
-          <td style="white-space:nowrap;color:var(--muted)">${new Date(l.createdAt).toLocaleString("pt-BR")}</td>
-          <td><span class="badge" style="background:var(--surface2);color:var(--muted)">${esc(l.source ?? "browser")}</span></td>
+          <td style="white-space:nowrap;color:var(--text-muted)">${new Date(l.createdAt).toLocaleString("pt-BR")}</td>
+          <td><span class="badge" style="background:var(--bg-input);color:var(--text-muted)">${esc(l.source ?? "browser")}</span></td>
           <td>
             <div style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.message)}</div>
             ${l.stack ? `<div class="stack-box">${esc(l.stack)}</div>` : ""}
           </td>
           <td class="text-sm text-mono" style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(l.url ?? "—")}</td>
-          <td style="color:var(--muted)">${l.tenantId ?? "—"}</td>
+          <td style="color:var(--text-muted)">${l.tenantId ?? "—"}</td>
         </tr>
       `).join("");
 
       const filterBar = `
         <form method="GET" action="/superadmin/erros" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px">
           <div style="flex:1;min-width:200px">
-            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">BUSCAR</label>
-            <input name="search" value="${esc(searchErr)}" placeholder="Mensagem ou URL..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">BUSCAR</label>
+            <input name="search" value="${esc(searchErr)}" placeholder="Mensagem ou URL..." style="width:100%;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
           </div>
           <div>
-            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">ORIGEM</label>
-            <select name="source" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px">
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">ORIGEM</label>
+            <select name="source" style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px">
               <option value="all" ${errSource === "all" ? "selected" : ""}>Todas</option>
               <option value="browser" ${errSource === "browser" ? "selected" : ""}>Browser</option>
               <option value="server" ${errSource === "server" ? "selected" : ""}>Servidor</option>
             </select>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">DE</label>
-            <input type="date" name="dateFrom" value="${esc(errDateFrom)}" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">DE</label>
+            <input type="date" name="dateFrom" value="${esc(errDateFrom)}" style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
           </div>
           <div>
-            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">ATÉ</label>
-            <input type="date" name="dateTo" value="${esc(errDateTo)}" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">ATÉ</label>
+            <input type="date" name="dateTo" value="${esc(errDateTo)}" style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
           </div>
           <button type="submit" class="btn btn-gold">Filtrar</button>
           <a href="/superadmin/erros" class="btn btn-gray">Limpar</a>
@@ -1317,7 +1317,7 @@ export function registerSuperAdminRoutes(app: Express): void {
       `));
     } catch (e) {
       console.error("[BO Erros]", e);
-      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--error);margin-top:40px">Erro ao carregar logs.</p></div>`));
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--danger);margin-top:40px">Erro ao carregar logs.</p></div>`));
     }
   });
 
@@ -1384,23 +1384,23 @@ export function registerSuperAdminRoutes(app: Express): void {
           <td style="font-weight:600">${esc(l.name ?? "—")}</td>
           <td>${esc(l.email ?? "—")}</td>
           <td>${esc(l.phone ?? "—")}</td>
-          <td style="color:var(--muted)">${new Date(l.createdAt).toLocaleString("pt-BR")}</td>
+          <td style="color:var(--text-muted)">${new Date(l.createdAt).toLocaleString("pt-BR")}</td>
         </tr>
       `).join("");
 
       const filterBar = `
         <form method="GET" action="/superadmin/leads" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px">
           <div style="flex:1;min-width:180px">
-            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">BUSCAR</label>
-            <input name="search" value="${esc(search)}" placeholder="Nome, e-mail ou telefone..." style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">BUSCAR</label>
+            <input name="search" value="${esc(search)}" placeholder="Nome, e-mail ou telefone..." style="width:100%;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
           </div>
           <div>
-            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">DE</label>
-            <input type="date" name="dateFrom" value="${esc(dateFrom)}" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">DE</label>
+            <input type="date" name="dateFrom" value="${esc(dateFrom)}" style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
           </div>
           <div>
-            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">ATÉ</label>
-            <input type="date" name="dateTo" value="${esc(dateTo)}" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--fg);font-size:13px" />
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">ATÉ</label>
+            <input type="date" name="dateTo" value="${esc(dateTo)}" style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
           </div>
           <button type="submit" class="btn btn-gold">Filtrar</button>
           <a href="/superadmin/leads" class="btn btn-gray">Limpar</a>
@@ -1426,7 +1426,7 @@ export function registerSuperAdminRoutes(app: Express): void {
       `));
     } catch (e) {
       console.error("[BO Leads]", e);
-      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--error);margin-top:40px">Erro ao carregar leads.</p></div>`));
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--danger);margin-top:40px">Erro ao carregar leads.</p></div>`));
     }
   });
 
@@ -1442,13 +1442,13 @@ export function registerSuperAdminRoutes(app: Express): void {
           <td><div style="font-weight:600">${esc(u.name)}</div><div class="text-sm">${esc(u.email)}</div></td>
           <td>${roleBadge(u.role)}</td>
           <td>${u.isActive ? '<span class="badge badge-active">Ativo</span>' : '<span class="badge badge-suspended">Inativo</span>'}</td>
-          <td style="color:var(--muted)">${new Date(u.createdAt).toLocaleDateString("pt-BR")}</td>
+          <td style="color:var(--text-muted)">${new Date(u.createdAt).toLocaleDateString("pt-BR")}</td>
           <td>
             ${u.email !== session.email ? `
             <div class="actions">
               <button class="btn btn-gold" onclick="openUserModal(${u.id}, '${esc(u.name)}', '${esc(u.email)}', '${esc(u.role)}', ${u.isActive ? 1 : 0})">Editar</button>
               <a href="/superadmin/usuarios/toggle?id=${u.id}&active=${u.isActive ? 0 : 1}" class="btn ${u.isActive ? "btn-red" : "btn-green"}" onclick="return confirm('${u.isActive ? "Desativar" : "Ativar"} este usuário?')">${u.isActive ? "Desativar" : "Ativar"}</a>
-            </div>` : '<span style="color:var(--muted);font-size:12px">Você</span>'}
+            </div>` : '<span style="color:var(--text-muted);font-size:12px">Você</span>'}
           </td>
         </tr>
       `).join("");
@@ -1524,7 +1524,7 @@ export function registerSuperAdminRoutes(app: Express): void {
       `));
     } catch (e) {
       console.error("[BO Usuarios]", e);
-      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--error);margin-top:40px">Erro ao carregar usuários.</p></div>`));
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--danger);margin-top:40px">Erro ao carregar usuários.</p></div>`));
     }
   });
 
@@ -1612,9 +1612,9 @@ export function registerSuperAdminRoutes(app: Express): void {
             <button type="submit" class="btn btn-primary" style="margin-top:8px">Adicionar Depoimento</button>
           </form>
 
-          <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:12px">DEPOIMENTOS SALVOS NO BANCO</div>
-            <div id="depoimentos-list" style="color:var(--muted);font-size:13px">
+          <div style="margin-top:20px;border-top:1px solid var(--border-subtle);padding-top:16px">
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">DEPOIMENTOS SALVOS NO BANCO</div>
+            <div id="depoimentos-list" style="color:var(--text-muted);font-size:13px">
               Os depoimentos salvos aparecerão aqui. Esta funcionalidade requer integração com a tabela <code>landing_testimonials</code> no banco.
             </div>
           </div>
@@ -1622,7 +1622,7 @@ export function registerSuperAdminRoutes(app: Express): void {
 
         <div class="cms-card">
           <h3>💰 Planos Exibidos na Landing Page</h3>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Os planos abaixo são exibidos na seção de preços da landing page. Edite os valores e salve para atualizar.</p>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Os planos abaixo são exibidos na seção de preços da landing page. Edite os valores e salve para atualizar.</p>
           <form method="POST" action="/superadmin/cms/planos">
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
               ${[
@@ -1630,8 +1630,8 @@ export function registerSuperAdminRoutes(app: Express): void {
                 { key: "team", label: "Equipe", price: "89", desc: "Até 5 barbeiros, relatórios avançados, fidelidade" },
                 { key: "studio", label: "Estúdio", price: "149", desc: "Ilimitado, multi-unidade, suporte prioritário" },
               ].map((p) => `
-                <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px">
-                  <div style="font-weight:700;margin-bottom:10px;color:var(--gold)">${p.label}</div>
+                <div style="background:var(--bg-base);border:1px solid var(--border-subtle);border-radius:12px;padding:16px">
+                  <div style="font-weight:700;margin-bottom:10px;color:var(--gold-500)">${p.label}</div>
                   <div class="form-group"><label>Preço (R$)</label><input type="number" name="price_${p.key}" value="${p.price}" /></div>
                   <div class="form-group"><label>Descrição</label><input type="text" name="desc_${p.key}" value="${p.desc}" /></div>
                 </div>
@@ -1693,17 +1693,17 @@ export function registerSuperAdminRoutes(app: Express): void {
               <th>Status</th><th>Prioridade</th><th>Msgs</th><th>Atualizado</th><th>Acoes</th>
             </tr></thead>
             <tbody>
-              ${tickets.length === 0 ? `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:40px">Nenhum ticket encontrado</td></tr>` : ''}
+              ${tickets.length === 0 ? `<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px">Nenhum ticket encontrado</td></tr>` : ''}
               ${tickets.map((t: any) => `
                 <tr>
-                  <td style="color:var(--muted);font-size:12px">#${t.id}</td>
+                  <td style="color:var(--text-muted);font-size:12px">#${t.id}</td>
                   <td><strong>${esc(t.tenantName || 'N/A')}</strong></td>
-                  <td style="max-width:220px"><a href="/superadmin/suporte/${t.id}" style="color:var(--text);font-weight:600">${esc(t.title)}</a></td>
-                  <td><span class="badge" style="background:#C9A84C22;color:var(--gold)">${esc(t.category)}</span></td>
+                  <td style="max-width:220px"><a href="/superadmin/suporte/${t.id}" style="color:var(--text-primary);font-weight:600">${esc(t.title)}</a></td>
+                  <td><span class="badge" style="background:#C9A84C22;color:var(--gold-500)">${esc(t.category)}</span></td>
                   <td><span class="badge" style="background:${statusColors[t.status] || '#888'}22;color:${statusColors[t.status] || '#888'}">${statusLabels[t.status] || t.status}</span></td>
                   <td><span class="badge" style="background:${priorityColors[t.priority] || '#888'}22;color:${priorityColors[t.priority] || '#888'}">${priorityLabels[t.priority] || t.priority}</span></td>
                   <td style="text-align:center">${t.messageCount}</td>
-                  <td style="color:var(--muted);font-size:12px">${new Date(t.updatedAt).toLocaleDateString('pt-BR')}</td>
+                  <td style="color:var(--text-muted);font-size:12px">${new Date(t.updatedAt).toLocaleDateString('pt-BR')}</td>
                   <td class="actions">
                     <a href="/superadmin/suporte/${t.id}" class="btn btn-gold">Ver</a>
                     ${t.status !== 'closed' ? `<a href="/superadmin/suporte/${t.id}/fechar" class="btn btn-gray">Fechar</a>` : ''}
@@ -1732,11 +1732,11 @@ export function registerSuperAdminRoutes(app: Express): void {
         <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><a href="/superadmin/suporte" class="bc-link">Suporte</a><span class="bc-sep">›</span><span class="bc-current">Ticket #${ticketId}</span></div>
         <div style="margin-bottom:20px"><a href="/superadmin/suporte" class="btn btn-gray">Voltar</a></div>
         ${saved ? `<div style="background:#4ADE8022;color:#4ADE80;border:1px solid #4ADE8044;border-radius:12px;padding:12px 18px;margin-bottom:16px">Resposta enviada!</div>` : ''}
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px">
+        <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:16px;padding:24px;margin-bottom:20px">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
             <div>
               <div style="font-size:18px;font-weight:800;margin-bottom:6px">${esc(ticket.title)}</div>
-              <div style="font-size:12px;color:var(--muted)">Barbearia: <strong style="color:var(--text)">${esc(ticket.tenantName || 'N/A')}</strong> &nbsp;|&nbsp; Categoria: ${esc(ticket.category)} &nbsp;|&nbsp; Prioridade: ${esc(ticket.priority)}</div>
+              <div style="font-size:12px;color:var(--text-muted)">Barbearia: <strong style="color:var(--text-primary)">${esc(ticket.tenantName || 'N/A')}</strong> &nbsp;|&nbsp; Categoria: ${esc(ticket.category)} &nbsp;|&nbsp; Prioridade: ${esc(ticket.priority)}</div>
             </div>
             <span class="badge" style="background:${statusColors[ticket.status] || '#888'}22;color:${statusColors[ticket.status] || '#888'};white-space:nowrap">${statusLabels[ticket.status] || ticket.status}</span>
           </div>
@@ -1745,22 +1745,22 @@ export function registerSuperAdminRoutes(app: Express): void {
             ${ticket.status === 'open' || ticket.status === 'waiting_admin' ? `<a href="/superadmin/suporte/${ticketId}/status/answered" class="btn btn-blue">Marcar Respondido</a>` : ''}
           </div>
         </div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px">
-          <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px">Conversa (${messages.length} mensagens)</div>
+        <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:16px;overflow:hidden;margin-bottom:20px">
+          <div style="padding:16px 20px;border-bottom:1px solid var(--border-subtle);font-weight:700;font-size:14px">Conversa (${messages.length} mensagens)</div>
           <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;max-height:500px;overflow-y:auto">
             ${messages.map((m: any) => `
               <div style="display:flex;flex-direction:column;align-items:${m.authorType === 'admin' ? 'flex-end' : 'flex-start'}">
-                <div style="font-size:10px;color:var(--muted);margin-bottom:4px">
+                <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">
                   ${m.authorType === 'admin' ? 'Admin' : m.authorType === 'ai' ? 'IA' : 'Cliente: ' + esc(m.authorName || '')}
                   &nbsp;|&nbsp; ${new Date(m.createdAt).toLocaleString('pt-BR')}
                 </div>
-                <div style="background:${m.authorType === 'admin' ? '#C9A84C22' : m.authorType === 'ai' ? '#60A5FA22' : 'var(--surface2)'};border:1px solid ${m.authorType === 'admin' ? '#C9A84C44' : m.authorType === 'ai' ? '#60A5FA44' : 'var(--border)'};border-radius:12px;padding:10px 14px;max-width:80%;font-size:13px;line-height:1.5;white-space:pre-wrap">${esc(m.content)}</div>
+                <div style="background:${m.authorType === 'admin' ? '#C9A84C22' : m.authorType === 'ai' ? '#60A5FA22' : 'var(--bg-input)'};border:1px solid ${m.authorType === 'admin' ? '#C9A84C44' : m.authorType === 'ai' ? '#60A5FA44' : 'var(--border-subtle)'};border-radius:12px;padding:10px 14px;max-width:80%;font-size:13px;line-height:1.5;white-space:pre-wrap">${esc(m.content)}</div>
               </div>
             `).join('')}
           </div>
         </div>
         ${ticket.status !== 'closed' ? `
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px">
+        <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:16px;padding:20px">
           <div style="font-weight:700;font-size:14px;margin-bottom:12px">Responder</div>
           <form method="POST" action="/superadmin/suporte/${ticketId}/responder">
             <textarea name="content" rows="4" placeholder="Digite sua resposta..." style="width:100%;resize:vertical" required></textarea>
@@ -1768,7 +1768,7 @@ export function registerSuperAdminRoutes(app: Express): void {
               <button type="submit" class="btn btn-primary">Enviar Resposta</button>
             </div>
           </form>
-        </div>` : `<div style="text-align:center;padding:20px;color:var(--muted)">Ticket fechado.</div>`}
+        </div>` : `<div style="text-align:center;padding:20px;color:var(--text-muted)">Ticket fechado.</div>`}
       </div>
     `));
   });
@@ -1927,7 +1927,7 @@ export function registerSuperAdminRoutes(app: Express): void {
           </div>
           <div class="metric-card">
             <div class="metric-label">Em Trial / Sem Plano</div>
-            <div class="metric-value" style="color:var(--muted)">${trialTenants}</div>
+            <div class="metric-value" style="color:var(--text-muted)">${trialTenants}</div>
             <div class="metric-sub">não assinantes</div>
           </div>
           <div class="metric-card">
@@ -1944,32 +1944,32 @@ export function registerSuperAdminRoutes(app: Express): void {
 
         <!-- Distribuição por plano -->
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px">
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:center">
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">SOLO — R$49/mês</div>
-            <div style="font-size:32px;font-weight:900;color:var(--muted)">${planCounts.solo}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">1 barbeiro</div>
+          <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:14px;padding:18px 20px;text-align:center">
+            <div style="font-size:11px;color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">SOLO — R$49/mês</div>
+            <div style="font-size:32px;font-weight:900;color:var(--text-muted)">${planCounts.solo}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">1 barbeiro</div>
           </div>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:center">
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">EQUIPE — R$89/mês</div>
-            <div style="font-size:32px;font-weight:900;color:var(--gold)">${planCounts.team}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">até 5 barbeiros</div>
+          <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:14px;padding:18px 20px;text-align:center">
+            <div style="font-size:11px;color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">EQUIPE — R$89/mês</div>
+            <div style="font-size:32px;font-weight:900;color:var(--gold-500)">${planCounts.team}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">até 5 barbeiros</div>
           </div>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:center">
-            <div style="font-size:11px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">ESTÚDIO — R$149/mês</div>
+          <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:14px;padding:18px 20px;text-align:center">
+            <div style="font-size:11px;color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">ESTÚDIO — R$149/mês</div>
             <div style="font-size:32px;font-weight:900;color:#C084FC">${planCounts.studio}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px">ilimitado</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">ilimitado</div>
           </div>
         </div>
 
         <!-- Abas de navegação -->
-        <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px">
-          <a href="/superadmin/planos?tab=todos" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'todos' ? 'background:var(--gold);color:#0C0C0C' : 'color:var(--muted)'}">
+        <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:12px;padding:4px">
+          <a href="/superadmin/planos?tab=todos" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'todos' ? 'background:var(--gold-500);color:#0C0C0C' : 'color:var(--text-muted)'}">
             Todas (${totalTenants})
           </a>
-          <a href="/superadmin/planos?tab=trial" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'trial' ? 'background:var(--gold);color:#0C0C0C' : 'color:var(--muted)'}">
+          <a href="/superadmin/planos?tab=trial" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'trial' ? 'background:var(--gold-500);color:#0C0C0C' : 'color:var(--text-muted)'}">
             Trial / Expirado (${trialList.length})
           </a>
-          <a href="/superadmin/planos?tab=churn" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'churn' ? 'background:#F87171;color:#fff' : 'color:var(--muted)'}">
+          <a href="/superadmin/planos?tab=churn" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'churn' ? 'background:#F87171;color:#fff' : 'color:var(--text-muted)'}">
             Churn 30d (${churnList.length})
           </a>
         </div>
@@ -1979,7 +1979,7 @@ export function registerSuperAdminRoutes(app: Express): void {
         <div class="table-wrap">
           <div class="table-header">
             <h2>Barbearias em Trial / Expirado</h2>
-            <span style="font-size:12px;color:var(--muted)">${trialList.length} barbearias</span>
+            <span style="font-size:12px;color:var(--text-muted)">${trialList.length} barbearias</span>
           </div>
           <table>
             <thead><tr>
@@ -1990,7 +1990,7 @@ export function registerSuperAdminRoutes(app: Express): void {
               <th>Ações</th>
             </tr></thead>
             <tbody>
-              ${trialList.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px">Nenhuma barbearia em trial</td></tr>` : ''}
+              ${trialList.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px">Nenhuma barbearia em trial</td></tr>` : ''}
               ${trialList.map((t: any) => {
                 const trialEnd = new Date(t.trialEndsAt);
                 const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / 86400000);
@@ -2003,18 +2003,18 @@ export function registerSuperAdminRoutes(app: Express): void {
                   <tr>
                     <td>
                       <div style="font-weight:700">${esc(t.name)}</div>
-                      <div style="font-size:11px;color:var(--muted)">${esc(t.slug)}</div>
+                      <div style="font-size:11px;color:var(--text-muted)">${esc(t.slug)}</div>
                     </td>
                     <td>
                       <span style="color:${isExpired ? '#F87171' : '#FBBF24'};font-weight:600;font-size:12px">
                         ${isExpired ? '🔴 Expirado' : '🟡 Trial'}
                       </span>
                     </td>
-                    <td style="color:var(--muted);font-size:12px">${trialEnd.toLocaleDateString('pt-BR')}</td>
+                    <td style="color:var(--text-muted);font-size:12px">${trialEnd.toLocaleDateString('pt-BR')}</td>
                     <td style="font-weight:700;color:${daysColor};font-size:13px">${daysLabel}</td>
                     <td class="actions">
                       <form method="POST" action="/superadmin/planos/extend-trial/${t.id}" style="display:inline">
-                        <select name="days" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;margin-right:4px">
+                        <select name="days" style="background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-subtle);border-radius:6px;padding:4px 8px;font-size:12px;margin-right:4px">
                           <option value="7">+7 dias</option>
                           <option value="14">+14 dias</option>
                           <option value="30" selected>+30 dias</option>
@@ -2037,7 +2037,7 @@ export function registerSuperAdminRoutes(app: Express): void {
         <div class="table-wrap">
           <div class="table-header">
             <h2>Churn — Cancelamentos e Expirações (30 dias)</h2>
-            <span style="font-size:12px;color:var(--muted)">${churnList.length} barbearia(s) • taxa: ${churnRate}% dos ativos</span>
+            <span style="font-size:12px;color:var(--text-muted)">${churnList.length} barbearia(s) • taxa: ${churnRate}% dos ativos</span>
           </div>
           <table>
             <thead><tr>
@@ -2049,7 +2049,7 @@ export function registerSuperAdminRoutes(app: Express): void {
               <th>Ações</th>
             </tr></thead>
             <tbody>
-              ${churnList.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">🎉 Nenhum cancelamento nos últimos 30 dias!</td></tr>` : ''}
+              ${churnList.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px">🎉 Nenhum cancelamento nos últimos 30 dias!</td></tr>` : ''}
               ${churnList.map((t: any) => {
                 const status = t.barberproSubscriptionStatus ?? 'cancelled';
                 const planName = t.barberproPlanName ?? t.plan ?? 'solo';
@@ -2064,12 +2064,12 @@ export function registerSuperAdminRoutes(app: Express): void {
                   <tr>
                     <td>
                       <div style="font-weight:700">${esc(t.name)}</div>
-                      <div style="font-size:11px;color:var(--muted)">${esc(t.slug)}</div>
+                      <div style="font-size:11px;color:var(--text-muted)">${esc(t.slug)}</div>
                     </td>
                     <td><span style="color:${motivoColor};font-weight:600;font-size:12px">${motivo}</span></td>
-                    <td style="font-weight:700;color:${planName === 'studio' ? '#C084FC' : planName === 'team' ? 'var(--gold)' : 'var(--muted)'}">${planLabel2}</td>
+                    <td style="font-weight:700;color:${planName === 'studio' ? '#C084FC' : planName === 'team' ? 'var(--gold-500)' : 'var(--text-muted)'}">${planLabel2}</td>
                     <td style="font-weight:800;color:#F87171;font-size:14px">${planPrice2 > 0 ? `− R$ ${planPrice2.toFixed(2).replace('.', ',')}` : '—'}</td>
-                    <td style="color:var(--muted);font-size:12px">${refDate}</td>
+                    <td style="color:var(--text-muted);font-size:12px">${refDate}</td>
                     <td class="actions">
                       <a href="/superadmin/planos/editar/${t.id}" class="btn btn-gold" style="font-size:12px;padding:6px 14px">Reativar</a>
                     </td>
@@ -2086,7 +2086,7 @@ export function registerSuperAdminRoutes(app: Express): void {
         <div class="table-wrap">
           <div class="table-header">
             <h2>Todas as Barbearias</h2>
-            <span style="font-size:12px;color:var(--muted)">${totalTenants} cadastradas</span>
+            <span style="font-size:12px;color:var(--text-muted)">${totalTenants} cadastradas</span>
           </div>
           <table>
             <thead><tr>
@@ -2099,7 +2099,7 @@ export function registerSuperAdminRoutes(app: Express): void {
               <th>Ações</th>
             </tr></thead>
             <tbody>
-              ${tenantsWithSub.length === 0 ? `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">Nenhuma barbearia cadastrada</td></tr>` : ''}
+              ${tenantsWithSub.length === 0 ? `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:40px">Nenhuma barbearia cadastrada</td></tr>` : ''}
               ${tenantsWithSub.map((t: any) => {
                 const subStatus = t.barberproSubscriptionStatus ?? 'trial';
                 const planName = t.barberproPlanName ?? t.plan ?? 'solo';
@@ -2112,21 +2112,21 @@ export function registerSuperAdminRoutes(app: Express): void {
                   <tr>
                     <td>
                       <div style="font-weight:700">${esc(t.name)}</div>
-                      <div style="font-size:11px;color:var(--muted)">${esc(t.slug)}</div>
+                      <div style="font-size:11px;color:var(--text-muted)">${esc(t.slug)}</div>
                     </td>
                     <td>
-                      <span style="font-weight:700;color:${planName === 'studio' ? '#C084FC' : planName === 'team' ? 'var(--gold)' : 'var(--muted)'}">
+                      <span style="font-weight:700;color:${planName === 'studio' ? '#C084FC' : planName === 'team' ? 'var(--gold-500)' : 'var(--text-muted)'}">
                         ${planLabelMap[planName] ?? planName}
                       </span>
                     </td>
                     <td>
                       <span style="color:${statusColor};font-weight:600;font-size:12px">${statusLbl}</span>
                     </td>
-                    <td style="font-weight:700;color:var(--text)">
+                    <td style="font-weight:700;color:var(--text-primary)">
                       ${planPrice > 0 ? `R$ ${planPrice.toFixed(2).replace('.', ',')}` : '—'}
                     </td>
-                    <td style="color:var(--muted);font-size:12px">${nextDue}</td>
-                    <td style="font-size:11px;color:var(--muted);font-family:monospace">
+                    <td style="color:var(--text-muted);font-size:12px">${nextDue}</td>
+                    <td style="font-size:11px;color:var(--text-muted);font-family:monospace">
                       ${subId ? `<span title="${esc(subId)}">${esc(subId.slice(0, 12))}...</span>` : '—'}
                     </td>
                     <td class="actions">
@@ -2193,9 +2193,9 @@ export function registerSuperAdminRoutes(app: Express): void {
         <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><a href="/superadmin/planos" class="bc-link">Planos</a><span class="bc-sep">›</span><span class="bc-current">Editar Plano</span></div>
         ${saved ? `<div style="background:#4ADE8022;color:#4ADE80;border:1px solid #4ADE8044;border-radius:12px;padding:12px 18px;margin-bottom:20px">✅ Plano atualizado!</div>` : ''}
         <div style="margin-bottom:20px"><a href="/superadmin/planos" class="btn btn-gray">← Voltar</a></div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px">
+        <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:16px;padding:28px">
           <div style="font-size:18px;font-weight:800;margin-bottom:4px">${esc(tenant.name)}</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:24px">${esc(tenant.slug)}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:24px">${esc(tenant.slug)}</div>
 
           <form method="POST" action="/superadmin/planos/editar/${tenantId}">
             <div class="form-group">
@@ -2677,7 +2677,7 @@ export function registerSuperAdminRoutes(app: Express): void {
               <div class="metric-value" style="color:#60A5FA;font-size:22px">${memMB}MB</div>
               <div class="metric-sub">de ${memTotalMB}MB alocados</div>
             </div>
-            <div class="metric-card" style="border-left:3px solid var(--gold)">
+            <div class="metric-card" style="border-left:3px solid var(--gold-500)">
               <div class="metric-label">Total Agendamentos</div>
               <div class="metric-value" style="font-size:22px">${dbStats.appointments.toLocaleString('pt-BR')}</div>
               <div class="metric-sub">no banco de dados</div>
@@ -2703,7 +2703,7 @@ export function registerSuperAdminRoutes(app: Express): void {
           <div class="table-wrap">
             <div class="table-header">
               <h2>📋 Log de Auditoria</h2>
-              <span style="font-size:12px;color:var(--muted)">Últimas ${recentActions.length} ações administrativas</span>
+              <span style="font-size:12px;color:var(--text-muted)">Últimas ${recentActions.length} ações administrativas</span>
             </div>
             ${recentActions.length === 0 ? `
               <div class="empty"><div class="empty-icon">📋</div><div>Nenhuma ação registrada ainda.</div></div>
@@ -2713,10 +2713,10 @@ export function registerSuperAdminRoutes(app: Express): void {
                 <tbody>
                   ${recentActions.map(a => `
                     <tr>
-                      <td style="color:var(--muted);font-size:12px">${a.ts}</td>
-                      <td><span style="color:var(--gold)">${esc(a.user)}</span></td>
+                      <td style="color:var(--text-muted);font-size:12px">${a.ts}</td>
+                      <td><span style="color:var(--gold-500)">${esc(a.user)}</span></td>
                       <td>${esc(a.action)}</td>
-                      <td style="color:var(--muted)">${esc(a.target)}</td>
+                      <td style="color:var(--text-muted)">${esc(a.target)}</td>
                     </tr>
                   `).join("")}
                 </tbody>
@@ -2726,7 +2726,7 @@ export function registerSuperAdminRoutes(app: Express): void {
         </div>
       `));
     } catch (e: any) {
-      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--error);margin-top:40px">Erro: ${esc(e.message)}</p></div>`));
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--danger);margin-top:40px">Erro: ${esc(e.message)}</p></div>`));
     }
   });
 
@@ -2745,32 +2745,32 @@ export function registerSuperAdminRoutes(app: Express): void {
       const planLabel: Record<string, string> = { solo: "Solo", team: "Equipe", studio: "Estúdio" };
       const statusColor: Record<string, string> = { active: "#4ADE80", trial: "#FBBF24", expired: "#F87171", cancelled: "#F87171", pending: "#60A5FA" };
       const rows_html = results.length === 0
-        ? `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted)">Nenhuma barbearia encontrada para "${esc(q)}"</td></tr>`
+        ? `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted)">Nenhuma barbearia encontrada para "${esc(q)}"</td></tr>`
         : results.map((t: any) => `
           <tr>
-            <td><a href="/superadmin/tenants/${t.id}" style="color:var(--gold);font-weight:600">${esc(t.name)}</a><div style="font-size:11px;color:var(--muted)">${esc(t.slug)}</div></td>
+            <td><a href="/superadmin/tenants/${t.id}" style="color:var(--gold-500);font-weight:600">${esc(t.name)}</a><div style="font-size:11px;color:var(--text-muted)">${esc(t.slug)}</div></td>
             <td>${planLabel[t.plan] ?? t.plan ?? "—"}</td>
-            <td><span style="color:${statusColor[t.barberproSubscriptionStatus] ?? "var(--muted)"};font-weight:600">${t.barberproSubscriptionStatus ?? "—"}</span></td>
-            <td style="font-size:12px;color:var(--muted)">${t.barberproTrialEndsAt ? new Date(t.barberproTrialEndsAt).toLocaleDateString("pt-BR") : "—"}</td>
+            <td><span style="color:${statusColor[t.barberproSubscriptionStatus] ?? "var(--text-muted)"};font-weight:600">${t.barberproSubscriptionStatus ?? "—"}</span></td>
+            <td style="font-size:12px;color:var(--text-muted)">${t.barberproTrialEndsAt ? new Date(t.barberproTrialEndsAt).toLocaleDateString("pt-BR") : "—"}</td>
             <td><a href="/superadmin/tenants/${t.id}" style="font-size:12px">Ver →</a></td>
           </tr>`).join("");
       const body = `
         <div style="margin-bottom:20px">
           <form action="/superadmin/busca" method="GET" style="display:flex;gap:8px;max-width:480px">
             <input type="text" name="q" value="${esc(q)}" placeholder="Buscar barbearia..."
-              style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--text);outline:none" />
-            <button type="submit" style="background:var(--gold);color:#000;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">Buscar</button>
+              style="flex:1;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--text-primary);outline:none" />
+            <button type="submit" style="background:var(--gold-500);color:#000;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">Buscar</button>
           </form>
         </div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:16px">${results.length} resultado(s) para "<strong style="color:var(--text)">${esc(q)}</strong>"</div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">${results.length} resultado(s) para "<strong style="color:var(--text-primary)">${esc(q)}</strong>"</div>
+        <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden">
           <table style="width:100%;border-collapse:collapse">
-            <thead><tr style="border-bottom:1px solid var(--border);background:var(--surface2)">
-              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600">BARBEARIA</th>
-              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600">PLANO</th>
-              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600">STATUS</th>
-              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600">TRIAL ATÉ</th>
-              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600">AÇÃO</th>
+            <thead><tr style="border-bottom:1px solid var(--border-subtle);background:var(--bg-input)">
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600">BARBEARIA</th>
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600">PLANO</th>
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600">STATUS</th>
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600">TRIAL ATÉ</th>
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600">AÇÃO</th>
             </tr></thead>
             <tbody>${rows_html}</tbody>
           </table>
