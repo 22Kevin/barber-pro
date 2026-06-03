@@ -11,7 +11,6 @@ import {
   View,
   RefreshControl,
 } from "react-native";
-import Svg, { Rect, Line, Text as SvgText, G } from "react-native-svg";
 import { ScreenContainer } from "@/components/screen-container";
 import { trpc } from "@/lib/trpc";
 import { AdminHeader } from "@/components/admin-header";
@@ -78,44 +77,42 @@ function getDateRange(period: Period): { startDate: string; endDate: string } {
   return { startDate: toLocalDateStr(start), endDate: end };
 }
 
-// ─── Gráfico de barras SVG ────────────────────────────────────────────────────
+// ─── Gráfico de barras (View-based, sem react-native-svg) ────────────────────
 function BarChart({ labels, data }: { labels: string[]; data: number[] }) {
   if (!data || data.length === 0) return null;
-  const W = 340;
-  const H = 160;
-  const PAD = { top: 10, right: 10, bottom: 28, left: 48 };
-  const chartW = W - PAD.left - PAD.right;
-  const chartH = H - PAD.top - PAD.bottom;
-  const maxVal = Math.max(...data.filter(v => !isNaN(v)), 1);
-  const barW = Math.max(1, chartW / data.length - 6);
-
+  const maxVal = Math.max(...data.filter(v => !isNaN(v) && v > 0), 1);
   return (
-    <Svg width={W} height={H}>
-      {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
-        const y = PAD.top + chartH * (1 - frac);
-        return (
-          <G key={frac}>
-            <Line x1={PAD.left} y1={y} x2={W - PAD.right} y2={y} stroke="#2A2A2A" strokeWidth={1} />
-            <SvgText x={PAD.left - 4} y={y + 4} fontSize={9} fill="#555" textAnchor="end">
-              {frac === 0 ? "0" : `${(maxVal * frac / 1000).toFixed(0)}k`}
-            </SvgText>
-          </G>
-        );
-      })}
-      {data.map((val, i) => {
-        const barH = (val / maxVal) * chartH;
-        const x = PAD.left + i * (chartW / data.length) + 3;
-        const y = PAD.top + chartH - barH;
-        return (
-          <G key={i}>
-            <Rect x={x} y={y} width={barW} height={barH} rx={3} fill="#C9A84C" opacity={0.85} />
-            <SvgText x={x + barW / 2} y={H - PAD.bottom + 14} fontSize={9} fill="#888880" textAnchor="middle">
-              {labels[i]}
-            </SvgText>
-          </G>
-        );
-      })}
-    </Svg>
+    <View style={{ width: "100%" }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", height: 120, gap: 3, paddingHorizontal: 4 }}>
+        {data.map((val, i) => {
+          const heightPct = Math.max(0, (val / maxVal) * 100);
+          const isMax = val === maxVal;
+          return (
+            <View key={i} style={{ flex: 1, alignItems: "center", justifyContent: "flex-end", height: 120 }}>
+              {val > 0 && (
+                <Text style={{ fontSize: 7, color: "#C9A84C88", marginBottom: 2, textAlign: "center" }} numberOfLines={1}>
+                  {val >= 1000 ? `${(val/1000).toFixed(1)}k` : val.toFixed(0)}
+                </Text>
+              )}
+              <View style={{
+                width: "100%",
+                height: heightPct * 0.9,
+                backgroundColor: isMax ? "#C9A84C" : "#C9A84C77",
+                borderRadius: 3,
+                minHeight: val > 0 ? 3 : 0,
+              }} />
+            </View>
+          );
+        })}
+      </View>
+      <View style={{ flexDirection: "row", gap: 3, paddingHorizontal: 4, marginTop: 4 }}>
+        {labels.map((label, i) => (
+          <Text key={i} style={{ flex: 1, fontSize: 8, color: "#666", textAlign: "center" }} numberOfLines={1}>
+            {label}
+          </Text>
+        ))}
+      </View>
+    </View>
   );
 }
 
