@@ -127,6 +127,15 @@ function ReportsScreenInner() {
   const [activeTab, setActiveTab] = useState<Tab>("financeiro");
   const [exporting, setExporting] = useState(false);
   const [exportingOrders, setExportingOrders] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const utils = trpc.useUtils();
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await utils.reports.revenue.invalidate().catch(() => {});
+    await utils.reports.topServices.invalidate().catch(() => {});
+    setRefreshing(false);
+  };
   const dateRange = useMemo(() => getDateRange(period), [period]);
   const periodDays = period === "week" ? 7 : period === "month" ? 30 : 365;
 
