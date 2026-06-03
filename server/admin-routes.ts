@@ -156,6 +156,8 @@ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
   }
   const session = decodeSession(token);
   if (!session) {
+    // Clear invalid/expired cookie to force clean login
+    res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
     if (isApiCall) return res.status(401).json({ error: 'Sessao invalida. Faca login novamente.' });
     return res.redirect('/admin/login');
   }

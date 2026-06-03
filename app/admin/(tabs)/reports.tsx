@@ -16,6 +16,7 @@ import { trpc } from "@/lib/trpc";
 import { AdminHeader } from "@/components/admin-header";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useColors } from "@/hooks/use-colors";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 type Period = "week" | "month" | "year";
 type Tab = "financeiro" | "servicos" | "encomendas" | "barbeiros" | "inadimplencia" | "inativos";
@@ -117,7 +118,7 @@ function BarChart({ labels, data }: { labels: string[]; data: number[] }) {
 }
 
 // ─── Tela principal ───────────────────────────────────────────────────────────
-export default function ReportsScreen() {
+function ReportsScreenInner() {
   const colors = useColors();
   const styles = createStyles(colors);
   const { barber } = useBarberAuth();
@@ -996,4 +997,12 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   catRow: { marginBottom: 12 },
   catLabelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
 });
+}
+
+export default function ReportsScreen() {
+  return (
+    <ErrorBoundary screenName="Relatórios">
+      <ReportsScreenInner />
+    </ErrorBoundary>
+  );
 }
