@@ -94,33 +94,78 @@ function esc(s: string | null | undefined): string {
 
 function layout(title: string, session: BOSession | null, body: string): string {
   const nav = session ? `
-    <nav class="nav">
-      <a href="/superadmin" class="nav-brand">BARBER PRO <span>/ Backoffice</span></a>
-      <div class="nav-links">
-        <a href="/superadmin" class="${title === "Dashboard" ? "active" : ""}">Dashboard</a>
-        <a href="/superadmin/tenants" class="${title === "Barbearias" ? "active" : ""}">Barbearias</a>
-        <a href="/superadmin/planos" class="${title === "Planos" ? "active" : ""}">Planos</a>
-        <a href="/superadmin/erros" class="${title === "Erros" ? "active" : ""}">Erros</a>
-        <a href="/superadmin/leads" class="${title === "Leads" ? "active" : ""}">Leads</a>
-        <a href="/superadmin/suporte" class="${title === "Suporte" ? "active" : ""}">Suporte</a>
-        ${session.role === "super_admin" ? `<a href="/superadmin/usuarios" class="${title === "Usuários" ? "active" : ""}">Usuários</a>` : ""}
-        ${session.role === "super_admin" ? `<a href="/superadmin/cms" class="${title.startsWith("CMS") ? "active" : ""}">CMS</a>` : ""}
-        <a href="/superadmin/email-preview" class="${title === "E-mails" ? "active" : ""}">E-mails</a>
-        <div style="flex:1;max-width:280px;margin:0 8px;position:relative;">
-          <form action="/superadmin/busca" method="GET" style="margin:0">
-            <input type="text" name="q" placeholder="Buscar barbearia..." autocomplete="off"
-              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px 6px 32px;font-size:12px;color:var(--text);outline:none;transition:border-color 0.15s;"
-              onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'" />
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </form>
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="sidebar-brand-logo">BARBER PRO</span>
+        <span class="sidebar-brand-sub">BACKOFFICE ADMIN</span>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Principal</div>
+        <a href="/superadmin" class="sidebar-link ${title === "Dashboard" ? "active" : ""}">
+          <span class="icon">📊</span> Dashboard
+        </a>
+        <a href="/superadmin/tenants" class="sidebar-link ${["Barbearias", "Tenant"].includes(title) ? "active" : ""}">
+          <span class="icon">🏪</span> Barbearias
+        </a>
+        <a href="/superadmin/planos" class="sidebar-link ${title === "Planos" ? "active" : ""}">
+          <span class="icon">💳</span> Planos & Assinaturas
+        </a>
+        <a href="/superadmin/leads" class="sidebar-link ${title === "Leads" ? "active" : ""}">
+          <span class="icon">🎯</span> Leads
+        </a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Operacional</div>
+        <a href="/superadmin/suporte" class="sidebar-link ${title === "Suporte" ? "active" : ""}">
+          <span class="icon">🎧</span> Suporte
+        </a>
+        <a href="/superadmin/erros" class="sidebar-link ${title === "Erros" ? "active" : ""}">
+          <span class="icon">🚨</span> Log de Erros
+        </a>
+        <a href="/superadmin/monitoramento" class="sidebar-link ${title === "Monitoramento" ? "active" : ""}">
+          <span class="icon">⚙️</span> Monitoramento
+        </a>
+      </div>
+
+      ${session.role === "super_admin" ? `
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Configuração</div>
+        <a href="/superadmin/usuarios" class="sidebar-link ${title === "Usuários" ? "active" : ""}">
+          <span class="icon">👤</span> Usuários BO
+        </a>
+        <a href="/superadmin/cms" class="sidebar-link ${title.startsWith("CMS") ? "active" : ""}">
+          <span class="icon">✏️</span> CMS / Conteúdo
+        </a>
+        <a href="/superadmin/email-preview" class="sidebar-link ${title === "E-mails" ? "active" : ""}">
+          <span class="icon">📧</span> Templates E-mail
+        </a>
+      </div>
+      ` : ""}
+
+      <div class="sidebar-user">
+        <div class="sidebar-user-name">${esc(session.name)}</div>
+        <div class="sidebar-user-role">
+          <span class="role-chip ${session.role}">${session.role === "super_admin" ? "Super Admin" : session.role === "admin" ? "Admin" : "Suporte"}</span>
         </div>
-        <div class="nav-user">
-          <span>${esc(session.name)}</span>
-          <span class="role-badge role-${session.role}">${session.role === "super_admin" ? "Super Admin" : session.role === "admin" ? "Admin" : "Suporte"}</span>
-          <a href="/superadmin/logout" style="color:var(--error)">Sair</a>
+        <div class="sidebar-user-actions">
+          <a href="/superadmin/logout" style="color:var(--error)">→ Sair</a>
         </div>
       </div>
-    </nav>
+    </aside>
+
+    <div class="topbar">
+      <div class="topbar-search">
+        <form action="/superadmin/busca" method="GET" style="margin:0">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" name="q" placeholder="Buscar barbearia, slug, e-mail..." autocomplete="off" />
+        </form>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-date">${new Date().toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</span>
+      </div>
+    </div>
   ` : "";
 
   return `<!DOCTYPE html>
@@ -132,139 +177,281 @@ function layout(title: string, session: BOSession | null, body: string): string 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --gold: #C9A84C; --gold-dim: #C9A84C22;
-      --bg: #0A0A0A; --surface: #141414; --surface2: #1E1E1E;
-      --border: #2A2A2A; --text: #F0EEE8; --muted: #888880;
-      --success: #4ADE80; --warning: #FBBF24; --error: #F87171; --info: #60A5FA;
+      --gold: #C9A84C; --gold-dim: rgba(201,168,76,0.12); --gold-border: rgba(201,168,76,0.25);
+      --bg: #080808; --surface: #111111; --surface2: #1A1A1A; --surface3: #222222;
+      --border: #252525; --border2: #2E2E2E;
+      --text: #F0EEE8; --text2: #B8B6B0; --muted: #666660;
+      --success: #4ADE80; --success-dim: rgba(74,222,128,0.12);
+      --warning: #FBBF24; --warning-dim: rgba(251,191,36,0.12);
+      --error: #F87171; --error-dim: rgba(248,113,113,0.12);
+      --info: #60A5FA; --info-dim: rgba(96,165,250,0.12);
+      --purple: #C084FC; --purple-dim: rgba(192,132,252,0.12);
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-    a { color: var(--gold); text-decoration: none; }
-    a:hover { opacity: 0.8; }
+    html { scroll-behavior: smooth; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+    a { color: var(--gold); text-decoration: none; transition: opacity 0.15s; }
+    a:hover { opacity: 0.75; }
+    ::selection { background: var(--gold-dim); color: var(--gold); }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
 
-    /* Nav */
-    .nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; align-items: center; gap: 0; height: 54px; position: sticky; top: 0; z-index: 50; }
-    .nav-brand { font-size: 14px; font-weight: 900; color: var(--gold); letter-spacing: 2px; margin-right: 32px; white-space: nowrap; }
-    .nav-brand span { color: var(--muted); font-weight: 400; letter-spacing: 0; }
-    .nav-links { display: flex; align-items: center; gap: 4px; flex: 1; }
-    .nav-links a { font-size: 13px; color: var(--muted); padding: 6px 12px; border-radius: 8px; transition: all 0.15s; }
-    .nav-links a:hover { color: var(--text); background: var(--surface2); }
-    .nav-links a.active { color: var(--gold); background: var(--gold-dim); }
-    .nav-user { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; }
-    .nav-user span { color: var(--muted); }
-    .role-badge { padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
-    .role-super_admin { background: #C9A84C22; color: var(--gold); }
-    .role-admin { background: #60A5FA22; color: var(--info); }
-    .role-suporte { background: #4ADE8022; color: var(--success); }
+    /* ── Sidebar Navigation ───────────────────────────────────────────────── */
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 220px; min-width: 220px; background: var(--surface);
+      border-right: 1px solid var(--border); display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+      overflow-y: auto;
+    }
+    .sidebar-brand {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-brand-logo {
+      font-size: 13px; font-weight: 900; color: var(--gold);
+      letter-spacing: 2.5px; text-transform: uppercase; display: block;
+    }
+    .sidebar-brand-sub {
+      font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-top: 2px;
+    }
+    .sidebar-section { padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .sidebar-section:last-child { border-bottom: none; }
+    .sidebar-section-label {
+      font-size: 9px; font-weight: 700; color: var(--muted);
+      letter-spacing: 1.5px; text-transform: uppercase;
+      padding: 8px 20px 4px;
+    }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 20px; font-size: 13px; color: var(--text2);
+      transition: all 0.15s; cursor: pointer;
+      border-left: 2px solid transparent;
+    }
+    .sidebar-link:hover { color: var(--text); background: var(--surface2); opacity: 1; }
+    .sidebar-link.active {
+      color: var(--gold); background: var(--gold-dim);
+      border-left-color: var(--gold); font-weight: 600;
+    }
+    .sidebar-link .icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+    .sidebar-badge {
+      margin-left: auto; background: var(--error-dim); color: var(--error);
+      font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px;
+    }
+    .sidebar-user {
+      padding: 14px 20px; margin-top: auto;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .sidebar-user-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .sidebar-user-role { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .sidebar-user-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .sidebar-user-actions a { font-size: 11px; color: var(--muted); }
+    .sidebar-user-actions a:hover { color: var(--error); }
 
-    /* Layout */
-    .container { max-width: 1280px; margin: 0 auto; padding: 32px 24px; }
-    .page-header { margin-bottom: 28px; }
-    .page-title { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
-    .page-sub { font-size: 13px; color: var(--muted); }
+    /* ── Main content ─────────────────────────────────────────────────────── */
+    .main { margin-left: 220px; flex: 1; min-width: 0; }
+    .topbar {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 28px; height: 52px;
+      display: flex; align-items: center; gap: 16px;
+      position: sticky; top: 0; z-index: 40;
+    }
+    .topbar-search {
+      flex: 1; max-width: 320px; position: relative;
+    }
+    .topbar-search input {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 8px; padding: 6px 12px 6px 34px;
+      font-size: 12px; color: var(--text); outline: none;
+    }
+    .topbar-search input:focus { border-color: var(--gold); }
+    .topbar-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .topbar-date { font-size: 12px; color: var(--muted); }
+    .role-chip {
+      padding: 3px 10px; border-radius: 99px; font-size: 10px; font-weight: 700;
+    }
+    .role-chip.super_admin { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold-border); }
+    .role-chip.admin { background: var(--info-dim); color: var(--info); border: 1px solid rgba(96,165,250,0.25); }
+    .role-chip.suporte { background: var(--success-dim); color: var(--success); border: 1px solid rgba(74,222,128,0.25); }
 
-    /* Métricas */
-    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 28px; }
-    .metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
-    .breadcrumb { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; font-size: 13px; }
-    .bc-link { color: var(--gold); text-decoration: none; opacity: 0.8; transition: opacity 0.15s; }
-    .bc-link:hover { opacity: 1; text-decoration: underline; }
-    .bc-sep { color: var(--muted); font-size: 14px; }
-    .bc-current { color: var(--text); font-weight: 600; }
-    .metric-label { font-size: 10px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
-    .metric-value { font-size: 30px; font-weight: 900; color: var(--gold); line-height: 1; }
-    .metric-sub { font-size: 11px; color: var(--muted); margin-top: 5px; }
+    /* ── Page layout ──────────────────────────────────────────────────────── */
+    .container { max-width: 1320px; margin: 0 auto; padding: 28px 28px 60px; }
+    .page-header { margin-bottom: 24px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .page-header-left {}
+    .page-title { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; }
+    .page-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+    .page-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    .breadcrumb { display: flex; align-items: center; gap: 6px; margin-bottom: 18px; font-size: 12px; }
+    .bc-link { color: var(--muted); }
+    .bc-link:hover { color: var(--gold); opacity: 1; }
+    .bc-sep { color: var(--border2); }
+    .bc-current { color: var(--text2); font-weight: 600; }
 
-    /* Tabela */
-    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 24px; }
-    .table-header { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .table-header h2 { font-size: 15px; font-weight: 700; }
+    /* ── KPI Cards ────────────────────────────────────────────────────────── */
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .metric-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 18px 20px;
+      transition: border-color 0.2s, transform 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .metric-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--accent-color, var(--gold)), transparent);
+    }
+    .metric-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+    .metric-icon { font-size: 22px; margin-bottom: 10px; }
+    .metric-label { font-size: 10px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 6px; font-weight: 600; }
+    .metric-value { font-size: 28px; font-weight: 900; color: var(--text); line-height: 1; }
+    .metric-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+    .metric-delta { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; margin-top: 4px; }
+    .delta-up { color: var(--success); }
+    .delta-down { color: var(--error); }
+
+    /* ── Cards ────────────────────────────────────────────────────────────── */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
+    .card-header {
+      padding: 16px 22px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .card-title { font-size: 14px; font-weight: 700; }
+    .card-sub { font-size: 12px; color: var(--muted); }
+    .card-body { padding: 20px 22px; }
+    .card-footer { padding: 12px 22px; border-top: 1px solid var(--border); background: var(--surface2); }
+
+    /* ── Table ────────────────────────────────────────────────────────────── */
+    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
+    .table-header { padding: 16px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .table-header h2 { font-size: 14px; font-weight: 700; }
     table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; padding: 11px 22px; font-size: 10px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
-    td { padding: 13px 22px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    th { text-align: left; padding: 10px 22px; font-size: 10px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; font-weight: 700; background: var(--surface2); }
+    td { padding: 12px 22px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: var(--surface2); }
+    tr:hover td { background: rgba(255,255,255,0.018); }
 
-    /* Badges */
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
-    .badge-active { background: #4ADE8022; color: #4ADE80; }
-    .badge-trial { background: #FBBF2422; color: #FBBF24; }
-    .badge-suspended { background: #F8717122; color: #F87171; }
-    .badge-cancelled { background: #44444422; color: #888; }
-    .plan-solo { color: var(--muted); }
+    /* ── Badges ───────────────────────────────────────────────────────────── */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .badge-active { background: var(--success-dim); color: var(--success); border: 1px solid rgba(74,222,128,0.2); }
+    .badge-trial { background: var(--warning-dim); color: var(--warning); border: 1px solid rgba(251,191,36,0.2); }
+    .badge-suspended { background: var(--error-dim); color: var(--error); border: 1px solid rgba(248,113,113,0.2); }
+    .badge-cancelled { background: rgba(80,80,80,0.15); color: var(--muted); border: 1px solid var(--border); }
+    .badge-open { background: var(--info-dim); color: var(--info); border: 1px solid rgba(96,165,250,0.2); }
+    .badge-closed { background: rgba(80,80,80,0.15); color: var(--muted); border: 1px solid var(--border); }
+    .badge-low { background: var(--warning-dim); color: var(--warning); }
+    .badge-medium { background: var(--info-dim); color: var(--info); }
+    .badge-high { background: var(--error-dim); color: var(--error); }
+    .plan-solo { color: var(--text2); }
     .plan-team { color: var(--gold); }
-    .plan-studio { color: #C084FC; }
+    .plan-studio { color: var(--purple); }
 
-    /* Botões */
-    .btn { display: inline-block; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: opacity 0.15s; }
-    .btn:hover { opacity: 0.8; text-decoration: none; }
-    .btn-gold { background: var(--gold-dim); color: var(--gold); border: 1px solid #C9A84C44; }
-    .btn-green { background: #4ADE8022; color: #4ADE80; border: 1px solid #4ADE8044; }
-    .btn-red { background: #F8717122; color: #F87171; border: 1px solid #F8717144; }
-    .btn-blue { background: #60A5FA22; color: #60A5FA; border: 1px solid #60A5FA44; }
-    .btn-gray { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
-    .btn-primary { background: var(--gold); color: #0A0A0A; border: none; padding: 8px 18px; }
-    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
-
-    /* Login */
-    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
-    .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px; width: 100%; max-width: 380px; }
-    .login-logo { font-size: 20px; font-weight: 900; color: var(--gold); letter-spacing: 3px; text-align: center; margin-bottom: 4px; }
-    .login-sub { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 28px; }
-    .form-group { margin-bottom: 14px; }
-    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
-    input[type=email], input[type=password], input[type=text], textarea, select {
-      width: 100%; padding: 11px 13px; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 10px; color: var(--text); font-size: 14px; outline: none; font-family: inherit;
+    /* ── Buttons ──────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: 1px solid transparent; text-decoration: none;
+      transition: opacity 0.15s, transform 0.1s; white-space: nowrap;
     }
-    input:focus, textarea:focus, select:focus { border-color: var(--gold); }
-    textarea { resize: vertical; min-height: 80px; }
-    .btn-submit { width: 100%; padding: 13px; background: var(--gold); color: #0A0A0A; font-size: 15px; font-weight: 800; border: none; border-radius: 12px; cursor: pointer; margin-top: 8px; }
+    .btn:hover { opacity: 0.8; text-decoration: none; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: var(--gold); color: #0A0A0A; border-color: var(--gold); font-weight: 700; }
+    .btn-gold { background: var(--gold-dim); color: var(--gold); border-color: var(--gold-border); }
+    .btn-green { background: var(--success-dim); color: var(--success); border-color: rgba(74,222,128,0.25); }
+    .btn-red { background: var(--error-dim); color: var(--error); border-color: rgba(248,113,113,0.25); }
+    .btn-blue { background: var(--info-dim); color: var(--info); border-color: rgba(96,165,250,0.25); }
+    .btn-purple { background: var(--purple-dim); color: var(--purple); border-color: rgba(192,132,252,0.25); }
+    .btn-gray { background: var(--surface2); color: var(--text2); border-color: var(--border); }
+    .btn-sm { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
+    .btn-lg { padding: 10px 22px; font-size: 14px; border-radius: 10px; }
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+    /* ── Forms ────────────────────────────────────────────────────────────── */
+    .form-group { margin-bottom: 16px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+    input[type=email], input[type=password], input[type=text], input[type=number], textarea, select {
+      width: 100%; padding: 10px 13px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text); font-size: 13px; outline: none; font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--gold); background: var(--surface); }
+    textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+    select { cursor: pointer; }
+    .btn-submit { width: 100%; padding: 12px; background: var(--gold); color: #0A0A0A; font-size: 14px; font-weight: 800; border: none; border-radius: 10px; cursor: pointer; margin-top: 4px; transition: opacity 0.15s; }
     .btn-submit:hover { opacity: 0.9; }
-    .alert { padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 14px; }
-    .alert-error { background: #F8717122; border: 1px solid #F8717144; color: #F87171; }
-    .alert-success { background: #4ADE8022; border: 1px solid #4ADE8044; color: #4ADE80; }
+    .alert { padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; display: flex; gap: 8px; align-items: center; }
+    .alert-error { background: var(--error-dim); border: 1px solid rgba(248,113,113,0.2); color: var(--error); }
+    .alert-success { background: var(--success-dim); border: 1px solid rgba(74,222,128,0.2); color: var(--success); }
 
-    /* Filtros */
-    .filters { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
-    .filter-btn { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--muted); text-decoration: none; }
-    .filter-btn:hover { border-color: var(--gold); color: var(--gold); text-decoration: none; }
-    .filter-btn.active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+    /* ── Login page ───────────────────────────────────────────────────────── */
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+    .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 24px 60px rgba(0,0,0,0.5); }
+    .login-logo { font-size: 14px; font-weight: 900; color: var(--gold); letter-spacing: 3px; text-align: center; text-transform: uppercase; margin-bottom: 4px; }
+    .login-sub { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 28px; letter-spacing: 1px; }
 
-    /* Modal */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: #00000088; z-index: 100; align-items: center; justify-content: center; }
+    /* ── Filters ──────────────────────────────────────────────────────────── */
+    .filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    .filter-btn { padding: 5px 14px; border-radius: 99px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); text-decoration: none; transition: all 0.15s; white-space: nowrap; }
+    .filter-btn:hover { border-color: var(--gold); color: var(--gold); opacity: 1; text-decoration: none; }
+    .filter-btn.active { background: var(--gold-dim); border-color: var(--gold-border); color: var(--gold); }
+
+    /* ── Modal ────────────────────────────────────────────────────────────── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
     .modal-overlay.open { display: flex; }
-    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: 100%; max-width: 440px; }
-    .modal h3 { font-size: 17px; font-weight: 800; margin-bottom: 18px; }
-    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: 100%; max-width: 460px; box-shadow: 0 24px 60px rgba(0,0,0,0.6); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .modal h3 { font-size: 16px; font-weight: 800; }
+    .modal-close { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; width: 30px; height: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 16px; }
+    .modal-close:hover { color: var(--text); }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
 
-    /* Empty state */
-    .empty { text-align: center; padding: 60px 24px; color: var(--muted); }
-    .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    /* ── Empty state ──────────────────────────────────────────────────────── */
+    .empty { text-align: center; padding: 64px 24px; color: var(--muted); }
+    .empty-icon { font-size: 44px; margin-bottom: 14px; opacity: 0.6; }
+    .empty-title { font-size: 15px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
 
-    /* Stack de texto */
+    /* ── Misc ─────────────────────────────────────────────────────────────── */
     .text-sm { font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .text-mono { font-family: monospace; font-size: 12px; }
+    .text-mono { font-family: "Menlo", "Monaco", "Consolas", monospace; font-size: 12px; }
     .stack-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 11px; font-family: monospace; color: var(--muted); white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; margin-top: 6px; }
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+    .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { font-size: 13px; color: var(--muted); }
+    .stat-value { font-size: 13px; font-weight: 700; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; background: var(--surface3); color: var(--muted); border: 1px solid var(--border); }
 
-    /* CMS */
+    /* ── CMS ──────────────────────────────────────────────────────────────── */
     .cms-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; margin-bottom: 18px; }
-    .cms-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 14px; color: var(--gold); }
+    .cms-card h3 { font-size: 13px; font-weight: 700; margin-bottom: 14px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
     .cms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    @media (max-width: 640px) { .cms-grid { grid-template-columns: 1fr; } }
 
-    /* Responsive */
-    @media (max-width: 768px) {
+    /* ── Responsive ───────────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .two-col, .three-col, .form-row { grid-template-columns: 1fr; }
+      .cms-grid { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
       .container { padding: 16px; }
       th, td { padding: 10px 14px; }
-      .metrics { grid-template-columns: repeat(2, 1fr); }
-      .nav-links { gap: 2px; }
-      .nav-links a { padding: 5px 8px; font-size: 12px; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .page-header { flex-direction: column; }
     }
   </style>
 </head>
 <body>
-  ${nav}
-  ${body}
+  <div class="layout">
+    ${nav}
+    <div class="main">
+      ${body}
+    </div>
+  </div>
   <script>
     function openModal(id) { document.getElementById(id)?.classList.add('open'); }
     function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
@@ -420,8 +607,17 @@ export function registerSuperAdminRoutes(app: Express): void {
       const active = allTenants.filter((t) => t.status === "active").length;
       const trial = allTenants.filter((t) => t.status === "trial").length;
       const suspended = allTenants.filter((t) => t.status === "suspended").length;
+      // MRR real baseado nos planos do banco
+      const PLAN_PRICES: Record<string, number> = { solo: 49, team: 89, studio: 149, estudios: 149 };
       const mrr = allTenants.filter((t) => t.status === "active")
-        .reduce((s, t) => s + (t.plan === "solo" ? 49 : t.plan === "team" ? 89 : 149), 0);
+        .reduce((s, t) => s + (PLAN_PRICES[t.plan ?? "solo"] ?? 49), 0);
+      const mrrTrial = allTenants.filter((t) => t.status === "trial").length;
+      const churnLast30 = allTenants.filter((t) => {
+        if (t.status !== "cancelled" && t.status !== "suspended") return false;
+        const updated = t.updatedAt ? new Date(t.updatedAt).getTime() : 0;
+        return Date.now() - updated < 30 * 24 * 60 * 60 * 1000;
+      }).length;
+      const conversionRate = trial > 0 ? Math.round((active / (active + trial)) * 100) : 0;
 
       // Gráfico: novos cadastros por semana (12 semanas)
       const now = new Date();
@@ -480,40 +676,53 @@ export function registerSuperAdminRoutes(app: Express): void {
       res.send(layout("Dashboard", session, `
         <div class="container">
           <div class="page-header">
-            <div class="page-title">Dashboard da Plataforma</div>
-            <div class="page-sub">Visão geral do Barber Pro · ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
+            <div class="page-header-left">
+              <div class="page-title">Dashboard da Plataforma</div>
+              <div class="page-sub">Visão geral do Barber Pro · ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
+            </div>
+            <div class="page-actions">
+              <a href="/superadmin/tenants" class="btn btn-gray btn-sm">Ver Barbearias →</a>
+              <a href="/superadmin/monitoramento" class="btn btn-gold btn-sm">⚙️ Monitor</a>
+            </div>
           </div>
 
-          <div class="metrics">
-            <div class="metric-card">
-              <div class="metric-label">Total de Barbearias</div>
-              <div class="metric-value">${total}</div>
-              <div class="metric-sub">tenants cadastrados</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-label">Assinaturas Ativas</div>
-              <div class="metric-value" style="color:var(--success)">${active}</div>
-              <div class="metric-sub">pagando mensalmente</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-label">Em Trial</div>
-              <div class="metric-value" style="color:var(--warning)">${trial}</div>
-              <div class="metric-sub">período gratuito</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-label">Suspensos</div>
-              <div class="metric-value" style="color:var(--error)">${suspended}</div>
-              <div class="metric-sub">sem acesso</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-label">MRR Estimado</div>
-              <div class="metric-value">R$${mrr}</div>
+          <!-- KPIs principais -->
+          <div class="metrics" style="margin-bottom:28px">
+            <div class="metric-card" style="--accent-color: var(--gold)">
+              <div class="metric-icon">💰</div>
+              <div class="metric-label">MRR Real</div>
+              <div class="metric-value" style="color:var(--gold)">R$${mrr.toLocaleString('pt-BR')}</div>
               <div class="metric-sub">receita mensal recorrente</div>
             </div>
-            <div class="metric-card">
-              <div class="metric-label">Leads Capturados</div>
-              <div class="metric-value" style="color:var(--info)">${totalLeads}</div>
-              <div class="metric-sub">interesse na landing page</div>
+            <div class="metric-card" style="--accent-color:#4ADE80">
+              <div class="metric-icon">✅</div>
+              <div class="metric-label">Assinaturas Ativas</div>
+              <div class="metric-value" style="color:#4ADE80">${active}</div>
+              <div class="metric-sub">${conversionRate}% conversão trial→pago</div>
+            </div>
+            <div class="metric-card" style="--accent-color:#FBBF24">
+              <div class="metric-icon">⏳</div>
+              <div class="metric-label">Em Trial</div>
+              <div class="metric-value" style="color:#FBBF24">${trial}</div>
+              <div class="metric-sub">potencial +R$${(trial * 49).toLocaleString('pt-BR')}/mês</div>
+            </div>
+            <div class="metric-card" style="--accent-color:#F87171">
+              <div class="metric-icon">📉</div>
+              <div class="metric-label">Churn (30 dias)</div>
+              <div class="metric-value" style="color:${churnLast30 > 0 ? '#F87171' : '#4ADE80'}">${churnLast30}</div>
+              <div class="metric-sub">${suspended} suspensos total</div>
+            </div>
+            <div class="metric-card" style="--accent-color:#60A5FA">
+              <div class="metric-icon">🏪</div>
+              <div class="metric-label">Total Barbearias</div>
+              <div class="metric-value" style="color:#60A5FA">${total}</div>
+              <div class="metric-sub">tenants cadastrados</div>
+            </div>
+            <div class="metric-card" style="--accent-color:#C084FC">
+              <div class="metric-icon">🎯</div>
+              <div class="metric-label">Leads</div>
+              <div class="metric-value" style="color:#C084FC">${totalLeads}</div>
+              <div class="metric-sub">capturados na landing</div>
             </div>
           </div>
 
@@ -721,6 +930,13 @@ export function registerSuperAdminRoutes(app: Express): void {
   });
 
   // ── GET /superadmin/tenants/action ─────────────────────────────────────────
+  // ── Audit log em memória (últimas 100 ações) ────────────────────────────────
+  const auditLog: { ts: string; user: string; action: string; target: string }[] = [];
+  function logAction(user: string, action: string, target: string) {
+    auditLog.unshift({ ts: new Date().toLocaleString("pt-BR"), user, action, target });
+    if (auditLog.length > 100) auditLog.pop();
+  }
+
   app.get("/superadmin/tenants/action", requireAuth, requireRole("super_admin", "admin"), async (req: Request, res: Response) => {
     const { id, action, plan } = req.query as { id: string; action: string; plan?: string };
     const tenantId = parseInt(id);
@@ -2128,6 +2344,113 @@ export function registerSuperAdminRoutes(app: Express): void {
   });
 
   // ─── Busca global ─────────────────────────────────────────────────────────────
+
+  // ── GET /superadmin/monitoramento ─────────────────────────────────────────
+  app.get("/superadmin/monitoramento", requireAuth, async (req: Request, res: Response) => {
+    const session = (req as any).boSession as BOSession;
+    try {
+      const dbConn = await db.getDb();
+      const { sql } = await import("drizzle-orm");
+      const uptimeSeconds = process.uptime();
+      const uptimeStr = uptimeSeconds > 3600
+        ? `${Math.floor(uptimeSeconds/3600)}h ${Math.floor((uptimeSeconds%3600)/60)}m`
+        : `${Math.floor(uptimeSeconds/60)}m`;
+      const memUsage = process.memoryUsage();
+      const memMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+      const memTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+
+      // Stats do banco
+      let dbStats = { tenants: 0, appointments: 0, clients: 0, sales: 0 };
+      if (dbConn) {
+        try {
+          const [t, a, c, s] = await Promise.all([
+            dbConn.execute(sql`SELECT COUNT(*) as cnt FROM tenants`),
+            dbConn.execute(sql`SELECT COUNT(*) as cnt FROM appointments`),
+            dbConn.execute(sql`SELECT COUNT(*) as cnt FROM clients`),
+            dbConn.execute(sql`SELECT COUNT(*) as cnt FROM sales`),
+          ]) as any[];
+          dbStats = {
+            tenants: Number((t[0]?.[0] ?? t?.rows?.[0])?.cnt ?? 0),
+            appointments: Number((a[0]?.[0] ?? a?.rows?.[0])?.cnt ?? 0),
+            clients: Number((c[0]?.[0] ?? c?.rows?.[0])?.cnt ?? 0),
+            sales: Number((s[0]?.[0] ?? s?.rows?.[0])?.cnt ?? 0),
+          };
+        } catch {}
+      }
+
+      const recentActions = auditLog.slice(0, 20);
+
+      res.send(layout("Monitoramento", session, `
+        <div class="container">
+          <div class="page-header">
+            <div class="page-title">⚙️ Monitoramento</div>
+            <div class="page-sub">Saúde do servidor e atividade recente</div>
+          </div>
+
+          <div class="metrics" style="margin-bottom:28px">
+            <div class="metric-card" style="border-left:3px solid #4ADE80">
+              <div class="metric-label">Uptime</div>
+              <div class="metric-value" style="color:#4ADE80;font-size:22px">${uptimeStr}</div>
+              <div class="metric-sub">servidor em execução</div>
+            </div>
+            <div class="metric-card" style="border-left:3px solid #60A5FA">
+              <div class="metric-label">Memória Heap</div>
+              <div class="metric-value" style="color:#60A5FA;font-size:22px">${memMB}MB</div>
+              <div class="metric-sub">de ${memTotalMB}MB alocados</div>
+            </div>
+            <div class="metric-card" style="border-left:3px solid var(--gold)">
+              <div class="metric-label">Total Agendamentos</div>
+              <div class="metric-value" style="font-size:22px">${dbStats.appointments.toLocaleString('pt-BR')}</div>
+              <div class="metric-sub">no banco de dados</div>
+            </div>
+            <div class="metric-card" style="border-left:3px solid #C084FC">
+              <div class="metric-label">Total Clientes</div>
+              <div class="metric-value" style="color:#C084FC;font-size:22px">${dbStats.clients.toLocaleString('pt-BR')}</div>
+              <div class="metric-sub">cadastrados na plataforma</div>
+            </div>
+            <div class="metric-card" style="border-left:3px solid #F59E0B">
+              <div class="metric-label">Total Vendas</div>
+              <div class="metric-value" style="color:#F59E0B;font-size:22px">${dbStats.sales.toLocaleString('pt-BR')}</div>
+              <div class="metric-sub">processadas no sistema</div>
+            </div>
+            <div class="metric-card" style="border-left:3px solid #4ADE80">
+              <div class="metric-label">Node.js</div>
+              <div class="metric-value" style="color:#4ADE80;font-size:18px">${process.version}</div>
+              <div class="metric-sub">ambiente: ${process.env.NODE_ENV ?? "dev"}</div>
+            </div>
+          </div>
+
+          <!-- Log de Auditoria -->
+          <div class="table-wrap">
+            <div class="table-header">
+              <h2>📋 Log de Auditoria</h2>
+              <span style="font-size:12px;color:var(--muted)">Últimas ${recentActions.length} ações administrativas</span>
+            </div>
+            ${recentActions.length === 0 ? `
+              <div class="empty"><div class="empty-icon">📋</div><div>Nenhuma ação registrada ainda.</div></div>
+            ` : `
+              <table>
+                <thead><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Alvo</th></tr></thead>
+                <tbody>
+                  ${recentActions.map(a => `
+                    <tr>
+                      <td style="color:var(--muted);font-size:12px">${a.ts}</td>
+                      <td><span style="color:var(--gold)">${esc(a.user)}</span></td>
+                      <td>${esc(a.action)}</td>
+                      <td style="color:var(--muted)">${esc(a.target)}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            `}
+          </div>
+        </div>
+      `));
+    } catch (e: any) {
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--error);margin-top:40px">Erro: ${esc(e.message)}</p></div>`));
+    }
+  });
+
   app.get("/superadmin/busca", requireAuth, async (req, res) => {
     const q = ((req.query.q as string) || "").trim();
     if (!q) return res.redirect("/superadmin/tenants");
