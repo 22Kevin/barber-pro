@@ -154,10 +154,11 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
 
     /* ── Shell ──────────────────────────────────────────── */
-    .shell { display: flex; min-height: 100vh; }
-    .content { flex: 1; min-width: 0; margin-left: var(--sidebar-w); display: flex; flex-direction: column; transition: margin-left .25s; }
+    html, body { background: var(--bp); }
+    .shell { display: flex; min-height: 100vh; background: var(--bp); }
+    .content { flex: 1; min-width: 0; margin-left: var(--sidebar-w); display: flex; flex-direction: column; transition: margin-left .25s; background: var(--bp); min-height: 100vh; }
     .shell.collapsed .content { margin-left: var(--sidebar-sm); }
-    .page-body { flex: 1; padding: 24px 28px 60px; }
+    .page-body { flex: 1; padding: 24px 28px 60px; background: var(--bp); }
 
     /* ── Sidebar ────────────────────────────────────────── */
     .sidebar {
@@ -598,8 +599,9 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
 
     /* ── Shell ──────────────────────────────────────────────────────── */
-    .shell { display: flex; min-height: 100vh; }
-    .content { flex: 1; min-width: 0; margin-left: var(--sidebar-w); display: flex; flex-direction: column; transition: margin-left .25s; }
+    html, body { background: var(--bp); }
+    .shell { display: flex; min-height: 100vh; background: var(--bp); }
+    .content { flex: 1; min-width: 0; margin-left: var(--sidebar-w); display: flex; flex-direction: column; transition: margin-left .25s; background: var(--bp); min-height: 100vh; }
     .shell.collapsed .content { margin-left: var(--sidebar-w-sm); }
 
     /* ── Sidebar ────────────────────────────────────────────────────── */
