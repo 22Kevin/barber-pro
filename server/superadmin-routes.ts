@@ -444,6 +444,14 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     }
     .filter-btn:hover, .filter-tab:hover { border-color: var(--border2); color: var(--text2); opacity: 1; text-decoration: none; }
     .filter-btn.active, .filter-tab.active { background: var(--gold); border-color: var(--gold); color: #000; }
+    /* Filter card — wraps search+filters with card background */
+    .filter-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .filter-card .filters-bar { margin-bottom: 0; }
+    .filter-card .filter-tabs { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
     .search-wrapper { position: relative; }
     .search-wrapper svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
     .search-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px 7px 32px; font-size: 12.5px; color: var(--text); outline: none; transition: border-color .15s; }
@@ -495,7 +503,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     .cms-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
     .cms-card h3 { font-size: 11px; font-weight: 700; margin-bottom: 12px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
     .cms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .container { max-width: 1300px; margin: 0 auto; padding: 0 8px; }
+    .container { width: 100%; }
 
     /* ── Login ──────────────────────────────────────────────────────── */
     .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
@@ -925,6 +933,14 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     }
     .filter-btn:hover, .filter-tab:hover { border-color: var(--border2); color: var(--text2); opacity: 1; text-decoration: none; }
     .filter-btn.active, .filter-tab.active { background: var(--gold); border-color: var(--gold); color: #000; }
+    /* Filter card — wraps search+filters with card background */
+    .filter-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .filter-card .filters-bar { margin-bottom: 0; }
+    .filter-card .filter-tabs { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
     .search-wrapper { position: relative; }
     .search-wrapper svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
     .search-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px 7px 32px; font-size: 12.5px; color: var(--text); outline: none; transition: border-color .15s; }
@@ -976,7 +992,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     .cms-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
     .cms-card h3 { font-size: 11px; font-weight: 700; margin-bottom: 12px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
     .cms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .container { max-width: 1300px; margin: 0 auto; padding: 0 8px; }
+    .container { width: 100%; }
 
     /* ── Login ──────────────────────────────────────────────────────── */
     .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
@@ -1068,11 +1084,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
         </div>
 
         <div class="topbar-right">
-          <form action="/superadmin/busca" method="GET" class="topbar-search">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" name="q" placeholder="Buscar barbearia..." autocomplete="off"/>
-            <kbd>⌘K</kbd>
-          </form>
+
           <span class="topbar-date">${new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}</span>
           <a href="/superadmin/logout" class="topbar-logout">
             Sair
@@ -1081,7 +1093,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       </header>
 
       <!-- Page body -->
-      <main class="page-body" style="max-width:1340px">
+      <main class="page-body">
         ${body}
       </main>
     </div>
@@ -1543,24 +1555,27 @@ export function registerSuperAdminRoutes(app: Express): void {
             <div class="page-sub">${allTenants.length} resultado${allTenants.length !== 1 ? "s" : ""}</div>
           </div>
 
-          <form method="GET" action="/superadmin/tenants" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
-            <div style="flex:1;min-width:200px">
-              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">BUSCAR</label>
-              <input name="search" value="${esc(searchTenant)}" placeholder="Nome ou slug da barbearia..." style="width:100%;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
+          <div class="filter-card">
+            <form method="GET" action="/superadmin/tenants">
+              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+                <div style="flex:1;min-width:200px">
+                  <label>BUSCAR</label>
+                  <input name="search" value="${esc(searchTenant)}" placeholder="Nome ou slug da barbearia..." style="width:100%" />
+                </div>
+                <div>
+                  <label>PLANO</label>
+                  <select name="plan">
+                    ${planFilters.map((p) => `<option value="${p}" ${filterPlan === p ? "selected" : ""}>${planFilterLabels[p]}</option>`).join("")}
+                  </select>
+                </div>
+                <input type="hidden" name="status" value="${esc(filterStatus)}" />
+                <button type="submit" class="btn btn-gold" style="margin-top:20px">Filtrar</button>
+                <a href="/superadmin/tenants" class="btn btn-gray" style="margin-top:20px">Limpar</a>
+              </div>
+            </form>
+            <div class="filter-tabs" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+              ${filters.map((f) => `<a href="/superadmin/tenants?status=${f}&plan=${filterPlan}&search=${encodeURIComponent(searchTenant)}" class="filter-btn ${filterStatus === f ? "active" : ""}">${filterLabels[f]}</a>`).join("")}
             </div>
-            <div>
-              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">PLANO</label>
-              <select name="plan" style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px">
-                ${planFilters.map((p) => `<option value="${p}" ${filterPlan === p ? "selected" : ""}>${planFilterLabels[p]}</option>`).join("")}
-              </select>
-            </div>
-            <input type="hidden" name="status" value="${esc(filterStatus)}" />
-            <button type="submit" class="btn btn-gold">Filtrar</button>
-            <a href="/superadmin/tenants" class="btn btn-gray">Limpar</a>
-          </form>
-
-          <div class="filters">
-            ${filters.map((f) => `<a href="/superadmin/tenants?status=${f}&plan=${filterPlan}&search=${encodeURIComponent(searchTenant)}" class="filter-btn ${filterStatus === f ? "active" : ""}">${filterLabels[f]}</a>`).join("")}
           </div>
 
           <div class="table-wrap">
@@ -1756,30 +1771,34 @@ export function registerSuperAdminRoutes(app: Express): void {
       `).join("");
 
       const filterBar = `
-        <form method="GET" action="/superadmin/erros" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px">
-          <div style="flex:1;min-width:200px">
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">BUSCAR</label>
-            <input name="search" value="${esc(searchErr)}" placeholder="Mensagem ou URL..." style="width:100%;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">ORIGEM</label>
-            <select name="source" style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px">
-              <option value="all" ${errSource === "all" ? "selected" : ""}>Todas</option>
-              <option value="browser" ${errSource === "browser" ? "selected" : ""}>Browser</option>
-              <option value="server" ${errSource === "server" ? "selected" : ""}>Servidor</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">DE</label>
-            <input type="date" name="dateFrom" value="${esc(errDateFrom)}" style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">ATÉ</label>
-            <input type="date" name="dateTo" value="${esc(errDateTo)}" style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
-          </div>
-          <button type="submit" class="btn btn-gold">Filtrar</button>
-          <a href="/superadmin/erros" class="btn btn-gray">Limpar</a>
-        </form>
+        <div class="filter-card">
+          <form method="GET" action="/superadmin/erros">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+              <div style="flex:1;min-width:200px">
+                <label>BUSCAR</label>
+                <input name="q" value="${esc(q)}" placeholder="Mensagem ou URL..." style="width:100%" />
+              </div>
+              <div>
+                <label>ORIGEM</label>
+                <select name="source" style="min-width:120px">
+                  <option value="">Todas</option>
+                  <option value="browser" ${source === 'browser' ? 'selected' : ''}>Browser</option>
+                  <option value="server" ${source === 'server' ? 'selected' : ''}>Servidor</option>
+                </select>
+              </div>
+              <div>
+                <label>DE</label>
+                <input type="date" name="dateFrom" value="${esc(dateFrom)}" />
+              </div>
+              <div>
+                <label>ATÉ</label>
+                <input type="date" name="dateTo" value="${esc(dateTo)}" />
+              </div>
+              <button type="submit" class="btn btn-gold" style="margin-top:20px">Filtrar</button>
+              <a href="/superadmin/erros" class="btn btn-gray" style="margin-top:20px">Limpar</a>
+            </div>
+          </form>
+        </div>
       `;
 
       res.send(layout("Erros", session, `
@@ -1875,23 +1894,27 @@ export function registerSuperAdminRoutes(app: Express): void {
       `).join("");
 
       const filterBar = `
-        <form method="GET" action="/superadmin/leads" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:20px">
-          <div style="flex:1;min-width:180px">
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">BUSCAR</label>
-            <input name="search" value="${esc(search)}" placeholder="Nome, e-mail ou telefone..." style="width:100%;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">DE</label>
-            <input type="date" name="dateFrom" value="${esc(dateFrom)}" style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">ATÉ</label>
-            <input type="date" name="dateTo" value="${esc(dateTo)}" style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:13px" />
-          </div>
-          <button type="submit" class="btn btn-gold">Filtrar</button>
-          <a href="/superadmin/leads" class="btn btn-gray">Limpar</a>
-          <a href="/superadmin/leads?export=csv${search ? '&search=' + encodeURIComponent(search) : ''}${dateFrom ? '&dateFrom=' + dateFrom : ''}${dateTo ? '&dateTo=' + dateTo : ''}" class="btn btn-gray" style="margin-left:auto">↓ Exportar CSV</a>
-        </form>
+        <div class="filter-card">
+          <form method="GET" action="/superadmin/leads">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+              <div style="flex:1;min-width:180px">
+                <label>BUSCAR</label>
+                <input name="search" value="${esc(search)}" placeholder="Nome, e-mail ou telefone..." style="width:100%" />
+              </div>
+              <div>
+                <label>DE</label>
+                <input type="date" name="dateFrom" value="${esc(dateFrom)}" />
+              </div>
+              <div>
+                <label>ATÉ</label>
+                <input type="date" name="dateTo" value="${esc(dateTo)}" />
+              </div>
+              <button type="submit" class="btn btn-gold" style="margin-top:20px">Filtrar</button>
+              <a href="/superadmin/leads" class="btn btn-gray" style="margin-top:20px">Limpar</a>
+              <a href="/superadmin/leads?export=csv${search ? '&search=' + encodeURIComponent(search) : ''}${dateFrom ? '&dateFrom=' + dateFrom : ''}${dateTo ? '&dateTo=' + dateTo : ''}" class="btn btn-gold btn-sm" style="margin-top:20px;margin-left:auto">↓ Exportar CSV</a>
+            </div>
+          </form>
+        </div>
       `;
 
       res.send(layout("Leads", session, `
