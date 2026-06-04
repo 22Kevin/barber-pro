@@ -528,6 +528,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       { href: "/superadmin/tenants",  icon: "⬡", label: "Barbearias",         active: title.includes("Barbearia") || title.includes("Tenant") },
       { href: "/superadmin/planos",   icon: "◈", label: "Planos & Assinaturas", active: title === "Planos" },
       { href: "/superadmin/leads",    icon: "◎", label: "Leads",              active: title === "Leads" },
+      { href: "/superadmin/promocoes", icon: "🎯", label: "Promoções",          active: title.includes("Promoç") },
     ]},
     { group: "OPERACIONAL", items: [
       { href: "/superadmin/suporte",       icon: "◷", label: "Suporte",       active: title === "Suporte" },
@@ -3427,4 +3428,615 @@ export function registerSuperAdminRoutes(app: Express): void {
       res.status(500).send("Erro: " + e.message);
     }
   });
+
+  // ── Promoções de Assinatura ────────────────────────────────────────────────
+  registerPromotionRoutes(app, requireAuth, requireRole, layout, esc, statusBadge, planLabel);
+
+}
+// ═══════════════════════════════════════════════════════════════════════════
+// SUPERADMIN PROMOTIONS — Promoções de assinatura com integração Asaas
+// ═══════════════════════════════════════════════════════════════════════════
+
+function registerPromotionRoutes(app: any, requireAuth: any, requireRole: any, layout: any, esc: any, statusBadge: any, planLabel: any) {
+
+  // ── GET /superadmin/promocoes ─────────────────────────────────────────────
+  app.get("/superadmin/promocoes", requireAuth, async (req: any, res: any) => {
+    const session = (req as any).boSession;
+    try {
+      const dbConn = await db.getDb();
+      if (!dbConn) throw new Error("Banco indisponível");
+      const { sql } = await import("drizzle-orm");
+
+      const promos = await dbConn.execute(sql`
+        SELECT p.*,
+          COUNT(a.id) FILTER (WHERE a."promotionId" = p.id) as "applicationCount"
+        FROM superadmin_promotions p
+        LEFT JOIN superadmin_promotion_applications a ON a."promotionId" = p.id
+        GROUP BY p.id
+        ORDER BY p."createdAt" DESC
+      `) as any;
+      const rows = Array.isArray(promos) ? (promos[0] ?? promos) : (promos?.rows ?? []);
+
+      const typeLabel: Record<string,string> = {
+        percent: '% Desconto', fixed: 'Valor Fixo',
+        trial_extension: 'Trial Grátis', custom_price: 'Preço Especial'
+      };
+
+      const promoRows = rows.map((p: any) => `
+        <tr>
+          <td>
+            <div class="table-name">
+              <div class="name">${esc(p.name)}</div>
+              <div class="slug">${esc(p.description ?? '')}</div>
+            </div>
+          </td>
+          <td><span style="color:var(--gold);font-weight:700">${typeLabel[p.type] ?? p.type}</span></td>
+          <td style="font-weight:700;color:var(--t1)">
+            ${p.type === 'percent' ? `${p.value}%` :
+              p.type === 'fixed' ? `R$ ${parseFloat(p.value).toFixed(2).replace('.',',')}` :
+              p.type === 'trial_extension' ? `${p.value} dias` :
+              `R$ ${parseFloat(p.value).toFixed(2).replace('.',',')}/mês`}
+          </td>
+          <td>${p.targetFilter === 'all' ? 'Todos' : p.targetFilter === 'trial' ? 'Trial/Expirado' : p.targetFilter === 'plan' ? `Plano ${p.targetPlan ?? ''}` : 'Manual'}</td>
+          <td><span style="color:${p.isActive ? 'var(--green)' : 'var(--t3)'}">●</span> ${p.isActive ? 'Ativa' : 'Inativa'}</td>
+          <td style="color:var(--t3);font-size:12px">${p.applicationCount ?? 0} tenants</td>
+          <td>${p.validUntil ? new Date(p.validUntil).toLocaleDateString('pt-BR') : '—'}</td>
+          <td class="col-actions">
+            <div class="cell-actions">
+              <a href="/superadmin/promocoes/${p.id}" class="btn btn-primary btn-sm">Aplicar →</a>
+              <a href="/superadmin/promocoes/${p.id}/editar" class="btn btn-gray btn-sm">Editar</a>
+            </div>
+          </td>
+        </tr>`).join('');
+
+      res.send(layout("Promoções", session, `
+        <div class="container">
+          <div class="breadcrumb">
+            <a href="/superadmin" class="bc-link">Dashboard</a>
+            <span class="bc-sep">›</span><span class="bc-current">Promoções</span>
+          </div>
+          <div class="page-header">
+            <div>
+              <div class="page-title">🎯 Promoções de Assinatura</div>
+              <div class="page-sub">Crie descontos e ofertas especiais para seus clientes — sincroniza com o Asaas</div>
+            </div>
+            <div class="page-actions">
+              <a href="/superadmin/promocoes/nova" class="btn btn-primary">+ Nova Promoção</a>
+            </div>
+          </div>
+
+          ${rows.length === 0 ? `
+            <div class="empty" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl)">
+              <div class="empty-icon">🎯</div>
+              <div class="empty-title">Nenhuma promoção criada</div>
+              <div class="empty-sub">Crie sua primeira promoção para oferecer descontos aos clientes</div>
+              <a href="/superadmin/promocoes/nova" class="btn btn-primary" style="margin-top:20px">+ Nova Promoção</a>
+            </div>
+          ` : `
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nome</th><th>Tipo</th><th>Valor</th><th>Público-alvo</th>
+                    <th>Status</th><th>Aplicações</th><th>Válida até</th>
+                    <th class="col-actions">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>${promoRows}</tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      `));
+    } catch (e: any) {
+      res.status(500).send(layout("Promoções", session, `<div class="error-state"><div class="error-state-icon">⚠️</div><h3 class="error-state-title">Erro</h3><p class="error-state-desc">${esc(e.message)}</p></div>`));
+    }
+  });
+
+  // ── GET /superadmin/promocoes/nova ────────────────────────────────────────
+  app.get("/superadmin/promocoes/nova", requireAuth, requireRole("super_admin", "admin"), async (req: any, res: any) => {
+    const session = (req as any).boSession;
+    const saved = req.query.saved;
+    res.send(layout("Nova Promoção", session, promoForm(null, esc, saved)));
+  });
+
+  // ── GET /superadmin/promocoes/:id/editar ──────────────────────────────────
+  app.get("/superadmin/promocoes/:id/editar", requireAuth, requireRole("super_admin", "admin"), async (req: any, res: any) => {
+    const session = (req as any).boSession;
+    try {
+      const dbConn = await db.getDb();
+      const { sql } = await import("drizzle-orm");
+      const r = await dbConn!.execute(sql`SELECT * FROM superadmin_promotions WHERE id = ${parseInt(req.params.id)}`) as any;
+      const rows = Array.isArray(r) ? (r[0] ?? r) : (r?.rows ?? []);
+      if (!rows[0]) { res.redirect("/superadmin/promocoes"); return; }
+      res.send(layout("Editar Promoção", session, promoForm(rows[0], esc, req.query.saved)));
+    } catch (e: any) {
+      res.redirect("/superadmin/promocoes");
+    }
+  });
+
+  // ── POST /superadmin/promocoes ────────────────────────────────────────────
+  app.post("/superadmin/promocoes", requireAuth, requireRole("super_admin", "admin"), async (req: any, res: any) => {
+    const session = (req as any).boSession;
+    try {
+      const b = req.body as any;
+      const dbConn = await db.getDb();
+      const { sql } = await import("drizzle-orm");
+      if (b.id) {
+        await dbConn!.execute(sql`
+          UPDATE superadmin_promotions SET
+            name=${b.name}, description=${b.description||null}, type=${b.type},
+            value=${parseFloat(b.value)||0}, "durationMonths"=${parseInt(b.durationMonths)||1},
+            "maxUses"=${b.maxUses ? parseInt(b.maxUses) : null},
+            "targetFilter"=${b.targetFilter}, "targetPlan"=${b.targetPlan||null},
+            "validUntil"=${b.validUntil||null}, "isActive"=${b.isActive === '1'},
+            "notifyEmail"=${b.notifyEmail === '1'}, "notifyMessage"=${b.notifyMessage||null},
+            "updatedAt"=NOW()
+          WHERE id=${parseInt(b.id)}
+        `);
+        res.redirect(`/superadmin/promocoes/${b.id}/editar?saved=1`);
+      } else {
+        const result = await dbConn!.execute(sql`
+          INSERT INTO superadmin_promotions
+            (name, description, type, value, "durationMonths", "maxUses", "targetFilter", "targetPlan", "validUntil", "notifyEmail", "notifyMessage", "createdBy")
+          VALUES
+            (${b.name}, ${b.description||null}, ${b.type}, ${parseFloat(b.value)||0},
+             ${parseInt(b.durationMonths)||1}, ${b.maxUses ? parseInt(b.maxUses) : null},
+             ${b.targetFilter}, ${b.targetPlan||null}, ${b.validUntil||null},
+             ${b.notifyEmail === '1'}, ${b.notifyMessage||null}, ${session.name})
+          RETURNING id
+        `) as any;
+        const rows = Array.isArray(result) ? (result[0] ?? result) : (result?.rows ?? []);
+        const newId = rows[0]?.id ?? rows[0]?.returning?.[0]?.id;
+        res.redirect(`/superadmin/promocoes${newId ? '/'+newId : ''}?saved=1`);
+      }
+    } catch (e: any) {
+      res.status(500).send(layout("Nova Promoção", session, `<div class="alert alert-error">Erro: ${esc(e.message)}</div>` + promoForm(req.body, esc)));
+    }
+  });
+
+  // ── GET /superadmin/promocoes/:id — Apply page ────────────────────────────
+  app.get("/superadmin/promocoes/:id", requireAuth, requireRole("super_admin", "admin"), async (req: any, res: any) => {
+    const session = (req as any).boSession;
+    try {
+      const dbConn = await db.getDb();
+      const { sql } = await import("drizzle-orm");
+      const promoId = parseInt(req.params.id);
+
+      const [pr, tr, ap] = await Promise.all([
+        dbConn!.execute(sql`SELECT * FROM superadmin_promotions WHERE id = ${promoId}`),
+        db.getAllTenants(),
+        dbConn!.execute(sql`SELECT "tenantId" FROM superadmin_promotion_applications WHERE "promotionId" = ${promoId}`),
+      ]) as any[];
+
+      const promoRows = Array.isArray(pr) ? (pr[0] ?? pr) : (pr?.rows ?? []);
+      const promo = promoRows[0];
+      if (!promo) { res.redirect("/superadmin/promocoes"); return; }
+
+      const allTenants: any[] = tr ?? [];
+      const appliedIds = new Set((Array.isArray(ap) ? (ap[0] ?? ap) : (ap?.rows ?? [])).map((r: any) => r.tenantId));
+
+      // Filter tenants based on promo target
+      let targetTenants = allTenants;
+      if (promo.targetFilter === 'trial') targetTenants = allTenants.filter((t: any) => t.status === 'trial' || t.status === 'expired');
+      else if (promo.targetFilter === 'active') targetTenants = allTenants.filter((t: any) => t.status === 'active');
+      else if (promo.targetFilter === 'plan' && promo.targetPlan) targetTenants = allTenants.filter((t: any) => t.plan === promo.targetPlan);
+
+      const typeLabel: Record<string,string> = { percent: '% Desconto', fixed: 'Valor Fixo', trial_extension: 'Trial Grátis', custom_price: 'Preço Especial' };
+      const valueDisplay = promo.type === 'percent' ? `${promo.value}%` : promo.type === 'trial_extension' ? `${promo.value} dias grátis` : `R$ ${parseFloat(promo.value).toFixed(2).replace('.',',')}`;
+
+      res.send(layout(`Aplicar Promoção`, session, `
+        <div class="container">
+          <div class="breadcrumb">
+            <a href="/superadmin" class="bc-link">Dashboard</a>
+            <span class="bc-sep">›</span>
+            <a href="/superadmin/promocoes" class="bc-link">Promoções</a>
+            <span class="bc-sep">›</span>
+            <span class="bc-current">${esc(promo.name)}</span>
+          </div>
+
+          <!-- Promo summary card -->
+          <div class="card" style="margin-bottom:24px;border-color:var(--gold-bd);background:linear-gradient(135deg,#1c1600 0%,var(--surface) 60%)">
+            <div class="card-body" style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+              <div style="font-size:48px">🎯</div>
+              <div style="flex:1">
+                <div style="font-size:18px;font-weight:800;color:var(--t1);margin-bottom:4px">${esc(promo.name)}</div>
+                <div style="font-size:13px;color:var(--t3);margin-bottom:12px">${esc(promo.description ?? '')}</div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap">
+                  <span style="background:var(--gold-dim);color:var(--gold);padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700">${typeLabel[promo.type]} · ${valueDisplay}</span>
+                  <span style="background:var(--blue-dim);color:var(--blue);padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700">⏱ ${promo.durationMonths} mês(es)</span>
+                  <span style="background:var(--green-dim);color:var(--green);padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700">👥 ${targetTenants.length} elegíveis</span>
+                  ${appliedIds.size > 0 ? `<span style="background:var(--amber-dim);color:var(--amber);padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700">✓ ${appliedIds.size} já receberam</span>` : ''}
+                </div>
+              </div>
+              <a href="/superadmin/promocoes/${promo.id}/editar" class="btn btn-gray btn-sm">✏️ Editar</a>
+            </div>
+          </div>
+
+          <!-- Select tenants -->
+          <form method="POST" action="/superadmin/promocoes/${promo.id}/aplicar">
+            <div class="table-wrap">
+              <div class="table-header">
+                <h2>Selecionar destinatários</h2>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <label style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px;cursor:pointer">
+                    <input type="checkbox" id="select-all" onchange="toggleAll(this)" style="width:14px;height:14px">
+                    Selecionar todos (${targetTenants.length})
+                  </label>
+                  <button type="submit" class="btn btn-primary">🚀 Aplicar e Notificar</button>
+                </div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:40px"><input type="checkbox" id="hdr-check" onchange="toggleAll(this)" style="width:14px;height:14px"></th>
+                    <th>Barbearia</th><th>Plano</th><th>Status</th><th>Asaas ID</th><th>Já recebeu</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${targetTenants.map((t: any) => `
+                    <tr>
+                      <td><input type="checkbox" name="tenantIds" value="${t.id}" class="tenant-cb" style="width:14px;height:14px" ${appliedIds.has(t.id) ? 'checked' : ''}></td>
+                      <td>
+                        <div class="table-name">
+                          <div class="name">${esc(t.name)}</div>
+                          <div class="slug">${esc(t.slug)}</div>
+                        </div>
+                      </td>
+                      <td>${planLabel(t.plan)}</td>
+                      <td>${statusBadge(t.status)}</td>
+                      <td style="font-size:11px;color:var(--t3);font-family:monospace">${t.barberproSubscriptionId ? t.barberproSubscriptionId.slice(0,16)+'...' : '—'}</td>
+                      <td>${appliedIds.has(t.id) ? '<span style="color:var(--green);font-size:12px">✓ Sim</span>' : '<span style="color:var(--t3);font-size:12px">—</span>'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;padding:16px 0">
+              <label style="font-size:13px;color:var(--t2);display:flex;align-items:center;gap:8px;cursor:pointer">
+                <input type="checkbox" name="sendEmail" value="1" checked style="width:15px;height:15px">
+                Enviar e-mail de notificação para cada tenant selecionado
+              </label>
+              <button type="submit" class="btn btn-primary btn-lg" style="margin-left:auto">
+                🚀 Aplicar Promoção e Notificar
+              </button>
+            </div>
+          </form>
+
+          <!-- History -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">📋 Histórico de Aplicações</span></div>
+            <div id="history-body">
+              <div style="padding:20px;text-align:center;color:var(--t3);font-size:13px">Carregando...</div>
+            </div>
+          </div>
+        </div>
+
+        <script>
+          function toggleAll(src) {
+            document.querySelectorAll('.tenant-cb').forEach(cb => cb.checked = src.checked);
+            document.getElementById('hdr-check').checked = src.checked;
+            document.getElementById('select-all').checked = src.checked;
+          }
+
+          // Load history
+          fetch('/superadmin/promocoes/${promo.id}/historico')
+            .then(r => r.json()).then(data => {
+              if (!data.length) {
+                document.getElementById('history-body').innerHTML = '<div style="padding:40px;text-align:center;color:var(--t3)">Nenhuma aplicação registrada ainda.</div>';
+                return;
+              }
+              let html = '<table><thead><tr><th>Barbearia</th><th>Aplicado em</th><th>Por</th><th>Asaas</th><th>E-mail</th></tr></thead><tbody>';
+              data.forEach(a => {
+                html += \`<tr>
+                  <td><b>\${a.tenantName || '#'+a.tenantId}</b></td>
+                  <td style="color:var(--t3);font-size:12px">\${new Date(a.appliedAt).toLocaleString('pt-BR')}</td>
+                  <td style="font-size:12px">\${a.appliedBy || '—'}</td>
+                  <td>\${a.asaasStatus === 'ok' ? '<span style="color:var(--green)">✓ Sync</span>' : a.asaasStatus === 'no_sub' ? '<span style="color:var(--t3)">Sem sub.</span>' : '<span style="color:var(--amber)">'+( a.asaasStatus||'—')+'</span>'}</td>
+                  <td>\${a.emailSent ? '<span style="color:var(--green)">✓ Enviado</span>' : '<span style="color:var(--t3)">—</span>'}</td>
+                </tr>\`;
+              });
+              html += '</tbody></table>';
+              document.getElementById('history-body').innerHTML = html;
+            }).catch(() => {
+              document.getElementById('history-body').innerHTML = '<div style="padding:20px;color:var(--t3)">Erro ao carregar histórico.</div>';
+            });
+        </script>
+      `));
+    } catch (e: any) {
+      res.status(500).send(layout("Promoção", session, `<div class="error-state"><div class="error-state-icon">⚠️</div><h3 class="error-state-title">Erro</h3><p class="error-state-desc">${esc(e.message)}</p></div>`));
+    }
+  });
+
+  // ── GET /superadmin/promocoes/:id/historico — JSON ────────────────────────
+  app.get("/superadmin/promocoes/:id/historico", requireAuth, async (req: any, res: any) => {
+    try {
+      const dbConn = await db.getDb();
+      const { sql } = await import("drizzle-orm");
+      const result = await dbConn!.execute(sql`
+        SELECT a.*, t.name as "tenantName"
+        FROM superadmin_promotion_applications a
+        LEFT JOIN tenants t ON t.id = a."tenantId"
+        WHERE a."promotionId" = ${parseInt(req.params.id)}
+        ORDER BY a."appliedAt" DESC LIMIT 100
+      `) as any;
+      const rows = Array.isArray(result) ? (result[0] ?? result) : (result?.rows ?? []);
+      res.json(rows);
+    } catch { res.json([]); }
+  });
+
+  // ── POST /superadmin/promocoes/:id/aplicar ────────────────────────────────
+  app.post("/superadmin/promocoes/:id/aplicar", requireAuth, requireRole("super_admin", "admin"), async (req: any, res: any) => {
+    const session = (req as any).boSession;
+    try {
+      const dbConn = await db.getDb();
+      const { sql } = await import("drizzle-orm");
+      const promoId = parseInt(req.params.id);
+      const tenantIdsRaw = req.body?.tenantIds;
+      const sendEmail = req.body?.sendEmail === '1';
+      const tenantIds: number[] = (Array.isArray(tenantIdsRaw) ? tenantIdsRaw : [tenantIdsRaw])
+        .filter(Boolean).map(Number);
+
+      if (!tenantIds.length) { res.redirect(`/superadmin/promocoes/${promoId}?error=no-tenants`); return; }
+
+      const promoRes = await dbConn!.execute(sql`SELECT * FROM superadmin_promotions WHERE id = ${promoId}`) as any;
+      const promoRows = Array.isArray(promoRes) ? (promoRes[0] ?? promoRes) : (promoRes?.rows ?? []);
+      const promo = promoRows[0];
+      if (!promo) { res.redirect("/superadmin/promocoes"); return; }
+
+      const allTenants = await db.getAllTenants() as any[];
+
+      let applied = 0, asaasOk = 0, emailOk = 0;
+
+      for (const tid of tenantIds) {
+        const tenant = allTenants.find((t: any) => t.id === tid);
+        if (!tenant) continue;
+
+        let asaasStatus = 'pending';
+        let asaasDiscountId = null;
+
+        // Apply in Asaas
+        try {
+          if (promo.type === 'trial_extension') {
+            // Extend trial date
+            const newTrialEnd = new Date();
+            newTrialEnd.setDate(newTrialEnd.getDate() + parseInt(promo.value));
+            await dbConn!.execute(sql`UPDATE tenants SET "trialEndsAt" = ${newTrialEnd.toISOString().slice(0,10)}::date, status = 'trial' WHERE id = ${tid}`);
+            asaasStatus = 'ok';
+          } else if (promo.type === 'custom_price') {
+            // Update plan value in our DB
+            await dbConn!.execute(sql`UPDATE tenants SET plan = ${String(promo.targetPlan || tenant.plan)} WHERE id = ${tid}`);
+            asaasStatus = 'ok';
+          } else if (tenant.barberproSubscriptionId) {
+            // Apply discount to Asaas subscription
+            const discountPayload = {
+              value: parseFloat(promo.value),
+              dueDateLimitDays: 0,
+              type: promo.type === 'percent' ? 'PERCENTAGE' : 'FIXED',
+            };
+            const asaasRes = await (await import('./asaas')).asaasApi.post(
+              `/subscriptions/${tenant.barberproSubscriptionId}/discount`,
+              discountPayload
+            );
+            asaasDiscountId = asaasRes.data?.id ?? null;
+            asaasStatus = 'ok';
+            asaasOk++;
+          } else {
+            asaasStatus = 'no_sub';
+          }
+        } catch (asaasErr: any) {
+          asaasStatus = 'error: ' + asaasErr.message.slice(0,50);
+        }
+
+        // Send email notification
+        let emailSent = false;
+        if (sendEmail && promo.notifyEmail) {
+          try {
+            const barbers = await db.getAllBarbers(tid); const barber = barbers?.[0];
+            if (barber?.email) {
+              const valueDisplay = promo.type === 'percent' ? `${promo.value}% de desconto` :
+                promo.type === 'trial_extension' ? `${promo.value} dias grátis` :
+                `R$ ${parseFloat(promo.value).toFixed(2).replace('.',',')} de desconto`;
+              const { sendEmail: sendMail, emailLayout, ctaButton } = await import('./email');
+              const html = emailLayout(`
+                <div style="text-align:center;margin-bottom:24px">
+                  <div style="font-size:48px;margin-bottom:12px">🎁</div>
+                  <h2 style="font-size:22px;font-weight:800;color:#ECEDEE;margin:0 0 8px">Temos uma oferta especial para você!</h2>
+                  <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0">${esc(promo.notifyMessage || `Aproveite: ${valueDisplay} por ${promo.durationMonths} mês(es) no Barber Pro.`)}</p>
+                </div>
+                <div style="background:#1A1A1A;border:1px solid #C9A84C33;border-radius:14px;padding:20px;text-align:center;margin-bottom:24px">
+                  <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">${promo.name}</div>
+                  <div style="font-size:32px;font-weight:900;color:#C9A84C">${valueDisplay}</div>
+                  <div style="font-size:12px;color:#666;margin-top:4px">por ${promo.durationMonths} mês(es)</div>
+                </div>
+                ${ctaButton('Acessar o painel →', 'https://usebarberpro.com/admin/configuracoes?tab=plano')}
+              `, { headerSubtitle: tenant.name });
+              await sendMail({ to: barber.email, subject: `🎁 Oferta especial: ${promo.name}`, html, displayName: 'Barber Pro' });
+              emailSent = true;
+              emailOk++;
+            }
+          } catch {}
+        }
+
+        // Record application
+        await dbConn!.execute(sql`
+          INSERT INTO superadmin_promotion_applications
+            ("promotionId", "tenantId", "appliedBy", "asaasStatus", "asaasDiscountId", "emailSent")
+          VALUES
+            (${promoId}, ${tid}, ${session.name}, ${asaasStatus}, ${asaasDiscountId}, ${emailSent})
+        `) as any;
+
+        // Update usedCount
+        await dbConn!.execute(sql`UPDATE superadmin_promotions SET "usedCount" = "usedCount" + 1 WHERE id = ${promoId}`);
+        applied++;
+      }
+
+      // Log action
+      logAction(session.name, `Aplicou promoção "${promo.name}" para ${applied} tenants`, `promo #${promoId}`);
+
+      res.redirect(`/superadmin/promocoes/${promoId}?ok=${applied}&asaas=${asaasOk}&email=${emailOk}`);
+    } catch (e: any) {
+      console.error("[promocoes/aplicar]", e.message);
+      res.redirect(`/superadmin/promocoes/${req.params.id}?error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function promoForm(data: any, esc: Function, saved?: any): string {
+    const d = data ?? {};
+    const isEdit = !!d.id;
+    return `
+      <div class="container">
+        <div class="breadcrumb">
+          <a href="/superadmin" class="bc-link">Dashboard</a>
+          <span class="bc-sep">›</span>
+          <a href="/superadmin/promocoes" class="bc-link">Promoções</a>
+          <span class="bc-sep">›</span>
+          <span class="bc-current">${isEdit ? 'Editar' : 'Nova Promoção'}</span>
+        </div>
+        <div class="page-header">
+          <div class="page-title">${isEdit ? '✏️ Editar Promoção' : '🎯 Nova Promoção'}</div>
+        </div>
+
+        ${saved ? '<div class="alert alert-success">✓ Promoção salva com sucesso!</div>' : ''}
+
+        <div class="two-col" style="align-items:start">
+          <div>
+            <form method="POST" action="/superadmin/promocoes" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:24px">
+              ${isEdit ? `<input type="hidden" name="id" value="${d.id}">` : ''}
+
+              <div class="form-group">
+                <label class="label">Nome da promoção *</label>
+                <input type="text" name="name" value="${esc(d.name ?? '')}" placeholder="Ex: Black Friday 50% off" required />
+              </div>
+
+              <div class="form-group">
+                <label class="label">Descrição interna</label>
+                <textarea name="description" placeholder="Notas internas sobre esta promoção...">${esc(d.description ?? '')}</textarea>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="label">Tipo de promoção *</label>
+                  <select name="type" id="promo-type" onchange="updateValueLabel()">
+                    <option value="percent"        ${d.type === 'percent'         ? 'selected' : ''}>% Desconto na assinatura</option>
+                    <option value="fixed"          ${d.type === 'fixed'           ? 'selected' : ''}>Valor fixo de desconto (R$)</option>
+                    <option value="trial_extension" ${d.type === 'trial_extension' ? 'selected' : ''}>Extensão de trial (dias grátis)</option>
+                    <option value="custom_price"   ${d.type === 'custom_price'    ? 'selected' : ''}>Preço especial (R$/mês)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="label" id="value-label">Valor *</label>
+                  <input type="number" name="value" id="promo-value" value="${d.value ?? ''}" min="0" step="0.01" placeholder="Ex: 50" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="label">Duração (meses)</label>
+                  <input type="number" name="durationMonths" value="${d.durationMonths ?? 1}" min="1" max="24" />
+                </div>
+                <div class="form-group">
+                  <label class="label">Limite de usos</label>
+                  <input type="number" name="maxUses" value="${d.maxUses ?? ''}" min="1" placeholder="Ilimitado" />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="label">Público-alvo padrão</label>
+                  <select name="targetFilter">
+                    <option value="all"    ${d.targetFilter === 'all'    ? 'selected' : ''}>Todos os tenants</option>
+                    <option value="trial"  ${d.targetFilter === 'trial'  ? 'selected' : ''}>Trial / Expirado</option>
+                    <option value="active" ${d.targetFilter === 'active' ? 'selected' : ''}>Assinaturas ativas</option>
+                    <option value="plan"   ${d.targetFilter === 'plan'   ? 'selected' : ''}>Plano específico</option>
+                    <option value="manual" ${d.targetFilter === 'manual' ? 'selected' : ''}>Seleção manual</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="label">Filtrar por plano</label>
+                  <select name="targetPlan">
+                    <option value="">Qualquer plano</option>
+                    <option value="starter" ${d.targetPlan === 'starter' ? 'selected' : ''}>Solo (starter)</option>
+                    <option value="team"    ${d.targetPlan === 'team'    ? 'selected' : ''}>Equipe</option>
+                    <option value="studio"  ${d.targetPlan === 'studio'  ? 'selected' : ''}>Estúdio</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="label">Válida até</label>
+                <input type="date" name="validUntil" value="${d.validUntil ? String(d.validUntil).slice(0,10) : ''}" />
+              </div>
+
+              <div style="border-top:1px solid var(--border);margin:20px 0;padding-top:20px">
+                <label class="label" style="margin-bottom:12px">Notificação por e-mail</label>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:12px;font-size:13px">
+                  <input type="checkbox" name="notifyEmail" value="1" ${d.notifyEmail !== false ? 'checked' : ''} style="width:15px;height:15px">
+                  Enviar e-mail aos tenants ao aplicar a promoção
+                </label>
+                <textarea name="notifyMessage" placeholder="Mensagem personalizada no e-mail (opcional). Padrão: descrição automática da oferta.">${esc(d.notifyMessage ?? '')}</textarea>
+              </div>
+
+              <div class="form-group" style="margin-top:8px">
+                <label class="label">Status</label>
+                <select name="isActive">
+                  <option value="1" ${d.isActive !== false ? 'selected' : ''}>Ativa</option>
+                  <option value="0" ${d.isActive === false ? 'selected' : ''}>Inativa</option>
+                </select>
+              </div>
+
+              <div style="display:flex;gap:10px;margin-top:8px">
+                <button type="submit" class="btn btn-primary btn-lg" style="flex:1">
+                  ${isEdit ? '✓ Salvar Alterações' : '+ Criar Promoção'}
+                </button>
+                <a href="/superadmin/promocoes" class="btn btn-secondary">Cancelar</a>
+              </div>
+            </form>
+          </div>
+
+          <!-- Help panel -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:24px">
+            <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:16px">📖 Como funciona</div>
+
+            <div style="margin-bottom:16px">
+              <div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">% Desconto</div>
+              <div style="font-size:12px;color:var(--t3);line-height:1.6">Aplica um desconto percentual na próxima cobrança do Asaas. Ex: 50% = cobra R$44,50 em vez de R$89.</div>
+            </div>
+
+            <div style="margin-bottom:16px">
+              <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Valor Fixo</div>
+              <div style="font-size:12px;color:var(--t3);line-height:1.6">Desconta um valor fixo em R$. Ex: R$30 de desconto = cobra R$59 em vez de R$89.</div>
+            </div>
+
+            <div style="margin-bottom:16px">
+              <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Trial Grátis</div>
+              <div style="font-size:12px;color:var(--t3);line-height:1.6">Estende o trial do tenant por N dias. Ideal para reativar quem expirou ou como bônus.</div>
+            </div>
+
+            <div style="margin-bottom:24px">
+              <div style="font-size:11px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Preço Especial</div>
+              <div style="font-size:12px;color:var(--t3);line-height:1.6">Define um valor mensal diferente do padrão. Útil para contratos negociados manualmente.</div>
+            </div>
+
+            <div style="background:var(--surface2);border-radius:10px;padding:14px">
+              <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:8px">⚡ Sincronização com Asaas</div>
+              <div style="font-size:12px;color:var(--t3);line-height:1.6">
+                Ao aplicar, o sistema atualiza automaticamente a subscription no Asaas para tenants que já têm uma assinatura ativa. Tenants sem subscription recebem apenas a notificação.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        function updateValueLabel() {
+          const type = document.getElementById('promo-type').value;
+          const labels = { percent: 'Percentual (%)', fixed: 'Valor (R$)', trial_extension: 'Dias grátis', custom_price: 'Preço/mês (R$)' };
+          document.getElementById('value-label').textContent = labels[type] || 'Valor';
+        }
+        updateValueLabel();
+      </script>
+    `;
+  }
 }

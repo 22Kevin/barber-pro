@@ -468,6 +468,42 @@ export async function runAutoMigrate(db: any): Promise<void> {
       )`,
     },
     {
+      name: "superadmin_promotions",
+      sql: `CREATE TABLE IF NOT EXISTS superadmin_promotions (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        type VARCHAR(30) NOT NULL DEFAULT 'percent',
+        value DECIMAL(10,2) NOT NULL DEFAULT 0,
+        "durationMonths" INT NOT NULL DEFAULT 1,
+        "maxUses" INT,
+        "usedCount" INT NOT NULL DEFAULT 0,
+        "targetFilter" VARCHAR(50) NOT NULL DEFAULT 'all',
+        "targetPlan" VARCHAR(20),
+        "validUntil" DATE,
+        "isActive" BOOLEAN NOT NULL DEFAULT TRUE,
+        "notifyEmail" BOOLEAN NOT NULL DEFAULT TRUE,
+        "notifyMessage" TEXT,
+        "createdBy" VARCHAR(100),
+        "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+      )`,
+    },
+    {
+      name: "superadmin_promotion_applications",
+      sql: `CREATE TABLE IF NOT EXISTS superadmin_promotion_applications (
+        id SERIAL PRIMARY KEY,
+        "promotionId" INT NOT NULL,
+        "tenantId" INT NOT NULL,
+        "appliedAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+        "appliedBy" VARCHAR(100),
+        "asaasStatus" VARCHAR(50),
+        "asaasDiscountId" VARCHAR(100),
+        "emailSent" BOOLEAN NOT NULL DEFAULT FALSE,
+        notes TEXT
+      )`,
+    },
+    {
       name: "waitlist",
       sql: `CREATE TABLE IF NOT EXISTS waitlist (
         id SERIAL PRIMARY KEY,
