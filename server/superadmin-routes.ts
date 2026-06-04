@@ -495,7 +495,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     .cms-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
     .cms-card h3 { font-size: 11px; font-weight: 700; margin-bottom: 12px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
     .cms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .container { max-width: 1300px; }
+    .container { max-width: 1300px; margin: 0 auto; padding: 0 8px; }
 
     /* ── Login ──────────────────────────────────────────────────────── */
     .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
@@ -976,7 +976,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     .cms-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
     .cms-card h3 { font-size: 11px; font-weight: 700; margin-bottom: 12px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
     .cms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .container { max-width: 1300px; }
+    .container { max-width: 1300px; margin: 0 auto; padding: 0 8px; }
 
     /* ── Login ──────────────────────────────────────────────────────── */
     .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
@@ -2941,14 +2941,21 @@ export function registerSuperAdminRoutes(app: Express): void {
               Olá, <strong style="color:#ECEDEE">João Silva</strong>! O período de teste da
               <strong style="color:#ECEDEE">Barbearia Exemplo</strong> expira em 2 dias.
             </p>
-            <div style="margin-bottom:28px">
-              ${[{n:"Solo",p:"R$ 49",d:"1 barbeiro",pop:false},{n:"Equipe",p:"R$ 89",d:"até 5 barbeiros",pop:true},{n:"Estúdio",p:"R$ 149",d:"ilimitados",pop:false}].map(pl=>`
-              <div style="background:#1A1A1A;border:${pl.pop?"2px solid #C9A84C44":"1px solid #2A2A2A"};border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-                <div><div style="font-weight:700;color:#ECEDEE">${pl.n}${pl.pop?" <span style='font-size:10px;background:#C9A84C22;color:#C9A84C;padding:2px 6px;border-radius:4px'>POPULAR</span>":""}</div><div style="font-size:12px;color:#666">${pl.d}</div></div>
-                <div style="font-size:18px;font-weight:900;color:#C9A84C">${pl.p}<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
-              </div>`).join("")}
+            <div style="text-align:center;margin-bottom:24px">
+              <a href="https://usebarberpro.com/admin/configuracoes?tab=plano" style="display:inline-block;background:#C9A84C;color:#0A0A0A;font-weight:800;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none">
+                🚀 Assinar agora e não perder acesso →
+              </a>
             </div>
-            ${ctaButton("Assinar agora →", "https://usebarberpro.com/barbearia-exemplo/admin/configuracoes#pagamentos")}`;
+            <p style="font-size:12px;color:#666;text-align:center;margin:0 0 14px">Escolha seu plano:</p>
+            <div style="margin-bottom:24px">
+              ${[{n:"Solo",p:"R$ 49",d:"1 barbeiro",plan:"solo",pop:false},{n:"Equipe",p:"R$ 89",d:"até 5 barbeiros",plan:"team",pop:true},{n:"Estúdio",p:"R$ 149",d:"ilimitados",plan:"studio",pop:false}].map(pl=>`
+              <a href="https://usebarberpro.com/admin/configuracoes?tab=plano&plan=${pl.plan}" style="text-decoration:none;display:block;margin-bottom:10px">
+                <div style="background:#1A1A1A;border:${pl.pop?"2px solid #C9A84C44":"1px solid #2A2A2A"};border-radius:12px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
+                  <div><div style="font-weight:700;color:#ECEDEE">${pl.n}${pl.pop?" <span style='font-size:10px;background:#C9A84C22;color:#C9A84C;padding:2px 6px;border-radius:4px'>POPULAR</span>":""}</div><div style="font-size:12px;color:#666">${pl.d}</div></div>
+                  <div style="display:flex;align-items:center;gap:8px"><div style="font-size:17px;font-weight:900;color:#C9A84C">${pl.p}<span style="font-size:11px;font-weight:400;color:#666">/mês</span></div><span style="font-size:11px;color:#C9A84C;border:1px solid #C9A84C44;padding:2px 7px;border-radius:5px">Escolher →</span></div>
+                </div>
+              </a>`).join("")}
+            </div>`;
           return emailLayout(body, { headerSubtitle: "Aviso de Trial", previewText: "Seu trial do Barber Pro expira em 2 dias. Assine agora para continuar." });
         })(),
       },

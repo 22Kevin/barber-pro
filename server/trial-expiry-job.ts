@@ -53,23 +53,45 @@ function buildTrialExpiryEmail(tenantName: string, adminName: string, daysLeft: 
       Para continuar usando o sistema sem interrupção, assine agora.
     </p>
 
-    <!-- Planos -->
-    <div style="margin-bottom:28px">
-      <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div><div style="font-weight:700;color:#ECEDEE">Solo</div><div style="font-size:12px;color:#666">1 barbeiro</div></div>
-        <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 49<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
-      </div>
-      <div style="background:#1A1A1A;border:2px solid #C9A84C44;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div><div style="font-weight:700;color:#ECEDEE">Equipe <span style="font-size:10px;background:#C9A84C22;color:#C9A84C;padding:2px 6px;border-radius:4px;margin-left:4px">POPULAR</span></div><div style="font-size:12px;color:#666">até 5 barbeiros</div></div>
-        <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 89<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
-      </div>
-      <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
-        <div><div style="font-weight:700;color:#ECEDEE">Estúdio</div><div style="font-size:12px;color:#666">barbeiros ilimitados</div></div>
-        <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 149<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
-      </div>
+    <!-- CTA principal ANTES dos planos -->
+    <div style="text-align:center;margin-bottom:24px">
+      <a href="https://usebarberpro.com/admin/configuracoes?tab=plano"
+         style="display:inline-block;background:#C9A84C;color:#0A0A0A;font-weight:800;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;letter-spacing:0.3px">
+        🚀 Assinar agora e não perder acesso →
+      </a>
     </div>
 
-    ${ctaButton('Assinar agora →', 'https://usebarberpro.com/admin/configuracoes#pagamentos')}
+    <!-- Planos disponíveis -->
+    <p style="font-size:12px;color:#666;text-align:center;margin:0 0 14px">Escolha seu plano:</p>
+    <div style="margin-bottom:28px">
+      <a href="https://usebarberpro.com/admin/configuracoes?tab=plano&plan=solo" style="text-decoration:none;display:block;margin-bottom:10px">
+        <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-weight:700;color:#ECEDEE">Solo</div><div style="font-size:12px;color:#666">1 barbeiro</div></div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 49<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
+            <span style="font-size:11px;color:#C9A84C;border:1px solid #C9A84C44;padding:2px 8px;border-radius:6px">Escolher →</span>
+          </div>
+        </div>
+      </a>
+      <a href="https://usebarberpro.com/admin/configuracoes?tab=plano&plan=team" style="text-decoration:none;display:block;margin-bottom:10px">
+        <div style="background:#1A1A1A;border:2px solid #C9A84C44;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-weight:700;color:#ECEDEE">Equipe <span style="font-size:10px;background:#C9A84C22;color:#C9A84C;padding:2px 6px;border-radius:4px;margin-left:4px">POPULAR</span></div><div style="font-size:12px;color:#666">até 5 barbeiros</div></div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 89<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
+            <span style="font-size:11px;color:#C9A84C;border:1px solid #C9A84C44;padding:2px 8px;border-radius:6px">Escolher →</span>
+          </div>
+        </div>
+      </a>
+      <a href="https://usebarberpro.com/admin/configuracoes?tab=plano&plan=studio" style="text-decoration:none;display:block">
+        <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-weight:700;color:#ECEDEE">Estúdio</div><div style="font-size:12px;color:#666">barbeiros ilimitados</div></div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 149<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
+            <span style="font-size:11px;color:#C9A84C;border:1px solid #C9A84C44;padding:2px 8px;border-radius:6px">Escolher →</span>
+          </div>
+        </div>
+      </a>
+    </div>
 
     <p style="color:#555555;font-size:12px;text-align:center;margin:0">
       Após a assinatura, o pagamento é feito via Pix e a ativação é imediata.
