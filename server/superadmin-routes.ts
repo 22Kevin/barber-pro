@@ -77,7 +77,7 @@ function requireRole(...roles: BORoleType[]) {
             <div class="empty-icon">🔒</div>
             <div style="font-size:18px;font-weight:700;margin-bottom:8px">Acesso Negado</div>
             <div>Você não tem permissão para acessar esta seção.</div>
-            <a href="/superadmin" style="display:inline-block;margin-top:20px;padding:10px 24px;background:var(--gold-500);color:#0A0A0A;border-radius:10px;font-weight:700;text-decoration:none">Voltar ao Dashboard</a>
+            <a href="/superadmin" style="display:inline-block;margin-top:20px;padding:10px 24px;background:var(--gold);color:#0A0A0A;border-radius:10px;font-weight:700;text-decoration:none">Voltar ao Dashboard</a>
           </div>
         </div>
       `));
@@ -98,438 +98,412 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
       <title>${esc(title)} — Barber Pro BO</title>
         <style>
+    /* ═══════════════════════════════════════════════════════
+       BARBER PRO BACKOFFICE — DESIGN SYSTEM
+       ═══════════════════════════════════════════════════════ */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
-      --bg:       #0a0a0a;
-      --surface:  #131313;
-      --surface2: #1a1a1a;
-      --surface3: #222222;
-      --border:   #272727;
-      --border2:  #333333;
-      --text:     #f0eeea;
-      --text2:    #a09e99;
-      --muted:    #5c5a57;
-      --gold:     #c9a84c;
-      --gold2:    #dbb84a;
-      --gold-bg:  rgba(201,168,76,.10);
-      --gold-bd:  rgba(201,168,76,.22);
-      --green:    #22c55e; --green-bg: rgba(34,197,94,.10);
-      --red:      #ef4444; --red-bg:   rgba(239,68,68,.10);
-      --blue:     #3b82f6; --blue-bg:  rgba(59,130,246,.10);
-      --amber:    #f59e0b; --amber-bg: rgba(245,158,11,.10);
-      --purple:   #a855f7; --purple-bg:rgba(168,85,247,.10);
-      --sidebar-w: 224px;
-      --sidebar-w-sm: 60px;
-      --topbar-h: 56px;
-      --radius: 10px;
-      --radius-lg: 14px;
+      /* Colors */
+      --bp:         #0a0a0a;
+      --surface:    #141414;
+      --surface2:   #1c1c1c;
+      --surface3:   #242424;
+      --border:     #2a2a2a;
+      --border2:    #3a3a3a;
+      --focus:      #c9a84c;
+      /* Brand */
+      --gold:       #c9a84c;
+      --gold-h:     #b8963e;
+      --gold-txt:   #000;
+      --gold-dim:   rgba(201,168,76,.12);
+      --gold-bd:    rgba(201,168,76,.25);
+      /* Semantic */
+      --green:      #22c55e; --green-dim: rgba(34,197,94,.12);
+      --amber:      #f59e0b; --amber-dim: rgba(245,158,11,.12);
+      --red:        #ef4444; --red-dim:   rgba(239,68,68,.12);
+      --blue:       #3b82f6; --blue-dim:  rgba(59,130,246,.12);
+      --purple:     #a855f7; --purple-dim:rgba(168,85,247,.12);
+      /* Text */
+      --t1:  #f4f4f4;
+      --t2:  #a1a1a1;
+      --t3:  #6b6b6b;
+      /* Layout */
+      --sidebar-w:    224px;
+      --sidebar-sm:    60px;
+      --topbar-h:      56px;
+      --r:             8px;   /* radius base */
+      --rl:           12px;   /* radius large */
+      --rxl:          16px;   /* radius xl (modais) */
+      /* Buttons */
+      --btn-h:       2.25rem; /* 36px */
+      --btn-h-sm:    2rem;    /* 32px */
+      --btn-h-lg:    2.75rem; /* 44px */
+      /* Shadow */
+      --shadow-modal: 0 25px 50px rgba(0,0,0,.8);
+      --shadow-focus: 0 0 0 2px rgba(201,168,76,.3);
     }
+
     html { height: 100%; }
-    body { font-family: "Inter", -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 13.5px; line-height: 1.55; }
+    body { font-family: "Inter", -apple-system, sans-serif; background: var(--bp); color: var(--t1); min-height: 100vh; font-size: 14px; line-height: 1.55; }
     a { color: var(--gold); text-decoration: none; }
     a:hover { opacity: .8; }
-    input, select, textarea, button { font-family: inherit; }
-    ::selection { background: var(--gold-bg); color: var(--gold); }
+    ::selection { background: var(--gold-dim); color: var(--gold); }
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
 
-    /* ── Shell ──────────────────────────────────────────────────────── */
+    /* ── Shell ──────────────────────────────────────────── */
     .shell { display: flex; min-height: 100vh; }
     .content { flex: 1; min-width: 0; margin-left: var(--sidebar-w); display: flex; flex-direction: column; transition: margin-left .25s; }
-    .shell.collapsed .content { margin-left: var(--sidebar-w-sm); }
+    .shell.collapsed .content { margin-left: var(--sidebar-sm); }
+    .page-body { flex: 1; padding: 24px 28px 60px; }
 
-    /* ── Sidebar ────────────────────────────────────────────────────── */
+    /* ── Sidebar ────────────────────────────────────────── */
     .sidebar {
       position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
       background: var(--surface); border-right: 1px solid var(--border);
       display: flex; flex-direction: column;
-      transition: width .25s, transform .25s;
-      z-index: 60; overflow: hidden;
+      transition: width .25s, transform .25s; z-index: 60; overflow: hidden;
     }
-    .shell.collapsed .sidebar { width: var(--sidebar-w-sm); }
-
+    .shell.collapsed .sidebar { width: var(--sidebar-sm); }
     .sidebar-top { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; }
-
     .sidebar-logo {
       display: flex; align-items: center; gap: 10px;
-      padding: 16px 14px 14px; border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
+      padding: 16px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
     .logo-mark {
-      width: 32px; height: 32px; border-radius: 9px;
-      background: var(--gold-bg); border: 1px solid var(--gold-bd);
+      width: 30px; height: 30px; border-radius: 8px;
+      background: var(--gold-dim); border: 1px solid var(--gold-bd);
       display: flex; align-items: center; justify-content: center;
-      color: var(--gold); flex-shrink: 0;
+      color: var(--gold); flex-shrink: 0; font-size: 14px;
     }
     .logo-text { flex: 1; min-width: 0; overflow: hidden; }
-    .logo-title { display: block; font-size: 11px; font-weight: 800; color: var(--gold); letter-spacing: 2px; white-space: nowrap; }
-    .logo-sub   { display: block; font-size: 9px;  color: var(--muted); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; margin-top: 1px; }
-    .shell.collapsed .logo-text { display: none; }
-
-    .sidebar-close-btn {
-      display: none; background: none; border: none; color: var(--muted);
-      cursor: pointer; padding: 4px; border-radius: 6px; transition: color .15s;
-    }
-    .sidebar-close-btn:hover { color: var(--text); }
-
-    /* Collapse toggle */
-    .sidebar-logo::after {
-      content: "⇤";
-      margin-left: auto; font-size: 12px; color: var(--muted);
-      cursor: pointer; flex-shrink: 0; padding: 4px 6px;
-      border-radius: 6px; transition: all .15s;
-      display: block;
-    }
-    .sidebar-logo:hover::after { color: var(--text); background: var(--surface2); }
-    .sidebar-logo { cursor: default; }
-    .logo-mark, .logo-text { cursor: default; }
-
-    /* Hack: clicking the ::after isn't possible — use a real button instead */
-    .collapse-btn {
-      margin-left: auto; background: none; border: none; color: var(--muted);
-      cursor: pointer; padding: 4px 6px; border-radius: 6px;
-      transition: all .15s; font-size: 14px; flex-shrink: 0;
-    }
-    .collapse-btn:hover { color: var(--text); background: var(--surface2); }
+    .logo-title { display: block; font-size: 10px; font-weight: 800; color: var(--gold); letter-spacing: 2.5px; white-space: nowrap; }
+    .logo-sub   { display: block; font-size: 9px; color: var(--t3); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; margin-top: 1px; }
+    .collapse-btn { margin-left: auto; background: none; border: none; color: var(--t3); cursor: pointer; padding: 4px 6px; border-radius: 6px; transition: all .15s; font-size: 13px; flex-shrink: 0; }
+    .collapse-btn:hover { color: var(--t1); background: var(--surface2); }
     .shell.collapsed .collapse-btn { transform: rotate(180deg); }
-
-    /* Nav groups */
-    .sidebar-nav { padding: 8px 0; }
-    .nav-group { margin-bottom: 4px; }
-    .nav-group-label {
-      font-size: 9px; font-weight: 700; letter-spacing: 1.4px; color: var(--muted);
-      text-transform: uppercase; padding: 10px 16px 4px; display: block;
-      white-space: nowrap; overflow: hidden;
-      transition: opacity .2s;
-    }
-    .shell.collapsed .nav-group-label { opacity: 0; height: 0; padding: 0; margin: 0; }
-
+    .shell.collapsed .logo-text { display: none; }
+    .sidebar-nav { padding: 6px 0; }
+    .nav-group { margin-bottom: 2px; }
+    .nav-group-label { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; color: var(--t3); text-transform: uppercase; padding: 10px 16px 4px; display: block; white-space: nowrap; overflow: hidden; transition: opacity .2s; }
+    .shell.collapsed .nav-group-label { opacity: 0; height: 0; padding: 0; }
     .nav-item {
       display: flex; align-items: center; gap: 10px;
       margin: 1px 8px; padding: 7px 10px; border-radius: 8px;
-      color: var(--text2); font-size: 13px; font-weight: 500;
-      position: relative; transition: all .15s; white-space: nowrap;
-      overflow: hidden;
+      color: var(--t2); font-size: 13px; font-weight: 500;
+      position: relative; transition: all .15s; white-space: nowrap; overflow: hidden;
     }
-    .nav-item:hover { background: var(--surface2); color: var(--text); opacity: 1; }
-    .nav-item.active {
-      background: var(--gold-bg); color: var(--gold);
-      font-weight: 600;
-    }
-    .nav-item.active::before {
-      content: ''; position: absolute; left: 0; top: 20%; bottom: 20%;
-      width: 3px; background: var(--gold); border-radius: 0 3px 3px 0;
-    }
-    .nav-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; font-style: normal; }
+    .nav-item:hover { background: var(--surface2); color: var(--t1); opacity: 1; }
+    .nav-item.active { background: var(--gold-dim); color: var(--gold); font-weight: 600; }
+    .nav-item.active::before { content: ''; position: absolute; left: 0; top: 20%; bottom: 20%; width: 3px; background: var(--gold); border-radius: 0 3px 3px 0; }
+    .nav-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
     .nav-label { flex: 1; }
     .shell.collapsed .nav-label { display: none; }
-    .shell.collapsed .nav-item { justify-content: center; margin: 1px 6px; }
-    .shell.collapsed .nav-item:hover::after {
-      content: attr(data-tip);
-      position: absolute; left: calc(100% + 10px); top: 50%;
-      transform: translateY(-50%);
-      background: var(--surface3); border: 1px solid var(--border2);
-      color: var(--text); font-size: 12px; font-weight: 500;
-      padding: 6px 12px; border-radius: 8px;
-      white-space: nowrap; z-index: 100;
-      pointer-events: none;
-      box-shadow: 0 4px 16px rgba(0,0,0,.4);
-    }
-
-    /* Sidebar user footer */
-    .sidebar-user {
-      display: flex; align-items: center; gap: 10px;
-      padding: 12px 14px; border-top: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .user-avatar {
-      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
-      background: linear-gradient(135deg, var(--gold), var(--gold2));
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 800; color: #000;
-    }
+    .shell.collapsed .nav-item { justify-content: center; }
+    .shell.collapsed .nav-item:hover::after { content: attr(data-tip); position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%); background: var(--surface3); border: 1px solid var(--border2); color: var(--t1); font-size: 12px; padding: 5px 11px; border-radius: 8px; white-space: nowrap; z-index: 100; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+    .sidebar-user { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--border); flex-shrink: 0; }
+    .user-avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--gold), var(--gold-h)); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #000; flex-shrink: 0; }
     .user-info { flex: 1; min-width: 0; overflow: hidden; }
-    .user-name { display: block; font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .user-role { display: block; font-size: 10px; color: var(--gold); white-space: nowrap; }
-    .user-logout {
-      color: var(--muted); transition: color .15s;
-      padding: 4px; border-radius: 6px;
-      display: flex; align-items: center; justify-content: center;
-    }
+    .user-name { display: block; font-size: 12px; font-weight: 600; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { display: block; font-size: 10px; color: var(--gold); }
+    .user-logout { color: var(--t3); transition: color .15s; padding: 4px; border-radius: 6px; display: flex; align-items: center; }
     .user-logout:hover { color: var(--red); opacity: 1; }
     .shell.collapsed .user-info, .shell.collapsed .user-logout { display: none; }
-    .shell.collapsed .sidebar-user { justify-content: center; padding: 12px 0; }
-    .shell.collapsed .user-avatar { margin: 0 auto; }
-
-    /* Mobile overlay */
+    .shell.collapsed .sidebar-user { justify-content: center; padding: 10px 0; }
     .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 59; }
     .overlay.visible { display: block; }
 
-    /* ── Topbar ─────────────────────────────────────────────────────── */
+    /* ── Topbar ─────────────────────────────────────────── */
     .topbar {
       height: var(--topbar-h); background: var(--surface);
       border-bottom: 1px solid var(--border);
       display: flex; align-items: center; gap: 12px;
-      padding: 0 24px; position: sticky; top: 0; z-index: 40;
-      flex-shrink: 0;
+      padding: 0 24px; position: sticky; top: 0; z-index: 40; flex-shrink: 0;
     }
-    .hamburger {
-      display: none; background: none; border: none;
-      color: var(--text2); cursor: pointer; padding: 6px;
-      border-radius: 8px; transition: all .15s;
-    }
-    .hamburger:hover { background: var(--surface2); color: var(--text); }
+    .hamburger { display: none; background: none; border: none; color: var(--t2); cursor: pointer; padding: 6px; border-radius: 8px; transition: all .15s; }
+    .hamburger:hover { background: var(--surface2); color: var(--t1); }
     .topbar-title { flex: 1; }
-    .topbar-page { font-size: 15px; font-weight: 700; color: var(--text); }
-    .topbar-right { display: flex; align-items: center; gap: 10px; }
-    .topbar-search {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 6px 12px;
-      transition: border-color .15s;
-    }
-    .topbar-search:focus-within { border-color: var(--gold); }
-    .topbar-search svg { color: var(--muted); flex-shrink: 0; }
-    .topbar-search input {
-      background: none; border: none; outline: none; color: var(--text);
-      font-size: 12px; width: 160px;
-    }
-    .topbar-search input::placeholder { color: var(--muted); }
-    .topbar-search kbd {
-      font-size: 10px; color: var(--muted);
-      background: var(--surface3); border: 1px solid var(--border2);
-      border-radius: 4px; padding: 1px 5px;
-    }
-    .topbar-date { font-size: 12px; color: var(--muted); white-space: nowrap; }
-    .topbar-logout {
-      font-size: 12px; color: var(--muted); padding: 5px 10px;
-      border-radius: 7px; border: 1px solid var(--border);
-      transition: all .15s;
-    }
-    .topbar-logout:hover { color: var(--red); border-color: var(--red-bg); background: var(--red-bg); opacity: 1; }
+    .topbar-page { font-size: 15px; font-weight: 700; }
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+    .topbar-date { font-size: 12px; color: var(--t3); white-space: nowrap; }
+    .topbar-logout { font-size: 12px; color: var(--t3); padding: 5px 10px; border-radius: 7px; border: 1px solid var(--border); transition: all .15s; }
+    .topbar-logout:hover { color: var(--red); border-color: var(--red-dim); background: var(--red-dim); opacity: 1; }
 
-    /* ── Page ───────────────────────────────────────────────────────── */
-    .page-body { flex: 1; padding: 28px 28px 60px; }
+    /* ── Page header ────────────────────────────────────── */
+    .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+    .page-title { font-size: 20px; font-weight: 800; letter-spacing: -.2px; }
+    .page-sub { font-size: 12px; color: var(--t3); margin-top: 2px; }
+    .page-actions { display: flex; gap: 7px; align-items: center; flex-shrink: 0; }
+    .breadcrumb { display: flex; align-items: center; gap: 5px; font-size: 12px; margin-bottom: 5px; }
+    .bc-link { color: var(--t3); transition: color .15s; }
+    .bc-link:hover { color: var(--t2); opacity: 1; }
+    .bc-sep { color: var(--border2); }
+    .bc-current { color: var(--t2); font-weight: 600; }
 
-    /* ── Cards & Tables ─────────────────────────────────────────────── */
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; }
-    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-    .card-title { font-size: 13.5px; font-weight: 700; }
-    .card-sub { font-size: 12px; color: var(--muted); }
-    .card-body { padding: 20px; }
-    .table-wrap, .table-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; }
-    .table-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-    .table-header h2, .card-title { font-size: 13.5px; font-weight: 700; }
-    table, table.data-table { width: 100%; border-collapse: collapse; }
-    th { padding: 10px 20px; text-align: left; font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.02); white-space: nowrap; }
-    td { padding: 13px 20px; font-size: 13px; color: var(--text2); border-bottom: 1px solid var(--border); vertical-align: middle; }
-    tr:last-child td { border-bottom: none; }
-    tr { transition: background .1s; }
-    tr:hover td { background: rgba(255,255,255,.025); color: var(--text); }
-    .table-name .name { font-weight: 600; color: var(--text); font-size: 13px; }
-    .table-name .slug { font-size: 11px; color: var(--muted); font-family: monospace; margin-top: 1px; }
+    /* ══════════════════════════════════════════════════════
+       BUTTONS
+       ══════════════════════════════════════════════════════ */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; height: var(--btn-h); padding: 0 16px;
+      border-radius: var(--r); font-size: 13px; font-weight: 600;
+      white-space: nowrap; cursor: pointer; border: 1px solid transparent;
+      transition: background .15s, border-color .15s, opacity .15s;
+      text-decoration: none; font-family: inherit;
+    }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary  { background: var(--gold);    color: var(--gold-txt); border-color: var(--gold); }
+    .btn-primary:hover:not(:disabled)  { background: var(--gold-h); border-color: var(--gold-h); }
+    .btn-secondary { background: transparent;  color: var(--t1); border-color: var(--border); }
+    .btn-secondary:hover:not(:disabled) { background: var(--surface3); border-color: var(--border2); }
+    .btn-danger   { background: var(--red);     color: #fff;            border-color: var(--red); }
+    .btn-danger:hover:not(:disabled)   { background: #dc2626; border-color: #dc2626; }
+    .btn-ghost    { background: transparent;    color: var(--t2);       border-color: transparent; }
+    .btn-ghost:hover:not(:disabled)    { background: var(--surface2); color: var(--t1); }
+    .btn-green    { background: var(--green-dim); color: var(--green); border-color: rgba(34,197,94,.25); }
+    .btn-green:hover:not(:disabled)   { background: rgba(34,197,94,.2); }
+    .btn-gold     { background: var(--gold-dim); color: var(--gold); border-color: var(--gold-bd); }
+    .btn-blue     { background: var(--blue-dim); color: var(--blue); border-color: rgba(59,130,246,.25); }
+    .btn-gray     { background: var(--surface2); color: var(--t2); border-color: var(--border); }
+    .btn-purple   { background: var(--purple-dim); color: var(--purple); border-color: rgba(168,85,247,.25); }
+    .btn-sm { height: var(--btn-h-sm); padding: 0 12px; font-size: 12px; border-radius: 7px; }
+    .btn-lg { height: var(--btn-h-lg); padding: 0 24px; font-size: 15px; border-radius: 9px; }
+    .btn-submit { width: 100%; height: var(--btn-h-lg); background: var(--gold); color: var(--gold-txt); font-size: 14px; font-weight: 800; border: none; border-radius: 9px; cursor: pointer; transition: opacity .15s; font-family: inherit; }
+    .btn-submit:hover { opacity: .9; }
 
-    /* ── KPI Grid ───────────────────────────────────────────────────── */
-    .kpi-grid { display: grid; gap: 14px; margin-bottom: 22px; }
+    /* ══════════════════════════════════════════════════════
+       FORM CONTROLS
+       ══════════════════════════════════════════════════════ */
+    .label { display: block; font-size: 11px; font-weight: 600; color: var(--t2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .input, .select, input[type=email], input[type=password], input[type=text], input[type=number], input[type=date], textarea, select {
+      width: 100%; height: 2.5rem; padding: 0 12px;
+      background: var(--surface2); color: var(--t1);
+      border: 1px solid var(--border); border-radius: var(--r);
+      font-size: 13px; font-family: inherit; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .input::placeholder, input::placeholder { color: var(--t3); }
+    .input:focus, input:focus, select:focus, textarea:focus { border-color: var(--focus); box-shadow: var(--shadow-focus); }
+    textarea { height: auto; min-height: 90px; padding: 10px 12px; resize: vertical; line-height: 1.5; }
+    select, .select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a1a1a1' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 32px; }
+    .form-group { margin-bottom: 14px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .search-wrapper { position: relative; }
+    .search-wrapper svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--t3); }
+    .search-wrapper input { padding-left: 32px; }
+
+    /* ══════════════════════════════════════════════════════
+       FILTER BAR (search + filters container)
+       ══════════════════════════════════════════════════════ */
+    .filter-bar, .filter-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--rl); padding: 18px 22px; margin-bottom: 20px;
+    }
+    .filter-bar-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    .filter-bar-row .field { flex: 1; min-width: 150px; }
+
+    /* ══════════════════════════════════════════════════════
+       TABS
+       ══════════════════════════════════════════════════════ */
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .tab {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: var(--btn-h-sm); padding: 0 14px; border-radius: 99px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      border: 1px solid var(--border); background: transparent;
+      color: var(--t2); text-decoration: none;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .tab:hover:not(.tab-active) { background: var(--surface2); color: var(--t1); border-color: var(--border2); opacity: 1; }
+    .tab-active { background: var(--gold); color: var(--gold-txt); border-color: var(--gold); font-weight: 700; }
+    .tab-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 18px; height: 18px; padding: 0 4px; border-radius: 99px;
+      font-size: 10px; font-weight: 700; background: rgba(255,255,255,.15);
+    }
+    .tab-active .tab-badge { background: rgba(0,0,0,.2); }
+
+    /* Also support old .filter-btn / .filter-tab classes */
+    .filter-btn, .filter-tab { display: inline-flex; align-items: center; height: var(--btn-h-sm); padding: 0 14px; border-radius: 99px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--t2); text-decoration: none; transition: all .15s; white-space: nowrap; }
+    .filter-btn:hover, .filter-tab:hover { background: var(--surface2); color: var(--t1); border-color: var(--border2); opacity: 1; text-decoration: none; }
+    .filter-btn.active, .filter-tab.active { background: var(--gold); border-color: var(--gold); color: var(--gold-txt); font-weight: 700; }
+
+    /* ══════════════════════════════════════════════════════
+       KPI CARDS
+       ══════════════════════════════════════════════════════ */
+    .kpi-grid { display: grid; gap: 14px; margin-bottom: 20px; }
+    .kpi-grid.g2 { grid-template-columns: repeat(2,1fr); }
+    .kpi-grid.g3 { grid-template-columns: repeat(3,1fr); }
     .kpi-grid.g4 { grid-template-columns: repeat(4,1fr); }
     .kpi-grid.g6 { grid-template-columns: repeat(6,1fr); }
-    .kpi-grid.g3 { grid-template-columns: repeat(3,1fr); }
-    .kpi-grid.g2 { grid-template-columns: repeat(2,1fr); }
-    /* compatibility */
-    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 14px; margin-bottom: 22px; }
-
     .kpi-card, .metric-card {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 18px 20px;
+      border-radius: var(--rl); padding: 18px 20px;
       position: relative; overflow: hidden;
       transition: border-color .2s, transform .2s;
     }
     .kpi-card:hover, .metric-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-    .kpi-card::before, .metric-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    }
-    .kpi-card.gold::before, .metric-card.gold::before   { background: var(--gold); }
-    .kpi-card.green::before, .metric-card.green::before  { background: var(--green); }
-    .kpi-card.red::before, .metric-card.red::before    { background: var(--red); }
-    .kpi-card.blue::before, .metric-card.blue::before   { background: var(--blue); }
-    .kpi-card.amber::before, .metric-card.amber::before  { background: var(--amber); }
-    .kpi-card.purple::before, .metric-card.purple::before { background: var(--purple); }
-    .kpi-card.primary {
-      background: linear-gradient(145deg, #1c1600 0%, var(--surface) 60%);
-      border-color: var(--gold-bd);
-    }
-    .kpi-card.primary .kpi-value { color: var(--gold2); font-size: 2rem; }
+    .kpi-card::before, .metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: var(--rl) var(--rl) 0 0; }
+    .kpi-card.gold::before, .kpi-card-gold::before { background: var(--gold); }
+    .kpi-card.green::before, .kpi-card-green::before { background: var(--green); }
+    .kpi-card.red::before, .kpi-card-red::before { background: var(--red); }
+    .kpi-card.blue::before, .kpi-card-blue::before { background: var(--blue); }
+    .kpi-card.amber::before, .kpi-card-yellow::before { background: var(--amber); }
+    .kpi-card.purple::before, .kpi-card-purple::before { background: var(--purple); }
+    .kpi-card.primary { background: linear-gradient(145deg, #1c1600 0%, var(--surface) 60%); border-color: var(--gold-bd); }
+    .kpi-card.primary .kpi-value { color: var(--gold); font-size: 2.2rem; }
     .kpi-icon { position: absolute; top: 14px; right: 14px; font-size: 20px; opacity: .35; }
-    .kpi-label, .metric-label { font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
-    .kpi-value, .metric-value { font-size: 1.75rem; font-weight: 900; color: var(--text); line-height: 1; margin-bottom: 4px; }
-    .kpi-sub, .metric-sub { font-size: 11px; color: var(--muted); }
+    .kpi-label, .metric-label { font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--t3); margin-bottom: 7px; }
+    .kpi-value, .metric-value { font-size: 1.75rem; font-weight: 900; color: var(--t1); line-height: 1; margin-bottom: 4px; }
+    .kpi-sub, .kpi-desc, .metric-sub { font-size: 11px; color: var(--t3); }
     .metric-icon { font-size: 18px; margin-bottom: 8px; }
 
-    /* ── Charts ─────────────────────────────────────────────────────── */
-    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
-    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; }
-    .chart-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-    .chart-card-title { font-size: 13.5px; font-weight: 700; }
-    .chart-card-sub { font-size: 11px; color: var(--muted); }
+    /* ══════════════════════════════════════════════════════
+       TABLES
+       ══════════════════════════════════════════════════════ */
+    .table-wrap, .table-wrapper {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--rl); overflow: hidden; margin-bottom: 20px;
+    }
+    .table-header {
+      padding: 14px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+    .table-header h2, .card-title { font-size: 14px; font-weight: 700; }
+    table, table.data-table { width: 100%; border-collapse: collapse; }
+    th {
+      padding: 10px 18px; text-align: left; font-size: 10px; font-weight: 700;
+      color: var(--t3); letter-spacing: 1px; text-transform: uppercase;
+      border-bottom: 1px solid var(--border); background: rgba(255,255,255,.02);
+      white-space: nowrap;
+    }
+    td {
+      padding: 12px 18px; font-size: 13px; color: var(--t2);
+      border-bottom: 1px solid var(--border); vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr { transition: background .1s; }
+    tr:hover td { background: var(--surface2); color: var(--t1); }
+    /* Actions column — fixed width, flex row */
+    th.col-actions { width: 200px; min-width: 200px; text-align: right; }
+    td.col-actions { width: 200px; min-width: 200px; }
+    .cell-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
+    .table-name .name { font-weight: 600; color: var(--t1); font-size: 13px; }
+    .table-name .slug { font-size: 11px; color: var(--t3); font-family: monospace; margin-top: 1px; }
 
-    /* ── Badges ─────────────────────────────────────────────────────── */
+    /* ══════════════════════════════════════════════════════
+       BADGES
+       ══════════════════════════════════════════════════════ */
     .badge {
       display: inline-flex; align-items: center; gap: 5px;
       padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 600; white-space: nowrap;
     }
-    .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-    .badge-active   { background: var(--green-bg);  color: var(--green);  }  .badge-active::before  { background: var(--green); }
-    .badge-trial    { background: var(--amber-bg);  color: var(--amber);  }  .badge-trial::before   { background: var(--amber); }
-    .badge-suspended{ background: var(--red-bg);    color: var(--red);    }  .badge-suspended::before { background: var(--red); }
-    .badge-cancelled{ background: rgba(100,100,100,.12); color: var(--muted); } .badge-cancelled::before { background: var(--muted); }
-    .badge-open     { background: var(--blue-bg);   color: var(--blue);   }  .badge-open::before    { background: var(--blue); }
-    .badge-low      { background: var(--amber-bg);  color: var(--amber);  }
-    .badge-medium   { background: var(--blue-bg);   color: var(--blue);   }
-    .badge-high     { background: var(--red-bg);    color: var(--red);    }
-    .plan-solo   { color: var(--text2); }
-    .plan-team   { color: var(--gold);  }
+    .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .badge-active    { background: var(--green-dim); color: var(--green); }  .badge-active::before  { background: var(--green); }
+    .badge-trial     { background: var(--amber-dim); color: var(--amber); }  .badge-trial::before   { background: var(--amber); }
+    .badge-suspended { background: var(--red-dim);   color: var(--red);   }  .badge-suspended::before { background: var(--red); }
+    .badge-cancelled { background: rgba(100,100,100,.12); color: var(--t3); } .badge-cancelled::before { background: var(--t3); }
+    .badge-open      { background: var(--blue-dim);  color: var(--blue);  }  .badge-open::before    { background: var(--blue); }
+    .badge-waiting   { background: var(--blue-dim);  color: var(--blue);  }  .badge-waiting::before { background: var(--blue); }
+    .badge-low       { background: var(--amber-dim); color: var(--amber); }
+    .badge-medium    { background: var(--blue-dim);  color: var(--blue);  }
+    .badge-high      { background: var(--red-dim);   color: var(--red);   }
+    .plan-solo   { color: var(--t2); }
+    .plan-team   { color: var(--gold); }
     .plan-studio { color: var(--purple); }
     .role-chip { padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; }
-    .role-chip.super_admin { background: var(--gold-bg);   color: var(--gold);   border: 1px solid var(--gold-bd); }
-    .role-chip.admin   { background: var(--blue-bg);  color: var(--blue);   border: 1px solid rgba(59,130,246,.25); }
-    .role-chip.suporte { background: var(--green-bg); color: var(--green);  border: 1px solid rgba(34,197,94,.25); }
+    .role-chip.super_admin { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold-bd); }
+    .role-chip.admin  { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(59,130,246,.25); }
+    .role-chip.suporte { background: var(--green-dim); color: var(--green); border: 1px solid rgba(34,197,94,.25); }
 
-    /* ── Buttons ────────────────────────────────────────────────────── */
-    .btn {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
-      cursor: pointer; border: 1px solid transparent; text-decoration: none;
-      transition: all .15s; white-space: nowrap;
-    }
-    .btn:hover { opacity: .8; text-decoration: none; transform: translateY(-1px); }
-    .btn:active { transform: none; }
-    .btn-primary { background: var(--gold); color: #000; font-weight: 700; }
-    .btn-primary:hover { background: var(--gold2); opacity: 1; }
-    .btn-gold    { background: var(--gold-bg);   color: var(--gold);  border-color: var(--gold-bd); }
-    .btn-green   { background: var(--green-bg);  color: var(--green); border-color: rgba(34,197,94,.25); }
-    .btn-red     { background: var(--red-bg);    color: var(--red);   border-color: rgba(239,68,68,.25); }
-    .btn-blue    { background: var(--blue-bg);   color: var(--blue);  border-color: rgba(59,130,246,.25); }
-    .btn-purple  { background: var(--purple-bg); color: var(--purple); border-color: rgba(168,85,247,.25); }
-    .btn-gray    { background: var(--surface2);  color: var(--text2); border-color: var(--border); }
-    .btn-sm      { padding: 4px 10px; font-size: 11px; border-radius: 7px; }
-    .btn-lg      { padding: 10px 20px; font-size: 14px; border-radius: 9px; }
-    .btn-submit  { width: 100%; padding: 12px; background: var(--gold); color: #000; font-size: 14px; font-weight: 800; border: none; border-radius: 9px; cursor: pointer; transition: opacity .15s; }
-    .btn-submit:hover { opacity: .9; }
-    .actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    /* ══════════════════════════════════════════════════════
+       CARD
+       ══════════════════════════════════════════════════════ */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-bottom: 20px; }
+    .card-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .card-sub { font-size: 12px; color: var(--t3); }
+    .card-body { padding: 20px; }
+    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--rl); padding: 22px; }
+    .chart-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .chart-card-title { font-size: 14px; font-weight: 700; }
+    .chart-card-sub { font-size: 11px; color: var(--t3); }
 
-    /* ── Forms ──────────────────────────────────────────────────────── */
-    .form-group { margin-bottom: 14px; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; }
-    input[type=email], input[type=password], input[type=text], input[type=number], input[type=date], textarea, select {
-      width: 100%; padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 9px; color: var(--text); font-size: 13px; outline: none;
-      transition: border-color .15s;
+    /* ══════════════════════════════════════════════════════
+       MODAL
+       ══════════════════════════════════════════════════════ */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.78); z-index: 200;
+      align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
     }
-    input:focus, textarea:focus, select:focus { border-color: var(--gold); background: var(--surface); }
-    textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
-    select { cursor: pointer; }
-    .alert { padding: 11px 14px; border-radius: 9px; font-size: 13px; margin-bottom: 14px; display: flex; gap: 8px; align-items: center; }
-    .alert-error   { background: var(--red-bg);   border: 1px solid rgba(239,68,68,.2);  color: var(--red); }
-    .alert-success { background: var(--green-bg); border: 1px solid rgba(34,197,94,.2);  color: var(--green); }
-
-    /* ── Filters ────────────────────────────────────────────────────── */
-    .filters-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-    .filter-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
-    .filter-btn, .filter-tab {
-      padding: 5px 13px; border-radius: 99px; font-size: 11.5px; font-weight: 600;
-      cursor: pointer; border: 1px solid var(--border); background: transparent;
-      color: var(--muted); transition: all .15s; text-decoration: none; white-space: nowrap;
-    }
-    .filter-btn:hover, .filter-tab:hover { border-color: var(--border2); color: var(--text2); opacity: 1; text-decoration: none; }
-    .filter-btn.active, .filter-tab.active { background: var(--gold); border-color: var(--gold); color: #000; }
-    /* Filter card — wraps search+filters with card background */
-    .filter-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 16px 20px;
-      margin-bottom: 20px;
-    }
-    .filter-card .filters-bar { margin-bottom: 0; }
-    .filter-card .filter-tabs { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-    .search-wrapper { position: relative; }
-    .search-wrapper svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
-    .search-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px 7px 32px; font-size: 12.5px; color: var(--text); outline: none; transition: border-color .15s; }
-    .search-input:focus { border-color: var(--gold); }
-    .search-input::placeholder { color: var(--muted); }
-
-    /* ── Modal ──────────────────────────────────────────────────────── */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
     .modal-overlay.open { display: flex; }
-    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 26px; width: 100%; max-width: 460px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
-    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .modal-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--rxl); width: 100%; max-width: 480px;
+      box-shadow: var(--shadow-modal); margin: 16px;
+    }
+    .modal-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      padding: 22px 24px 0; gap: 12px;
+    }
+    .modal-title { font-size: 16px; font-weight: 800; }
+    .modal-subtitle { font-size: 12px; color: var(--t3); margin-top: 3px; }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; padding: 16px 24px; border-top: 1px solid var(--border); }
+    /* Legacy modal styles */
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--rxl); padding: 26px; width: 100%; max-width: 460px; box-shadow: var(--shadow-modal); }
+    .modal-header-old { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
     .modal h3 { font-size: 15px; font-weight: 800; }
-    .modal-close { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
-    .modal-close:hover { color: var(--text); }
+    .modal-close { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--t3); font-size: 13px; }
+    .modal-close:hover { color: var(--t1); }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+    /* Modal open/close helpers */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.78); z-index: 200; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+    .modal-overlay.open { display: flex; }
 
-    /* ── Page header ────────────────────────────────────────────────── */
-    .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; }
-    .page-title { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -.2px; }
-    .page-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
-    .page-actions { display: flex; gap: 7px; align-items: center; flex-shrink: 0; }
-    .breadcrumb { display: flex; align-items: center; gap: 5px; font-size: 12px; margin-bottom: 5px; }
-    .bc-link { color: var(--muted); transition: color .15s; }
-    .bc-link:hover { color: var(--text2); opacity: 1; }
-    .bc-sep { color: var(--border2); }
-    .bc-current { color: var(--text2); font-weight: 600; }
-
-    /* ── States ─────────────────────────────────────────────────────── */
-    .empty { text-align: center; padding: 56px 24px; }
-    .empty-icon { font-size: 38px; margin-bottom: 12px; opacity: .4; }
-    .empty-title { font-size: 14px; font-weight: 700; color: var(--text2); margin-bottom: 5px; }
-    .empty-sub { font-size: 12.5px; color: var(--muted); }
-    .error-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 56px 24px; text-align: center; background: var(--surface); border: 1px solid rgba(239,68,68,.2); border-radius: var(--radius-lg); }
-    .error-state-icon { font-size: 44px; margin-bottom: 14px; }
-    .error-state-title { font-size: 16px; font-weight: 700; color: var(--red); margin-bottom: 7px; }
-    .error-state-desc { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
-
-    /* ── Misc ────────────────────────────────────────────────────────── */
-    .text-sm { font-size: 11px; color: var(--muted); margin-top: 2px; }
-    .text-mono { font-family: "Menlo","Monaco",monospace; font-size: 11.5px; }
-    .stack-box { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 9px 11px; font-size: 10.5px; font-family: monospace; color: var(--muted); white-space: pre-wrap; word-break: break-all; max-height: 110px; overflow-y: auto; margin-top: 5px; }
+    /* ══════════════════════════════════════════════════════
+       MISC
+       ══════════════════════════════════════════════════════ */
+    .alert { padding: 11px 14px; border-radius: 9px; font-size: 13px; margin-bottom: 14px; display: flex; gap: 8px; align-items: center; }
+    .alert-error   { background: var(--red-dim);   border: 1px solid rgba(239,68,68,.2);  color: var(--red); }
+    .alert-success { background: var(--green-dim); border: 1px solid rgba(34,197,94,.2);  color: var(--green); }
     .divider { height: 1px; background: var(--border); margin: 18px 0; }
     .stat-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); }
     .stat-row:last-child { border-bottom: none; }
-    .stat-label { font-size: 12.5px; color: var(--muted); }
+    .stat-label { font-size: 12.5px; color: var(--t3); }
     .stat-value { font-size: 12.5px; font-weight: 700; }
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-    .cms-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
+    .empty { text-align: center; padding: 56px 24px; }
+    .empty-icon { font-size: 38px; margin-bottom: 12px; opacity: .4; }
+    .empty-title { font-size: 14px; font-weight: 700; color: var(--t2); margin-bottom: 5px; }
+    .empty-sub { font-size: 12px; color: var(--t3); }
+    .error-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 56px 24px; text-align: center; background: var(--surface); border: 1px solid rgba(239,68,68,.2); border-radius: var(--rl); }
+    .error-state-icon { font-size: 44px; margin-bottom: 14px; }
+    .error-state-title { font-size: 16px; font-weight: 700; color: var(--red); margin-bottom: 7px; }
+    .error-state-desc { font-size: 13px; color: var(--t3); margin-bottom: 18px; }
+    .cms-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--rl); padding: 20px; margin-bottom: 16px; }
     .cms-card h3 { font-size: 11px; font-weight: 700; margin-bottom: 12px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
     .cms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .container { width: 100%; }
-
-    /* ── Login ──────────────────────────────────────────────────────── */
-    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
-    .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 40px; width: 100%; max-width: 375px; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+    .stack-box { background: var(--bp); border: 1px solid var(--border); border-radius: 7px; padding: 9px 11px; font-size: 10.5px; font-family: monospace; color: var(--t3); white-space: pre-wrap; word-break: break-all; max-height: 110px; overflow-y: auto; margin-top: 5px; }
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bp); }
+    .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--rxl); padding: 40px; width: 100%; max-width: 375px; box-shadow: var(--shadow-modal); }
     .login-logo { font-size: 12px; font-weight: 900; color: var(--gold); letter-spacing: 3px; text-align: center; text-transform: uppercase; }
-    .login-sub { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 28px; letter-spacing: .8px; margin-top: 4px; }
+    .login-sub { font-size: 12px; color: var(--t3); text-align: center; margin-bottom: 28px; letter-spacing: .8px; margin-top: 4px; }
 
-    /* ── Responsive ─────────────────────────────────────────────────── */
-    @media (max-width: 1200px) {
-      .kpi-grid.g6 { grid-template-columns: repeat(3,1fr); }
-    }
-    @media (max-width: 1024px) {
-      .kpi-grid.g4 { grid-template-columns: repeat(2,1fr); }
-      .kpi-grid.g6 { grid-template-columns: repeat(3,1fr); }
-      .chart-grid { grid-template-columns: 1fr; }
-      .three-col { grid-template-columns: 1fr 1fr; }
-    }
+    /* ── Responsive ─────────────────────────────────────── */
+    @media (max-width: 1200px) { .kpi-grid.g6 { grid-template-columns: repeat(3,1fr); } }
+    @media (max-width: 1024px) { .kpi-grid.g4 { grid-template-columns: repeat(2,1fr); } .chart-grid { grid-template-columns: 1fr; } .three-col { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 768px) {
-      .shell.collapsed .content { margin-left: 0; }
       .content { margin-left: 0 !important; }
       .sidebar { transform: translateX(-100%); width: 240px !important; }
       .sidebar.open { transform: translateX(0); }
-      .sidebar-close-btn { display: flex !important; }
       .hamburger { display: flex; }
-      .topbar-search kbd, .topbar-date { display: none; }
-      .topbar-search input { width: 120px; }
       .page-body { padding: 18px 16px 48px; }
       .two-col, .three-col { grid-template-columns: 1fr; }
       .form-row { grid-template-columns: 1fr; }
@@ -538,7 +512,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     @media (max-width: 580px) {
       .kpi-grid.g4, .kpi-grid.g6, .kpi-grid.g3 { grid-template-columns: 1fr 1fr; }
       .page-header { flex-direction: column; }
-      th, td { padding: 10px 14px; }
+      th, td { padding: 10px 12px; }
     }
   </style>
     </head><body style="background:#0a0a0a">${body}</body></html>`;
@@ -614,7 +588,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       --radius-lg: 14px;
     }
     html { height: 100%; }
-    body { font-family: "Inter", -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 13.5px; line-height: 1.55; }
+    body { font-family: "Inter", -apple-system, sans-serif; background: var(--bp); color: var(--t1); min-height: 100vh; font-size: 13.5px; line-height: 1.55; }
     a { color: var(--gold); text-decoration: none; }
     a:hover { opacity: .8; }
     input, select, textarea, button { font-family: inherit; }
@@ -653,41 +627,41 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     }
     .logo-text { flex: 1; min-width: 0; overflow: hidden; }
     .logo-title { display: block; font-size: 11px; font-weight: 800; color: var(--gold); letter-spacing: 2px; white-space: nowrap; }
-    .logo-sub   { display: block; font-size: 9px;  color: var(--muted); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; margin-top: 1px; }
+    .logo-sub   { display: block; font-size: 9px;  color: var(--t3); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; margin-top: 1px; }
     .shell.collapsed .logo-text { display: none; }
 
     .sidebar-close-btn {
-      display: none; background: none; border: none; color: var(--muted);
+      display: none; background: none; border: none; color: var(--t3);
       cursor: pointer; padding: 4px; border-radius: 6px; transition: color .15s;
     }
-    .sidebar-close-btn:hover { color: var(--text); }
+    .sidebar-close-btn:hover { color: var(--t1); }
 
     /* Collapse toggle */
     .sidebar-logo::after {
       content: "⇤";
-      margin-left: auto; font-size: 12px; color: var(--muted);
+      margin-left: auto; font-size: 12px; color: var(--t3);
       cursor: pointer; flex-shrink: 0; padding: 4px 6px;
       border-radius: 6px; transition: all .15s;
       display: block;
     }
-    .sidebar-logo:hover::after { color: var(--text); background: var(--surface2); }
+    .sidebar-logo:hover::after { color: var(--t1); background: var(--surface2); }
     .sidebar-logo { cursor: default; }
     .logo-mark, .logo-text { cursor: default; }
 
     /* Hack: clicking the ::after isn't possible — use a real button instead */
     .collapse-btn {
-      margin-left: auto; background: none; border: none; color: var(--muted);
+      margin-left: auto; background: none; border: none; color: var(--t3);
       cursor: pointer; padding: 4px 6px; border-radius: 6px;
       transition: all .15s; font-size: 14px; flex-shrink: 0;
     }
-    .collapse-btn:hover { color: var(--text); background: var(--surface2); }
+    .collapse-btn:hover { color: var(--t1); background: var(--surface2); }
     .shell.collapsed .collapse-btn { transform: rotate(180deg); }
 
     /* Nav groups */
     .sidebar-nav { padding: 8px 0; }
     .nav-group { margin-bottom: 4px; }
     .nav-group-label {
-      font-size: 9px; font-weight: 700; letter-spacing: 1.4px; color: var(--muted);
+      font-size: 9px; font-weight: 700; letter-spacing: 1.4px; color: var(--t3);
       text-transform: uppercase; padding: 10px 16px 4px; display: block;
       white-space: nowrap; overflow: hidden;
       transition: opacity .2s;
@@ -701,7 +675,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       position: relative; transition: all .15s; white-space: nowrap;
       overflow: hidden;
     }
-    .nav-item:hover { background: var(--surface2); color: var(--text); opacity: 1; }
+    .nav-item:hover { background: var(--surface2); color: var(--t1); opacity: 1; }
     .nav-item.active {
       background: var(--gold-bg); color: var(--gold);
       font-weight: 600;
@@ -719,7 +693,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       position: absolute; left: calc(100% + 10px); top: 50%;
       transform: translateY(-50%);
       background: var(--surface3); border: 1px solid var(--border2);
-      color: var(--text); font-size: 12px; font-weight: 500;
+      color: var(--t1); font-size: 12px; font-weight: 500;
       padding: 6px 12px; border-radius: 8px;
       white-space: nowrap; z-index: 100;
       pointer-events: none;
@@ -739,10 +713,10 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       font-size: 11px; font-weight: 800; color: #000;
     }
     .user-info { flex: 1; min-width: 0; overflow: hidden; }
-    .user-name { display: block; font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-name { display: block; font-size: 12px; font-weight: 600; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .user-role { display: block; font-size: 10px; color: var(--gold); white-space: nowrap; }
     .user-logout {
-      color: var(--muted); transition: color .15s;
+      color: var(--t3); transition: color .15s;
       padding: 4px; border-radius: 6px;
       display: flex; align-items: center; justify-content: center;
     }
@@ -768,9 +742,9 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       color: var(--text2); cursor: pointer; padding: 6px;
       border-radius: 8px; transition: all .15s;
     }
-    .hamburger:hover { background: var(--surface2); color: var(--text); }
+    .hamburger:hover { background: var(--surface2); color: var(--t1); }
     .topbar-title { flex: 1; }
-    .topbar-page { font-size: 15px; font-weight: 700; color: var(--text); }
+    .topbar-page { font-size: 15px; font-weight: 700; color: var(--t1); }
     .topbar-right { display: flex; align-items: center; gap: 10px; }
     .topbar-search {
       display: flex; align-items: center; gap: 8px;
@@ -779,45 +753,45 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       transition: border-color .15s;
     }
     .topbar-search:focus-within { border-color: var(--gold); }
-    .topbar-search svg { color: var(--muted); flex-shrink: 0; }
+    .topbar-search svg { color: var(--t3); flex-shrink: 0; }
     .topbar-search input {
-      background: none; border: none; outline: none; color: var(--text);
+      background: none; border: none; outline: none; color: var(--t1);
       font-size: 12px; width: 160px;
     }
-    .topbar-search input::placeholder { color: var(--muted); }
+    .topbar-search input::placeholder { color: var(--t3); }
     .topbar-search kbd {
-      font-size: 10px; color: var(--muted);
+      font-size: 10px; color: var(--t3);
       background: var(--surface3); border: 1px solid var(--border2);
       border-radius: 4px; padding: 1px 5px;
     }
-    .topbar-date { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .topbar-date { font-size: 12px; color: var(--t3); white-space: nowrap; }
     .topbar-logout {
-      font-size: 12px; color: var(--muted); padding: 5px 10px;
+      font-size: 12px; color: var(--t3); padding: 5px 10px;
       border-radius: 7px; border: 1px solid var(--border);
       transition: all .15s;
     }
-    .topbar-logout:hover { color: var(--red); border-color: var(--red-bg); background: var(--red-bg); opacity: 1; }
+    .topbar-logout:hover { color: var(--red); border-color: var(--red-dim); background: var(--red-dim); opacity: 1; }
 
     /* ── Page ───────────────────────────────────────────────────────── */
     .page-body { flex: 1; padding: 28px 28px 60px; }
 
     /* ── Cards & Tables ─────────────────────────────────────────────── */
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-bottom: 20px; }
     .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
     .card-title { font-size: 13.5px; font-weight: 700; }
-    .card-sub { font-size: 12px; color: var(--muted); }
+    .card-sub { font-size: 12px; color: var(--t3); }
     .card-body { padding: 20px; }
-    .table-wrap, .table-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; }
+    .table-wrap, .table-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: var(--rl); overflow: hidden; margin-bottom: 20px; }
     .table-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
     .table-header h2, .card-title { font-size: 13.5px; font-weight: 700; }
     table, table.data-table { width: 100%; border-collapse: collapse; }
-    th { padding: 10px 20px; text-align: left; font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.02); white-space: nowrap; }
+    th { padding: 10px 20px; text-align: left; font-size: 10px; font-weight: 700; color: var(--t3); letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.02); white-space: nowrap; }
     td { padding: 13px 20px; font-size: 13px; color: var(--text2); border-bottom: 1px solid var(--border); vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
     tr { transition: background .1s; }
-    tr:hover td { background: rgba(255,255,255,.025); color: var(--text); }
-    .table-name .name { font-weight: 600; color: var(--text); font-size: 13px; }
-    .table-name .slug { font-size: 11px; color: var(--muted); font-family: monospace; margin-top: 1px; }
+    tr:hover td { background: rgba(255,255,255,.025); color: var(--t1); }
+    .table-name .name { font-weight: 600; color: var(--t1); font-size: 13px; }
+    .table-name .slug { font-size: 11px; color: var(--t3); font-family: monospace; margin-top: 1px; }
 
     /* ── KPI Grid ───────────────────────────────────────────────────── */
     .kpi-grid { display: grid; gap: 14px; margin-bottom: 22px; }
@@ -830,7 +804,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
 
     .kpi-card, .metric-card {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 18px 20px;
+      border-radius: var(--rl); padding: 18px 20px;
       position: relative; overflow: hidden;
       transition: border-color .2s, transform .2s;
     }
@@ -850,17 +824,17 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     }
     .kpi-card.primary .kpi-value { color: var(--gold2); font-size: 2rem; }
     .kpi-icon { position: absolute; top: 14px; right: 14px; font-size: 20px; opacity: .35; }
-    .kpi-label, .metric-label { font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
-    .kpi-value, .metric-value { font-size: 1.75rem; font-weight: 900; color: var(--text); line-height: 1; margin-bottom: 4px; }
-    .kpi-sub, .metric-sub { font-size: 11px; color: var(--muted); }
+    .kpi-label, .metric-label { font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--t3); margin-bottom: 7px; }
+    .kpi-value, .metric-value { font-size: 1.75rem; font-weight: 900; color: var(--t1); line-height: 1; margin-bottom: 4px; }
+    .kpi-sub, .metric-sub { font-size: 11px; color: var(--t3); }
     .metric-icon { font-size: 18px; margin-bottom: 8px; }
 
     /* ── Charts ─────────────────────────────────────────────────────── */
     .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
-    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; }
+    .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--rl); padding: 22px; }
     .chart-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
     .chart-card-title { font-size: 13.5px; font-weight: 700; }
-    .chart-card-sub { font-size: 11px; color: var(--muted); }
+    .chart-card-sub { font-size: 11px; color: var(--t3); }
 
     /* ── Badges ─────────────────────────────────────────────────────── */
     .badge {
@@ -868,21 +842,21 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 600; white-space: nowrap;
     }
     .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-    .badge-active   { background: var(--green-bg);  color: var(--green);  }  .badge-active::before  { background: var(--green); }
-    .badge-trial    { background: var(--amber-bg);  color: var(--amber);  }  .badge-trial::before   { background: var(--amber); }
-    .badge-suspended{ background: var(--red-bg);    color: var(--red);    }  .badge-suspended::before { background: var(--red); }
-    .badge-cancelled{ background: rgba(100,100,100,.12); color: var(--muted); } .badge-cancelled::before { background: var(--muted); }
-    .badge-open     { background: var(--blue-bg);   color: var(--blue);   }  .badge-open::before    { background: var(--blue); }
-    .badge-low      { background: var(--amber-bg);  color: var(--amber);  }
-    .badge-medium   { background: var(--blue-bg);   color: var(--blue);   }
-    .badge-high     { background: var(--red-bg);    color: var(--red);    }
+    .badge-active   { background: var(--green-dim);  color: var(--green);  }  .badge-active::before  { background: var(--green); }
+    .badge-trial    { background: var(--amber-dim);  color: var(--amber);  }  .badge-trial::before   { background: var(--amber); }
+    .badge-suspended{ background: var(--red-dim);    color: var(--red);    }  .badge-suspended::before { background: var(--red); }
+    .badge-cancelled{ background: rgba(100,100,100,.12); color: var(--t3); } .badge-cancelled::before { background: var(--t3); }
+    .badge-open     { background: var(--blue-dim);   color: var(--blue);   }  .badge-open::before    { background: var(--blue); }
+    .badge-low      { background: var(--amber-dim);  color: var(--amber);  }
+    .badge-medium   { background: var(--blue-dim);   color: var(--blue);   }
+    .badge-high     { background: var(--red-dim);    color: var(--red);    }
     .plan-solo   { color: var(--text2); }
     .plan-team   { color: var(--gold);  }
     .plan-studio { color: var(--purple); }
     .role-chip { padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; }
     .role-chip.super_admin { background: var(--gold-bg);   color: var(--gold);   border: 1px solid var(--gold-bd); }
-    .role-chip.admin   { background: var(--blue-bg);  color: var(--blue);   border: 1px solid rgba(59,130,246,.25); }
-    .role-chip.suporte { background: var(--green-bg); color: var(--green);  border: 1px solid rgba(34,197,94,.25); }
+    .role-chip.admin   { background: var(--blue-dim);  color: var(--blue);   border: 1px solid rgba(59,130,246,.25); }
+    .role-chip.suporte { background: var(--green-dim); color: var(--green);  border: 1px solid rgba(34,197,94,.25); }
 
     /* ── Buttons ────────────────────────────────────────────────────── */
     .btn {
@@ -896,10 +870,10 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     .btn-primary { background: var(--gold); color: #000; font-weight: 700; }
     .btn-primary:hover { background: var(--gold2); opacity: 1; }
     .btn-gold    { background: var(--gold-bg);   color: var(--gold);  border-color: var(--gold-bd); }
-    .btn-green   { background: var(--green-bg);  color: var(--green); border-color: rgba(34,197,94,.25); }
-    .btn-red     { background: var(--red-bg);    color: var(--red);   border-color: rgba(239,68,68,.25); }
-    .btn-blue    { background: var(--blue-bg);   color: var(--blue);  border-color: rgba(59,130,246,.25); }
-    .btn-purple  { background: var(--purple-bg); color: var(--purple); border-color: rgba(168,85,247,.25); }
+    .btn-green   { background: var(--green-dim);  color: var(--green); border-color: rgba(34,197,94,.25); }
+    .btn-red     { background: var(--red-dim);    color: var(--red);   border-color: rgba(239,68,68,.25); }
+    .btn-blue    { background: var(--blue-dim);   color: var(--blue);  border-color: rgba(59,130,246,.25); }
+    .btn-purple  { background: var(--purple-dim); color: var(--purple); border-color: rgba(168,85,247,.25); }
     .btn-gray    { background: var(--surface2);  color: var(--text2); border-color: var(--border); }
     .btn-sm      { padding: 4px 10px; font-size: 11px; border-radius: 7px; }
     .btn-lg      { padding: 10px 20px; font-size: 14px; border-radius: 9px; }
@@ -910,18 +884,18 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     /* ── Forms ──────────────────────────────────────────────────────── */
     .form-group { margin-bottom: 14px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; }
+    label { display: block; font-size: 11px; color: var(--t3); margin-bottom: 5px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; }
     input[type=email], input[type=password], input[type=text], input[type=number], input[type=date], textarea, select {
       width: 100%; padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 9px; color: var(--text); font-size: 13px; outline: none;
+      border-radius: 9px; color: var(--t1); font-size: 13px; outline: none;
       transition: border-color .15s;
     }
     input:focus, textarea:focus, select:focus { border-color: var(--gold); background: var(--surface); }
     textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
     select { cursor: pointer; }
     .alert { padding: 11px 14px; border-radius: 9px; font-size: 13px; margin-bottom: 14px; display: flex; gap: 8px; align-items: center; }
-    .alert-error   { background: var(--red-bg);   border: 1px solid rgba(239,68,68,.2);  color: var(--red); }
-    .alert-success { background: var(--green-bg); border: 1px solid rgba(34,197,94,.2);  color: var(--green); }
+    .alert-error   { background: var(--red-dim);   border: 1px solid rgba(239,68,68,.2);  color: var(--red); }
+    .alert-success { background: var(--green-dim); border: 1px solid rgba(34,197,94,.2);  color: var(--green); }
 
     /* ── Filters ────────────────────────────────────────────────────── */
     .filters-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
@@ -929,23 +903,23 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     .filter-btn, .filter-tab {
       padding: 5px 13px; border-radius: 99px; font-size: 11.5px; font-weight: 600;
       cursor: pointer; border: 1px solid var(--border); background: transparent;
-      color: var(--muted); transition: all .15s; text-decoration: none; white-space: nowrap;
+      color: var(--t3); transition: all .15s; text-decoration: none; white-space: nowrap;
     }
     .filter-btn:hover, .filter-tab:hover { border-color: var(--border2); color: var(--text2); opacity: 1; text-decoration: none; }
     .filter-btn.active, .filter-tab.active { background: var(--gold); border-color: var(--gold); color: #000; }
     /* Filter card — wraps search+filters with card background */
     .filter-card {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 16px 20px;
+      border-radius: var(--rl); padding: 16px 20px;
       margin-bottom: 20px;
     }
     .filter-card .filters-bar { margin-bottom: 0; }
     .filter-card .filter-tabs { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
     .search-wrapper { position: relative; }
-    .search-wrapper svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); }
-    .search-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px 7px 32px; font-size: 12.5px; color: var(--text); outline: none; transition: border-color .15s; }
+    .search-wrapper svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--t3); }
+    .search-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px 7px 32px; font-size: 12.5px; color: var(--t1); outline: none; transition: border-color .15s; }
     .search-input:focus { border-color: var(--gold); }
-    .search-input::placeholder { color: var(--muted); }
+    .search-input::placeholder { color: var(--t3); }
 
     /* ── Modal ──────────────────────────────────────────────────────── */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
@@ -953,17 +927,17 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 26px; width: 100%; max-width: 460px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
     .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
     .modal h3 { font-size: 15px; font-weight: 800; }
-    .modal-close { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
-    .modal-close:hover { color: var(--text); }
+    .modal-close { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--t3); font-size: 13px; }
+    .modal-close:hover { color: var(--t1); }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
 
     /* ── Page header ────────────────────────────────────────────────── */
     .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; }
-    .page-title { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -.2px; }
-    .page-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .page-title { font-size: 20px; font-weight: 800; color: var(--t1); letter-spacing: -.2px; }
+    .page-sub { font-size: 12.5px; color: var(--t3); margin-top: 2px; }
     .page-actions { display: flex; gap: 7px; align-items: center; flex-shrink: 0; }
     .breadcrumb { display: flex; align-items: center; gap: 5px; font-size: 12px; margin-bottom: 5px; }
-    .bc-link { color: var(--muted); transition: color .15s; }
+    .bc-link { color: var(--t3); transition: color .15s; }
     .bc-link:hover { color: var(--text2); opacity: 1; }
     .bc-sep { color: var(--border2); }
     .bc-current { color: var(--text2); font-weight: 600; }
@@ -972,33 +946,33 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     .empty { text-align: center; padding: 56px 24px; }
     .empty-icon { font-size: 38px; margin-bottom: 12px; opacity: .4; }
     .empty-title { font-size: 14px; font-weight: 700; color: var(--text2); margin-bottom: 5px; }
-    .empty-sub { font-size: 12.5px; color: var(--muted); }
-    .error-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 56px 24px; text-align: center; background: var(--surface); border: 1px solid rgba(239,68,68,.2); border-radius: var(--radius-lg); }
+    .empty-sub { font-size: 12.5px; color: var(--t3); }
+    .error-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 56px 24px; text-align: center; background: var(--surface); border: 1px solid rgba(239,68,68,.2); border-radius: var(--rl); }
     .error-state-icon { font-size: 44px; margin-bottom: 14px; }
     .error-state-title { font-size: 16px; font-weight: 700; color: var(--red); margin-bottom: 7px; }
-    .error-state-desc { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+    .error-state-desc { font-size: 13px; color: var(--t3); margin-bottom: 18px; }
 
     /* ── Misc ────────────────────────────────────────────────────────── */
-    .text-sm { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .text-sm { font-size: 11px; color: var(--t3); margin-top: 2px; }
     .text-mono { font-family: "Menlo","Monaco",monospace; font-size: 11.5px; }
-    .stack-box { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 9px 11px; font-size: 10.5px; font-family: monospace; color: var(--muted); white-space: pre-wrap; word-break: break-all; max-height: 110px; overflow-y: auto; margin-top: 5px; }
+    .stack-box { background: var(--bp); border: 1px solid var(--border); border-radius: 7px; padding: 9px 11px; font-size: 10.5px; font-family: monospace; color: var(--t3); white-space: pre-wrap; word-break: break-all; max-height: 110px; overflow-y: auto; margin-top: 5px; }
     .divider { height: 1px; background: var(--border); margin: 18px 0; }
     .stat-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); }
     .stat-row:last-child { border-bottom: none; }
-    .stat-label { font-size: 12.5px; color: var(--muted); }
+    .stat-label { font-size: 12.5px; color: var(--t3); }
     .stat-value { font-size: 12.5px; font-weight: 700; }
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-    .cms-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; }
+    .cms-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--rl); padding: 20px; margin-bottom: 16px; }
     .cms-card h3 { font-size: 11px; font-weight: 700; margin-bottom: 12px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; }
     .cms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .container { width: 100%; }
 
     /* ── Login ──────────────────────────────────────────────────────── */
-    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+    .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bp); }
     .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 40px; width: 100%; max-width: 375px; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
     .login-logo { font-size: 12px; font-weight: 900; color: var(--gold); letter-spacing: 3px; text-align: center; text-transform: uppercase; }
-    .login-sub { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 28px; letter-spacing: .8px; margin-top: 4px; }
+    .login-sub { font-size: 12px; color: var(--t3); text-align: center; margin-bottom: 28px; letter-spacing: .8px; margin-top: 4px; }
 
     /* ── Responsive ─────────────────────────────────────────────────── */
     @media (max-width: 1200px) {
@@ -1184,7 +1158,7 @@ function trialDaysLeft(trialEndsAt: Date | null): string {
 
 function roleBadge(role: string): string {
   const map: Record<string, string> = {
-    super_admin: '<span class="badge" style="background:#C9A84C22;color:var(--gold-500)">Super Admin</span>',
+    super_admin: '<span class="badge" style="background:#C9A84C22;color:var(--gold)">Super Admin</span>',
     admin: '<span class="badge" style="background:#60A5FA22;color:#60A5FA">Admin</span>',
     suporte: '<span class="badge" style="background:#4ADE8022;color:#4ADE80">Suporte</span>',
   };
@@ -1355,7 +1329,7 @@ export function registerSuperAdminRoutes(app: Express): void {
           </td>
           <td>${planLabel(t.plan)}</td>
           <td>${statusBadge(t.status)}</td>
-          <td style="color:var(--text-muted);font-size:12px">${new Date(t.createdAt).toLocaleDateString("pt-BR")}</td>
+          <td style="color:var(--t3);font-size:12px">${new Date(t.createdAt).toLocaleDateString("pt-BR")}</td>
           <td><a href="/superadmin/tenants/${t.id}" class="btn btn-gray btn-sm">Detalhes →</a></td>
         </tr>
       `).join("");
@@ -1375,10 +1349,10 @@ export function registerSuperAdminRoutes(app: Express): void {
 
           <!-- KPIs principais -->
           <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px">
-            <div class="metric-card" style="--accent-color: var(--gold-500)">
+            <div class="metric-card" style="--accent-color: var(--gold)">
               <div class="metric-icon">💰</div>
               <div class="metric-label">MRR Real</div>
-              <div class="metric-value" style="color:var(--gold-500)">R$${mrr.toLocaleString('pt-BR')}</div>
+              <div class="metric-value" style="color:var(--gold)">R$${mrr.toLocaleString('pt-BR')}</div>
               <div class="metric-sub">receita mensal recorrente</div>
             </div>
             <div class="kpi-card green">
@@ -1502,7 +1476,7 @@ export function registerSuperAdminRoutes(app: Express): void {
       `));
     } catch (e) {
       console.error("[BO Dashboard]", e);
-      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--danger);margin-top:40px">Erro ao carregar dashboard.</p></div>`));
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--red);margin-top:40px">Erro ao carregar dashboard.</p></div>`));
     }
   });
 
@@ -1530,7 +1504,7 @@ export function registerSuperAdminRoutes(app: Express): void {
           <td>${planLabel(t.plan)}</td>
           <td>${statusBadge(t.status)}</td>
           <td>${t.status === "trial" ? trialDaysLeft(t.trialEndsAt) : "—"}</td>
-          <td style="color:var(--text-muted)">${new Date(t.createdAt).toLocaleDateString("pt-BR")}</td>
+          <td style="color:var(--t3)">${new Date(t.createdAt).toLocaleDateString("pt-BR")}</td>
           <td>
             ${session.role !== "suporte" ? `
             <div class="actions">
@@ -1610,7 +1584,7 @@ export function registerSuperAdminRoutes(app: Express): void {
       `));
     } catch (e) {
       console.error("[BO Tenants]", e);
-      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--danger);margin-top:40px">Erro ao carregar barbearias.</p></div>`));
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--red);margin-top:40px">Erro ao carregar barbearias.</p></div>`));
     }
   });
 
@@ -1658,7 +1632,7 @@ export function registerSuperAdminRoutes(app: Express): void {
           <div class="page-header">
             <div>
               <div class="page-title">${esc(tenant.name)}</div>
-              <div class="page-sub">slug: <code style="font-family:monospace;color:var(--gold-400)">${esc(tenant.slug)}</code> · ID: ${tenant.id}</div>
+              <div class="page-sub">slug: <code style="font-family:monospace;color:var(--gold)">${esc(tenant.slug)}</code> · ID: ${tenant.id}</div>
             </div>
             <div class="page-actions">
               ${statusBadge(tenant.status)}
@@ -1677,10 +1651,10 @@ export function registerSuperAdminRoutes(app: Express): void {
               <div class="metric-label">Clientes</div>
               <div class="metric-value" style="color:#C084FC">${stats.clients.toLocaleString("pt-BR")}</div>
             </div>
-            <div class="metric-card" style="--accent-color:var(--gold-500)">
+            <div class="metric-card" style="--accent-color:var(--gold)">
               <div class="metric-icon">💰</div>
               <div class="metric-label">Receita Total</div>
-              <div class="metric-value" style="color:var(--gold-400)">R$${Math.round(stats.revenue).toLocaleString("pt-BR")}</div>
+              <div class="metric-value" style="color:var(--gold)">R$${Math.round(stats.revenue).toLocaleString("pt-BR")}</div>
             </div>
             <div class="metric-card" style="--accent-color:#22c55e">
               <div class="metric-icon">🛒</div>
@@ -1759,14 +1733,14 @@ export function registerSuperAdminRoutes(app: Express): void {
 
       const rows = logs.map((l: any) => `
         <tr>
-          <td style="white-space:nowrap;color:var(--text-muted)">${new Date(l.createdAt).toLocaleString("pt-BR")}</td>
-          <td><span class="badge" style="background:var(--bg-input);color:var(--text-muted)">${esc(l.source ?? "browser")}</span></td>
+          <td style="white-space:nowrap;color:var(--t3)">${new Date(l.createdAt).toLocaleString("pt-BR")}</td>
+          <td><span class="badge" style="background:var(--surface2);color:var(--t3)">${esc(l.source ?? "browser")}</span></td>
           <td>
             <div style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.message)}</div>
             ${l.stack ? `<div class="stack-box">${esc(l.stack)}</div>` : ""}
           </td>
           <td class="text-sm text-mono" style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${esc(l.url ?? "—")}</td>
-          <td style="color:var(--text-muted)">${l.tenantId ?? "—"}</td>
+          <td style="color:var(--t3)">${l.tenantId ?? "—"}</td>
         </tr>
       `).join("");
 
@@ -1822,7 +1796,7 @@ export function registerSuperAdminRoutes(app: Express): void {
       `));
     } catch (e) {
       console.error("[BO Erros]", e);
-      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--danger);margin-top:40px">Erro ao carregar logs.</p></div>`));
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--red);margin-top:40px">Erro ao carregar logs.</p></div>`));
     }
   });
 
@@ -1889,7 +1863,7 @@ export function registerSuperAdminRoutes(app: Express): void {
           <td style="font-weight:600">${esc(l.name ?? "—")}</td>
           <td>${esc(l.email ?? "—")}</td>
           <td>${esc(l.phone ?? "—")}</td>
-          <td style="color:var(--text-muted)">${new Date(l.createdAt).toLocaleString("pt-BR")}</td>
+          <td style="color:var(--t3)">${new Date(l.createdAt).toLocaleString("pt-BR")}</td>
         </tr>
       `).join("");
 
@@ -1935,7 +1909,7 @@ export function registerSuperAdminRoutes(app: Express): void {
       `));
     } catch (e) {
       console.error("[BO Leads]", e);
-      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--danger);margin-top:40px">Erro ao carregar leads.</p></div>`));
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--red);margin-top:40px">Erro ao carregar leads.</p></div>`));
     }
   });
 
@@ -1951,13 +1925,13 @@ export function registerSuperAdminRoutes(app: Express): void {
           <td><div style="font-weight:600">${esc(u.name)}</div><div class="text-sm">${esc(u.email)}</div></td>
           <td>${roleBadge(u.role)}</td>
           <td>${u.isActive ? '<span class="badge badge-active">Ativo</span>' : '<span class="badge badge-suspended">Inativo</span>'}</td>
-          <td style="color:var(--text-muted)">${new Date(u.createdAt).toLocaleDateString("pt-BR")}</td>
+          <td style="color:var(--t3)">${new Date(u.createdAt).toLocaleDateString("pt-BR")}</td>
           <td>
             ${u.email !== session.email ? `
             <div class="actions">
               <button class="btn btn-gold" onclick="openUserModal(${u.id}, '${esc(u.name)}', '${esc(u.email)}', '${esc(u.role)}', ${u.isActive ? 1 : 0})">Editar</button>
               <a href="/superadmin/usuarios/toggle?id=${u.id}&active=${u.isActive ? 0 : 1}" class="btn ${u.isActive ? "btn-red" : "btn-green"}" onclick="return confirm('${u.isActive ? "Desativar" : "Ativar"} este usuário?')">${u.isActive ? "Desativar" : "Ativar"}</a>
-            </div>` : '<span style="color:var(--text-muted);font-size:12px">Você</span>'}
+            </div>` : '<span style="color:var(--t3);font-size:12px">Você</span>'}
           </td>
         </tr>
       `).join("");
@@ -2033,7 +2007,7 @@ export function registerSuperAdminRoutes(app: Express): void {
       `));
     } catch (e) {
       console.error("[BO Usuarios]", e);
-      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--danger);margin-top:40px">Erro ao carregar usuários.</p></div>`));
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--red);margin-top:40px">Erro ao carregar usuários.</p></div>`));
     }
   });
 
@@ -2121,9 +2095,9 @@ export function registerSuperAdminRoutes(app: Express): void {
             <button type="submit" class="btn btn-primary" style="margin-top:8px">Adicionar Depoimento</button>
           </form>
 
-          <div style="margin-top:20px;border-top:1px solid var(--border-subtle);padding-top:16px">
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">DEPOIMENTOS SALVOS NO BANCO</div>
-            <div id="depoimentos-list" style="color:var(--text-muted);font-size:13px">
+          <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px">
+            <div style="font-size:12px;color:var(--t3);margin-bottom:12px">DEPOIMENTOS SALVOS NO BANCO</div>
+            <div id="depoimentos-list" style="color:var(--t3);font-size:13px">
               Os depoimentos salvos aparecerão aqui. Esta funcionalidade requer integração com a tabela <code>landing_testimonials</code> no banco.
             </div>
           </div>
@@ -2131,7 +2105,7 @@ export function registerSuperAdminRoutes(app: Express): void {
 
         <div class="cms-card">
           <h3>💰 Planos Exibidos na Landing Page</h3>
-          <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Os planos abaixo são exibidos na seção de preços da landing page. Edite os valores e salve para atualizar.</p>
+          <p style="font-size:13px;color:var(--t3);margin-bottom:16px">Os planos abaixo são exibidos na seção de preços da landing page. Edite os valores e salve para atualizar.</p>
           <form method="POST" action="/superadmin/cms/planos">
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
               ${[
@@ -2139,8 +2113,8 @@ export function registerSuperAdminRoutes(app: Express): void {
                 { key: "team", label: "Equipe", price: "89", desc: "Até 5 barbeiros, relatórios avançados, fidelidade" },
                 { key: "studio", label: "Estúdio", price: "149", desc: "Ilimitado, multi-unidade, suporte prioritário" },
               ].map((p) => `
-                <div style="background:var(--bg-base);border:1px solid var(--border-subtle);border-radius:12px;padding:16px">
-                  <div style="font-weight:700;margin-bottom:10px;color:var(--gold-500)">${p.label}</div>
+                <div style="background:var(--bp);border:1px solid var(--border);border-radius:12px;padding:16px">
+                  <div style="font-weight:700;margin-bottom:10px;color:var(--gold)">${p.label}</div>
                   <div class="form-group"><label>Preço (R$)</label><input type="number" name="price_${p.key}" value="${p.price}" /></div>
                   <div class="form-group"><label>Descrição</label><input type="text" name="desc_${p.key}" value="${p.desc}" /></div>
                 </div>
@@ -2202,17 +2176,17 @@ export function registerSuperAdminRoutes(app: Express): void {
               <th>Status</th><th>Prioridade</th><th>Msgs</th><th>Atualizado</th><th>Acoes</th>
             </tr></thead>
             <tbody>
-              ${tickets.length === 0 ? `<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px">Nenhum ticket encontrado</td></tr>` : ''}
+              ${tickets.length === 0 ? `<tr><td colspan="9" style="text-align:center;color:var(--t3);padding:40px">Nenhum ticket encontrado</td></tr>` : ''}
               ${tickets.map((t: any) => `
                 <tr>
-                  <td style="color:var(--text-muted);font-size:12px">#${t.id}</td>
+                  <td style="color:var(--t3);font-size:12px">#${t.id}</td>
                   <td><strong>${esc(t.tenantName || 'N/A')}</strong></td>
-                  <td style="max-width:220px"><a href="/superadmin/suporte/${t.id}" style="color:var(--text-primary);font-weight:600">${esc(t.title)}</a></td>
-                  <td><span class="badge" style="background:#C9A84C22;color:var(--gold-500)">${esc(t.category)}</span></td>
+                  <td style="max-width:220px"><a href="/superadmin/suporte/${t.id}" style="color:var(--t1);font-weight:600">${esc(t.title)}</a></td>
+                  <td><span class="badge" style="background:#C9A84C22;color:var(--gold)">${esc(t.category)}</span></td>
                   <td><span class="badge" style="background:${statusColors[t.status] || '#888'}22;color:${statusColors[t.status] || '#888'}">${statusLabels[t.status] || t.status}</span></td>
                   <td><span class="badge" style="background:${priorityColors[t.priority] || '#888'}22;color:${priorityColors[t.priority] || '#888'}">${priorityLabels[t.priority] || t.priority}</span></td>
                   <td style="text-align:center">${t.messageCount}</td>
-                  <td style="color:var(--text-muted);font-size:12px">${new Date(t.updatedAt).toLocaleDateString('pt-BR')}</td>
+                  <td style="color:var(--t3);font-size:12px">${new Date(t.updatedAt).toLocaleDateString('pt-BR')}</td>
                   <td class="actions">
                     <a href="/superadmin/suporte/${t.id}" class="btn btn-gold">Ver</a>
                     ${t.status !== 'closed' ? `<a href="/superadmin/suporte/${t.id}/fechar" class="btn btn-gray">Fechar</a>` : ''}
@@ -2241,11 +2215,11 @@ export function registerSuperAdminRoutes(app: Express): void {
         <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><a href="/superadmin/suporte" class="bc-link">Suporte</a><span class="bc-sep">›</span><span class="bc-current">Ticket #${ticketId}</span></div>
         <div style="margin-bottom:20px"><a href="/superadmin/suporte" class="btn btn-gray">Voltar</a></div>
         ${saved ? `<div style="background:#4ADE8022;color:#4ADE80;border:1px solid #4ADE8044;border-radius:12px;padding:12px 18px;margin-bottom:16px">Resposta enviada!</div>` : ''}
-        <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:16px;padding:24px;margin-bottom:20px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
             <div>
               <div style="font-size:18px;font-weight:800;margin-bottom:6px">${esc(ticket.title)}</div>
-              <div style="font-size:12px;color:var(--text-muted)">Barbearia: <strong style="color:var(--text-primary)">${esc(ticket.tenantName || 'N/A')}</strong> &nbsp;|&nbsp; Categoria: ${esc(ticket.category)} &nbsp;|&nbsp; Prioridade: ${esc(ticket.priority)}</div>
+              <div style="font-size:12px;color:var(--t3)">Barbearia: <strong style="color:var(--t1)">${esc(ticket.tenantName || 'N/A')}</strong> &nbsp;|&nbsp; Categoria: ${esc(ticket.category)} &nbsp;|&nbsp; Prioridade: ${esc(ticket.priority)}</div>
             </div>
             <span class="badge" style="background:${statusColors[ticket.status] || '#888'}22;color:${statusColors[ticket.status] || '#888'};white-space:nowrap">${statusLabels[ticket.status] || ticket.status}</span>
           </div>
@@ -2254,22 +2228,22 @@ export function registerSuperAdminRoutes(app: Express): void {
             ${ticket.status === 'open' || ticket.status === 'waiting_admin' ? `<a href="/superadmin/suporte/${ticketId}/status/answered" class="btn btn-blue">Marcar Respondido</a>` : ''}
           </div>
         </div>
-        <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:16px;overflow:hidden;margin-bottom:20px">
-          <div style="padding:16px 20px;border-bottom:1px solid var(--border-subtle);font-weight:700;font-size:14px">Conversa (${messages.length} mensagens)</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:20px">
+          <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-weight:700;font-size:14px">Conversa (${messages.length} mensagens)</div>
           <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;max-height:500px;overflow-y:auto">
             ${messages.map((m: any) => `
               <div style="display:flex;flex-direction:column;align-items:${m.authorType === 'admin' ? 'flex-end' : 'flex-start'}">
-                <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px">
+                <div style="font-size:10px;color:var(--t3);margin-bottom:4px">
                   ${m.authorType === 'admin' ? 'Admin' : m.authorType === 'ai' ? 'IA' : 'Cliente: ' + esc(m.authorName || '')}
                   &nbsp;|&nbsp; ${new Date(m.createdAt).toLocaleString('pt-BR')}
                 </div>
-                <div style="background:${m.authorType === 'admin' ? '#C9A84C22' : m.authorType === 'ai' ? '#60A5FA22' : 'var(--bg-input)'};border:1px solid ${m.authorType === 'admin' ? '#C9A84C44' : m.authorType === 'ai' ? '#60A5FA44' : 'var(--border-subtle)'};border-radius:12px;padding:10px 14px;max-width:80%;font-size:13px;line-height:1.5;white-space:pre-wrap">${esc(m.content)}</div>
+                <div style="background:${m.authorType === 'admin' ? '#C9A84C22' : m.authorType === 'ai' ? '#60A5FA22' : 'var(--surface2)'};border:1px solid ${m.authorType === 'admin' ? '#C9A84C44' : m.authorType === 'ai' ? '#60A5FA44' : 'var(--border)'};border-radius:12px;padding:10px 14px;max-width:80%;font-size:13px;line-height:1.5;white-space:pre-wrap">${esc(m.content)}</div>
               </div>
             `).join('')}
           </div>
         </div>
         ${ticket.status !== 'closed' ? `
-        <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:16px;padding:20px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px">
           <div style="font-weight:700;font-size:14px;margin-bottom:12px">Responder</div>
           <form method="POST" action="/superadmin/suporte/${ticketId}/responder">
             <textarea name="content" rows="4" placeholder="Digite sua resposta..." style="width:100%;resize:vertical" required></textarea>
@@ -2277,7 +2251,7 @@ export function registerSuperAdminRoutes(app: Express): void {
               <button type="submit" class="btn btn-primary">Enviar Resposta</button>
             </div>
           </form>
-        </div>` : `<div style="text-align:center;padding:20px;color:var(--text-muted)">Ticket fechado.</div>`}
+        </div>` : `<div style="text-align:center;padding:20px;color:var(--t3)">Ticket fechado.</div>`}
       </div>
     `));
   });
@@ -2436,7 +2410,7 @@ export function registerSuperAdminRoutes(app: Express): void {
           </div>
           <div class="metric-card">
             <div class="metric-label">Em Trial / Sem Plano</div>
-            <div class="metric-value" style="color:var(--text-muted)">${trialTenants}</div>
+            <div class="metric-value" style="color:var(--t3)">${trialTenants}</div>
             <div class="metric-sub">não assinantes</div>
           </div>
           <div class="metric-card">
@@ -2453,32 +2427,32 @@ export function registerSuperAdminRoutes(app: Express): void {
 
         <!-- Distribuição por plano -->
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:28px">
-          <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:14px;padding:18px 20px;text-align:center">
-            <div style="font-size:11px;color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">SOLO — R$49/mês</div>
-            <div style="font-size:32px;font-weight:900;color:var(--text-muted)">${planCounts.solo}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">1 barbeiro</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:center">
+            <div style="font-size:11px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">SOLO — R$49/mês</div>
+            <div style="font-size:32px;font-weight:900;color:var(--t3)">${planCounts.solo}</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:4px">1 barbeiro</div>
           </div>
-          <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:14px;padding:18px 20px;text-align:center">
-            <div style="font-size:11px;color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">EQUIPE — R$89/mês</div>
-            <div style="font-size:32px;font-weight:900;color:var(--gold-500)">${planCounts.team}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">até 5 barbeiros</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:center">
+            <div style="font-size:11px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">EQUIPE — R$89/mês</div>
+            <div style="font-size:32px;font-weight:900;color:var(--gold)">${planCounts.team}</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:4px">até 5 barbeiros</div>
           </div>
-          <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:14px;padding:18px 20px;text-align:center">
-            <div style="font-size:11px;color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">ESTÚDIO — R$149/mês</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;text-align:center">
+            <div style="font-size:11px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">ESTÚDIO — R$149/mês</div>
             <div style="font-size:32px;font-weight:900;color:#C084FC">${planCounts.studio}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">ilimitado</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:4px">ilimitado</div>
           </div>
         </div>
 
         <!-- Abas de navegação -->
-        <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:12px;padding:4px">
-          <a href="/superadmin/planos?tab=todos" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'todos' ? 'background:var(--gold-500);color:#0C0C0C' : 'color:var(--text-muted)'}">
+        <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px">
+          <a href="/superadmin/planos?tab=todos" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'todos' ? 'background:var(--gold);color:#0C0C0C' : 'color:var(--t3)'}">
             Todas (${totalTenants})
           </a>
-          <a href="/superadmin/planos?tab=trial" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'trial' ? 'background:var(--gold-500);color:#0C0C0C' : 'color:var(--text-muted)'}">
+          <a href="/superadmin/planos?tab=trial" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'trial' ? 'background:var(--gold);color:#0C0C0C' : 'color:var(--t3)'}">
             Trial / Expirado (${trialList.length})
           </a>
-          <a href="/superadmin/planos?tab=churn" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'churn' ? 'background:#F87171;color:#fff' : 'color:var(--text-muted)'}">
+          <a href="/superadmin/planos?tab=churn" style="flex:1;text-align:center;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;${activeTab === 'churn' ? 'background:#F87171;color:#fff' : 'color:var(--t3)'}">
             Churn 30d (${churnList.length})
           </a>
         </div>
@@ -2488,7 +2462,7 @@ export function registerSuperAdminRoutes(app: Express): void {
         <div class="table-wrap">
           <div class="table-header">
             <h2>Barbearias em Trial / Expirado</h2>
-            <span style="font-size:12px;color:var(--text-muted)">${trialList.length} barbearias</span>
+            <span style="font-size:12px;color:var(--t3)">${trialList.length} barbearias</span>
           </div>
           <table>
             <thead><tr>
@@ -2499,7 +2473,7 @@ export function registerSuperAdminRoutes(app: Express): void {
               <th>Ações</th>
             </tr></thead>
             <tbody>
-              ${trialList.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:40px">Nenhuma barbearia em trial</td></tr>` : ''}
+              ${trialList.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:40px">Nenhuma barbearia em trial</td></tr>` : ''}
               ${trialList.map((t: any) => {
                 const trialEnd = new Date(t.trialEndsAt);
                 const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / 86400000);
@@ -2512,18 +2486,18 @@ export function registerSuperAdminRoutes(app: Express): void {
                   <tr>
                     <td>
                       <div style="font-weight:700">${esc(t.name)}</div>
-                      <div style="font-size:11px;color:var(--text-muted)">${esc(t.slug)}</div>
+                      <div style="font-size:11px;color:var(--t3)">${esc(t.slug)}</div>
                     </td>
                     <td>
                       <span style="color:${isExpired ? '#F87171' : '#FBBF24'};font-weight:600;font-size:12px">
                         ${isExpired ? '🔴 Expirado' : '🟡 Trial'}
                       </span>
                     </td>
-                    <td style="color:var(--text-muted);font-size:12px">${trialEnd.toLocaleDateString('pt-BR')}</td>
+                    <td style="color:var(--t3);font-size:12px">${trialEnd.toLocaleDateString('pt-BR')}</td>
                     <td style="font-weight:700;color:${daysColor};font-size:13px">${daysLabel}</td>
                     <td class="actions">
                       <form method="POST" action="/superadmin/planos/extend-trial/${t.id}" style="display:inline">
-                        <select name="days" style="background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border-subtle);border-radius:6px;padding:4px 8px;font-size:12px;margin-right:4px">
+                        <select name="days" style="background:var(--surface);color:var(--t1);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;margin-right:4px">
                           <option value="7">+7 dias</option>
                           <option value="14">+14 dias</option>
                           <option value="30" selected>+30 dias</option>
@@ -2546,7 +2520,7 @@ export function registerSuperAdminRoutes(app: Express): void {
         <div class="table-wrap">
           <div class="table-header">
             <h2>Churn — Cancelamentos e Expirações (30 dias)</h2>
-            <span style="font-size:12px;color:var(--text-muted)">${churnList.length} barbearia(s) • taxa: ${churnRate}% dos ativos</span>
+            <span style="font-size:12px;color:var(--t3)">${churnList.length} barbearia(s) • taxa: ${churnRate}% dos ativos</span>
           </div>
           <table>
             <thead><tr>
@@ -2558,7 +2532,7 @@ export function registerSuperAdminRoutes(app: Express): void {
               <th>Ações</th>
             </tr></thead>
             <tbody>
-              ${churnList.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px">🎉 Nenhum cancelamento nos últimos 30 dias!</td></tr>` : ''}
+              ${churnList.length === 0 ? `<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:40px">🎉 Nenhum cancelamento nos últimos 30 dias!</td></tr>` : ''}
               ${churnList.map((t: any) => {
                 const status = t.barberproSubscriptionStatus ?? 'cancelled';
                 const planName = t.barberproPlanName ?? t.plan ?? 'solo';
@@ -2573,12 +2547,12 @@ export function registerSuperAdminRoutes(app: Express): void {
                   <tr>
                     <td>
                       <div style="font-weight:700">${esc(t.name)}</div>
-                      <div style="font-size:11px;color:var(--text-muted)">${esc(t.slug)}</div>
+                      <div style="font-size:11px;color:var(--t3)">${esc(t.slug)}</div>
                     </td>
                     <td><span style="color:${motivoColor};font-weight:600;font-size:12px">${motivo}</span></td>
-                    <td style="font-weight:700;color:${planName === 'studio' ? '#C084FC' : planName === 'team' ? 'var(--gold-500)' : 'var(--text-muted)'}">${planLabel2}</td>
+                    <td style="font-weight:700;color:${planName === 'studio' ? '#C084FC' : planName === 'team' ? 'var(--gold)' : 'var(--t3)'}">${planLabel2}</td>
                     <td style="font-weight:800;color:#F87171;font-size:14px">${planPrice2 > 0 ? `− R$ ${planPrice2.toFixed(2).replace('.', ',')}` : '—'}</td>
-                    <td style="color:var(--text-muted);font-size:12px">${refDate}</td>
+                    <td style="color:var(--t3);font-size:12px">${refDate}</td>
                     <td class="actions">
                       <a href="/superadmin/planos/editar/${t.id}" class="btn btn-gold" style="font-size:12px;padding:6px 14px">Reativar</a>
                     </td>
@@ -2595,7 +2569,7 @@ export function registerSuperAdminRoutes(app: Express): void {
         <div class="table-wrap">
           <div class="table-header">
             <h2>Todas as Barbearias</h2>
-            <span style="font-size:12px;color:var(--text-muted)">${totalTenants} cadastradas</span>
+            <span style="font-size:12px;color:var(--t3)">${totalTenants} cadastradas</span>
           </div>
           <table>
             <thead><tr>
@@ -2608,7 +2582,7 @@ export function registerSuperAdminRoutes(app: Express): void {
               <th>Ações</th>
             </tr></thead>
             <tbody>
-              ${tenantsWithSub.length === 0 ? `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:40px">Nenhuma barbearia cadastrada</td></tr>` : ''}
+              ${tenantsWithSub.length === 0 ? `<tr><td colspan="7" style="text-align:center;color:var(--t3);padding:40px">Nenhuma barbearia cadastrada</td></tr>` : ''}
               ${tenantsWithSub.map((t: any) => {
                 const subStatus = t.barberproSubscriptionStatus ?? 'trial';
                 const planName = t.barberproPlanName ?? t.plan ?? 'solo';
@@ -2621,26 +2595,31 @@ export function registerSuperAdminRoutes(app: Express): void {
                   <tr>
                     <td>
                       <div style="font-weight:700">${esc(t.name)}</div>
-                      <div style="font-size:11px;color:var(--text-muted)">${esc(t.slug)}</div>
+                      <div style="font-size:11px;color:var(--t3)">${esc(t.slug)}</div>
                     </td>
                     <td>
-                      <span style="font-weight:700;color:${planName === 'studio' ? '#C084FC' : planName === 'team' ? 'var(--gold-500)' : 'var(--text-muted)'}">
+                      <span style="font-weight:700;color:${planName === 'studio' ? '#C084FC' : planName === 'team' ? 'var(--gold)' : 'var(--t3)'}">
                         ${planLabelMap[planName] ?? planName}
                       </span>
                     </td>
                     <td>
                       <span style="color:${statusColor};font-weight:600;font-size:12px">${statusLbl}</span>
                     </td>
-                    <td style="font-weight:700;color:var(--text-primary)">
+                    <td style="font-weight:700;color:var(--t1)">
                       ${planPrice > 0 ? `R$ ${planPrice.toFixed(2).replace('.', ',')}` : '—'}
                     </td>
-                    <td style="color:var(--text-muted);font-size:12px">${nextDue}</td>
-                    <td style="font-size:11px;color:var(--text-muted);font-family:monospace">
+                    <td style="color:var(--t3);font-size:12px">${nextDue}</td>
+                    <td style="font-size:11px;color:var(--t3);font-family:monospace">
                       ${subId ? `<span title="${esc(subId)}">${esc(subId.slice(0, 12))}...</span>` : '—'}
                     </td>
-                    <td class="actions">
-                      <a href="/superadmin/planos/editar/${t.id}" class="btn btn-gold">Editar Plano</a>
-                      ${subStatus === 'active' ? `<a href="/superadmin/planos/cancelar/${t.id}" class="btn btn-red" onclick="return confirm('Cancelar assinatura de ${esc(t.name)}?')">Cancelar</a>` : ''}
+                    <td class="col-actions">
+                      <div class="cell-actions">
+                        <button class="btn btn-primary btn-sm"
+                          onclick="abrirModalEditarPlano('${t.id}', '${esc(t.name)}', '${planName}', '${subStatus}', '${nextDue}', '${esc(subId ?? '')}')">
+                          Editar Plano
+                        </button>
+                        ${subStatus === 'active' ? `<a href="/superadmin/planos/cancelar/${t.id}" class="btn btn-danger btn-sm" onclick="return confirm('Cancelar assinatura de ${esc(t.name)}?')">Cancelar</a>` : ''}
+                      </div>
                     </td>
                   </tr>
                 `;
@@ -2650,7 +2629,125 @@ export function registerSuperAdminRoutes(app: Express): void {
         </div>
         ` : ''}
       </div>
+
+        <!-- Modal: Editar Plano -->
+        <div id="modal-editar-plano" class="modal-overlay">
+          <div class="modal-box">
+            <div class="modal-header">
+              <div>
+                <div class="modal-title">Editar Plano</div>
+                <div id="modal-barbearia-nome" class="modal-subtitle">—</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="fecharModalEditarPlano()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <form onsubmit="salvarPlano(event)">
+              <input type="hidden" id="modal-tenant-id">
+              <div class="modal-body">
+                <div class="field" style="margin-bottom:14px">
+                  <label class="label" for="modal-plano">Plano Barber Pro</label>
+                  <select class="select" id="modal-plano" name="plano">
+                    <option value="starter">Solo — R$ 49/mês (1 barbeiro)</option>
+                    <option value="team">Equipe — R$ 89/mês (até 5 barbeiros)</option>
+                    <option value="studio">Estúdio — R$ 149/mês (ilimitado)</option>
+                  </select>
+                </div>
+                <div class="field" style="margin-bottom:14px">
+                  <label class="label" for="modal-status">Status da Assinatura</label>
+                  <select class="select" id="modal-status" name="status">
+                    <option value="trial">Trial</option>
+                    <option value="active">Ativa</option>
+                    <option value="pending">Aguardando Pagamento</option>
+                    <option value="overdue">Em Atraso</option>
+                    <option value="cancelled">Cancelada</option>
+                  </select>
+                </div>
+                <div class="two-col" style="margin-bottom:14px">
+                  <div class="field">
+                    <label class="label" for="modal-next-due">Próx. Vencimento</label>
+                    <input type="date" id="modal-next-due" name="nextDue" />
+                  </div>
+                  <div class="field">
+                    <label class="label" for="modal-trial-end">Trial até</label>
+                    <input type="date" id="modal-trial-end" name="trialEnd" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label class="label" for="modal-asaas-id">ID Asaas (opcional)</label>
+                  <input type="text" id="modal-asaas-id" name="asaasId" placeholder="sub_xxxxxx" />
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="fecharModalEditarPlano()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        <script>
+          function abrirModalEditarPlano(tid, nome, plano, status, nextDue, asaasId) {
+            document.getElementById('modal-tenant-id').value = tid;
+            document.getElementById('modal-barbearia-nome').textContent = nome;
+            document.getElementById('modal-plano').value = plano || 'starter';
+            document.getElementById('modal-status').value = status || 'trial';
+            document.getElementById('modal-next-due').value = nextDue && nextDue !== '—' ? nextDue : '';
+            document.getElementById('modal-asaas-id').value = asaasId || '';
+            document.getElementById('modal-editar-plano').classList.add('open');
+          }
+          function fecharModalEditarPlano() {
+            document.getElementById('modal-editar-plano').classList.remove('open');
+          }
+          document.getElementById('modal-editar-plano').addEventListener('click', function(e) {
+            if (e.target === this) fecharModalEditarPlano();
+          });
+          async function salvarPlano(e) {
+            e.preventDefault();
+            const tid = document.getElementById('modal-tenant-id').value;
+            const plano = document.getElementById('modal-plano').value;
+            const status = document.getElementById('modal-status').value;
+            const nextDue = document.getElementById('modal-next-due').value;
+            const asaasId = document.getElementById('modal-asaas-id').value;
+            try {
+              const res = await fetch('/superadmin/planos/update', {
+                method: 'POST', credentials: 'include',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ tenantId: tid, plano, status, nextDue, asaasId })
+              });
+              if (!res.ok) throw new Error(await res.text());
+              fecharModalEditarPlano();
+              window.location.reload();
+            } catch(err) {
+              alert('Erro ao salvar: ' + err.message);
+            }
+          }
+        </script>
     `));
+  });
+
+
+  // ── POST /superadmin/planos/update — Atualizar plano via modal ───────────────
+  app.post("/superadmin/planos/update", requireAuth, requireRole("super_admin", "admin"), async (req: Request, res: Response) => {
+    try {
+      const { tenantId, plano, status, nextDue, asaasId } = req.body as any;
+      if (!tenantId) { res.status(400).json({ error: "tenantId obrigatório" }); return; }
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.status(503).json({ error: "Banco indisponível" }); return; }
+      const { sql: sqlTag } = await import("drizzle-orm");
+      const updates: string[] = [];
+      if (plano)   updates.push(`plan = '${plano.replace(/'/g,"''")}'`);
+      if (status)  updates.push(`status = '${status.replace(/'/g,"''")}'`);
+      if (nextDue) updates.push(`"trialEndsAt" = '${nextDue}'::date`);
+      if (asaasId) updates.push(`"barberproSubscriptionId" = '${asaasId.replace(/'/g,"''")}'`);
+      if (updates.length === 0) { res.status(400).json({ error: "Nada para atualizar" }); return; }
+      await dbConn.execute(sqlTag.raw(`UPDATE tenants SET ${updates.join(", ")}, "updatedAt" = NOW() WHERE id = ${parseInt(tenantId)}`));
+      const session = (req as any).boSession as BOSession;
+      logAction(session.name, `Editou plano → ${plano}/${status}`, `tenant #${tenantId}`);
+      res.json({ ok: true });
+    } catch (e: any) {
+      console.error("[planos/update]", e.message);
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // ── POST /superadmin/planos/extend-trial/:id — Estender trial manualmente
@@ -2702,9 +2799,9 @@ export function registerSuperAdminRoutes(app: Express): void {
         <div class="breadcrumb"><a href="/superadmin" class="bc-link">Dashboard</a><span class="bc-sep">›</span><a href="/superadmin/planos" class="bc-link">Planos</a><span class="bc-sep">›</span><span class="bc-current">Editar Plano</span></div>
         ${saved ? `<div style="background:#4ADE8022;color:#4ADE80;border:1px solid #4ADE8044;border-radius:12px;padding:12px 18px;margin-bottom:20px">✅ Plano atualizado!</div>` : ''}
         <div style="margin-bottom:20px"><a href="/superadmin/planos" class="btn btn-gray">← Voltar</a></div>
-        <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:16px;padding:28px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px">
           <div style="font-size:18px;font-weight:800;margin-bottom:4px">${esc(tenant.name)}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-bottom:24px">${esc(tenant.slug)}</div>
+          <div style="font-size:12px;color:var(--t3);margin-bottom:24px">${esc(tenant.slug)}</div>
 
           <form method="POST" action="/superadmin/planos/editar/${tenantId}">
             <div class="form-group">
@@ -3193,7 +3290,7 @@ export function registerSuperAdminRoutes(app: Express): void {
               <div class="metric-value" style="color:#60A5FA;font-size:22px">${memMB}MB</div>
               <div class="metric-sub">de ${memTotalMB}MB alocados</div>
             </div>
-            <div class="metric-card" style="border-left:3px solid var(--gold-500)">
+            <div class="metric-card" style="border-left:3px solid var(--gold)">
               <div class="metric-label">Total Agendamentos</div>
               <div class="metric-value" style="font-size:22px">${dbStats.appointments.toLocaleString('pt-BR')}</div>
               <div class="metric-sub">no banco de dados</div>
@@ -3219,7 +3316,7 @@ export function registerSuperAdminRoutes(app: Express): void {
           <div class="table-wrap">
             <div class="table-header">
               <h2>📋 Log de Auditoria</h2>
-              <span style="font-size:12px;color:var(--text-muted)">Últimas ${recentActions.length} ações administrativas</span>
+              <span style="font-size:12px;color:var(--t3)">Últimas ${recentActions.length} ações administrativas</span>
             </div>
             ${recentActions.length === 0 ? `
               <div class="empty"><div class="empty-icon">📋</div><div>Nenhuma ação registrada ainda.</div></div>
@@ -3229,10 +3326,10 @@ export function registerSuperAdminRoutes(app: Express): void {
                 <tbody>
                   ${recentActions.map(a => `
                     <tr>
-                      <td style="color:var(--text-muted);font-size:12px">${a.ts}</td>
-                      <td><span style="color:var(--gold-500)">${esc(a.user)}</span></td>
+                      <td style="color:var(--t3);font-size:12px">${a.ts}</td>
+                      <td><span style="color:var(--gold)">${esc(a.user)}</span></td>
                       <td>${esc(a.action)}</td>
-                      <td style="color:var(--text-muted)">${esc(a.target)}</td>
+                      <td style="color:var(--t3)">${esc(a.target)}</td>
                     </tr>
                   `).join("")}
                 </tbody>
@@ -3242,7 +3339,7 @@ export function registerSuperAdminRoutes(app: Express): void {
         </div>
       `));
     } catch (e: any) {
-      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--danger);margin-top:40px">Erro: ${esc(e.message)}</p></div>`));
+      res.status(500).send(layout("Erro", session, `<div class="container"><p style="color:var(--red);margin-top:40px">Erro: ${esc(e.message)}</p></div>`));
     }
   });
 
@@ -3261,32 +3358,32 @@ export function registerSuperAdminRoutes(app: Express): void {
       const planLabel: Record<string, string> = { solo: "Solo", team: "Equipe", studio: "Estúdio" };
       const statusColor: Record<string, string> = { active: "#4ADE80", trial: "#FBBF24", expired: "#F87171", cancelled: "#F87171", pending: "#60A5FA" };
       const rows_html = results.length === 0
-        ? `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted)">Nenhuma barbearia encontrada para "${esc(q)}"</td></tr>`
+        ? `<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--t3)">Nenhuma barbearia encontrada para "${esc(q)}"</td></tr>`
         : results.map((t: any) => `
           <tr>
-            <td><a href="/superadmin/tenants/${t.id}" style="color:var(--gold-500);font-weight:600">${esc(t.name)}</a><div style="font-size:11px;color:var(--text-muted)">${esc(t.slug)}</div></td>
+            <td><a href="/superadmin/tenants/${t.id}" style="color:var(--gold);font-weight:600">${esc(t.name)}</a><div style="font-size:11px;color:var(--t3)">${esc(t.slug)}</div></td>
             <td>${planLabel[t.plan] ?? t.plan ?? "—"}</td>
-            <td><span style="color:${statusColor[t.barberproSubscriptionStatus] ?? "var(--text-muted)"};font-weight:600">${t.barberproSubscriptionStatus ?? "—"}</span></td>
-            <td style="font-size:12px;color:var(--text-muted)">${t.barberproTrialEndsAt ? new Date(t.barberproTrialEndsAt).toLocaleDateString("pt-BR") : "—"}</td>
+            <td><span style="color:${statusColor[t.barberproSubscriptionStatus] ?? "var(--t3)"};font-weight:600">${t.barberproSubscriptionStatus ?? "—"}</span></td>
+            <td style="font-size:12px;color:var(--t3)">${t.barberproTrialEndsAt ? new Date(t.barberproTrialEndsAt).toLocaleDateString("pt-BR") : "—"}</td>
             <td><a href="/superadmin/tenants/${t.id}" style="font-size:12px">Ver →</a></td>
           </tr>`).join("");
       const body = `
         <div style="margin-bottom:20px">
           <form action="/superadmin/busca" method="GET" style="display:flex;gap:8px;max-width:480px">
             <input type="text" name="q" value="${esc(q)}" placeholder="Buscar barbearia..."
-              style="flex:1;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--text-primary);outline:none" />
-            <button type="submit" style="background:var(--gold-500);color:#000;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">Buscar</button>
+              style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--t1);outline:none" />
+            <button type="submit" style="background:var(--gold);color:#000;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">Buscar</button>
           </form>
         </div>
-        <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">${results.length} resultado(s) para "<strong style="color:var(--text-primary)">${esc(q)}</strong>"</div>
-        <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden">
+        <div style="font-size:13px;color:var(--t3);margin-bottom:16px">${results.length} resultado(s) para "<strong style="color:var(--t1)">${esc(q)}</strong>"</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
           <table style="width:100%;border-collapse:collapse">
-            <thead><tr style="border-bottom:1px solid var(--border-subtle);background:var(--bg-input)">
-              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600">BARBEARIA</th>
-              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600">PLANO</th>
-              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600">STATUS</th>
-              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600">TRIAL ATÉ</th>
-              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--text-muted);font-weight:600">AÇÃO</th>
+            <thead><tr style="border-bottom:1px solid var(--border);background:var(--surface2)">
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--t3);font-weight:600">BARBEARIA</th>
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--t3);font-weight:600">PLANO</th>
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--t3);font-weight:600">STATUS</th>
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--t3);font-weight:600">TRIAL ATÉ</th>
+              <th style="padding:12px 16px;text-align:left;font-size:12px;color:var(--t3);font-weight:600">AÇÃO</th>
             </tr></thead>
             <tbody>${rows_html}</tbody>
           </table>
