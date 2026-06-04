@@ -564,6 +564,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
+      /* ── Base backgrounds ── */
       --bp:       #0a0a0a;
       --bg:       #0a0a0a;
       --surface:  #131313;
@@ -571,26 +572,55 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       --surface3: #222222;
       --border:   #272727;
       --border2:  #333333;
+
+      /* ── Text ── */
       --text:     #f0eeea;
+      --t1:       #f0eeea;
       --text2:    #a09e99;
+      --t2:       #a09e99;
       --muted:    #5c5a57;
+      --t3:       #5c5a57;
+
+      /* ── Brand ── */
       --gold:     #c9a84c;
       --gold2:    #dbb84a;
-      --gold-bg:  rgba(201,168,76,.10);
-      --gold-bd:  rgba(201,168,76,.22);
-      --green:    #22c55e; --green-bg: rgba(34,197,94,.10);
-      --red:      #ef4444; --red-bg:   rgba(239,68,68,.10);
-      --blue:     #3b82f6; --blue-bg:  rgba(59,130,246,.10);
-      --amber:    #f59e0b; --amber-bg: rgba(245,158,11,.10);
-      --purple:   #a855f7; --purple-bg:rgba(168,85,247,.10);
-      --sidebar-w: 224px;
+      --gold-h:   #b8963e;
+      --gold-txt: #000;
+      --gold-dim: rgba(201,168,76,.12);
+      --gold-bd:  rgba(201,168,76,.25);
+
+      /* ── Semantic colors ── */
+      --green:    #22c55e;  --green-dim:  rgba(34,197,94,.12);  --green-bg: rgba(34,197,94,.12);
+      --red:      #ef4444;  --red-dim:    rgba(239,68,68,.12);   --red-bg:   rgba(239,68,68,.12);
+      --blue:     #3b82f6;  --blue-dim:   rgba(59,130,246,.12);  --blue-bg:  rgba(59,130,246,.12);
+      --amber:    #f59e0b;  --amber-dim:  rgba(245,158,11,.12);  --amber-bg: rgba(245,158,11,.12);
+      --purple:   #a855f7;  --purple-dim: rgba(168,85,247,.12);  --purple-bg:rgba(168,85,247,.12);
+      --warning:  #f59e0b;  --success: #22c55e;  --danger: #ef4444;  --info: #3b82f6;
+
+      /* ── Layout ── */
+      --sidebar-w:   224px;
       --sidebar-w-sm: 60px;
-      --topbar-h: 56px;
-      --radius: 10px;
+      --sidebar-sm:   60px;
+      --topbar-h:     56px;
+
+      /* ── Border radius ── */
+      --r:        8px;
+      --rl:       12px;
+      --rxl:      16px;
+      --radius:   10px;
       --radius-lg: 14px;
+
+      /* ── Buttons ── */
+      --btn-h:    2.25rem;
+      --btn-h-sm: 2rem;
+      --btn-h-lg: 2.75rem;
+
+      /* ── Shadows ── */
+      --shadow-modal: 0 25px 50px rgba(0,0,0,.8);
+      --shadow-focus: 0 0 0 2px rgba(201,168,76,.3);
     }
     html { height: 100%; }
-    body { font-family: "Inter", -apple-system, sans-serif; background: #0a0a0a; color: var(--t1); min-height: 100vh; font-size: 13.5px; line-height: 1.55; }
+    body { font-family: "Inter", -apple-system, sans-serif; background: #0a0a0a; color: #f0eeea; color: var(--t1); min-height: 100vh; font-size: 13.5px; line-height: 1.55; }
     a { color: var(--gold); text-decoration: none; }
     a:hover { opacity: .8; }
     input, select, textarea, button { font-family: inherit; }
