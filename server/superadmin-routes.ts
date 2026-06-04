@@ -564,6 +564,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
+      --bp:       #0a0a0a;
       --bg:       #0a0a0a;
       --surface:  #131313;
       --surface2: #1a1a1a;
@@ -589,7 +590,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       --radius-lg: 14px;
     }
     html { height: 100%; }
-    body { font-family: "Inter", -apple-system, sans-serif; background: var(--bp); color: var(--t1); min-height: 100vh; font-size: 13.5px; line-height: 1.55; }
+    body { font-family: "Inter", -apple-system, sans-serif; background: #0a0a0a; color: var(--t1); min-height: 100vh; font-size: 13.5px; line-height: 1.55; }
     a { color: var(--gold); text-decoration: none; }
     a:hover { opacity: .8; }
     input, select, textarea, button { font-family: inherit; }
@@ -599,9 +600,9 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
 
     /* ── Shell ──────────────────────────────────────────────────────── */
-    html, body { background: var(--bp); }
-    .shell { display: flex; min-height: 100vh; background: var(--bp); }
-    .content { flex: 1; min-width: 0; margin-left: var(--sidebar-w); display: flex; flex-direction: column; transition: margin-left .25s; background: var(--bp); min-height: 100vh; }
+    html, body { background: #0a0a0a !important; }
+    .shell { display: flex; min-height: 100vh; background: #0a0a0a; }
+    .content { flex: 1; min-width: 0; margin-left: var(--sidebar-w); display: flex; flex-direction: column; transition: margin-left .25s; background: #0a0a0a; min-height: 100vh; }
     .shell.collapsed .content { margin-left: var(--sidebar-w-sm); }
 
     /* ── Sidebar ────────────────────────────────────────────────────── */
@@ -1008,7 +1009,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
   </style>
   ${extraHead}
 </head>
-<body>
+<body style="background:#0a0a0a;color:#f0eeea">
   <!-- Mobile overlay -->
   <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
