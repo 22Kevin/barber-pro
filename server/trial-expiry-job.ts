@@ -31,7 +31,7 @@ function buildWhatsAppLink(phone: string, message: string): string {
   return `https://wa.me/${fullNumber}?text=${encodeURIComponent(message)}`;
 }
 
-export function buildTrialExpiryEmailPublic(tenantName: string, adminName: string, daysLeft: number, trialEndsAt: Date): string {
+export function buildTrialExpiryEmailPublic(tenantName: string, adminName: string, daysLeft: number, trialEndsAt: Date, links?: { solo: string; team: string; studio: string; base: string }): string {
   const dateFormatted = trialEndsAt.toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "2-digit",
@@ -61,7 +61,7 @@ export function buildTrialExpiryEmailPublic(tenantName: string, adminName: strin
     <!-- Planos disponíveis -->
     <p style="font-size:12px;color:#666;text-align:center;margin:0 0 14px">Escolha seu plano:</p>
     <div style="margin-bottom:28px">
-      <a href="https://usebarberpro.com/admin/configuracoes?tab=plano&plan=solo" style="text-decoration:none;display:block;margin-bottom:10px">
+      <a href="${links?.solo || 'https://usebarberpro.com/admin/configuracoes?tab=pagamentos&plan=solo'}" style="text-decoration:none;display:block;margin-bottom:10px">
         <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
           <div><div style="font-weight:700;color:#ECEDEE">Solo</div><div style="font-size:12px;color:#666">1 barbeiro</div></div>
           <div style="display:flex;align-items:center;gap:10px">
@@ -70,7 +70,7 @@ export function buildTrialExpiryEmailPublic(tenantName: string, adminName: strin
           </div>
         </div>
       </a>
-      <a href="https://usebarberpro.com/admin/configuracoes?tab=plano&plan=team" style="text-decoration:none;display:block;margin-bottom:10px">
+      <a href="${links?.team || 'https://usebarberpro.com/admin/configuracoes?tab=pagamentos&plan=team'}" style="text-decoration:none;display:block;margin-bottom:10px">
         <div style="background:#1A1A1A;border:2px solid #C9A84C44;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
           <div><div style="font-weight:700;color:#ECEDEE">Equipe <span style="font-size:10px;background:#C9A84C22;color:#C9A84C;padding:2px 6px;border-radius:4px;margin-left:4px">POPULAR</span></div><div style="font-size:12px;color:#666">até 5 barbeiros</div></div>
           <div style="display:flex;align-items:center;gap:10px">
@@ -79,7 +79,7 @@ export function buildTrialExpiryEmailPublic(tenantName: string, adminName: strin
           </div>
         </div>
       </a>
-      <a href="https://usebarberpro.com/admin/configuracoes?tab=plano&plan=studio" style="text-decoration:none;display:block">
+      <a href="${links?.studio || 'https://usebarberpro.com/admin/configuracoes?tab=pagamentos&plan=studio'}" style="text-decoration:none;display:block">
         <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
           <div><div style="font-weight:700;color:#ECEDEE">Estúdio</div><div style="font-size:12px;color:#666">barbeiros ilimitados</div></div>
           <div style="display:flex;align-items:center;gap:10px">
@@ -275,11 +275,19 @@ async function runTrialExpiryJob() {
 
         // Enviar e-mail se tiver endereço
         if (tenant.adminEmail) {
+          // Gerar magic link para autenticação automática via email
+          let magicLinks: { solo: string; team: string; studio: string; base: string } | undefined;
+          try {
+            const { generateMagicLink } = await import("./admin-routes") as any;
+            magicLinks = await generateMagicLink(tenant.tenantId);
+          } catch {}
+
           const html = buildTrialExpiryEmailPublic(
             tenant.tenantName,
             tenant.adminName ?? "Admin",
             daysLeft,
-            trialEndsAt
+            trialEndsAt,
+            magicLinks
           );
           await sendEmail({
             to: tenant.adminEmail,

@@ -218,6 +218,55 @@ async function requireActiveSubscription(req: Request, res: Response, next: Next
   }
 }
 
+
+// ── Magic Link — autenticação via email para conversão de trial ──────────────
+// Token é um JWT-like simples assinado com JWT_SECRET, válido por 7 dias.
+// Contém: tenantId + barberId + type = 'trial_conversion'
+// NÃO concede acesso a nada além da tela de pagamento.
+
+const MAGIC_LINK_MAX_AGE = 7 * 24 * 60 * 60; // 7 dias em segundos
+
+async function encodeMagicToken(tenantId: number, barberId: number): Promise<string> {
+  const { ENV } = await import("./_core/env");
+  const payload = { tenantId, barberId, type: "trial_conversion", ts: Date.now() };
+  const data = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  // Assinar com HMAC simples usando JWT_SECRET
+  const crypto = await import("crypto");
+  const sig = crypto.createHmac("sha256", ENV.cookieSecret || "barber-pro-magic")
+    .update(data).digest("base64url");
+  return `${data}.${sig}`;
+}
+
+async function decodeMagicToken(token: string): Promise<{ tenantId: number; barberId: number } | null> {
+  try {
+    const { ENV } = await import("./_core/env");
+    const [data, sig] = token.split(".");
+    if (!data || !sig) return null;
+    const crypto = await import("crypto");
+    const expected = crypto.createHmac("sha256", ENV.cookieSecret || "barber-pro-magic")
+      .update(data).digest("base64url");
+    if (sig !== expected) return null;
+    const payload = JSON.parse(Buffer.from(data, "base64url").toString("utf-8"));
+    if (payload.type !== "trial_conversion") return null;
+    if (Date.now() - payload.ts > MAGIC_LINK_MAX_AGE * 1000) return null;
+    return { tenantId: payload.tenantId, barberId: payload.barberId };
+  } catch { return null; }
+}
+
+export async function generateMagicLink(tenantId: number, baseUrl = "https://usebarberpro.com"): Promise<{ solo: string; team: string; studio: string; base: string }> {
+  const barbers = await db.getAllBarbers(tenantId) as any[];
+  const admin = barbers.find((b: any) => b.role === "super_admin") ?? barbers[0];
+  if (!admin) throw new Error("Nenhum barbeiro encontrado para o tenant");
+  const token = await encodeMagicToken(tenantId, admin.id);
+  const base = `${baseUrl}/admin/plano?token=${token}`;
+  return {
+    base,
+    solo:   `${base}&plan=solo`,
+    team:   `${base}&plan=team`,
+    studio: `${base}&plan=studio`,
+  };
+}
+
 // ─── Layout base do painel ────────────────────────────────────────────────────
 // Helper used by route handlers to auto-inject trialGrace from res object
 function adminLayoutWithGrace(res: any, title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>): string {
@@ -7155,6 +7204,59 @@ export function registerAdminRoutes(app: Express): void {
   });
 
   // GET /admin/login
+
+  // ── GET /admin/plano — Magic link do email de trial ──────────────────────────
+  // Valida o token, cria sessão e redireciona para pagamento.
+  // Não exige login prévio — é o link que vem no email.
+  app.get("/admin/plano", async (req: Request, res: Response) => {
+    const token = req.query.token as string;
+    const plan  = (req.query.plan as string) || "";
+
+    // Token ausente → redireciona para login normal
+    if (!token) { res.redirect("/admin/login"); return; }
+
+    const payload = await decodeMagicToken(token);
+
+    if (!payload) {
+      // Token inválido ou expirado → página amigável com botão de reenvio
+      res.send(`<!DOCTYPE html><html lang="pt-BR">
+        <head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+          <title>Link expirado — Barber Pro</title>
+          <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;background:#0a0a0a;color:#f0eee8;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}</style>
+        </head>
+        <body>
+          <div style="max-width:400px;text-align:center">
+            <div style="font-size:48px;margin-bottom:20px">🔗</div>
+            <h1 style="font-size:22px;font-weight:800;margin-bottom:10px">Link expirado</h1>
+            <p style="color:#888;font-size:14px;line-height:1.6;margin-bottom:28px">
+              Este link de acesso expirou ou já foi utilizado.<br>
+              Faça login normalmente para acessar sua conta.
+            </p>
+            <a href="/admin/login" style="display:inline-block;background:#c9a84c;color:#000;font-weight:800;font-size:14px;padding:13px 28px;border-radius:11px;text-decoration:none">
+              Fazer login →
+            </a>
+          </div>
+        </body></html>`);
+      return;
+    }
+
+    // Token válido → buscar o barbeiro e criar sessão
+    try {
+      const barber = await db.getBarberById(payload.barberId);
+      if (!barber || !barber.isActive) { res.redirect("/admin/login"); return; }
+
+      // Criar sessão (mesma lógica do login normal)
+      const sessionToken = encodeSession(barber.id, barber.role);
+      res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`);
+
+      // Redirecionar para pagamento com plano pré-selecionado
+      const planParam = ["solo","team","studio"].includes(plan) ? `&plan=${plan}` : "";
+      res.redirect(`/admin/configuracoes?tab=pagamentos${planParam}&from=email`);
+    } catch {
+      res.redirect("/admin/login");
+    }
+  });
+
   app.get("/admin/login", (req: Request, res: Response) => {
     const token = (req as any).cookies?.[ADMIN_SESSION_COOKIE];
     if (token && decodeSession(token)) return res.redirect("/admin");
