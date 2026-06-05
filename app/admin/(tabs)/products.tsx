@@ -68,6 +68,7 @@ function ProductsScreenInner() {
   const [restockPayment, setRestockPayment] = useState("cash");
   const [restockNote, setRestockNote] = useState("");
   const [restockSupplierId, setRestockSupplierId] = useState<number | null>(null);
+  const [restockUpdateCostPrice, setRestockUpdateCostPrice] = useState(true);
   const [filterSupplierId, setFilterSupplierId] = useState<number | null>(null);
 
   // Formulário de produto
@@ -125,10 +126,11 @@ function ProductsScreenInner() {
   function openRestock(p: Product) {
     setRestockProduct(p);
     setRestockQty("1");
-    setRestockCost("");
+    // Pré-preencher com o custo atual do produto
+    setRestockCost(p.costPrice ? applyPriceMask(p.costPrice) : "");
     setRestockPayment("cash");
     setRestockNote("");
-    // Pré-selecionar o fornecedor do produto
+    setRestockUpdateCostPrice(true);
     setRestockSupplierId(p.supplierId ?? null);
     setShowRestockModal(true);
   }
@@ -142,6 +144,7 @@ function ProductsScreenInner() {
       productId: restockProduct.id,
       quantity: qty,
       unitCost: cost,
+      updateCostPrice: restockUpdateCostPrice,
       paymentMethod: restockPayment || undefined,
       note: restockNote.trim() || undefined,
       barberId: barber?.id ?? undefined,
@@ -612,9 +615,73 @@ function ProductsScreenInner() {
               <Field label="Quantidade a Repor *">
                 <TextInput style={styles.input} value={restockQty} onChangeText={setRestockQty} placeholder="1" placeholderTextColor="#555" keyboardType="number-pad" />
               </Field>
-              <Field label="Custo Unitário (R$) — opcional">
-                <TextInput style={styles.input} value={restockCost} onChangeText={setRestockCost} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
-              </Field>
+              {/* Custo da compra — central para o financeiro */}
+              <View style={{ backgroundColor: "#0D1F0F", borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "#1A3A1F" }}>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: "#4ADE80", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 10 }}>
+                  💰 Custo desta Compra
+                </Text>
+
+                <Field label="Preço de Custo Unitário (R$) *">
+                  <TextInput
+                    style={[styles.input, { borderColor: "#1A3A1F", backgroundColor: "#111A12" }]}
+                    value={restockCost}
+                    onChangeText={(t) => setRestockCost(applyPriceMask(t))}
+                    placeholder="0,00"
+                    placeholderTextColor="#555"
+                    keyboardType="decimal-pad"
+                  />
+                </Field>
+
+                {/* Resumo automático do custo total */}
+                {restockCost && restockQty ? (() => {
+                  const cost = parsePriceMask(restockCost);
+                  const qty = parseInt(restockQty) || 0;
+                  if (cost > 0 && qty > 0) {
+                    const total = (cost * qty).toFixed(2).replace(".", ",");
+                    return (
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
+                        <Text style={{ fontSize: 12, color: "#4ADE8088" }}>
+                          {qty}x R$ {cost.toFixed(2).replace(".", ",")}
+                        </Text>
+                        <Text style={{ fontSize: 13, fontWeight: "800", color: "#4ADE80" }}>
+                          Total: R$ {total}
+                        </Text>
+                      </View>
+                    );
+                  }
+                  return null;
+                })() : null}
+
+                {/* Opção de atualizar o preço de custo padrão do produto */}
+                {restockCost && restockProduct?.costPrice &&
+                  Math.abs(parsePriceMask(restockCost) - parseFloat(restockProduct.costPrice)) > 0.001 ? (
+                  <Pressable
+                    onPress={() => setRestockUpdateCostPrice(!restockUpdateCostPrice)}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "#1A3A1F" }}
+                  >
+                    <View style={{
+                      width: 20, height: 20, borderRadius: 6, borderWidth: 2,
+                      borderColor: restockUpdateCostPrice ? "#4ADE80" : "#333",
+                      backgroundColor: restockUpdateCostPrice ? "#4ADE8022" : "transparent",
+                      alignItems: "center", justifyContent: "center"
+                    }}>
+                      {restockUpdateCostPrice && <Text style={{ color: "#4ADE80", fontSize: 12, fontWeight: "900" }}>✓</Text>}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, color: "#f0eeea", fontWeight: "600" }}>
+                        Atualizar preço de custo padrão
+                      </Text>
+                      <Text style={{ fontSize: 11, color: "#555", marginTop: 1 }}>
+                        De R$ {parseFloat(restockProduct.costPrice).toFixed(2).replace(".", ",")} → R$ {parsePriceMask(restockCost).toFixed(2).replace(".", ",")}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ) : null}
+
+                <Text style={{ fontSize: 11, color: "#4ADE8055", marginTop: 10 }}>
+                  ✓ Será lançado automaticamente como despesa no Financeiro
+                </Text>
+              </View>
               <Field label="Forma de Pagamento">
                 <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
                   {[{v:"cash",l:"Dinheiro"},{v:"card",l:"Cartão"},{v:"pix",l:"Pix"},{v:"other",l:"Outro"}].map((pm) => (

@@ -395,7 +395,23 @@ export const appRouter = router({
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getProductById(input.id)),
     create: barberProcedure
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), costPrice: z.string().optional().nullable(), stock: z.number().min(0).default(0), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true), tenantId: z.number().optional().nullable() }))
-      .mutation(({ input }) => db.createProduct(input as any)),
+      .mutation(async ({ input, ctx }) => {
+        const productId = await db.createProduct(input as any);
+        // Registrar despesa do estoque inicial automaticamente
+        if (input.stock > 0 && input.costPrice && parseFloat(input.costPrice) > 0) {
+          const totalCost = parseFloat(input.costPrice) * input.stock;
+          const today = new Date().toISOString().slice(0, 10);
+          await db.createExpense({
+            category: "Estoque",
+            description: `Estoque inicial: ${input.name} (${input.stock}x R$${parseFloat(input.costPrice).toFixed(2)})`,
+            amount: totalCost.toFixed(2),
+            date: today,
+            barberId: ctx?.barberId ?? null,
+            tenantId: input.tenantId ?? null,
+          } as any);
+        }
+        return productId;
+      }),
     update: barberProcedure
       .input(z.object({ id: z.number(), name: z.string().min(1).optional(), description: z.string().optional().nullable(), price: z.string().optional(), costPrice: z.string().optional().nullable(), stock: z.number().min(0).optional(), categoryId: z.number().optional().nullable(), isActive: z.boolean().optional() }))
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateProduct(id, data as any); }),
@@ -1928,6 +1944,7 @@ export const appRouter = router({
         productId: z.number(),
         quantity: z.number().min(1),
         unitCost: z.number().min(0).optional(),
+        updateCostPrice: z.boolean().optional().default(false),
         paymentMethod: z.string().optional(),
         note: z.string().optional(),
         barberId: z.number().optional(),
@@ -1936,6 +1953,9 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         const today = new Date().toISOString().slice(0, 10);
+        const product = await db.getProductById(input.productId);
+        const productName = product?.name ?? "Produto";
+
         // 1. Registrar entrada no histórico de estoque
         await db.addStockMovement({
           productId: input.productId,
@@ -1946,20 +1966,30 @@ export const appRouter = router({
           date: today,
           supplierId: input.supplierId,
         } as any);
-        // 2. Se houver custo unitário, registrar despesa financeira
+
+        // 2. Criar despesa financeira automaticamente
         if (input.unitCost && input.unitCost > 0) {
-          const product = await db.getProductById(input.productId);
-          const productName = product?.name ?? "Produto";
           const totalCost = input.unitCost * input.quantity;
           await db.createExpense({
             category: "Estoque",
-            description: `Reposição: ${productName} (${input.quantity}x R$${input.unitCost.toFixed(2)})${input.note ? ` - ${input.note}` : ""}`,
+            description: `Reposição: ${productName} (${input.quantity}x R$${input.unitCost.toFixed(2)})${input.note ? ` — ${input.note}` : ""}`,
             amount: String(totalCost.toFixed(2)),
             date: today,
             paymentMethod: input.paymentMethod ?? null,
             barberId: input.barberId ?? null,
+            tenantId: input.tenantId ?? null,
           } as any);
         }
+
+        // 3. Atualizar preço de custo do produto (se diferente do atual)
+        if (input.unitCost && input.unitCost > 0) {
+          const currentCost = product?.costPrice ? parseFloat(String(product.costPrice)) : null;
+          const isSameCost = currentCost !== null && Math.abs(currentCost - input.unitCost) < 0.001;
+          if (!isSameCost || input.updateCostPrice) {
+            await db.updateProduct(input.productId, { costPrice: input.unitCost.toFixed(2) } as any);
+          }
+        }
+
         return { success: true };
       }),
   }),
