@@ -69,6 +69,7 @@ function ProductsScreenInner() {
   const [restockNote, setRestockNote] = useState("");
   const [restockSupplierId, setRestockSupplierId] = useState<number | null>(null);
   const [restockUpdateCostPrice, setRestockUpdateCostPrice] = useState(true);
+  const [lowStockExpanded, setLowStockExpanded] = useState(false);
   const [filterSupplierId, setFilterSupplierId] = useState<number | null>(null);
 
   // Formulário de produto
