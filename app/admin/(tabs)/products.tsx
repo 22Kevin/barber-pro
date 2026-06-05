@@ -23,6 +23,7 @@ import { MediaUploader } from "@/components/media-uploader";
 import { AdminHeader } from "@/components/admin-header";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { useBarberAuth } from "@/lib/auth-context";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { useColors } from "@/hooks/use-colors";
 import { applyPriceMask, parsePriceMask } from "@/hooks/use-mask";
 
@@ -48,7 +49,7 @@ type Product = {
   minStockAlert?: number | null;
 };
 
-export default function ProductsScreen() {
+function ProductsScreenInner() {
   const colors = useColors();
   const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
@@ -693,4 +694,12 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   movRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.background },
   movIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center" },
 });
+}
+
+export default function ProductsScreen() {
+  return (
+    <ErrorBoundary screenName="Produtos">
+      <ProductsScreenInner />
+    </ErrorBoundary>
+  );
 }

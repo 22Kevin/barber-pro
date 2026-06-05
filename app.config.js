@@ -92,6 +92,13 @@ const config = {
         dark: { backgroundColor: "#0A0A0A" },
       },
     ],
+    [
+      "expo-image-picker",
+      {
+        photosPermission: "Permitir que o Barber Pro acesse suas fotos para adicionar imagens aos produtos.",
+        cameraPermission: "Permitir que o Barber Pro use a câmera para fotografar produtos.",
+      },
+    ],
     ["expo-build-properties", { android: { buildArchs: ["armeabi-v7a", "arm64-v8a"] } }],
     ...googleSignInPlugin,
   ],
