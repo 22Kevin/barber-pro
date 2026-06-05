@@ -3705,9 +3705,16 @@ async function renderProdutos(req: Request, res: Response) {
               <label class="form-label">Nome do Produto *</label>
               <input class="form-input" type="text" name="name" value="${esc(editProduct?.name ?? "")}" required />
             </div>
-            <div class="form-group">
-              <label class="form-label">Preço (R$) *</label>
-              <input class="form-input" type="text" id="prdPriceInput" name="price" inputmode="decimal" data-mask="price" value="${editProduct?.price ? parseFloat(editProduct.price).toFixed(2).replace('.', ',') : ''}" placeholder="0,00" required />
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group">
+                <label class="form-label">Preço de Venda (R$) *</label>
+                <input class="form-input" type="text" id="prdPriceInput" name="price" inputmode="decimal" data-mask="price" value="${editProduct?.price ? parseFloat(editProduct.price).toFixed(2).replace('.', ',') : ''}" placeholder="0,00" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Preço de Custo (R$)</label>
+                <input class="form-input" type="text" id="prdCostInput" name="costPrice" inputmode="decimal" data-mask="price" value="${editProduct?.costPrice ? parseFloat(editProduct.costPrice).toFixed(2).replace('.', ',') : ''}" placeholder="0,00" />
+                <span id="prd-margin-hint" style="font-size:11px;color:var(--success);display:none;margin-top:4px"></span>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">Tipo</label>
@@ -3777,6 +3784,27 @@ async function renderProdutos(req: Request, res: Response) {
                 };
                 reader.readAsDataURL(file);
               }
+
+              // Margem de lucro em tempo real
+              function parseMasked(v) {
+                return parseFloat((v || '0').replace(/\./g,'').replace(',','.')) || 0;
+              }
+              function updateMarginHint() {
+                var sell = parseMasked(document.getElementById('prdPriceInput')?.value);
+                var cost = parseMasked(document.getElementById('prdCostInput')?.value);
+                var hint = document.getElementById('prd-margin-hint');
+                if (!hint) return;
+                if (sell > 0 && cost > 0 && sell > cost) {
+                  var margin = ((sell - cost) / sell * 100).toFixed(1);
+                  var profit = (sell - cost).toFixed(2).replace('.', ',');
+                  hint.textContent = '✓ ' + margin + '% de margem  ·  R$ ' + profit + ' de lucro/un.';
+                  hint.style.display = 'block';
+                } else { hint.style.display = 'none'; }
+              }
+              // Bind após modal abrir (o modal é lazy)
+              document.addEventListener('input', function(e) {
+                if (e.target.id === 'prdPriceInput' || e.target.id === 'prdCostInput') updateMarginHint();
+              });
             </script>
           </div>
           <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:4px">
@@ -8774,20 +8802,36 @@ document.addEventListener('input', function(e) {
   // ─── CRUD Produtos ────────────────────────────────────────────────────────
   app.get("/admin/produtos", requireAdminAuth, (req, res) => renderProdutos(req, res));
   app.post("/admin/produtos", requireAdminAuth, async (req: Request, res: Response) => {
-    const { name, description, price, productType, stockQuantity, minStockAlert, isActive, mediaBase64, mediaMime, supplierId } = req.body;
+    const { name, description, price, costPrice, productType, stockQuantity, minStockAlert, isActive, mediaBase64, mediaMime, supplierId } = req.body;
     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
     const supplierIdNum = supplierId ? parseInt(supplierId) : null;
-    // Obter tenantId da sessão (fonte segura) — não confiar no body
     const _prdSession = (req as any).adminSession as { barberId: number; role: string };
     const _prdBarber = await db.getBarberById(_prdSession.barberId);
     const _prdTenantId = _prdBarber?.tenantId ?? null;
+    // Normalizar preço de custo (vem do form com máscara "1.234,56")
+    const costPriceNum = costPrice ? parseFloat(costPrice.replace(/\./g,'').replace(',','.')) : null;
+    const costPriceStr = costPriceNum && costPriceNum > 0 ? costPriceNum.toFixed(2) : null;
     let productId: number;
     if (editId) {
-      await db.updateProduct(editId, { name, description, price, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true", supplierId: supplierIdNum } as any);
+      await db.updateProduct(editId, { name, description, price, costPrice: costPriceStr, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true", supplierId: supplierIdNum } as any);
       productId = editId;
     } else {
-      const newProduct = await db.createProduct({ name, description, price: String(price), productType: productType || "sale", stockQuantity: parseInt(stockQuantity) || 0, minStockAlert: parseInt(minStockAlert) || 5, isActive: isActive === "true", supplierId: supplierIdNum, tenantId: _prdTenantId } as any);
+      const qtyNum = parseInt(stockQuantity) || 0;
+      const newProduct = await db.createProduct({ name, description, price: String(price), costPrice: costPriceStr, productType: productType || "sale", stockQuantity: qtyNum, minStockAlert: parseInt(minStockAlert) || 5, isActive: isActive === "true", supplierId: supplierIdNum, tenantId: _prdTenantId } as any);
       productId = (newProduct as any) ?? 0;
+      // Criar despesa do estoque inicial automaticamente
+      if (qtyNum > 0 && costPriceNum && costPriceNum > 0 && productId) {
+        const totalCost = costPriceNum * qtyNum;
+        const today = new Date().toISOString().slice(0, 10);
+        await db.createExpense({
+          category: "Estoque",
+          description: `Estoque inicial: ${name} (${qtyNum}x R$${costPriceNum.toFixed(2)})`,
+          amount: totalCost.toFixed(2),
+          date: today,
+          barberId: _prdSession.barberId,
+          tenantId: _prdTenantId,
+        } as any);
+      }
     }
     // Processar upload de mídia
     if (mediaBase64 && mediaMime && productId) {
@@ -10225,7 +10269,7 @@ document.addEventListener('input', function(e) {
       </form>
       <div class="card">
         <table>
-          <thead><tr><th>Produto</th><th>Tipo</th><th>Estoque</th><th>Alerta</th><th>Status</th><th>Preço</th><th>Ações</th></tr></thead>
+          <thead><tr><th>Produto</th><th>Tipo</th><th>Estoque</th><th>Alerta</th><th>Status</th><th>Preço Venda</th><th>Custo</th><th>Margem</th><th>Ações</th></tr></thead>
           <tbody>
             ${filteredProducts.length === 0 ? `<tr><td colspan="7" class="empty">Nenhum produto encontrado.</td></tr>` : filteredProducts.map((p: any) => `
               <tr>
@@ -10235,8 +10279,10 @@ document.addEventListener('input', function(e) {
                 <td style="color:var(--muted)">${p.minStockAlert}</td>
                 <td>${p.isLowStock ? '<span class="badge" style="background:rgba(239,68,68,0.15);color:var(--error)">Baixo</span>' : '<span class="badge badge-success">OK</span>'}</td>
                 <td>${fmtCurrency(p.price)}</td>
+                <td style="color:var(--muted)">${p.costPrice ? fmtCurrency(p.costPrice) : '—'}</td>
+                <td>${p.costPrice && parseFloat(p.costPrice) > 0 && parseFloat(p.price) > parseFloat(p.costPrice) ? '<span style="color:var(--success);font-weight:700;font-size:13px">' + ((parseFloat(p.price) - parseFloat(p.costPrice)) / parseFloat(p.price) * 100).toFixed(0) + '%</span>' : '<span style="color:var(--muted)">—</span>'}</td>
                 <td style="white-space:nowrap">
-                  <button onclick="openStockModal(${p.id}, '${esc(p.name).replace(/'/g, "\\'")}'  , ${p.stockQuantity})" class="btn btn-primary" style="font-size:12px;padding:4px 12px">+ Mov.</button>
+                  <button onclick="openStockModal(${p.id}, '${esc(p.name).replace(/'/g, "\\'")}'  , ${p.stockQuantity}, '${p.costPrice ? parseFloat(p.costPrice).toFixed(2) : ''}')" class="btn btn-primary" style="font-size:12px;padding:4px 12px">+ Mov.</button>
                   <a href="/admin/estoque/${p.id}/historico" class="btn btn-ghost" style="font-size:12px;padding:4px 10px"></a>
                 </td>
               </tr>
@@ -10290,25 +10336,59 @@ document.addEventListener('input', function(e) {
           <form method="POST" action="/admin/estoque/movimentacao">
             <input type="hidden" name="productId" id="stockProductId" />
             <input type="hidden" name="tab" value="${activeTab}" />
+            <input type="hidden" name="updateCostPrice" id="stockUpdateCost" value="0" />
             <div class="form-group">
               <label class="form-label">Tipo</label>
-              <select name="type" class="form-input" required>
+              <select name="type" id="stockType" class="form-input" required onchange="toggleCostFields()">
                 <option value="in">Entrada (compra/reposição)</option>
                 <option value="out">Saída (uso/venda manual)</option>
                 <option value="adjustment">Ajuste de inventário</option>
               </select>
             </div>
-            <div class="form-group">
-              <label class="form-label">Quantidade</label>
-              <input type="number" name="quantity" class="form-input" min="1" required />
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group">
+                <label class="form-label">Quantidade</label>
+                <input type="number" name="quantity" id="stockQty" class="form-input" min="1" required oninput="updateCostTotal()" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Data</label>
+                <input type="date" name="date" class="form-input" value="${today()}" required />
+              </div>
+            </div>
+            <!-- Seção de custo — aparece só em Entrada -->
+            <div id="costSection" style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:10px;padding:14px;margin-bottom:14px">
+              <div style="font-size:11px;font-weight:700;color:#4ADE80;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">💰 Custo da Compra</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Preço de Custo Unitário (R$)</label>
+                  <input type="text" name="unitCost" id="stockUnitCost" class="form-input" inputmode="decimal" placeholder="0,00" oninput="updateCostTotal()" />
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Forma de Pagamento</label>
+                  <select name="paymentMethod" class="form-input">
+                    <option value="">Selecione</option>
+                    <option value="cash">Dinheiro</option>
+                    <option value="pix">Pix</option>
+                    <option value="card">Cartão</option>
+                    <option value="boleto">Boleto</option>
+                  </select>
+                </div>
+              </div>
+              <div id="costTotalLine" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(74,222,128,0.15);display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:#4ADE8088" id="costTotalLabel"></span>
+                <span style="font-size:14px;font-weight:800;color:#4ADE80" id="costTotalValue"></span>
+              </div>
+              <div id="updateCostRow" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(74,222,128,0.15)">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+                  <input type="checkbox" id="updateCostCheck" onchange="document.getElementById('stockUpdateCost').value=this.checked?'1':'0'" style="width:15px;height:15px;accent-color:#4ADE80" />
+                  <span id="updateCostLabel" style="color:#f0eeea"></span>
+                </label>
+              </div>
+              <div style="font-size:11px;color:#4ADE8055;margin-top:8px">✓ Será lançado automaticamente como despesa no Financeiro</div>
             </div>
             <div class="form-group">
-              <label class="form-label">Motivo</label>
-              <input type="text" name="reason" class="form-input" placeholder="Ex: Compra do fornecedor, uso no serviço..." />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Data</label>
-              <input type="date" name="date" class="form-input" value="${today()}" required />
+              <label class="form-label">Motivo / Observação</label>
+              <input type="text" name="reason" class="form-input" placeholder="Ex: Compra no Fornecedor X, uso no serviço..." />
             </div>
             <div style="display:flex;gap:12px;margin-top:20px">
               <button type="button" onclick="document.getElementById('stockModal').style.display='none'" class="btn" style="flex:1">Cancelar</button>
@@ -10318,10 +10398,55 @@ document.addEventListener('input', function(e) {
         </div>
       </div>
       <script>
-        function openStockModal(id, name, qty) {
+        var _currentProductCost = null;
+
+        function openStockModal(id, name, qty, costPrice) {
           document.getElementById('stockProductId').value = id;
           document.getElementById('stockModalProd').textContent = name + ' — Estoque atual: ' + qty;
+          document.getElementById('stockUnitCost').value = costPrice ? costPrice.replace('.', ',') : '';
+          _currentProductCost = costPrice ? parseFloat(costPrice) : null;
+          document.getElementById('stockUpdateCost').value = '0';
+          document.getElementById('updateCostCheck').checked = false;
+          document.getElementById('stockType').value = 'in';
+          document.getElementById('stockQty').value = '';
+          toggleCostFields();
+          updateCostTotal();
           document.getElementById('stockModal').style.display = 'flex';
+        }
+
+        function toggleCostFields() {
+          var type = document.getElementById('stockType').value;
+          document.getElementById('costSection').style.display = type === 'in' ? 'block' : 'none';
+        }
+
+        function parseMasked(v) {
+          return parseFloat((v || '0').replace(/\./g,'').replace(',','.')) || 0;
+        }
+
+        function updateCostTotal() {
+          var cost = parseMasked(document.getElementById('stockUnitCost').value);
+          var qty = parseInt(document.getElementById('stockQty').value) || 0;
+          var totalLine = document.getElementById('costTotalLine');
+          var updateRow = document.getElementById('updateCostRow');
+
+          if (cost > 0 && qty > 0) {
+            var total = (cost * qty).toFixed(2).replace('.', ',');
+            document.getElementById('costTotalLabel').textContent = qty + 'x R$ ' + cost.toFixed(2).replace('.', ',');
+            document.getElementById('costTotalValue').textContent = 'Total: R$ ' + total;
+            totalLine.style.display = 'flex';
+          } else {
+            totalLine.style.display = 'none';
+          }
+
+          if (cost > 0 && _currentProductCost !== null && Math.abs(cost - _currentProductCost) > 0.005) {
+            var oldFmt = _currentProductCost.toFixed(2).replace('.', ',');
+            var newFmt = cost.toFixed(2).replace('.', ',');
+            document.getElementById('updateCostLabel').innerHTML =
+              'Atualizar preço de custo padrão do produto<br><small style="color:#4ADE8088">De R$ ' + oldFmt + ' → R$ ' + newFmt + '</small>';
+            updateRow.style.display = 'block';
+          } else {
+            updateRow.style.display = 'none';
+          }
         }
       </script>
     `;
@@ -10330,15 +10455,46 @@ document.addEventListener('input', function(e) {
   }));
 
   app.post("/admin/estoque/movimentacao", requireAdminAuth, async (req: Request, res: Response) => {
-    const { productId, type, quantity, reason, date } = req.body;
+    const { productId, type, quantity, reason, date, unitCost, paymentMethod, updateCostPrice } = req.body;
     if (!productId || !type || !quantity || !date) { res.redirect("/admin/estoque?error=1"); return; }
+    const session = (req as any).adminSession as { barberId: number };
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId ?? null;
+    const qtyNum = parseInt(quantity);
+    const unitCostNum = unitCost ? parseFloat(unitCost.replace(/\./g,'').replace(',','.')) : null;
+
     await db.addStockMovement({
       productId: parseInt(productId),
       type: type as "in" | "out" | "adjustment",
-      quantity: parseInt(quantity),
+      quantity: qtyNum,
       reason: reason || undefined,
       date,
-    });
+      barberId: session.barberId,
+    } as any);
+
+    // Entrada de estoque: criar despesa + atualizar custo do produto
+    if (type === "in" && unitCostNum && unitCostNum > 0) {
+      const product = await db.getProductById(parseInt(productId));
+      const productName = product?.name ?? "Produto";
+      const totalCost = unitCostNum * qtyNum;
+
+      // Criar despesa no financeiro
+      await db.createExpense({
+        category: "Estoque",
+        description: `Reposição: ${productName} (${qtyNum}x R$${unitCostNum.toFixed(2)})${reason ? ` — ${reason}` : ""}`,
+        amount: totalCost.toFixed(2),
+        date,
+        paymentMethod: paymentMethod || null,
+        barberId: session.barberId,
+        tenantId,
+      } as any);
+
+      // Atualizar preço de custo do produto se solicitado ou diferente
+      if (updateCostPrice === "1") {
+        await db.updateProduct(parseInt(productId), { costPrice: unitCostNum.toFixed(2) } as any);
+      }
+    }
+
     res.redirect("/admin/estoque?saved=1");
   });
 
