@@ -108,19 +108,23 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
     const PLAN_PRICES: Record<string, number> = { solo: 49, starter: 49, team: 89, studio: 149, estudios: 149 };
 
     // Buscar tenants cujo trial expirou há mais de GRACE_PERIOD_HOURS horas
+    // Use only columns guaranteed to exist in all environments
     const expired = await (dbConn as any).execute(`
       SELECT
-        t.id AS "tenantId", t.name AS "tenantName",
+        t.id          AS "tenantId",
+        t.name        AS "tenantName",
+        t.plan        AS "plan",
         t."trialEndsAt",
-        COALESCE(t."barberproPlanName", t.plan, 'team') AS plan,
-        t."barberproAsaasCustomerId", t.email AS "tenantEmail",
-        b.id AS "adminBarberId", b.email AS "adminEmail", b.name AS "adminName"
+        t."barberproSubscriptionId",
+        b.id          AS "adminBarberId",
+        b.email       AS "adminEmail",
+        b.name        AS "adminName"
       FROM tenants t
       LEFT JOIN barbers b ON b."tenantId" = t.id AND b.role = 'super_admin'
       WHERE
         (t."barberproSubscriptionStatus" IS NULL OR t."barberproSubscriptionStatus" = 'trial')
         AND t."trialEndsAt" IS NOT NULL
-        AND t."trialEndsAt" < '${graceCutoffStr}'::timestamp
+        AND t."trialEndsAt" < '${graceCutoffStr}'
         AND (t."barberproSubscriptionId" IS NULL OR t."barberproSubscriptionId" = '')
       ORDER BY t."trialEndsAt" ASC
       LIMIT 20
