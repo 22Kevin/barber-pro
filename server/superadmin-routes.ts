@@ -3628,7 +3628,8 @@ export function registerSuperAdminRoutes(app: Express): void {
         // Trial expira em 1 dia
         const d = new Date(); d.setDate(d.getDate() + 1);
         const d1str = d.toISOString().slice(0,10);
-        await dbConn!.execute(sql`UPDATE tenants SET "trialEndsAt" = ${d1str}::date, "barberproSubscriptionStatus" = 'trial', "barberproTrialReminderSent" = false, "barberproSubscriptionId" = NULL WHERE id = ${tid}`);
+        await dbConn!.execute(sql`UPDATE tenants SET "trialEndsAt" = ${d1str}::date, "barberproSubscriptionStatus" = 'trial', "barberproSubscriptionId" = NULL WHERE id = ${tid}`);
+        try { await dbConn!.execute(sql`UPDATE tenants SET "barberproTrialReminderSent" = false WHERE id = ${tid}`); } catch {}
         res.redirect("/superadmin/trial-test?msg=Trial+definido+para+expirar+em+1+dia.+Rode+o+job+para+receber+o+email+e+push.");
 
       } else if (action === 'set-expired-in-grace') {
@@ -3636,6 +3637,7 @@ export function registerSuperAdminRoutes(app: Express): void {
         const d = new Date(Date.now() - 1 * 60 * 60 * 1000);
         const dstr = d.toISOString().slice(0,10);
         await dbConn!.execute(sql`UPDATE tenants SET "trialEndsAt" = ${dstr}::date, "barberproSubscriptionStatus" = 'trial', "barberproSubscriptionId" = NULL WHERE id = ${tid}`);
+        try { await dbConn!.execute(sql`UPDATE tenants SET "barberproTrialReminderSent" = false WHERE id = ${tid}`); } catch {}
         res.redirect("/superadmin/trial-test?msg=Trial+marcado+como+expirado+há+1h+(dentro+do+grace).+Acesse+o+painel+do+tenant+para+ver+o+banner.");
 
       } else if (action === 'set-expired-past-grace') {
@@ -3643,6 +3645,7 @@ export function registerSuperAdminRoutes(app: Express): void {
         const d = new Date(Date.now() - 72 * 60 * 60 * 1000);
         const dstr = d.toISOString().slice(0,10);
         await dbConn!.execute(sql`UPDATE tenants SET "trialEndsAt" = ${dstr}::date, "barberproSubscriptionStatus" = 'trial', "barberproSubscriptionId" = NULL WHERE id = ${tid}`);
+        try { await dbConn!.execute(sql`UPDATE tenants SET "barberproTrialReminderSent" = false WHERE id = ${tid}`); } catch {}
         res.redirect("/superadmin/trial-test?msg=Trial+expirado+há+72h.+Rode+o+job+para+disparar+bloqueio+e+criação+da+subscription+Asaas.");
 
       } else if (action === 'trigger-job') {
@@ -3673,7 +3676,8 @@ export function registerSuperAdminRoutes(app: Express): void {
         // Restaura trial limpo de 14 dias
         const d = new Date(); d.setDate(d.getDate() + 14);
         const d1str = d.toISOString().slice(0,10);
-        await dbConn!.execute(sql`UPDATE tenants SET "trialEndsAt" = ${d1str}::date, "barberproSubscriptionStatus" = 'trial', "barberproTrialReminderSent" = false, "barberproSubscriptionId" = NULL WHERE id = ${tid}`);
+        await dbConn!.execute(sql`UPDATE tenants SET "trialEndsAt" = ${d1str}::date, "barberproSubscriptionStatus" = 'trial', "barberproSubscriptionId" = NULL WHERE id = ${tid}`);
+        try { await dbConn!.execute(sql`UPDATE tenants SET "barberproTrialReminderSent" = false WHERE id = ${tid}`); } catch {}
         res.redirect("/superadmin/trial-test?msg=Trial+resetado+para+14+dias+a+partir+de+hoje.");
 
       } else {
