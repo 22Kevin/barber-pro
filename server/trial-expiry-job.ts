@@ -105,10 +105,11 @@ export function buildTrialExpiryEmailPublic(tenantName: string, adminName: strin
 async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCutoffStr: string, getAllBarbers: Function) {
   try {
     const { createAsaasSubscription, getOrCreateAsaasCustomer, asaasEnabled } = await import("./asaas");
+    const { sql } = await import("drizzle-orm");
     const PLAN_PRICES: Record<string, number> = { solo: 49, starter: 49, team: 89, studio: 149, estudios: 149 };
 
     // Buscar tenants cujo trial expirou há mais de GRACE_PERIOD_HOURS horas
-    const expired = await dbConn.execute(`
+    const expired = await dbConn.execute(sql`
       SELECT
         t.id AS "tenantId", t.name AS "tenantName",
         t."trialEndsAt", t."barberproPlanName", t.plan,
@@ -119,7 +120,7 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
       WHERE
         (t."barberproSubscriptionStatus" IS NULL OR t."barberproSubscriptionStatus" = 'trial')
         AND t."trialEndsAt" IS NOT NULL
-        AND t."trialEndsAt" < '${graceCutoffStr}'::date
+        AND t."trialEndsAt" < ${graceCutoffStr}::date
         AND (t."barberproSubscriptionId" IS NULL OR t."barberproSubscriptionId" = '')
       ORDER BY t."trialEndsAt" ASC
       LIMIT 20
@@ -134,10 +135,9 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
 
         const plan = t.barberproPlanName ?? t.plan ?? 'team';
         const price = PLAN_PRICES[plan] ?? 89;
-        const today = new Date().toISOString().slice(0, 10);
 
         // 1. Marcar como expirado no banco para acionar o bloqueio
-        await dbConn.execute(`
+        await dbConn.execute(sql`
           UPDATE tenants SET
             "barberproSubscriptionStatus" = 'expired',
             "updatedAt" = NOW()
@@ -168,11 +168,12 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
               });
 
               // Salvar ID da subscription e mudar status para pending
-              await dbConn.execute(`
+              const subId = subResult.subscriptionId;
+              await dbConn.execute(sql`
                 UPDATE tenants SET
-                  "barberproSubscriptionId" = '${subResult.subscriptionId}',
+                  "barberproSubscriptionId" = ${subId},
                   "barberproSubscriptionStatus" = 'pending',
-                  "barberproNextDueDate" = '${nextDueStr}'::date,
+                  "barberproNextDueDate" = ${nextDueStr}::date,
                   "updatedAt" = NOW()
                 WHERE id = ${t.tenantId}
               `);
