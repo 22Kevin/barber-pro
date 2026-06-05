@@ -120,7 +120,7 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
       WHERE
         (t."barberproSubscriptionStatus" IS NULL OR t."barberproSubscriptionStatus" = 'trial')
         AND t."trialEndsAt" IS NOT NULL
-        AND t."trialEndsAt" < ${graceCutoffStr}::date
+        AND t."trialEndsAt"::date < CAST(${graceCutoffStr} AS DATE)
         AND (t."barberproSubscriptionId" IS NULL OR t."barberproSubscriptionId" = '')
       ORDER BY t."trialEndsAt" ASC
       LIMIT 20
@@ -173,7 +173,7 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
                 UPDATE tenants SET
                   "barberproSubscriptionId" = ${subId},
                   "barberproSubscriptionStatus" = 'pending',
-                  "barberproNextDueDate" = ${nextDueStr}::date,
+                  "barberproNextDueDate" = CAST(${nextDueStr} AS DATE),
                   "updatedAt" = NOW()
                 WHERE id = ${t.tenantId}
               `);
