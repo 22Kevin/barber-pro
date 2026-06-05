@@ -10283,7 +10283,7 @@ document.addEventListener('input', function(e) {
                 <td>${p.costPrice && parseFloat(p.costPrice) > 0 && parseFloat(p.price) > parseFloat(p.costPrice) ? '<span style="color:var(--success);font-weight:700;font-size:13px">' + ((parseFloat(p.price) - parseFloat(p.costPrice)) / parseFloat(p.price) * 100).toFixed(0) + '%</span>' : '<span style="color:var(--muted)">—</span>'}</td>
                 <td style="white-space:nowrap">
                   <button onclick="openStockModal(${p.id}, '${esc(p.name).replace(/'/g, "\\'")}'  , ${p.stockQuantity}, '${p.costPrice ? parseFloat(p.costPrice).toFixed(2) : ''}')" class="btn btn-primary" style="font-size:12px;padding:4px 12px">+ Mov.</button>
-                  <a href="/admin/estoque/${p.id}/historico" class="btn btn-ghost" style="font-size:12px;padding:4px 10px"></a>
+                  <a href="/admin/estoque/${p.id}/historico" class="btn btn-ghost" style="font-size:12px;padding:4px 12px;display:inline-flex;align-items:center;gap:4px" title="Ver histórico de movimentações">📋 Histórico</a>
                 </td>
               </tr>
             `).join("")}
@@ -10358,9 +10358,9 @@ document.addEventListener('input', function(e) {
             <!-- Seção de custo — aparece só em Entrada -->
             <div id="costSection" style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:10px;padding:14px;margin-bottom:14px">
               <div style="font-size:11px;font-weight:700;color:#4ADE80;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">💰 Custo da Compra</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end">
                 <div class="form-group" style="margin-bottom:0">
-                  <label class="form-label">Preço de Custo Unitário (R$)</label>
+                  <label class="form-label" style="white-space:nowrap">Preço de Custo Unitário (R$)</label>
                   <input type="text" name="unitCost" id="stockUnitCost" class="form-input" inputmode="decimal" placeholder="0,00" oninput="updateCostTotal()" />
                 </div>
                 <div class="form-group" style="margin-bottom:0">
