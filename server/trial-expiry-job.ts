@@ -114,6 +114,8 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
         t.id          AS "tenantId",
         t.name        AS "tenantName",
         t.plan        AS "plan",
+        t.cnpj        AS "cnpj",
+        t.phone       AS "phone",
         t."trialEndsAt",
         t."barberproSubscriptionId",
         b.id          AS "adminBarberId",
@@ -146,7 +148,8 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
         );
 
         // 2. Se Asaas estiver configurado, criar subscription pendente para o barbeiro pagar
-        if (asaasEnabled) {
+        const cpfCnpj = (t.cnpj ?? "").replace(/\D/g, "");
+        if (asaasEnabled && cpfCnpj.length >= 11) {
           try {
             const adminEmail = t.adminEmail ?? t.tenantEmail;
             if (adminEmail) {
@@ -176,36 +179,69 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
 
               console.log(`[trial-expiry] ✅ Subscription criada no Asaas para ${t.tenantName}: ${subResult.subscriptionId}`);
 
-              // 3. Enviar email com link de pagamento
-              if (adminEmail && subResult.pixCopyCola || subResult.pixQrCode) {
-                await import("./email").then(async ({ sendEmail, emailLayout, ctaButton }) => {
-                  const html = emailLayout(`
-                    <div style="text-align:center;margin-bottom:24px">
-                      <div style="font-size:40px;margin-bottom:12px">⏰</div>
-                      <h2 style="font-size:20px;font-weight:800;color:#ECEDEE;margin:0 0 8px">
-                        Seu período de teste encerrou
-                      </h2>
-                      <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0">
-                        Olá, <strong style="color:#ECEDEE">${t.adminName ?? 'Admin'}</strong>!
-                        O trial do <strong style="color:#ECEDEE">${t.tenantName}</strong> encerrou.
-                        Para reativar o acesso, efetue o pagamento abaixo.
-                      </p>
-                    </div>
-                    <div style="background:#1A1A1A;border:1px solid #C9A84C33;border-radius:14px;padding:20px;text-align:center;margin-bottom:24px">
-                      <div style="font-size:12px;color:#666;margin-bottom:6px">VALOR MENSAL</div>
-                      <div style="font-size:32px;font-weight:900;color:#C9A84C">R$ ${price.toFixed(2).replace('.',',')}</div>
-                      <div style="font-size:12px;color:#666;margin-top:4px">Plano ${planLabels[plan] ?? plan} · cobrança mensal</div>
-                    </div>
-                    ${ctaButton('Pagar e reativar acesso →', 'https://usebarberpro.com/admin/configuracoes?tab=pagamentos')}
-                  `, { headerSubtitle: t.tenantName, previewText: 'Pague agora para reativar o Barber Pro' });
-
-                  await sendEmail({ to: adminEmail, subject: `🔒 Trial encerrado — Reative o ${t.tenantName} no Barber Pro`, html });
-                }).catch(() => {});
-              }
+              // 3. Enviar email com link de pagamento (feito abaixo, fora do bloco Asaas)
             }
           } catch (asaasErr: any) {
             console.error(`[trial-expiry] Erro ao criar subscription Asaas para ${t.tenantName}:`, asaasErr.message);
-            // Mesmo sem Asaas, o status expired já foi setado → barbeiro vê tela de bloqueio
+          }
+        } else if (asaasEnabled && cpfCnpj.length < 11) {
+          // CPF/CNPJ não disponível — bloquear acesso mas não tentar criar no Asaas.
+          // O barbeiro vai completar o cadastro ao clicar no magic link e pagar pela web.
+          console.log(`[trial-expiry] ${t.tenantName}: sem CPF/CNPJ — bloqueando acesso, email com magic link enviado.`);
+        }
+
+        // 4. Sempre enviar email de bloqueio com magic link (independente do Asaas)
+        const adminEmail = t.adminEmail;
+        if (adminEmail) {
+          try {
+            const { generateMagicLink } = await import("./admin-routes") as any;
+            const plan = t.plan ?? 'team';
+            const PLAN_PRICES_2: Record<string, number> = { solo: 49, starter: 49, team: 89, studio: 149 };
+            const price = PLAN_PRICES_2[plan] ?? 89;
+            const planLabels2: Record<string,string> = { solo:'Solo', starter:'Solo', team:'Equipe', studio:'Estúdio' };
+
+            let links;
+            try { links = await generateMagicLink(t.tenantId); } catch {}
+
+            const { sendEmail: sendMail, emailLayout, ctaButton } = await import("./email");
+            const ctaUrl = links?.base ?? 'https://usebarberpro.com/admin/configuracoes?tab=pagamentos';
+            const html = emailLayout(`
+              <div style="text-align:center;margin-bottom:24px">
+                <div style="font-size:40px;margin-bottom:12px">🔒</div>
+                <h2 style="font-size:20px;font-weight:800;color:#ECEDEE;margin:0 0 8px">Seu período de teste encerrou</h2>
+                <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0">
+                  Olá, <strong style="color:#ECEDEE">${t.adminName ?? 'Admin'}</strong>!
+                  O acesso ao <strong style="color:#ECEDEE">${t.tenantName}</strong> foi suspenso.
+                  Assine um plano para reativar imediatamente.
+                </p>
+              </div>
+              <div style="background:#1A1A1A;border:1px solid #C9A84C33;border-radius:14px;padding:20px;text-align:center;margin-bottom:24px">
+                <div style="font-size:11px;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Plano recomendado</div>
+                <div style="font-size:28px;font-weight:900;color:#C9A84C">R$ ${price.toFixed(2).replace('.',',')}<span style="font-size:13px;color:#666;font-weight:400">/mês</span></div>
+                <div style="font-size:12px;color:#666;margin-top:4px">Plano ${planLabels2[plan] ?? plan}</div>
+              </div>
+              ${links ? `
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+                <a href="${links.solo}" style="display:block;background:#1A1A1A;border:1px solid #2A2A2A;border-radius:10px;padding:12px;text-align:center;text-decoration:none">
+                  <div style="font-weight:700;color:#ECEDEE;font-size:13px">Solo</div>
+                  <div style="color:#C9A84C;font-size:16px;font-weight:800">R$49</div>
+                </a>
+                <a href="${links.team}" style="display:block;background:#1A1A1A;border:2px solid #C9A84C55;border-radius:10px;padding:12px;text-align:center;text-decoration:none">
+                  <div style="font-weight:700;color:#C9A84C;font-size:13px">Equipe ✓</div>
+                  <div style="color:#C9A84C;font-size:16px;font-weight:800">R$89</div>
+                </a>
+                <a href="${links.studio}" style="display:block;background:#1A1A1A;border:1px solid #2A2A2A;border-radius:10px;padding:12px;text-align:center;text-decoration:none">
+                  <div style="font-weight:700;color:#ECEDEE;font-size:13px">Estúdio</div>
+                  <div style="color:#C9A84C;font-size:16px;font-weight:800">R$149</div>
+                </a>
+              </div>` : ''}
+              ${ctaButton('🚀 Reativar acesso agora →', ctaUrl)}
+            `, { headerSubtitle: t.tenantName, previewText: `Reative o ${t.tenantName} — clique para assinar` });
+
+            await sendMail({ to: adminEmail, subject: `🔒 Acesso suspenso — Reative o ${t.tenantName} no Barber Pro`, html });
+            console.log(`[trial-expiry] ✅ Email de bloqueio enviado para ${adminEmail} (${t.tenantName})`);
+          } catch (emailErr: any) {
+            console.error(`[trial-expiry] Erro ao enviar email de bloqueio para ${t.tenantName}:`, emailErr.message);
           }
         }
 
