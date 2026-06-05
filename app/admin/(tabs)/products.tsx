@@ -42,6 +42,7 @@ type Product = {
   name: string;
   description: string | null;
   price: string;
+  costPrice?: string | null;
   stock: number;
   isActive: boolean;
   categoryId: number | null;
@@ -74,6 +75,8 @@ function ProductsScreenInner() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const handlePriceChange = (t: string) => setPrice(applyPriceMask(t));
+  const [costPrice, setCostPrice] = useState("");
+  const handleCostPriceChange = (t: string) => setCostPrice(applyPriceMask(t));
   const [stock, setStock] = useState("0");
   const [isActive, setIsActive] = useState(true);
   const [selectedSupplierId, setSelectedSupplierId] = useState<number | null>(null);
@@ -150,7 +153,7 @@ function ProductsScreenInner() {
   function openCreate() {
     setEditing(null);
     setSavedProductId(null);
-    setName(""); setDescription(""); setPrice(""); setStock("0"); setIsActive(true);
+    setName(""); setDescription(""); setPrice(""); setCostPrice(""); setStock("0"); setIsActive(true);
     setSelectedSupplierId(null);
     setShowModal(true);
   }
@@ -158,7 +161,7 @@ function ProductsScreenInner() {
   function openEdit(p: Product) {
     setEditing(p);
     setSavedProductId(p.id);
-    setName(p.name); setDescription(p.description ?? ""); setPrice(applyPriceMask(p.price)); setStock(String(p.stock)); setIsActive(p.isActive);
+    setName(p.name); setDescription(p.description ?? ""); setPrice(applyPriceMask(p.price)); setCostPrice(applyPriceMask(p.costPrice ?? "")); setStock(String(p.stock)); setIsActive(p.isActive);
     setSelectedSupplierId(p.supplierId ?? null);
     setShowModal(true);
   }
@@ -170,7 +173,8 @@ function ProductsScreenInner() {
     const priceNum = parsePriceMask(price);
     if (isNaN(priceNum) || priceNum <= 0) { Alert.alert("Atenção", "Informe um preço válido."); return; }
     const stockNum = parseInt(stock) || 0;
-    const data = { name: name.trim(), description: description.trim() || null, price: priceNum.toFixed(2), stock: stockNum, isActive, supplierId: selectedSupplierId ?? null };
+    const costPriceNum = costPrice ? parsePriceMask(costPrice) : null;
+    const data = { name: name.trim(), description: description.trim() || null, price: priceNum.toFixed(2), costPrice: costPriceNum && !isNaN(costPriceNum) ? costPriceNum.toFixed(2) : null, stock: stockNum, isActive, supplierId: selectedSupplierId ?? null };
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data } as any);
     } else {
@@ -351,6 +355,13 @@ function ProductsScreenInner() {
                       <View style={[styles.metaChip, styles.priceChip]}>
                         <Text style={styles.priceText}>R$ {parseFloat(item.price).toFixed(2).replace(".", ",")}</Text>
                       </View>
+                      {item.costPrice && parseFloat(item.costPrice) > 0 && parseFloat(item.price) > parseFloat(item.costPrice) && (
+                        <View style={[styles.metaChip, { backgroundColor: "#0D2B1A" }]}>
+                          <Text style={{ fontSize: 11, color: "#4ADE80", fontWeight: "700" }}>
+                            {((parseFloat(item.price) - parseFloat(item.costPrice)) / parseFloat(item.price) * 100).toFixed(0)}% margem
+                          </Text>
+                        </View>
+                      )}
                       <View style={[styles.metaChip, { backgroundColor: getStockColor(item.stock, minAlert) + "22" }]}>
                         <Text style={[styles.stockText, { color: getStockColor(item.stock, minAlert) }]}>
                           Estoque: {item.stock}
@@ -400,15 +411,41 @@ function ProductsScreenInner() {
                 </Field>
                 <View style={{ flexDirection: "row", gap: 12 }}>
                   <View style={{ flex: 1 }}>
-                    <Field label="Preço (R$) *">
+                    <Field label="Preço de Venda (R$) *">
                       <TextInput style={styles.input} value={price} onChangeText={handlePriceChange} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
                     </Field>
                   </View>
+                  <View style={{ flex: 1 }}>
+                    <Field label="Preço de Custo (R$)">
+                      <TextInput style={styles.input} value={costPrice} onChangeText={handleCostPriceChange} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
+                    </Field>
+                  </View>
+                </View>
+                <View style={{ flexDirection: "row", gap: 12 }}>
                   <View style={{ flex: 1 }}>
                     <Field label="Estoque">
                       <TextInput style={styles.input} value={stock} onChangeText={setStock} placeholder="0" placeholderTextColor="#555" keyboardType="number-pad" />
                     </Field>
                   </View>
+                  {/* Margem de lucro calculada automaticamente */}
+                  {costPrice && price ? (() => {
+                    const sell = parsePriceMask(price);
+                    const cost = parsePriceMask(costPrice);
+                    if (sell > 0 && cost > 0 && sell > cost) {
+                      const margin = ((sell - cost) / sell * 100).toFixed(1);
+                      const profit = (sell - cost).toFixed(2).replace(".", ",");
+                      return (
+                        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+                          <View style={{ backgroundColor: "#0D2B1A", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#1A4A2A", marginBottom: 2 }}>
+                            <Text style={{ fontSize: 9, color: "#4ADE80", fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 3 }}>Margem de Lucro</Text>
+                            <Text style={{ fontSize: 18, fontWeight: "900", color: "#4ADE80" }}>{margin}%</Text>
+                            <Text style={{ fontSize: 11, color: "#22c55e80" }}>+R$ {profit} por unidade</Text>
+                          </View>
+                        </View>
+                      );
+                    }
+                    return <View style={{ flex: 1 }} />;
+                  })() : <View style={{ flex: 1 }} />}
                 </View>
 
                 {/* Seletor de Fornecedor — obrigatório */}

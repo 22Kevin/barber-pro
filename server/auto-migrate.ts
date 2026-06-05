@@ -165,6 +165,7 @@ export async function runAutoMigrate(db: any): Promise<void> {
         name VARCHAR(255) NOT NULL,
         description TEXT,
         price DECIMAL(10,2) NOT NULL,
+        "costPrice" DECIMAL(10,2),
         stock INT NOT NULL DEFAULT 0,
         "productType" product_type NOT NULL DEFAULT 'sale',
         "stockQuantity" INT NOT NULL DEFAULT 0,
@@ -502,6 +503,10 @@ export async function runAutoMigrate(db: any): Promise<void> {
         "emailSent" BOOLEAN NOT NULL DEFAULT FALSE,
         notes TEXT
       )`,
+    },
+    {
+      name: "products_costPrice_col",
+      sql: `ALTER TABLE products ADD COLUMN IF NOT EXISTS "costPrice" DECIMAL(10,2)`,
     },
     {
       name: "waitlist",
