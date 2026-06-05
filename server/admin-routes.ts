@@ -85,6 +85,8 @@ function withErrorPage(
   fn: (req: Request, res: Response) => Promise<void>
 ) {
   return async (req: Request, res: Response) => {
+    // Make trialInGrace available inside handlers
+    (res as any).trialGrace = (req as any).trialInGrace ?? null;
     try {
       await fn(req, res);
     } catch (err: any) {
@@ -114,7 +116,7 @@ function withErrorPage(
           <a href="${retryUrl}" class="btn btn-primary" style="display:inline-block;padding:12px 28px;background:var(--gold);color:#0C0C0C;border-radius:10px;font-weight:700;text-decoration:none;font-size:14px">Tentar novamente</a>
         </div>
       `;
-      res.status(503).send(adminLayout(pageName, activeMenu, errorBody, barberName, tenantPlan));
+      res.status(503).send(adminLayoutWithGrace(res, pageName, activeMenu, errorBody, barberName, tenantPlan));
     }
   };
 }
@@ -205,8 +207,10 @@ async function requireActiveSubscription(req: Request, res: Response, next: Next
       return res.redirect("/admin/configuracoes?tab=pagamentos&expired=1");
     }
     // Durante o grace period: mostra banner de aviso sem bloquear
-    if (status === 'trial' && trialExpiredInGrace) {
-      (req as any).trialInGrace = true; // disponível no handler para exibir banner
+    if (status === 'trial' && trialExpiredInGrace && trialEndsAt) {
+      const elapsed = now.getTime() - trialEndsAt.getTime();
+      const hoursLeft = Math.max(0, Math.ceil((GRACE_MS - elapsed) / 3600000));
+      (req as any).trialInGrace = { hoursLeft };
     }
     return next();
   } catch {
@@ -215,7 +219,12 @@ async function requireActiveSubscription(req: Request, res: Response, next: Next
 }
 
 // ─── Layout base do painel ────────────────────────────────────────────────────
-function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>): string {
+// Helper used by route handlers to auto-inject trialGrace from res object
+function adminLayoutWithGrace(res: any, title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>): string {
+  return adminLayout(title, activePage, body, barberName, tenantPlan, breadcrumb, res?.trialGrace ?? null);
+}
+
+function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, trialGrace?: { hoursLeft: number } | null): string {
   const planBadge: Record<string, { label: string; color: string; bg: string }> = {
     solo: { label: "Solo", color: "#9BA1A6", bg: "rgba(155,161,166,0.12)" },
     team: { label: "Equipe", color: "#c9a84c", bg: "rgba(201,168,76,0.12)" },
@@ -730,6 +739,20 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     </div>
     <div class="content">
       ${breadcrumb ? `<nav style="display:flex;align-items:center;gap:6px;margin-bottom:20px;font-size:12px;">${breadcrumb.map((b, i) => i < breadcrumb.length - 1 ? `<a href="${b.href}" style="color:var(--gold);text-decoration:none;opacity:0.75;transition:opacity 0.15s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.75'">${b.label}</a><span style="color:var(--muted);font-size:13px;">›</span>` : `<span style="color:var(--text);font-weight:600;">${b.label}</span>`).join('')}</nav>` : ''}
+      ${trialGrace ? `
+      <div style="background:linear-gradient(135deg,#2D1B00,#181000);border:1px solid rgba(201,168,76,0.35);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="font-size:26px;flex-shrink:0">⏰</div>
+        <div style="flex:1;min-width:200px">
+          <div style="font-weight:800;color:#F0EEE8;font-size:14px;margin-bottom:3px">Seu período de teste expirou</div>
+          <div style="font-size:13px;color:#C9A84CAA;line-height:1.5">
+            Você ainda tem <strong style="color:#C9A84C">${trialGrace.hoursLeft}h</strong> de acesso garantido antes do bloqueio automático.
+          </div>
+        </div>
+        <a href="/admin/configuracoes?tab=pagamentos" style="background:#C9A84C;color:#0A0A0A;font-weight:800;font-size:13px;padding:10px 20px;border-radius:10px;text-decoration:none;white-space:nowrap;flex-shrink:0">
+          🚀 Assinar agora →
+        </a>
+      </div>
+      ` : ''}
       ${body}
     </div>
   </div>
@@ -2011,7 +2034,7 @@ async function renderDashboard(req: Request, res: Response) {
       })();
     </script>
   `;
-  res.send(adminLayout("Dashboard", "dashboard", body, barber?.name, dashTenant?.plan ?? ""));
+  res.send(adminLayoutWithGrace(res, "Dashboard", "dashboard", body, barber?.name, dashTenant?.plan ?? ""));
   } catch (dashErr: any) {
     console.error("[Dashboard] Erro ao renderizar:", dashErr?.message ?? dashErr);
     res.status(500).send(`<h2>Erro ao carregar o dashboard. <a href="/admin">Tentar novamente</a></h2>`);
@@ -3320,7 +3343,7 @@ async function renderAgenda(req: Request, res: Response) {
   const tenantObj = barber?.tenantId ? await db.getTenantById(barber.tenantId) : null;
   const _tp = (tenantObj as any)?.plan ?? "";
   const tenantSlug = (tenantObj as any)?.slug ?? "";
-  res.send(adminLayout(`Agenda — ${fmtDate(dateStr)}`, "agenda", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Agenda",href:"/admin/agenda"}]));
+  res.send(adminLayoutWithGrace(res, `Agenda — ${fmtDate(dateStr)}`, "agenda", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Agenda",href:"/admin/agenda"}]));
 }
 
 // ─── Clientes ─────────────────────────────────────────────────────────────────
@@ -3516,7 +3539,7 @@ async function renderClientes(req: Request, res: Response) {
   `;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Clientes", "clientes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Clientes",href:"/admin/clientes"}]));
+  res.send(adminLayoutWithGrace(res, "Clientes", "clientes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Clientes",href:"/admin/clientes"}]));
 }
 
 // ─── Serviços ─────────────────────────────────────────────────────────────────
@@ -3685,7 +3708,7 @@ async function renderServicos(req: Request, res: Response) {
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Serviços", "servicos", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Serviços",href:"/admin/servicos"}]));
+  res.send(adminLayoutWithGrace(res, "Serviços", "servicos", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Serviços",href:"/admin/servicos"}]));
 }
 
 async function renderProdutos(req: Request, res: Response) {
@@ -3911,10 +3934,10 @@ async function renderProdutos(req: Request, res: Response) {
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Produtos", "produtos", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Produtos",href:"/admin/produtos"}]));
+  res.send(adminLayoutWithGrace(res, "Produtos", "produtos", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Produtos",href:"/admin/produtos"}]));
   } catch (err: any) {
     console.error('[renderProdutos] Erro:', err?.message);
-    res.send(adminLayout("Produtos", "produtos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/produtos" class="btn btn-primary">Tentar novamente</a></div>`));
+    res.send(adminLayoutWithGrace(res, "Produtos", "produtos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/produtos" class="btn btn-primary">Tentar novamente</a></div>`));
   }
 }
 
@@ -4503,7 +4526,7 @@ async function renderFinanceiro(req: Request, res: Response) {
   `;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Financeiro", "financeiro", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Financeiro",href:"/admin/financeiro"}]));
+  res.send(adminLayoutWithGrace(res, "Financeiro", "financeiro", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Financeiro",href:"/admin/financeiro"}]));
 }
 
 // ─── Configurações ────────────────────────────────────────────
@@ -5627,7 +5650,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
   `;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Configurações", "configuracoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Configurações",href:"/admin/configuracoes"}]));
+  res.send(adminLayoutWithGrace(res, "Configurações", "configuracoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Configurações",href:"/admin/configuracoes"}]));
 }
 
 // ─── Registro das rotas ───────────────────────────────────────────────────────
@@ -5719,7 +5742,7 @@ async function renderNovoAgendamento(req: Request, res: Response) {
     </script>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Novo Agendamento", "agenda", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Agenda",href:"/admin/agenda"},{label:"Novo Agendamento",href:"/admin/novo-agendamento"}]));
+  res.send(adminLayoutWithGrace(res, "Novo Agendamento", "agenda", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Agenda",href:"/admin/agenda"},{label:"Novo Agendamento",href:"/admin/novo-agendamento"}]));
 }
 
 // ─── Relatórios ───────────────────────────────────────────────────────────────
@@ -6276,10 +6299,10 @@ async function renderRelatorios(req: Request, res: Response) {
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Relatórios", "relatorios", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Relatórios",href:"/admin/relatorios"}]));
+  res.send(adminLayoutWithGrace(res, "Relatórios", "relatorios", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Relatórios",href:"/admin/relatorios"}]));
   } catch (err: any) {
     console.error('[renderRelatorios] Erro:', err?.message);
-    res.send(adminLayout("Relatórios", "relatorios", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/relatorios" class="btn btn-primary">Tentar novamente</a></div>`));
+    res.send(adminLayoutWithGrace(res, "Relatórios", "relatorios", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/relatorios" class="btn btn-primary">Tentar novamente</a></div>`));
   }
 }
 
@@ -6999,7 +7022,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
   const body = blocoAvisoHorarios + blocoCompartilhar + blocoQrCode + blocoAparencia + blocoExtras;
 
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Página do Cliente", "pagina-cliente", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Página do Cliente",href:"/admin/pagina-cliente"}]));
+  res.send(adminLayoutWithGrace(res, "Página do Cliente", "pagina-cliente", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Página do Cliente",href:"/admin/pagina-cliente"}]));
 }
 
 
@@ -7092,7 +7115,7 @@ async function renderClienteDetalhe(req: Request, res: Response) {
     </div>
   `;
   const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout(`Cliente: ${(client as any).name}`, "clientes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Clientes",href:"/admin/clientes"},{label:(client as any).name,href:"#"}]));
+  res.send(adminLayoutWithGrace(res, `Cliente: ${(client as any).name}`, "clientes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Clientes",href:"/admin/clientes"},{label:(client as any).name,href:"#"}]));
 }
 
 export function registerAdminRoutes(app: Express): void {
@@ -8532,7 +8555,7 @@ document.addEventListener('input', function(e) {
         }
       }
       const _tp = (await db.getTenantById(barber?.tenantId ?? 0))?.plan ?? '';
-      const html = adminLayout(
+      const html = adminLayoutWithGrace(res,
         'Assinatura Ativada',
         'configuracoes',
         `<div style="max-width:520px;margin:60px auto;text-align:center;padding:0 16px">
@@ -9075,7 +9098,7 @@ document.addEventListener('input', function(e) {
       ${activeTab === "programa" ? tabPrograma : activeTab === "recompensas" ? tabRecompensas : tabCupons}
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Fidelidade", "fidelidade", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fidelidade",href:"/admin/fidelidade"}]));
+  res.send(adminLayoutWithGrace(res, "Fidelidade", "fidelidade", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fidelidade",href:"/admin/fidelidade"}]));
   }));
 
   app.post("/admin/fidelidade/config", requireAdminAuth, async (req: Request, res: Response) => {
@@ -9196,7 +9219,7 @@ document.addEventListener('input', function(e) {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Cupons", "cupons", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fidelidade",href:"/admin/fidelidade"},{label:"Cupons",href:"/admin/cupons"}]));
+  res.send(adminLayoutWithGrace(res, "Cupons", "cupons", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fidelidade",href:"/admin/fidelidade"},{label:"Cupons",href:"/admin/cupons"}]));
   }));
 
   app.post("/admin/cupons", requireAdminAuth, async (req: Request, res: Response) => {
@@ -9291,7 +9314,7 @@ document.addEventListener('input', function(e) {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Avaliações", "avaliacoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Avaliações",href:"/admin/avaliacoes"}]));
+  res.send(adminLayoutWithGrace(res, "Avaliações", "avaliacoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Avaliações",href:"/admin/avaliacoes"}]));
   }));
 
   // ─── Comissões ────────────────────────────────────────────────────────────
@@ -9405,7 +9428,7 @@ document.addEventListener('input', function(e) {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Comissões", "comissoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Comissões",href:"/admin/comissoes"}]));
+  res.send(adminLayoutWithGrace(res, "Comissões", "comissoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Comissões",href:"/admin/comissoes"}]));
   }));
 
   app.post("/admin/comissoes/config", requireAdminAuth, async (req: Request, res: Response) => {
@@ -9515,7 +9538,7 @@ document.addEventListener('input', function(e) {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Lista de Espera", "lista-espera", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Lista de Espera",href:"/admin/lista-espera"}]));
+  res.send(adminLayoutWithGrace(res, "Lista de Espera", "lista-espera", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Lista de Espera",href:"/admin/lista-espera"}]));
   }));
 
   app.post("/admin/lista-espera", requireAdminAuth, async (req: Request, res: Response) => {
@@ -9875,7 +9898,7 @@ document.addEventListener('input', function(e) {
       </script>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayout("Assinaturas", "assinaturas", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Assinaturas",href:"/admin/assinaturas"}]));
+    res.send(adminLayoutWithGrace(res, "Assinaturas", "assinaturas", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Assinaturas",href:"/admin/assinaturas"}]));
   }));
 
     app.post("/admin/assinaturas", requireAdminAuth, async (req: Request, res: Response) => {
@@ -10143,10 +10166,10 @@ document.addEventListener('input', function(e) {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayout("Planos de Assinatura", "planos", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Planos de Assinatura",href:"/admin/planos"}]));
+    res.send(adminLayoutWithGrace(res, "Planos de Assinatura", "planos", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Planos de Assinatura",href:"/admin/planos"}]));
     } catch (err: any) {
       console.error('[/admin/planos] Erro:', err?.message);
-      res.send(adminLayout("Planos de Assinatura", "planos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/planos" class="btn btn-primary">Tentar novamente</a></div>`));
+      res.send(adminLayoutWithGrace(res, "Planos de Assinatura", "planos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/planos" class="btn btn-primary">Tentar novamente</a></div>`));
     }
   }));
 
@@ -10461,7 +10484,7 @@ document.addEventListener('input', function(e) {
       </script>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Estoque", "estoque", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Estoque",href:"/admin/estoque"}]));
+  res.send(adminLayoutWithGrace(res, "Estoque", "estoque", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Estoque",href:"/admin/estoque"}]));
   }));
 
   app.post("/admin/estoque/movimentacao", requireAdminAuth, async (req: Request, res: Response) => {
@@ -10562,7 +10585,7 @@ document.addEventListener('input', function(e) {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayout(`Histórico — ${esc(product.name)}`, "estoque", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Estoque",href:"/admin/estoque"},{label:`Histórico — ${esc(product.name)}`,href:"#"}]));
+    res.send(adminLayoutWithGrace(res, `Histórico — ${esc(product.name)}`, "estoque", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Estoque",href:"/admin/estoque"},{label:`Histórico — ${esc(product.name)}`,href:"#"}]));
   }));
 
   // ─── Retorno Automático ─────────────────────────────────────────────
@@ -10650,7 +10673,7 @@ document.addEventListener('input', function(e) {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Retorno Automático", "retorno-automatico", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Retorno Automático",href:"/admin/retorno-automatico"}]));
+  res.send(adminLayoutWithGrace(res, "Retorno Automático", "retorno-automatico", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Retorno Automático",href:"/admin/retorno-automatico"}]));
   }));
 
   app.post("/admin/retorno-automatico", requireAdminAuth, async (req: Request, res: Response) => {
@@ -10787,7 +10810,7 @@ document.addEventListener('input', function(e) {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayout("Promoções", "promocoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Promoções",href:"/admin/promocoes"}]));
+    res.send(adminLayoutWithGrace(res, "Promoções", "promocoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Promoções",href:"/admin/promocoes"}]));
   }));
 
   app.post("/admin/promocoes", requireAdminAuth, async (req: Request, res: Response) => {
@@ -10867,7 +10890,7 @@ document.addEventListener('input', function(e) {
       ` : ""}
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Conversão de Promoções", "conversao-promocoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Promoções",href:"/admin/promocoes"},{label:"Conversão",href:"/admin/conversao-promocoes"}]));
+  res.send(adminLayoutWithGrace(res, "Conversão de Promoções", "conversao-promocoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Promoções",href:"/admin/promocoes"},{label:"Conversão",href:"/admin/conversao-promocoes"}]));
   }));
 
   // ─── Meu Perfil ──────────────────────────────────────────────────────────────
@@ -10996,7 +11019,7 @@ document.addEventListener('input', function(e) {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Meu Perfil", "meu-perfil", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Meu Perfil",href:"/admin/meu-perfil"}]));
+  res.send(adminLayoutWithGrace(res, "Meu Perfil", "meu-perfil", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Meu Perfil",href:"/admin/meu-perfil"}]));
   }));
   app.post("/admin/meu-perfil", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
@@ -11083,7 +11106,7 @@ document.addEventListener('input', function(e) {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout("Chat WhatsApp", "chat", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Chat WhatsApp",href:"/admin/chat"}]));
+  res.send(adminLayoutWithGrace(res, "Chat WhatsApp", "chat", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Chat WhatsApp",href:"/admin/chat"}]));
   }));
 
   app.get("/admin/chat/:clientId", requireAdminAuth, withErrorPage("Chat", "chat", async (req: Request, res: Response) => {
@@ -11141,7 +11164,7 @@ document.addEventListener('input', function(e) {
       <script>const h=document.getElementById('chatHistory');if(h)h.scrollTop=h.scrollHeight;</script>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-  res.send(adminLayout(`Chat — ${client.name}`, "chat", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Chat WhatsApp",href:"/admin/chat"},{label:client.name,href:"#"}]));
+  res.send(adminLayoutWithGrace(res, `Chat — ${client.name}`, "chat", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Chat WhatsApp",href:"/admin/chat"},{label:client.name,href:"#"}]));
   }));
 
   app.post("/admin/chat/:clientId", requireAdminAuth, async (req: Request, res: Response) => {
@@ -11517,7 +11540,7 @@ document.addEventListener('input', function(e) {
         </table>
       </div>
     `;
-    res.send(adminLayout("Minhas Comissões", "minhas-comissoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Minhas Comissões",href:"/admin/minhas-comissoes"}]));
+    res.send(adminLayoutWithGrace(res, "Minhas Comissões", "minhas-comissoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Minhas Comissões",href:"/admin/minhas-comissoes"}]));
   }));
 
 
@@ -11666,7 +11689,7 @@ document.addEventListener('input', function(e) {
       </script>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayout("Clientes em Órbita", "orbita", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Clientes em Órbita",href:"/admin/orbita"}]));
+    res.send(adminLayoutWithGrace(res, "Clientes em Órbita", "orbita", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Clientes em Órbita",href:"/admin/orbita"}]));
   }));
 
   // ─── Encomendas de Produtos ────────────────────────────────────────────────
@@ -11744,10 +11767,10 @@ document.addEventListener('input', function(e) {
       </script>
     `;
     const _tp2 = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayout("Encomendas", "encomendas", body, barber?.name, _tp2, [{label:"Dashboard",href:"/admin"},{label:"Encomendas",href:"/admin/encomendas"}]));
+    res.send(adminLayoutWithGrace(res, "Encomendas", "encomendas", body, barber?.name, _tp2, [{label:"Dashboard",href:"/admin"},{label:"Encomendas",href:"/admin/encomendas"}]));
     } catch (err: any) {
       console.error('[/admin/encomendas] Erro:', err?.message);
-      res.send(adminLayout("Encomendas", "encomendas", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/encomendas" class="btn btn-primary">Tentar novamente</a></div>`));
+      res.send(adminLayoutWithGrace(res, "Encomendas", "encomendas", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/encomendas" class="btn btn-primary">Tentar novamente</a></div>`));
     }
   }));
 
@@ -12363,10 +12386,10 @@ document.addEventListener('input', function(e) {
         </div>
       </div>
     `;
-    res.send(adminLayout("Fornecedores", "fornecedores", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fornecedores",href:"/admin/fornecedores"}]));
+    res.send(adminLayoutWithGrace(res, "Fornecedores", "fornecedores", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fornecedores",href:"/admin/fornecedores"}]));
     } catch (err: any) {
       console.error('[/admin/fornecedores] Erro:', err?.message);
-      res.send(adminLayout("Fornecedores", "fornecedores", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/fornecedores" class="btn btn-primary">Tentar novamente</a></div>`));
+      res.send(adminLayoutWithGrace(res, "Fornecedores", "fornecedores", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/fornecedores" class="btn btn-primary">Tentar novamente</a></div>`));
     }
   }));
 
@@ -12545,7 +12568,7 @@ document.addEventListener('input', function(e) {
         <div class="card-body" style="padding:0">${historyTable}</div>
       </div>
     `;
-    res.send(adminLayout(`${esc(supplier.name)} — Fornecedor`, "fornecedores", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fornecedores",href:"/admin/fornecedores"},{label:esc(supplier.name),href:"#"}]));
+    res.send(adminLayoutWithGrace(res, `${esc(supplier.name)} — Fornecedor`, "fornecedores", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Fornecedores",href:"/admin/fornecedores"},{label:esc(supplier.name),href:"#"}]));
   }));
 
   // ─── SUPORTE / CENTRAL DE AJUDA ────────────────────────────────────────────
@@ -13152,7 +13175,7 @@ document.addEventListener('input', function(e) {
         </div>
       </div>
     `;
-    res.send(adminLayout("Central de Ajuda", "suporte", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Central de Ajuda",href:"/admin/suporte"}]));
+    res.send(adminLayoutWithGrace(res, "Central de Ajuda", "suporte", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Central de Ajuda",href:"/admin/suporte"}]));
   }));
 
   // POST /admin/suporte/novo — Criar novo ticket
@@ -13241,7 +13264,7 @@ document.addEventListener('input', function(e) {
         </div>` : `<div style="text-align:center;padding:20px;color:var(--muted);font-size:14px">Este ticket foi fechado.</div>`}
       </div>
     `;
-    res.send(adminLayout(`Ticket #${ticketId}`, "suporte", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Suporte",href:"/admin/suporte?tab=tickets"},{label:`#${ticketId}`,href:"#"}]));
+    res.send(adminLayoutWithGrace(res, `Ticket #${ticketId}`, "suporte", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Suporte",href:"/admin/suporte?tab=tickets"},{label:`#${ticketId}`,href:"#"}]));
   }));
 
   // POST /admin/suporte/:id/responder — Cliente adiciona mensagem ao ticket
