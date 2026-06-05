@@ -105,14 +105,14 @@ export function buildTrialExpiryEmailPublic(tenantName: string, adminName: strin
 async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCutoffStr: string, getAllBarbers: Function) {
   try {
     const { createAsaasSubscription, getOrCreateAsaasCustomer, asaasEnabled } = await import("./asaas");
-    const { sql } = await import("drizzle-orm");
     const PLAN_PRICES: Record<string, number> = { solo: 49, starter: 49, team: 89, studio: 149, estudios: 149 };
 
     // Buscar tenants cujo trial expirou há mais de GRACE_PERIOD_HOURS horas
-    const expired = await dbConn.execute(sql`
+    const expired = await (dbConn as any).execute(`
       SELECT
         t.id AS "tenantId", t.name AS "tenantName",
-        t."trialEndsAt", t."barberproPlanName", t.plan,
+        t."trialEndsAt",
+        COALESCE(t."barberproPlanName", t.plan, 'team') AS plan,
         t."barberproAsaasCustomerId", t.email AS "tenantEmail",
         b.id AS "adminBarberId", b.email AS "adminEmail", b.name AS "adminName"
       FROM tenants t
@@ -120,7 +120,7 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
       WHERE
         (t."barberproSubscriptionStatus" IS NULL OR t."barberproSubscriptionStatus" = 'trial')
         AND t."trialEndsAt" IS NOT NULL
-        AND t."trialEndsAt"::date < CAST(${graceCutoffStr} AS DATE)
+        AND t."trialEndsAt" < '${graceCutoffStr}'::timestamp
         AND (t."barberproSubscriptionId" IS NULL OR t."barberproSubscriptionId" = '')
       ORDER BY t."trialEndsAt" ASC
       LIMIT 20
@@ -137,12 +137,9 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
         const price = PLAN_PRICES[plan] ?? 89;
 
         // 1. Marcar como expirado no banco para acionar o bloqueio
-        await dbConn.execute(sql`
-          UPDATE tenants SET
-            "barberproSubscriptionStatus" = 'expired',
-            "updatedAt" = NOW()
-          WHERE id = ${t.tenantId}
-        `);
+        await (dbConn as any).execute(
+          `UPDATE tenants SET "barberproSubscriptionStatus" = 'expired', "updatedAt" = NOW() WHERE id = ${t.tenantId}`
+        );
 
         // 2. Se Asaas estiver configurado, criar subscription pendente para o barbeiro pagar
         if (asaasEnabled) {
@@ -169,14 +166,9 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
 
               // Salvar ID da subscription e mudar status para pending
               const subId = subResult.subscriptionId;
-              await dbConn.execute(sql`
-                UPDATE tenants SET
-                  "barberproSubscriptionId" = ${subId},
-                  "barberproSubscriptionStatus" = 'pending',
-                  "barberproNextDueDate" = CAST(${nextDueStr} AS DATE),
-                  "updatedAt" = NOW()
-                WHERE id = ${t.tenantId}
-              `);
+              await (dbConn as any).execute(
+                `UPDATE tenants SET "barberproSubscriptionId" = '${subId}', "barberproSubscriptionStatus" = 'pending', "barberproNextDueDate" = '${nextDueStr}'::date, "updatedAt" = NOW() WHERE id = ${t.tenantId}`
+              );
 
               console.log(`[trial-expiry] ✅ Subscription criada no Asaas para ${t.tenantName}: ${subResult.subscriptionId}`);
 
