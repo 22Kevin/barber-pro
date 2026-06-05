@@ -534,6 +534,7 @@ function layout(title: string, session: BOSession | null, body: string, extraHea
       { href: "/superadmin/suporte",       icon: "◷", label: "Suporte",       active: title === "Suporte" },
       { href: "/superadmin/erros",         icon: "△", label: "Log de Erros",  active: title === "Erros" },
       { href: "/superadmin/monitoramento", icon: "◌", label: "Monitoramento", active: title === "Monitoramento" },
+      { href: "/superadmin/trial-test", icon: "🧪", label: "Teste de Trial", active: title.includes("Teste") },
     ]},
     ...(session.role === "super_admin" ? [{ group: "CONFIGURAÇÃO", items: [
       { href: "/superadmin/usuarios",      icon: "◻", label: "Usuários BO",       active: title === "Usuários" },
@@ -3428,6 +3429,256 @@ export function registerSuperAdminRoutes(app: Express): void {
       res.status(500).send("Erro: " + e.message);
     }
   });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // SUPERADMIN — AMBIENTE DE TESTE DO TRIAL
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // GET /superadmin/trial-test — Painel de simulação do fluxo de trial
+  app.get("/superadmin/trial-test", requireAuth, requireRole("super_admin"), async (req: any, res: any) => {
+    const session = (req as any).boSession;
+    try {
+      const dbConn = await db.getDb();
+      const { sql } = await import("drizzle-orm");
+
+      // Buscar tenants para o seletor
+      const tenantsRaw = await db.getAllTenants() as any[];
+      const tenants = tenantsRaw.map((t: any) => ({
+        id: t.id, name: t.name, slug: t.slug,
+        status: t.barberproSubscriptionStatus ?? t.status ?? 'trial',
+        trialEndsAt: t.trialEndsAt,
+        subscriptionId: t.barberproSubscriptionId,
+      }));
+
+      const msg = req.query.msg as string || '';
+      const error = req.query.error as string || '';
+
+      res.send(layout("🧪 Teste de Trial", session, `
+        <div class="container">
+          <div class="breadcrumb">
+            <a href="/superadmin" class="bc-link">Dashboard</a>
+            <span class="bc-sep">›</span><span class="bc-current">Teste de Trial</span>
+          </div>
+          <div class="page-header">
+            <div>
+              <div class="page-title">🧪 Ambiente de Teste — Fluxo de Trial</div>
+              <div class="page-sub">Simule o ciclo completo sem esperar os 14 dias reais</div>
+            </div>
+          </div>
+
+          ${msg ? `<div class="alert alert-success">✅ ${esc(msg)}</div>` : ''}
+          ${error ? `<div class="alert alert-error">❌ ${esc(error)}</div>` : ''}
+
+          <!-- Fluxo visual -->
+          <div class="card" style="margin-bottom:24px">
+            <div class="card-header"><span class="card-title">📋 Fluxo do Trial</span></div>
+            <div class="card-body">
+              <div style="display:flex;gap:0;align-items:center;flex-wrap:wrap;gap:8px">
+                ${[
+                  { step: '1', label: 'Trial ativo', desc: 'Barbeiro usando o sistema', color: 'var(--green)' },
+                  { step: '→', label: '', desc: '', color: 'var(--t3)' },
+                  { step: '2', label: '-3 dias', desc: 'Email + Push de aviso', color: 'var(--amber)' },
+                  { step: '→', label: '', desc: '', color: 'var(--t3)' },
+                  { step: '3', label: 'Trial expirou', desc: '48h de grace period', color: 'var(--red)' },
+                  { step: '→', label: '', desc: '', color: 'var(--t3)' },
+                  { step: '4', label: 'Grace encerra', desc: 'Bloqueio + Asaas criado', color: '#a855f7' },
+                  { step: '→', label: '', desc: '', color: 'var(--t3)' },
+                  { step: '5', label: 'Pagamento', desc: 'Barbeiro paga → acesso', color: 'var(--blue)' },
+                ].map(s => s.step === '→'
+                  ? `<span style="color:var(--t3);font-size:20px">→</span>`
+                  : `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;text-align:center;min-width:110px">
+                      <div style="font-size:11px;font-weight:700;color:${s.color};text-transform:uppercase;letter-spacing:0.5px">${esc(s.label)}</div>
+                      <div style="font-size:11px;color:var(--t3);margin-top:3px">${esc(s.desc)}</div>
+                    </div>`
+                ).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="two-col" style="align-items:start">
+
+            <!-- Simulações rápidas -->
+            <div style="display:flex;flex-direction:column;gap:14px">
+
+              <div class="card">
+                <div class="card-header"><span class="card-title">⚡ Ações de Simulação</span></div>
+                <div class="card-body" style="display:flex;flex-direction:column;gap:10px">
+
+                  <!-- Selecionar tenant -->
+                  <div class="form-group" style="margin-bottom:8px">
+                    <label class="label">Barbearia alvo</label>
+                    <select id="test-tenant" style="width:100%">
+                      ${tenants.map(t =>
+                        `<option value="${t.id}">${esc(t.name)} — ${t.status} ${t.trialEndsAt ? '(trial: '+new Date(t.trialEndsAt).toLocaleDateString('pt-BR')+')' : ''}</option>`
+                      ).join('')}
+                    </select>
+                  </div>
+
+                  <form method="POST" action="/superadmin/trial-test/simulate" style="display:contents">
+                    <input type="hidden" name="action" id="sim-action" value="">
+                    <input type="hidden" name="tenantId" id="sim-tenant-id" value="">
+
+                    <button type="button" onclick="simulate('set-expiring-soon')" class="btn btn-gold" style="width:100%;justify-content:flex-start;gap:10px">
+                      <span style="font-size:16px">⏳</span>
+                      <div style="text-align:left">
+                        <div style="font-weight:700">Trial expirando em 1 dia</div>
+                        <div style="font-size:11px;opacity:.7">Simula o email + push de aviso final</div>
+                      </div>
+                    </button>
+
+                    <button type="button" onclick="simulate('set-expired-in-grace')" class="btn" style="width:100%;justify-content:flex-start;gap:10px;background:var(--amber-dim);color:var(--amber);border-color:rgba(245,158,11,.25)">
+                      <span style="font-size:16px">🕐</span>
+                      <div style="text-align:left">
+                        <div style="font-weight:700">Trial expirado (dentro do grace period)</div>
+                        <div style="font-size:11px;opacity:.7">Expira há 1h — ainda não bloqueia, mostra banner</div>
+                      </div>
+                    </button>
+
+                    <button type="button" onclick="simulate('set-expired-past-grace')" class="btn btn-red" style="width:100%;justify-content:flex-start;gap:10px">
+                      <span style="font-size:16px">🔒</span>
+                      <div style="text-align:left">
+                        <div style="font-weight:700">Trial expirado (fora do grace period)</div>
+                        <div style="font-size:11px;opacity:.7">Expira há 72h — bloqueia + cria Asaas</div>
+                      </div>
+                    </button>
+
+                    <button type="button" onclick="simulate('trigger-job')" class="btn btn-blue" style="width:100%;justify-content:flex-start;gap:10px">
+                      <span style="font-size:16px">▶️</span>
+                      <div style="text-align:left">
+                        <div style="font-weight:700">Rodar job agora</div>
+                        <div style="font-size:11px;opacity:.7">Executa o trial-expiry-job manualmente</div>
+                      </div>
+                    </button>
+
+                    <button type="button" onclick="simulate('send-expiry-email')" class="btn btn-gray" style="width:100%;justify-content:flex-start;gap:10px">
+                      <span style="font-size:16px">✉️</span>
+                      <div style="text-align:left">
+                        <div style="font-weight:700">Enviar email de aviso</div>
+                        <div style="font-size:11px;opacity:.7">Manda o email de trial expirando para o tenant</div>
+                      </div>
+                    </button>
+
+                    <button type="button" onclick="simulate('reset-trial')" class="btn btn-green" style="width:100%;justify-content:flex-start;gap:10px">
+                      <span style="font-size:16px">🔄</span>
+                      <div style="text-align:left">
+                        <div style="font-weight:700">Resetar para trial ativo</div>
+                        <div style="font-size:11px;opacity:.7">Restaura trial de 14 dias a partir de hoje</div>
+                      </div>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <!-- Status atual dos tenants -->
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">📊 Status dos Trials</span>
+                <a href="/superadmin/trial-test" class="btn btn-gray btn-sm">↻ Atualizar</a>
+              </div>
+              <table>
+                <thead><tr><th>Barbearia</th><th>Status</th><th>Trial até</th><th>Asaas</th></tr></thead>
+                <tbody>
+                  ${tenants.map(t => {
+                    const now = Date.now();
+                    const te = t.trialEndsAt ? new Date(t.trialEndsAt).getTime() : null;
+                    const diffH = te ? Math.round((now - te) / 3600000) : null;
+                    const stateLabel = !te ? '' :
+                      diffH !== null && diffH < 0 ? `<span style="color:var(--green);font-size:11px">em ${-diffH}h</span>` :
+                      diffH !== null && diffH < 48 ? `<span style="color:var(--amber);font-size:11px">grace (${diffH}h atrás)</span>` :
+                      `<span style="color:var(--red);font-size:11px">há ${diffH}h</span>`;
+                    return `<tr>
+                      <td><div class="table-name"><div class="name">${esc(t.name)}</div></div></td>
+                      <td>${statusBadge(t.status)}</td>
+                      <td style="font-size:12px;color:var(--t3)">${t.trialEndsAt ? new Date(t.trialEndsAt).toLocaleDateString('pt-BR') : '—'} ${stateLabel}</td>
+                      <td style="font-size:11px;font-family:monospace;color:var(--t3)">${t.subscriptionId ? t.subscriptionId.slice(0,12)+'…' : '—'}</td>
+                    </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <script>
+          function simulate(action) {
+            var tenantId = document.getElementById('test-tenant').value;
+            document.getElementById('sim-action').value = action;
+            document.getElementById('sim-tenant-id').value = tenantId;
+            document.querySelector('form[action="/superadmin/trial-test/simulate"]').submit();
+          }
+        </script>
+      `));
+    } catch (e: any) {
+      res.status(500).send(layout("Erro", session, `<div class="error-state"><div class="error-state-icon">⚠️</div><h3 class="error-state-title">Erro</h3><p class="error-state-desc">${esc(e.message)}</p></div>`));
+    }
+  });
+
+  // POST /superadmin/trial-test/simulate — Executar simulação
+  app.post("/superadmin/trial-test/simulate", requireAuth, requireRole("super_admin"), async (req: any, res: any) => {
+    const { action, tenantId } = req.body as any;
+    const tid = parseInt(tenantId);
+    if (!tid || !action) { res.redirect("/superadmin/trial-test?error=Tenant+ou+ação+inválidos"); return; }
+
+    try {
+      const dbConn = await db.getDb();
+
+      if (action === 'set-expiring-soon') {
+        // Trial expira em 1 dia
+        const d = new Date(); d.setDate(d.getDate() + 1);
+        await dbConn!.execute(`UPDATE tenants SET "trialEndsAt" = '${d.toISOString().slice(0,10)}'::date, "barberproSubscriptionStatus" = 'trial', "barberproTrialReminderSent" = false, "barberproSubscriptionId" = NULL WHERE id = ${tid}`);
+        res.redirect("/superadmin/trial-test?msg=Trial+definido+para+expirar+em+1+dia.+Rode+o+job+para+receber+o+email+e+push.");
+
+      } else if (action === 'set-expired-in-grace') {
+        // Expirou há 1 hora (dentro do grace period de 48h)
+        const d = new Date(Date.now() - 1 * 60 * 60 * 1000);
+        await dbConn!.execute(`UPDATE tenants SET "trialEndsAt" = '${d.toISOString().slice(0,10)}'::date, "barberproSubscriptionStatus" = 'trial', "barberproSubscriptionId" = NULL WHERE id = ${tid}`);
+        res.redirect("/superadmin/trial-test?msg=Trial+marcado+como+expirado+há+1h+(dentro+do+grace).+Acesse+o+painel+do+tenant+para+ver+o+banner.");
+
+      } else if (action === 'set-expired-past-grace') {
+        // Expirou há 72h (fora do grace period)
+        const d = new Date(Date.now() - 72 * 60 * 60 * 1000);
+        await dbConn!.execute(`UPDATE tenants SET "trialEndsAt" = '${d.toISOString().slice(0,10)}'::date, "barberproSubscriptionStatus" = 'trial', "barberproSubscriptionId" = NULL WHERE id = ${tid}`);
+        res.redirect("/superadmin/trial-test?msg=Trial+expirado+há+72h.+Rode+o+job+para+disparar+bloqueio+e+criação+da+subscription+Asaas.");
+
+      } else if (action === 'trigger-job') {
+        // Dispara o job manualmente
+        const { runTrialExpiryJobManual } = await import("./trial-expiry-job");
+        await runTrialExpiryJobManual?.();
+        res.redirect("/superadmin/trial-test?msg=Job+executado.+Verifique+os+logs+do+Railway+para+acompanhar+o+resultado.");
+
+      } else if (action === 'send-expiry-email') {
+        // Envia email de aviso para o tenant selecionado
+        const tenants = await db.getAllTenants() as any[];
+        const tenant = tenants.find((t: any) => t.id === tid);
+        if (!tenant) { res.redirect("/superadmin/trial-test?error=Tenant+não+encontrado"); return; }
+        const barbers = await db.getAllBarbers(tid) as any[];
+        const admin = barbers.find((b: any) => b.role === 'super_admin') ?? barbers[0];
+        if (!admin?.email) { res.redirect("/superadmin/trial-test?error=Admin+sem+email+cadastrado"); return; }
+        const { sendEmail } = await import("./email");
+        const { buildTrialExpiryEmailPublic } = await import("./trial-expiry-job");
+        if (buildTrialExpiryEmailPublic) {
+          const html = buildTrialExpiryEmailPublic(tenant.name, admin.name ?? 'Admin', 1, new Date(Date.now() + 86400000));
+          await sendEmail({ to: admin.email, subject: `[TESTE] ⏰ Trial expirando — ${tenant.name}`, html });
+          res.redirect("/superadmin/trial-test?msg=Email+de+teste+enviado+para+"+encodeURIComponent(admin.email));
+        } else {
+          res.redirect("/superadmin/trial-test?error=Função+de+email+não+exportada");
+        }
+
+      } else if (action === 'reset-trial') {
+        // Restaura trial limpo de 14 dias
+        const d = new Date(); d.setDate(d.getDate() + 14);
+        await dbConn!.execute(`UPDATE tenants SET "trialEndsAt" = '${d.toISOString().slice(0,10)}'::date, "barberproSubscriptionStatus" = 'trial', "barberproTrialReminderSent" = false, "barberproSubscriptionId" = NULL WHERE id = ${tid}`);
+        res.redirect("/superadmin/trial-test?msg=Trial+resetado+para+14+dias+a+partir+de+hoje.");
+
+      } else {
+        res.redirect("/superadmin/trial-test?error=Ação+desconhecida");
+      }
+    } catch (e: any) {
+      res.redirect("/superadmin/trial-test?error=" + encodeURIComponent(e.message));
+    }
+  });
+
 
   // ── Promoções de Assinatura ────────────────────────────────────────────────
   registerPromotionRoutes(app, requireAuth, requireRole, layout, esc, statusBadge, planLabel);

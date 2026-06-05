@@ -1,22 +1,19 @@
 /**
- * Job de notificação de trial expirando
+ * Job de trial — notificações + bloqueio com grace period + subscription automática
  *
- * Executa a cada hora. Verifica tenants com:
- *   - barberproSubscriptionStatus = 'trial' (ou null/undefined)
- *   - trialEndsAt entre hoje e daqui 3 dias
+ * Executa a cada hora:
+ *   1. Notifica tenants com trial expirando em 3 dias (email + push + WhatsApp)
+ *   2. Após GRACE_PERIOD_HOURS de tolerância: bloqueia acesso e cria cobrança Asaas
  *
- * Envia:
- *   1. E-mail ao super_admin da barbearia
- *   2. Log de link WhatsApp (para envio manual ou integração futura)
- *
- * Usa a coluna barberproTrialReminderSent (boolean) para não enviar duplicado.
- * Se a coluna não existir no banco, o job funciona sem persistência (pode reenviar).
+ * Grace period: evita bloquear barbeiros logo ao acordar quando o trial expirou
+ * de madrugada. Dá 48h de tolerância antes de barrar o acesso.
  */
 
 import { sendEmail, emailLayout, alertBox, ctaButton } from "./email";
 
 const JOB_INTERVAL_MS = 60 * 60 * 1000; // 1 hora
 const DAYS_AHEAD = 3;
+const GRACE_PERIOD_HOURS = 48; // Tolerância após expirar antes de bloquear
 
 // Cache em memória para evitar duplicados na mesma sessão do servidor
 const notifiedToday = new Set<number>();
@@ -34,7 +31,7 @@ function buildWhatsAppLink(phone: string, message: string): string {
   return `https://wa.me/${fullNumber}?text=${encodeURIComponent(message)}`;
 }
 
-function buildTrialExpiryEmail(tenantName: string, adminName: string, daysLeft: number, trialEndsAt: Date): string {
+export function buildTrialExpiryEmailPublic(tenantName: string, adminName: string, daysLeft: number, trialEndsAt: Date): string {
   const dateFormatted = trialEndsAt.toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "2-digit",
@@ -103,22 +100,149 @@ function buildTrialExpiryEmail(tenantName: string, adminName: string, daysLeft: 
   });
 }
 
+
+// ─── Grace Period + Auto-Subscription ────────────────────────────────────────
+async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCutoffStr: string, getAllBarbers: Function) {
+  try {
+    const { createAsaasSubscription, getOrCreateAsaasCustomer, asaasEnabled } = await import("./asaas");
+    const PLAN_PRICES: Record<string, number> = { solo: 49, starter: 49, team: 89, studio: 149, estudios: 149 };
+
+    // Buscar tenants cujo trial expirou há mais de GRACE_PERIOD_HOURS horas
+    const expired = await dbConn.execute(`
+      SELECT
+        t.id AS "tenantId", t.name AS "tenantName",
+        t."trialEndsAt", t."barberproPlanName", t.plan,
+        t."barberproAsaasCustomerId", t.email AS "tenantEmail",
+        b.id AS "adminBarberId", b.email AS "adminEmail", b.name AS "adminName"
+      FROM tenants t
+      LEFT JOIN barbers b ON b."tenantId" = t.id AND b.role = 'super_admin'
+      WHERE
+        (t."barberproSubscriptionStatus" IS NULL OR t."barberproSubscriptionStatus" = 'trial')
+        AND t."trialEndsAt" IS NOT NULL
+        AND t."trialEndsAt" < '${graceCutoffStr}'::date
+        AND (t."barberproSubscriptionId" IS NULL OR t."barberproSubscriptionId" = '')
+      ORDER BY t."trialEndsAt" ASC
+      LIMIT 20
+    `);
+
+    const rows: any[] = Array.isArray(expired) ? (expired[0] ?? expired) : (expired?.rows ?? []);
+    if (!rows.length) return;
+
+    for (const t of rows) {
+      try {
+        console.log(`[trial-expiry] Processando expirado com grace: ${t.tenantName} (trial terminou em ${t.trialEndsAt})`);
+
+        const plan = t.barberproPlanName ?? t.plan ?? 'team';
+        const price = PLAN_PRICES[plan] ?? 89;
+        const today = new Date().toISOString().slice(0, 10);
+
+        // 1. Marcar como expirado no banco para acionar o bloqueio
+        await dbConn.execute(`
+          UPDATE tenants SET
+            "barberproSubscriptionStatus" = 'expired',
+            "updatedAt" = NOW()
+          WHERE id = ${t.tenantId}
+        `);
+
+        // 2. Se Asaas estiver configurado, criar subscription pendente para o barbeiro pagar
+        if (asaasEnabled) {
+          try {
+            const adminEmail = t.adminEmail ?? t.tenantEmail;
+            if (adminEmail) {
+              const customerId = t.barberproAsaasCustomerId
+                ?? await getOrCreateAsaasCustomer({ email: adminEmail, name: t.adminName ?? t.tenantName });
+
+              const nextDue = new Date();
+              nextDue.setDate(nextDue.getDate() + 1); // Vence amanhã
+              const nextDueStr = nextDue.toISOString().slice(0, 10);
+
+              const planLabels: Record<string,string> = { solo:'Solo', starter:'Solo', team:'Equipe', studio:'Estúdio' };
+              const subResult = await createAsaasSubscription({
+                customer: customerId,
+                billingType: 'PIX',
+                value: price,
+                nextDueDate: nextDueStr,
+                cycle: 'MONTHLY',
+                description: `Barber Pro — Plano ${planLabels[plan] ?? plan} (R$ ${price}/mês)`,
+                externalReference: `tenant_${t.tenantId}_autoconv`,
+              });
+
+              // Salvar ID da subscription e mudar status para pending
+              await dbConn.execute(`
+                UPDATE tenants SET
+                  "barberproSubscriptionId" = '${subResult.subscriptionId}',
+                  "barberproSubscriptionStatus" = 'pending',
+                  "barberproNextDueDate" = '${nextDueStr}'::date,
+                  "updatedAt" = NOW()
+                WHERE id = ${t.tenantId}
+              `);
+
+              console.log(`[trial-expiry] ✅ Subscription criada no Asaas para ${t.tenantName}: ${subResult.subscriptionId}`);
+
+              // 3. Enviar email com link de pagamento
+              if (adminEmail && subResult.pixCopyCola || subResult.pixQrCode) {
+                await import("./email").then(async ({ sendEmail, emailLayout, ctaButton }) => {
+                  const html = emailLayout(`
+                    <div style="text-align:center;margin-bottom:24px">
+                      <div style="font-size:40px;margin-bottom:12px">⏰</div>
+                      <h2 style="font-size:20px;font-weight:800;color:#ECEDEE;margin:0 0 8px">
+                        Seu período de teste encerrou
+                      </h2>
+                      <p style="color:#9BA1A6;font-size:14px;line-height:1.6;margin:0">
+                        Olá, <strong style="color:#ECEDEE">${t.adminName ?? 'Admin'}</strong>!
+                        O trial do <strong style="color:#ECEDEE">${t.tenantName}</strong> encerrou.
+                        Para reativar o acesso, efetue o pagamento abaixo.
+                      </p>
+                    </div>
+                    <div style="background:#1A1A1A;border:1px solid #C9A84C33;border-radius:14px;padding:20px;text-align:center;margin-bottom:24px">
+                      <div style="font-size:12px;color:#666;margin-bottom:6px">VALOR MENSAL</div>
+                      <div style="font-size:32px;font-weight:900;color:#C9A84C">R$ ${price.toFixed(2).replace('.',',')}</div>
+                      <div style="font-size:12px;color:#666;margin-top:4px">Plano ${planLabels[plan] ?? plan} · cobrança mensal</div>
+                    </div>
+                    ${ctaButton('Pagar e reativar acesso →', 'https://usebarberpro.com/admin/configuracoes?tab=pagamentos')}
+                  `, { headerSubtitle: t.tenantName, previewText: 'Pague agora para reativar o Barber Pro' });
+
+                  await sendEmail({ to: adminEmail, subject: `🔒 Trial encerrado — Reative o ${t.tenantName} no Barber Pro`, html });
+                }).catch(() => {});
+              }
+            }
+          } catch (asaasErr: any) {
+            console.error(`[trial-expiry] Erro ao criar subscription Asaas para ${t.tenantName}:`, asaasErr.message);
+            // Mesmo sem Asaas, o status expired já foi setado → barbeiro vê tela de bloqueio
+          }
+        }
+
+      } catch (innerErr: any) {
+        console.error(`[trial-expiry] Erro ao processar grace period para tenant ${t.tenantId}:`, innerErr.message);
+      }
+    }
+  } catch (err: any) {
+    console.error("[trial-expiry] Erro em processExpiredWithGrace:", err.message);
+  }
+}
+
 async function runTrialExpiryJob() {
   try {
     resetDailyCache();
 
-    const { getDb, getBarberPushToken, sendExpoPushNotification } = await import("./db");
+    const { getDb, getBarberPushToken, sendExpoPushNotification, getAllBarbers } = await import("./db");
     const dbConn = await getDb();
     if (!dbConn) return;
 
-    // Buscar tenants em trial com vencimento nos próximos DAYS_AHEAD dias
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const today = new Date(now); today.setHours(0, 0, 0, 0);
     const limitDate = new Date(today);
     limitDate.setDate(today.getDate() + DAYS_AHEAD);
 
+    // Grace period cutoff: só bloqueia quem expirou há mais de GRACE_PERIOD_HOURS horas
+    const graceCutoff = new Date(now.getTime() - GRACE_PERIOD_HOURS * 60 * 60 * 1000);
+    const graceCutoffStr = graceCutoff.toISOString().slice(0, 10);
+
     const todayStr = today.toISOString().slice(0, 10);
     const limitStr = limitDate.toISOString().slice(0, 10);
+
+    // ── A. Processar trials que já passaram do grace period → bloquear + cobrar ──
+    await processExpiredWithGrace(dbConn, graceCutoff, graceCutoffStr, getAllBarbers);
 
     const rows = await (dbConn as any).execute(`
       SELECT
@@ -127,6 +251,8 @@ async function runTrialExpiryJob() {
         t."trialEndsAt",
         t.phone AS "tenantPhone",
         t.cnpj AS "tenantCnpj",
+        t."barberproPlanName",
+        t."barberproAsaasCustomerId",
         b.id AS "adminBarberId",
         b.email AS "adminEmail",
         b.name AS "adminName",
@@ -156,7 +282,7 @@ async function runTrialExpiryJob() {
 
         // Enviar e-mail se tiver endereço
         if (tenant.adminEmail) {
-          const html = buildTrialExpiryEmail(
+          const html = buildTrialExpiryEmailPublic(
             tenant.tenantName,
             tenant.adminName ?? "Admin",
             daysLeft,
@@ -238,10 +364,14 @@ Planos a partir de R$ 49/mês. 💈`;
   }
 }
 
+// Manual trigger for test panel
+export async function runTrialExpiryJobManual() {
+  console.log("[trial-expiry] Execução manual disparada pelo superadmin");
+  await runTrialExpiryJob();
+}
+
 export function startTrialExpiryJob() {
-  console.log("[trial-expiry] Job de notificação de trial expirando iniciado (intervalo: 1h, antecedência: 3 dias)");
-  // Executar com delay de 2 minutos para o servidor estar pronto
+  console.log("[trial-expiry] Job iniciado (intervalo: 1h, grace period: 48h, antecedência: 3 dias)");
   setTimeout(runTrialExpiryJob, 2 * 60 * 1000);
-  // Depois executar a cada hora
   setInterval(runTrialExpiryJob, JOB_INTERVAL_MS);
 }

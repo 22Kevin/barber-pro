@@ -191,12 +191,22 @@ async function requireActiveSubscription(req: Request, res: Response, next: Next
 
     const status = t.barberproSubscriptionStatus ?? 'trial';
     const trialEndsAt = t.trialEndsAt ? new Date(t.trialEndsAt) : null;
-    const trialExpired = trialEndsAt && trialEndsAt < new Date();
+    const now = new Date();
+
+    // Grace period: 48h de tolerância após expirar antes de bloquear
+    // Evita barrar barbeiros que acordam cedo quando o trial expirou de madrugada
+    const GRACE_MS = 48 * 60 * 60 * 1000;
+    const trialExpiredPastGrace = trialEndsAt && (now.getTime() - trialEndsAt.getTime()) > GRACE_MS;
+    const trialExpiredInGrace   = trialEndsAt && trialEndsAt < now && !trialExpiredPastGrace;
 
     // Bloquear apenas se expirado ou cancelado (nunca bloquear pending/overdue para não impedir pagamento)
-    const isBlocked = status === 'expired' || status === 'cancelled' || (status === 'trial' && trialExpired);
+    const isBlocked = status === 'expired' || status === 'cancelled' || (status === 'trial' && trialExpiredPastGrace);
     if (isBlocked) {
       return res.redirect("/admin/configuracoes?tab=pagamentos&expired=1");
+    }
+    // Durante o grace period: mostra banner de aviso sem bloquear
+    if (status === 'trial' && trialExpiredInGrace) {
+      (req as any).trialInGrace = true; // disponível no handler para exibir banner
     }
     return next();
   } catch {
