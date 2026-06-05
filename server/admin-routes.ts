@@ -4983,10 +4983,20 @@ async function renderConfiguracoes(req: Request, res: Response) {
                   <option value="studio" ${tenantRealPlan === 'studio' ? 'selected' : ''}>Estúdio — R$ 149/mês (ilimitado)</option>
                 </select>
                 <!-- Seletor de forma de pagamento -->
-                <div style="display:flex;gap:6px;width:100%">
-                  <button type="button" class="pay-method-btn active" data-method="PIX" onclick="selectPayMethod('PIX')" style="flex:1;padding:8px 6px;border-radius:8px;border:1.5px solid var(--primary);background:var(--primary);color:var(--bg);font-size:12px;font-weight:600;cursor:pointer">Pix</button>
-                  <button type="button" class="pay-method-btn" data-method="CREDIT_CARD" onclick="selectPayMethod('CREDIT_CARD')" style="flex:1;padding:8px 6px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-weight:600;cursor:pointer">Crédito</button>
-                  <button type="button" class="pay-method-btn" data-method="UNDEFINED" onclick="selectPayMethod('UNDEFINED')" style="flex:1;padding:8px 6px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;font-weight:600;cursor:pointer">Débito</button>
+                <!-- Seletor de forma de pagamento -->
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;margin-bottom:2px">
+                  <button type="button" class="pay-method-btn active" data-method="PIX" onclick="selectPayMethod('PIX')"
+                    style="padding:10px 8px;border-radius:10px;border:2px solid var(--gold);background:rgba(201,168,76,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:3px">
+                    <span style="font-size:18px">⚡</span><span>Pix</span>
+                  </button>
+                  <button type="button" class="pay-method-btn" data-method="CREDIT_CARD" onclick="selectPayMethod('CREDIT_CARD')"
+                    style="padding:10px 8px;border-radius:10px;border:2px solid var(--border);background:var(--surface2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:3px">
+                    <span style="font-size:18px">💳</span><span>Crédito</span>
+                  </button>
+                  <button type="button" class="pay-method-btn" data-method="UNDEFINED" onclick="selectPayMethod('UNDEFINED')"
+                    style="padding:10px 8px;border-radius:10px;border:2px solid var(--border);background:var(--surface2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:3px">
+                    <span style="font-size:18px">🏦</span><span>Débito</span>
+                  </button>
                 </div>
                 <!-- Formulário de cartão (oculto por padrão) -->
                 <div id="card-form-area" style="display:none;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:2px">
@@ -5371,9 +5381,10 @@ async function renderConfiguracoes(req: Request, res: Response) {
       // Atualizar visual dos botões
       document.querySelectorAll('.pay-method-btn').forEach(function(btn) {
         var isActive = btn.getAttribute('data-method') === method;
-        btn.style.border = isActive ? '1.5px solid var(--primary)' : '1.5px solid var(--border)';
-        btn.style.background = isActive ? 'var(--primary)' : 'var(--bg)';
-        btn.style.color = isActive ? 'var(--bg)' : 'var(--text)';
+        btn.style.border = isActive ? '2px solid var(--gold)' : '2px solid var(--border)';
+        btn.style.background = isActive ? 'rgba(201,168,76,0.15)' : 'var(--surface2)';
+        btn.style.color = isActive ? 'var(--gold)' : 'var(--text2)';
+        btn.style.transform = isActive ? 'translateY(-1px)' : 'none';
       });
       // Mostrar/ocultar formulário de cartão
       var cardArea = document.getElementById('card-form-area');
