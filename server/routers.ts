@@ -2045,14 +2045,23 @@ export const appRouter = router({
             throw new Error("Este e-mail já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
           }
 
-          // Checar por CPF/CNPJ
+          // Checar por CPF/CNPJ (coluna pode não existir em instâncias antigas — try/catch seguro)
           if (cleanCpfCnpj && cleanCpfCnpj.length >= 11) {
-            const safeCpfCnpj = cleanCpfCnpj.replace(/'/g, "''");
-            const cpfRows = await db.rawQuery(
-              `SELECT id FROM used_trials WHERE "cpfCnpj" = '${safeCpfCnpj}' LIMIT 1`
-            );
-            if (cpfRows.length > 0) {
-              throw new Error("Este CPF/CNPJ já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
+            try {
+              const safeCpfCnpj = cleanCpfCnpj.replace(/'/g, "''");
+              const cpfRows = await db.rawQuery(
+                `SELECT id FROM used_trials WHERE "cpfCnpj" = '${safeCpfCnpj}' LIMIT 1`
+              );
+              if (cpfRows.length > 0) {
+                throw new Error("Este CPF/CNPJ já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
+              }
+            } catch (e: any) {
+              // Se a coluna ainda não existe (migration pendente), ignorar silenciosamente
+              if (!e.message?.includes("já utilizou")) {
+                console.warn("[used_trials] Falha ao checar cpfCnpj:", e.message);
+              } else {
+                throw e;
+              }
             }
           }
         }
