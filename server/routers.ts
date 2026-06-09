@@ -2039,7 +2039,7 @@ export const appRouter = router({
 
           // Checar por email
           const byEmail = await dbConn.execute(
-            sql`SELECT id FROM used_trials WHERE email = ${input.admin.email.toLowerCase()} LIMIT 1`
+            `SELECT id FROM used_trials WHERE email = '${input.admin.email.toLowerCase().replace(/'/g, "''")}' LIMIT 1`
           ) as any;
           const emailRows = Array.isArray(byEmail) ? byEmail[0] : byEmail?.rows;
           if (emailRows && emailRows.length > 0) {
@@ -2049,7 +2049,7 @@ export const appRouter = router({
           // Checar por CPF/CNPJ (mais difícil de burlar)
           if (cleanCpfCnpj && cleanCpfCnpj.length >= 11) {
             const byCpfCnpj = await dbConn.execute(
-              sql`SELECT id FROM used_trials WHERE "cpfCnpj" = ${cleanCpfCnpj} LIMIT 1`
+              `SELECT id FROM used_trials WHERE "cpfCnpj" = '${cleanCpfCnpj.replace(/'/g, "''")}' LIMIT 1`
             ) as any;
             const cpfRows = Array.isArray(byCpfCnpj) ? byCpfCnpj[0] : byCpfCnpj?.rows;
             if (cpfRows && cpfRows.length > 0) {
