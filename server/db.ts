@@ -156,6 +156,18 @@ export async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T
 }
 
 /**
+ * Executa uma query SQL raw usando o pool pg diretamente (sem Drizzle).
+ * Usar quando o Drizzle parametriza automaticamente e o driver rejeita $1.
+ * Interpolação deve ser feita pelo caller com escape adequado.
+ */
+export async function rawQuery(sql: string): Promise<any[]> {
+  if (!_pool) await getDb();
+  if (!_pool) throw new Error("Database not available");
+  const result = await _pool.query(sql);
+  return result.rows;
+}
+
+/**
  * Executa uma função com o banco de dados.
  * O isolamento multi-tenant é feito via WHERE tenantId nas queries (guard clauses).
  */

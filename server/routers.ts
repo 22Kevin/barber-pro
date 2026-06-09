@@ -2032,27 +2032,26 @@ export const appRouter = router({
         const existingBarber = await db.getBarberByEmail(input.admin.email);
         if (existingBarber) throw new Error("Este email já está cadastrado");
 
-        // 1b. Verificar se este email ou CPF/CNPJ já usou o trial gratuito
-        const dbConn = await db.getDb();
-        if (dbConn) {
+                // 1b. Verificar se este email ou CPF/CNPJ já usou o trial gratuito
+        {
           const cleanCpfCnpj = input.shop.cnpj ? input.shop.cnpj.replace(/\D/g, "") : null;
+          const safeEmail = input.admin.email.toLowerCase().replace(/'/g, "''");
 
-          // Checar por email
-          const byEmail = await dbConn.execute(
-            `SELECT id FROM used_trials WHERE email = '${input.admin.email.toLowerCase().replace(/'/g, "''")}' LIMIT 1`
-          ) as any;
-          const emailRows = Array.isArray(byEmail) ? byEmail[0] : byEmail?.rows;
-          if (emailRows && emailRows.length > 0) {
+          // Checar por email — usa rawQuery (pool pg direto) para evitar parametrização automática
+          const emailRows = await db.rawQuery(
+            `SELECT id FROM used_trials WHERE email = '${safeEmail}' LIMIT 1`
+          );
+          if (emailRows.length > 0) {
             throw new Error("Este e-mail já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
           }
 
-          // Checar por CPF/CNPJ (mais difícil de burlar)
+          // Checar por CPF/CNPJ
           if (cleanCpfCnpj && cleanCpfCnpj.length >= 11) {
-            const byCpfCnpj = await dbConn.execute(
-              `SELECT id FROM used_trials WHERE "cpfCnpj" = '${cleanCpfCnpj.replace(/'/g, "''")}' LIMIT 1`
-            ) as any;
-            const cpfRows = Array.isArray(byCpfCnpj) ? byCpfCnpj[0] : byCpfCnpj?.rows;
-            if (cpfRows && cpfRows.length > 0) {
+            const safeCpfCnpj = cleanCpfCnpj.replace(/'/g, "''");
+            const cpfRows = await db.rawQuery(
+              `SELECT id FROM used_trials WHERE "cpfCnpj" = '${safeCpfCnpj}' LIMIT 1`
+            );
+            if (cpfRows.length > 0) {
               throw new Error("Este CPF/CNPJ já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
             }
           }
