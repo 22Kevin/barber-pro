@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { publicProcedure, router, barberProcedure } from "./_core/trpc";
 import { signBarberToken, signBarberRefreshToken, verifyBarberRefreshToken } from "./barber-jwt.js";
 import * as db from "./db";
+import { assertFeature, assertBarberLimit } from "./plan-features";
 import { storagePut } from "./storage";
 import * as crypto from "crypto";
 import * as QRCode from "qrcode";
@@ -291,18 +292,12 @@ export const appRouter = router({
         if (input.tenantId != null) {
           const tenant = await db.getTenantById(input.tenantId);
           if (tenant) {
-            const limits: Record<string, number> = { solo: 1, team: 5, studio: Infinity };
-            const limit = limits[tenant.plan] ?? Infinity;
-            if (limit !== Infinity) {
-              const existing = await db.getAllBarbersIncludingInactive(input.tenantId);
-              const activeBarbers = existing.filter((b) => b.isActive);
-              if (activeBarbers.length >= limit) {
-                const planNames: Record<string, string> = { solo: "Solo (máx. 1 barbeiro)", team: "Equipe (máx. 5 barbeiros)" };
-                throw new TRPCError({
-                  code: "FORBIDDEN",
-                  message: `Limite de barbeiros atingido para o plano ${planNames[tenant.plan] ?? tenant.plan}. Faça upgrade do plano para adicionar mais profissionais.`,
-                });
-              }
+            const existing = await db.getAllBarbersIncludingInactive(input.tenantId);
+            const activeBarbers = existing.filter((b) => b.isActive);
+            try {
+              assertBarberLimit(tenant.plan, activeBarbers.length);
+            } catch (e: any) {
+              throw new TRPCError({ code: "FORBIDDEN", message: "Limite de barbeiros atingido para o seu plano. Faça upgrade para adicionar mais profissionais." });
             }
           }
         }
@@ -729,7 +724,13 @@ export const appRouter = router({
       }),
     create: barberProcedure
       .input(z.object({ code: z.string().min(3), description: z.string().optional(), discountType: z.enum(["percent", "fixed"]), discountValue: z.string(), minOrderValue: z.string().optional(), maxUses: z.number().optional(), validFrom: z.string().optional(), validUntil: z.string().optional(), tenantId: z.number().optional().nullable() }))
-      .mutation(({ input }) => db.createCoupon(input)),
+      .mutation(async ({ input }) => {
+        if (input.tenantId != null) {
+          const tenant = await db.getTenantById(input.tenantId);
+          assertFeature(tenant?.plan, "coupons");
+        }
+        return db.createCoupon(input);
+      }),
     update: barberProcedure
       .input(z.object({ id: z.number(), isActive: z.boolean().optional(), description: z.string().optional(), maxUses: z.number().optional().nullable(), validUntil: z.string().optional().nullable() }))
       .mutation(({ input }) => { const { id, ...data } = input; return db.updateCoupon(id, data as any); }),

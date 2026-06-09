@@ -25,6 +25,7 @@ import { asaasEnabled, asaasApi, createAsaasSubAccount, getAsaasSubAccount, ensu
 import { sendEmail, sendPasswordResetEmail, sendBookingConfirmationEmail, sendBarberNotificationEmail, sendReviewRequestEmail, emailLayout, alertBox, ctaButton, detailRow, BRAND_COLOR } from "./email";
 import axios from "axios";
 import PDFDocument from "pdfkit";
+import { requireFeature } from "./plan-features";
 import bcrypt from "bcryptjs";
 
 const ADMIN_SESSION_COOKIE = "bp_admin_session";
@@ -204,6 +205,10 @@ async function requireActiveSubscription(req: Request, res: Response, next: Next
     // Bloquear apenas se expirado ou cancelado (nunca bloquear pending/overdue para não impedir pagamento)
     const isBlocked = status === 'expired' || status === 'cancelled' || (status === 'trial' && trialExpiredPastGrace);
     if (isBlocked) {
+      if (req.path.startsWith('/admin/configuracoes') || req.path.startsWith('/admin/logout')) {
+        (req as any).adminSession = session;
+        return next();
+      }
       return res.redirect("/admin/configuracoes?tab=pagamentos&expired=1");
     }
     // Durante o grace period: mostra banner de aviso sem bloquear
@@ -8946,8 +8951,8 @@ document.addEventListener('input', function(e) {
   });
 
   // ─── CRUD Produtos ────────────────────────────────────────────────────────
-  app.get("/admin/produtos", requireAdminAuth, (req, res) => renderProdutos(req, res));
-  app.post("/admin/produtos", requireAdminAuth, async (req: Request, res: Response) => {
+  app.get("/admin/produtos", requireAdminAuth, requireFeature("products"), (req, res) => renderProdutos(req, res));
+  app.post("/admin/produtos", requireAdminAuth, requireFeature("products"), async (req: Request, res: Response) => {
     const { name, description, price, costPrice, productType, stockQuantity, minStockAlert, isActive, mediaBase64, mediaMime, supplierId } = req.body;
     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
     const supplierIdNum = supplierId ? parseInt(supplierId) : null;
@@ -8993,12 +8998,12 @@ document.addEventListener('input', function(e) {
     }
     res.redirect("/admin/produtos?saved=1");
   });
-  app.post("/admin/produtos/toggle", requireAdminAuth, async (req: Request, res: Response) => {
+  app.post("/admin/produtos/toggle", requireAdminAuth, requireFeature("products"), async (req: Request, res: Response) => {
     const { id, isActive } = req.body;
     await db.updateProduct(parseInt(id), { isActive: isActive === "true" });
     res.redirect("/admin/produtos");
   });
-  app.post("/admin/produtos/delete", requireAdminAuth, async (req: Request, res: Response) => {
+  app.post("/admin/produtos/delete", requireAdminAuth, requireFeature("products"), async (req: Request, res: Response) => {
     const { id } = req.body;
     await db.deleteProduct(parseInt(id));
     res.redirect("/admin/produtos?deleted=1");
@@ -9244,7 +9249,7 @@ document.addEventListener('input', function(e) {
   });
 
   // ─── Cupons ────────────────────────────────────────────────────────────────
-  app.get("/admin/cupons", requireAdminAuth, withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
+  app.get("/admin/cupons", requireAdminAuth, requireFeature("coupons"), withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
     const tenantId = barber?.tenantId ?? null;
     const allCoupons = await db.getAllCoupons(tenantId);
@@ -9431,7 +9436,7 @@ document.addEventListener('input', function(e) {
   }));
 
   // ─── Comissões ────────────────────────────────────────────────────────────
-  app.get("/admin/comissoes", requireAdminAuth, withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
+  app.get("/admin/comissoes", requireAdminAuth, requireFeature("commissions"), withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
     const tenantId = barber?.tenantId ?? null;
     const configs = await db.listCommissionConfigs(tenantId);
@@ -9544,7 +9549,7 @@ document.addEventListener('input', function(e) {
   res.send(adminLayoutWithGrace(res, "Comissões", "comissoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Comissões",href:"/admin/comissoes"}]));
   }));
 
-  app.post("/admin/comissoes/config", requireAdminAuth, async (req: Request, res: Response) => {
+  app.post("/admin/comissoes/config", requireAdminAuth, requireFeature("commissions"), async (req: Request, res: Response) => {
     const session2 = (req as any).adminSession;
     const barber2 = await db.getBarberById(session2.barberId);
     const barbers = await db.getAllBarbers(barber2?.tenantId);
@@ -10115,7 +10120,7 @@ document.addEventListener('input', function(e) {
 
 
   // ─── Planos de Assinatura ────────────────────────────────────────────────────
-  app.get("/admin/planos", requireAdminAuth, withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
+  app.get("/admin/planos", requireAdminAuth, requireFeature("subscription_plans"), withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
     try {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
@@ -10286,7 +10291,7 @@ document.addEventListener('input', function(e) {
     }
   }));
 
-  app.post("/admin/planos", requireAdminAuth, async (req: Request, res: Response) => {
+  app.post("/admin/planos", requireAdminAuth, requireFeature("subscription_plans"), async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -10366,7 +10371,7 @@ document.addEventListener('input', function(e) {
   });
 
   // ─── Estoque ─────────────────────────────────────────────────────────────────
-  app.get("/admin/estoque", requireAdminAuth, withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
+  app.get("/admin/estoque", requireAdminAuth, requireFeature("stock"), withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -10600,7 +10605,7 @@ document.addEventListener('input', function(e) {
   res.send(adminLayoutWithGrace(res, "Estoque", "estoque", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Estoque",href:"/admin/estoque"}]));
   }));
 
-  app.post("/admin/estoque/movimentacao", requireAdminAuth, async (req: Request, res: Response) => {
+  app.post("/admin/estoque/movimentacao", requireAdminAuth, requireFeature("stock"), async (req: Request, res: Response) => {
     const { productId, type, quantity, reason, date, unitCost, paymentMethod, updateCostPrice } = req.body;
     if (!productId || !type || !quantity || !date) { res.redirect("/admin/estoque?error=1"); return; }
     const session = (req as any).adminSession as { barberId: number };
@@ -10645,7 +10650,7 @@ document.addEventListener('input', function(e) {
   });
 
     // ─── Histórico de Estoque ─────────────────────────────────────────────
-  app.get("/admin/estoque/:id/historico", requireAdminAuth, withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
+  app.get("/admin/estoque/:id/historico", requireAdminAuth, requireFeature("stock"), withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -11658,7 +11663,7 @@ document.addEventListener('input', function(e) {
 
 
   // ─── Clientes em Órbita ──────────────────────────────────────────────────────
-  app.get("/admin/orbita", requireAdminAuth, withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
+  app.get("/admin/orbita", requireAdminAuth, requireFeature("orbit"), withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -11806,7 +11811,7 @@ document.addEventListener('input', function(e) {
   }));
 
   // ─── Encomendas de Produtos ────────────────────────────────────────────────
-  app.get("/admin/encomendas", requireAdminAuth, withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
+  app.get("/admin/encomendas", requireAdminAuth, requireFeature("orders"), withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
     try {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
@@ -12384,7 +12389,7 @@ document.addEventListener('input', function(e) {
   });
 
   // ─── Fornecedores ─────────────────────────────────────────────────────────
-  app.get("/admin/fornecedores", requireAdminAuth, withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
+  app.get("/admin/fornecedores", requireAdminAuth, requireFeature("suppliers"), withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
     try {
     const session = (req as any).adminSession as { barberId: number; role: string };
     const barber = await db.getBarberById(session.barberId);
@@ -12506,7 +12511,7 @@ document.addEventListener('input', function(e) {
     }
   }));
 
-  app.post("/admin/fornecedores", requireAdminAuth, async (req: Request, res: Response) => {
+  app.post("/admin/fornecedores", requireAdminAuth, requireFeature("suppliers"), async (req: Request, res: Response) => {
     const session = (req as any).adminSession as { barberId: number; role: string };
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -12521,14 +12526,14 @@ document.addEventListener('input', function(e) {
     res.redirect("/admin/fornecedores?saved=1");
   });
 
-  app.post("/admin/fornecedores/delete", requireAdminAuth, async (req: Request, res: Response) => {
+  app.post("/admin/fornecedores/delete", requireAdminAuth, requireFeature("suppliers"), async (req: Request, res: Response) => {
     const { id } = req.body;
     await db.deleteSupplier(parseInt(id));
     res.redirect("/admin/fornecedores?deleted=1");
   });
 
   // ─── Detalhes do Fornecedor (/admin/fornecedores/:id) ─────────────────────────
-  app.get("/admin/fornecedores/:id", requireAdminAuth, withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
+  app.get("/admin/fornecedores/:id", requireAdminAuth, requireFeature("suppliers"), withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
     const session = (req as any).adminSession as { barberId: number; role: string };
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
