@@ -26,6 +26,7 @@ import { useBarberAuth } from "@/lib/auth-context";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useColors } from "@/hooks/use-colors";
 import { applyPriceMask, parsePriceMask } from "@/hooks/use-mask";
+import { FeatureGate } from "@/components/feature-gate";
 
 type Supplier = {
   id: number;
@@ -801,10 +802,11 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
 });
 }
 
+
 export default function ProductsScreen() {
   return (
-    <ErrorBoundary screenName="Produtos">
+    <FeatureGate feature="products">
       <ProductsScreenInner />
-    </ErrorBoundary>
+    </FeatureGate>
   );
 }

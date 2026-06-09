@@ -97,7 +97,9 @@ function urgencyScore(order: Order): number {
   return days; // negativo = vencido (mais urgente)
 }
 
-export default function OrdersScreen() {
+import { FeatureGate } from "@/components/feature-gate";
+
+function OrdersScreenInner() {
   const colors = useColors();
   const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
@@ -970,4 +972,12 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   periodChipText: { fontSize: 12, color: "#666" },
   periodChipTextActive: { color: "#C9A84C", fontWeight: "700" },
 });
+}
+
+export default function OrdersScreen() {
+  return (
+    <FeatureGate feature="orders">
+      <OrdersScreenInner />
+    </FeatureGate>
+  );
 }

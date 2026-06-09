@@ -54,7 +54,9 @@ const DISCOUNT_FACTOR = 0.85; // 15% de desconto para sugestão de preço
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-export default function SubscriptionPlansScreen() {
+import { FeatureGate } from "@/components/feature-gate";
+
+function SubscriptionPlansScreenInner() {
   const colors = useColors();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? 0;
@@ -667,3 +669,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
 });
+
+export default function SubscriptionPlansScreen() {
+  return (
+    <FeatureGate feature="subscription_plans">
+      <SubscriptionPlansScreenInner />
+    </FeatureGate>
+  );
+}

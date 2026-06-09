@@ -111,7 +111,8 @@ export const appRouter = router({
         if (!valid) throw new Error("Credenciais inválidas");
         const payload = { barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any };
         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
-        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, token, refreshToken };
+        const tenant = barber.tenantId ? await db.getTenantById(barber.tenantId) : null;
+        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, tenantPlan: tenant?.plan ?? null, token, refreshToken };
       }),
     googleLogin: publicProcedure
       .input(z.object({
@@ -156,7 +157,8 @@ export const appRouter = router({
         if (photoUrl && !barber2.photoUrl) await db.updateBarber(barber2.id, { photoUrl } as any);
         const payload = { barberId: barber2.id, tenantId: barber2.tenantId ?? null, role: barber2.role as any };
         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
-        return { id: barber2.id, name: barber2.name, email: barber2.email, phone: barber2.phone, photoUrl: photoUrl ?? barber2.photoUrl, role: barber2.role, specialties: barber2.specialties, tenantId: barber2.tenantId, token, refreshToken };
+        const tenant2 = barber2.tenantId ? await db.getTenantById(barber2.tenantId) : null;
+        return { id: barber2.id, name: barber2.name, email: barber2.email, phone: barber2.phone, photoUrl: photoUrl ?? barber2.photoUrl, role: barber2.role, specialties: barber2.specialties, tenantId: barber2.tenantId, tenantPlan: tenant2?.plan ?? null, token, refreshToken };
       }),
   }),
 
@@ -171,7 +173,8 @@ export const appRouter = router({
         if (!valid) throw new Error("Credenciais inválidas");
         const payload = { barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any };
         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
-        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, token, refreshToken };
+        const tenantAdmin = barber.tenantId ? await db.getTenantById(barber.tenantId) : null;
+        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, tenantPlan: tenantAdmin?.plan ?? null, token, refreshToken };
       }),
     setup: publicProcedure
       .input(z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(6) }))

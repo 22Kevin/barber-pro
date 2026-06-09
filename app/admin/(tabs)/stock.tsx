@@ -44,7 +44,9 @@ function today() {
   return toLocalDate(new Date());
 }
 
-export default function StockScreen() {
+import { FeatureGate } from "@/components/feature-gate";
+
+function StockScreenInner() {
   const colors = useColors();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
@@ -533,3 +535,11 @@ const styles = StyleSheet.create({
   movDate: { fontSize: 12, marginTop: 1 },
   movQty: { fontSize: 16, fontWeight: "800" },
 });
+
+export default function StockScreen() {
+  return (
+    <FeatureGate feature="stock">
+      <StockScreenInner />
+    </FeatureGate>
+  );
+}

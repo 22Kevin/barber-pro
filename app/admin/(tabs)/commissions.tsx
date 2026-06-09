@@ -33,7 +33,9 @@ function fmt(value: number) {
 
 const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-export default function CommissionsScreen() {
+import { FeatureGate } from "@/components/feature-gate";
+
+function CommissionsScreenInner() {
   const colors = useColors();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
@@ -402,3 +404,11 @@ const styles = StyleSheet.create({
   quickRates: { flexDirection: "row", gap: 8, marginBottom: 24 },
   quickRateBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, alignItems: "center" },
 });
+
+export default function CommissionsScreen() {
+  return (
+    <FeatureGate feature="commissions">
+      <CommissionsScreenInner />
+    </FeatureGate>
+  );
+}

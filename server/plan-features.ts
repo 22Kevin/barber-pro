@@ -3,9 +3,9 @@ import type { Request, Response, NextFunction } from "express";
 // ─── Preços ───────────────────────────────────────────────────────────────────
 
 export const PLAN_PRICING = {
-  solo:    { monthly: 49.90, annual: 39.90, annualTotal: 478.80 },
-  equipe:  { monthly: 99.90, annual: 79.90, annualTotal: 958.80 },
-  estudio: { monthly: 169.90, annual: 135.90, annualTotal: 1630.80 },
+  solo:   { monthly: 49.90, annual: 39.90, annualTotal: 478.80  },
+  team:   { monthly: 99.90, annual: 79.90, annualTotal: 958.80  },
+  studio: { monthly: 169.90, annual: 135.90, annualTotal: 1630.80 },
 } as const;
 
 export type PlanSlug = keyof typeof PLAN_PRICING;
@@ -13,9 +13,9 @@ export type PlanSlug = keyof typeof PLAN_PRICING;
 // ─── Limites de barbeiros ─────────────────────────────────────────────────────
 
 export const PLAN_BARBER_LIMITS: Record<PlanSlug, number> = {
-  solo:    1,
-  equipe:  3,
-  estudio: Infinity,
+  solo:   1,
+  team:   3,
+  studio: Infinity,
 };
 
 // ─── Features por plano ───────────────────────────────────────────────────────
@@ -34,7 +34,7 @@ export type FeatureKey =
 
 export const PLAN_FEATURES: Record<PlanSlug, Set<FeatureKey>> = {
   solo: new Set([]),
-  equipe: new Set([
+  team: new Set([
     "products",
     "stock",
     "suppliers",
@@ -43,7 +43,7 @@ export const PLAN_FEATURES: Record<PlanSlug, Set<FeatureKey>> = {
     "subscription_plans",
     "reports_full",
   ]),
-  estudio: new Set([
+  studio: new Set([
     "products",
     "stock",
     "suppliers",

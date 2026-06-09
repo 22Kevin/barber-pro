@@ -47,7 +47,9 @@ function timeSince(d: Date | string | null | undefined): string {
   return `${days}d atrás`;
 }
 
-export default function OrbitScreen() {
+import { FeatureGate } from "@/components/feature-gate";
+
+function OrbitScreenInner() {
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? 0;
 
@@ -414,3 +416,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
 });
+
+export default function OrbitScreen() {
+  return (
+    <FeatureGate feature="orbit">
+      <OrbitScreenInner />
+    </FeatureGate>
+  );
+}

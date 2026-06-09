@@ -7,7 +7,9 @@ import { useBarberAuth } from "@/lib/auth-context";
 import { useColors } from "@/hooks/use-colors";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 
-export default function CouponsScreen() {
+import { FeatureGate } from "@/components/feature-gate";
+
+function CouponsScreenInner() {
   const { barber } = useBarberAuth();
   const colors = useColors();
   const tabBarHeight = useTabBarHeight();
@@ -162,5 +164,13 @@ export default function CouponsScreen() {
         <View style={{ height: tabBarHeight + 16 }} />
       </ScrollView>
     </ScreenContainer>
+  );
+}
+
+export default function CouponsScreen() {
+  return (
+    <FeatureGate feature="coupons">
+      <CouponsScreenInner />
+    </FeatureGate>
   );
 }

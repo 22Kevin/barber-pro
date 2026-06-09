@@ -29,25 +29,28 @@ const PLANS = [
   {
     key: "solo",
     label: "Solo",
-    price: 49,
+    price: 49.90,
+    priceAnnual: 39.90,
     description: "Para barbearias com 1 profissional",
-    features: ["1 barbeiro", "Agendamento online", "Financeiro", "Relatórios"],
+    features: ["1 barbeiro", "Agendamento online", "Financeiro", "Relatórios básicos"],
     highlight: false,
   },
   {
     key: "team",
     label: "Equipe",
-    price: 89,
+    price: 99.90,
+    priceAnnual: 79.90,
     description: "Para barbearias com equipe",
-    features: ["Até 5 barbeiros", "Tudo do Solo", "Comissões", "Promoções"],
+    features: ["Até 3 barbeiros", "Tudo do Solo", "Produtos e Estoque", "Cupons e Planos de assinatura"],
     highlight: true,
   },
   {
     key: "studio",
     label: "Estúdio",
-    price: 149,
+    price: 169.90,
+    priceAnnual: 135.90,
     description: "Para estúdios e franquias",
-    features: ["Barbeiros ilimitados", "Tudo do Equipe", "Multi-unidade", "Suporte prioritário"],
+    features: ["Barbeiros ilimitados", "Tudo do Equipe", "Comissões automáticas", "Radar de Leads"],
     highlight: false,
   },
 ] as const;
@@ -356,7 +359,7 @@ export default function BarberProPaywallScreen() {
             borderWidth: 1, borderColor: "#C9A84C", width: "100%", alignItems: "center",
           }}>
             <Text style={{ fontSize: 13, color: "#9BA1A6", marginBottom: 4 }}>Plano ativo</Text>
-            <Text style={{ fontSize: 20, fontWeight: "700", color: "#C9A84C" }}>{plan.label} — R$ {plan.price}/mês</Text>
+            <Text style={{ fontSize: 20, fontWeight: "700", color: "#C9A84C" }}>{plan.label} — R$ {plan.price.toFixed(2).replace(".", ",")}/mês</Text>
           </View>
           <Text style={{ fontSize: 12, color: "#687076", textAlign: "center", marginTop: 24 }}>
             Redirecionando automaticamente...
@@ -380,7 +383,7 @@ export default function BarberProPaywallScreen() {
             <Text style={styles.subtitle}>
               {isCard
                 ? "Sua assinatura foi criada com cartão. O acesso será liberado automaticamente."
-                : `Plano ${plan.label} — R$ ${plan.price}/mês`}
+                : `Plano ${plan.label} — R$ ${plan.price.toFixed(2).replace(".", ",")}/mês`}
             </Text>
           </View>
 
@@ -481,7 +484,7 @@ export default function BarberProPaywallScreen() {
                   "Abra o app do seu banco",
                   "Escolha pagar via Pix",
                   "Escaneie o QR Code ou cole o código",
-                  "Confirme o pagamento de R$ " + plan.price,
+                  "Confirme o pagamento de R$ " + plan.price.toFixed(2).replace(".", ","),
                   "Seu acesso será liberado automaticamente",
                 ].map((step, i) => (
                   <View key={i} style={styles.instructionRow}>
@@ -510,7 +513,7 @@ export default function BarberProPaywallScreen() {
               <View style={styles.pendingIcon}>
                 <IconSymbol name="checkmark.circle.fill" size={32} color="#C9A84C" />
               </View>
-              <Text style={styles.pendingTitle}>Plano {plan.label} — R$ {plan.price}/mês</Text>
+              <Text style={styles.pendingTitle}>Plano {plan.label} — R$ {plan.price.toFixed(2).replace(".", ",")}/mês</Text>
               <Text style={styles.pendingDesc}>
                 Seu cartão foi registrado. O acesso será liberado após a confirmação do pagamento pelo Asaas.
               </Text>
@@ -538,7 +541,7 @@ export default function BarberProPaywallScreen() {
           <Text style={styles.subtitle}>
             {step === "plans"
               ? "Seu período de trial encerrou. Assine agora para continuar usando o Barber Pro."
-              : `Plano ${plan.label} — R$ ${plan.price}/mês`}
+              : `Plano ${plan.label} — R$ ${plan.price.toFixed(2).replace(".", ",")}/mês`}
           </Text>
         </View>
 

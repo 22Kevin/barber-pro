@@ -68,7 +68,9 @@ type FormData = {
 
 const EMPTY_FORM: FormData = { name: "", phone: "", email: "", cnpj: "", address: "", notes: "" };
 
-export default function SuppliersScreen() {
+import { FeatureGate } from "@/components/feature-gate";
+
+function SuppliersScreenInner() {
   const colors = useColors();
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? 0;
@@ -598,3 +600,11 @@ const styles = StyleSheet.create({
   modalBtn: { flex: 1, paddingVertical: 13, borderRadius: 10, alignItems: "center" },
   modalBtnText: { fontWeight: "700", fontSize: 15 },
 });
+
+export default function SuppliersScreen() {
+  return (
+    <FeatureGate feature="suppliers">
+      <SuppliersScreenInner />
+    </FeatureGate>
+  );
+}

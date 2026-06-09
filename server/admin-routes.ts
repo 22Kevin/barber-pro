@@ -4954,7 +4954,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
     solo: 'Solo', team: 'Equipe', studio: 'Estúdio',
     starter: 'Starter', professional: 'Professional', premium: 'Premium', // legado
   };
-  const bpPlanPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
+  const bpPlanPriceMap: Record<string, number> = { solo: 49.90, team: 99.90, studio: 169.90 };
   // Plano real do tenant (campo plan da tabela tenants)
   const tenantRealPlan = (tenant as any)?.plan ?? 'solo';
   // Se o tenant ainda não tem plano Barber Pro registrado, usar o plano real do tenant
@@ -4983,9 +4983,9 @@ async function renderConfiguracoes(req: Request, res: Response) {
               <div id="subscribe-widget" style="display:flex;flex-direction:column;gap:10px;width:100%">
                 <!-- Seletor de plano -->
                 <select id="sub-plan" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;width:100%">
-                  <option value="solo" ${tenantRealPlan === 'solo' ? 'selected' : ''}>Solo — R$ 49/mês (1 barbeiro)</option>
-                  <option value="team" ${tenantRealPlan === 'team' ? 'selected' : ''}>Equipe — R$ 89/mês (até 5 barbeiros)</option>
-                  <option value="studio" ${tenantRealPlan === 'studio' ? 'selected' : ''}>Estúdio — R$ 149/mês (ilimitado)</option>
+                  <option value="solo" ${tenantRealPlan === 'solo' ? 'selected' : ''}>Solo — R$ 49,90/mês (1 barbeiro)</option>
+                  <option value="team" ${tenantRealPlan === 'team' ? 'selected' : ''}>Equipe — R$ 99,90/mês (até 3 barbeiros)</option>
+                  <option value="studio" ${tenantRealPlan === 'studio' ? 'selected' : ''}>Estúdio — R$ 169,90/mês (ilimitado)</option>
                 </select>
                 <!-- Seletor de forma de pagamento -->
                 <!-- Seletor de forma de pagamento -->
@@ -5097,9 +5097,9 @@ async function renderConfiguracoes(req: Request, res: Response) {
             ${bpStatus === 'active' ? `
               <form method="POST" action="/admin/configuracoes/asaas/upgrade-plan" style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
                 <select name="newPlan" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer">
-                  <option value="solo" ${effectivePlanName === 'solo' ? 'selected' : ''}>Solo — R$ 49/mês (1 barbeiro)</option>
-                  <option value="team" ${effectivePlanName === 'team' ? 'selected' : ''}>Equipe — R$ 89/mês (até 5 barbeiros)</option>
-                  <option value="studio" ${effectivePlanName === 'studio' ? 'selected' : ''}>Estúdio — R$ 149/mês (ilimitado)</option>
+                  <option value="solo" ${effectivePlanName === 'solo' ? 'selected' : ''}>Solo — R$ 49,90/mês (1 barbeiro)</option>
+                  <option value="team" ${effectivePlanName === 'team' ? 'selected' : ''}>Equipe — R$ 99,90/mês (até 3 barbeiros)</option>
+                  <option value="studio" ${effectivePlanName === 'studio' ? 'selected' : ''}>Estúdio — R$ 169,90/mês (ilimitado)</option>
                 </select>
                 <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px" onclick="return confirm('Alterar o plano cancelará a assinatura atual e criará uma nova. Confirmar?')">Alterar plano</button>
               </form>
@@ -7966,7 +7966,7 @@ document.addEventListener('input', function(e) {
       const rawBilling = ((req.body as any)?.billingType ?? 'PIX') as string;
       const allowedBillings = ['PIX', 'CREDIT_CARD', 'UNDEFINED'];
       const billingType: string = allowedBillings.includes(rawBilling) ? rawBilling : 'PIX';
-      const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
+      const planPriceMap: Record<string, number> = { solo: 49.90, team: 99.90, studio: 169.90 };
       const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
       const planPrice = planPriceMap[selectedPlan] ?? 49;
       const planLabel = planLabelMap[selectedPlan] ?? selectedPlan;
@@ -8232,7 +8232,7 @@ document.addEventListener('input', function(e) {
       if (!barber?.tenantId) { res.redirect("/admin/configuracoes?tab=pagamentos"); return; }
 
       const newPlan = (req.body as any)?.newPlan ?? 'solo';
-      const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
+      const planPriceMap: Record<string, number> = { solo: 49.90, team: 99.90, studio: 169.90 };
       const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
       const newPrice = planPriceMap[newPlan] ?? 49;
       const newLabel = planLabelMap[newPlan] ?? newPlan;

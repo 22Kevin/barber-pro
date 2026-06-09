@@ -5,6 +5,8 @@ import { removeBarberJwt } from "@/lib/trpc";
 
 export type BarberRole = "super_admin" | "barber" | "receptionist";
 
+export type TenantPlan = "solo" | "team" | "studio";
+
 export interface AuthBarber {
   id: number;
   name: string;
@@ -14,6 +16,7 @@ export interface AuthBarber {
   role: BarberRole;
   specialties: string | null;
   tenantId?: number | null;
+  tenantPlan?: TenantPlan | null;
 }
 
 interface AuthContextType {
