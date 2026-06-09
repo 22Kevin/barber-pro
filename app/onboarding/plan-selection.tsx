@@ -34,7 +34,7 @@ const PLANS: Plan[] = [
   {
     key: "solo",
     name: "Solo",
-    price: 49,
+    price: 49.90,
     description: "Para o barbeiro autônomo que trabalha sozinho.",
     features: [
       { text: "1 barbeiro / profissional", included: true },
@@ -43,44 +43,45 @@ const PLANS: Plan[] = [
       { text: "Sistema de fidelidade", included: true },
       { text: "Notificações push", included: true },
       { text: "Pagamento via Pix e cartão", included: true },
+      { text: "Despesas e controle de lucros", included: true },
       { text: "Múltiplos barbeiros", included: false },
-      { text: "Relatórios avançados", included: false },
-      { text: "Controle de estoque", included: false },
+      { text: "Produtos e estoque", included: false },
+      { text: "Cupons e encomendas", included: false },
+      { text: "Relatórios completos + CSV", included: false },
     ],
   },
   {
     key: "team",
     name: "Equipe",
-    price: 89,
-    description: "Para barbearias com equipe de até 5 profissionais.",
+    price: 99.90,
+    description: "Para barbearias com até 3 profissionais.",
     badge: "MAIS POPULAR",
     features: [
-      { text: "Até 5 barbeiros / profissionais", included: true },
+      { text: "Até 3 barbeiros / profissionais", included: true },
       { text: "Agendamento online pelo cliente", included: true },
       { text: "Gestão financeira completa", included: true },
       { text: "Sistema de fidelidade", included: true },
       { text: "Notificações push", included: true },
       { text: "Pagamento via Pix e cartão", included: true },
-      { text: "Múltiplos barbeiros", included: true },
-      { text: "Relatórios avançados", included: true },
-      { text: "Controle de estoque", included: false },
+      { text: "Produtos, estoque e fornecedores", included: true },
+      { text: "Cupons e encomendas", included: true },
+      { text: "Planos de assinatura p/ clientes", included: true },
+      { text: "Relatórios completos + CSV", included: true },
+      { text: "Comissões automáticas", included: false },
+      { text: "Radar de Leads", included: false },
     ],
   },
   {
     key: "studio",
     name: "Estúdio",
-    price: 149,
-    description: "Para salões e estúdios com equipe completa e estoque.",
+    price: 169.90,
+    description: "Para grandes barbearias e estúdios.",
     features: [
       { text: "Barbeiros ilimitados", included: true },
-      { text: "Agendamento online pelo cliente", included: true },
-      { text: "Gestão financeira completa", included: true },
-      { text: "Sistema de fidelidade", included: true },
-      { text: "Notificações push", included: true },
-      { text: "Pagamento via Pix e cartão", included: true },
-      { text: "Múltiplos barbeiros", included: true },
-      { text: "Relatórios avançados", included: true },
-      { text: "Controle de estoque", included: true },
+      { text: "Tudo do plano Equipe", included: true },
+      { text: "Comissões automáticas", included: true },
+      { text: "Radar de Leads (Órbita)", included: true },
+      { text: "Suporte prioritário", included: true },
     ],
   },
 ];
@@ -170,7 +171,7 @@ export default function PlanSelectionScreen() {
                   <View style={styles.priceBox}>
                     <Text style={[styles.priceCurrency, isSelected && styles.priceSelected]}>R$</Text>
                     <Text style={[styles.priceValue, isSelected && styles.priceSelected]}>
-                      {plan.price}
+                      {plan.price.toFixed(2).replace(".", ",")}
                     </Text>
                     <Text style={[styles.pricePeriod, isSelected && styles.pricePeriodSelected]}>/mês</Text>
                   </View>

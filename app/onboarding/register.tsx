@@ -105,7 +105,7 @@ export default function OnboardingRegisterScreen() {
   const [step5, setStep5] = useState<Step5Data>({ paymentMethod: null });
   const [loadingCep, setLoadingCep] = useState(false);
   const planLabel = selectedPlan === "team" ? "Equipe" : selectedPlan === "studio" ? "Estúdio" : "Solo";
-  const planPrice = selectedPlan === "team" ? "R$89" : selectedPlan === "studio" ? "R$149" : "R$49";
+  const planPrice = selectedPlan === "team" ? "R$99,90" : selectedPlan === "studio" ? "R$169,90" : "R$49,90";
 
   const registerMutation = trpc.onboarding.register.useMutation({
     onSuccess: async (data) => {

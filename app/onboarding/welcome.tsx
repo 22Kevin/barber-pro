@@ -62,8 +62,8 @@ export default function WelcomeScreen() {
   const shopName = params.shopName ?? "sua barbearia";
   const plan = (params.plan as "solo" | "team" | "studio") ?? "solo";
   const planLabel = plan === "team" ? "Equipe" : plan === "studio" ? "Estúdio" : "Solo";
-  const planPrice = plan === "team" ? "R$89" : plan === "studio" ? "R$149" : "R$49";
-  const planDesc = plan === "team" ? "Até 5 barbeiros" : plan === "studio" ? "Barbeiros ilimitados" : "1 barbeiro";
+  const planPrice = plan === "team" ? "R$99,90" : plan === "studio" ? "R$169,90" : "R$49,90";
+  const planDesc = plan === "team" ? "Até 3 barbeiros" : plan === "studio" ? "Barbeiros ilimitados" : "1 barbeiro";
 
   // Animações de entrada
   const logoScale = useSharedValue(0);
