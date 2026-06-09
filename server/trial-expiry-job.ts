@@ -65,16 +65,16 @@ export function buildTrialExpiryEmailPublic(tenantName: string, adminName: strin
         <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
           <div><div style="font-weight:700;color:#ECEDEE">Solo</div><div style="font-size:12px;color:#666">1 barbeiro</div></div>
           <div style="display:flex;align-items:center;gap:10px">
-            <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 49<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
+            <div style="font-size:18px;font-weight:900;color:#C9A84C">R$49,90<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
             <span style="font-size:11px;color:#C9A84C;border:1px solid #C9A84C44;padding:2px 8px;border-radius:6px">Escolher →</span>
           </div>
         </div>
       </a>
       <a href="${links?.team || 'https://usebarberpro.com/admin/configuracoes?tab=pagamentos&plan=team'}" style="text-decoration:none;display:block;margin-bottom:10px">
         <div style="background:#1A1A1A;border:2px solid #C9A84C44;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
-          <div><div style="font-weight:700;color:#ECEDEE">Equipe <span style="font-size:10px;background:#C9A84C22;color:#C9A84C;padding:2px 6px;border-radius:4px;margin-left:4px">POPULAR</span></div><div style="font-size:12px;color:#666">até 5 barbeiros</div></div>
+          <div><div style="font-weight:700;color:#ECEDEE">Equipe <span style="font-size:10px;background:#C9A84C22;color:#C9A84C;padding:2px 6px;border-radius:4px;margin-left:4px">POPULAR</span></div><div style="font-size:12px;color:#666">até 3 barbeiros</div></div>
           <div style="display:flex;align-items:center;gap:10px">
-            <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 89<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
+            <div style="font-size:18px;font-weight:900;color:#C9A84C">R$99,90<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
             <span style="font-size:11px;color:#C9A84C;border:1px solid #C9A84C44;padding:2px 8px;border-radius:6px">Escolher →</span>
           </div>
         </div>
@@ -83,7 +83,7 @@ export function buildTrialExpiryEmailPublic(tenantName: string, adminName: strin
         <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
           <div><div style="font-weight:700;color:#ECEDEE">Estúdio</div><div style="font-size:12px;color:#666">barbeiros ilimitados</div></div>
           <div style="display:flex;align-items:center;gap:10px">
-            <div style="font-size:18px;font-weight:900;color:#C9A84C">R$ 149<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
+            <div style="font-size:18px;font-weight:900;color:#C9A84C">R$169,90<span style="font-size:12px;font-weight:400;color:#666">/mês</span></div>
             <span style="font-size:11px;color:#C9A84C;border:1px solid #C9A84C44;padding:2px 8px;border-radius:6px">Escolher →</span>
           </div>
         </div>
@@ -105,7 +105,7 @@ export function buildTrialExpiryEmailPublic(tenantName: string, adminName: strin
 async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCutoffStr: string, getAllBarbers: Function) {
   try {
     const { createAsaasSubscription, getOrCreateAsaasCustomer, asaasEnabled } = await import("./asaas");
-    const PLAN_PRICES: Record<string, number> = { solo: 49, starter: 49, team: 89, studio: 149, estudios: 149 };
+    const PLAN_PRICES: Record<string, number> = { solo: 49.90, starter: 49.90, team: 99.90, studio: 169.90, estudios: 169.90 };
 
     // Buscar tenants cujo trial expirou há mais de GRACE_PERIOD_HOURS horas
     // Use only columns guaranteed to exist in all environments
@@ -196,7 +196,7 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
           try {
             const { generateMagicLink } = await import("./admin-routes") as any;
             const plan = t.plan ?? 'team';
-            const PLAN_PRICES_2: Record<string, number> = { solo: 49, starter: 49, team: 89, studio: 149 };
+            const PLAN_PRICES_2: Record<string, number> = { solo: 49.90, starter: 49.90, team: 99.90, studio: 169.90 };
             const price = PLAN_PRICES_2[plan] ?? 89;
             const planLabels2: Record<string,string> = { solo:'Solo', starter:'Solo', team:'Equipe', studio:'Estúdio' };
 
@@ -224,15 +224,15 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
               <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
                 <a href="${links.solo}" style="display:block;background:#1A1A1A;border:1px solid #2A2A2A;border-radius:10px;padding:12px;text-align:center;text-decoration:none">
                   <div style="font-weight:700;color:#ECEDEE;font-size:13px">Solo</div>
-                  <div style="color:#C9A84C;font-size:16px;font-weight:800">R$49</div>
+                  <div style="color:#C9A84C;font-size:16px;font-weight:800">R$49,90</div>
                 </a>
                 <a href="${links.team}" style="display:block;background:#1A1A1A;border:2px solid #C9A84C55;border-radius:10px;padding:12px;text-align:center;text-decoration:none">
                   <div style="font-weight:700;color:#C9A84C;font-size:13px">Equipe ✓</div>
-                  <div style="color:#C9A84C;font-size:16px;font-weight:800">R$89</div>
+                  <div style="color:#C9A84C;font-size:16px;font-weight:800">R$99,90</div>
                 </a>
                 <a href="${links.studio}" style="display:block;background:#1A1A1A;border:1px solid #2A2A2A;border-radius:10px;padding:12px;text-align:center;text-decoration:none">
                   <div style="font-weight:700;color:#ECEDEE;font-size:13px">Estúdio</div>
-                  <div style="color:#C9A84C;font-size:16px;font-weight:800">R$149</div>
+                  <div style="color:#C9A84C;font-size:16px;font-weight:800">R$169,90</div>
                 </a>
               </div>` : ''}
               ${ctaButton('🚀 Reativar acesso agora →', ctaUrl)}
@@ -363,7 +363,7 @@ async function runTrialExpiryJob() {
 Para continuar usando o sistema, acesse:
 https://usebarberpro.com/admin/configuracoes#pagamentos
 
-Planos a partir de R$ 49/mês. 💈`;
+Planos a partir de R$49,90/mês. 💈`;
           const waLink = buildWhatsAppLink(phone, msg);
           console.log(`[trial-expiry] WhatsApp para ${tenant.tenantName} (${daysLeft}d): ${waLink}`);
         }
