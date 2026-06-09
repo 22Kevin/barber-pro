@@ -466,7 +466,7 @@ export default function LandingWeb() {
           "@type": "Offer",
           "price": "97",
           "priceCurrency": "BRL",
-          "description": "14 dias grátis, depois R$ 97/mês"
+          "description": "14 dias grátis. Planos a partir de R$ 49,90/mês"
         },
         "aggregateRating": {
           "@type": "AggregateRating",
