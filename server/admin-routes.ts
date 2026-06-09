@@ -327,7 +327,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/lista-espera", icon: svgIcons["lista-espera"], label: "Lista de Espera", id: "lista-espera" },
         { href: "/admin/assinaturas", icon: svgIcons.assinaturas, label: "Assinaturas", id: "assinaturas", feature: "subscription_plans", featureLabel: "Assinaturas de Clientes", requiredPlan: "Equipe" },
         { href: "/admin/planos", icon: svgIcons.planos, label: "Planos de Assinatura", id: "planos", feature: "subscription_plans", featureLabel: "Planos de Assinatura", requiredPlan: "Equipe" },
-        { href: "/admin/orbita", icon: svgIcons.orbita, label: "Clientes em Órbita", id: "orbita", feature: "orbit", featureLabel: "Radar de Leads (Órbita)", requiredPlan: "Estúdio" },
+        { href: "/admin/orbita", icon: svgIcons.orbita, label: "Radar de Leads", id: "orbita", feature: "orbit", featureLabel: "Radar de Leads (Órbita)", requiredPlan: "Estúdio" },
       ],
     },
     {
@@ -1057,8 +1057,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px" id="um-feature-name">Recurso bloqueado</div>
       <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px" id="um-desc-text"></div>
       <div style="display:inline-block;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);color:var(--gold);font-size:12px;font-weight:600;padding:3px 12px;border-radius:99px;margin-bottom:20px" id="um-required-plan"></div>
-      <button onclick="document.getElementById('upgrade-modal-overlay').classList.remove('open');window.location.href='/admin/configuracoes?tab=pagamentos'" style="display:block;width:100%;padding:13px;border-radius:10px;background:var(--gold);color:#0A0A0A;font-size:14px;font-weight:700;border:none;cursor:pointer;margin-bottom:10px">Ver planos e fazer upgrade →</button>
-      <button onclick="document.getElementById('upgrade-modal-overlay').classList.remove('open')" style="font-size:13px;color:var(--muted);cursor:pointer;background:none;border:none;padding:4px">Agora não</button>
+      <button onclick="var o=document.getElementById('upgrade-modal-overlay');o.classList.remove('open');o.style.display='none';window.location.href='/admin/configuracoes?tab=pagamentos'" style="display:block;width:100%;padding:13px;border-radius:10px;background:var(--gold);color:#0A0A0A;font-size:14px;font-weight:700;border:none;cursor:pointer;margin-bottom:10px">Ver planos e fazer upgrade →</button>
+      <button onclick="var o=document.getElementById('upgrade-modal-overlay');o.classList.remove('open');o.style.display='none';" style="font-size:13px;color:var(--muted);cursor:pointer;background:none;border:none;padding:4px">Agora não</button>
     </div>
   </div>
   <script>
