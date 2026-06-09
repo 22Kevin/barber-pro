@@ -326,18 +326,18 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/clientes", icon: svgIcons.clientes, label: "Clientes", id: "clientes" },
         { href: "/admin/lista-espera", icon: svgIcons["lista-espera"], label: "Lista de Espera", id: "lista-espera" },
         { href: "/admin/assinaturas", icon: svgIcons.assinaturas, label: "Assinaturas", id: "assinaturas", feature: "subscription_plans", featureLabel: "Assinaturas de Clientes", requiredPlan: "Equipe" },
-        { href: "/admin/planos", icon: svgIcons.planos, label: "Planos de Assinatura", id: "planos" },
-        { href: "/admin/orbita", icon: svgIcons.orbita, label: "Clientes em Órbita", id: "orbita" },
+        { href: "/admin/planos", icon: svgIcons.planos, label: "Planos de Assinatura", id: "planos", feature: "subscription_plans", featureLabel: "Planos de Assinatura", requiredPlan: "Equipe" },
+        { href: "/admin/orbita", icon: svgIcons.orbita, label: "Clientes em Órbita", id: "orbita", feature: "orbit", featureLabel: "Radar de Leads (Órbita)", requiredPlan: "Estúdio" },
       ],
     },
     {
       label: "CATÁLOGO",
       items: [
         { href: "/admin/servicos", icon: svgIcons.servicos, label: "Serviços", id: "servicos" },
-        { href: "/admin/produtos", icon: svgIcons.produtos, label: "Produtos", id: "produtos" },
-        { href: "/admin/estoque", icon: svgIcons.estoque, label: "Estoque", id: "estoque" },
-        { href: "/admin/encomendas", icon: svgIcons.encomendas, label: "Encomendas", id: "encomendas" },
-        { href: "/admin/fornecedores", icon: svgIcons.fornecedores, label: "Fornecedores", id: "fornecedores" },
+        { href: "/admin/produtos", icon: svgIcons.produtos, label: "Produtos", id: "produtos", feature: "products", featureLabel: "Produtos", requiredPlan: "Equipe" },
+        { href: "/admin/estoque", icon: svgIcons.estoque, label: "Estoque", id: "estoque", feature: "stock", featureLabel: "Controle de Estoque", requiredPlan: "Equipe" },
+        { href: "/admin/encomendas", icon: svgIcons.encomendas, label: "Encomendas", id: "encomendas", feature: "orders", featureLabel: "Encomendas", requiredPlan: "Equipe" },
+        { href: "/admin/fornecedores", icon: svgIcons.fornecedores, label: "Fornecedores", id: "fornecedores", feature: "suppliers", featureLabel: "Fornecedores", requiredPlan: "Equipe" },
       ],
     },
     {
@@ -345,8 +345,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       items: [
         { href: "/admin/financeiro", icon: svgIcons.financeiro, label: "Financeiro", id: "financeiro" },
         { href: "/admin/relatorios", icon: svgIcons.relatorios, label: "Relatórios", id: "relatorios" },
-        { href: "/admin/comissoes", icon: svgIcons.comissoes, label: "Comissões", id: "comissoes" },
-        { href: "/admin/minhas-comissoes", icon: svgIcons["minhas-comissoes"], label: "Minhas Comissões", id: "minhas-comissoes" },
+        { href: "/admin/comissoes", icon: svgIcons.comissoes, label: "Comissões", id: "comissoes", feature: "commissions", featureLabel: "Comissões Automáticas", requiredPlan: "Estúdio" },
+        { href: "/admin/minhas-comissoes", icon: svgIcons["minhas-comissoes"], label: "Minhas Comissões", id: "minhas-comissoes", feature: "commissions", featureLabel: "Minhas Comissões", requiredPlan: "Estúdio" },
       ],
     },
     {
@@ -439,6 +439,18 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 18px; font-size: 13px; color: var(--muted); text-decoration: none; transition: all 0.15s ease; cursor: pointer; margin: 1px 8px; border-radius: var(--radius-sm); }
     .nav-item:hover { background: var(--surface2); color: var(--text2); }
     .nav-item.active { background: var(--gold-dim); color: var(--gold); font-weight: 600; box-shadow: inset 3px 0 0 var(--gold); }
+    .nav-item-locked { cursor:pointer!important }
+    .nav-item-locked:hover { background:var(--surface2)!important }
+    #upgrade-modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center }
+    #upgrade-modal-overlay.open { display:flex }
+    #upgrade-modal { background:var(--surface);border:1px solid rgba(201,168,76,.35);border-radius:16px;padding:32px 28px;max-width:420px;width:90%;text-align:center }
+    .um-lock { font-size:40px;margin-bottom:14px }
+    .um-title { font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px }
+    .um-desc { font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px }
+    .um-plan { display:inline-block;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);color:var(--gold);font-size:12px;font-weight:600;padding:3px 12px;border-radius:99px;margin-bottom:20px }
+    .um-btn { display:block;width:100%;padding:13px;border-radius:10px;background:var(--gold);color:#0A0A0A;font-size:14px;font-weight:700;border:none;cursor:pointer;margin-bottom:10px }
+    .um-btn:hover { opacity:.88 }
+    .um-cancel { font-size:13px;color:var(--muted);cursor:pointer;background:none;border:none;padding:4px }
     .nav-item-locked { cursor:pointer!important }
     .nav-item-locked:hover { background:var(--surface2)!important }
     #upgrade-modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center }
@@ -861,15 +873,6 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       sidebar.classList.remove('open');
       overlay.classList.remove('active');
     }
-    window.showUpgradeModal=function(f,p){
-      document.getElementById('um-feature-name').textContent=f;
-      document.getElementById('um-required-plan').textContent='Disponível no plano '+p;
-      document.getElementById('um-desc-text').textContent=f+' está disponível a partir do plano '+p+'. Faça upgrade para desbloquear este e outros recursos.';
-      document.getElementById('upgrade-modal-overlay').classList.add('open');
-    };
-    document.getElementById('upgrade-modal-overlay').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
-    document.getElementById('um-close-btn').addEventListener('click',function(){document.getElementById('upgrade-modal-overlay').classList.remove('open');});
-    document.getElementById('um-upgrade-btn').addEventListener('click',function(){document.getElementById('upgrade-modal-overlay').classList.remove('open');window.location.href='/admin/configuracoes?tab=pagamentos';});
     // Fechar sidebar ao clicar em link de nav (mobile)
     document.querySelectorAll('.nav-item').forEach(function(el) {
       el.addEventListener('click', function() {
@@ -1364,6 +1367,37 @@ function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: 
       btn.textContent = "Aguardando Google...";
       window.location.href = "/admin/google-login";
     }
+  </script>
+  <div id="upgrade-modal-overlay">
+    <div id="upgrade-modal">
+      <div class="um-lock">🔒</div>
+      <div class="um-title" id="um-feature-name">Recurso bloqueado</div>
+      <div class="um-desc" id="um-desc-text"></div>
+      <div class="um-plan" id="um-required-plan"></div>
+      <button class="um-btn" id="um-upgrade-btn">Ver planos e fazer upgrade →</button>
+      <button class="um-cancel" id="um-close-btn">Agora não</button>
+    </div>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      window.showUpgradeModal = function(f, p) {
+        document.getElementById('um-feature-name').textContent = f;
+        document.getElementById('um-required-plan').textContent = 'Disponível no plano ' + p;
+        document.getElementById('um-desc-text').textContent = f + ' está disponível a partir do plano ' + p + '. Faça upgrade para desbloquear este e outros recursos.';
+        document.getElementById('upgrade-modal-overlay').classList.add('open');
+      };
+      var overlay = document.getElementById('upgrade-modal-overlay');
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) overlay.classList.remove('open');
+      });
+      document.getElementById('um-close-btn').addEventListener('click', function() {
+        overlay.classList.remove('open');
+      });
+      document.getElementById('um-upgrade-btn').addEventListener('click', function() {
+        overlay.classList.remove('open');
+        window.location.href = '/admin/configuracoes?tab=pagamentos';
+      });
+    });
   </script>
 </body>
 </html>`;
