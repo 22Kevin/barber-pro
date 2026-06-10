@@ -30,6 +30,13 @@ interface Plan {
   features: PlanFeature[];
 }
 
+// Preços mensais e anuais (por mês)
+const PRICES = {
+  monthly: { solo: 49.90, team: 99.90, studio: 169.90 },
+  annual:  { solo: 39.90, team: 79.90, studio: 135.90 },
+  annualTotal: { solo: 478.80, team: 958.80, studio: 1630.80 },
+};
+
 const PLANS: Plan[] = [
   {
     key: "solo",
@@ -90,6 +97,7 @@ const PLANS: Plan[] = [
 export default function PlanSelectionScreen() {
   const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>("team");
+  const [isAnnual, setIsAnnual] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -111,7 +119,7 @@ export default function PlanSelectionScreen() {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    router.push({ pathname: "/onboarding/register", params: { plan: selectedPlan } } as any);
+    router.push({ pathname: "/onboarding/register", params: { plan: selectedPlan, billing: isAnnual ? "annual" : "monthly" } } as any);
   }
 
   return (
@@ -128,6 +136,23 @@ export default function PlanSelectionScreen() {
           <Text style={styles.headerTitle}>Escolha seu plano</Text>
           <Text style={styles.headerSub}>14 dias grátis · Cancele quando quiser</Text>
         </View>
+      </View>
+
+      {/* Toggle Mensal / Anual */}
+      <View style={styles.billingToggleWrap}>
+        <Pressable
+          style={[styles.billingBtn, !isAnnual && styles.billingBtnActive]}
+          onPress={() => setIsAnnual(false)}
+        >
+          <Text style={[styles.billingBtnText, !isAnnual && styles.billingBtnTextActive]}>Mensal</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.billingBtn, isAnnual && styles.billingBtnActive]}
+          onPress={() => { setIsAnnual(true); if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+        >
+          <Text style={[styles.billingBtnText, isAnnual && styles.billingBtnTextActive]}>Anual</Text>
+          <View style={styles.saveBadge}><Text style={styles.saveBadgeText}>-20%</Text></View>
+        </Pressable>
       </View>
 
       <ScrollView
@@ -171,10 +196,15 @@ export default function PlanSelectionScreen() {
                   <View style={styles.priceBox}>
                     <Text style={[styles.priceCurrency, isSelected && styles.priceSelected]}>R$</Text>
                     <Text style={[styles.priceValue, isSelected && styles.priceSelected]}>
-                      {plan.price.toFixed(2).replace(".", ",")}
+                      {(isAnnual ? PRICES.annual[plan.key] : PRICES.monthly[plan.key]).toFixed(2).replace(".", ",")}
                     </Text>
                     <Text style={[styles.pricePeriod, isSelected && styles.pricePeriodSelected]}>/mês</Text>
                   </View>
+                  {isAnnual && (
+                    <Text style={{ fontSize: 11, color: isSelected ? "#0A0A0A99" : "#666", marginTop: 2 }}>
+                      Total anual R$ {PRICES.annualTotal[plan.key].toFixed(2).replace(".", ",")}
+                    </Text>
+                  )}
                 </View>
 
                 {/* Divisor */}
@@ -259,6 +289,13 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: 12, color: "#666660", marginTop: 2 },
 
   scrollContent: { paddingHorizontal: 20, paddingBottom: 24, gap: 14 },
+  billingToggleWrap: { flexDirection: "row" as const, backgroundColor: "#1A1A1A", borderRadius: 12, margin: 16, marginTop: 4, padding: 4, borderWidth: 1, borderColor: "#2A2A2A" },
+  billingBtn: { flex: 1, paddingVertical: 10, alignItems: "center" as const, borderRadius: 9, flexDirection: "row" as const, justifyContent: "center" as const, gap: 6 },
+  billingBtnActive: { backgroundColor: "#C9A84C" },
+  billingBtnText: { fontSize: 14, fontWeight: "600" as const, color: "#666" },
+  billingBtnTextActive: { color: "#0A0A0A" },
+  saveBadge: { backgroundColor: "#22C55E", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  saveBadgeText: { fontSize: 10, fontWeight: "800" as const, color: "#fff" },
 
   // Cards de plano
   planCard: {
