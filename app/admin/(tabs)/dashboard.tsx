@@ -48,6 +48,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function DashboardScreen() {
   const { barber, logout } = useBarberAuth();
+  const isBarberRole = useIsBarberRole();
+  const myBarberId = barber?.id;
   const colors = useColors();
   const tabBarHeight = useTabBarHeight();
   const today = getTodayString();
