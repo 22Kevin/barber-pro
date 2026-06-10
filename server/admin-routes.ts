@@ -1483,8 +1483,16 @@ async function renderDashboard(req: Request, res: Response) {
     wd.setDate(wd.getDate() - i);
     const dateKey = wd.toISOString().split("T")[0];
     const dayLabel = wd.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "").slice(0, 3);
-    const dayStats = await db.getDashboardStats(dateKey, tenantId).catch(() => ({ revenueToday: 0, appointmentsToday: 0, clientsToday: 0, pendingAppointments: 0 }));
-    weekDays.push({ date: dateKey, label: dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1), revenue: dayStats.revenueToday, appointmentsCount: dayStats.appointmentsToday });
+    if (isBarberRole) {
+      const dayAppts = await db.getAllAppointmentsByDate(dateKey, tenantId).catch(() => []);
+      const myDayAppts = (dayAppts as any[]).filter((a: any) => a.barberId === myBarberId);
+      const myDaySales = await db.getSalesByDateRange(dateKey, dateKey, myBarberId, tenantId).catch(() => []);
+      const myDayRev = (myDaySales as any[]).filter((s: any) => s.paymentStatus === 'paid').reduce((sum: number, s: any) => sum + parseFloat(s.total || '0'), 0);
+      weekDays.push({ date: dateKey, label: dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1), revenue: myDayRev, appointmentsCount: myDayAppts.length });
+    } else {
+      const dayStats = await db.getDashboardStats(dateKey, tenantId).catch(() => ({ revenueToday: 0, appointmentsToday: 0, clientsToday: 0, pendingAppointments: 0 }));
+      weekDays.push({ date: dateKey, label: dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1), revenue: dayStats.revenueToday, appointmentsCount: dayStats.appointmentsToday });
+    }
   }
   const maxRevenue = Math.max(...weekDays.map(d => d.revenue), 1);
   const totalWeekRevenue = weekDays.reduce((s, d) => s + d.revenue, 0);
@@ -1747,7 +1755,7 @@ async function renderDashboard(req: Request, res: Response) {
     </div>
 
     <!-- 3. Agenda de Hoje -->
-    ${lowStockItems.length > 0 ? `
+    ${!isBarberRole && lowStockItems.length > 0 ? `
     <a href="/admin/estoque" style="text-decoration:none;display:flex;align-items:center;gap:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:14px 16px;margin-bottom:20px;transition:background .2s;" onmouseover="this.style.background='rgba(245,158,11,.14)'" onmouseout="this.style.background='rgba(245,158,11,.08)'">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       <div style="flex:1">
