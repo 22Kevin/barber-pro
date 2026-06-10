@@ -4864,10 +4864,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
                     <input type="hidden" name="isActive" value="${!b.isActive}" />
                     <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px">${b.isActive ? 'Desativar' : 'Reativar'}</button>
                   </form>
-                  <form method="POST" action="/admin/configuracoes/equipe/excluir" style="display:inline" onsubmit="return false" onclick="openDeleteModal(${b.id}, '${esc(b.name).replace(/'/g,'\\&apos;')}')">
-                    <input type="hidden" name="id" value="${b.id}" />
-                    <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:#ef4444">🗑 Excluir</button>
-                  </form>
+                  <button type="button" onclick="openDeleteModal(${b.id}, '${esc(b.name).replace(/'/g,&quot;''&quot;)}')" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:#ef4444">🗑 Excluir</button>
                 </td>
               </tr>`).join('')}
         </tbody>
