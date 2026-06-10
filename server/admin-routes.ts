@@ -4766,6 +4766,84 @@ async function renderFinanceiro(req: Request, res: Response) {
 }
 
 // ─── Configurações ────────────────────────────────────────────
+// ── renderBranchTab ────────────────────────────────────────────────────────
+function renderBranchTab(branches: any[]): string {
+  const stateOpts = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(s=>'<option value="'+s+'">'+s+'</option>').join('');
+  const cards = branches.length === 0
+    ? '<div style="text-align:center;padding:60px 20px;background:var(--surface);border:1px solid var(--border);border-radius:16px"><div style="font-size:40px;margin-bottom:12px">🏪</div><div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">Nenhuma filial cadastrada</div><div style="font-size:13px;color:var(--muted)">Crie sua primeira filial para começar a gerenciar sua rede.</div></div>'
+    : '<div style="display:grid;gap:12px">' + branches.map(b => {
+        const dname = (b.displayName||b.name||'').replace(/"/g,'&quot;');
+        const addr  = (b.address||'Endereço não cadastrado');
+        const bslug = b.slug||'';
+        return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px">'
+          +'<div style="width:48px;height:48px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🏪</div>'
+          +'<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--text)">'+dname+'</div>'
+          +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+addr+'</div>'
+          +'<div style="font-size:11px;margin-top:4px"><a href="https://usebarberpro.com/pub/'+bslug+'" target="_blank" style="color:var(--gold);text-decoration:none">usebarberpro.com/pub/'+bslug+'</a></div></div>'
+          +'<div style="display:flex;gap:8px;flex-shrink:0">'
+          +'<form method="POST" action="/admin/filiais/trocar" style="display:inline"><input type="hidden" name="branchId" value="'+b.id+'"/><input type="hidden" name="returnTo" value="/admin"/><button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 14px">Acessar</button></form>'
+          +'<button onclick="openBranchEdit('+b.id+')" data-bid="'+b.id+'" data-name="'+(b.name||'')+'" data-display="'+(b.displayName||b.name||'')+'" data-phone="'+(b.phone||'')+'" data-address="'+(b.address||'')+'" data-city="'+(b.city||'')+'" data-cnpj="'+(b.cnpj||'')+'" data-cep="'+(b.cep||'')+'" data-num="'+(b.addressNumber||'')+'" class="btn btn-ghost" style="font-size:12px;padding:8px 14px">Editar</button>'
+          +'<button onclick="deleteBranchConfirm('+b.id+',this)" data-bname="'+dname+'" class="btn btn-ghost" style="font-size:12px;padding:8px 14px;color:var(--error)">Excluir</button>'
+          +'</div></div>';
+      }).join('')+'</div>';
+
+  return '<div style="margin-bottom:24px">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    +'<div><h2 style="font-size:18px;font-weight:700;color:var(--text);margin:0 0 4px">Filiais</h2>'
+    +'<p style="font-size:13px;color:var(--muted);margin:0">Gerencie as unidades da sua rede.</p></div>'
+    +'<button onclick="document.getElementById(\'modal-nova-filial\').style.display=\'flex\'" class="btn btn-primary" style="padding:10px 20px">+ Nova Filial</button></div>'
+    +cards
+    +'<div id="modal-nova-filial" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center">'
+    +'<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:520px;width:95%;max-height:90vh;overflow-y:auto">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px"><h3 style="font-size:18px;font-weight:700;color:var(--text);margin:0">Nova Filial</h3>'
+    +'<button onclick="document.getElementById(\'modal-nova-filial\').style.display=\'none\'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px">×</button></div>'
+    +'<form method="POST" action="/admin/filiais/criar">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
+    +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Nome completo da filial *</label><input name="name" class="form-input" required placeholder="Ex: Marcos Studio - Centro" /></div>'
+    +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Nome curto (seletor) *</label><input name="displayName" class="form-input" required placeholder="Ex: Centro" maxlength="30" /></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Telefone</label><input name="phone" class="form-input" data-mask="phone" /></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">CNPJ</label><input name="cnpj" class="form-input" data-mask="cnpj" /></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">CEP</label><input name="cep" class="form-input" data-mask="cep" /></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Número</label><input name="addressNumber" class="form-input" /></div>'
+    +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Endereço</label><input name="address" class="form-input" /></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Cidade</label><input name="city" class="form-input" /></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Estado</label><select name="state" class="form-input"><option value="">UF</option>'+stateOpts+'</select></div>'
+    +'</div><div style="display:flex;gap:10px;justify-content:flex-end">'
+    +'<button type="button" onclick="document.getElementById(\'modal-nova-filial\').style.display=\'none\'" class="btn btn-ghost">Cancelar</button>'
+    +'<button type="submit" class="btn btn-primary">Criar Filial</button></div></form></div></div>'
+    +'<div id="modal-edit-filial" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center">'
+    +'<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:520px;width:95%;max-height:90vh;overflow-y:auto">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px"><h3 style="font-size:18px;font-weight:700;color:var(--text);margin:0">Editar Filial</h3>'
+    +'<button onclick="document.getElementById(\'modal-edit-filial\').style.display=\'none\'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px">×</button></div>'
+    +'<form method="POST" action="/admin/filiais/editar"><input type="hidden" name="branchId" id="efb-id"/>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
+    +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Nome completo *</label><input name="name" id="efb-name" class="form-input" required /></div>'
+    +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Nome curto *</label><input name="displayName" id="efb-display" class="form-input" required maxlength="30"/></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Telefone</label><input name="phone" id="efb-phone" class="form-input" /></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">CNPJ</label><input name="cnpj" id="efb-cnpj" class="form-input" /></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">CEP</label><input name="cep" id="efb-cep" class="form-input" /></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Número</label><input name="addressNumber" id="efb-num" class="form-input" /></div>'
+    +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Endereço</label><input name="address" id="efb-address" class="form-input" /></div>'
+    +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Cidade</label><input name="city" id="efb-city" class="form-input" /></div>'
+    +'</div><div style="display:flex;gap:10px;justify-content:flex-end">'
+    +'<button type="button" onclick="document.getElementById(\'modal-edit-filial\').style.display=\'none\'" class="btn btn-ghost">Cancelar</button>'
+    +'<button type="submit" class="btn btn-primary">Salvar</button></div></form></div></div>'
+    +'<script>'
+    +'function openBranchEdit(id){var btn=document.querySelector("[onclick=\'openBranchEdit("+id+")\']");if(!btn)return;'
+    +'document.getElementById("efb-id").value=id;'
+    +'document.getElementById("efb-name").value=btn.getAttribute("data-name")||"";'
+    +'document.getElementById("efb-display").value=btn.getAttribute("data-display")||"";'
+    +'document.getElementById("efb-phone").value=btn.getAttribute("data-phone")||"";'
+    +'document.getElementById("efb-address").value=btn.getAttribute("data-address")||"";'
+    +'document.getElementById("efb-city").value=btn.getAttribute("data-city")||"";'
+    +'document.getElementById("efb-cnpj").value=btn.getAttribute("data-cnpj")||"";'
+    +'document.getElementById("efb-cep").value=btn.getAttribute("data-cep")||"";'
+    +'document.getElementById("efb-num").value=btn.getAttribute("data-num")||"";'
+    +'document.getElementById("modal-edit-filial").style.display="flex";}'
+    +'function deleteBranchConfirm(id,btn){var name=btn.getAttribute("data-bname");bpConfirm({icon:"🗑️",title:"Excluir filial",msg:"Excluir "+name+"? Esta ação não pode ser desfeita.",okLabel:"Excluir",danger:true,onConfirm:function(){var f=document.createElement("form");f.method="POST";f.action="/admin/filiais/excluir";var i=document.createElement("input");i.type="hidden";i.name="branchId";i.value=id;f.appendChild(i);document.body.appendChild(f);f.submit();}});}'
+    +'<\/script></div>';
+}
+
 async function renderConfiguracoes(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
@@ -9069,83 +9147,7 @@ document.addEventListener('input', function(e) {
     }
   });
 
-  // ── renderBranchTab ────────────────────────────────────────────────────────
-  function renderBranchTab(branches: any[]): string {
-    const stateOpts = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(s=>'<option value="'+s+'">'+s+'</option>').join('');
-    const cards = branches.length === 0
-      ? '<div style="text-align:center;padding:60px 20px;background:var(--surface);border:1px solid var(--border);border-radius:16px"><div style="font-size:40px;margin-bottom:12px">🏪</div><div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">Nenhuma filial cadastrada</div><div style="font-size:13px;color:var(--muted)">Crie sua primeira filial para começar a gerenciar sua rede.</div></div>'
-      : '<div style="display:grid;gap:12px">' + branches.map(b => {
-          const dname = (b.displayName||b.name||'').replace(/"/g,'&quot;');
-          const addr  = (b.address||'Endereço não cadastrado');
-          const bslug = b.slug||'';
-          return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px">'
-            +'<div style="width:48px;height:48px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🏪</div>'
-            +'<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--text)">'+dname+'</div>'
-            +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+addr+'</div>'
-            +'<div style="font-size:11px;margin-top:4px"><a href="https://usebarberpro.com/pub/'+bslug+'" target="_blank" style="color:var(--gold);text-decoration:none">usebarberpro.com/pub/'+bslug+'</a></div></div>'
-            +'<div style="display:flex;gap:8px;flex-shrink:0">'
-            +'<form method="POST" action="/admin/filiais/trocar" style="display:inline"><input type="hidden" name="branchId" value="'+b.id+'"/><input type="hidden" name="returnTo" value="/admin"/><button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 14px">Acessar</button></form>'
-            +'<button onclick="openBranchEdit('+b.id+')" data-bid="'+b.id+'" data-name="'+(b.name||'')+'" data-display="'+(b.displayName||b.name||'')+'" data-phone="'+(b.phone||'')+'" data-address="'+(b.address||'')+'" data-city="'+(b.city||'')+'" data-cnpj="'+(b.cnpj||'')+'" data-cep="'+(b.cep||'')+'" data-num="'+(b.addressNumber||'')+'" class="btn btn-ghost" style="font-size:12px;padding:8px 14px">Editar</button>'
-            +'<button onclick="deleteBranchConfirm('+b.id+',this)" data-bname="'+dname+'" class="btn btn-ghost" style="font-size:12px;padding:8px 14px;color:var(--error)">Excluir</button>'
-            +'</div></div>';
-        }).join('')+'</div>';
 
-    return '<div style="margin-bottom:24px">'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
-      +'<div><h2 style="font-size:18px;font-weight:700;color:var(--text);margin:0 0 4px">Filiais</h2>'
-      +'<p style="font-size:13px;color:var(--muted);margin:0">Gerencie as unidades da sua rede.</p></div>'
-      +'<button onclick="document.getElementById(\'modal-nova-filial\').style.display=\'flex\'" class="btn btn-primary" style="padding:10px 20px">+ Nova Filial</button></div>'
-      +cards
-      +'<div id="modal-nova-filial" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center">'
-      +'<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:520px;width:95%;max-height:90vh;overflow-y:auto">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px"><h3 style="font-size:18px;font-weight:700;color:var(--text);margin:0">Nova Filial</h3>'
-      +'<button onclick="document.getElementById(\'modal-nova-filial\').style.display=\'none\'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px">×</button></div>'
-      +'<form method="POST" action="/admin/filiais/criar">'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
-      +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Nome completo da filial *</label><input name="name" class="form-input" required placeholder="Ex: Marcos Studio - Centro" /></div>'
-      +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Nome curto (seletor) *</label><input name="displayName" class="form-input" required placeholder="Ex: Centro" maxlength="30" /></div>'
-      +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Telefone</label><input name="phone" class="form-input" data-mask="phone" /></div>'
-      +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">CNPJ</label><input name="cnpj" class="form-input" data-mask="cnpj" /></div>'
-      +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">CEP</label><input name="cep" class="form-input" data-mask="cep" /></div>'
-      +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Número</label><input name="addressNumber" class="form-input" /></div>'
-      +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Endereço</label><input name="address" class="form-input" /></div>'
-      +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Cidade</label><input name="city" class="form-input" /></div>'
-      +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Estado</label><select name="state" class="form-input"><option value="">UF</option>'+stateOpts+'</select></div>'
-      +'</div><div style="display:flex;gap:10px;justify-content:flex-end">'
-      +'<button type="button" onclick="document.getElementById(\'modal-nova-filial\').style.display=\'none\'" class="btn btn-ghost">Cancelar</button>'
-      +'<button type="submit" class="btn btn-primary">Criar Filial</button></div></form></div></div>'
-      +'<div id="modal-edit-filial" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center">'
-      +'<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:520px;width:95%;max-height:90vh;overflow-y:auto">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px"><h3 style="font-size:18px;font-weight:700;color:var(--text);margin:0">Editar Filial</h3>'
-      +'<button onclick="document.getElementById(\'modal-edit-filial\').style.display=\'none\'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px">×</button></div>'
-      +'<form method="POST" action="/admin/filiais/editar"><input type="hidden" name="branchId" id="efb-id"/>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'
-      +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Nome completo *</label><input name="name" id="efb-name" class="form-input" required /></div>'
-      +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Nome curto *</label><input name="displayName" id="efb-display" class="form-input" required maxlength="30"/></div>'
-      +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Telefone</label><input name="phone" id="efb-phone" class="form-input" /></div>'
-      +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">CNPJ</label><input name="cnpj" id="efb-cnpj" class="form-input" /></div>'
-      +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">CEP</label><input name="cep" id="efb-cep" class="form-input" /></div>'
-      +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Número</label><input name="addressNumber" id="efb-num" class="form-input" /></div>'
-      +'<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Endereço</label><input name="address" id="efb-address" class="form-input" /></div>'
-      +'<div><label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Cidade</label><input name="city" id="efb-city" class="form-input" /></div>'
-      +'</div><div style="display:flex;gap:10px;justify-content:flex-end">'
-      +'<button type="button" onclick="document.getElementById(\'modal-edit-filial\').style.display=\'none\'" class="btn btn-ghost">Cancelar</button>'
-      +'<button type="submit" class="btn btn-primary">Salvar</button></div></form></div></div>'
-      +'<script>'
-      +'function openBranchEdit(id){var btn=document.querySelector("[onclick=\'openBranchEdit("+id+")\']");if(!btn)return;'
-      +'document.getElementById("efb-id").value=id;'
-      +'document.getElementById("efb-name").value=btn.getAttribute("data-name")||"";'
-      +'document.getElementById("efb-display").value=btn.getAttribute("data-display")||"";'
-      +'document.getElementById("efb-phone").value=btn.getAttribute("data-phone")||"";'
-      +'document.getElementById("efb-address").value=btn.getAttribute("data-address")||"";'
-      +'document.getElementById("efb-city").value=btn.getAttribute("data-city")||"";'
-      +'document.getElementById("efb-cnpj").value=btn.getAttribute("data-cnpj")||"";'
-      +'document.getElementById("efb-cep").value=btn.getAttribute("data-cep")||"";'
-      +'document.getElementById("efb-num").value=btn.getAttribute("data-num")||"";'
-      +'document.getElementById("modal-edit-filial").style.display="flex";}'
-      +'function deleteBranchConfirm(id,btn){var name=btn.getAttribute("data-bname");bpConfirm({icon:"🗑️",title:"Excluir filial",msg:"Excluir "+name+"? Esta ação não pode ser desfeita.",okLabel:"Excluir",danger:true,onConfirm:function(){var f=document.createElement("form");f.method="POST";f.action="/admin/filiais/excluir";var i=document.createElement("input");i.type="hidden";i.name="branchId";i.value=id;f.appendChild(i);document.body.appendChild(f);f.submit();}});}'
-      +'<\/script></div>';
-  }
 
   app.post("/admin/filiais/criar", requireAdminAuth, async (req: Request, res: Response) => {
     try {
