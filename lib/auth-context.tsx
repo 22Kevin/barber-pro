@@ -17,6 +17,7 @@ export interface AuthBarber {
   specialties: string | null;
   tenantId?: number | null;
   tenantPlan?: TenantPlan | null;
+  permissions?: string[] | null;
 }
 
 interface AuthContextType {

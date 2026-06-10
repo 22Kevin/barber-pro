@@ -3,9 +3,12 @@ import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
+import { useIsOwner, usePermission } from "@/hooks/usePermission";
 
 export default function AdminTabsLayout() {
   const { isAuthenticated, isLoading } = useBarberAuth();
+  const isOwner = useIsOwner();
+  const canFinanceiro = usePermission("financeiro");
   const insets = useSafeAreaInsets();
 
   if (!isLoading && !isAuthenticated) {
@@ -62,6 +65,7 @@ export default function AdminTabsLayout() {
         options={{
           title: "Financeiro",
           tabBarIcon: ({ color }) => <IconSymbol name="dollarsign.circle.fill" size={24} color={color} />,
+          tabBarItemStyle: canFinanceiro ? undefined : { display: "none" },
         }}
       />
 

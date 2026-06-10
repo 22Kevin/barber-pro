@@ -16,6 +16,7 @@ import { router } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
+import { useIsBarberRole } from "@/hooks/usePermission";
 import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
@@ -111,10 +112,12 @@ export default function DashboardScreen() {
     { enabled: !!barber?.tenantId }
   );
   const monthRevenue = useMemo(() => {
-    return (monthlySalesQuery.data ?? [])
-      .filter((s: any) => s.paymentStatus === "paid")
-      .reduce((sum: number, s: any) => sum + parseFloat(s.total || "0"), 0);
-  }, [monthlySalesQuery.data]);
+    const sales = monthlySalesQuery.data ?? [];
+    const filtered = isBarberRole
+      ? sales.filter((s: any) => s.barberId === myBarberId && s.paymentStatus === "paid")
+      : sales.filter((s: any) => s.paymentStatus === "paid");
+    return filtered.reduce((sum: number, s: any) => sum + parseFloat(s.total || "0"), 0);
+  }, [monthlySalesQuery.data, isBarberRole, myBarberId]);
   const [revenueVisible, setRevenueVisible] = useState(false);
   const monthLabel = new Date().toLocaleDateString("pt-BR", { month: "long" });
 
