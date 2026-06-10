@@ -4864,7 +4864,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
                     <input type="hidden" name="isActive" value="${!b.isActive}" />
                     <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px">${b.isActive ? 'Desativar' : 'Reativar'}</button>
                   </form>
-                  <form method="POST" action="/admin/configuracoes/equipe/excluir" style="display:inline" onsubmit="return confirm('Excluir ${esc(b.name)}?')">
+                  <form method="POST" action="/admin/configuracoes/equipe/excluir" style="display:inline" onsubmit="return false" onclick="openDeleteModal(${b.id}, '${esc(b.name).replace(/'/g,'\\&apos;')}')">
                     <input type="hidden" name="id" value="${b.id}" />
                     <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:#ef4444">🗑 Excluir</button>
                   </form>
@@ -4873,9 +4873,11 @@ async function renderConfiguracoes(req: Request, res: Response) {
         </tbody>
       </table>
     </div>
-    ${req.query.novo === '1' ? `
-    <div class="card">
-      <div class="card-header"><div class="card-title">Novo Profissional</div></div>
+    <div id="card-novo-prof" style="display:none" class="card">
+      <div class="card-header">
+        <div class="card-title">Novo Profissional</div>
+        <button onclick="toggleFormNovo()" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">✕ Fechar</button>
+      </div>
       <div class="card-body" style="padding:24px">
         <form method="POST" action="/admin/configuracoes/equipe/novo">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -4908,7 +4910,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
           <div style="margin:20px 0">
             <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Permissões de acesso</div>
             <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Módulos não selecionados aparecerão com cadeado no menu.</div>
-            <div id="perms-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px">
+            <div id="perms-grid-novo" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px">
               <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="agenda" id="chk-agenda" checked style="accent-color:var(--gold)" /> <span>📅</span> <span style="font-size:13px">Agenda</span></label>
               <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="clientes" id="chk-clientes" checked style="accent-color:var(--gold)" /> <span>👥</span> <span style="font-size:13px">Clientes</span></label>
               <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="lista-espera" id="chk-lista-espera" checked style="accent-color:var(--gold)" /> <span>⏳</span> <span style="font-size:13px">Lista de Espera</span></label>
@@ -4928,18 +4930,20 @@ async function renderConfiguracoes(req: Request, res: Response) {
               document.getElementById('hidden-jobrole').value=r;
               ['admin','barber','receptionist'].forEach(function(x){var el=document.getElementById('role-btn-'+x);if(x===r){el.style.borderColor='rgba(201,168,76,.6)';el.style.background='rgba(201,168,76,.08)';el.style.color='var(--gold)';}else{el.style.borderColor='#2a2a2a';el.style.background='#1a1a1a';el.style.color='var(--muted)';}});
               var perms=DEFS[r]||[];var isAdmin=r==='admin';
-              document.querySelectorAll('#perms-grid input[type=checkbox]').forEach(function(chk){chk.checked=perms.includes(chk.value);chk.disabled=isAdmin;chk.closest('label').style.opacity=isAdmin?'.7':'1';});
+              document.querySelectorAll('#perms-grid-novo input[type=checkbox]').forEach(function(chk){chk.checked=perms.includes(chk.value);chk.disabled=isAdmin;chk.closest('label').style.opacity=isAdmin?'.7':'1';});
             }
           </script>
           <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">Cadastrar Profissional</button>
           <button type="button" onclick="toggleFormNovo()" class="btn btn-ghost" style="margin-left:8px;padding:12px 20px">Cancelar</button>
         </form>
       </div>
-    </div>` : ''}
+    </div>
   <script>
     var _profs=[${allBarbers.map((b)=>'['+b.id+',"'+((b.name||'').replace(/"/g,'&quot;'))+'","'+((b.email||'').replace(/"/g,'&quot;'))+'","'+((b.phone||'').replace(/"/g,'&quot;'))+'","'+(b.role==='super_admin'?'admin':b.role)+'",'+JSON.stringify(b.permissions??null)+']').join(',')}];
     var DEFS_EQ={admin:['agenda','clientes','lista-espera','servicos','financeiro','relatorios','comissoes','minhas-comissoes','produtos','marketing','configuracoes'],barber:['agenda','clientes','lista-espera','servicos','minhas-comissoes'],receptionist:['agenda','clientes','lista-espera','servicos','financeiro','relatorios','produtos','marketing']};
     window.toggleFormNovo=function(){var card=document.getElementById('card-novo-prof');var btn=document.getElementById('btn-novo-prof');if(!card)return;var h=card.style.display==='none'||card.style.display==='';card.style.display=h?'block':'none';btn.textContent=h?'✕ Fechar':'+ Novo Profissional';if(h)card.scrollIntoView({behavior:'smooth',block:'start'});};
+    window.openDeleteModal=function(id,name){document.getElementById('del-prof-id').value=id;document.getElementById('del-prof-name').textContent=name;document.getElementById('delete-prof-modal').style.display='flex';};
+    window.closeDeleteModal=function(){document.getElementById('delete-prof-modal').style.display='none';};
     window.setRoleNovo=function(r){document.getElementById('hidden-jobrole').value=r;['admin','barber','receptionist'].forEach(function(x){var el=document.getElementById('role-btn-'+x);if(!el)return;if(x===r){el.style.borderColor='rgba(201,168,76,.6)';el.style.background='rgba(201,168,76,.08)';el.style.color='var(--gold)';}else{el.style.borderColor='#2a2a2a';el.style.background='#1a1a1a';el.style.color='var(--muted)';}});var perms=DEFS_EQ[r]||[];var isAdmin=r==='admin';document.querySelectorAll('#perms-grid-novo input[type=checkbox]').forEach(function(chk){chk.checked=perms.includes(chk.value);chk.disabled=isAdmin;chk.closest('label').style.opacity=isAdmin?'.7':'1';});};
     window.openEditModalProf=function(id){var b=_profs.find(function(x){return x[0]==id;});if(!b)return;document.getElementById('edit-prof-id').value=b[0];document.getElementById('edit-prof-name').value=b[1];document.getElementById('edit-prof-email').value=b[2];document.getElementById('edit-prof-phone').value=b[3]||'';document.getElementById('edit-prof-pass').value='';setRoleEdit(b[4]||'barber');var perms=b[5];document.querySelectorAll('#perms-grid-edit input[type=checkbox]').forEach(function(chk){chk.checked=perms?perms.includes(chk.value):false;});document.getElementById('edit-prof-modal').style.display='flex';};
     window.closeEditModalProf=function(){document.getElementById('edit-prof-modal').style.display='none';};
@@ -4978,6 +4982,18 @@ async function renderConfiguracoes(req: Request, res: Response) {
           </div>
         </div>
         <div style="display:flex;gap:10px"><button type="submit" class="btn btn-primary" style="padding:11px 24px">Salvar alterações</button><button type="button" onclick="closeEditModalProf()" class="btn btn-ghost" style="padding:11px 18px">Cancelar</button></div>
+      </form>
+    </div>
+  </div>
+  <div id="delete-prof-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center">
+    <div style="background:var(--surface);border:1px solid #333;border-radius:16px;padding:32px 28px;max-width:400px;width:90%;text-align:center">
+      <div style="width:56px;height:56px;background:#ef444418;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px">🗑</div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Excluir profissional?</div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:24px">Tem certeza que deseja excluir <strong id="del-prof-name" style="color:var(--text)"></strong>? Esta ação não pode ser desfeita.</div>
+      <form method="POST" action="/admin/configuracoes/equipe/excluir" style="display:flex;gap:10px;justify-content:center">
+        <input type="hidden" name="id" id="del-prof-id" />
+        <button type="button" onclick="closeDeleteModal()" class="btn btn-ghost" style="padding:11px 24px;flex:1">Cancelar</button>
+        <button type="submit" style="padding:11px 24px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;flex:1">Excluir</button>
       </form>
     </div>
   </div>
