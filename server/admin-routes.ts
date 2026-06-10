@@ -173,6 +173,14 @@ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
     return res.redirect('/admin/login');
   }
   (req as any).adminSession = session;
+  if (res && res.locals) res.locals.barberRole = session.role || "super_admin";
+  // Carregar permissions do banco para uso no layout
+  db.getBarberById(session.barberId).then(function(b) {
+    if (b && b.permissions) {
+      try { (req as any).adminSession.permissions = JSON.parse(b.permissions); }
+      catch(e) { (req as any).adminSession.permissions = null; }
+    } else { (req as any).adminSession.permissions = null; }
+  }).catch(function() {});
   next();
 }
 
@@ -283,7 +291,10 @@ export async function generateMagicLink(tenantId: number, baseUrl = "https://use
 // ─── Layout base do painel ────────────────────────────────────────────────────
 // Helper used by route handlers to auto-inject trialGrace from res object
 function adminLayoutWithGrace(res: any, title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>): string {
-  return adminLayout(title, activePage, body, barberName, tenantPlan, breadcrumb, res?.trialGrace ?? null);
+  const bRole = (res && res.locals && res.locals.barberRole) || "super_admin";
+  let bPerms: string[] | null = null;
+  try { const p = res && res.req && (res.req as any).adminSession && (res.req as any).adminSession.permissions; if (Array.isArray(p)) bPerms = p; } catch(e) {}
+  return adminLayout(title, activePage, body, barberName, tenantPlan, breadcrumb, res?.trialGrace ?? null, bRole, bPerms);
 }
 
 function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, trialGrace?: { hoursLeft: number } | null, barberRole = "super_admin", barberPerms: any = null): string {
@@ -7854,6 +7865,9 @@ document.addEventListener('input', function(e) {
       res.redirect(`/admin/configuracoes?tab=horarios&error=${encodeURIComponent(e.message)}`);
     }
   });
+
+  // GET aba equipe — só super_admin vê lista completa e pode editar
+  // (já protegido pelo requireOwner nos POSTs)
 
   // POST /admin/configuracoes/equipe/editar
   app.post("/admin/configuracoes/equipe/editar", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
