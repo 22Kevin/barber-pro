@@ -919,6 +919,50 @@ export async function checkSlotAvailability(barberId: number, date: string, star
   return conflicts.length === 0;
 }
 
+/**
+ * Versão atômica: verifica disponibilidade e insere em uma única transação
+ * com SELECT FOR UPDATE para evitar race condition entre requisições concorrentes.
+ */
+export async function createAppointmentAtomic(data: {
+  clientId: number; serviceId: number; barberId: number;
+  date: string; startTime: string; endTime: string;
+  status: string; notes?: string | null;
+}): Promise<{ success: boolean; appointmentId?: number; error?: string }> {
+  if (!_pool) await getDb();
+  if (!_pool) return { success: false, error: "Banco indisponível" };
+  const client = await _pool.connect();
+  try {
+    await client.query('BEGIN');
+    const lockResult = await client.query(
+      `SELECT id FROM appointments
+       WHERE "barberId" = $1
+         AND date = $2
+         AND status NOT IN ('cancelled','no_show')
+         AND "startTime" < $4
+         AND "endTime" > $3
+       FOR UPDATE`,
+      [data.barberId, data.date, data.startTime, data.endTime]
+    );
+    if (lockResult.rows.length > 0) {
+      await client.query('ROLLBACK');
+      return { success: false, error: "Horário já ocupado" };
+    }
+    const insert = await client.query(
+      `INSERT INTO appointments ("clientId","serviceId","barberId",date,"startTime","endTime",status,notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      [data.clientId, data.serviceId, data.barberId, data.date,
+       data.startTime, data.endTime, data.status, data.notes ?? null]
+    );
+    await client.query('COMMIT');
+    return { success: true, appointmentId: insert.rows[0].id };
+  } catch (err: any) {
+    await client.query('ROLLBACK');
+    return { success: false, error: err.message };
+  } finally {
+    client.release();
+  }
+}
+
 // ─── Vendas ───────────────────────────────────────────────────────────────────
 export async function getSalesByDateRange(startDate: string, endDate: string, barberId?: number, tenantId?: number | null) {
   const db = await getDb();

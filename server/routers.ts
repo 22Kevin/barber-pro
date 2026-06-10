@@ -467,11 +467,7 @@ export const appRouter = router({
     create: publicProcedure
       .input(z.object({ clientId: z.number(), barberId: z.number(), serviceId: z.number(), serviceNames: z.string().optional().nullable(), date: z.string(), startTime: z.string(), endTime: z.string(), notes: z.string().optional().nullable(), status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "pending_approval"]).default("confirmed") }))
       .mutation(async ({ input }) => {
-        const available = await db.checkSlotAvailability(input.barberId, input.date, input.startTime, input.endTime);
-        if (!available) throw new Error("Horário não disponível. Por favor, escolha outro horário.");
-
         // ── Regra de horário limite ──────────────────────────────────────────────
-        // Verifica se o endTime ultrapassa o horário de fechamento do barbeiro naquele dia
         const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
         const dayOfWeek = new Date(input.date + "T12:00:00").getDay();
         const wh = await db.getWorkingHoursForDay(input.barberId, dayOfWeek);
@@ -488,9 +484,15 @@ export const appRouter = router({
           }
         }
 
-        // Se ultrapassa o horário de fechamento, cria como pending_approval
+        // Criar agendamento de forma atômica (SELECT FOR UPDATE previne race condition)
         const finalStatus = exceedsClosingTime ? "pending_approval" : "confirmed";
-        const apptId = await db.createAppointment({ ...input, status: finalStatus } as any);
+        const atomicResult = await db.createAppointmentAtomic({
+          clientId: input.clientId, serviceId: input.serviceId, barberId: input.barberId,
+          date: input.date, startTime: input.startTime, endTime: input.endTime,
+          status: finalStatus, notes: input.notes ?? null,
+        });
+        if (!atomicResult.success) throw new Error(atomicResult.error ?? "Horário não disponível. Por favor, escolha outro horário.");
+        const apptId = atomicResult.appointmentId!;
 
         // Notifica o barbeiro via Expo Push
         const pushToken = await db.getBarberPushToken(input.barberId);

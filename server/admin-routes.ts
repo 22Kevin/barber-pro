@@ -8686,13 +8686,12 @@ document.addEventListener('input', function(e) {
       const totalMin = h * 60 + m + (svc.durationMinutes ?? 30);
       const endTime = `${String(Math.floor(totalMin / 60)).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}:00`;
       const startTimeFmt = startTime.length === 5 ? startTime + ":00" : startTime;
-      const available = await db.checkSlotAvailability(parseInt(barberId), date, startTimeFmt, endTime);
-      if (!available) { res.redirect("/admin/agenda/novo?error=Hor%C3%A1rio+j%C3%A1+ocupado"); return; }
-      await db.createAppointment({
+      const atomicResult = await db.createAppointmentAtomic({
         clientId: parseInt(clientId), serviceId: parseInt(serviceId), barberId: parseInt(barberId),
         date, startTime: startTimeFmt, endTime, status: "scheduled",
         notes: notes ?? null,
       });
+      if (!atomicResult.success) { res.redirect(`/admin/agenda/novo?error=${encodeURIComponent(atomicResult.error ?? "Horário já ocupado")}`); return; }
       res.redirect(`/admin/agenda?date=${date}&created=1`);
     } catch (e: any) {
       res.redirect(`/admin/agenda/novo?error=${encodeURIComponent(e.message)}`);
