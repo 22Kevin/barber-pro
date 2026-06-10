@@ -381,6 +381,15 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       ],
     },
   ];
+  const BARBER_ALLOWED_IDS = new Set([
+    "dashboard", "agenda", "clientes", "lista-espera",
+    "servicos", "minhas-comissoes", "avaliacoes", "suporte"
+  ]);
+  const navGroups = isOwner
+    ? navGroupsAll
+    : navGroupsAll
+        .map((g) => ({ ...g, items: g.items.filter((i) => BARBER_ALLOWED_IDS.has(i.id)) }))
+        .filter((g) => g.items.length > 0);
   // Logo URL: usa S3 se disponível, senão fallback para SVG inline
   const BARBER_PRO_LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/CHUXnjOFayrIGRtV.png";
 
