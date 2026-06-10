@@ -899,6 +899,11 @@ export async function runAutoMigrate(db: any): Promise<void> {
     { name: 'tenants."barberproNextDueDate"',        sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproNextDueDate" DATE` },
     { name: 'tenants."barberproAsaasCustomerId"',    sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproAsaasCustomerId" VARCHAR(100)` },
     { name: 'tenants."barberproTrialEndsAt"',        sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproTrialEndsAt" DATE` },
+    // ── Filiais (Plano Estúdio) ──────────────────────────────────────────────
+    { name: 'tenants."parentTenantId"', sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "parentTenantId" INTEGER REFERENCES tenants(id) ON DELETE CASCADE` },
+    { name: 'tenants."displayName"',    sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "displayName" VARCHAR(100)` },
+    { name: 'tenants."isHeadquarters"', sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "isHeadquarters" BOOLEAN DEFAULT false` },
+    { name: 'tenants."branchOrder"',    sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "branchOrder" INTEGER DEFAULT 0` },
   ];
 
   let created = 0;

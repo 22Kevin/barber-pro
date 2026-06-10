@@ -963,6 +963,82 @@ export async function createAppointmentAtomic(data: {
   }
 }
 
+
+// ─── Filiais (Plano Estúdio) ──────────────────────────────────────────────────
+
+export async function getBranches(parentTenantId: number): Promise<any[]> {
+  if (!_pool) await getDb();
+  if (!_pool) return [];
+  try {
+    const result = await _pool.query(
+      `SELECT t.*, ss."shopName" FROM tenants t
+       LEFT JOIN shop_settings ss ON ss."tenantId" = t.id
+       WHERE t."parentTenantId" = $1 ORDER BY t."branchOrder" ASC, t.id ASC`,
+      [parentTenantId]
+    );
+    return result.rows;
+  } catch { return []; }
+}
+
+export async function createBranch(parentTenantId: number, data: {
+  name: string; displayName: string; slug: string;
+  phone?: string; address?: string; cep?: string;
+  addressNumber?: string; city?: string; state?: string; cnpj?: string;
+}): Promise<number> {
+  if (!_pool) await getDb();
+  if (!_pool) throw new Error('Pool indisponível');
+  const result = await _pool.query(
+    `INSERT INTO tenants (slug, name, "displayName", phone, cnpj, address, cep, "addressNumber", city, state, plan, status, "parentTenantId")
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'studio','active',$11) RETURNING id`,
+    [data.slug, data.name, data.displayName, data.phone??null, data.cnpj??null,
+     data.address??null, data.cep??null, data.addressNumber??null,
+     data.city??null, data.state??null, parentTenantId]
+  );
+  const branchId = result.rows[0].id;
+  await _pool.query(
+    `INSERT INTO shop_settings ("tenantId","shopName",phone,cnpj,address) VALUES ($1,$2,$3,$4,$5) ON CONFLICT ("tenantId") DO NOTHING`,
+    [branchId, data.name, data.phone??null, data.cnpj??null, data.address??null]
+  );
+  return branchId;
+}
+
+export async function updateBranch(branchId: number, data: {
+  name?: string; displayName?: string; phone?: string; address?: string;
+  cep?: string; addressNumber?: string; city?: string; cnpj?: string;
+}): Promise<void> {
+  if (!_pool) await getDb();
+  if (!_pool) return;
+  const sets: string[] = []; const vals: any[] = []; let i = 1;
+  if (data.name !== undefined)        { sets.push(`name = ${i++}`); vals.push(data.name); }
+  if (data.displayName !== undefined) { sets.push(`"displayName" = ${i++}`); vals.push(data.displayName); }
+  if (data.phone !== undefined)       { sets.push(`phone = ${i++}`); vals.push(data.phone); }
+  if (data.address !== undefined)     { sets.push(`address = ${i++}`); vals.push(data.address); }
+  if (data.cep !== undefined)         { sets.push(`cep = ${i++}`); vals.push(data.cep); }
+  if (data.addressNumber !== undefined){ sets.push(`"addressNumber" = ${i++}`); vals.push(data.addressNumber); }
+  if (data.city !== undefined)        { sets.push(`city = ${i++}`); vals.push(data.city); }
+  if (data.cnpj !== undefined)        { sets.push(`cnpj = ${i++}`); vals.push(data.cnpj); }
+  if (!sets.length) return;
+  vals.push(branchId);
+  await _pool.query(`UPDATE tenants SET ${sets.join(', ')} WHERE id = ${i}`, vals);
+}
+
+export async function deleteBranch(branchId: number): Promise<{ success: boolean; error?: string }> {
+  if (!_pool) await getDb();
+  if (!_pool) return { success: false, error: 'Pool indisponível' };
+  const today = new Date().toISOString().split('T')[0];
+  const check = await _pool.query(
+    `SELECT COUNT(*) as cnt FROM appointments a
+     INNER JOIN barbers b ON b.id = a."barberId"
+     WHERE b."tenantId" = $1 AND a.date >= $2 AND a.status NOT IN ('cancelled','no_show')`,
+    [branchId, today]
+  );
+  if (parseInt(check.rows[0].cnt) > 0) {
+    return { success: false, error: 'Esta filial tem agendamentos futuros. Cancele-os antes de excluir.' };
+  }
+  await _pool.query('DELETE FROM tenants WHERE id = $1', [branchId]);
+  return { success: true };
+}
+
 // ─── Vendas ───────────────────────────────────────────────────────────────────
 export async function getSalesByDateRange(startDate: string, endDate: string, barberId?: number, tenantId?: number | null) {
   const db = await getDb();
