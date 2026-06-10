@@ -1096,6 +1096,45 @@ ${barberRole === "super_admin" ? `
       }, true); // capture=true garante que captura antes de outros listeners
     })();
   </script>
+  <!-- Modal de confirmação genérico (substitui confirm() nativo) -->
+  <div id="bp-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10001;align-items:center;justify-content:center">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:400px;width:90%;text-align:center">
+      <div id="bp-confirm-icon" style="font-size:36px;margin-bottom:12px">⚠️</div>
+      <div id="bp-confirm-title" style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px"></div>
+      <div id="bp-confirm-msg" style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:24px"></div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button id="bp-confirm-cancel" style="flex:1;padding:11px 20px;border-radius:9px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button id="bp-confirm-ok" style="flex:1;padding:11px 20px;border-radius:9px;border:none;font-size:13px;font-weight:700;cursor:pointer">Confirmar</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    window._bpConfirmCb = null;
+    window.bpConfirm = function(opts) {
+      var modal = document.getElementById('bp-confirm-modal');
+      document.getElementById('bp-confirm-icon').textContent = opts.icon || '⚠️';
+      document.getElementById('bp-confirm-title').textContent = opts.title || 'Confirmar';
+      document.getElementById('bp-confirm-msg').textContent = opts.msg || '';
+      var ok = document.getElementById('bp-confirm-ok');
+      ok.textContent = opts.okLabel || 'Confirmar';
+      ok.style.background = opts.danger ? '#ef4444' : 'var(--gold)';
+      ok.style.color = opts.danger ? '#fff' : '#0A0A0A';
+      document.getElementById('bp-confirm-cancel').textContent = opts.cancelLabel || 'Cancelar';
+      modal.style.display = 'flex';
+      window._bpConfirmCb = opts.onConfirm || null;
+    };
+    document.getElementById('bp-confirm-ok').addEventListener('click', function() {
+      document.getElementById('bp-confirm-modal').style.display = 'none';
+      if (window._bpConfirmCb) { window._bpConfirmCb(); window._bpConfirmCb = null; }
+    });
+    document.getElementById('bp-confirm-cancel').addEventListener('click', function() {
+      document.getElementById('bp-confirm-modal').style.display = 'none';
+      window._bpConfirmCb = null;
+    });
+    document.getElementById('bp-confirm-modal').addEventListener('click', function(e) {
+      if (e.target === this) { this.style.display = 'none'; window._bpConfirmCb = null; }
+    });
+  </script>
   <div id="upgrade-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center">
     <div id="upgrade-modal" style="background:var(--surface);border:1px solid rgba(201,168,76,.35);border-radius:16px;padding:32px 28px;max-width:420px;width:90%;text-align:center">
       <div style="font-size:40px;margin-bottom:14px">🔒</div>
@@ -1107,6 +1146,22 @@ ${barberRole === "super_admin" ? `
     </div>
   </div>
   <script>
+    // Delegação para forms com data-bp-confirm-*
+    document.addEventListener('submit', function(e) {
+      var form = e.target;
+      if (!form || form.tagName !== 'FORM') return;
+      var title = form.getAttribute('data-bp-confirm-title');
+      if (!title) return;
+      e.preventDefault();
+      bpConfirm({
+        icon: form.getAttribute('data-bp-confirm-danger') ? '🗑️' : '🔄',
+        title: title,
+        msg: form.getAttribute('data-bp-confirm-msg') || '',
+        okLabel: form.getAttribute('data-bp-confirm-danger') ? 'Confirmar' : 'Confirmar',
+        danger: !!form.getAttribute('data-bp-confirm-danger'),
+        onConfirm: function() { form.removeAttribute('data-bp-confirm-title'); form.submit(); }
+      });
+    }, true);
     window.showUpgradeModal = function(f, p) {
       document.getElementById('um-feature-name').textContent = f;
       document.getElementById('um-required-plan').textContent = 'Disponível no plano ' + p;
@@ -2510,8 +2565,8 @@ async function renderAgenda(req: Request, res: Response) {
     "function pmReset(){pmS={step:1,clientId:'',clientName:'',planId:0,selSvc:[],selPrd:[],appts:[],pay:'cash',calY:new Date().getFullYear(),calM:new Date().getMonth(),selDate:null};[1,2,3,4].forEach(function(i){document.getElementById('pmStep'+i).style.display=i===1?'block':'none';});var s=document.getElementById('pmClientSearch');if(s)s.value='';var c=document.getElementById('pmClientChosen');if(c)c.style.display='none';}\n" +
     "function pmGoTo(step){\n" +
     "var plan=pmS.planId?PM_PLANS[pmS.planId]:null;\n" +
-    "if(step===2&&!pmS.clientId){alert('Selecione um cliente.');return;}\n" +
-    "if(step===2&&!pmS.planId){alert('Selecione um plano.');return;}\n" +
+    "if(step===2&&!pmS.clientId){showToast('<b>Selecione um cliente.</b>',4000);return;}\n" +
+    "if(step===2&&!pmS.planId){showToast('<b>Selecione um plano.</b>',4000);return;}\n" +
     "if(step===4&&plan&&pmS.appts.length<plan.recurrences){alert('Selecione todos os hor\u00e1rios ('+plan.recurrences+'x).');return;}\n" +
     "[1,2,3,4].forEach(function(i){\n" +
     "document.getElementById('pmStep'+i).style.display=i===step?'block':'none';\n" +
@@ -2543,7 +2598,7 @@ async function renderAgenda(req: Request, res: Response) {
     "function pmRenderAppts(){var plan=PM_PLANS[pmS.planId];var h=pmS.appts.length>0?'<div style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px\">AGENDAMENTOS ('+pmS.appts.length+'/'+(plan?plan.recurrences:0)+')</div>'+pmS.appts.map(function(a,i){var p=a.date.split('-');return'<div style=\"display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;margin-bottom:4px;font-size:13px\"><span>'+p[2]+'/'+p[1]+'/'+p[0]+' \u00e0s '+a.startTime+'</span><button type=\"button\" onclick=\"pmRemoveAppt('+i+')\" style=\"background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px\">&#215;</button></div>';}).join(''):'';document.getElementById('pmApptsList').innerHTML=h;var btn=document.getElementById('pmBtnStep3Next');if(btn)btn.style.opacity=(plan&&pmS.appts.length>=plan.recurrences)?'1':'0.5';}\n" +
     "function pmSelectPay(v){pmS.pay=v;['cash','pix','credit_card','debit_card'].forEach(function(k){var b=document.getElementById('pmPay_'+k);if(b){b.style.borderColor=k===v?'var(--gold)':'var(--border)';b.style.background=k===v?'rgba(201,168,76,0.12)':'var(--bg)';}});}\n" +
     "function pmRenderSummary(){var plan=PM_PLANS[pmS.planId];if(!plan)return;var h='<div style=\"font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px\">Resumo</div>';h+='<div style=\"display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)\"><span style=\"color:var(--muted)\">Cliente</span><span>'+pmS.clientName+'</span></div>';h+='<div style=\"display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)\"><span style=\"color:var(--muted)\">Plano</span><span>'+plan.name+'</span></div>';h+='<div style=\"display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)\"><span style=\"color:var(--muted)\">Agendamentos</span><span>'+pmS.appts.length+' de '+plan.recurrences+'</span></div>';h+='<div style=\"display:flex;justify-content:space-between;padding:8px 0\"><span style=\"color:var(--muted);font-weight:700\">Total</span><span style=\"color:var(--gold);font-size:16px;font-weight:900\">R$ '+parseFloat(plan.price).toFixed(2).replace('.',',')+'</span></div>';document.getElementById('pmSummary').innerHTML=h;pmSelectPay(pmS.pay);}\n" +
-    "async function pmConfirm(){if(!pmS.clientId||!pmS.planId){alert('Dados incompletos.');return;}var payload={clientId:pmS.clientId,planId:pmS.planId,startDate:new Date().toISOString().split('T')[0],paymentMethod:pmS.pay,selectedServiceIds:JSON.stringify(pmS.selSvc),selectedProductIds:JSON.stringify(pmS.selPrd),appointments:JSON.stringify(pmS.appts),fromAgenda:'1',returnDate:'" + dateStr + "'};var form=document.createElement('form');form.method='POST';form.action='/admin/assinaturas/nova';Object.keys(payload).forEach(function(k){var inp=document.createElement('input');inp.type='hidden';inp.name=k;inp.value=payload[k];form.appendChild(inp);});document.body.appendChild(form);form.submit();}\n" +
+    "async function pmConfirm(){if(!pmS.clientId||!pmS.planId){showToast('<b>Dados incompletos.</b>',4000);return;}var payload={clientId:pmS.clientId,planId:pmS.planId,startDate:new Date().toISOString().split('T')[0],paymentMethod:pmS.pay,selectedServiceIds:JSON.stringify(pmS.selSvc),selectedProductIds:JSON.stringify(pmS.selPrd),appointments:JSON.stringify(pmS.appts),fromAgenda:'1',returnDate:'" + dateStr + "'};var form=document.createElement('form');form.method='POST';form.action='/admin/assinaturas/nova';Object.keys(payload).forEach(function(k){var inp=document.createElement('input');inp.type='hidden';inp.name=k;inp.value=payload[k];form.appendChild(inp);});document.body.appendChild(form);form.submit();}\n" +
     "<\/script>"
   );
   const body = `
@@ -3173,12 +3228,12 @@ async function renderAgenda(req: Request, res: Response) {
                     var btn = sheet.querySelector('#pix-copy-btn');
                     if (btn) { btn.innerHTML = '&#128203; Copiar código'; btn.style.background = 'rgba(201,168,76,0.1)'; btn.style.borderColor = 'var(--gold)'; btn.style.color = 'var(--gold)'; }
                   }, 2500);
-                } catch(e) { alert('Código: ' + pixCode); }
+                } catch(e) { showToast('Código Pix: ' + pixCode, 8000); }
               };
 
               // Enviar por WhatsApp
               sheet.querySelector('#pix-whatsapp-btn').onclick = function() {
-                if (!pmt.clientPhone) { alert('Cliente sem telefone cadastrado.'); return; }
+                if (!pmt.clientPhone) { showToast('<b>Cliente sem telefone cadastrado.</b>', 5000); return; }
                 var phone = pmt.clientPhone.replace(/\D/g, '');
                 var msg = encodeURIComponent(
                   'Olá ' + (pmt.clientName || '') + '! Segue o código Pix para pagamento do serviço *' + (pmt.serviceName || 'Serviço') + '* (R$ ' + parseFloat(pmt.amount).toFixed(2).replace('.', ',') + ').\n\nCopie e cole no seu banco:\n\n' + pixCode
@@ -3227,13 +3282,13 @@ async function renderAgenda(req: Request, res: Response) {
                 (pmt.waReview ? '<a href="' + pmt.waReview.waLink + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#25D36618;border:1px solid #25D36644;border-radius:8px;color:#25D366;font-size:12px;font-weight:700;text-decoration:none">&#128172; Pedir avaliacao</a>' : ''),
                 8000
               );
-            } catch(err) { btn.disabled = false; btn.style.opacity='1'; alert('Erro: ' + err.message); }
+            } catch(err) { btn.disabled = false; btn.style.opacity='1'; showToast('<b>Erro:</b> ' + err.message, 6000); }
           }
 
           async function changeApptStatus(id, status, btn) {
             // Cancelamento: confirmar primeiro
             if (status === 'cancelled') {
-              if (!confirm('Cancelar este agendamento?')) return;
+              bpConfirm({icon:'❌',title:'Cancelar agendamento',msg:'Deseja cancelar este agendamento?',okLabel:'Cancelar agendamento',danger:true,onConfirm:function(){
             }
             btn.disabled = true; btn.style.opacity = '0.5';
             try {
@@ -3274,7 +3329,7 @@ async function renderAgenda(req: Request, res: Response) {
               }
             } catch(e) {
               btn.disabled = false; btn.style.opacity = '1';
-              alert('Erro: ' + e.message);
+              showToast('<b>Erro:</b> ' + e.message, 6000);
             }
           }
 
@@ -3849,12 +3904,12 @@ async function renderServicos(req: Request, res: Response) {
               <td>
                 <div style="display:flex;gap:8px">
                   <a href="/admin/servicos?edit=${s.id}" class="btn-action-edit">✏ Editar</a>
-                  <form method="POST" action="/admin/servicos/toggle" style="display:inline" onsubmit="return confirm('Alterar status?')">
+                  <form method="POST" action="/admin/servicos/toggle" style="display:inline" onsubmit="return false">
                     <input type="hidden" name="id" value="${s.id}" />
                     <input type="hidden" name="isActive" value="${!s.isActive}" />
-                    <button type="submit" class="btn-action-toggle">${s.isActive ? "Desativar" : "Ativar"}</button>
+                    <button type="button" onclick="var f=this.closest('form');bpConfirm({icon:'🔄',title:'Alterar status',msg:'Deseja alterar o status deste item?',okLabel:'Confirmar',onConfirm:function(){f.onsubmit=null;f.submit();}});" class="btn-action-toggle">${s.isActive ? "Desativar" : "Ativar"}</button>
                   </form>
-                  <form method="POST" action="/admin/servicos/delete" style="display:inline" onsubmit="return confirm('Excluir este serviço? Esta ação não pode ser desfeita.')">
+                  <form method="POST" action="/admin/servicos/delete" style="display:inline" onsubmit="return false" data-bp-confirm-title="Excluir serviço" data-bp-confirm-msg="Esta ação não pode ser desfeita." data-bp-confirm-danger="1">
                     <input type="hidden" name="id" value="${s.id}" />
                     <button type="submit" class="btn-action-delete">✕ Excluir</button>
                   </form>
@@ -4073,12 +4128,12 @@ async function renderProdutos(req: Request, res: Response) {
               <td>
                 <div style="display:flex;gap:8px">
                   <a href="/admin/produtos?edit=${p.id}" class="btn-action-edit">✏ Editar</a>
-                  <form method="POST" action="/admin/produtos/toggle" style="display:inline" onsubmit="return confirm('Alterar status?')">
+                  <form method="POST" action="/admin/produtos/toggle" style="display:inline" onsubmit="return false" data-bp-confirm-title="Alterar status" data-bp-confirm-msg="Deseja alterar o status deste item?" data-bp-confirm-icon="🔄">
                     <input type="hidden" name="id" value="${p.id}" />
                     <input type="hidden" name="isActive" value="${!p.isActive}" />
                     <button type="submit" class="btn-action-toggle">${p.isActive ? "Desativar" : "Ativar"}</button>
                   </form>
-                  <form method="POST" action="/admin/produtos/delete" style="display:inline" onsubmit="return confirm('Excluir este produto?')">
+                  <form method="POST" action="/admin/produtos/delete" style="display:inline" onsubmit="return false" data-bp-confirm-title="Excluir produto" data-bp-confirm-msg="Esta ação não pode ser desfeita." data-bp-confirm-danger="1">
                     <input type="hidden" name="id" value="${p.id}" />
                     <button type="submit" class="btn-action-delete">✕ Excluir</button>
                   </form>
@@ -4407,7 +4462,7 @@ async function renderFinanceiro(req: Request, res: Response) {
                     <td><span class="badge badge-muted" style="font-size:11px">${esc(e.category)}</span></td>
                     <td style="color:var(--error);font-weight:700">${fmtCurrency(e.amount)}</td>
                     <td>
-                      <form method="POST" action="/admin/financeiro/despesa/${e.id}/excluir" style="display:inline" onsubmit="return confirm('Excluir esta despesa?')">
+                      <form method="POST" action="/admin/financeiro/despesa/${e.id}/excluir" style="display:inline" onsubmit="return false" data-bp-confirm-title="Excluir despesa" data-bp-confirm-msg="Esta ação não pode ser desfeita." data-bp-confirm-danger="1">
                         <button type="submit" class="btn" style="font-size:11px;padding:4px 10px;background:#EF444422;color:#F87171;border:none"></button>
                       </form>
                     </td>
@@ -4562,7 +4617,7 @@ async function renderFinanceiro(req: Request, res: Response) {
         + '</table></div></div>'
         + '<script>'
         + 'async function cancelAsaasCharge(asaasPaymentId, btn) {'
-        + '  if (!confirm("Cancelar esta cobrança no Asaas? Esta ação não pode ser desfeita.")) return;'
+        + '  bpConfirm({icon:"⚠️",title:"Cancelar cobrança",msg:"Cancelar esta cobrança no Asaas? Esta ação não pode ser desfeita.",okLabel:"Cancelar cobrança",danger:true,onConfirm:function(){' +
         + '  btn.disabled = true; btn.textContent = "⏳ Cancelando...";'
         + '  try {'
         + '    const r = await fetch("/admin-api/cancel-asaas-charge", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ asaasPaymentId }) });'
@@ -4571,7 +4626,7 @@ async function renderFinanceiro(req: Request, res: Response) {
         + '    const statusCell = document.getElementById("pmt-status-" + asaasPaymentId);'
         + '    if (statusCell) statusCell.innerHTML = "<span style=\"background:#6B728022;color:#9BA1A6;border:1px solid #6B728044;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700\">Cancelado</span>";'
         + '    btn.style.display = "none";'
-        + '  } catch(e) { alert("Erro: " + e.message); btn.disabled = false; btn.textContent = "Cancelar"; }'
+        + '  } catch(e) { showToast("<b>Erro:</b> " + e.message, 6000); btn.disabled = false; btn.textContent = "Cancelar"; }'
         + '}'
         + '</script>';
     }
@@ -5356,16 +5411,16 @@ async function renderConfiguracoes(req: Request, res: Response) {
                   <option value="team" ${effectivePlanName === 'team' ? 'selected' : ''}>Equipe — R$ 99,90/mês (até 3 barbeiros)</option>
                   <option value="studio" ${effectivePlanName === 'studio' ? 'selected' : ''}>Estúdio — R$ 169,90/mês (ilimitado)</option>
                 </select>
-                <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px" onclick="return confirm('Alterar o plano cancelará a assinatura atual e criará uma nova. Confirmar?')">Alterar plano</button>
+                <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px" onclick="bpConfirm({icon:'🔄',title:'Alterar plano',msg:'Alterar o plano cancelará a assinatura atual e criará uma nova. Confirmar?',okLabel:'Alterar plano',onConfirm:function(){this.form.submit();}.bind(this)});return false;">Alterar plano</button>
               </form>
             ` : ''}
             ${bpStatus === 'active' && bpSubId ? `
-              <form method="POST" action="/admin/configuracoes/asaas/cancel-subscription" onsubmit="return confirm('Tem certeza que deseja cancelar a assinatura?')">
+              <form method="POST" action="/admin/configuracoes/asaas/cancel-subscription" onsubmit="return false" data-bp-confirm-title="Cancelar assinatura" data-bp-confirm-msg="Tem certeza? Seu acesso continuará até o fim do período pago." data-bp-confirm-danger="1">
                 <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px;color:var(--error);border-color:var(--error)">Cancelar assinatura</button>
               </form>
             ` : ''}
             ${bpStatus === 'trial' ? `
-              <form method="POST" action="/admin/configuracoes/asaas/cancel-subscription" onsubmit="return confirm('Deseja encerrar sua conta? O acesso será removido imediatamente e o período de teste não poderá ser reativado.')">
+              <form method="POST" action="/admin/configuracoes/asaas/cancel-subscription" onsubmit="return false" data-bp-confirm-title="Encerrar conta" data-bp-confirm-msg="O acesso será removido imediatamente e o período de teste não poderá ser reativado." data-bp-confirm-danger="1">
                 <button type="submit" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:4px 0;text-decoration:underline">Encerrar conta e cancelar trial</button>
               </form>
             ` : ''}
@@ -5701,13 +5756,13 @@ async function renderConfiguracoes(req: Request, res: Response) {
         var cep = (document.getElementById('card-cep').value || '').replace(/[^0-9]/g, '');
         var addrNum = (document.getElementById('card-addr-num').value || '').trim();
 
-        if (!numRaw || numRaw.length < 13) { alert('Número do cartão inválido.'); if (btn) { btn.disabled = false; btn.textContent = method === 'CREDIT_CARD' ? 'Assinar com Cartão de Crédito' : 'Assinar com Cartão de Débito'; } return; }
-        if (!expiry[0] || !expiry[1] || expiry[1].length < 4) { alert('Data de validade inválida. Use MM/AAAA.'); if (btn) { btn.disabled = false; } return; }
-        if (!cvv) { alert('CVV obrigatório.'); if (btn) { btn.disabled = false; } return; }
-        if (!holder) { alert('Nome no cartão obrigatório.'); if (btn) { btn.disabled = false; } return; }
-        if (!cpf || cpf.length < 11) { alert('CPF do titular obrigatório.'); if (btn) { btn.disabled = false; } return; }
-        if (!cep || cep.length < 8) { alert('CEP obrigatório.'); if (btn) { btn.disabled = false; } return; }
-        if (!addrNum) { alert('Número do endereço obrigatório.'); if (btn) { btn.disabled = false; } return; }
+        if (!numRaw || numRaw.length < 13) { showToast('<b>Número do cartão inválido.</b>', 5000); if (btn) { btn.disabled = false; btn.textContent = method === 'CREDIT_CARD' ? 'Assinar com Cartão de Crédito' : 'Assinar com Cartão de Débito'; } return; }
+        if (!expiry[0] || !expiry[1] || expiry[1].length < 4) { showToast('<b>Data de validade inválida.</b> Use MM/AAAA.', 5000); if (btn) { btn.disabled = false; } return; }
+        if (!cvv) { showToast('<b>CVV obrigatório.</b>', 5000); if (btn) { btn.disabled = false; } return; }
+        if (!holder) { showToast('<b>Nome no cartão obrigatório.</b>', 5000); if (btn) { btn.disabled = false; } return; }
+        if (!cpf || cpf.length < 11) { showToast('<b>CPF do titular obrigatório.</b>', 5000); if (btn) { btn.disabled = false; } return; }
+        if (!cep || cep.length < 8) { showToast('<b>CEP obrigatório.</b>', 5000); if (btn) { btn.disabled = false; } return; }
+        if (!addrNum) { showToast('<b>Número do endereço obrigatório.</b>', 5000); if (btn) { btn.disabled = false; } return; }
 
         payload.cardNumber = numRaw;
         payload.cardExpiryMonth = expiry[0];
@@ -5731,7 +5786,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
         if (r.redirected) { window.location.href = r.url; return; }
         return r.json().then(function(data) {
           if (data.error) {
-            alert('Erro: ' + data.error);
+            showToast('<b>Erro:</b> ' + data.error, 6000);
             if (btn) { btn.disabled = false; btn.textContent = method === 'PIX' ? 'Gerar QR Code Pix' : 'Assinar agora'; }
             return;
           }
@@ -5744,7 +5799,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
           else { window.location.href = '/admin/configuracoes?tab=pagamentos&saved=1'; }
         });
       }).catch(function(err) {
-        alert('Erro de conexão. Tente novamente.');
+        showToast('<b>Erro de conexão.</b> Tente novamente.', 6000);
         if (btn) { btn.disabled = false; btn.textContent = method === 'PIX' ? 'Gerar QR Code Pix' : 'Assinar agora'; }
       });
     }
@@ -5853,12 +5908,12 @@ async function renderConfiguracoes(req: Request, res: Response) {
             showPixQrCode(newData);
           } else {
             if (renewBtn) { renewBtn.disabled = false; renewBtn.textContent = 'Gerar novo QR Code'; }
-            alert('Erro ao gerar novo QR Code. Tente novamente.');
+            showToast('<b>Erro ao gerar QR Code.</b> Tente novamente.', 6000);
           }
         })
         .catch(function() {
           if (renewBtn) { renewBtn.disabled = false; renewBtn.textContent = 'Gerar novo QR Code'; }
-          alert('Erro de conexão. Tente novamente.');
+          showToast('<b>Erro de conexão.</b> Tente novamente.', 6000);
         });
     }
 
@@ -7208,12 +7263,12 @@ async function renderPaginaCliente(req: Request, res: Response) {
           // Limpar novos arquivos de galeria (já foram enviados)
           _newGalleryFiles = [];
         } else {
-          alert('Erro ao salvar. Tente novamente.');
+          showToast('<b>Erro ao salvar.</b> Tente novamente.', 6000);
         }
       }).catch(function() {
         btn.innerHTML = origText;
         btn.disabled = false;
-        alert('Erro de conexão. Tente novamente.');
+        showToast('<b>Erro de conexão.</b> Tente novamente.', 6000);
       });
       return false;
     }
@@ -9924,7 +9979,7 @@ document.addEventListener('input', function(e) {
                   <form method="POST" action="/admin/lista-espera/remover" style="display:inline;">
                     <input type="hidden" name="id" value="${e.id}" />
                     <input type="hidden" name="date" value="${dateParam}" />
-                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="return confirm('Remover da lista?')">Remover</button>
+                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="bpConfirm({icon:'🗑️',title:'Remover da lista',msg:'Deseja remover este cliente da lista de espera?',okLabel:'Remover',danger:true,onConfirm:function(){this.closest('form').submit();}.bind(this)});return false;">Remover</button>
                   </form>
                 </td>
               </tr>
@@ -10528,7 +10583,7 @@ document.addEventListener('input', function(e) {
                   <button type="submit" class="btn btn-ghost" style="width:100%;font-size:12px;padding:6px;">${plan.isActive ? 'Desativar' : 'Ativar'}</button>
                 </form>
                 ${(plan.activeSubscribers ?? 0) === 0 ? `
-                <form method="POST" action="/admin/planos/${plan.id}/excluir" onsubmit="return confirm('Excluir plano?')" style="flex:0;">
+                <form method="POST" action="/admin/planos/${plan.id}/excluir" onsubmit="return false" data-bp-confirm-title="Excluir plano" data-bp-confirm-msg="Esta ação não pode ser desfeita." data-bp-confirm-danger="1" style="flex:0;">
                   <button type="submit" class="btn" style="font-size:12px;padding:6px 10px;background:#EF444422;color:#F87171;border:none;">Excluir</button>
                 </form>` : ""}
               </div>
@@ -11090,7 +11145,7 @@ document.addEventListener('input', function(e) {
                   </div>
                   <form method="POST" action="/admin/retorno-automatico/remover">
                     <input type="hidden" name="serviceId" value="${c.serviceId}" />
-                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="return confirm('Remover esta configuração?')">Remover</button>
+                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="bpConfirm({icon:'🗑️',title:'Remover configuração',msg:'Deseja remover esta configuração de retorno automático?',okLabel:'Remover',danger:true,onConfirm:function(){this.closest('form').submit();}.bind(this)});return false;">Remover</button>
                   </form>
                 </div>
               </div>
@@ -12194,7 +12249,7 @@ document.addEventListener('input', function(e) {
             body: JSON.stringify({ id: id, status: status })
           }).then(function(r){ return r.json(); }).then(function(data) {
             if (data.success) { window.location.reload(); }
-            else { alert('Erro: ' + (data.error || 'Erro desconhecido')); }
+            else { showToast('<b>Erro:</b> ' + (data.error || 'Erro desconhecido'), 6000); }
           });
         }
       </script>
@@ -12788,7 +12843,7 @@ document.addEventListener('input', function(e) {
                   <div style="display:flex;gap:8px">
                     <a href="/admin/fornecedores/${s.id}" class="btn-action-view">👁 Ver</a>
                     <a href="/admin/fornecedores?edit=${s.id}" class="btn-action-edit">✏ Editar</a>
-                    <form method="POST" action="/admin/fornecedores/delete" style="display:inline" onsubmit="return confirm('Excluir este fornecedor?')">
+                    <form method="POST" action="/admin/fornecedores/delete" style="display:inline" onsubmit="return false" data-bp-confirm-title="Excluir fornecedor" data-bp-confirm-msg="Esta ação não pode ser desfeita." data-bp-confirm-danger="1">
                       <input type="hidden" name="id" value="${s.id}" />
                       <button type="submit" class="btn-action-delete">✕ Excluir</button>
                     </form>
