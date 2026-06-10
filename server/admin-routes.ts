@@ -150,6 +150,14 @@ function decodeSession(token: string): { barberId: number; role: string } | null
 }
 
 // ─── Middleware de autenticação ────────────────────────────────────────────────────────────
+function requireOwner(req: Request, res: Response, next: NextFunction) {
+  const session = (req as any).adminSession as { barberId: number; role: string } | undefined;
+  if (!session || session.role !== "super_admin") {
+    return res.redirect("/admin?erro=acesso_restrito");
+  }
+  return next();
+}
+
 function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.[ADMIN_SESSION_COOKIE];
   const isApiCall = req.path.startsWith('/admin-api/') || (req.headers['content-type'] ?? '').includes('application/json');
@@ -278,7 +286,7 @@ function adminLayoutWithGrace(res: any, title: string, activePage: string, body:
   return adminLayout(title, activePage, body, barberName, tenantPlan, breadcrumb, res?.trialGrace ?? null);
 }
 
-function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, trialGrace?: { hoursLeft: number } | null): string {
+function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, trialGrace?: { hoursLeft: number } | null, barberRole = "super_admin"): string {
   const planBadge: Record<string, { label: string; color: string; bg: string }> = {
     solo: { label: "Solo", color: "#9BA1A6", bg: "rgba(155,161,166,0.12)" },
     team: { label: "Equipe", color: "#c9a84c", bg: "rgba(201,168,76,0.12)" },
@@ -317,7 +325,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     suporte: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
     fornecedores: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg>`,
   };
-  const navGroups = [
+  const isOwner = barberRole === "super_admin";
+  const navGroupsAll = [
     {
       label: "OPERACIONAL",
       items: [
@@ -7724,7 +7733,7 @@ document.addEventListener('input', function(e) {
   });
 
   // POST /admin/configuracoes/equipe/toggle (ativar/desativar profissional)
-  app.post("/admin/configuracoes/equipe/toggle", requireAdminAuth, async (req: Request, res: Response) => {
+  app.post("/admin/configuracoes/equipe/toggle", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
     try {
       const { id, isActive } = req.body ?? {};
       await db.updateBarber(parseInt(id), { isActive: isActive === "true" });
@@ -7735,7 +7744,7 @@ document.addEventListener('input', function(e) {
   });
 
   // POST /admin/configuracoes/equipe/novo (criar novo profissional)
-  app.post("/admin/configuracoes/equipe/novo", requireAdminAuth, async (req: Request, res: Response) => {
+  app.post("/admin/configuracoes/equipe/novo", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
     try {
       const session = (req as any).adminSession;
       const currentBarber = await db.getBarberById(session.barberId);
@@ -8653,10 +8662,10 @@ document.addEventListener('input', function(e) {
   });
 
   app.get("/admin/servicos", requireAdminAuth, withErrorPage("Serviços", "servicos", renderServicos));
-  app.get("/admin/financeiro", requireAdminAuth, withErrorPage("Financeiro", "financeiro", renderFinanceiro));
+  app.get("/admin/financeiro", requireAdminAuth, requireOwner, withErrorPage("Financeiro", "financeiro", renderFinanceiro));
 
   // POST /admin/financeiro/despesa — Criar despesa
-  app.post("/admin/financeiro/despesa", requireAdminAuth, async (req: Request, res: Response) => {
+  app.post("/admin/financeiro/despesa", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
     try {
       const session = (req as any).adminSession as { barberId: number; role: string };
       const { description, category, amount, date, paymentMethod } = req.body ?? {};
@@ -8758,8 +8767,8 @@ document.addEventListener('input', function(e) {
   });
 
   app.get("/admin/configuracoes", requireAdminAuth, withErrorPage("Configurações", "configuracoes", renderConfiguracoes));
-  app.get("/admin/relatorios", requireAdminAuth, withErrorPage("Relatórios", "relatorios", renderRelatorios));
-  app.get("/admin/pagina-cliente", requireAdminAuth, withErrorPage("Página do Cliente", "pagina-cliente", renderPaginaCliente));
+  app.get("/admin/relatorios", requireAdminAuth, requireOwner, withErrorPage("Relatórios", "relatorios", renderRelatorios));
+  app.get("/admin/pagina-cliente", requireAdminAuth, requireOwner, withErrorPage("Página do Cliente", "pagina-cliente", renderPaginaCliente));
 
   // POST /admin/pagina-cliente/slug — Alterar slug
   app.post("/admin/pagina-cliente/slug", requireAdminAuth, async (req: Request, res: Response) => {
@@ -9485,7 +9494,7 @@ document.addEventListener('input', function(e) {
   }));
 
   // ─── Comissões ────────────────────────────────────────────────────────────
-  app.get("/admin/comissoes", requireAdminAuth, withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
+  app.get("/admin/comissoes", requireAdminAuth, requireOwner, withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
     const barber = await db.getBarberById((req as any).adminSession.barberId);
     const tenantId = barber?.tenantId ?? null;
     const configs = await db.listCommissionConfigs(tenantId);
@@ -9598,7 +9607,7 @@ document.addEventListener('input', function(e) {
   res.send(adminLayoutWithGrace(res, "Comissões", "comissoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Comissões",href:"/admin/comissoes"}]));
   }));
 
-  app.post("/admin/comissoes/config", requireAdminAuth, requireFeature("commissions"), async (req: Request, res: Response) => {
+  app.post("/admin/comissoes/config", requireAdminAuth, requireOwner, requireFeature("commissions"), async (req: Request, res: Response) => {
     const session2 = (req as any).adminSession;
     const barber2 = await db.getBarberById(session2.barberId);
     const barbers = await db.getAllBarbers(barber2?.tenantId);
@@ -10756,7 +10765,7 @@ document.addEventListener('input', function(e) {
   }));
 
   // ─── Retorno Automático ─────────────────────────────────────────────
-  app.get("/admin/retorno-automatico", requireAdminAuth, withErrorPage("Retorno Automático", "retorno-automatico", async (req: Request, res: Response) => {
+  app.get("/admin/retorno-automatico", requireAdminAuth, requireOwner, withErrorPage("Retorno Automático", "retorno-automatico", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
@@ -10862,7 +10871,7 @@ document.addEventListener('input', function(e) {
   });
 
   // ─  // ─── Promoções (envio segmentado) ───────────────────────────────────────
-  app.get("/admin/promocoes", requireAdminAuth, withErrorPage("Promoções", "promocoes", async (req: Request, res: Response) => {
+  app.get("/admin/promocoes", requireAdminAuth, requireOwner, withErrorPage("Promoções", "promocoes", async (req: Request, res: Response) => {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
