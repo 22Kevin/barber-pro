@@ -812,6 +812,8 @@ export async function runAutoMigrate(db: any): Promise<void> {
   // Usa aspas duplas para preservar camelCase no PostgreSQL
   const alterColumns: Array<{ name: string; sql: string }> = [
     // products
+    { name: 'barbers.permissions', sql: `ALTER TABLE barbers ADD COLUMN IF NOT EXISTS permissions TEXT` },
+    { name: 'barbers."jobTitle"', sql: `ALTER TABLE barbers ADD COLUMN IF NOT EXISTS "jobTitle" VARCHAR(100)` },
     { name: 'products."supplierId"',       sql: `ALTER TABLE products ADD COLUMN IF NOT EXISTS "supplierId" INT` },
     { name: 'products."productType"',      sql: `ALTER TABLE products ADD COLUMN IF NOT EXISTS "productType" VARCHAR(20) NOT NULL DEFAULT 'sale'` },
     { name: 'products."stockQuantity"',    sql: `ALTER TABLE products ADD COLUMN IF NOT EXISTS "stockQuantity" INT NOT NULL DEFAULT 0` },

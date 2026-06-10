@@ -286,7 +286,7 @@ function adminLayoutWithGrace(res: any, title: string, activePage: string, body:
   return adminLayout(title, activePage, body, barberName, tenantPlan, breadcrumb, res?.trialGrace ?? null);
 }
 
-function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, trialGrace?: { hoursLeft: number } | null, barberRole = "super_admin"): string {
+function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, trialGrace?: { hoursLeft: number } | null, barberRole = "super_admin", barberPerms: any = null): string {
   const planBadge: Record<string, { label: string; color: string; bg: string }> = {
     solo: { label: "Solo", color: "#9BA1A6", bg: "rgba(155,161,166,0.12)" },
     team: { label: "Equipe", color: "#c9a84c", bg: "rgba(201,168,76,0.12)" },
@@ -471,6 +471,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
     .um-cancel { font-size:13px;color:var(--muted);cursor:pointer;background:none;border:none;padding:4px }
     .nav-item-locked { cursor:pointer!important }
     .nav-item-locked:hover { background:var(--surface2)!important }
+    .nav-item-perm-locked { cursor:not-allowed!important }
+    .nav-item-perm-locked:hover { background:var(--surface2)!important }
 
     .nav-icon { width: 16px; height: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
     .sidebar-footer { padding: 14px 18px; border-top: 1px solid var(--border); }
@@ -4889,6 +4891,41 @@ async function renderConfiguracoes(req: Request, res: Response) {
               <input class="form-input" type="text" name="phone" placeholder="(11) 99999-9999" maxlength="15" data-mask="phone" />
             </div>
           </div>
+          <input type="hidden" name="jobRole" id="hidden-jobrole" value="barber" />
+          <div class="form-group" style="margin:20px 0 0">
+            <label class="form-label">Função *</label>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+              <label id="role-btn-admin" onclick="setRoleNovo('admin')" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted)">👑 Admin</label>
+              <label id="role-btn-barber" onclick="setRoleNovo('barber')" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:1.5px solid rgba(201,168,76,.6);background:rgba(201,168,76,.08);cursor:pointer;font-size:13px;font-weight:500;color:var(--gold)">✂️ Barbeiro</label>
+              <label id="role-btn-receptionist" onclick="setRoleNovo('receptionist')" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted)">🗂️ Recepcionista</label>
+            </div>
+          </div>
+          <div style="margin:20px 0">
+            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Permissões de acesso</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Módulos não selecionados aparecerão com cadeado no menu.</div>
+            <div id="perms-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px">
+              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="agenda" id="chk-agenda" checked style="accent-color:var(--gold)" /> <span>📅</span> <span style="font-size:13px">Agenda</span></label>
+              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="clientes" id="chk-clientes" checked style="accent-color:var(--gold)" /> <span>👥</span> <span style="font-size:13px">Clientes</span></label>
+              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="lista-espera" id="chk-lista-espera" checked style="accent-color:var(--gold)" /> <span>⏳</span> <span style="font-size:13px">Lista de Espera</span></label>
+              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="servicos" id="chk-servicos" checked style="accent-color:var(--gold)" /> <span>✂️</span> <span style="font-size:13px">Serviços</span></label>
+              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="financeiro" id="chk-financeiro" style="accent-color:var(--gold)" /> <span>💰</span> <span style="font-size:13px">Financeiro</span></label>
+              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="relatorios" id="chk-relatorios" style="accent-color:var(--gold)" /> <span>📊</span> <span style="font-size:13px">Relatórios</span></label>
+              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="comissoes" id="chk-comissoes" style="accent-color:var(--gold)" /> <span>💎</span> <span style="font-size:13px">Comissões</span></label>
+              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="minhas-comissoes" id="chk-minhas-comissoes" checked style="accent-color:var(--gold)" /> <span>🏅</span> <span style="font-size:13px">Minhas Comissões</span></label>
+              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="produtos" id="chk-produtos" style="accent-color:var(--gold)" /> <span>📦</span> <span style="font-size:13px">Produtos/Estoque</span></label>
+              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="marketing" id="chk-marketing" style="accent-color:var(--gold)" /> <span>📣</span> <span style="font-size:13px">Marketing</span></label>
+              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="configuracoes" id="chk-configuracoes" style="accent-color:var(--gold)" /> <span>⚙️</span> <span style="font-size:13px">Configurações</span></label>
+            </div>
+          </div>
+          <script>
+            var DEFS={admin:['agenda','clientes','lista-espera','servicos','financeiro','relatorios','comissoes','minhas-comissoes','produtos','marketing','configuracoes'],barber:['agenda','clientes','lista-espera','servicos','minhas-comissoes'],receptionist:['agenda','clientes','lista-espera','servicos','financeiro','relatorios','produtos','marketing']};
+            function setRoleNovo(r){
+              document.getElementById('hidden-jobrole').value=r;
+              ['admin','barber','receptionist'].forEach(function(x){var el=document.getElementById('role-btn-'+x);if(x===r){el.style.borderColor='rgba(201,168,76,.6)';el.style.background='rgba(201,168,76,.08)';el.style.color='var(--gold)';}else{el.style.borderColor='#2a2a2a';el.style.background='#1a1a1a';el.style.color='var(--muted)';}});
+              var perms=DEFS[r]||[];var isAdmin=r==='admin';
+              document.querySelectorAll('#perms-grid input[type=checkbox]').forEach(function(chk){chk.checked=perms.includes(chk.value);chk.disabled=isAdmin;chk.closest('label').style.opacity=isAdmin?'.7':'1';});
+            }
+          </script>
           <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">Cadastrar Profissional</button>
           <a href="/admin/configuracoes?tab=equipe" class="btn btn-ghost" style="margin-left:8px;padding:12px 20px">Cancelar</a>
         </form>
