@@ -7891,7 +7891,7 @@ document.addEventListener('input', function(e) {
       const targetBarber = await db.getBarberById(Number(id));
       if (!targetBarber || targetBarber.tenantId !== tenantId) { res.redirect("/admin/configuracoes?tab=equipe&error=Profissional+nao+encontrado"); return; }
       if (Number(id) === session.barberId) { res.redirect("/admin/configuracoes?tab=equipe&error=Nao+e+possivel+excluir+sua+propria+conta"); return; }
-      await db.deleteBarber(Number(id));
+      await db.hardDeleteBarber(Number(id));
       res.redirect("/admin/configuracoes?tab=equipe&saved=1");
     } catch (e: any) { res.redirect("/admin/configuracoes?tab=equipe&error=" + encodeURIComponent(e.message)); }
   });

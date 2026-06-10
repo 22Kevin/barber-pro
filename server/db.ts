@@ -397,6 +397,12 @@ export async function deleteBarber(id: number) {
   await db.update(barbers).set({ isActive: false }).where(eq(barbers.id, id));
 }
 
+export async function hardDeleteBarber(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(barbers).where(eq(barbers.id, id));
+}
+
 // ─── Clientes ─────────────────────────────────────────────────────────────────
 export async function getAllClients(tenantId?: number | null) {
   const db = await getDb();
