@@ -1050,14 +1050,24 @@ ${barberRole === "super_admin" ? `
         }
         if (type === 'card-cvv') { return v.slice(0, 4); }
         if (type === 'price') {
-          // Permite apenas números e vírgula/ponto como decimal
-          var cleaned = (raw || '').replace(/[^0-9.,]/g, '');
-          // Normalizar: trocar ponto por vírgula e remover duplicatas
-          cleaned = cleaned.replace('.', ',').replace(/,(.*),/, function(m, g){ return ',' + g.replace(/,/g,''); });
-          // Limitar a 2 casas decimais
-          var parts = cleaned.split(',');
-          if (parts[1] !== undefined) parts[1] = parts[1].slice(0, 2);
-          return parts.join(',');
+          var s = (raw || '').replace(/[^0-9.,]/g, '');
+          var lastComma = s.lastIndexOf(',');
+          var lastDot = s.lastIndexOf('.');
+          var decSep = -1;
+          if (lastComma > lastDot) decSep = lastComma;
+          else if (lastDot > lastComma) decSep = lastDot;
+          var intPart, decPart;
+          if (decSep !== -1) {
+            intPart = s.slice(0, decSep).replace(/[^0-9]/g, '');
+            decPart = s.slice(decSep + 1).replace(/[^0-9]/g, '').slice(0, 2);
+          } else {
+            intPart = s.replace(/[^0-9]/g, '');
+            decPart = null;
+          }
+          if (intPart.length > 9) intPart = intPart.slice(0, 9);
+          var intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+          if (decPart !== null) return intFormatted + ',' + decPart;
+          return intFormatted;
         }
         if (type === 'cnpj-mask') {
           v = v.slice(0, 14);
@@ -3745,7 +3755,7 @@ async function renderServicos(req: Request, res: Response) {
             </div>
             <div class="form-group">
               <label class="form-label">Duração (minutos) *</label>
-              <input class="form-input" type="number" name="durationMinutes" min="1" step="5" value="${editService?.durationMinutes ?? 30}" required />
+              <input class="form-input" type="number" name="durationMinutes" min="1" step="1" value="${editService?.durationMinutes ?? 30}" required />
             </div>
             <div class="form-group">
               <label class="form-label">Status</label>
@@ -9210,7 +9220,9 @@ document.addEventListener('input', function(e) {
 
   // ─── CRUD Serviços ──────────────────────────────────────────────────
   app.post("/admin/servicos", requireAdminAuth, async (req: Request, res: Response) => {
-    const { name, description, price, durationMinutes, isActive, mediaBase64, mediaMime } = req.body;
+    const { name, description, durationMinutes, isActive, mediaBase64, mediaMime } = req.body;
+    const rawPrice = (req.body.price ?? '').toString().replace(/\./g, '').replace(',', '.');
+    const price = isNaN(parseFloat(rawPrice)) ? '0' : String(parseFloat(rawPrice));
     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
     // Obter tenantId da sessão (fonte segura) — não confiar no body
     const _svcSession = (req as any).adminSession as { barberId: number; role: string };
