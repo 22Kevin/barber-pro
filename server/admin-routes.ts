@@ -2036,7 +2036,7 @@ async function renderDashboard(req: Request, res: Response) {
             <div style="font-size:11px;color:var(--muted);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(dashPublicUrl)}</div>
           </div>
           <div style="display:flex;gap:8px;flex-shrink:0">
-            <a href="/admin/pagina-cliente" class="btn btn-ghost btn-sm">Configurar</a>
+            ${!isBarberRole ? `<a href="/admin/pagina-cliente" class="btn btn-ghost btn-sm">Configurar</a>` : ""}
             <a href="${esc(dashPublicUrl)}" target="_blank" class="btn btn-ghost btn-sm">Abrir ↗</a>
           </div>
         </div>
