@@ -1424,6 +1424,7 @@ async function renderDashboard(req: Request, res: Response) {
   // Serviços de ontem do barbeiro (para tooltip)
   const myYesterdaySales = isBarberRole ? await db.getSalesByDateRange(yesterdayStr, yesterdayStr, myBarberId, tenantId).catch(() => []) : [];
   const myYesterdayRevenue = (myYesterdaySales as any[]).filter((s: any) => s.paymentStatus === 'paid').reduce((sum: number, s: any) => sum + parseFloat(s.total || '0'), 0);
+  const myYesterdayAppts = isBarberRole ? (await db.getAllAppointmentsByDate(yesterdayStr, tenantId).catch(() => [])).filter((a: any) => a.barberId === myBarberId) : [];
   let appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
   if (session.role === "barber") appointments = appointments.filter((a: any) => a.barberId === myBarberId);
   // ─── Faturamento do mês ────────────────────────────────────────────────────
@@ -1646,7 +1647,7 @@ async function renderDashboard(req: Request, res: Response) {
     <!-- 1. KPI Cards -->
     <div class="metrics-grid">
       <div class="metric-card kpi-tooltip">
-        <div class="kpi-tip">Ontem: ${statsYesterday.appointmentsToday} agendamento${statsYesterday.appointmentsToday !== 1 ? 's' : ''} · ${stats.appointmentsToday === 0 && statsYesterday.appointmentsToday === 0 ? '—' : statsYesterday.appointmentsToday === 0 ? '↑ novo' : stats.appointmentsToday > statsYesterday.appointmentsToday ? '↑ +' + Math.round((stats.appointmentsToday - statsYesterday.appointmentsToday) / statsYesterday.appointmentsToday * 100) + '%' : stats.appointmentsToday < statsYesterday.appointmentsToday ? '↓ ' + Math.round((stats.appointmentsToday - statsYesterday.appointmentsToday) / statsYesterday.appointmentsToday * 100) + '%' : '= igual'}</div>
+        <div class="kpi-tip">${(() => { const cur = isBarberRole ? appointments.filter((a: any) => a.barberId === myBarberId).length : stats.appointmentsToday; const prev = isBarberRole ? myYesterdayAppts.length : statsYesterday.appointmentsToday; const diff = cur === 0 && prev === 0 ? '—' : prev === 0 ? '↑ novo' : cur > prev ? '↑ +' + Math.round((cur-prev)/prev*100) + '%' : cur < prev ? '↓ ' + Math.round((cur-prev)/prev*100) + '%' : '= igual'; return 'Ontem: ' + prev + ' agendamento' + (prev !== 1 ? 's' : '') + ' · ' + diff; })()}</div>
         <div class="metric-header">
           <div class="metric-label">Agendamentos Hoje</div>
           <div class="metric-icon" style="background:var(--gold-dim)">
@@ -1673,7 +1674,7 @@ async function renderDashboard(req: Request, res: Response) {
         })() : '<div class="metric-sub">vendas pagas</div>'}
       </div>
       <div class="metric-card kpi-tooltip">
-        <div class="kpi-tip">Ontem: ${statsYesterday.clientsToday} cliente${statsYesterday.clientsToday !== 1 ? 's' : ''} · ${stats.clientsToday === 0 && statsYesterday.clientsToday === 0 ? '—' : statsYesterday.clientsToday === 0 ? '↑ novo' : stats.clientsToday > statsYesterday.clientsToday ? '↑ +' + Math.round((stats.clientsToday - statsYesterday.clientsToday) / statsYesterday.clientsToday * 100) + '%' : stats.clientsToday < statsYesterday.clientsToday ? '↓ ' + Math.round((stats.clientsToday - statsYesterday.clientsToday) / statsYesterday.clientsToday * 100) + '%' : '= igual'}</div>
+        <div class="kpi-tip">${(() => { const cur = isBarberRole ? myApptsToday.length : stats.clientsToday; const prev = isBarberRole ? myYesterdayAppts.length : statsYesterday.clientsToday; const diff = cur === 0 && prev === 0 ? '—' : prev === 0 ? '↑ novo' : cur > prev ? '↑ +' + Math.round((cur-prev)/prev*100) + '%' : cur < prev ? '↓ ' + Math.round((cur-prev)/prev*100) + '%' : '= igual'; return 'Ontem: ' + prev + ' cliente' + (prev !== 1 ? 's' : '') + ' · ' + diff; })()}</div>
         <div class="metric-header">
           <div class="metric-label">Clientes Atendidos</div>
           <div class="metric-icon" style="background:rgba(96,165,250,.12)">
