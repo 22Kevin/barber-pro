@@ -185,7 +185,7 @@ export default function PlanSelectionScreen() {
 
                 {/* Cabeçalho do plano */}
                 <View style={styles.planHeader}>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, paddingRight: 12 }}>
                     <Text style={[styles.planName, isSelected && styles.planNameSelected]}>
                       {plan.name}
                     </Text>
@@ -193,18 +193,20 @@ export default function PlanSelectionScreen() {
                       {plan.description}
                     </Text>
                   </View>
-                  <View style={styles.priceBox}>
-                    <Text style={[styles.priceCurrency, isSelected && styles.priceSelected]}>R$</Text>
-                    <Text style={[styles.priceValue, isSelected && styles.priceSelected]}>
-                      {(isAnnual ? PRICES.annual[plan.key] : PRICES.monthly[plan.key]).toFixed(2).replace(".", ",")}
-                    </Text>
-                    <Text style={[styles.pricePeriod, isSelected && styles.pricePeriodSelected]}>/mês</Text>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <View style={styles.priceBox}>
+                      <Text style={[styles.priceCurrency, isSelected && styles.priceSelected]}>R$</Text>
+                      <Text style={[styles.priceValue, isSelected && styles.priceSelected]}>
+                        {(isAnnual ? PRICES.annual[plan.key] : PRICES.monthly[plan.key]).toFixed(2).replace(".", ",")}
+                      </Text>
+                      <Text style={[styles.pricePeriod, isSelected && styles.pricePeriodSelected]}>/mês</Text>
+                    </View>
+                    {isAnnual && (
+                      <Text style={{ fontSize: 11, color: isSelected ? "#0A0A0A88" : "#666", marginTop: 2 }}>
+                        Total R$ {PRICES.annualTotal[plan.key].toFixed(2).replace(".", ",")}
+                      </Text>
+                    )}
                   </View>
-                  {isAnnual && (
-                    <Text style={{ fontSize: 11, color: isSelected ? "#0A0A0A99" : "#666", marginTop: 2 }}>
-                      Total anual R$ {PRICES.annualTotal[plan.key].toFixed(2).replace(".", ",")}
-                    </Text>
-                  )}
                 </View>
 
                 {/* Divisor */}
