@@ -4844,7 +4844,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
     <div class="card" style="margin-bottom:24px">
       <div class="card-header">
         <div class="card-title">Profissionais Cadastrados</div>
-        <a href="/admin/configuracoes?tab=equipe&novo=1" class="btn btn-primary" style="font-size:12px;padding:8px 16px">+ Novo Profissional</a>
+        <button onclick="toggleFormNovo()" id="btn-novo-prof" class="btn btn-primary" style="font-size:12px;padding:8px 16px">+ Novo Profissional</button>
       </div>
       <table>
         <thead><tr><th>Nome</th><th>E-mail</th><th>Função</th><th>Status</th><th>Ações</th></tr></thead>
@@ -7776,6 +7776,47 @@ document.addEventListener('input', function(e) {
     } catch (e: any) {
       res.redirect(`/admin/configuracoes?tab=horarios&error=${encodeURIComponent(e.message)}`);
     }
+  });
+
+  // POST /admin/configuracoes/equipe/editar
+  app.post("/admin/configuracoes/equipe/editar", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession;
+      const currentBarber = await db.getBarberById(session.barberId);
+      const tenantId = currentBarber?.tenantId ?? null;
+      const { id, name, email, password, phone, jobRole } = req.body ?? {};
+      if (!id || !name || !email) { res.redirect("/admin/configuracoes?tab=equipe&error=Campos+obrigatorios"); return; }
+      const targetBarber = await db.getBarberById(Number(id));
+      if (!targetBarber || targetBarber.tenantId !== tenantId) { res.redirect("/admin/configuracoes?tab=equipe&error=Profissional+nao+encontrado"); return; }
+      const rawPerms = req.body.permissions;
+      const permissions = jobRole === "admin"
+        ? ["agenda","clientes","lista-espera","servicos","financeiro","relatorios","comissoes","minhas-comissoes","produtos","marketing","configuracoes"]
+        : (Array.isArray(rawPerms) ? rawPerms : (rawPerms ? [rawPerms] : []));
+      const dbRole = jobRole === "admin" ? "super_admin" : jobRole === "receptionist" ? "receptionist" : "barber";
+      const updates: any = { name, email, phone: phone || null, role: dbRole };
+      if (password && password.length >= 6) updates.passwordHash = await bcrypt.hash(password, 10);
+      await db.updateBarber(Number(id), updates);
+      const safePerms = JSON.stringify(permissions).replace(/'/g, "''");
+      const dbConn = await db.getDb();
+      if (dbConn) await (dbConn as any).execute("UPDATE barbers SET permissions = '" + safePerms + "' WHERE id = " + Number(id));
+      res.redirect("/admin/configuracoes?tab=equipe&saved=1");
+    } catch (e: any) { res.redirect("/admin/configuracoes?tab=equipe&error=" + encodeURIComponent(e.message)); }
+  });
+
+  // POST /admin/configuracoes/equipe/excluir
+  app.post("/admin/configuracoes/equipe/excluir", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession;
+      const currentBarber = await db.getBarberById(session.barberId);
+      const tenantId = currentBarber?.tenantId ?? null;
+      const { id } = req.body ?? {};
+      if (!id) { res.redirect("/admin/configuracoes?tab=equipe"); return; }
+      const targetBarber = await db.getBarberById(Number(id));
+      if (!targetBarber || targetBarber.tenantId !== tenantId) { res.redirect("/admin/configuracoes?tab=equipe&error=Profissional+nao+encontrado"); return; }
+      if (Number(id) === session.barberId) { res.redirect("/admin/configuracoes?tab=equipe&error=Nao+e+possivel+excluir+sua+propria+conta"); return; }
+      await db.deleteBarber(Number(id));
+      res.redirect("/admin/configuracoes?tab=equipe&saved=1");
+    } catch (e: any) { res.redirect("/admin/configuracoes?tab=equipe&error=" + encodeURIComponent(e.message)); }
   });
 
   // POST /admin/configuracoes/equipe/toggle (ativar/desativar profissional)
