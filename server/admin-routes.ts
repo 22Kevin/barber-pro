@@ -4721,7 +4721,23 @@ async function renderConfiguracoes(req: Request, res: Response) {
   }
 
   // Buscar equipe e horários de trabalho
-  const allBarbers = await db.getAllBarbersIncludingInactive(barber?.tenantId);
+  const allBarbers = await db.getAllBarbersIncludingInactive(barber?.tenantId) as any[];
+  // Buscar permissions via rawQuery pois a coluna não está no schema Drizzle
+  try {
+    const dbConn = await db.getDb();
+    if (dbConn && allBarbers.length > 0) {
+      const ids = allBarbers.map((b: any) => b.id).join(',');
+      const rows = await (dbConn as any).execute('SELECT id, permissions FROM barbers WHERE id IN (' + ids + ')') as any;
+      const permsMap: Record<number, any> = {};
+      const rowArr = Array.isArray(rows) ? rows[0] : (rows?.rows ?? []);
+      for (const row of rowArr) {
+        if (row.permissions) {
+          try { permsMap[row.id] = JSON.parse(row.permissions); } catch(e) { permsMap[row.id] = null; }
+        }
+      }
+      for (const b of allBarbers) { (b as any).permissions = permsMap[b.id] ?? null; }
+    }
+  } catch(e) {}
   const workingHoursMap: Record<number, any[]> = {};
   for (const b of allBarbers) {
     workingHoursMap[b.id] = await db.getWorkingHours(b.id);
