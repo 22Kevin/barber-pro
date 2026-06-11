@@ -1007,10 +1007,13 @@ export async function createBranch(parentTenantId: number, data: {
      data.city??null, data.state??null, parentTenantId]
   );
   const branchId = result.rows[0].id;
-  await _pool.query(
-    `INSERT INTO shop_settings ("tenantId","shopName",phone,cnpj,address) VALUES ($1,$2,$3,$4,$5) ON CONFLICT ("tenantId") DO NOTHING`,
-    [branchId, data.name, data.phone??null, data.cnpj??null, data.address??null]
-  );
+  const existsSettings = await _pool.query(`SELECT id FROM shop_settings WHERE "tenantId" = $1 LIMIT 1`, [branchId]);
+  if (existsSettings.rows.length === 0) {
+    await _pool.query(
+      `INSERT INTO shop_settings ("tenantId","shopName",phone,cnpj,address) VALUES ($1,$2,$3,$4,$5)`,
+      [branchId, data.name, data.phone??null, data.cnpj??null, data.address??null]
+    );
+  }
   // Barbeiro-espelho: o dono da matriz acessa a filial com o mesmo login
   if (data.ownerEmail && data.ownerPasswordHash) {
     await _pool.query(
