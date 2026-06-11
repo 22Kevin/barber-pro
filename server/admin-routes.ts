@@ -27,6 +27,7 @@ import axios from "axios";
 import PDFDocument from "pdfkit";
 import { requireFeature } from "./plan-features";
 import bcrypt from "bcryptjs";
+import { createHmac, timingSafeEqual } from "crypto";
 
 // ─── Validação de uploads base64 (mime allowlist + limite de tamanho) ─────────
 const UPLOAD_IMAGE_MIMES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
@@ -152,7 +153,7 @@ const SESSION_HMAC_SECRET = process.env.COOKIE_SECRET || process.env.JWT_SECRET 
 const SECURE_COOKIE = process.env.NODE_ENV === "production" ? "; Secure" : "";
 
 function signSessionPayload(payload: string): string {
-  return crypto.createHmac("sha256", SESSION_HMAC_SECRET).update(payload).digest("base64url");
+  return createHmac("sha256", SESSION_HMAC_SECRET).update(payload).digest("base64url");
 }
 
 function encodeSession(barberId: number, role: string, maxAge = SESSION_MAX_AGE): string {
@@ -168,7 +169,7 @@ function decodeSession(token: string): { barberId: number; role: string } | null
     const expected = signSessionPayload(payload);
     const sigBuf = Buffer.from(sig);
     const expBuf = Buffer.from(expected);
-    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+    if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) return null;
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8"));
     if (!data.barberId || !data.role) return null;
     const maxAge = data.maxAge ?? SESSION_MAX_AGE;
