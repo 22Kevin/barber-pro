@@ -807,6 +807,55 @@ async function startServer() {
   });
 
   // Páginas legais — conteúdo embutido no bundle
+  // ── SEO: robots.txt ──────────────────────────────────────────────────────
+  app.get("/robots.txt", (_req, res) => {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.send([
+      "User-agent: *",
+      "Allow: /",
+      "Disallow: /admin",
+      "Disallow: /admin-api",
+      "Disallow: /superadmin",
+      "Disallow: /api/",
+      "Disallow: /app",
+      "",
+      "Sitemap: https://usebarberpro.com/sitemap.xml",
+    ].join("\n"));
+  });
+
+  // ── SEO: sitemap.xml dinâmico (estáticas + páginas públicas das barbearias) ──
+  let _sitemapCache: { xml: string; ts: number } | null = null;
+  app.get("/sitemap.xml", async (_req, res) => {
+    try {
+      if (!_sitemapCache || Date.now() - _sitemapCache.ts > 3600000) {
+        const dbMod: any = await import("../db");
+        const tenants: any[] = await dbMod.getAllTenants().catch(() => []);
+        const today = new Date().toISOString().split("T")[0];
+        const urls: string[] = [];
+        urls.push(`<url><loc>https://usebarberpro.com/</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>`);
+        for (const p of ["/termos", "/privacidade", "/lgpd"]) {
+          urls.push(`<url><loc>https://usebarberpro.com${p}</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>`);
+        }
+        for (const t of tenants) {
+          if (!t?.slug) continue;
+          const st = String(t.status || "").toLowerCase();
+          if (st === "cancelled" || st === "expired") continue;
+          urls.push(`<url><loc>https://usebarberpro.com/pub/${t.slug}</loc><changefreq>daily</changefreq><priority>0.7</priority></url>`);
+        }
+        _sitemapCache = {
+          xml: '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls.join("") + '</urlset>',
+          ts: Date.now(),
+        };
+      }
+      res.setHeader("Content-Type", "application/xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.send(_sitemapCache.xml);
+    } catch {
+      res.status(500).send("");
+    }
+  });
+
   app.get("/termos", (_req, res) => { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.send(TERMOS_HTML); });
   app.get("/privacidade", (_req, res) => { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.send(PRIVACIDADE_HTML); });
   app.get("/lgpd", (_req, res) => { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.send(LGPD_HTML); });
