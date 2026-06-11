@@ -28,6 +28,23 @@ import PDFDocument from "pdfkit";
 import { requireFeature } from "./plan-features";
 import bcrypt from "bcryptjs";
 
+// ─── Validação de uploads base64 (mime allowlist + limite de tamanho) ─────────
+const UPLOAD_IMAGE_MIMES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
+const UPLOAD_VIDEO_MIMES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
+const UPLOAD_MAX_IMAGE = 5 * 1024 * 1024;   // 5 MB
+const UPLOAD_MAX_VIDEO = 20 * 1024 * 1024;  // 20 MB
+function assertValidUpload(b64: string, mime: string, kind: "image" | "media"): Buffer {
+  const m = (mime || "").toLowerCase().trim();
+  const isImage = UPLOAD_IMAGE_MIMES.has(m);
+  const isVideo = kind === "media" && UPLOAD_VIDEO_MIMES.has(m);
+  if (!isImage && !isVideo) throw new Error("Tipo de arquivo não permitido: " + m);
+  const buf = Buffer.from(b64, "base64");
+  const max = isVideo ? UPLOAD_MAX_VIDEO : UPLOAD_MAX_IMAGE;
+  if (buf.length > max) throw new Error("Arquivo excede o limite de " + Math.round(max / 1024 / 1024) + "MB");
+  if (buf.length < 50) throw new Error("Arquivo inválido ou vazio");
+  return buf;
+}
+
 const ADMIN_SESSION_COOKIE = "bp_admin_session";
 const SESSION_MAX_AGE = 8 * 60 * 60; // 8 horas
 const SESSION_MAX_AGE_REMEMBER = 30 * 24 * 60 * 60; // 30 dias
@@ -9324,7 +9341,7 @@ document.addEventListener('input', function(e) {
       let finalLogoUrl = logoUrlRaw || null;
       if (logoBase64 && logoMime) {
         try {
-          const buf = Buffer.from(logoBase64, "base64");
+          const buf = assertValidUpload(logoBase64, logoMime, "image");
           const ext = logoMime.includes("png") ? "png" : logoMime.includes("webp") ? "webp" : "jpg";
           const key = `shop/${tenantId ?? 0}/logo-${Date.now()}.${ext}`;
           const { url } = await storagePut(key, buf, logoMime);
@@ -9336,7 +9353,7 @@ document.addEventListener('input', function(e) {
       let finalBannerUrl = bannerUrlRaw || null;
       if (bannerBase64 && bannerMime) {
         try {
-          const buf = Buffer.from(bannerBase64, "base64");
+          const buf = assertValidUpload(bannerBase64, bannerMime, "image");
           const ext = bannerMime.includes("png") ? "png" : bannerMime.includes("webp") ? "webp" : "jpg";
           const key = `shop/${tenantId ?? 0}/banner-${Date.now()}.${ext}`;
           const { url } = await storagePut(key, buf, bannerMime);
@@ -9358,8 +9375,8 @@ document.addEventListener('input', function(e) {
         const mimeArr = galleryMimeList.split("||").filter(Boolean);
         for (let i = 0; i < base64Arr.length; i++) {
           try {
-            const buf = Buffer.from(base64Arr[i], "base64");
             const mime = mimeArr[i] || "image/jpeg";
+            const buf = assertValidUpload(base64Arr[i], mime, "image");
             const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
             const key = `shop/${tenantId ?? 0}/gallery-${Date.now()}-${i}.${ext}`;
             const { url } = await storagePut(key, buf, mime);
@@ -9436,7 +9453,7 @@ document.addEventListener('input', function(e) {
       if (seoImageBase64 && seoImageMime) {
         try {
           const { storagePut } = await import("./storage");
-          const buf = Buffer.from(seoImageBase64, "base64");
+          const buf = assertValidUpload(seoImageBase64, seoImageMime, "image");
           const ext = seoImageMime.includes("png") ? "png" : seoImageMime.includes("webp") ? "webp" : "jpg";
           const key = `shop/${barber?.tenantId ?? 0}/seo-image-${Date.now()}.${ext}`;
           const { url } = await storagePut(key, buf, seoImageMime);
@@ -9502,7 +9519,7 @@ document.addEventListener('input', function(e) {
     if (mediaBase64 && mediaMime && serviceId) {
       try {
         const { storagePut } = await import("./storage");
-        const buffer = Buffer.from(mediaBase64, "base64");
+        const buffer = assertValidUpload(mediaBase64, mediaMime, "media");
         const ext = mediaMime.startsWith("video/") ? "mp4" : "jpg";
         const key = `services/${serviceId}/media-${Date.now()}.${ext}`;
         const { url } = await storagePut(key, buffer, mediaMime);
@@ -9561,7 +9578,7 @@ document.addEventListener('input', function(e) {
     if (mediaBase64 && mediaMime && productId) {
       try {
         const { storagePut } = await import("./storage");
-        const buffer = Buffer.from(mediaBase64, "base64");
+        const buffer = assertValidUpload(mediaBase64, mediaMime, "media");
         const ext = mediaMime.startsWith("video/") ? "mp4" : "jpg";
         const key = `products/${productId}/media-${Date.now()}.${ext}`;
         const { url } = await storagePut(key, buffer, mediaMime);

@@ -5116,9 +5116,14 @@ export function registerPublicRoutes(app: Express): void {
       const { clientId, fileBase64, mimeType } = req.body;
       if (!clientId || !fileBase64 || !mimeType) { res.status(400).json({ error: "Dados incompletos" }); return; }
       const { storagePut } = await import("./storage");
-      const ext = mimeType.split("/")[1] || "jpg";
-      const key = `barber-pro/clients/photo-${clientId}-${Date.now()}.${ext}`;
+      const PHOTO_MIMES: Record<string, string> = { "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png", "image/webp": "webp" };
+      const mt = String(mimeType).toLowerCase().trim();
+      const ext = PHOTO_MIMES[mt];
+      if (!ext) { res.status(400).json({ error: "Tipo de imagem não permitido" }); return; }
       const buffer = Buffer.from(fileBase64, "base64");
+      if (buffer.length > 5 * 1024 * 1024) { res.status(400).json({ error: "Imagem excede o limite de 5MB" }); return; }
+      if (buffer.length < 50) { res.status(400).json({ error: "Imagem inválida" }); return; }
+      const key = `barber-pro/clients/photo-${Number(clientId)}-${Date.now()}.${ext}`;
       const { url } = await storagePut(key, buffer, mimeType);
       await db.updateClient(Number(clientId), { photoUrl: url });
       res.json({ url });

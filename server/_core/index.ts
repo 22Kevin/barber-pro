@@ -699,6 +699,21 @@ async function startServer() {
     res.header("X-Content-Type-Options", "nosniff");
     res.header("Referrer-Policy", "strict-origin-when-cross-origin");
     res.header("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)");
+    // CSP: 'unsafe-inline' necessário (painel usa scripts inline); ainda protege
+    // contra object/embed, base hijack e clickjacking via frame-ancestors
+    res.header("Content-Security-Policy",
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://accounts.google.com; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+      "font-src 'self' https://fonts.gstatic.com; " +
+      "img-src 'self' data: blob: https:; " +
+      "media-src 'self' blob: https:; " +
+      "connect-src 'self' https://accounts.google.com; " +
+      "frame-src https://accounts.google.com; " +
+      "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'");
+    if (process.env.NODE_ENV === "production") {
+      res.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    }
 
     // Handle preflight requests
     if (req.method === "OPTIONS") {
@@ -708,8 +723,24 @@ async function startServer() {
     next();
   });
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // ── Proteção CSRF: verificação de Origin em requisições que alteram estado ──
+  // Browsers sempre enviam Origin em POST cross-site; apps nativos/webhooks não
+  // enviam Origin (passam direto — protegidos por token próprio e SameSite).
+  app.use((req, res, next) => {
+    if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return next();
+    const origin = req.headers.origin;
+    if (!origin) return next(); // mobile app, webhooks Asaas, curl — sem Origin
+    try {
+      const originHost = new URL(origin).host;
+      if (originHost === req.headers.host || CORS_ALLOWED.has(origin)) return next();
+    } catch {}
+    console.warn("[csrf] Bloqueado POST de origem não autorizada:", origin, req.path);
+    res.status(403).json({ error: "Origem não autorizada" });
+  });
+
+  // Limite reduzido (era 50mb — convite a DoS). Uploads validados individualmente.
+  app.use(express.json({ limit: "25mb" }));
+  app.use(express.urlencoded({ limit: "25mb", extended: true }));
 
   registerOAuthRoutes(app);
   registerSuperAdminRoutes(app);
