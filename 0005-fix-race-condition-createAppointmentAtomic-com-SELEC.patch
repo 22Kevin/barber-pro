@@ -1,0 +1,1342 @@
+From 7401d9874e3bb44e533ea70a1704b167aa750c8e Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Wed, 10 Jun 2026 20:52:47 +0000
+Subject: [PATCH 5/5] =?UTF-8?q?fix:=20race=20condition=20=E2=80=94=20creat?=
+ =?UTF-8?q?eAppointmentAtomic=20com=20SELECT=20FOR=20UPDATE=20previne=20du?=
+ =?UTF-8?q?plo=20agendamento?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ server/admin-routes.ts | 585 +++++++++++++++++++++++++++++++++--------
+ server/db.ts           |  51 ++++
+ server/routers.ts      |  46 ++--
+ 3 files changed, 558 insertions(+), 124 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 5ac9e54..4a116bc 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -150,6 +150,14 @@ function decodeSession(token: string): { barberId: number; role: string } | null
+ }
+ 
+ // ─── Middleware de autenticação ────────────────────────────────────────────────────────────
++function requireOwner(req: Request, res: Response, next: NextFunction) {
++  const session = (req as any).adminSession as { barberId: number; role: string } | undefined;
++  if (!session || session.role !== "super_admin") {
++    return res.redirect("/admin?erro=acesso_restrito");
++  }
++  return next();
++}
++
+ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
+   const token = req.cookies?.[ADMIN_SESSION_COOKIE];
+   const isApiCall = req.path.startsWith('/admin-api/') || (req.headers['content-type'] ?? '').includes('application/json');
+@@ -165,6 +173,14 @@ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
+     return res.redirect('/admin/login');
+   }
+   (req as any).adminSession = session;
++  if (res && res.locals) res.locals.barberRole = session.role || "super_admin";
++  // Carregar permissions do banco para uso no layout
++  db.getBarberById(session.barberId).then(function(b) {
++    if (b && b.permissions) {
++      try { (req as any).adminSession.permissions = JSON.parse(b.permissions); }
++      catch(e) { (req as any).adminSession.permissions = null; }
++    } else { (req as any).adminSession.permissions = null; }
++  }).catch(function() {});
+   next();
+ }
+ 
+@@ -275,10 +291,13 @@ export async function generateMagicLink(tenantId: number, baseUrl = "https://use
+ // ─── Layout base do painel ────────────────────────────────────────────────────
+ // Helper used by route handlers to auto-inject trialGrace from res object
+ function adminLayoutWithGrace(res: any, title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>): string {
+-  return adminLayout(title, activePage, body, barberName, tenantPlan, breadcrumb, res?.trialGrace ?? null);
++  const bRole = (res && res.locals && res.locals.barberRole) || "super_admin";
++  let bPerms: string[] | null = null;
++  try { const p = res && res.req && (res.req as any).adminSession && (res.req as any).adminSession.permissions; if (Array.isArray(p)) bPerms = p; } catch(e) {}
++  return adminLayout(title, activePage, body, barberName, tenantPlan, breadcrumb, res?.trialGrace ?? null, bRole, bPerms);
+ }
+ 
+-function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, trialGrace?: { hoursLeft: number } | null): string {
++function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, trialGrace?: { hoursLeft: number } | null, barberRole = "super_admin", barberPerms: any = null): string {
+   const planBadge: Record<string, { label: string; color: string; bg: string }> = {
+     solo: { label: "Solo", color: "#9BA1A6", bg: "rgba(155,161,166,0.12)" },
+     team: { label: "Equipe", color: "#c9a84c", bg: "rgba(201,168,76,0.12)" },
+@@ -317,7 +336,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+     suporte: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+     fornecedores: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg>`,
+   };
+-  const navGroups = [
++  const isOwner = barberRole === "super_admin";
++  const navGroupsAll = [
+     {
+       label: "OPERACIONAL",
+       items: [
+@@ -325,19 +345,19 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+         { href: "/admin/agenda", icon: svgIcons.agenda, label: "Agenda", id: "agenda" },
+         { href: "/admin/clientes", icon: svgIcons.clientes, label: "Clientes", id: "clientes" },
+         { href: "/admin/lista-espera", icon: svgIcons["lista-espera"], label: "Lista de Espera", id: "lista-espera" },
+-        { href: "/admin/assinaturas", icon: svgIcons.assinaturas, label: "Assinaturas", id: "assinaturas" },
+-        { href: "/admin/planos", icon: svgIcons.planos, label: "Planos de Assinatura", id: "planos" },
+-        { href: "/admin/orbita", icon: svgIcons.orbita, label: "Clientes em Órbita", id: "orbita" },
++        { href: "/admin/assinaturas", icon: svgIcons.assinaturas, label: "Assinaturas", id: "assinaturas", feature: "subscription_plans", featureLabel: "Assinaturas de Clientes", requiredPlan: "Equipe" },
++        { href: "/admin/planos", icon: svgIcons.planos, label: "Planos de Assinatura", id: "planos", feature: "subscription_plans", featureLabel: "Planos de Assinatura", requiredPlan: "Equipe" },
++        { href: "/admin/orbita", icon: svgIcons.orbita, label: "Radar de Leads", id: "orbita", feature: "orbit", featureLabel: "Radar de Leads (Órbita)", requiredPlan: "Estúdio" },
+       ],
+     },
+     {
+       label: "CATÁLOGO",
+       items: [
+         { href: "/admin/servicos", icon: svgIcons.servicos, label: "Serviços", id: "servicos" },
+-        { href: "/admin/produtos", icon: svgIcons.produtos, label: "Produtos", id: "produtos" },
+-        { href: "/admin/estoque", icon: svgIcons.estoque, label: "Estoque", id: "estoque" },
+-        { href: "/admin/encomendas", icon: svgIcons.encomendas, label: "Encomendas", id: "encomendas" },
+-        { href: "/admin/fornecedores", icon: svgIcons.fornecedores, label: "Fornecedores", id: "fornecedores" },
++        { href: "/admin/produtos", icon: svgIcons.produtos, label: "Produtos", id: "produtos", feature: "products", featureLabel: "Produtos", requiredPlan: "Equipe" },
++        { href: "/admin/estoque", icon: svgIcons.estoque, label: "Estoque", id: "estoque", feature: "stock", featureLabel: "Controle de Estoque", requiredPlan: "Equipe" },
++        { href: "/admin/encomendas", icon: svgIcons.encomendas, label: "Encomendas", id: "encomendas", feature: "orders", featureLabel: "Encomendas", requiredPlan: "Equipe" },
++        { href: "/admin/fornecedores", icon: svgIcons.fornecedores, label: "Fornecedores", id: "fornecedores", feature: "suppliers", featureLabel: "Fornecedores", requiredPlan: "Equipe" },
+       ],
+     },
+     {
+@@ -345,8 +365,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+       items: [
+         { href: "/admin/financeiro", icon: svgIcons.financeiro, label: "Financeiro", id: "financeiro" },
+         { href: "/admin/relatorios", icon: svgIcons.relatorios, label: "Relatórios", id: "relatorios" },
+-        { href: "/admin/comissoes", icon: svgIcons.comissoes, label: "Comissões", id: "comissoes" },
+-        { href: "/admin/minhas-comissoes", icon: svgIcons["minhas-comissoes"], label: "Minhas Comissões", id: "minhas-comissoes" },
++        { href: "/admin/comissoes", icon: svgIcons.comissoes, label: "Comissões", id: "comissoes", feature: "commissions", featureLabel: "Comissões Automáticas", requiredPlan: "Estúdio" },
++        { href: "/admin/minhas-comissoes", icon: svgIcons["minhas-comissoes"], label: "Minhas Comissões", id: "minhas-comissoes", feature: "commissions", featureLabel: "Minhas Comissões", requiredPlan: "Estúdio" },
+       ],
+     },
+     {
+@@ -372,6 +392,15 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+       ],
+     },
+   ];
++  const BARBER_ALLOWED_IDS = new Set([
++    "dashboard", "agenda", "clientes", "lista-espera",
++    "servicos", "minhas-comissoes", "avaliacoes", "suporte"
++  ]);
++  const navGroups = isOwner
++    ? navGroupsAll
++    : navGroupsAll
++        .map((g) => ({ ...g, items: g.items.filter((i) => BARBER_ALLOWED_IDS.has(i.id)) }))
++        .filter((g) => g.items.length > 0);
+   // Logo URL: usa S3 se disponível, senão fallback para SVG inline
+   const BARBER_PRO_LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/CHUXnjOFayrIGRtV.png";
+ 
+@@ -439,6 +468,23 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+     .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 18px; font-size: 13px; color: var(--muted); text-decoration: none; transition: all 0.15s ease; cursor: pointer; margin: 1px 8px; border-radius: var(--radius-sm); }
+     .nav-item:hover { background: var(--surface2); color: var(--text2); }
+     .nav-item.active { background: var(--gold-dim); color: var(--gold); font-weight: 600; box-shadow: inset 3px 0 0 var(--gold); }
++    .nav-item-locked { cursor:pointer!important }
++    .nav-item-locked:hover { background:var(--surface2)!important }
++    #upgrade-modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center }
++    #upgrade-modal-overlay.open { display:flex }
++    #upgrade-modal { background:var(--surface);border:1px solid rgba(201,168,76,.35);border-radius:16px;padding:32px 28px;max-width:420px;width:90%;text-align:center }
++    .um-lock { font-size:40px;margin-bottom:14px }
++    .um-title { font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px }
++    .um-desc { font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px }
++    .um-plan { display:inline-block;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);color:var(--gold);font-size:12px;font-weight:600;padding:3px 12px;border-radius:99px;margin-bottom:20px }
++    .um-btn { display:block;width:100%;padding:13px;border-radius:10px;background:var(--gold);color:#0A0A0A;font-size:14px;font-weight:700;border:none;cursor:pointer;margin-bottom:10px }
++    .um-btn:hover { opacity:.88 }
++    .um-cancel { font-size:13px;color:var(--muted);cursor:pointer;background:none;border:none;padding:4px }
++    .nav-item-locked { cursor:pointer!important }
++    .nav-item-locked:hover { background:var(--surface2)!important }
++    .nav-item-perm-locked { cursor:not-allowed!important }
++    .nav-item-perm-locked:hover { background:var(--surface2)!important }
++
+     .nav-icon { width: 16px; height: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+     .sidebar-footer { padding: 14px 18px; border-top: 1px solid var(--border); }
+     .sidebar-user-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+@@ -713,13 +759,26 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+       ${navGroups.map((group) => `
+         <div class="nav-group">
+           <div class="nav-group-label">${group.label}</div>
+-          ${group.items.map((n) => `
++          ${group.items.map((n: any) => {
++            const PF: Record<string,string[]> = {
++              solo:[],
++              team:["products","stock","suppliers","orders","coupons","subscription_plans","reports_full"],
++              studio:["products","stock","suppliers","orders","coupons","subscription_plans","reports_full","commissions","orbit","priority_support"],
++            };
++            const tp=(tenantPlan||"solo").toLowerCase();
++            const locked=n.feature?!(PF[tp]||[]).includes(n.feature):false;
++            if(locked){return `<a href="#" class="nav-item nav-item-locked" onclick="showUpgradeModal('${n.featureLabel}','${n.requiredPlan}');return false;" title="Plano ${n.requiredPlan}">
++              <span class="nav-icon" style="opacity:.38">${n.icon}</span>
++              <span style="opacity:.38">${n.label}</span>
++              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;opacity:.3;flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
++            </a>`;}
++            return `
+             <a href="${n.href}" class="nav-item ${activePage === n.id ? "active" : ""}" ${n.id === 'lista-espera' ? 'id="nav-lista-espera"' : ''}>
+               <span class="nav-icon">${n.icon}</span>
+               <span>${n.label}</span>
+               ${n.id === 'lista-espera' ? '<span id="waitlist-badge" style="margin-left:auto;background:var(--gold);color:#0A0A0A;font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;min-width:18px;text-align:center;display:none"></span>' : ''}
+-            </a>
+-          `).join("")}
++            </a>`;
++          }).join("")}
+         </div>
+       `).join("")}
+     </nav>
+@@ -767,20 +826,24 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+               Meu Perfil
+             </a>
++${barberRole === "super_admin" || (barberPerms && barberPerms.includes("configuracoes")) ? `
+             <a href="/admin/configuracoes" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--text);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+               Configurações
+             </a>
++            ` : ""}
+             <a href="/admin/suporte" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--text);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+               Suporte
+             </a>
++${barberRole === "super_admin" ? `
+             <div style="border-top:1px solid var(--border);">
+               <a href="/admin/configuracoes?tab=pagamentos#cancelar" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:#F87171;font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='rgba(248,113,113,0.08)'" onmouseout="this.style.background='transparent'">
+                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                 Cancelar assinatura
+               </a>
+             </div>
++            ` : ""}
+             <div style="border-top:1px solid var(--border);">
+               <a href="/admin/logout" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--error);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='rgba(239,68,68,0.08)'" onmouseout="this.style.background='transparent'">
+                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+@@ -987,14 +1050,24 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+         }
+         if (type === 'card-cvv') { return v.slice(0, 4); }
+         if (type === 'price') {
+-          // Permite apenas números e vírgula/ponto como decimal
+-          var cleaned = (raw || '').replace(/[^0-9.,]/g, '');
+-          // Normalizar: trocar ponto por vírgula e remover duplicatas
+-          cleaned = cleaned.replace('.', ',').replace(/,(.*),/, function(m, g){ return ',' + g.replace(/,/g,''); });
+-          // Limitar a 2 casas decimais
+-          var parts = cleaned.split(',');
+-          if (parts[1] !== undefined) parts[1] = parts[1].slice(0, 2);
+-          return parts.join(',');
++          var s = (raw || '').replace(/[^0-9.,]/g, '');
++          var lastComma = s.lastIndexOf(',');
++          var lastDot = s.lastIndexOf('.');
++          var decSep = -1;
++          if (lastComma > lastDot) decSep = lastComma;
++          else if (lastDot > lastComma) decSep = lastDot;
++          var intPart, decPart;
++          if (decSep !== -1) {
++            intPart = s.slice(0, decSep).replace(/[^0-9]/g, '');
++            decPart = s.slice(decSep + 1).replace(/[^0-9]/g, '').slice(0, 2);
++          } else {
++            intPart = s.replace(/[^0-9]/g, '');
++            decPart = null;
++          }
++          if (intPart.length > 9) intPart = intPart.slice(0, 9);
++          var intFormatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
++          if (decPart !== null) return intFormatted + ',' + decPart;
++          return intFormatted;
+         }
+         if (type === 'cnpj-mask') {
+           v = v.slice(0, 14);
+@@ -1023,6 +1096,82 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+       }, true); // capture=true garante que captura antes de outros listeners
+     })();
+   </script>
++  <!-- Modal de confirmação genérico (substitui confirm() nativo) -->
++  <div id="bp-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10001;align-items:center;justify-content:center">
++    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:400px;width:90%;text-align:center">
++      <div id="bp-confirm-icon" style="font-size:36px;margin-bottom:12px">⚠️</div>
++      <div id="bp-confirm-title" style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px"></div>
++      <div id="bp-confirm-msg" style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:24px"></div>
++      <div style="display:flex;gap:10px;justify-content:center">
++        <button id="bp-confirm-cancel" style="flex:1;padding:11px 20px;border-radius:9px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>
++        <button id="bp-confirm-ok" style="flex:1;padding:11px 20px;border-radius:9px;border:none;font-size:13px;font-weight:700;cursor:pointer">Confirmar</button>
++      </div>
++    </div>
++  </div>
++  <script>
++    window._bpConfirmCb = null;
++    window.bpConfirm = function(opts) {
++      var modal = document.getElementById('bp-confirm-modal');
++      document.getElementById('bp-confirm-icon').textContent = opts.icon || '⚠️';
++      document.getElementById('bp-confirm-title').textContent = opts.title || 'Confirmar';
++      document.getElementById('bp-confirm-msg').textContent = opts.msg || '';
++      var ok = document.getElementById('bp-confirm-ok');
++      ok.textContent = opts.okLabel || 'Confirmar';
++      ok.style.background = opts.danger ? '#ef4444' : 'var(--gold)';
++      ok.style.color = opts.danger ? '#fff' : '#0A0A0A';
++      document.getElementById('bp-confirm-cancel').textContent = opts.cancelLabel || 'Cancelar';
++      modal.style.display = 'flex';
++      window._bpConfirmCb = opts.onConfirm || null;
++    };
++    document.getElementById('bp-confirm-ok').addEventListener('click', function() {
++      document.getElementById('bp-confirm-modal').style.display = 'none';
++      if (window._bpConfirmCb) { window._bpConfirmCb(); window._bpConfirmCb = null; }
++    });
++    document.getElementById('bp-confirm-cancel').addEventListener('click', function() {
++      document.getElementById('bp-confirm-modal').style.display = 'none';
++      window._bpConfirmCb = null;
++    });
++    document.getElementById('bp-confirm-modal').addEventListener('click', function(e) {
++      if (e.target === this) { this.style.display = 'none'; window._bpConfirmCb = null; }
++    });
++  </script>
++  <div id="upgrade-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center">
++    <div id="upgrade-modal" style="background:var(--surface);border:1px solid rgba(201,168,76,.35);border-radius:16px;padding:32px 28px;max-width:420px;width:90%;text-align:center">
++      <div style="font-size:40px;margin-bottom:14px">🔒</div>
++      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px" id="um-feature-name">Recurso bloqueado</div>
++      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px" id="um-desc-text"></div>
++      <div style="display:inline-block;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);color:var(--gold);font-size:12px;font-weight:600;padding:3px 12px;border-radius:99px;margin-bottom:20px" id="um-required-plan"></div>
++      <button onclick="var o=document.getElementById('upgrade-modal-overlay');o.classList.remove('open');o.style.display='none';window.location.href='/admin/configuracoes?tab=pagamentos'" style="display:block;width:100%;padding:13px;border-radius:10px;background:var(--gold);color:#0A0A0A;font-size:14px;font-weight:700;border:none;cursor:pointer;margin-bottom:10px">Ver planos e fazer upgrade →</button>
++      <button onclick="var o=document.getElementById('upgrade-modal-overlay');o.classList.remove('open');o.style.display='none';" style="font-size:13px;color:var(--muted);cursor:pointer;background:none;border:none;padding:4px">Agora não</button>
++    </div>
++  </div>
++  <script>
++    // Delegação para forms com data-bp-confirm-*
++    document.addEventListener('submit', function(e) {
++      var form = e.target;
++      if (!form || form.tagName !== 'FORM') return;
++      var title = form.getAttribute('data-bp-confirm-title');
++      if (!title) return;
++      e.preventDefault();
++      bpConfirm({
++        icon: form.getAttribute('data-bp-confirm-danger') ? '🗑️' : '🔄',
++        title: title,
++        msg: form.getAttribute('data-bp-confirm-msg') || '',
++        okLabel: form.getAttribute('data-bp-confirm-danger') ? 'Confirmar' : 'Confirmar',
++        danger: !!form.getAttribute('data-bp-confirm-danger'),
++        onConfirm: function() { form.removeAttribute('data-bp-confirm-title'); form.submit(); }
++      });
++    }, true);
++    window.showUpgradeModal = function(f, p) {
++      document.getElementById('um-feature-name').textContent = f;
++      document.getElementById('um-required-plan').textContent = 'Disponível no plano ' + p;
++      document.getElementById('um-desc-text').textContent = f + ' está disponível a partir do plano ' + p + '. Faça upgrade para desbloquear este e outros recursos.';
++      var overlay = document.getElementById('upgrade-modal-overlay');
++      overlay.style.display = 'flex';
++      overlay.classList.add('open');
++      overlay.onclick = function(e) { if (e.target === overlay) { overlay.style.display='none'; overlay.classList.remove('open'); } };
++    };
++  </script>
+ </body>
+ </html>`;
+ }
+@@ -1332,10 +1481,17 @@ async function renderDashboard(req: Request, res: Response) {
+   const barber = await db.getBarberById(session.barberId);
+   const dateStr = today();
+   const tenantId = barber?.tenantId ?? null;
++  const isBarberRole = session.role === "barber" || session.role === "receptionist";
++  const myBarberId = session.barberId;
+   const stats = await db.getDashboardStats(dateStr, tenantId);
+   const yesterdayStr = yesterday();
+   const statsYesterday = await db.getDashboardStats(yesterdayStr, tenantId).catch(() => ({ appointmentsToday: 0, revenueToday: 0, clientsToday: 0, pendingAppointments: 0 }));
+-  const appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
++  // Serviços de ontem do barbeiro (para tooltip)
++  const myYesterdaySales = isBarberRole ? await db.getSalesByDateRange(yesterdayStr, yesterdayStr, myBarberId, tenantId).catch(() => []) : [];
++  const myYesterdayRevenue = (myYesterdaySales as any[]).filter((s: any) => s.paymentStatus === 'paid').reduce((sum: number, s: any) => sum + parseFloat(s.total || '0'), 0);
++  const myYesterdayAppts = isBarberRole ? (await db.getAllAppointmentsByDate(yesterdayStr, tenantId).catch(() => [])).filter((a: any) => a.barberId === myBarberId) : [];
++  let appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
++  if (session.role === "barber") appointments = appointments.filter((a: any) => a.barberId === myBarberId);
+   // ─── Faturamento do mês ────────────────────────────────────────────────────
+   const { start: monthStart, end: monthEnd } = monthRange();
+   const monthlySales = await db.getSalesByDateRange(monthStart, monthEnd, undefined, tenantId).catch(() => []);
+@@ -1344,6 +1500,13 @@ async function renderDashboard(req: Request, res: Response) {
+   const monthExpenseTotal = (monthExpenses as any[]).reduce((sum: number, e: any) => sum + parseFloat(e.amount || '0'), 0);
+   const monthProfit = monthRevenue - monthExpenseTotal;
+   const now2 = new Date(); const monthLabel = now2.toLocaleDateString('pt-BR', { month: 'long' });
++  const myApptsToday = appointments.filter((a: any) => a.barberId === myBarberId && a.status === 'completed');
++  const myServicesRevenue = myApptsToday.reduce((sum: number, a: any) => sum + parseFloat(a.price || a.servicePrice || '0'), 0);
++  const myMonthlySales = (monthlySales as any[]).filter((s: any) => s.barberId === myBarberId && s.paymentStatus === 'paid');
++  const myMonthRevenue = myMonthlySales.reduce((sum: number, s: any) => sum + parseFloat(s.total || '0'), 0);
++  const commissionConfig = await db.getCommissionConfig(myBarberId).catch(() => null);
++  const commissionRate = commissionConfig ? parseFloat((commissionConfig as any).rate || '0') / 100 : 0;
++  const myMonthCommission = myMonthRevenue * commissionRate;
+   // ─── Próximo agendamento do dia ───────────────────────────────────────────
+   const nowMinutes = (() => {
+     const now = new Date();
+@@ -1393,8 +1556,16 @@ async function renderDashboard(req: Request, res: Response) {
+     wd.setDate(wd.getDate() - i);
+     const dateKey = wd.toISOString().split("T")[0];
+     const dayLabel = wd.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "").slice(0, 3);
+-    const dayStats = await db.getDashboardStats(dateKey, tenantId).catch(() => ({ revenueToday: 0, appointmentsToday: 0, clientsToday: 0, pendingAppointments: 0 }));
+-    weekDays.push({ date: dateKey, label: dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1), revenue: dayStats.revenueToday, appointmentsCount: dayStats.appointmentsToday });
++    if (isBarberRole) {
++      const dayAppts = await db.getAllAppointmentsByDate(dateKey, tenantId).catch(() => []);
++      const myDayAppts = (dayAppts as any[]).filter((a: any) => a.barberId === myBarberId);
++      const myDaySales = await db.getSalesByDateRange(dateKey, dateKey, myBarberId, tenantId).catch(() => []);
++      const myDayRev = (myDaySales as any[]).filter((s: any) => s.paymentStatus === 'paid').reduce((sum: number, s: any) => sum + parseFloat(s.total || '0'), 0);
++      weekDays.push({ date: dateKey, label: dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1), revenue: myDayRev, appointmentsCount: myDayAppts.length });
++    } else {
++      const dayStats = await db.getDashboardStats(dateKey, tenantId).catch(() => ({ revenueToday: 0, appointmentsToday: 0, clientsToday: 0, pendingAppointments: 0 }));
++      weekDays.push({ date: dateKey, label: dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1), revenue: dayStats.revenueToday, appointmentsCount: dayStats.appointmentsToday });
++    }
+   }
+   const maxRevenue = Math.max(...weekDays.map(d => d.revenue), 1);
+   const totalWeekRevenue = weekDays.reduce((s, d) => s + d.revenue, 0);
+@@ -1476,11 +1647,21 @@ async function renderDashboard(req: Request, res: Response) {
+       <div style="flex:1;min-width:0">
+         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+-          <span style="font-size:11px;font-weight:700;color:#C9A84C;letter-spacing:1.5px;text-transform:uppercase">Faturamento de ${monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}</span>
++          <span style="font-size:11px;font-weight:700;color:#C9A84C;letter-spacing:1.5px;text-transform:uppercase">${isBarberRole ? "Meus Serviços de " : "Faturamento de "}${monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}</span>
+         </div>
+         <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+-          <div id="dashMonthReveal" style="font-size:32px;font-weight:900;color:#C9A84C;letter-spacing:-1px;line-height:1;filter:blur(8px);user-select:none;transition:filter 0.3s" onclick="toggleMonthRevenue()">${fmtCurrency(monthRevenue)}</div>
++          <div id="dashMonthReveal" style="font-size:32px;font-weight:900;color:#C9A84C;letter-spacing:-1px;line-height:1;filter:blur(8px);user-select:none;transition:filter 0.3s" onclick="toggleMonthRevenue()">${fmtCurrency(isBarberRole ? myMonthRevenue : monthRevenue)}</div>
+           <div style="display:flex;gap:16px">
++            ${isBarberRole ? `
++            <div>
++              <div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Comissão</div>
++              <div id="dashMonthExpense" style="font-size:14px;font-weight:700;color:#4ADE80;filter:blur(6px);transition:filter 0.3s" onclick="toggleMonthRevenue()">${fmtCurrency(myMonthCommission)}</div>
++            </div>
++            <div>
++              <div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Atend. hoje</div>
++              <div id="dashMonthProfit" style="font-size:14px;font-weight:700;color:#C9A84C;filter:blur(6px);transition:filter 0.3s" onclick="toggleMonthRevenue()">${myApptsToday.length}</div>
++            </div>
++            ` : `
+             <div>
+               <div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Despesas</div>
+               <div id="dashMonthExpense" style="font-size:14px;font-weight:700;color:#F87171;filter:blur(6px);transition:filter 0.3s" onclick="toggleMonthRevenue()">-${fmtCurrency(monthExpenseTotal)}</div>
+@@ -1489,9 +1670,10 @@ async function renderDashboard(req: Request, res: Response) {
+               <div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Lucro</div>
+               <div id="dashMonthProfit" style="font-size:14px;font-weight:700;color:${monthProfit >= 0 ? '#4ADE80' : '#F87171'};filter:blur(6px);transition:filter 0.3s" onclick="toggleMonthRevenue()">${fmtCurrency(monthProfit)}</div>
+             </div>
++            `}
+           </div>
+         </div>
+-        <div style="margin-top:10px;font-size:11px;color:#555">Toque no valor ou no olhinho para revelar &nbsp;·&nbsp; <a href="/admin/financeiro" style="color:#C9A84C88;text-decoration:none">Ver detalhes →</a></div>
++        <div style="margin-top:10px;font-size:11px;color:#555">Toque no valor ou no olhinho para revelar &nbsp;·&nbsp; <a href="${isBarberRole ? '/admin/minhas-comissoes' : '/admin/financeiro'}" style="color:#C9A84C88;text-decoration:none">Ver detalhes →</a></div>
+       </div>
+       <button onclick="toggleMonthRevenue()" id="dashEyeBtn" title="Mostrar/ocultar valores" style="background:#C9A84C18;border:1px solid #C9A84C33;border-radius:12px;padding:12px;cursor:pointer;flex-shrink:0;transition:background 0.2s" onmouseover="this.style.background='#C9A84C30'" onmouseout="this.style.background='#C9A84C18'">
+         <svg id="dashEyeIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+@@ -1530,7 +1712,7 @@ async function renderDashboard(req: Request, res: Response) {
+     <!-- 1. KPI Cards -->
+     <div class="metrics-grid">
+       <div class="metric-card kpi-tooltip">
+-        <div class="kpi-tip">Ontem: ${statsYesterday.appointmentsToday} agendamento${statsYesterday.appointmentsToday !== 1 ? 's' : ''} · ${stats.appointmentsToday === 0 && statsYesterday.appointmentsToday === 0 ? '—' : statsYesterday.appointmentsToday === 0 ? '↑ novo' : stats.appointmentsToday > statsYesterday.appointmentsToday ? '↑ +' + Math.round((stats.appointmentsToday - statsYesterday.appointmentsToday) / statsYesterday.appointmentsToday * 100) + '%' : stats.appointmentsToday < statsYesterday.appointmentsToday ? '↓ ' + Math.round((stats.appointmentsToday - statsYesterday.appointmentsToday) / statsYesterday.appointmentsToday * 100) + '%' : '= igual'}</div>
++        <div class="kpi-tip">${(() => { const cur = isBarberRole ? appointments.filter((a: any) => a.barberId === myBarberId).length : stats.appointmentsToday; const prev = isBarberRole ? myYesterdayAppts.length : statsYesterday.appointmentsToday; const diff = cur === 0 && prev === 0 ? '—' : prev === 0 ? '↑ novo' : cur > prev ? '↑ +' + Math.round((cur-prev)/prev*100) + '%' : cur < prev ? '↓ ' + Math.round((cur-prev)/prev*100) + '%' : '= igual'; return 'Ontem: ' + prev + ' agendamento' + (prev !== 1 ? 's' : '') + ' · ' + diff; })()}</div>
+         <div class="metric-header">
+           <div class="metric-label">Agendamentos Hoje</div>
+           <div class="metric-icon" style="background:var(--gold-dim)">
+@@ -1541,14 +1723,14 @@ async function renderDashboard(req: Request, res: Response) {
+         <div class="metric-sub">${stats.pendingAppointments} pendentes</div>
+       </div>
+       <div class="metric-card kpi-tooltip">
+-        <div class="kpi-tip">Ontem: ${fmtCurrency(statsYesterday.revenueToday)} · ${stats.revenueToday === 0 && statsYesterday.revenueToday === 0 ? '—' : statsYesterday.revenueToday === 0 ? '↑ novo' : stats.revenueToday > statsYesterday.revenueToday ? '↑ +' + Math.round((stats.revenueToday - statsYesterday.revenueToday) / statsYesterday.revenueToday * 100) + '%' : stats.revenueToday < statsYesterday.revenueToday ? '↓ ' + Math.round((stats.revenueToday - statsYesterday.revenueToday) / statsYesterday.revenueToday * 100) + '%' : '= igual'}</div>
++        <div class="kpi-tip">${(() => { const cur = isBarberRole ? myServicesRevenue : stats.revenueToday; const prev = isBarberRole ? myYesterdayRevenue : statsYesterday.revenueToday; const diff = cur === 0 && prev === 0 ? '—' : prev === 0 ? '↑ novo' : cur > prev ? '↑ +' + Math.round((cur-prev)/prev*100) + '%' : cur < prev ? '↓ ' + Math.round((cur-prev)/prev*100) + '%' : '= igual'; return 'Ontem: ' + fmtCurrency(prev) + ' · ' + diff; })()}</div>
+         <div class="metric-header">
+-          <div class="metric-label">Faturamento Hoje</div>
++          <div class="metric-label">${isBarberRole ? "Meus Serviços Hoje" : "Faturamento Hoje"}</div>
+           <div class="metric-icon" style="background:rgba(74,222,128,.12)">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+           </div>
+         </div>
+-        <div class="metric-value" style="color:#4ADE80">${fmtCurrency(stats.revenueToday)}</div>
++        <div class="metric-value" style="color:#4ADE80">${fmtCurrency(isBarberRole ? myServicesRevenue : stats.revenueToday)}</div>
+         ${dailyGoal > 0 ? (() => {
+           const pct = Math.min(100, Math.round((stats.revenueToday / dailyGoal) * 100));
+           const goalFmt = fmtCurrency(dailyGoal);
+@@ -1557,7 +1739,7 @@ async function renderDashboard(req: Request, res: Response) {
+         })() : '<div class="metric-sub">vendas pagas</div>'}
+       </div>
+       <div class="metric-card kpi-tooltip">
+-        <div class="kpi-tip">Ontem: ${statsYesterday.clientsToday} cliente${statsYesterday.clientsToday !== 1 ? 's' : ''} · ${stats.clientsToday === 0 && statsYesterday.clientsToday === 0 ? '—' : statsYesterday.clientsToday === 0 ? '↑ novo' : stats.clientsToday > statsYesterday.clientsToday ? '↑ +' + Math.round((stats.clientsToday - statsYesterday.clientsToday) / statsYesterday.clientsToday * 100) + '%' : stats.clientsToday < statsYesterday.clientsToday ? '↓ ' + Math.round((stats.clientsToday - statsYesterday.clientsToday) / statsYesterday.clientsToday * 100) + '%' : '= igual'}</div>
++        <div class="kpi-tip">${(() => { const cur = isBarberRole ? myApptsToday.length : stats.clientsToday; const prev = isBarberRole ? myYesterdayAppts.length : statsYesterday.clientsToday; const diff = cur === 0 && prev === 0 ? '—' : prev === 0 ? '↑ novo' : cur > prev ? '↑ +' + Math.round((cur-prev)/prev*100) + '%' : cur < prev ? '↓ ' + Math.round((cur-prev)/prev*100) + '%' : '= igual'; return 'Ontem: ' + prev + ' cliente' + (prev !== 1 ? 's' : '') + ' · ' + diff; })()}</div>
+         <div class="metric-header">
+           <div class="metric-label">Clientes Atendidos</div>
+           <div class="metric-icon" style="background:rgba(96,165,250,.12)">
+@@ -1624,12 +1806,12 @@ async function renderDashboard(req: Request, res: Response) {
+           </div>
+           <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Novo Cliente</span>
+         </a>
+-        <a href="/admin/financeiro?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
++        ${!isBarberRole ? `<a href="/admin/financeiro?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+           <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+           </div>
+           <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Nova Venda</span>
+-        </a>
++        </a>` : ""}
+         <a href="/admin/servicos" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+           <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3L8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
+@@ -1646,7 +1828,7 @@ async function renderDashboard(req: Request, res: Response) {
+     </div>
+ 
+     <!-- 3. Agenda de Hoje -->
+-    ${lowStockItems.length > 0 ? `
++    ${!isBarberRole && lowStockItems.length > 0 ? `
+     <a href="/admin/estoque" style="text-decoration:none;display:flex;align-items:center;gap:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:14px 16px;margin-bottom:20px;transition:background .2s;" onmouseover="this.style.background='rgba(245,158,11,.14)'" onmouseout="this.style.background='rgba(245,158,11,.08)'">
+       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+       <div style="flex:1">
+@@ -1923,7 +2105,7 @@ async function renderDashboard(req: Request, res: Response) {
+             <div style="font-size:11px;color:var(--muted);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(dashPublicUrl)}</div>
+           </div>
+           <div style="display:flex;gap:8px;flex-shrink:0">
+-            <a href="/admin/pagina-cliente" class="btn btn-ghost btn-sm">Configurar</a>
++            ${!isBarberRole ? `<a href="/admin/pagina-cliente" class="btn btn-ghost btn-sm">Configurar</a>` : ""}
+             <a href="${esc(dashPublicUrl)}" target="_blank" class="btn btn-ghost btn-sm">Abrir ↗</a>
+           </div>
+         </div>
+@@ -2383,8 +2565,8 @@ async function renderAgenda(req: Request, res: Response) {
+     "function pmReset(){pmS={step:1,clientId:'',clientName:'',planId:0,selSvc:[],selPrd:[],appts:[],pay:'cash',calY:new Date().getFullYear(),calM:new Date().getMonth(),selDate:null};[1,2,3,4].forEach(function(i){document.getElementById('pmStep'+i).style.display=i===1?'block':'none';});var s=document.getElementById('pmClientSearch');if(s)s.value='';var c=document.getElementById('pmClientChosen');if(c)c.style.display='none';}\n" +
+     "function pmGoTo(step){\n" +
+     "var plan=pmS.planId?PM_PLANS[pmS.planId]:null;\n" +
+-    "if(step===2&&!pmS.clientId){alert('Selecione um cliente.');return;}\n" +
+-    "if(step===2&&!pmS.planId){alert('Selecione um plano.');return;}\n" +
++    "if(step===2&&!pmS.clientId){showToast('<b>Selecione um cliente.</b>',4000);return;}\n" +
++    "if(step===2&&!pmS.planId){showToast('<b>Selecione um plano.</b>',4000);return;}\n" +
+     "if(step===4&&plan&&pmS.appts.length<plan.recurrences){alert('Selecione todos os hor\u00e1rios ('+plan.recurrences+'x).');return;}\n" +
+     "[1,2,3,4].forEach(function(i){\n" +
+     "document.getElementById('pmStep'+i).style.display=i===step?'block':'none';\n" +
+@@ -2416,7 +2598,7 @@ async function renderAgenda(req: Request, res: Response) {
+     "function pmRenderAppts(){var plan=PM_PLANS[pmS.planId];var h=pmS.appts.length>0?'<div style=\"font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px\">AGENDAMENTOS ('+pmS.appts.length+'/'+(plan?plan.recurrences:0)+')</div>'+pmS.appts.map(function(a,i){var p=a.date.split('-');return'<div style=\"display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;margin-bottom:4px;font-size:13px\"><span>'+p[2]+'/'+p[1]+'/'+p[0]+' \u00e0s '+a.startTime+'</span><button type=\"button\" onclick=\"pmRemoveAppt('+i+')\" style=\"background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px\">&#215;</button></div>';}).join(''):'';document.getElementById('pmApptsList').innerHTML=h;var btn=document.getElementById('pmBtnStep3Next');if(btn)btn.style.opacity=(plan&&pmS.appts.length>=plan.recurrences)?'1':'0.5';}\n" +
+     "function pmSelectPay(v){pmS.pay=v;['cash','pix','credit_card','debit_card'].forEach(function(k){var b=document.getElementById('pmPay_'+k);if(b){b.style.borderColor=k===v?'var(--gold)':'var(--border)';b.style.background=k===v?'rgba(201,168,76,0.12)':'var(--bg)';}});}\n" +
+     "function pmRenderSummary(){var plan=PM_PLANS[pmS.planId];if(!plan)return;var h='<div style=\"font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px\">Resumo</div>';h+='<div style=\"display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)\"><span style=\"color:var(--muted)\">Cliente</span><span>'+pmS.clientName+'</span></div>';h+='<div style=\"display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)\"><span style=\"color:var(--muted)\">Plano</span><span>'+plan.name+'</span></div>';h+='<div style=\"display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)\"><span style=\"color:var(--muted)\">Agendamentos</span><span>'+pmS.appts.length+' de '+plan.recurrences+'</span></div>';h+='<div style=\"display:flex;justify-content:space-between;padding:8px 0\"><span style=\"color:var(--muted);font-weight:700\">Total</span><span style=\"color:var(--gold);font-size:16px;font-weight:900\">R$ '+parseFloat(plan.price).toFixed(2).replace('.',',')+'</span></div>';document.getElementById('pmSummary').innerHTML=h;pmSelectPay(pmS.pay);}\n" +
+-    "async function pmConfirm(){if(!pmS.clientId||!pmS.planId){alert('Dados incompletos.');return;}var payload={clientId:pmS.clientId,planId:pmS.planId,startDate:new Date().toISOString().split('T')[0],paymentMethod:pmS.pay,selectedServiceIds:JSON.stringify(pmS.selSvc),selectedProductIds:JSON.stringify(pmS.selPrd),appointments:JSON.stringify(pmS.appts),fromAgenda:'1',returnDate:'" + dateStr + "'};var form=document.createElement('form');form.method='POST';form.action='/admin/assinaturas/nova';Object.keys(payload).forEach(function(k){var inp=document.createElement('input');inp.type='hidden';inp.name=k;inp.value=payload[k];form.appendChild(inp);});document.body.appendChild(form);form.submit();}\n" +
++    "async function pmConfirm(){if(!pmS.clientId||!pmS.planId){showToast('<b>Dados incompletos.</b>',4000);return;}var payload={clientId:pmS.clientId,planId:pmS.planId,startDate:new Date().toISOString().split('T')[0],paymentMethod:pmS.pay,selectedServiceIds:JSON.stringify(pmS.selSvc),selectedProductIds:JSON.stringify(pmS.selPrd),appointments:JSON.stringify(pmS.appts),fromAgenda:'1',returnDate:'" + dateStr + "'};var form=document.createElement('form');form.method='POST';form.action='/admin/assinaturas/nova';Object.keys(payload).forEach(function(k){var inp=document.createElement('input');inp.type='hidden';inp.name=k;inp.value=payload[k];form.appendChild(inp);});document.body.appendChild(form);form.submit();}\n" +
+     "<\/script>"
+   );
+   const body = `
+@@ -3046,12 +3228,12 @@ async function renderAgenda(req: Request, res: Response) {
+                     var btn = sheet.querySelector('#pix-copy-btn');
+                     if (btn) { btn.innerHTML = '&#128203; Copiar código'; btn.style.background = 'rgba(201,168,76,0.1)'; btn.style.borderColor = 'var(--gold)'; btn.style.color = 'var(--gold)'; }
+                   }, 2500);
+-                } catch(e) { alert('Código: ' + pixCode); }
++                } catch(e) { showToast('Código Pix: ' + pixCode, 8000); }
+               };
+ 
+               // Enviar por WhatsApp
+               sheet.querySelector('#pix-whatsapp-btn').onclick = function() {
+-                if (!pmt.clientPhone) { alert('Cliente sem telefone cadastrado.'); return; }
++                if (!pmt.clientPhone) { showToast('<b>Cliente sem telefone cadastrado.</b>', 5000); return; }
+                 var phone = pmt.clientPhone.replace(/\D/g, '');
+                 var msg = encodeURIComponent(
+                   'Olá ' + (pmt.clientName || '') + '! Segue o código Pix para pagamento do serviço *' + (pmt.serviceName || 'Serviço') + '* (R$ ' + parseFloat(pmt.amount).toFixed(2).replace('.', ',') + ').\n\nCopie e cole no seu banco:\n\n' + pixCode
+@@ -3100,13 +3282,13 @@ async function renderAgenda(req: Request, res: Response) {
+                 (pmt.waReview ? '<a href="' + pmt.waReview.waLink + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#25D36618;border:1px solid #25D36644;border-radius:8px;color:#25D366;font-size:12px;font-weight:700;text-decoration:none">&#128172; Pedir avaliacao</a>' : ''),
+                 8000
+               );
+-            } catch(err) { btn.disabled = false; btn.style.opacity='1'; alert('Erro: ' + err.message); }
++            } catch(err) { btn.disabled = false; btn.style.opacity='1'; showToast('<b>Erro:</b> ' + err.message, 6000); }
+           }
+ 
+           async function changeApptStatus(id, status, btn) {
+             // Cancelamento: confirmar primeiro
+             if (status === 'cancelled') {
+-              if (!confirm('Cancelar este agendamento?')) return;
++              bpConfirm({icon:'❌',title:'Cancelar agendamento',msg:'Deseja cancelar este agendamento?',okLabel:'Cancelar agendamento',danger:true,onConfirm:function(){
+             }
+             btn.disabled = true; btn.style.opacity = '0.5';
+             try {
+@@ -3147,7 +3329,7 @@ async function renderAgenda(req: Request, res: Response) {
+               }
+             } catch(e) {
+               btn.disabled = false; btn.style.opacity = '1';
+-              alert('Erro: ' + e.message);
++              showToast('<b>Erro:</b> ' + e.message, 6000);
+             }
+           }
+ 
+@@ -3628,7 +3810,7 @@ async function renderServicos(req: Request, res: Response) {
+             </div>
+             <div class="form-group">
+               <label class="form-label">Duração (minutos) *</label>
+-              <input class="form-input" type="number" name="durationMinutes" min="1" step="5" value="${editService?.durationMinutes ?? 30}" required />
++              <input class="form-input" type="number" name="durationMinutes" min="1" step="1" value="${editService?.durationMinutes ?? 30}" required />
+             </div>
+             <div class="form-group">
+               <label class="form-label">Status</label>
+@@ -3722,12 +3904,12 @@ async function renderServicos(req: Request, res: Response) {
+               <td>
+                 <div style="display:flex;gap:8px">
+                   <a href="/admin/servicos?edit=${s.id}" class="btn-action-edit">✏ Editar</a>
+-                  <form method="POST" action="/admin/servicos/toggle" style="display:inline" onsubmit="return confirm('Alterar status?')">
++                  <form method="POST" action="/admin/servicos/toggle" style="display:inline" onsubmit="return false">
+                     <input type="hidden" name="id" value="${s.id}" />
+                     <input type="hidden" name="isActive" value="${!s.isActive}" />
+-                    <button type="submit" class="btn-action-toggle">${s.isActive ? "Desativar" : "Ativar"}</button>
++                    <button type="button" onclick="var f=this.closest('form');bpConfirm({icon:'🔄',title:'Alterar status',msg:'Deseja alterar o status deste item?',okLabel:'Confirmar',onConfirm:function(){f.onsubmit=null;f.submit();}});" class="btn-action-toggle">${s.isActive ? "Desativar" : "Ativar"}</button>
+                   </form>
+-                  <form method="POST" action="/admin/servicos/delete" style="display:inline" onsubmit="return confirm('Excluir este serviço? Esta ação não pode ser desfeita.')">
++                  <form method="POST" action="/admin/servicos/delete" style="display:inline" onsubmit="return false" data-bp-confirm-title="Excluir serviço" data-bp-confirm-msg="Esta ação não pode ser desfeita." data-bp-confirm-danger="1">
+                     <input type="hidden" name="id" value="${s.id}" />
+                     <button type="submit" class="btn-action-delete">✕ Excluir</button>
+                   </form>
+@@ -3946,12 +4128,12 @@ async function renderProdutos(req: Request, res: Response) {
+               <td>
+                 <div style="display:flex;gap:8px">
+                   <a href="/admin/produtos?edit=${p.id}" class="btn-action-edit">✏ Editar</a>
+-                  <form method="POST" action="/admin/produtos/toggle" style="display:inline" onsubmit="return confirm('Alterar status?')">
++                  <form method="POST" action="/admin/produtos/toggle" style="display:inline" onsubmit="return false" data-bp-confirm-title="Alterar status" data-bp-confirm-msg="Deseja alterar o status deste item?" data-bp-confirm-icon="🔄">
+                     <input type="hidden" name="id" value="${p.id}" />
+                     <input type="hidden" name="isActive" value="${!p.isActive}" />
+                     <button type="submit" class="btn-action-toggle">${p.isActive ? "Desativar" : "Ativar"}</button>
+                   </form>
+-                  <form method="POST" action="/admin/produtos/delete" style="display:inline" onsubmit="return confirm('Excluir este produto?')">
++                  <form method="POST" action="/admin/produtos/delete" style="display:inline" onsubmit="return false" data-bp-confirm-title="Excluir produto" data-bp-confirm-msg="Esta ação não pode ser desfeita." data-bp-confirm-danger="1">
+                     <input type="hidden" name="id" value="${p.id}" />
+                     <button type="submit" class="btn-action-delete">✕ Excluir</button>
+                   </form>
+@@ -4280,7 +4462,7 @@ async function renderFinanceiro(req: Request, res: Response) {
+                     <td><span class="badge badge-muted" style="font-size:11px">${esc(e.category)}</span></td>
+                     <td style="color:var(--error);font-weight:700">${fmtCurrency(e.amount)}</td>
+                     <td>
+-                      <form method="POST" action="/admin/financeiro/despesa/${e.id}/excluir" style="display:inline" onsubmit="return confirm('Excluir esta despesa?')">
++                      <form method="POST" action="/admin/financeiro/despesa/${e.id}/excluir" style="display:inline" onsubmit="return false" data-bp-confirm-title="Excluir despesa" data-bp-confirm-msg="Esta ação não pode ser desfeita." data-bp-confirm-danger="1">
+                         <button type="submit" class="btn" style="font-size:11px;padding:4px 10px;background:#EF444422;color:#F87171;border:none"></button>
+                       </form>
+                     </td>
+@@ -4435,7 +4617,7 @@ async function renderFinanceiro(req: Request, res: Response) {
+         + '</table></div></div>'
+         + '<script>'
+         + 'async function cancelAsaasCharge(asaasPaymentId, btn) {'
+-        + '  if (!confirm("Cancelar esta cobrança no Asaas? Esta ação não pode ser desfeita.")) return;'
++        + '  bpConfirm({icon:"⚠️",title:"Cancelar cobrança",msg:"Cancelar esta cobrança no Asaas? Esta ação não pode ser desfeita.",okLabel:"Cancelar cobrança",danger:true,onConfirm:function(){' +
+         + '  btn.disabled = true; btn.textContent = "⏳ Cancelando...";'
+         + '  try {'
+         + '    const r = await fetch("/admin-api/cancel-asaas-charge", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ asaasPaymentId }) });'
+@@ -4444,7 +4626,7 @@ async function renderFinanceiro(req: Request, res: Response) {
+         + '    const statusCell = document.getElementById("pmt-status-" + asaasPaymentId);'
+         + '    if (statusCell) statusCell.innerHTML = "<span style=\"background:#6B728022;color:#9BA1A6;border:1px solid #6B728044;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700\">Cancelado</span>";'
+         + '    btn.style.display = "none";'
+-        + '  } catch(e) { alert("Erro: " + e.message); btn.disabled = false; btn.textContent = "Cancelar"; }'
++        + '  } catch(e) { showToast("<b>Erro:</b> " + e.message, 6000); btn.disabled = false; btn.textContent = "Cancelar"; }'
+         + '}'
+         + '</script>';
+     }
+@@ -4612,7 +4794,23 @@ async function renderConfiguracoes(req: Request, res: Response) {
+   }
+ 
+   // Buscar equipe e horários de trabalho
+-  const allBarbers = await db.getAllBarbersIncludingInactive(barber?.tenantId);
++  const allBarbers = await db.getAllBarbersIncludingInactive(barber?.tenantId) as any[];
++  // Buscar permissions via rawQuery pois a coluna não está no schema Drizzle
++  try {
++    const dbConn = await db.getDb();
++    if (dbConn && allBarbers.length > 0) {
++      const ids = allBarbers.map((b: any) => b.id).join(',');
++      const rows = await (dbConn as any).execute('SELECT id, permissions FROM barbers WHERE id IN (' + ids + ')') as any;
++      const permsMap: Record<number, any> = {};
++      const rowArr = Array.isArray(rows) ? rows[0] : (rows?.rows ?? []);
++      for (const row of rowArr) {
++        if (row.permissions) {
++          try { permsMap[row.id] = JSON.parse(row.permissions); } catch(e) { permsMap[row.id] = null; }
++        }
++      }
++      for (const b of allBarbers) { (b as any).permissions = permsMap[b.id] ?? null; }
++    }
++  } catch(e) {}
+   const workingHoursMap: Record<number, any[]> = {};
+   for (const b of allBarbers) {
+     workingHoursMap[b.id] = await db.getWorkingHours(b.id);
+@@ -4775,7 +4973,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
+     <div class="card" style="margin-bottom:24px">
+       <div class="card-header">
+         <div class="card-title">Profissionais Cadastrados</div>
+-        <a href="/admin/configuracoes?tab=equipe&novo=1" class="btn btn-primary" style="font-size:12px;padding:8px 16px">+ Novo Profissional</a>
++        <button onclick="toggleFormNovo()" id="btn-novo-prof" class="btn btn-primary" style="font-size:12px;padding:8px 16px">+ Novo Profissional</button>
+       </div>
+       <table>
+         <thead><tr><th>Nome</th><th>E-mail</th><th>Função</th><th>Status</th><th>Ações</th></tr></thead>
+@@ -4788,20 +4986,24 @@ async function renderConfiguracoes(req: Request, res: Response) {
+                 <td style="color:var(--muted)">${esc(b.email ?? "—")}</td>
+                 <td><span class="badge badge-gold">${b.role === 'super_admin' ? 'Super Admin' : b.role === 'barber' ? 'Barbeiro' : b.role}</span></td>
+                 <td><span class="badge ${b.isActive ? 'badge-success' : 'badge-muted'}">${b.isActive ? 'Ativo' : 'Inativo'}</span></td>
+-                <td>
++                <td style="display:flex;gap:5px;flex-wrap:wrap">
++                  <button type="button" onclick="openEditModalProf(${b.id})" class="btn btn-ghost" style="font-size:11px;padding:4px 10px">✏️ Editar</button>
+                   <form method="POST" action="/admin/configuracoes/equipe/toggle" style="display:inline">
+                     <input type="hidden" name="id" value="${b.id}" />
+                     <input type="hidden" name="isActive" value="${!b.isActive}" />
+                     <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px">${b.isActive ? 'Desativar' : 'Reativar'}</button>
+                   </form>
++                  <button type="button" onclick="openDeleteModal(${b.id}, '${esc(b.name).replace(/'/g,"''")}')" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:#ef4444">🗑 Excluir</button>
+                 </td>
+               </tr>`).join('')}
+         </tbody>
+       </table>
+     </div>
+-    ${req.query.novo === '1' ? `
+-    <div class="card">
+-      <div class="card-header"><div class="card-title">Novo Profissional</div></div>
++    <div id="card-novo-prof" style="display:none" class="card">
++      <div class="card-header">
++        <div class="card-title">Novo Profissional</div>
++        <button onclick="toggleFormNovo()" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">✕ Fechar</button>
++      </div>
+       <div class="card-body" style="padding:24px">
+         <form method="POST" action="/admin/configuracoes/equipe/novo">
+           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+@@ -4822,11 +5024,119 @@ async function renderConfiguracoes(req: Request, res: Response) {
+               <input class="form-input" type="text" name="phone" placeholder="(11) 99999-9999" maxlength="15" data-mask="phone" />
+             </div>
+           </div>
++          <input type="hidden" name="jobRole" id="hidden-jobrole" value="barber" />
++          <div class="form-group" style="margin:20px 0 0">
++            <label class="form-label">Função *</label>
++            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
++              <label id="role-btn-admin" onclick="setRoleNovo('admin')" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted)">👑 Admin</label>
++              <label id="role-btn-barber" onclick="setRoleNovo('barber')" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:1.5px solid rgba(201,168,76,.6);background:rgba(201,168,76,.08);cursor:pointer;font-size:13px;font-weight:500;color:var(--gold)">✂️ Barbeiro</label>
++              <label id="role-btn-receptionist" onclick="setRoleNovo('receptionist')" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted)">🗂️ Recepcionista</label>
++            </div>
++          </div>
++          <div style="margin:20px 0">
++            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Permissões de acesso</div>
++            <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Módulos não selecionados aparecerão com cadeado no menu.</div>
++            <div id="perms-grid-novo" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px">
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="agenda" id="chk-agenda" checked style="accent-color:var(--gold)" /> <span>📅</span> <span style="font-size:13px">Agenda</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="clientes" id="chk-clientes" checked style="accent-color:var(--gold)" /> <span>👥</span> <span style="font-size:13px">Clientes</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="lista-espera" id="chk-lista-espera" checked style="accent-color:var(--gold)" /> <span>⏳</span> <span style="font-size:13px">Lista de Espera</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="servicos" id="chk-servicos" checked style="accent-color:var(--gold)" /> <span>✂️</span> <span style="font-size:13px">Serviços</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="financeiro" id="chk-financeiro" style="accent-color:var(--gold)" /> <span>💰</span> <span style="font-size:13px">Financeiro</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="relatorios" id="chk-relatorios" style="accent-color:var(--gold)" /> <span>📊</span> <span style="font-size:13px">Relatórios</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="comissoes" id="chk-comissoes" style="accent-color:var(--gold)" /> <span>💎</span> <span style="font-size:13px">Comissões</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="minhas-comissoes" id="chk-minhas-comissoes" checked style="accent-color:var(--gold)" /> <span>🏅</span> <span style="font-size:13px">Minhas Comissões</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="produtos" id="chk-produtos" style="accent-color:var(--gold)" /> <span>📦</span> <span style="font-size:13px">Produtos/Estoque</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="marketing" id="chk-marketing" style="accent-color:var(--gold)" /> <span>📣</span> <span style="font-size:13px">Marketing</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="configuracoes" id="chk-configuracoes" style="accent-color:var(--gold)" /> <span>⚙️</span> <span style="font-size:13px">Configurações</span></label>
++            </div>
++          </div>
++          <script>
++            var DEFS={admin:['agenda','clientes','lista-espera','servicos','financeiro','relatorios','comissoes','minhas-comissoes','produtos','marketing','configuracoes'],barber:['agenda','clientes','lista-espera','servicos','minhas-comissoes'],receptionist:['agenda','clientes','lista-espera','servicos','financeiro','relatorios','produtos','marketing']};
++            function setRoleNovo(r){
++              document.getElementById('hidden-jobrole').value=r;
++              ['admin','barber','receptionist'].forEach(function(x){var el=document.getElementById('role-btn-'+x);if(x===r){el.style.borderColor='rgba(201,168,76,.6)';el.style.background='rgba(201,168,76,.08)';el.style.color='var(--gold)';}else{el.style.borderColor='#2a2a2a';el.style.background='#1a1a1a';el.style.color='var(--muted)';}});
++              var perms=DEFS[r]||[];var isAdmin=r==='admin';
++              document.querySelectorAll('#perms-grid-novo input[type=checkbox]').forEach(function(chk){chk.checked=perms.includes(chk.value);chk.disabled=isAdmin;chk.closest('label').style.opacity=isAdmin?'.7':'1';});
++            }
++          </script>
+           <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">Cadastrar Profissional</button>
+-          <a href="/admin/configuracoes?tab=equipe" class="btn btn-ghost" style="margin-left:8px;padding:12px 20px">Cancelar</a>
++          <button type="button" onclick="toggleFormNovo()" class="btn btn-ghost" style="margin-left:8px;padding:12px 20px">Cancelar</button>
+         </form>
+       </div>
+-    </div>` : ''}
++    </div>
++  <script>
++    var _profs=[${allBarbers.map((b)=>{var rp=b.permissions;var pp=null;if(rp){try{pp=typeof rp==='string'?JSON.parse(rp):rp;}catch(e){pp=null;}}return '['+b.id+',"'+((b.name||'').replace(/"/g,'&quot;'))+'","'+((b.email||'').replace(/"/g,'&quot;'))+'","'+((b.phone||'').replace(/"/g,'&quot;'))+'","'+(b.role==='super_admin'?'admin':b.role)+'",'+JSON.stringify(pp)+']';}).join(',')}];
++    var DEFS_EQ={admin:['agenda','clientes','lista-espera','servicos','financeiro','relatorios','comissoes','minhas-comissoes','produtos','marketing','configuracoes'],barber:['agenda','clientes','lista-espera','servicos','minhas-comissoes'],receptionist:['agenda','clientes','lista-espera','servicos','financeiro','relatorios','produtos','marketing']};
++    window.toggleFormNovo=function(){var card=document.getElementById('card-novo-prof');var btn=document.getElementById('btn-novo-prof');if(!card)return;var h=card.style.display==='none'||card.style.display==='';card.style.display=h?'block':'none';btn.textContent=h?'✕ Fechar':'+ Novo Profissional';if(h)card.scrollIntoView({behavior:'smooth',block:'start'});};
++    window.openDeleteModal=function(id,name){document.getElementById('del-prof-id').value=id;document.getElementById('del-prof-name').textContent=name;document.getElementById('delete-prof-modal').style.display='flex';};
++    window.closeDeleteModal=function(){document.getElementById('delete-prof-modal').style.display='none';};
++    window.openDeleteModal=function(id,name){document.getElementById('del-prof-id').value=id;document.getElementById('del-prof-name').textContent=name;document.getElementById('delete-prof-modal').style.display='flex';};
++    window.closeDeleteModal=function(){document.getElementById('delete-prof-modal').style.display='none';};
++    window.setRoleNovo=function(r){document.getElementById('hidden-jobrole').value=r;['admin','barber','receptionist'].forEach(function(x){var el=document.getElementById('role-btn-'+x);if(!el)return;if(x===r){el.style.borderColor='rgba(201,168,76,.6)';el.style.background='rgba(201,168,76,.08)';el.style.color='var(--gold)';}else{el.style.borderColor='#2a2a2a';el.style.background='#1a1a1a';el.style.color='var(--muted)';}});var perms=DEFS_EQ[r]||[];var isAdmin=r==='admin';document.querySelectorAll('#perms-grid-novo input[type=checkbox]').forEach(function(chk){chk.checked=perms.includes(chk.value);chk.disabled=isAdmin;chk.closest('label').style.opacity=isAdmin?'.7':'1';});};
++    window.openEditModalProf=function(id){var b=_profs.find(function(x){return x[0]==id;});if(!b)return;document.getElementById('edit-prof-id').value=b[0];document.getElementById('edit-prof-name').value=b[1];document.getElementById('edit-prof-email').value=b[2];document.getElementById('edit-prof-phone').value=b[3]||'';document.getElementById('edit-prof-pass').value='';setRoleEdit(b[4]||'barber');var perms=b[5];document.querySelectorAll('#perms-grid-edit input[type=checkbox]').forEach(function(chk){chk.checked=perms?perms.includes(chk.value):false;});document.getElementById('edit-prof-modal').style.display='flex';};
++    window.closeEditModalProf=function(){document.getElementById('edit-prof-modal').style.display='none';};
++    window.setRoleEdit=function(r){var hid=document.getElementById('edit-prof-role');if(hid)hid.value=r;['admin','barber','receptionist'].forEach(function(x){var el=document.getElementById('edit-role-btn-'+x);if(!el)return;if(x===r){el.style.borderColor='rgba(201,168,76,.6)';el.style.background='rgba(201,168,76,.08)';el.style.color='var(--gold)';}else{el.style.borderColor='#2a2a2a';el.style.background='#1a1a1a';el.style.color='var(--muted)';}});var isAdmin=r==='admin';document.querySelectorAll('#perms-grid-edit input[type=checkbox]').forEach(function(chk){chk.disabled=isAdmin;chk.closest('label').style.opacity=isAdmin?'.7':'1';});};
++    document.addEventListener('DOMContentLoaded',function(){var m=document.getElementById('edit-prof-modal');if(m)m.addEventListener('click',function(e){if(e.target===m)closeEditModalProf();});});
++  </script>
++  <div id="edit-prof-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;padding:24px">
++    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:660px;width:100%;margin:auto">
++      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><div style="font-size:17px;font-weight:700;color:var(--text)">Editar Profissional</div><button onclick="closeEditModalProf()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;padding:4px">✕</button></div>
++      <form method="POST" action="/admin/configuracoes/equipe/editar">
++        <input type="hidden" name="id" id="edit-prof-id" /><input type="hidden" name="jobRole" id="edit-prof-role" value="barber" />
++        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
++          <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" type="text" name="name" id="edit-prof-name" required /></div>
++          <div class="form-group"><label class="form-label">E-mail *</label><input class="form-input" type="email" name="email" id="edit-prof-email" required /></div>
++          <div class="form-group"><label class="form-label">Nova senha <span style="font-size:11px;color:var(--muted)">(em branco = não altera)</span></label><div style="position:relative"><input class="form-input" type="password" name="password" id="edit-prof-pass" placeholder="Nova senha" style="padding-right:38px" /><button type="button" onclick="var i=document.getElementById('edit-prof-pass');i.type=i.type==='password'?'text':'password';" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted)" tabindex="-1">👁</button></div></div>
++          <div class="form-group"><label class="form-label">Telefone</label><input class="form-input" type="text" name="phone" id="edit-prof-phone" maxlength="15" data-mask="phone" /></div>
++        </div>
++        <div class="form-group" style="margin-bottom:14px"><label class="form-label">Função</label><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
++          <label id="edit-role-btn-admin" onclick="setRoleEdit('admin')" style="display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:13px;color:var(--muted)">👑 Admin</label>
++          <label id="edit-role-btn-barber" onclick="setRoleEdit('barber')" style="display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:13px;color:var(--muted)">✂️ Barbeiro</label>
++          <label id="edit-role-btn-receptionist" onclick="setRoleEdit('receptionist')" style="display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:13px;color:var(--muted)">🗂️ Recepcionista</label>
++        </div></div>
++        <div style="margin-bottom:20px"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Permissões</div>
++          <div id="perms-grid-edit" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:7px">
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="agenda" id="chk-e-agenda" style="accent-color:var(--gold)" /><span>📅</span><span style="font-size:12px">Agenda</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="clientes" id="chk-e-clientes" style="accent-color:var(--gold)" /><span>👥</span><span style="font-size:12px">Clientes</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="lista-espera" id="chk-e-lista-espera" style="accent-color:var(--gold)" /><span>⏳</span><span style="font-size:12px">Lista de Espera</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="servicos" id="chk-e-servicos" style="accent-color:var(--gold)" /><span>✂️</span><span style="font-size:12px">Serviços</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="financeiro" id="chk-e-financeiro" style="accent-color:var(--gold)" /><span>💰</span><span style="font-size:12px">Financeiro</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="relatorios" id="chk-e-relatorios" style="accent-color:var(--gold)" /><span>📊</span><span style="font-size:12px">Relatórios</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="comissoes" id="chk-e-comissoes" style="accent-color:var(--gold)" /><span>💎</span><span style="font-size:12px">Comissões</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="minhas-comissoes" id="chk-e-minhas-comissoes" style="accent-color:var(--gold)" /><span>🏅</span><span style="font-size:12px">Minhas Comissões</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="produtos" id="chk-e-produtos" style="accent-color:var(--gold)" /><span>📦</span><span style="font-size:12px">Produtos/Estoque</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="marketing" id="chk-e-marketing" style="accent-color:var(--gold)" /><span>📣</span><span style="font-size:12px">Marketing</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="configuracoes" id="chk-e-configuracoes" style="accent-color:var(--gold)" /><span>⚙️</span><span style="font-size:12px">Configurações</span></label>
++          </div>
++        </div>
++        <div style="display:flex;gap:10px"><button type="submit" class="btn btn-primary" style="padding:11px 24px">Salvar alterações</button><button type="button" onclick="closeEditModalProf()" class="btn btn-ghost" style="padding:11px 18px">Cancelar</button></div>
++      </form>
++    </div>
++  </div>
++  <div id="delete-prof-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center">
++    <div style="background:var(--surface);border:1px solid #333;border-radius:16px;padding:32px 28px;max-width:400px;width:90%;text-align:center">
++      <div style="width:56px;height:56px;background:#ef444418;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px">🗑</div>
++      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Excluir profissional?</div>
++      <div style="font-size:14px;color:var(--muted);margin-bottom:24px">Tem certeza que deseja excluir <strong id="del-prof-name" style="color:var(--text)"></strong>? Esta ação não pode ser desfeita.</div>
++      <form method="POST" action="/admin/configuracoes/equipe/excluir" style="display:flex;gap:10px;justify-content:center">
++        <input type="hidden" name="id" id="del-prof-id" />
++        <button type="button" onclick="closeDeleteModal()" class="btn btn-ghost" style="padding:11px 24px;flex:1">Cancelar</button>
++        <button type="submit" style="padding:11px 24px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;flex:1">Excluir</button>
++      </form>
++    </div>
++  </div>
++  <div id="delete-prof-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center">
++    <div style="background:var(--surface);border:1px solid #333;border-radius:16px;padding:32px 28px;max-width:400px;width:90%;text-align:center">
++      <div style="width:56px;height:56px;background:#ef444418;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px">🗑</div>
++      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Excluir profissional?</div>
++      <div style="font-size:14px;color:var(--muted);margin-bottom:24px">Tem certeza que deseja excluir <strong id="del-prof-name" style="color:var(--text)"></strong>? Esta ação não pode ser desfeita.</div>
++      <form method="POST" action="/admin/configuracoes/equipe/excluir" style="display:flex;gap:10px;justify-content:center">
++        <input type="hidden" name="id" id="del-prof-id" />
++        <button type="button" onclick="closeDeleteModal()" class="btn btn-ghost" style="padding:11px 24px;flex:1">Cancelar</button>
++        <button type="submit" style="padding:11px 24px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;flex:1">Excluir</button>
++      </form>
++    </div>
++  </div>
+   `;
+ 
+   // Aba: URL Pública
+@@ -5101,16 +5411,16 @@ async function renderConfiguracoes(req: Request, res: Response) {
+                   <option value="team" ${effectivePlanName === 'team' ? 'selected' : ''}>Equipe — R$ 99,90/mês (até 3 barbeiros)</option>
+                   <option value="studio" ${effectivePlanName === 'studio' ? 'selected' : ''}>Estúdio — R$ 169,90/mês (ilimitado)</option>
+                 </select>
+-                <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px" onclick="return confirm('Alterar o plano cancelará a assinatura atual e criará uma nova. Confirmar?')">Alterar plano</button>
++                <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px" onclick="bpConfirm({icon:'🔄',title:'Alterar plano',msg:'Alterar o plano cancelará a assinatura atual e criará uma nova. Confirmar?',okLabel:'Alterar plano',onConfirm:function(){this.form.submit();}.bind(this)});return false;">Alterar plano</button>
+               </form>
+             ` : ''}
+             ${bpStatus === 'active' && bpSubId ? `
+-              <form method="POST" action="/admin/configuracoes/asaas/cancel-subscription" onsubmit="return confirm('Tem certeza que deseja cancelar a assinatura?')">
++              <form method="POST" action="/admin/configuracoes/asaas/cancel-subscription" onsubmit="return false" data-bp-confirm-title="Cancelar assinatura" data-bp-confirm-msg="Tem certeza? Seu acesso continuará até o fim do período pago." data-bp-confirm-danger="1">
+                 <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px;color:var(--error);border-color:var(--error)">Cancelar assinatura</button>
+               </form>
+             ` : ''}
+             ${bpStatus === 'trial' ? `
+-              <form method="POST" action="/admin/configuracoes/asaas/cancel-subscription" onsubmit="return confirm('Deseja encerrar sua conta? O acesso será removido imediatamente e o período de teste não poderá ser reativado.')">
++              <form method="POST" action="/admin/configuracoes/asaas/cancel-subscription" onsubmit="return false" data-bp-confirm-title="Encerrar conta" data-bp-confirm-msg="O acesso será removido imediatamente e o período de teste não poderá ser reativado." data-bp-confirm-danger="1">
+                 <button type="submit" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:4px 0;text-decoration:underline">Encerrar conta e cancelar trial</button>
+               </form>
+             ` : ''}
+@@ -5446,13 +5756,13 @@ async function renderConfiguracoes(req: Request, res: Response) {
+         var cep = (document.getElementById('card-cep').value || '').replace(/[^0-9]/g, '');
+         var addrNum = (document.getElementById('card-addr-num').value || '').trim();
+ 
+-        if (!numRaw || numRaw.length < 13) { alert('Número do cartão inválido.'); if (btn) { btn.disabled = false; btn.textContent = method === 'CREDIT_CARD' ? 'Assinar com Cartão de Crédito' : 'Assinar com Cartão de Débito'; } return; }
+-        if (!expiry[0] || !expiry[1] || expiry[1].length < 4) { alert('Data de validade inválida. Use MM/AAAA.'); if (btn) { btn.disabled = false; } return; }
+-        if (!cvv) { alert('CVV obrigatório.'); if (btn) { btn.disabled = false; } return; }
+-        if (!holder) { alert('Nome no cartão obrigatório.'); if (btn) { btn.disabled = false; } return; }
+-        if (!cpf || cpf.length < 11) { alert('CPF do titular obrigatório.'); if (btn) { btn.disabled = false; } return; }
+-        if (!cep || cep.length < 8) { alert('CEP obrigatório.'); if (btn) { btn.disabled = false; } return; }
+-        if (!addrNum) { alert('Número do endereço obrigatório.'); if (btn) { btn.disabled = false; } return; }
++        if (!numRaw || numRaw.length < 13) { showToast('<b>Número do cartão inválido.</b>', 5000); if (btn) { btn.disabled = false; btn.textContent = method === 'CREDIT_CARD' ? 'Assinar com Cartão de Crédito' : 'Assinar com Cartão de Débito'; } return; }
++        if (!expiry[0] || !expiry[1] || expiry[1].length < 4) { showToast('<b>Data de validade inválida.</b> Use MM/AAAA.', 5000); if (btn) { btn.disabled = false; } return; }
++        if (!cvv) { showToast('<b>CVV obrigatório.</b>', 5000); if (btn) { btn.disabled = false; } return; }
++        if (!holder) { showToast('<b>Nome no cartão obrigatório.</b>', 5000); if (btn) { btn.disabled = false; } return; }
++        if (!cpf || cpf.length < 11) { showToast('<b>CPF do titular obrigatório.</b>', 5000); if (btn) { btn.disabled = false; } return; }
++        if (!cep || cep.length < 8) { showToast('<b>CEP obrigatório.</b>', 5000); if (btn) { btn.disabled = false; } return; }
++        if (!addrNum) { showToast('<b>Número do endereço obrigatório.</b>', 5000); if (btn) { btn.disabled = false; } return; }
+ 
+         payload.cardNumber = numRaw;
+         payload.cardExpiryMonth = expiry[0];
+@@ -5476,7 +5786,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
+         if (r.redirected) { window.location.href = r.url; return; }
+         return r.json().then(function(data) {
+           if (data.error) {
+-            alert('Erro: ' + data.error);
++            showToast('<b>Erro:</b> ' + data.error, 6000);
+             if (btn) { btn.disabled = false; btn.textContent = method === 'PIX' ? 'Gerar QR Code Pix' : 'Assinar agora'; }
+             return;
+           }
+@@ -5489,7 +5799,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
+           else { window.location.href = '/admin/configuracoes?tab=pagamentos&saved=1'; }
+         });
+       }).catch(function(err) {
+-        alert('Erro de conexão. Tente novamente.');
++        showToast('<b>Erro de conexão.</b> Tente novamente.', 6000);
+         if (btn) { btn.disabled = false; btn.textContent = method === 'PIX' ? 'Gerar QR Code Pix' : 'Assinar agora'; }
+       });
+     }
+@@ -5598,12 +5908,12 @@ async function renderConfiguracoes(req: Request, res: Response) {
+             showPixQrCode(newData);
+           } else {
+             if (renewBtn) { renewBtn.disabled = false; renewBtn.textContent = 'Gerar novo QR Code'; }
+-            alert('Erro ao gerar novo QR Code. Tente novamente.');
++            showToast('<b>Erro ao gerar QR Code.</b> Tente novamente.', 6000);
+           }
+         })
+         .catch(function() {
+           if (renewBtn) { renewBtn.disabled = false; renewBtn.textContent = 'Gerar novo QR Code'; }
+-          alert('Erro de conexão. Tente novamente.');
++          showToast('<b>Erro de conexão.</b> Tente novamente.', 6000);
+         });
+     }
+ 
+@@ -6953,12 +7263,12 @@ async function renderPaginaCliente(req: Request, res: Response) {
+           // Limpar novos arquivos de galeria (já foram enviados)
+           _newGalleryFiles = [];
+         } else {
+-          alert('Erro ao salvar. Tente novamente.');
++          showToast('<b>Erro ao salvar.</b> Tente novamente.', 6000);
+         }
+       }).catch(function() {
+         btn.innerHTML = origText;
+         btn.disabled = false;
+-        alert('Erro de conexão. Tente novamente.');
++        showToast('<b>Erro de conexão.</b> Tente novamente.', 6000);
+       });
+       return false;
+     }
+@@ -7674,8 +7984,52 @@ document.addEventListener('input', function(e) {
+     }
+   });
+ 
++  // GET aba equipe — só super_admin vê lista completa e pode editar
++  // (já protegido pelo requireOwner nos POSTs)
++
++  // POST /admin/configuracoes/equipe/editar
++  app.post("/admin/configuracoes/equipe/editar", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
++    try {
++      const session = (req as any).adminSession;
++      const currentBarber = await db.getBarberById(session.barberId);
++      const tenantId = currentBarber?.tenantId ?? null;
++      const { id, name, email, password, phone, jobRole } = req.body ?? {};
++      if (!id || !name || !email) { res.redirect("/admin/configuracoes?tab=equipe&error=Campos+obrigatorios"); return; }
++      const targetBarber = await db.getBarberById(Number(id));
++      if (!targetBarber || targetBarber.tenantId !== tenantId) { res.redirect("/admin/configuracoes?tab=equipe&error=Profissional+nao+encontrado"); return; }
++      const rawPerms = req.body.permissions;
++      const permissions = jobRole === "admin"
++        ? ["agenda","clientes","lista-espera","servicos","financeiro","relatorios","comissoes","minhas-comissoes","produtos","marketing","configuracoes"]
++        : (Array.isArray(rawPerms) ? rawPerms : (rawPerms ? [rawPerms] : []));
++      const dbRole = jobRole === "admin" ? "super_admin" : jobRole === "receptionist" ? "receptionist" : "barber";
++      const updates: any = { name, email, phone: phone || null, role: dbRole };
++      if (password && password.length >= 6) updates.passwordHash = await bcrypt.hash(password, 10);
++      await db.updateBarber(Number(id), updates);
++      const safePerms = JSON.stringify(permissions).replace(/'/g, "''");
++      const dbConn = await db.getDb();
++      if (dbConn) await (dbConn as any).execute("UPDATE barbers SET permissions = '" + safePerms + "' WHERE id = " + Number(id));
++      res.redirect("/admin/configuracoes?tab=equipe&saved=1");
++    } catch (e: any) { res.redirect("/admin/configuracoes?tab=equipe&error=" + encodeURIComponent(e.message)); }
++  });
++
++  // POST /admin/configuracoes/equipe/excluir
++  app.post("/admin/configuracoes/equipe/excluir", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
++    try {
++      const session = (req as any).adminSession;
++      const currentBarber = await db.getBarberById(session.barberId);
++      const tenantId = currentBarber?.tenantId ?? null;
++      const { id } = req.body ?? {};
++      if (!id) { res.redirect("/admin/configuracoes?tab=equipe"); return; }
++      const targetBarber = await db.getBarberById(Number(id));
++      if (!targetBarber || targetBarber.tenantId !== tenantId) { res.redirect("/admin/configuracoes?tab=equipe&error=Profissional+nao+encontrado"); return; }
++      if (Number(id) === session.barberId) { res.redirect("/admin/configuracoes?tab=equipe&error=Nao+e+possivel+excluir+sua+propria+conta"); return; }
++      await db.hardDeleteBarber(Number(id));
++      res.redirect("/admin/configuracoes?tab=equipe&saved=1");
++    } catch (e: any) { res.redirect("/admin/configuracoes?tab=equipe&error=" + encodeURIComponent(e.message)); }
++  });
++
+   // POST /admin/configuracoes/equipe/toggle (ativar/desativar profissional)
+-  app.post("/admin/configuracoes/equipe/toggle", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/configuracoes/equipe/toggle", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
+     try {
+       const { id, isActive } = req.body ?? {};
+       await db.updateBarber(parseInt(id), { isActive: isActive === "true" });
+@@ -7686,7 +8040,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // POST /admin/configuracoes/equipe/novo (criar novo profissional)
+-  app.post("/admin/configuracoes/equipe/novo", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/configuracoes/equipe/novo", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
+     try {
+       const session = (req as any).adminSession;
+       const currentBarber = await db.getBarberById(session.barberId);
+@@ -8332,13 +8686,12 @@ document.addEventListener('input', function(e) {
+       const totalMin = h * 60 + m + (svc.durationMinutes ?? 30);
+       const endTime = `${String(Math.floor(totalMin / 60)).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}:00`;
+       const startTimeFmt = startTime.length === 5 ? startTime + ":00" : startTime;
+-      const available = await db.checkSlotAvailability(parseInt(barberId), date, startTimeFmt, endTime);
+-      if (!available) { res.redirect("/admin/agenda/novo?error=Hor%C3%A1rio+j%C3%A1+ocupado"); return; }
+-      await db.createAppointment({
++      const result = await db.createAppointmentAtomic({
+         clientId: parseInt(clientId), serviceId: parseInt(serviceId), barberId: parseInt(barberId),
+         date, startTime: startTimeFmt, endTime, status: "scheduled",
+         notes: notes ?? null,
+       });
++      if (!result.success) { res.redirect(`/admin/agenda/novo?error=${encodeURIComponent(result.error ?? "Horário já ocupado")}`); return; }
+       res.redirect(`/admin/agenda?date=${date}&created=1`);
+     } catch (e: any) {
+       res.redirect(`/admin/agenda/novo?error=${encodeURIComponent(e.message)}`);
+@@ -8604,10 +8957,10 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   app.get("/admin/servicos", requireAdminAuth, withErrorPage("Serviços", "servicos", renderServicos));
+-  app.get("/admin/financeiro", requireAdminAuth, withErrorPage("Financeiro", "financeiro", renderFinanceiro));
++  app.get("/admin/financeiro", requireAdminAuth, requireOwner, withErrorPage("Financeiro", "financeiro", renderFinanceiro));
+ 
+   // POST /admin/financeiro/despesa — Criar despesa
+-  app.post("/admin/financeiro/despesa", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/financeiro/despesa", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
+     try {
+       const session = (req as any).adminSession as { barberId: number; role: string };
+       const { description, category, amount, date, paymentMethod } = req.body ?? {};
+@@ -8708,9 +9061,23 @@ document.addEventListener('input', function(e) {
+     }
+   });
+ 
+-  app.get("/admin/configuracoes", requireAdminAuth, withErrorPage("Configurações", "configuracoes", renderConfiguracoes));
+-  app.get("/admin/relatorios", requireAdminAuth, withErrorPage("Relatórios", "relatorios", renderRelatorios));
+-  app.get("/admin/pagina-cliente", requireAdminAuth, withErrorPage("Página do Cliente", "pagina-cliente", renderPaginaCliente));
++  app.get("/admin/configuracoes", requireAdminAuth, async (req: Request, res: Response, next: NextFunction) => {
++    const session = (req as any).adminSession;
++    // Se não é super_admin, verificar se tem permissão de configuracoes
++    if (session && session.role !== 'super_admin') {
++      const barberData = await db.getBarberById(session.barberId);
++      let perms: string[] = [];
++      if (barberData && (barberData as any).permissions) {
++        try { perms = JSON.parse((barberData as any).permissions); } catch(e) {}
++      }
++      if (!perms.includes('configuracoes')) {
++        return res.redirect('/admin?erro=acesso_restrito');
++      }
++    }
++    return next();
++  }, withErrorPage("Configurações", "configuracoes", renderConfiguracoes));
++  app.get("/admin/relatorios", requireAdminAuth, requireOwner, withErrorPage("Relatórios", "relatorios", renderRelatorios));
++  app.get("/admin/pagina-cliente", requireAdminAuth, requireOwner, withErrorPage("Página do Cliente", "pagina-cliente", renderPaginaCliente));
+ 
+   // POST /admin/pagina-cliente/slug — Alterar slug
+   app.post("/admin/pagina-cliente/slug", requireAdminAuth, async (req: Request, res: Response) => {
+@@ -8907,7 +9274,9 @@ document.addEventListener('input', function(e) {
+ 
+   // ─── CRUD Serviços ──────────────────────────────────────────────────
+   app.post("/admin/servicos", requireAdminAuth, async (req: Request, res: Response) => {
+-    const { name, description, price, durationMinutes, isActive, mediaBase64, mediaMime } = req.body;
++    const { name, description, durationMinutes, isActive, mediaBase64, mediaMime } = req.body;
++    const rawPrice = (req.body.price ?? '').toString().replace(/\./g, '').replace(',', '.');
++    const price = isNaN(parseFloat(rawPrice)) ? '0' : String(parseFloat(rawPrice));
+     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+     // Obter tenantId da sessão (fonte segura) — não confiar no body
+     const _svcSession = (req as any).adminSession as { barberId: number; role: string };
+@@ -8951,7 +9320,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── CRUD Produtos ────────────────────────────────────────────────────────
+-  app.get("/admin/produtos", requireAdminAuth, requireFeature("products"), (req, res) => renderProdutos(req, res));
++  app.get("/admin/produtos", requireAdminAuth, (req, res) => renderProdutos(req, res));
+   app.post("/admin/produtos", requireAdminAuth, requireFeature("products"), async (req: Request, res: Response) => {
+     const { name, description, price, costPrice, productType, stockQuantity, minStockAlert, isActive, mediaBase64, mediaMime, supplierId } = req.body;
+     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+@@ -9249,7 +9618,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Cupons ────────────────────────────────────────────────────────────────
+-  app.get("/admin/cupons", requireAdminAuth, requireFeature("coupons"), withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
++  app.get("/admin/cupons", requireAdminAuth, withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
+     const barber = await db.getBarberById((req as any).adminSession.barberId);
+     const tenantId = barber?.tenantId ?? null;
+     const allCoupons = await db.getAllCoupons(tenantId);
+@@ -9436,7 +9805,7 @@ document.addEventListener('input', function(e) {
+   }));
+ 
+   // ─── Comissões ────────────────────────────────────────────────────────────
+-  app.get("/admin/comissoes", requireAdminAuth, requireFeature("commissions"), withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
++  app.get("/admin/comissoes", requireAdminAuth, requireOwner, withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
+     const barber = await db.getBarberById((req as any).adminSession.barberId);
+     const tenantId = barber?.tenantId ?? null;
+     const configs = await db.listCommissionConfigs(tenantId);
+@@ -9549,7 +9918,7 @@ document.addEventListener('input', function(e) {
+   res.send(adminLayoutWithGrace(res, "Comissões", "comissoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Comissões",href:"/admin/comissoes"}]));
+   }));
+ 
+-  app.post("/admin/comissoes/config", requireAdminAuth, requireFeature("commissions"), async (req: Request, res: Response) => {
++  app.post("/admin/comissoes/config", requireAdminAuth, requireOwner, requireFeature("commissions"), async (req: Request, res: Response) => {
+     const session2 = (req as any).adminSession;
+     const barber2 = await db.getBarberById(session2.barberId);
+     const barbers = await db.getAllBarbers(barber2?.tenantId);
+@@ -9609,7 +9978,7 @@ document.addEventListener('input', function(e) {
+                   <form method="POST" action="/admin/lista-espera/remover" style="display:inline;">
+                     <input type="hidden" name="id" value="${e.id}" />
+                     <input type="hidden" name="date" value="${dateParam}" />
+-                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="return confirm('Remover da lista?')">Remover</button>
++                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="bpConfirm({icon:'🗑️',title:'Remover da lista',msg:'Deseja remover este cliente da lista de espera?',okLabel:'Remover',danger:true,onConfirm:function(){this.closest('form').submit();}.bind(this)});return false;">Remover</button>
+                   </form>
+                 </td>
+               </tr>
+@@ -10120,7 +10489,7 @@ document.addEventListener('input', function(e) {
+ 
+ 
+   // ─── Planos de Assinatura ────────────────────────────────────────────────────
+-  app.get("/admin/planos", requireAdminAuth, requireFeature("subscription_plans"), withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
++  app.get("/admin/planos", requireAdminAuth, withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+@@ -10213,7 +10582,7 @@ document.addEventListener('input', function(e) {
+                   <button type="submit" class="btn btn-ghost" style="width:100%;font-size:12px;padding:6px;">${plan.isActive ? 'Desativar' : 'Ativar'}</button>
+                 </form>
+                 ${(plan.activeSubscribers ?? 0) === 0 ? `
+-                <form method="POST" action="/admin/planos/${plan.id}/excluir" onsubmit="return confirm('Excluir plano?')" style="flex:0;">
++                <form method="POST" action="/admin/planos/${plan.id}/excluir" onsubmit="return false" data-bp-confirm-title="Excluir plano" data-bp-confirm-msg="Esta ação não pode ser desfeita." data-bp-confirm-danger="1" style="flex:0;">
+                   <button type="submit" class="btn" style="font-size:12px;padding:6px 10px;background:#EF444422;color:#F87171;border:none;">Excluir</button>
+                 </form>` : ""}
+               </div>
+@@ -10371,7 +10740,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Estoque ─────────────────────────────────────────────────────────────────
+-  app.get("/admin/estoque", requireAdminAuth, requireFeature("stock"), withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
++  app.get("/admin/estoque", requireAdminAuth, withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -10650,7 +11019,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+     // ─── Histórico de Estoque ─────────────────────────────────────────────
+-  app.get("/admin/estoque/:id/historico", requireAdminAuth, requireFeature("stock"), withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
++  app.get("/admin/estoque/:id/historico", requireAdminAuth, withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -10707,7 +11076,7 @@ document.addEventListener('input', function(e) {
+   }));
+ 
+   // ─── Retorno Automático ─────────────────────────────────────────────
+-  app.get("/admin/retorno-automatico", requireAdminAuth, withErrorPage("Retorno Automático", "retorno-automatico", async (req: Request, res: Response) => {
++  app.get("/admin/retorno-automatico", requireAdminAuth, requireOwner, withErrorPage("Retorno Automático", "retorno-automatico", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -10775,7 +11144,7 @@ document.addEventListener('input', function(e) {
+                   </div>
+                   <form method="POST" action="/admin/retorno-automatico/remover">
+                     <input type="hidden" name="serviceId" value="${c.serviceId}" />
+-                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="return confirm('Remover esta configuração?')">Remover</button>
++                    <button type="submit" class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="bpConfirm({icon:'🗑️',title:'Remover configuração',msg:'Deseja remover esta configuração de retorno automático?',okLabel:'Remover',danger:true,onConfirm:function(){this.closest('form').submit();}.bind(this)});return false;">Remover</button>
+                   </form>
+                 </div>
+               </div>
+@@ -10813,7 +11182,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─  // ─── Promoções (envio segmentado) ───────────────────────────────────────
+-  app.get("/admin/promocoes", requireAdminAuth, withErrorPage("Promoções", "promocoes", async (req: Request, res: Response) => {
++  app.get("/admin/promocoes", requireAdminAuth, requireOwner, withErrorPage("Promoções", "promocoes", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -11663,7 +12032,7 @@ document.addEventListener('input', function(e) {
+ 
+ 
+   // ─── Clientes em Órbita ──────────────────────────────────────────────────────
+-  app.get("/admin/orbita", requireAdminAuth, requireFeature("orbit"), withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
++  app.get("/admin/orbita", requireAdminAuth, withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -11811,7 +12180,7 @@ document.addEventListener('input', function(e) {
+   }));
+ 
+   // ─── Encomendas de Produtos ────────────────────────────────────────────────
+-  app.get("/admin/encomendas", requireAdminAuth, requireFeature("orders"), withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
++  app.get("/admin/encomendas", requireAdminAuth, withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+@@ -11879,7 +12248,7 @@ document.addEventListener('input', function(e) {
+             body: JSON.stringify({ id: id, status: status })
+           }).then(function(r){ return r.json(); }).then(function(data) {
+             if (data.success) { window.location.reload(); }
+-            else { alert('Erro: ' + (data.error || 'Erro desconhecido')); }
++            else { showToast('<b>Erro:</b> ' + (data.error || 'Erro desconhecido'), 6000); }
+           });
+         }
+       </script>
+@@ -12389,7 +12758,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Fornecedores ─────────────────────────────────────────────────────────
+-  app.get("/admin/fornecedores", requireAdminAuth, requireFeature("suppliers"), withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
++  app.get("/admin/fornecedores", requireAdminAuth, withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession as { barberId: number; role: string };
+     const barber = await db.getBarberById(session.barberId);
+@@ -12473,7 +12842,7 @@ document.addEventListener('input', function(e) {
+                   <div style="display:flex;gap:8px">
+                     <a href="/admin/fornecedores/${s.id}" class="btn-action-view">👁 Ver</a>
+                     <a href="/admin/fornecedores?edit=${s.id}" class="btn-action-edit">✏ Editar</a>
+-                    <form method="POST" action="/admin/fornecedores/delete" style="display:inline" onsubmit="return confirm('Excluir este fornecedor?')">
++                    <form method="POST" action="/admin/fornecedores/delete" style="display:inline" onsubmit="return false" data-bp-confirm-title="Excluir fornecedor" data-bp-confirm-msg="Esta ação não pode ser desfeita." data-bp-confirm-danger="1">
+                       <input type="hidden" name="id" value="${s.id}" />
+                       <button type="submit" class="btn-action-delete">✕ Excluir</button>
+                     </form>
+@@ -12533,7 +12902,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Detalhes do Fornecedor (/admin/fornecedores/:id) ─────────────────────────
+-  app.get("/admin/fornecedores/:id", requireAdminAuth, requireFeature("suppliers"), withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
++  app.get("/admin/fornecedores/:id", requireAdminAuth, withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession as { barberId: number; role: string };
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+diff --git a/server/db.ts b/server/db.ts
+index 7f28f4d..95d54bd 100644
+--- a/server/db.ts
++++ b/server/db.ts
+@@ -397,6 +397,12 @@ export async function deleteBarber(id: number) {
+   await db.update(barbers).set({ isActive: false }).where(eq(barbers.id, id));
+ }
+ 
++export async function hardDeleteBarber(id: number) {
++  const db = await getDb();
++  if (!db) throw new Error("Database not available");
++  await db.delete(barbers).where(eq(barbers.id, id));
++}
++
+ // ─── Clientes ─────────────────────────────────────────────────────────────────
+ export async function getAllClients(tenantId?: number | null) {
+   const db = await getDb();
+@@ -913,6 +919,51 @@ export async function checkSlotAvailability(barberId: number, date: string, star
+   return conflicts.length === 0;
+ }
+ 
++/**
++ * Versão atômica: verifica disponibilidade e insere em uma única transação
++ * com SELECT FOR UPDATE para evitar race condition entre requisições concorrentes.
++ */
++export async function createAppointmentAtomic(data: {
++  clientId: number; serviceId: number; barberId: number;
++  date: string; startTime: string; endTime: string;
++  status: string; notes?: string | null; tenantId?: number | null;
++}): Promise<{ success: boolean; appointmentId?: number; error?: string }> {
++  if (!_pool) await getDb();
++  if (!_pool) return { success: false, error: "Banco indisponível" };
++  const client = await _pool.connect();
++  try {
++    await client.query('BEGIN');
++    // Lock nas linhas conflitantes — bloqueia requisições concorrentes até o COMMIT
++    const lockResult = await client.query(
++      `SELECT id FROM appointments
++       WHERE "barberId" = $1
++         AND date = $2
++         AND status NOT IN ('cancelled','no_show')
++         AND "startTime" < $4
++         AND "endTime" > $3
++       FOR UPDATE`,
++      [data.barberId, data.date, data.startTime, data.endTime]
++    );
++    if (lockResult.rows.length > 0) {
++      await client.query('ROLLBACK');
++      return { success: false, error: "Horário já ocupado" };
++    }
++    const insert = await client.query(
++      `INSERT INTO appointments ("clientId","serviceId","barberId",date,"startTime","endTime",status,notes)
++       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
++      [data.clientId, data.serviceId, data.barberId, data.date,
++       data.startTime, data.endTime, data.status, data.notes ?? null]
++    );
++    await client.query('COMMIT');
++    return { success: true, appointmentId: insert.rows[0].id };
++  } catch (err: any) {
++    await client.query('ROLLBACK');
++    return { success: false, error: err.message };
++  } finally {
++    client.release();
++  }
++}
++
+ // ─── Vendas ───────────────────────────────────────────────────────────────────
+ export async function getSalesByDateRange(startDate: string, endDate: string, barberId?: number, tenantId?: number | null) {
+   const db = await getDb();
+diff --git a/server/routers.ts b/server/routers.ts
+index 2c56502..b55ac6f 100644
+--- a/server/routers.ts
++++ b/server/routers.ts
+@@ -112,7 +112,8 @@ export const appRouter = router({
+         const payload = { barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any };
+         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
+         const tenant = barber.tenantId ? await db.getTenantById(barber.tenantId) : null;
+-        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, tenantPlan: tenant?.plan ?? null, token, refreshToken };
++        const _p1 = (barber as any).permissions; let _pp1 = null; try { _pp1 = _p1 ? JSON.parse(_p1) : null; } catch(e) {}
++        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, tenantPlan: tenant?.plan ?? null, permissions: _pp1, token, refreshToken };
+       }),
+     googleLogin: publicProcedure
+       .input(z.object({
+@@ -158,7 +159,8 @@ export const appRouter = router({
+         const payload = { barberId: barber2.id, tenantId: barber2.tenantId ?? null, role: barber2.role as any };
+         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
+         const tenant2 = barber2.tenantId ? await db.getTenantById(barber2.tenantId) : null;
+-        return { id: barber2.id, name: barber2.name, email: barber2.email, phone: barber2.phone, photoUrl: photoUrl ?? barber2.photoUrl, role: barber2.role, specialties: barber2.specialties, tenantId: barber2.tenantId, tenantPlan: tenant2?.plan ?? null, token, refreshToken };
++        const _p2 = (barber2 as any).permissions; let _pp2 = null; try { _pp2 = _p2 ? JSON.parse(_p2) : null; } catch(e) {}
++        return { id: barber2.id, name: barber2.name, email: barber2.email, phone: barber2.phone, photoUrl: photoUrl ?? barber2.photoUrl, role: barber2.role, specialties: barber2.specialties, tenantId: barber2.tenantId, tenantPlan: tenant2?.plan ?? null, permissions: _pp2, token, refreshToken };
+       }),
+   }),
+ 
+@@ -174,7 +176,8 @@ export const appRouter = router({
+         const payload = { barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any };
+         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
+         const tenantAdmin = barber.tenantId ? await db.getTenantById(barber.tenantId) : null;
+-        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, tenantPlan: tenantAdmin?.plan ?? null, token, refreshToken };
++        const _pA = (barber as any).permissions; let _ppA = null; try { _ppA = _pA ? JSON.parse(_pA) : null; } catch(e) {}
++        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, tenantPlan: tenantAdmin?.plan ?? null, permissions: _ppA, token, refreshToken };
+       }),
+     setup: publicProcedure
+       .input(z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(6) }))
+@@ -464,11 +467,7 @@ export const appRouter = router({
+     create: publicProcedure
+       .input(z.object({ clientId: z.number(), barberId: z.number(), serviceId: z.number(), serviceNames: z.string().optional().nullable(), date: z.string(), startTime: z.string(), endTime: z.string(), notes: z.string().optional().nullable(), status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "pending_approval"]).default("confirmed") }))
+       .mutation(async ({ input }) => {
+-        const available = await db.checkSlotAvailability(input.barberId, input.date, input.startTime, input.endTime);
+-        if (!available) throw new Error("Horário não disponível. Por favor, escolha outro horário.");
+-
+         // ── Regra de horário limite ──────────────────────────────────────────────
+-        // Verifica se o endTime ultrapassa o horário de fechamento do barbeiro naquele dia
+         const toMin = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+         const dayOfWeek = new Date(input.date + "T12:00:00").getDay();
+         const wh = await db.getWorkingHoursForDay(input.barberId, dayOfWeek);
+@@ -485,9 +484,15 @@ export const appRouter = router({
+           }
+         }
+ 
+-        // Se ultrapassa o horário de fechamento, cria como pending_approval
++        // Criar agendamento de forma atômica (SELECT FOR UPDATE previne race condition)
+         const finalStatus = exceedsClosingTime ? "pending_approval" : "confirmed";
+-        const apptId = await db.createAppointment({ ...input, status: finalStatus } as any);
++        const atomicResult = await db.createAppointmentAtomic({
++          clientId: input.clientId, serviceId: input.serviceId, barberId: input.barberId,
++          date: input.date, startTime: input.startTime, endTime: input.endTime,
++          status: finalStatus, notes: input.notes ?? null,
++        });
++        if (!atomicResult.success) throw new Error(atomicResult.error ?? "Horário não disponível. Por favor, escolha outro horário.");
++        const apptId = atomicResult.appointmentId!;
+ 
+         // Notifica o barbeiro via Expo Push
+         const pushToken = await db.getBarberPushToken(input.barberId);
+@@ -2045,14 +2050,23 @@ export const appRouter = router({
+             throw new Error("Este e-mail já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
+           }
+ 
+-          // Checar por CPF/CNPJ
++          // Checar por CPF/CNPJ (coluna pode não existir em instâncias antigas — try/catch seguro)
+           if (cleanCpfCnpj && cleanCpfCnpj.length >= 11) {
+-            const safeCpfCnpj = cleanCpfCnpj.replace(/'/g, "''");
+-            const cpfRows = await db.rawQuery(
+-              `SELECT id FROM used_trials WHERE "cpfCnpj" = '${safeCpfCnpj}' LIMIT 1`
+-            );
+-            if (cpfRows.length > 0) {
+-              throw new Error("Este CPF/CNPJ já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
++            try {
++              const safeCpfCnpj = cleanCpfCnpj.replace(/'/g, "''");
++              const cpfRows = await db.rawQuery(
++                `SELECT id FROM used_trials WHERE "cpfCnpj" = '${safeCpfCnpj}' LIMIT 1`
++              );
++              if (cpfRows.length > 0) {
++                throw new Error("Este CPF/CNPJ já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
++              }
++            } catch (e: any) {
++              // Se a coluna ainda não existe (migration pendente), ignorar silenciosamente
++              if (!e.message?.includes("já utilizou")) {
++                console.warn("[used_trials] Falha ao checar cpfCnpj:", e.message);
++              } else {
++                throw e;
++              }
+             }
+           }
+         }
+-- 
+2.43.0
+

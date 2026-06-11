@@ -980,10 +980,22 @@ export async function getBranches(parentTenantId: number): Promise<any[]> {
   } catch { return []; }
 }
 
+/** Busca o barbeiro-espelho (super_admin com determinado e-mail) num tenant */
+export async function getMirrorAdmin(tenantId: number, email: string): Promise<any | null> {
+  if (!_pool) await getDb();
+  if (!_pool) return null;
+  const r = await _pool.query(
+    `SELECT * FROM barbers WHERE "tenantId" = $1 AND LOWER(email) = LOWER($2) AND role = 'super_admin' AND "isActive" = true LIMIT 1`,
+    [tenantId, email]
+  );
+  return r.rows[0] ?? null;
+}
+
 export async function createBranch(parentTenantId: number, data: {
   name: string; displayName: string; slug: string;
   phone?: string; address?: string; cep?: string;
   addressNumber?: string; city?: string; state?: string; cnpj?: string;
+  ownerName?: string; ownerEmail?: string; ownerPasswordHash?: string;
 }): Promise<number> {
   if (!_pool) await getDb();
   if (!_pool) throw new Error('Pool indisponível');
@@ -999,6 +1011,14 @@ export async function createBranch(parentTenantId: number, data: {
     `INSERT INTO shop_settings ("tenantId","shopName",phone,cnpj,address) VALUES ($1,$2,$3,$4,$5) ON CONFLICT ("tenantId") DO NOTHING`,
     [branchId, data.name, data.phone??null, data.cnpj??null, data.address??null]
   );
+  // Barbeiro-espelho: o dono da matriz acessa a filial com o mesmo login
+  if (data.ownerEmail && data.ownerPasswordHash) {
+    await _pool.query(
+      `INSERT INTO barbers ("tenantId", name, email, "passwordHash", role, "isActive")
+       VALUES ($1, $2, $3, $4, 'super_admin', true)`,
+      [branchId, data.ownerName ?? 'Administrador', data.ownerEmail, data.ownerPasswordHash]
+    );
+  }
   return branchId;
 }
 

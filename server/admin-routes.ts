@@ -131,16 +131,29 @@ function monthRange(): { start: string; end: string } {
 }
 
 // ─── Sessão simples (JWT-less, cookie assinado com barberId) ──────────────────────────────────────────────────────────
+const SESSION_HMAC_SECRET = process.env.COOKIE_SECRET || process.env.JWT_SECRET || "barber-pro-session-fallback";
+const SECURE_COOKIE = process.env.NODE_ENV === "production" ? "; Secure" : "";
+
+function signSessionPayload(payload: string): string {
+  return crypto.createHmac("sha256", SESSION_HMAC_SECRET).update(payload).digest("base64url");
+}
+
 function encodeSession(barberId: number, role: string, maxAge = SESSION_MAX_AGE): string {
   const payload = Buffer.from(JSON.stringify({ barberId, role, ts: Date.now(), maxAge })).toString("base64url");
-  return payload;
+  return payload + "." + signSessionPayload(payload);
 }
 
 function decodeSession(token: string): { barberId: number; role: string } | null {
   try {
-    const data = JSON.parse(Buffer.from(token, "base64url").toString("utf-8"));
+    const [payload, sig] = token.split(".");
+    if (!payload || !sig) return null;
+    // Verificação de assinatura em tempo constante (anti timing attack)
+    const expected = signSessionPayload(payload);
+    const sigBuf = Buffer.from(sig);
+    const expBuf = Buffer.from(expected);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8"));
     if (!data.barberId || !data.role) return null;
-    // Usar maxAge armazenado no token (suporta 8h ou 30 dias)
     const maxAge = data.maxAge ?? SESSION_MAX_AGE;
     if (Date.now() - data.ts > maxAge * 1000) return null;
     return { barberId: data.barberId, role: data.role };
@@ -1177,7 +1190,7 @@ ${barberRole === "super_admin" ? `
 }
 
 // ─── Página de Login ──────────────────────────────────────────────────────────
-function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: string): string {
+function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: string, rememberedEmail?: string): string {
   const REMEMBER_COOKIE = "bp_admin_remember_email";
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -1396,7 +1409,7 @@ function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: 
       <form method="POST" action="/admin/login" id="loginForm">
         <div class="form-group">
           <label class="form-label">Email</label>
-          <input class="form-input" type="email" name="email" id="emailInput" placeholder="seu@email.com" required autofocus />
+          <input class="form-input" type="email" name="email" id="emailInput" placeholder="seu@email.com" value="${rememberedEmail ? rememberedEmail.replace(/"/g, '&quot;') : ''}" required autofocus />
         </div>
         <div class="form-group">
           <label class="form-label">Senha</label>
@@ -1432,18 +1445,8 @@ function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: 
     const rememberCheck = document.getElementById("rememberCheck");
     const rememberInput = document.getElementById("rememberInput");
 
-    // Restaurar e-mail salvo
-    try {
-      const saved = localStorage.getItem(REMEMBER_KEY);
-      if (saved) {
-        const { email, remember } = JSON.parse(saved);
-        if (remember && email) {
-          emailInput.value = email;
-          rememberCheck.checked = true;
-          rememberInput.value = "1";
-        }
-      }
-    } catch(e) {}
+    // Prefill vem do servidor via cookie HttpOnly (sem dados pessoais no localStorage)
+    if (emailInput.value) { rememberCheck.checked = true; rememberInput.value = "1"; }
 
     function toggleRemember() {
       // Checkbox toggle is handled by the label click natively
@@ -1452,15 +1455,8 @@ function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: 
       }, 0);
     }
 
-    document.getElementById("loginForm").addEventListener("submit", function() {
-      try {
-        if (rememberCheck.checked) {
-          localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email: emailInput.value, remember: true }));
-        } else {
-          localStorage.removeItem(REMEMBER_KEY);
-        }
-      } catch(e) {}
-    });
+    // E-mail lembrado é gerenciado pelo servidor via cookie HttpOnly
+    try { localStorage.removeItem(REMEMBER_KEY); } catch(e) {} // limpa dados antigos
 
     // ─── Login com Google ─────────────────────────────────────────────────────
     function startGoogleLogin() {
@@ -4859,8 +4855,11 @@ async function renderConfiguracoes(req: Request, res: Response) {
   const parentTenantId = (tenant as any)?.parentTenantId ?? null;
   const isStudioPlan = ((tenant as any)?.plan ?? '') === 'studio';
   let branches: any[] = [];
+  let matrixTenant: any = null;
   if (isStudioPlan && !parentTenantId && barber?.tenantId) branches = await db.getBranches(barber.tenantId);
+  if (parentTenantId) matrixTenant = await db.getTenantById(parentTenantId);
   const showBranchTab = isStudioPlan && !parentTenantId;
+  const isBranchContext = !!parentTenantId;
   const currentSlug = tenant?.slug ?? "";
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "";
   const publicUrl = currentSlug ? `https://usebarberpro.com/pub/${currentSlug}` : "";
@@ -6073,12 +6072,24 @@ async function renderConfiguracoes(req: Request, res: Response) {
     </script>
   `;
 
-  const tabFiliais = showBranchTab ? renderBranchTab(branches) : '';
+  const tabFiliais = showBranchTab
+    ? renderBranchTab(branches)
+    : (isBranchContext ? `
+      <div style="text-align:center;padding:50px 20px;background:var(--surface);border:1px solid var(--border);border-radius:16px;max-width:480px;margin:0 auto">
+        <div style="font-size:40px;margin-bottom:12px">🏪</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">Você está na filial ${esc((tenant as any)?.displayName || tenant?.name || '')}</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:24px">Matriz: ${esc(matrixTenant?.name ?? '')}</div>
+        <form method="POST" action="/admin/filiais/trocar">
+          <input type="hidden" name="branchId" value="${parentTenantId}" />
+          <button type="submit" class="btn btn-primary" style="padding:12px 28px">← Voltar para a matriz</button>
+        </form>
+      </div>
+    ` : '');
   const tabs = [
     { id: 'dados', label: 'Dados' },
     { id: 'horarios', label: 'Horários' },
     { id: 'equipe', label: 'Equipe' },
-    ...(showBranchTab ? [{ id: 'filiais', label: '🏪 Filiais' }] : []),
+    ...((showBranchTab || isBranchContext) ? [{ id: 'filiais', label: '🏪 Filiais' }] : []),
     { id: 'pagamentos', label: '💳 Pagamentos' },
   ];
 
@@ -7675,12 +7686,26 @@ export function registerAdminRoutes(app: Express): void {
     const errorMsg = req.query.msg ? decodeURIComponent(req.query.msg as string) : undefined;
     const info = req.query.info as string | undefined;
     const infoEmail = req.query.email ? decodeURIComponent(req.query.email as string) : undefined;
-    res.send(loginPage(req.query.error === "1", errorMsg, info, infoEmail));
+    const rememberedEmail = (req as any).cookies?.["bp_remember_email"] || undefined;
+    res.send(loginPage(req.query.error === "1", errorMsg, info, infoEmail, rememberedEmail));
   });
 
   // POST /admin/login
+  // Rate limit simples em memória: 10 tentativas por IP a cada 15 min
+  const _loginAttempts = new Map<string, { count: number; resetAt: number }>();
+  function loginRateCheck(ip: string): boolean {
+    const now = Date.now();
+    const entry = _loginAttempts.get(ip);
+    if (!entry || now > entry.resetAt) { _loginAttempts.set(ip, { count: 1, resetAt: now + 15*60*1000 }); return true; }
+    entry.count++;
+    return entry.count <= 10;
+  }
+  setInterval(() => { const now = Date.now(); for (const [k,v] of _loginAttempts) if (now > v.resetAt) _loginAttempts.delete(k); }, 10*60*1000).unref?.();
+
   app.post("/admin/login", async (req: Request, res: Response) => {
     try {
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+      if (!loginRateCheck(ip)) return res.redirect("/admin/login?error=2&msg=" + encodeURIComponent("Muitas tentativas. Aguarde 15 minutos."));
       const { email, password, remember } = req.body ?? {};
       if (!email || !password) return res.redirect("/admin/login?error=1");
 
@@ -7694,8 +7719,14 @@ export function registerAdminRoutes(app: Express): void {
 
       const rememberMe = remember === "1" || remember === "true";
       const maxAge = rememberMe ? SESSION_MAX_AGE_REMEMBER : SESSION_MAX_AGE;
-      const token = encodeSession(barber.id, barber.role);
-      res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`);
+      const token = encodeSession(barber.id, barber.role, maxAge);
+      const rememberCookie = rememberMe
+        ? `bp_remember_email=${encodeURIComponent(email)}; Path=/admin; HttpOnly; SameSite=Lax${SECURE_COOKIE}; Max-Age=${90*24*3600}`
+        : `bp_remember_email=; Path=/admin; HttpOnly; SameSite=Lax; Max-Age=0`;
+      res.setHeader("Set-Cookie", [
+        `${ADMIN_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax${SECURE_COOKIE}; Max-Age=${maxAge}`,
+        rememberCookie,
+      ]);
       res.redirect("/admin");
     } catch (err) {
       console.error("[login] Unexpected error:", err);
@@ -9161,7 +9192,10 @@ document.addEventListener('input', function(e) {
       const baseSlug = (name as string).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').substring(0,50);
       let slug = baseSlug; let att = 0;
       while (await db.getTenantBySlug(slug)) { att++; slug = baseSlug + '-' + att; }
-      await db.createBranch(barber!.tenantId!, { name, displayName, slug, phone, cnpj, address, cep, addressNumber, city, state });
+      await db.createBranch(barber!.tenantId!, {
+        name, displayName, slug, phone, cnpj, address, cep, addressNumber, city, state,
+        ownerName: barber!.name, ownerEmail: barber!.email ?? undefined, ownerPasswordHash: (barber as any).passwordHash ?? undefined,
+      });
       res.redirect('/admin/configuracoes?tab=filiais&saved=1');
     } catch(e: any) { res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent(e.message)); }
   });
@@ -9171,6 +9205,12 @@ document.addEventListener('input', function(e) {
       const session = (req as any).adminSession as { barberId: number; role: string };
       if (session.role !== 'super_admin') { res.redirect('/admin/configuracoes?tab=filiais'); return; }
       const { branchId, name, displayName, phone, cnpj, address, cep, addressNumber, city } = req.body;
+      // SEGURANÇA: a filial precisa pertencer à matriz do admin logado
+      const adminBarber = await db.getBarberById(session.barberId);
+      const branchTenant = await db.getTenantById(parseInt(branchId));
+      if (!adminBarber?.tenantId || (branchTenant as any)?.parentTenantId !== adminBarber.tenantId) {
+        res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent('Filial não pertence à sua rede')); return;
+      }
       await db.updateBranch(parseInt(branchId), { name, displayName, phone, cnpj, address, cep, addressNumber, city });
       res.redirect('/admin/configuracoes?tab=filiais&saved=1');
     } catch(e: any) { res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent(e.message)); }
@@ -9180,15 +9220,49 @@ document.addEventListener('input', function(e) {
     try {
       const session = (req as any).adminSession as { barberId: number; role: string };
       if (session.role !== 'super_admin') { res.redirect('/admin/configuracoes?tab=filiais'); return; }
+      // SEGURANÇA: a filial precisa pertencer à matriz do admin logado
+      const adminBarber = await db.getBarberById(session.barberId);
+      const branchTenant = await db.getTenantById(parseInt(req.body.branchId));
+      if (!adminBarber?.tenantId || (branchTenant as any)?.parentTenantId !== adminBarber.tenantId) {
+        res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent('Filial não pertence à sua rede')); return;
+      }
       const result = await db.deleteBranch(parseInt(req.body.branchId));
       if (!result.success) { res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent(result.error ?? 'Erro ao excluir')); return; }
       res.redirect('/admin/configuracoes?tab=filiais&saved=1');
     } catch(e: any) { res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent(e.message)); }
   });
 
-  app.post("/admin/filiais/trocar", requireAdminAuth, (req: Request, res: Response) => {
-    res.cookie('bp_branch_ctx', req.body.branchId ?? '', { httpOnly: true, sameSite: 'lax', maxAge: 86400000 });
-    res.redirect(req.body.returnTo ?? '/admin');
+  app.post("/admin/filiais/trocar", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      if (session.role !== 'super_admin') { res.redirect('/admin'); return; }
+      const adminBarber = await db.getBarberById(session.barberId);
+      if (!adminBarber?.tenantId || !adminBarber.email) { res.redirect('/admin'); return; }
+      const targetTenantId = parseInt(req.body.branchId);
+      const currentTenant = await db.getTenantById(adminBarber.tenantId);
+      const targetTenant = await db.getTenantById(targetTenantId);
+      if (!targetTenant) { res.redirect('/admin'); return; }
+
+      // Caso 1: estou numa filial e quero voltar para a matriz
+      const myParent = (currentTenant as any)?.parentTenantId ?? null;
+      const targetIsMyMatrix = myParent === targetTenantId;
+      // Caso 2: estou na matriz e quero entrar numa filial minha
+      const targetIsMyBranch = (targetTenant as any)?.parentTenantId === adminBarber.tenantId;
+
+      if (!targetIsMyMatrix && !targetIsMyBranch) {
+        res.redirect('/admin?erro=acesso_restrito'); return;
+      }
+
+      // Localizar o barbeiro-espelho (mesmo e-mail, super_admin) no tenant destino
+      const mirror = await db.getMirrorAdmin(targetTenantId, adminBarber.email);
+      if (!mirror) { res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent('Conta de acesso à filial não encontrada')); return; }
+
+      const token = encodeSession(mirror.id, 'super_admin');
+      res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax${SECURE_COOKIE}; Max-Age=${SESSION_MAX_AGE}`);
+      res.redirect('/admin');
+    } catch(e: any) {
+      res.redirect('/admin');
+    }
   });
 
   app.get("/admin/configuracoes", requireAdminAuth, async (req: Request, res: Response, next: NextFunction) => {

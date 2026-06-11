@@ -1,0 +1,87 @@
+From 6c530c9d2928578d1fb40b3d535ff39655880e43 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Tue, 9 Jun 2026 16:52:07 +0000
+Subject: [PATCH] =?UTF-8?q?fix:=20used=5Ftrials=20=E2=80=94=20usar=20rawQu?=
+ =?UTF-8?q?ery=20(pool=20pg=20direto)=20em=20vez=20de=20dbConn.execute=20q?=
+ =?UTF-8?q?ue=20parametriza=20automaticamente?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ server/db.ts      | 12 ++++++++++++
+ server/routers.ts | 29 ++++++++++++++---------------
+ 2 files changed, 26 insertions(+), 15 deletions(-)
+
+diff --git a/server/db.ts b/server/db.ts
+index 1b4c5d3..7f28f4d 100644
+--- a/server/db.ts
++++ b/server/db.ts
+@@ -155,6 +155,18 @@ export async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T
+   throw lastErr;
+ }
+ 
++/**
++ * Executa uma query SQL raw usando o pool pg diretamente (sem Drizzle).
++ * Usar quando o Drizzle parametriza automaticamente e o driver rejeita $1.
++ * Interpolação deve ser feita pelo caller com escape adequado.
++ */
++export async function rawQuery(sql: string): Promise<any[]> {
++  if (!_pool) await getDb();
++  if (!_pool) throw new Error("Database not available");
++  const result = await _pool.query(sql);
++  return result.rows;
++}
++
+ /**
+  * Executa uma função com o banco de dados.
+  * O isolamento multi-tenant é feito via WHERE tenantId nas queries (guard clauses).
+diff --git a/server/routers.ts b/server/routers.ts
+index 0381877..2c56502 100644
+--- a/server/routers.ts
++++ b/server/routers.ts
+@@ -2032,27 +2032,26 @@ export const appRouter = router({
+         const existingBarber = await db.getBarberByEmail(input.admin.email);
+         if (existingBarber) throw new Error("Este email já está cadastrado");
+ 
+-        // 1b. Verificar se este email ou CPF/CNPJ já usou o trial gratuito
+-        const dbConn = await db.getDb();
+-        if (dbConn) {
++                // 1b. Verificar se este email ou CPF/CNPJ já usou o trial gratuito
++        {
+           const cleanCpfCnpj = input.shop.cnpj ? input.shop.cnpj.replace(/\D/g, "") : null;
++          const safeEmail = input.admin.email.toLowerCase().replace(/'/g, "''");
+ 
+-          // Checar por email
+-          const byEmail = await dbConn.execute(
+-            `SELECT id FROM used_trials WHERE email = '${input.admin.email.toLowerCase().replace(/'/g, "''")}' LIMIT 1`
+-          ) as any;
+-          const emailRows = Array.isArray(byEmail) ? byEmail[0] : byEmail?.rows;
+-          if (emailRows && emailRows.length > 0) {
++          // Checar por email — usa rawQuery (pool pg direto) para evitar parametrização automática
++          const emailRows = await db.rawQuery(
++            `SELECT id FROM used_trials WHERE email = '${safeEmail}' LIMIT 1`
++          );
++          if (emailRows.length > 0) {
+             throw new Error("Este e-mail já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
+           }
+ 
+-          // Checar por CPF/CNPJ (mais difícil de burlar)
++          // Checar por CPF/CNPJ
+           if (cleanCpfCnpj && cleanCpfCnpj.length >= 11) {
+-            const byCpfCnpj = await dbConn.execute(
+-              `SELECT id FROM used_trials WHERE "cpfCnpj" = '${cleanCpfCnpj.replace(/'/g, "''")}' LIMIT 1`
+-            ) as any;
+-            const cpfRows = Array.isArray(byCpfCnpj) ? byCpfCnpj[0] : byCpfCnpj?.rows;
+-            if (cpfRows && cpfRows.length > 0) {
++            const safeCpfCnpj = cleanCpfCnpj.replace(/'/g, "''");
++            const cpfRows = await db.rawQuery(
++              `SELECT id FROM used_trials WHERE "cpfCnpj" = '${safeCpfCnpj}' LIMIT 1`
++            );
++            if (cpfRows.length > 0) {
+               throw new Error("Este CPF/CNPJ já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
+             }
+           }
+-- 
+2.43.0
+

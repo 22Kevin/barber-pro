@@ -1,0 +1,39 @@
+From 1d4fa6585ee6287adfbde8474202a0b5ff46eed0 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Tue, 9 Jun 2026 16:29:55 +0000
+Subject: [PATCH] =?UTF-8?q?fix:=20used=5Ftrials=20=E2=80=94=20queries=20pa?=
+ =?UTF-8?q?rametrizadas=20sql`=20=E2=86=92=20interpola=C3=A7=C3=A3o=20dire?=
+ =?UTF-8?q?ta=20(Neon=20n=C3=A3o=20aceita=20$1)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ server/routers.ts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/server/routers.ts b/server/routers.ts
+index 85ee168..0381877 100644
+--- a/server/routers.ts
++++ b/server/routers.ts
+@@ -2039,7 +2039,7 @@ export const appRouter = router({
+ 
+           // Checar por email
+           const byEmail = await dbConn.execute(
+-            sql`SELECT id FROM used_trials WHERE email = ${input.admin.email.toLowerCase()} LIMIT 1`
++            `SELECT id FROM used_trials WHERE email = '${input.admin.email.toLowerCase().replace(/'/g, "''")}' LIMIT 1`
+           ) as any;
+           const emailRows = Array.isArray(byEmail) ? byEmail[0] : byEmail?.rows;
+           if (emailRows && emailRows.length > 0) {
+@@ -2049,7 +2049,7 @@ export const appRouter = router({
+           // Checar por CPF/CNPJ (mais difícil de burlar)
+           if (cleanCpfCnpj && cleanCpfCnpj.length >= 11) {
+             const byCpfCnpj = await dbConn.execute(
+-              sql`SELECT id FROM used_trials WHERE "cpfCnpj" = ${cleanCpfCnpj} LIMIT 1`
++              `SELECT id FROM used_trials WHERE "cpfCnpj" = '${cleanCpfCnpj.replace(/'/g, "''")}' LIMIT 1`
+             ) as any;
+             const cpfRows = Array.isArray(byCpfCnpj) ? byCpfCnpj[0] : byCpfCnpj?.rows;
+             if (cpfRows && cpfRows.length > 0) {
+-- 
+2.43.0
+

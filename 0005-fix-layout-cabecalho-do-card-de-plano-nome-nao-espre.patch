@@ -1,0 +1,125 @@
+From a9673e2042d7f040dee93781e54d93d1a2a25518 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Wed, 10 Jun 2026 17:44:18 +0000
+Subject: [PATCH 5/5] =?UTF-8?q?fix:=20layout=20cabecalho=20do=20card=20de?=
+ =?UTF-8?q?=20plano=20=E2=80=94=20nome=20nao=20espreme=20mais=20com=20prec?=
+ =?UTF-8?q?o=20anual?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ app/onboarding/plan-selection.tsx | 55 ++++++++++++++++++++++++++-----
+ 1 file changed, 47 insertions(+), 8 deletions(-)
+
+diff --git a/app/onboarding/plan-selection.tsx b/app/onboarding/plan-selection.tsx
+index 1452c73..60fcb63 100644
+--- a/app/onboarding/plan-selection.tsx
++++ b/app/onboarding/plan-selection.tsx
+@@ -30,6 +30,13 @@ interface Plan {
+   features: PlanFeature[];
+ }
+ 
++// Preços mensais e anuais (por mês)
++const PRICES = {
++  monthly: { solo: 49.90, team: 99.90, studio: 169.90 },
++  annual:  { solo: 39.90, team: 79.90, studio: 135.90 },
++  annualTotal: { solo: 478.80, team: 958.80, studio: 1630.80 },
++};
++
+ const PLANS: Plan[] = [
+   {
+     key: "solo",
+@@ -90,6 +97,7 @@ const PLANS: Plan[] = [
+ export default function PlanSelectionScreen() {
+   const router = useRouter();
+   const [selectedPlan, setSelectedPlan] = useState<PlanKey>("team");
++  const [isAnnual, setIsAnnual] = useState(false);
+   const fadeAnim = useRef(new Animated.Value(0)).current;
+   const slideAnim = useRef(new Animated.Value(20)).current;
+ 
+@@ -111,7 +119,7 @@ export default function PlanSelectionScreen() {
+     if (Platform.OS !== "web") {
+       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+     }
+-    router.push({ pathname: "/onboarding/register", params: { plan: selectedPlan } } as any);
++    router.push({ pathname: "/onboarding/register", params: { plan: selectedPlan, billing: isAnnual ? "annual" : "monthly" } } as any);
+   }
+ 
+   return (
+@@ -130,6 +138,23 @@ export default function PlanSelectionScreen() {
+         </View>
+       </View>
+ 
++      {/* Toggle Mensal / Anual */}
++      <View style={styles.billingToggleWrap}>
++        <Pressable
++          style={[styles.billingBtn, !isAnnual && styles.billingBtnActive]}
++          onPress={() => setIsAnnual(false)}
++        >
++          <Text style={[styles.billingBtnText, !isAnnual && styles.billingBtnTextActive]}>Mensal</Text>
++        </Pressable>
++        <Pressable
++          style={[styles.billingBtn, isAnnual && styles.billingBtnActive]}
++          onPress={() => { setIsAnnual(true); if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
++        >
++          <Text style={[styles.billingBtnText, isAnnual && styles.billingBtnTextActive]}>Anual</Text>
++          <View style={styles.saveBadge}><Text style={styles.saveBadgeText}>-20%</Text></View>
++        </Pressable>
++      </View>
++
+       <ScrollView
+         contentContainerStyle={styles.scrollContent}
+         showsVerticalScrollIndicator={false}
+@@ -160,7 +185,7 @@ export default function PlanSelectionScreen() {
+ 
+                 {/* Cabeçalho do plano */}
+                 <View style={styles.planHeader}>
+-                  <View style={{ flex: 1 }}>
++                  <View style={{ flex: 1, paddingRight: 12 }}>
+                     <Text style={[styles.planName, isSelected && styles.planNameSelected]}>
+                       {plan.name}
+                     </Text>
+@@ -168,12 +193,19 @@ export default function PlanSelectionScreen() {
+                       {plan.description}
+                     </Text>
+                   </View>
+-                  <View style={styles.priceBox}>
+-                    <Text style={[styles.priceCurrency, isSelected && styles.priceSelected]}>R$</Text>
+-                    <Text style={[styles.priceValue, isSelected && styles.priceSelected]}>
+-                      {plan.price.toFixed(2).replace(".", ",")}
+-                    </Text>
+-                    <Text style={[styles.pricePeriod, isSelected && styles.pricePeriodSelected]}>/mês</Text>
++                  <View style={{ alignItems: "flex-end" }}>
++                    <View style={styles.priceBox}>
++                      <Text style={[styles.priceCurrency, isSelected && styles.priceSelected]}>R$</Text>
++                      <Text style={[styles.priceValue, isSelected && styles.priceSelected]}>
++                        {(isAnnual ? PRICES.annual[plan.key] : PRICES.monthly[plan.key]).toFixed(2).replace(".", ",")}
++                      </Text>
++                      <Text style={[styles.pricePeriod, isSelected && styles.pricePeriodSelected]}>/mês</Text>
++                    </View>
++                    {isAnnual && (
++                      <Text style={{ fontSize: 11, color: isSelected ? "#0A0A0A88" : "#666", marginTop: 2 }}>
++                        Total R$ {PRICES.annualTotal[plan.key].toFixed(2).replace(".", ",")}
++                      </Text>
++                    )}
+                   </View>
+                 </View>
+ 
+@@ -259,6 +291,13 @@ const styles = StyleSheet.create({
+   headerSub: { fontSize: 12, color: "#666660", marginTop: 2 },
+ 
+   scrollContent: { paddingHorizontal: 20, paddingBottom: 24, gap: 14 },
++  billingToggleWrap: { flexDirection: "row" as const, backgroundColor: "#1A1A1A", borderRadius: 12, margin: 16, marginTop: 4, padding: 4, borderWidth: 1, borderColor: "#2A2A2A" },
++  billingBtn: { flex: 1, paddingVertical: 10, alignItems: "center" as const, borderRadius: 9, flexDirection: "row" as const, justifyContent: "center" as const, gap: 6 },
++  billingBtnActive: { backgroundColor: "#C9A84C" },
++  billingBtnText: { fontSize: 14, fontWeight: "600" as const, color: "#666" },
++  billingBtnTextActive: { color: "#0A0A0A" },
++  saveBadge: { backgroundColor: "#22C55E", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
++  saveBadgeText: { fontSize: 10, fontWeight: "800" as const, color: "#fff" },
+ 
+   // Cards de plano
+   planCard: {
+-- 
+2.43.0
+

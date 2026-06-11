@@ -1,0 +1,538 @@
+From 89ae6d488028df244bca1e8b73cca58c529c17cd Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Wed, 10 Jun 2026 11:47:01 +0000
+Subject: [PATCH 5/5] fix: formulario novo sempre no DOM (display:none), modal
+ exclusao bonito, perms-grid-novo correto
+
+---
+ server/admin-routes.ts | 292 +++++++++++++++++++++++++++++++++++------
+ 1 file changed, 252 insertions(+), 40 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 5ac9e54..34e499b 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -150,6 +150,14 @@ function decodeSession(token: string): { barberId: number; role: string } | null
+ }
+ 
+ // ─── Middleware de autenticação ────────────────────────────────────────────────────────────
++function requireOwner(req: Request, res: Response, next: NextFunction) {
++  const session = (req as any).adminSession as { barberId: number; role: string } | undefined;
++  if (!session || session.role !== "super_admin") {
++    return res.redirect("/admin?erro=acesso_restrito");
++  }
++  return next();
++}
++
+ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
+   const token = req.cookies?.[ADMIN_SESSION_COOKIE];
+   const isApiCall = req.path.startsWith('/admin-api/') || (req.headers['content-type'] ?? '').includes('application/json');
+@@ -278,7 +286,7 @@ function adminLayoutWithGrace(res: any, title: string, activePage: string, body:
+   return adminLayout(title, activePage, body, barberName, tenantPlan, breadcrumb, res?.trialGrace ?? null);
+ }
+ 
+-function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, trialGrace?: { hoursLeft: number } | null): string {
++function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, trialGrace?: { hoursLeft: number } | null, barberRole = "super_admin", barberPerms: any = null): string {
+   const planBadge: Record<string, { label: string; color: string; bg: string }> = {
+     solo: { label: "Solo", color: "#9BA1A6", bg: "rgba(155,161,166,0.12)" },
+     team: { label: "Equipe", color: "#c9a84c", bg: "rgba(201,168,76,0.12)" },
+@@ -317,7 +325,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+     suporte: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+     fornecedores: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg>`,
+   };
+-  const navGroups = [
++  const isOwner = barberRole === "super_admin";
++  const navGroupsAll = [
+     {
+       label: "OPERACIONAL",
+       items: [
+@@ -325,19 +334,19 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+         { href: "/admin/agenda", icon: svgIcons.agenda, label: "Agenda", id: "agenda" },
+         { href: "/admin/clientes", icon: svgIcons.clientes, label: "Clientes", id: "clientes" },
+         { href: "/admin/lista-espera", icon: svgIcons["lista-espera"], label: "Lista de Espera", id: "lista-espera" },
+-        { href: "/admin/assinaturas", icon: svgIcons.assinaturas, label: "Assinaturas", id: "assinaturas" },
+-        { href: "/admin/planos", icon: svgIcons.planos, label: "Planos de Assinatura", id: "planos" },
+-        { href: "/admin/orbita", icon: svgIcons.orbita, label: "Clientes em Órbita", id: "orbita" },
++        { href: "/admin/assinaturas", icon: svgIcons.assinaturas, label: "Assinaturas", id: "assinaturas", feature: "subscription_plans", featureLabel: "Assinaturas de Clientes", requiredPlan: "Equipe" },
++        { href: "/admin/planos", icon: svgIcons.planos, label: "Planos de Assinatura", id: "planos", feature: "subscription_plans", featureLabel: "Planos de Assinatura", requiredPlan: "Equipe" },
++        { href: "/admin/orbita", icon: svgIcons.orbita, label: "Radar de Leads", id: "orbita", feature: "orbit", featureLabel: "Radar de Leads (Órbita)", requiredPlan: "Estúdio" },
+       ],
+     },
+     {
+       label: "CATÁLOGO",
+       items: [
+         { href: "/admin/servicos", icon: svgIcons.servicos, label: "Serviços", id: "servicos" },
+-        { href: "/admin/produtos", icon: svgIcons.produtos, label: "Produtos", id: "produtos" },
+-        { href: "/admin/estoque", icon: svgIcons.estoque, label: "Estoque", id: "estoque" },
+-        { href: "/admin/encomendas", icon: svgIcons.encomendas, label: "Encomendas", id: "encomendas" },
+-        { href: "/admin/fornecedores", icon: svgIcons.fornecedores, label: "Fornecedores", id: "fornecedores" },
++        { href: "/admin/produtos", icon: svgIcons.produtos, label: "Produtos", id: "produtos", feature: "products", featureLabel: "Produtos", requiredPlan: "Equipe" },
++        { href: "/admin/estoque", icon: svgIcons.estoque, label: "Estoque", id: "estoque", feature: "stock", featureLabel: "Controle de Estoque", requiredPlan: "Equipe" },
++        { href: "/admin/encomendas", icon: svgIcons.encomendas, label: "Encomendas", id: "encomendas", feature: "orders", featureLabel: "Encomendas", requiredPlan: "Equipe" },
++        { href: "/admin/fornecedores", icon: svgIcons.fornecedores, label: "Fornecedores", id: "fornecedores", feature: "suppliers", featureLabel: "Fornecedores", requiredPlan: "Equipe" },
+       ],
+     },
+     {
+@@ -345,8 +354,8 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+       items: [
+         { href: "/admin/financeiro", icon: svgIcons.financeiro, label: "Financeiro", id: "financeiro" },
+         { href: "/admin/relatorios", icon: svgIcons.relatorios, label: "Relatórios", id: "relatorios" },
+-        { href: "/admin/comissoes", icon: svgIcons.comissoes, label: "Comissões", id: "comissoes" },
+-        { href: "/admin/minhas-comissoes", icon: svgIcons["minhas-comissoes"], label: "Minhas Comissões", id: "minhas-comissoes" },
++        { href: "/admin/comissoes", icon: svgIcons.comissoes, label: "Comissões", id: "comissoes", feature: "commissions", featureLabel: "Comissões Automáticas", requiredPlan: "Estúdio" },
++        { href: "/admin/minhas-comissoes", icon: svgIcons["minhas-comissoes"], label: "Minhas Comissões", id: "minhas-comissoes", feature: "commissions", featureLabel: "Minhas Comissões", requiredPlan: "Estúdio" },
+       ],
+     },
+     {
+@@ -372,6 +381,15 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+       ],
+     },
+   ];
++  const BARBER_ALLOWED_IDS = new Set([
++    "dashboard", "agenda", "clientes", "lista-espera",
++    "servicos", "minhas-comissoes", "avaliacoes", "suporte"
++  ]);
++  const navGroups = isOwner
++    ? navGroupsAll
++    : navGroupsAll
++        .map((g) => ({ ...g, items: g.items.filter((i) => BARBER_ALLOWED_IDS.has(i.id)) }))
++        .filter((g) => g.items.length > 0);
+   // Logo URL: usa S3 se disponível, senão fallback para SVG inline
+   const BARBER_PRO_LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/CHUXnjOFayrIGRtV.png";
+ 
+@@ -439,6 +457,23 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+     .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 18px; font-size: 13px; color: var(--muted); text-decoration: none; transition: all 0.15s ease; cursor: pointer; margin: 1px 8px; border-radius: var(--radius-sm); }
+     .nav-item:hover { background: var(--surface2); color: var(--text2); }
+     .nav-item.active { background: var(--gold-dim); color: var(--gold); font-weight: 600; box-shadow: inset 3px 0 0 var(--gold); }
++    .nav-item-locked { cursor:pointer!important }
++    .nav-item-locked:hover { background:var(--surface2)!important }
++    #upgrade-modal-overlay { display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center }
++    #upgrade-modal-overlay.open { display:flex }
++    #upgrade-modal { background:var(--surface);border:1px solid rgba(201,168,76,.35);border-radius:16px;padding:32px 28px;max-width:420px;width:90%;text-align:center }
++    .um-lock { font-size:40px;margin-bottom:14px }
++    .um-title { font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px }
++    .um-desc { font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px }
++    .um-plan { display:inline-block;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);color:var(--gold);font-size:12px;font-weight:600;padding:3px 12px;border-radius:99px;margin-bottom:20px }
++    .um-btn { display:block;width:100%;padding:13px;border-radius:10px;background:var(--gold);color:#0A0A0A;font-size:14px;font-weight:700;border:none;cursor:pointer;margin-bottom:10px }
++    .um-btn:hover { opacity:.88 }
++    .um-cancel { font-size:13px;color:var(--muted);cursor:pointer;background:none;border:none;padding:4px }
++    .nav-item-locked { cursor:pointer!important }
++    .nav-item-locked:hover { background:var(--surface2)!important }
++    .nav-item-perm-locked { cursor:not-allowed!important }
++    .nav-item-perm-locked:hover { background:var(--surface2)!important }
++
+     .nav-icon { width: 16px; height: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+     .sidebar-footer { padding: 14px 18px; border-top: 1px solid var(--border); }
+     .sidebar-user-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+@@ -713,13 +748,26 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+       ${navGroups.map((group) => `
+         <div class="nav-group">
+           <div class="nav-group-label">${group.label}</div>
+-          ${group.items.map((n) => `
++          ${group.items.map((n: any) => {
++            const PF: Record<string,string[]> = {
++              solo:[],
++              team:["products","stock","suppliers","orders","coupons","subscription_plans","reports_full"],
++              studio:["products","stock","suppliers","orders","coupons","subscription_plans","reports_full","commissions","orbit","priority_support"],
++            };
++            const tp=(tenantPlan||"solo").toLowerCase();
++            const locked=n.feature?!(PF[tp]||[]).includes(n.feature):false;
++            if(locked){return `<a href="#" class="nav-item nav-item-locked" onclick="showUpgradeModal('${n.featureLabel}','${n.requiredPlan}');return false;" title="Plano ${n.requiredPlan}">
++              <span class="nav-icon" style="opacity:.38">${n.icon}</span>
++              <span style="opacity:.38">${n.label}</span>
++              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;opacity:.3;flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
++            </a>`;}
++            return `
+             <a href="${n.href}" class="nav-item ${activePage === n.id ? "active" : ""}" ${n.id === 'lista-espera' ? 'id="nav-lista-espera"' : ''}>
+               <span class="nav-icon">${n.icon}</span>
+               <span>${n.label}</span>
+               ${n.id === 'lista-espera' ? '<span id="waitlist-badge" style="margin-left:auto;background:var(--gold);color:#0A0A0A;font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;min-width:18px;text-align:center;display:none"></span>' : ''}
+-            </a>
+-          `).join("")}
++            </a>`;
++          }).join("")}
+         </div>
+       `).join("")}
+     </nav>
+@@ -1023,6 +1071,27 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+       }, true); // capture=true garante que captura antes de outros listeners
+     })();
+   </script>
++  <div id="upgrade-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center">
++    <div id="upgrade-modal" style="background:var(--surface);border:1px solid rgba(201,168,76,.35);border-radius:16px;padding:32px 28px;max-width:420px;width:90%;text-align:center">
++      <div style="font-size:40px;margin-bottom:14px">🔒</div>
++      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px" id="um-feature-name">Recurso bloqueado</div>
++      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px" id="um-desc-text"></div>
++      <div style="display:inline-block;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.3);color:var(--gold);font-size:12px;font-weight:600;padding:3px 12px;border-radius:99px;margin-bottom:20px" id="um-required-plan"></div>
++      <button onclick="var o=document.getElementById('upgrade-modal-overlay');o.classList.remove('open');o.style.display='none';window.location.href='/admin/configuracoes?tab=pagamentos'" style="display:block;width:100%;padding:13px;border-radius:10px;background:var(--gold);color:#0A0A0A;font-size:14px;font-weight:700;border:none;cursor:pointer;margin-bottom:10px">Ver planos e fazer upgrade →</button>
++      <button onclick="var o=document.getElementById('upgrade-modal-overlay');o.classList.remove('open');o.style.display='none';" style="font-size:13px;color:var(--muted);cursor:pointer;background:none;border:none;padding:4px">Agora não</button>
++    </div>
++  </div>
++  <script>
++    window.showUpgradeModal = function(f, p) {
++      document.getElementById('um-feature-name').textContent = f;
++      document.getElementById('um-required-plan').textContent = 'Disponível no plano ' + p;
++      document.getElementById('um-desc-text').textContent = f + ' está disponível a partir do plano ' + p + '. Faça upgrade para desbloquear este e outros recursos.';
++      var overlay = document.getElementById('upgrade-modal-overlay');
++      overlay.style.display = 'flex';
++      overlay.classList.add('open');
++      overlay.onclick = function(e) { if (e.target === overlay) { overlay.style.display='none'; overlay.classList.remove('open'); } };
++    };
++  </script>
+ </body>
+ </html>`;
+ }
+@@ -4775,7 +4844,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
+     <div class="card" style="margin-bottom:24px">
+       <div class="card-header">
+         <div class="card-title">Profissionais Cadastrados</div>
+-        <a href="/admin/configuracoes?tab=equipe&novo=1" class="btn btn-primary" style="font-size:12px;padding:8px 16px">+ Novo Profissional</a>
++        <button onclick="toggleFormNovo()" id="btn-novo-prof" class="btn btn-primary" style="font-size:12px;padding:8px 16px">+ Novo Profissional</button>
+       </div>
+       <table>
+         <thead><tr><th>Nome</th><th>E-mail</th><th>Função</th><th>Status</th><th>Ações</th></tr></thead>
+@@ -4788,20 +4857,28 @@ async function renderConfiguracoes(req: Request, res: Response) {
+                 <td style="color:var(--muted)">${esc(b.email ?? "—")}</td>
+                 <td><span class="badge badge-gold">${b.role === 'super_admin' ? 'Super Admin' : b.role === 'barber' ? 'Barbeiro' : b.role}</span></td>
+                 <td><span class="badge ${b.isActive ? 'badge-success' : 'badge-muted'}">${b.isActive ? 'Ativo' : 'Inativo'}</span></td>
+-                <td>
++                <td style="display:flex;gap:5px;flex-wrap:wrap">
++                  <button type="button" onclick="openEditModalProf(${b.id})" class="btn btn-ghost" style="font-size:11px;padding:4px 10px">✏️ Editar</button>
+                   <form method="POST" action="/admin/configuracoes/equipe/toggle" style="display:inline">
+                     <input type="hidden" name="id" value="${b.id}" />
+                     <input type="hidden" name="isActive" value="${!b.isActive}" />
+                     <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px">${b.isActive ? 'Desativar' : 'Reativar'}</button>
+                   </form>
++                  <form method="POST" action="/admin/configuracoes/equipe/excluir" style="display:inline" onsubmit="return false" onclick="openDeleteModal(${b.id}, '${esc(b.name)}')">
++                    <input type="hidden" name="id" value="${b.id}" />
++                    <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:#ef4444">🗑 Excluir</button>
++                  </form>
+                 </td>
+               </tr>`).join('')}
+         </tbody>
+       </table>
+     </div>
+-    ${req.query.novo === '1' ? `
+-    <div class="card">
+-      <div class="card-header"><div class="card-title">Novo Profissional</div></div>
++
++    <div id="card-novo-prof" style="display:none" class="card">
++      <div class="card-header">
++        <div class="card-title">Novo Profissional</div>
++        <button onclick="toggleFormNovo()" class="btn btn-ghost" style="font-size:12px;padding:6px 14px">✕ Fechar</button>
++      </div>
+       <div class="card-body" style="padding:24px">
+         <form method="POST" action="/admin/configuracoes/equipe/novo">
+           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+@@ -4822,11 +4899,105 @@ async function renderConfiguracoes(req: Request, res: Response) {
+               <input class="form-input" type="text" name="phone" placeholder="(11) 99999-9999" maxlength="15" data-mask="phone" />
+             </div>
+           </div>
++          <input type="hidden" name="jobRole" id="hidden-jobrole" value="barber" />
++          <div class="form-group" style="margin:20px 0 0">
++            <label class="form-label">Função *</label>
++            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
++              <label id="role-btn-admin" onclick="setRoleNovo('admin')" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted)">👑 Admin</label>
++              <label id="role-btn-barber" onclick="setRoleNovo('barber')" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:1.5px solid rgba(201,168,76,.6);background:rgba(201,168,76,.08);cursor:pointer;font-size:13px;font-weight:500;color:var(--gold)">✂️ Barbeiro</label>
++              <label id="role-btn-receptionist" onclick="setRoleNovo('receptionist')" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted)">🗂️ Recepcionista</label>
++            </div>
++          </div>
++          <div style="margin:20px 0">
++            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Permissões de acesso</div>
++            <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Módulos não selecionados aparecerão com cadeado no menu.</div>
++            <div id="perms-grid-novo" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px">
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="agenda" id="chk-agenda" checked style="accent-color:var(--gold)" /> <span>📅</span> <span style="font-size:13px">Agenda</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="clientes" id="chk-clientes" checked style="accent-color:var(--gold)" /> <span>👥</span> <span style="font-size:13px">Clientes</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="lista-espera" id="chk-lista-espera" checked style="accent-color:var(--gold)" /> <span>⏳</span> <span style="font-size:13px">Lista de Espera</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="servicos" id="chk-servicos" checked style="accent-color:var(--gold)" /> <span>✂️</span> <span style="font-size:13px">Serviços</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="financeiro" id="chk-financeiro" style="accent-color:var(--gold)" /> <span>💰</span> <span style="font-size:13px">Financeiro</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="relatorios" id="chk-relatorios" style="accent-color:var(--gold)" /> <span>📊</span> <span style="font-size:13px">Relatórios</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="comissoes" id="chk-comissoes" style="accent-color:var(--gold)" /> <span>💎</span> <span style="font-size:13px">Comissões</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid rgba(201,168,76,.4);background:rgba(201,168,76,.06)"><input type="checkbox" name="permissions" value="minhas-comissoes" id="chk-minhas-comissoes" checked style="accent-color:var(--gold)" /> <span>🏅</span> <span style="font-size:13px">Minhas Comissões</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="produtos" id="chk-produtos" style="accent-color:var(--gold)" /> <span>📦</span> <span style="font-size:13px">Produtos/Estoque</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="marketing" id="chk-marketing" style="accent-color:var(--gold)" /> <span>📣</span> <span style="font-size:13px">Marketing</span></label>
++              <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="configuracoes" id="chk-configuracoes" style="accent-color:var(--gold)" /> <span>⚙️</span> <span style="font-size:13px">Configurações</span></label>
++            </div>
++          </div>
++          <script>
++            var DEFS={admin:['agenda','clientes','lista-espera','servicos','financeiro','relatorios','comissoes','minhas-comissoes','produtos','marketing','configuracoes'],barber:['agenda','clientes','lista-espera','servicos','minhas-comissoes'],receptionist:['agenda','clientes','lista-espera','servicos','financeiro','relatorios','produtos','marketing']};
++            function setRoleNovo(r){
++              document.getElementById('hidden-jobrole').value=r;
++              ['admin','barber','receptionist'].forEach(function(x){var el=document.getElementById('role-btn-'+x);if(x===r){el.style.borderColor='rgba(201,168,76,.6)';el.style.background='rgba(201,168,76,.08)';el.style.color='var(--gold)';}else{el.style.borderColor='#2a2a2a';el.style.background='#1a1a1a';el.style.color='var(--muted)';}});
++              var perms=DEFS[r]||[];var isAdmin=r==='admin';
++              document.querySelectorAll('#perms-grid-novo input[type=checkbox]').forEach(function(chk){chk.checked=perms.includes(chk.value);chk.disabled=isAdmin;chk.closest('label').style.opacity=isAdmin?'.7':'1';});
++            }
++          </script>
+           <button type="submit" class="btn btn-primary" style="margin-top:8px;padding:12px 28px">Cadastrar Profissional</button>
+-          <a href="/admin/configuracoes?tab=equipe" class="btn btn-ghost" style="margin-left:8px;padding:12px 20px">Cancelar</a>
++          <button type="button" onclick="toggleFormNovo()" class="btn btn-ghost" style="margin-left:8px;padding:12px 20px">Cancelar</button>
+         </form>
+       </div>
+-    </div>` : ''}
++    </div>
++  <script>
++    var _profs=[${allBarbers.map((b)=>'['+b.id+',"'+((b.name||'').replace(/"/g,'&quot;'))+'","'+((b.email||'').replace(/"/g,'&quot;'))+'","'+((b.phone||'').replace(/"/g,'&quot;'))+'","'+(b.role==='super_admin'?'admin':b.role)+'",'+JSON.stringify(b.permissions??null)+']').join(',')}];
++    var DEFS_EQ={admin:['agenda','clientes','lista-espera','servicos','financeiro','relatorios','comissoes','minhas-comissoes','produtos','marketing','configuracoes'],barber:['agenda','clientes','lista-espera','servicos','minhas-comissoes'],receptionist:['agenda','clientes','lista-espera','servicos','financeiro','relatorios','produtos','marketing']};
++    window.toggleFormNovo=function(){var card=document.getElementById('card-novo-prof');var btn=document.getElementById('btn-novo-prof');if(!card)return;var h=card.style.display==='none'||card.style.display==='';card.style.display=h?'block':'none';btn.textContent=h?'✕ Fechar':'+ Novo Profissional';if(h)card.scrollIntoView({behavior:'smooth',block:'start'});};
++    window.openDeleteModal=function(id,name){document.getElementById('del-prof-id').value=id;document.getElementById('del-prof-name').textContent=name;document.getElementById('delete-prof-modal').style.display='flex';};
++    window.closeDeleteModal=function(){document.getElementById('delete-prof-modal').style.display='none';};
++    window.setRoleNovo=function(r){document.getElementById('hidden-jobrole').value=r;['admin','barber','receptionist'].forEach(function(x){var el=document.getElementById('role-btn-'+x);if(!el)return;if(x===r){el.style.borderColor='rgba(201,168,76,.6)';el.style.background='rgba(201,168,76,.08)';el.style.color='var(--gold)';}else{el.style.borderColor='#2a2a2a';el.style.background='#1a1a1a';el.style.color='var(--muted)';}});var perms=DEFS_EQ[r]||[];var isAdmin=r==='admin';document.querySelectorAll('#perms-grid-novo input[type=checkbox]').forEach(function(chk){chk.checked=perms.includes(chk.value);chk.disabled=isAdmin;chk.closest('label').style.opacity=isAdmin?'.7':'1';});};
++    window.openEditModalProf=function(id){var b=_profs.find(function(x){return x[0]==id;});if(!b)return;document.getElementById('edit-prof-id').value=b[0];document.getElementById('edit-prof-name').value=b[1];document.getElementById('edit-prof-email').value=b[2];document.getElementById('edit-prof-phone').value=b[3]||'';document.getElementById('edit-prof-pass').value='';setRoleEdit(b[4]||'barber');var perms=b[5];document.querySelectorAll('#perms-grid-edit input[type=checkbox]').forEach(function(chk){chk.checked=perms?perms.includes(chk.value):false;});document.getElementById('edit-prof-modal').style.display='flex';};
++    window.closeEditModalProf=function(){document.getElementById('edit-prof-modal').style.display='none';};
++    window.setRoleEdit=function(r){var hid=document.getElementById('edit-prof-role');if(hid)hid.value=r;['admin','barber','receptionist'].forEach(function(x){var el=document.getElementById('edit-role-btn-'+x);if(!el)return;if(x===r){el.style.borderColor='rgba(201,168,76,.6)';el.style.background='rgba(201,168,76,.08)';el.style.color='var(--gold)';}else{el.style.borderColor='#2a2a2a';el.style.background='#1a1a1a';el.style.color='var(--muted)';}});var isAdmin=r==='admin';document.querySelectorAll('#perms-grid-edit input[type=checkbox]').forEach(function(chk){chk.disabled=isAdmin;chk.closest('label').style.opacity=isAdmin?'.7':'1';});};
++    document.addEventListener('DOMContentLoaded',function(){var m=document.getElementById('edit-prof-modal');if(m)m.addEventListener('click',function(e){if(e.target===m)closeEditModalProf();});});
++  </script>
++  <div id="edit-prof-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;padding:24px">
++    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:660px;width:100%;margin:auto">
++      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><div style="font-size:17px;font-weight:700;color:var(--text)">Editar Profissional</div><button onclick="closeEditModalProf()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;padding:4px">✕</button></div>
++      <form method="POST" action="/admin/configuracoes/equipe/editar">
++        <input type="hidden" name="id" id="edit-prof-id" /><input type="hidden" name="jobRole" id="edit-prof-role" value="barber" />
++        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
++          <div class="form-group"><label class="form-label">Nome *</label><input class="form-input" type="text" name="name" id="edit-prof-name" required /></div>
++          <div class="form-group"><label class="form-label">E-mail *</label><input class="form-input" type="email" name="email" id="edit-prof-email" required /></div>
++          <div class="form-group"><label class="form-label">Nova senha <span style="font-size:11px;color:var(--muted)">(em branco = não altera)</span></label><div style="position:relative"><input class="form-input" type="password" name="password" id="edit-prof-pass" placeholder="Nova senha" style="padding-right:38px" /><button type="button" onclick="var i=document.getElementById('edit-prof-pass');i.type=i.type==='password'?'text':'password';" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted)" tabindex="-1">👁</button></div></div>
++          <div class="form-group"><label class="form-label">Telefone</label><input class="form-input" type="text" name="phone" id="edit-prof-phone" maxlength="15" data-mask="phone" /></div>
++        </div>
++        <div class="form-group" style="margin-bottom:14px"><label class="form-label">Função</label><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
++          <label id="edit-role-btn-admin" onclick="setRoleEdit('admin')" style="display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:13px;color:var(--muted)">👑 Admin</label>
++          <label id="edit-role-btn-barber" onclick="setRoleEdit('barber')" style="display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:13px;color:var(--muted)">✂️ Barbeiro</label>
++          <label id="edit-role-btn-receptionist" onclick="setRoleEdit('receptionist')" style="display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:10px;border:1.5px solid #2a2a2a;background:#1a1a1a;cursor:pointer;font-size:13px;color:var(--muted)">🗂️ Recepcionista</label>
++        </div></div>
++        <div style="margin-bottom:20px"><div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">Permissões</div>
++          <div id="perms-grid-edit" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:7px">
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="agenda" id="chk-e-agenda" style="accent-color:var(--gold)" /><span>📅</span><span style="font-size:12px">Agenda</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="clientes" id="chk-e-clientes" style="accent-color:var(--gold)" /><span>👥</span><span style="font-size:12px">Clientes</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="lista-espera" id="chk-e-lista-espera" style="accent-color:var(--gold)" /><span>⏳</span><span style="font-size:12px">Lista de Espera</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="servicos" id="chk-e-servicos" style="accent-color:var(--gold)" /><span>✂️</span><span style="font-size:12px">Serviços</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="financeiro" id="chk-e-financeiro" style="accent-color:var(--gold)" /><span>💰</span><span style="font-size:12px">Financeiro</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="relatorios" id="chk-e-relatorios" style="accent-color:var(--gold)" /><span>📊</span><span style="font-size:12px">Relatórios</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="comissoes" id="chk-e-comissoes" style="accent-color:var(--gold)" /><span>💎</span><span style="font-size:12px">Comissões</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="minhas-comissoes" id="chk-e-minhas-comissoes" style="accent-color:var(--gold)" /><span>🏅</span><span style="font-size:12px">Minhas Comissões</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="produtos" id="chk-e-produtos" style="accent-color:var(--gold)" /><span>📦</span><span style="font-size:12px">Produtos/Estoque</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="marketing" id="chk-e-marketing" style="accent-color:var(--gold)" /><span>📣</span><span style="font-size:12px">Marketing</span></label>
++            <label style="display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:9px;border:1.5px solid #2a2a2a;background:#1a1a1a"><input type="checkbox" name="permissions" value="configuracoes" id="chk-e-configuracoes" style="accent-color:var(--gold)" /><span>⚙️</span><span style="font-size:12px">Configurações</span></label>
++          </div>
++        </div>
++        <div style="display:flex;gap:10px"><button type="submit" class="btn btn-primary" style="padding:11px 24px">Salvar alterações</button><button type="button" onclick="closeEditModalProf()" class="btn btn-ghost" style="padding:11px 18px">Cancelar</button></div>
++      </form>
++    </div>
++  </div>
++  <div id="delete-prof-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center">
++    <div style="background:var(--surface);border:1px solid #333;border-radius:16px;padding:32px 28px;max-width:400px;width:90%;text-align:center">
++      <div style="width:56px;height:56px;background:#ef444418;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px">🗑</div>
++      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Excluir profissional?</div>
++      <div style="font-size:14px;color:var(--muted);margin-bottom:24px">Tem certeza que deseja excluir <strong id="del-prof-name" style="color:var(--text)"></strong>? Esta ação não pode ser desfeita.</div>
++      <form method="POST" action="/admin/configuracoes/equipe/excluir" style="display:flex;gap:10px;justify-content:center">
++        <input type="hidden" name="id" id="del-prof-id" />
++        <button type="button" onclick="closeDeleteModal()" class="btn btn-ghost" style="padding:11px 24px;flex:1">Cancelar</button>
++        <button type="submit" class="btn" style="padding:11px 24px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;flex:1">Excluir</button>
++      </form>
++    </div>
++  </div>
+   `;
+ 
+   // Aba: URL Pública
+@@ -7674,8 +7845,49 @@ document.addEventListener('input', function(e) {
+     }
+   });
+ 
++  // POST /admin/configuracoes/equipe/editar
++  app.post("/admin/configuracoes/equipe/editar", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
++    try {
++      const session = (req as any).adminSession;
++      const currentBarber = await db.getBarberById(session.barberId);
++      const tenantId = currentBarber?.tenantId ?? null;
++      const { id, name, email, password, phone, jobRole } = req.body ?? {};
++      if (!id || !name || !email) { res.redirect("/admin/configuracoes?tab=equipe&error=Campos+obrigatorios"); return; }
++      const targetBarber = await db.getBarberById(Number(id));
++      if (!targetBarber || targetBarber.tenantId !== tenantId) { res.redirect("/admin/configuracoes?tab=equipe&error=Profissional+nao+encontrado"); return; }
++      const rawPerms = req.body.permissions;
++      const permissions = jobRole === "admin"
++        ? ["agenda","clientes","lista-espera","servicos","financeiro","relatorios","comissoes","minhas-comissoes","produtos","marketing","configuracoes"]
++        : (Array.isArray(rawPerms) ? rawPerms : (rawPerms ? [rawPerms] : []));
++      const dbRole = jobRole === "admin" ? "super_admin" : jobRole === "receptionist" ? "receptionist" : "barber";
++      const updates: any = { name, email, phone: phone || null, role: dbRole };
++      if (password && password.length >= 6) updates.passwordHash = await bcrypt.hash(password, 10);
++      await db.updateBarber(Number(id), updates);
++      const safePerms = JSON.stringify(permissions).replace(/'/g, "''");
++      const dbConn = await db.getDb();
++      if (dbConn) await (dbConn as any).execute("UPDATE barbers SET permissions = '" + safePerms + "' WHERE id = " + Number(id));
++      res.redirect("/admin/configuracoes?tab=equipe&saved=1");
++    } catch (e: any) { res.redirect("/admin/configuracoes?tab=equipe&error=" + encodeURIComponent(e.message)); }
++  });
++
++  // POST /admin/configuracoes/equipe/excluir
++  app.post("/admin/configuracoes/equipe/excluir", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
++    try {
++      const session = (req as any).adminSession;
++      const currentBarber = await db.getBarberById(session.barberId);
++      const tenantId = currentBarber?.tenantId ?? null;
++      const { id } = req.body ?? {};
++      if (!id) { res.redirect("/admin/configuracoes?tab=equipe"); return; }
++      const targetBarber = await db.getBarberById(Number(id));
++      if (!targetBarber || targetBarber.tenantId !== tenantId) { res.redirect("/admin/configuracoes?tab=equipe&error=Profissional+nao+encontrado"); return; }
++      if (Number(id) === session.barberId) { res.redirect("/admin/configuracoes?tab=equipe&error=Nao+e+possivel+excluir+sua+propria+conta"); return; }
++      await db.deleteBarber(Number(id));
++      res.redirect("/admin/configuracoes?tab=equipe&saved=1");
++    } catch (e: any) { res.redirect("/admin/configuracoes?tab=equipe&error=" + encodeURIComponent(e.message)); }
++  });
++
+   // POST /admin/configuracoes/equipe/toggle (ativar/desativar profissional)
+-  app.post("/admin/configuracoes/equipe/toggle", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/configuracoes/equipe/toggle", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
+     try {
+       const { id, isActive } = req.body ?? {};
+       await db.updateBarber(parseInt(id), { isActive: isActive === "true" });
+@@ -7686,7 +7898,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // POST /admin/configuracoes/equipe/novo (criar novo profissional)
+-  app.post("/admin/configuracoes/equipe/novo", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/configuracoes/equipe/novo", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
+     try {
+       const session = (req as any).adminSession;
+       const currentBarber = await db.getBarberById(session.barberId);
+@@ -8604,10 +8816,10 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   app.get("/admin/servicos", requireAdminAuth, withErrorPage("Serviços", "servicos", renderServicos));
+-  app.get("/admin/financeiro", requireAdminAuth, withErrorPage("Financeiro", "financeiro", renderFinanceiro));
++  app.get("/admin/financeiro", requireAdminAuth, requireOwner, withErrorPage("Financeiro", "financeiro", renderFinanceiro));
+ 
+   // POST /admin/financeiro/despesa — Criar despesa
+-  app.post("/admin/financeiro/despesa", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/financeiro/despesa", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
+     try {
+       const session = (req as any).adminSession as { barberId: number; role: string };
+       const { description, category, amount, date, paymentMethod } = req.body ?? {};
+@@ -8709,8 +8921,8 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   app.get("/admin/configuracoes", requireAdminAuth, withErrorPage("Configurações", "configuracoes", renderConfiguracoes));
+-  app.get("/admin/relatorios", requireAdminAuth, withErrorPage("Relatórios", "relatorios", renderRelatorios));
+-  app.get("/admin/pagina-cliente", requireAdminAuth, withErrorPage("Página do Cliente", "pagina-cliente", renderPaginaCliente));
++  app.get("/admin/relatorios", requireAdminAuth, requireOwner, withErrorPage("Relatórios", "relatorios", renderRelatorios));
++  app.get("/admin/pagina-cliente", requireAdminAuth, requireOwner, withErrorPage("Página do Cliente", "pagina-cliente", renderPaginaCliente));
+ 
+   // POST /admin/pagina-cliente/slug — Alterar slug
+   app.post("/admin/pagina-cliente/slug", requireAdminAuth, async (req: Request, res: Response) => {
+@@ -8951,7 +9163,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── CRUD Produtos ────────────────────────────────────────────────────────
+-  app.get("/admin/produtos", requireAdminAuth, requireFeature("products"), (req, res) => renderProdutos(req, res));
++  app.get("/admin/produtos", requireAdminAuth, (req, res) => renderProdutos(req, res));
+   app.post("/admin/produtos", requireAdminAuth, requireFeature("products"), async (req: Request, res: Response) => {
+     const { name, description, price, costPrice, productType, stockQuantity, minStockAlert, isActive, mediaBase64, mediaMime, supplierId } = req.body;
+     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+@@ -9249,7 +9461,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Cupons ────────────────────────────────────────────────────────────────
+-  app.get("/admin/cupons", requireAdminAuth, requireFeature("coupons"), withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
++  app.get("/admin/cupons", requireAdminAuth, withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
+     const barber = await db.getBarberById((req as any).adminSession.barberId);
+     const tenantId = barber?.tenantId ?? null;
+     const allCoupons = await db.getAllCoupons(tenantId);
+@@ -9436,7 +9648,7 @@ document.addEventListener('input', function(e) {
+   }));
+ 
+   // ─── Comissões ────────────────────────────────────────────────────────────
+-  app.get("/admin/comissoes", requireAdminAuth, requireFeature("commissions"), withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
++  app.get("/admin/comissoes", requireAdminAuth, requireOwner, withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
+     const barber = await db.getBarberById((req as any).adminSession.barberId);
+     const tenantId = barber?.tenantId ?? null;
+     const configs = await db.listCommissionConfigs(tenantId);
+@@ -9549,7 +9761,7 @@ document.addEventListener('input', function(e) {
+   res.send(adminLayoutWithGrace(res, "Comissões", "comissoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Comissões",href:"/admin/comissoes"}]));
+   }));
+ 
+-  app.post("/admin/comissoes/config", requireAdminAuth, requireFeature("commissions"), async (req: Request, res: Response) => {
++  app.post("/admin/comissoes/config", requireAdminAuth, requireOwner, requireFeature("commissions"), async (req: Request, res: Response) => {
+     const session2 = (req as any).adminSession;
+     const barber2 = await db.getBarberById(session2.barberId);
+     const barbers = await db.getAllBarbers(barber2?.tenantId);
+@@ -10120,7 +10332,7 @@ document.addEventListener('input', function(e) {
+ 
+ 
+   // ─── Planos de Assinatura ────────────────────────────────────────────────────
+-  app.get("/admin/planos", requireAdminAuth, requireFeature("subscription_plans"), withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
++  app.get("/admin/planos", requireAdminAuth, withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+@@ -10371,7 +10583,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Estoque ─────────────────────────────────────────────────────────────────
+-  app.get("/admin/estoque", requireAdminAuth, requireFeature("stock"), withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
++  app.get("/admin/estoque", requireAdminAuth, withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -10650,7 +10862,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+     // ─── Histórico de Estoque ─────────────────────────────────────────────
+-  app.get("/admin/estoque/:id/historico", requireAdminAuth, requireFeature("stock"), withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
++  app.get("/admin/estoque/:id/historico", requireAdminAuth, withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -10707,7 +10919,7 @@ document.addEventListener('input', function(e) {
+   }));
+ 
+   // ─── Retorno Automático ─────────────────────────────────────────────
+-  app.get("/admin/retorno-automatico", requireAdminAuth, withErrorPage("Retorno Automático", "retorno-automatico", async (req: Request, res: Response) => {
++  app.get("/admin/retorno-automatico", requireAdminAuth, requireOwner, withErrorPage("Retorno Automático", "retorno-automatico", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -10813,7 +11025,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─  // ─── Promoções (envio segmentado) ───────────────────────────────────────
+-  app.get("/admin/promocoes", requireAdminAuth, withErrorPage("Promoções", "promocoes", async (req: Request, res: Response) => {
++  app.get("/admin/promocoes", requireAdminAuth, requireOwner, withErrorPage("Promoções", "promocoes", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -11663,7 +11875,7 @@ document.addEventListener('input', function(e) {
+ 
+ 
+   // ─── Clientes em Órbita ──────────────────────────────────────────────────────
+-  app.get("/admin/orbita", requireAdminAuth, requireFeature("orbit"), withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
++  app.get("/admin/orbita", requireAdminAuth, withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -11811,7 +12023,7 @@ document.addEventListener('input', function(e) {
+   }));
+ 
+   // ─── Encomendas de Produtos ────────────────────────────────────────────────
+-  app.get("/admin/encomendas", requireAdminAuth, requireFeature("orders"), withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
++  app.get("/admin/encomendas", requireAdminAuth, withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+@@ -12389,7 +12601,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Fornecedores ─────────────────────────────────────────────────────────
+-  app.get("/admin/fornecedores", requireAdminAuth, requireFeature("suppliers"), withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
++  app.get("/admin/fornecedores", requireAdminAuth, withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession as { barberId: number; role: string };
+     const barber = await db.getBarberById(session.barberId);
+@@ -12533,7 +12745,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Detalhes do Fornecedor (/admin/fornecedores/:id) ─────────────────────────
+-  app.get("/admin/fornecedores/:id", requireAdminAuth, requireFeature("suppliers"), withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
++  app.get("/admin/fornecedores/:id", requireAdminAuth, withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession as { barberId: number; role: string };
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+-- 
+2.43.0
+

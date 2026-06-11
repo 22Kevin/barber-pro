@@ -1,0 +1,181 @@
+From 193778d6a119bf4440ca9779bfb62f7f3814d3c3 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Wed, 10 Jun 2026 12:43:04 +0000
+Subject: [PATCH 8/8] =?UTF-8?q?feat:=20dashboard=20por=20role=20=E2=80=94?=
+ =?UTF-8?q?=20barbeiro=20ve=20seus=20servicos/comissoes,=20sem=20faturamen?=
+ =?UTF-8?q?to=20da=20barbearia?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ server/admin-routes.ts | 64 ++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 52 insertions(+), 12 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 32b70d6..9f5da88 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -173,6 +173,14 @@ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
+     return res.redirect('/admin/login');
+   }
+   (req as any).adminSession = session;
++  if (res && res.locals) res.locals.barberRole = session.role || "super_admin";
++  // Carregar permissions do banco para uso no layout
++  db.getBarberById(session.barberId).then(function(b) {
++    if (b && b.permissions) {
++      try { (req as any).adminSession.permissions = JSON.parse(b.permissions); }
++      catch(e) { (req as any).adminSession.permissions = null; }
++    } else { (req as any).adminSession.permissions = null; }
++  }).catch(function() {});
+   next();
+ }
+ 
+@@ -283,7 +291,10 @@ export async function generateMagicLink(tenantId: number, baseUrl = "https://use
+ // ─── Layout base do painel ────────────────────────────────────────────────────
+ // Helper used by route handlers to auto-inject trialGrace from res object
+ function adminLayoutWithGrace(res: any, title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>): string {
+-  return adminLayout(title, activePage, body, barberName, tenantPlan, breadcrumb, res?.trialGrace ?? null);
++  const bRole = (res && res.locals && res.locals.barberRole) || "super_admin";
++  let bPerms: string[] | null = null;
++  try { const p = res && res.req && (res.req as any).adminSession && (res.req as any).adminSession.permissions; if (Array.isArray(p)) bPerms = p; } catch(e) {}
++  return adminLayout(title, activePage, body, barberName, tenantPlan, breadcrumb, res?.trialGrace ?? null, bRole, bPerms);
+ }
+ 
+ function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, trialGrace?: { hoursLeft: number } | null, barberRole = "super_admin", barberPerms: any = null): string {
+@@ -1401,10 +1412,16 @@ async function renderDashboard(req: Request, res: Response) {
+   const barber = await db.getBarberById(session.barberId);
+   const dateStr = today();
+   const tenantId = barber?.tenantId ?? null;
++  // ─── Role do usuário — barbeiro vê só seus próprios dados ───────────────────
++  const isBarberRole = session.role === "barber" || session.role === "receptionist";
++  const myBarberId = session.barberId;
++
+   const stats = await db.getDashboardStats(dateStr, tenantId);
+   const yesterdayStr = yesterday();
+   const statsYesterday = await db.getDashboardStats(yesterdayStr, tenantId).catch(() => ({ appointmentsToday: 0, revenueToday: 0, clientsToday: 0, pendingAppointments: 0 }));
+-  const appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
++  let appointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
++  // Barbeiro vê só seus próprios agendamentos
++  if (session.role === "barber") appointments = appointments.filter((a: any) => a.barberId === myBarberId);
+   // ─── Faturamento do mês ────────────────────────────────────────────────────
+   const { start: monthStart, end: monthEnd } = monthRange();
+   const monthlySales = await db.getSalesByDateRange(monthStart, monthEnd, undefined, tenantId).catch(() => []);
+@@ -1413,6 +1430,15 @@ async function renderDashboard(req: Request, res: Response) {
+   const monthExpenseTotal = (monthExpenses as any[]).reduce((sum: number, e: any) => sum + parseFloat(e.amount || '0'), 0);
+   const monthProfit = monthRevenue - monthExpenseTotal;
+   const now2 = new Date(); const monthLabel = now2.toLocaleDateString('pt-BR', { month: 'long' });
++  // Para barbeiro: meus serviços do dia e minhas comissões do mês
++  const myApptsToday = appointments.filter((a: any) => a.barberId === myBarberId && a.status === 'completed');
++  const myServicesRevenue = myApptsToday.reduce((sum: number, a: any) => sum + parseFloat(a.price || a.servicePrice || '0'), 0);
++  const myMonthlySales = (monthlySales as any[]).filter((s: any) => s.barberId === myBarberId && s.paymentStatus === 'paid');
++  const myMonthRevenue = myMonthlySales.reduce((sum: number, s: any) => sum + parseFloat(s.total || '0'), 0);
++  // Comissão aproximada (usa config se existir, senão 0)
++  const commissionConfig = await db.getCommissionConfig(myBarberId).catch(() => null);
++  const commissionRate = commissionConfig ? parseFloat((commissionConfig as any).rate || '0') / 100 : 0;
++  const myMonthCommission = myMonthRevenue * commissionRate;
+   // ─── Próximo agendamento do dia ───────────────────────────────────────────
+   const nowMinutes = (() => {
+     const now = new Date();
+@@ -1545,11 +1571,21 @@ async function renderDashboard(req: Request, res: Response) {
+       <div style="flex:1;min-width:0">
+         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+-          <span style="font-size:11px;font-weight:700;color:#C9A84C;letter-spacing:1.5px;text-transform:uppercase">Faturamento de ${monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}</span>
++          <span style="font-size:11px;font-weight:700;color:#C9A84C;letter-spacing:1.5px;text-transform:uppercase">${isBarberRole ? "Meus Serviços de " : "Faturamento de "}${monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}</span>
+         </div>
+         <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+-          <div id="dashMonthReveal" style="font-size:32px;font-weight:900;color:#C9A84C;letter-spacing:-1px;line-height:1;filter:blur(8px);user-select:none;transition:filter 0.3s" onclick="toggleMonthRevenue()">${fmtCurrency(monthRevenue)}</div>
++          <div id="dashMonthReveal" style="font-size:32px;font-weight:900;color:#C9A84C;letter-spacing:-1px;line-height:1;filter:blur(8px);user-select:none;transition:filter 0.3s" onclick="toggleMonthRevenue()">${fmtCurrency(isBarberRole ? myMonthRevenue : monthRevenue)}</div>
+           <div style="display:flex;gap:16px">
++            ${isBarberRole ? `
++            <div>
++              <div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Comissão</div>
++              <div id="dashMonthExpense" style="font-size:14px;font-weight:700;color:#4ADE80;filter:blur(6px);transition:filter 0.3s" onclick="toggleMonthRevenue()">${fmtCurrency(myMonthCommission)}</div>
++            </div>
++            <div>
++              <div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Atend. hoje</div>
++              <div id="dashMonthProfit" style="font-size:14px;font-weight:700;color:#C9A84C;filter:blur(6px);transition:filter 0.3s" onclick="toggleMonthRevenue()">${myApptsToday.length}</div>
++            </div>
++            ` : `
+             <div>
+               <div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Despesas</div>
+               <div id="dashMonthExpense" style="font-size:14px;font-weight:700;color:#F87171;filter:blur(6px);transition:filter 0.3s" onclick="toggleMonthRevenue()">-${fmtCurrency(monthExpenseTotal)}</div>
+@@ -1558,9 +1594,10 @@ async function renderDashboard(req: Request, res: Response) {
+               <div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:0.8px">Lucro</div>
+               <div id="dashMonthProfit" style="font-size:14px;font-weight:700;color:${monthProfit >= 0 ? '#4ADE80' : '#F87171'};filter:blur(6px);transition:filter 0.3s" onclick="toggleMonthRevenue()">${fmtCurrency(monthProfit)}</div>
+             </div>
++            `}
+           </div>
+         </div>
+-        <div style="margin-top:10px;font-size:11px;color:#555">Toque no valor ou no olhinho para revelar &nbsp;·&nbsp; <a href="/admin/financeiro" style="color:#C9A84C88;text-decoration:none">Ver detalhes →</a></div>
++        <div style="margin-top:10px;font-size:11px;color:#555">Toque no valor ou no olhinho para revelar &nbsp;·&nbsp; <a href="${isBarberRole ? '/admin/minhas-comissoes' : '/admin/financeiro'}" style="color:#C9A84C88;text-decoration:none">Ver detalhes →</a></div>
+       </div>
+       <button onclick="toggleMonthRevenue()" id="dashEyeBtn" title="Mostrar/ocultar valores" style="background:#C9A84C18;border:1px solid #C9A84C33;border-radius:12px;padding:12px;cursor:pointer;flex-shrink:0;transition:background 0.2s" onmouseover="this.style.background='#C9A84C30'" onmouseout="this.style.background='#C9A84C18'">
+         <svg id="dashEyeIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+@@ -1612,12 +1649,12 @@ async function renderDashboard(req: Request, res: Response) {
+       <div class="metric-card kpi-tooltip">
+         <div class="kpi-tip">Ontem: ${fmtCurrency(statsYesterday.revenueToday)} · ${stats.revenueToday === 0 && statsYesterday.revenueToday === 0 ? '—' : statsYesterday.revenueToday === 0 ? '↑ novo' : stats.revenueToday > statsYesterday.revenueToday ? '↑ +' + Math.round((stats.revenueToday - statsYesterday.revenueToday) / statsYesterday.revenueToday * 100) + '%' : stats.revenueToday < statsYesterday.revenueToday ? '↓ ' + Math.round((stats.revenueToday - statsYesterday.revenueToday) / statsYesterday.revenueToday * 100) + '%' : '= igual'}</div>
+         <div class="metric-header">
+-          <div class="metric-label">Faturamento Hoje</div>
++          <div class="metric-label">${isBarberRole ? "Meus Serviços Hoje" : "Faturamento Hoje"}</div>
+           <div class="metric-icon" style="background:rgba(74,222,128,.12)">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+           </div>
+         </div>
+-        <div class="metric-value" style="color:#4ADE80">${fmtCurrency(stats.revenueToday)}</div>
++        <div class="metric-value" style="color:#4ADE80">${fmtCurrency(isBarberRole ? myServicesRevenue : stats.revenueToday)}</div>
+         ${dailyGoal > 0 ? (() => {
+           const pct = Math.min(100, Math.round((stats.revenueToday / dailyGoal) * 100));
+           const goalFmt = fmtCurrency(dailyGoal);
+@@ -1638,7 +1675,7 @@ async function renderDashboard(req: Request, res: Response) {
+       </div>
+       <div class="metric-card">
+         <div class="metric-header">
+-          <div class="metric-label">Equipe Ativa</div>
++          <div class="metric-label">${isBarberRole ? "" : "Equipe Ativa"}</div>
+           <div class="metric-icon" style="background:rgba(251,191,36,.12)">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+           </div>
+@@ -1693,24 +1730,24 @@ async function renderDashboard(req: Request, res: Response) {
+           </div>
+           <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Novo Cliente</span>
+         </a>
+-        <a href="/admin/financeiro?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
++        ${!isBarberRole ? `<a href="/admin/financeiro?new=1" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+           <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+           </div>
+           <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Nova Venda</span>
+-        </a>
++        </a>` : ""}
+         <a href="/admin/servicos" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+           <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3L8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
+           </div>
+           <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Serviços</span>
+         </a>
+-        <a href="/admin/promocoes" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
++        ${!isBarberRole ? `<a href="/admin/promocoes" class="action-card" style="text-decoration:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;transition:border-color .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+           <div style="width:40px;height:40px;border-radius:12px;background:rgba(201,168,76,.12);display:flex;align-items:center;justify-content:center;">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C9A84C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+           </div>
+           <span style="font-size:12px;font-weight:600;color:var(--text);text-align:center;">Nova Promoção</span>
+-        </a>
++        </a>` : ""}
+       </div>
+     </div>
+ 
+@@ -7855,6 +7892,9 @@ document.addEventListener('input', function(e) {
+     }
+   });
+ 
++  // GET aba equipe — só super_admin vê lista completa e pode editar
++  // (já protegido pelo requireOwner nos POSTs)
++
+   // POST /admin/configuracoes/equipe/editar
+   app.post("/admin/configuracoes/equipe/editar", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
+     try {
+-- 
+2.43.0
+

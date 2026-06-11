@@ -16,6 +16,27 @@ import * as db from "./db";
 import { sql } from "drizzle-orm";
 import { sendBookingConfirmationEmail, sendBarberNotificationEmail, sendPasswordResetEmail } from "./email";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+
+// ─── Sessão do cliente: assinada com HMAC (anti-forjamento) ────────────────────
+const CLIENT_SESSION_SECRET = process.env.COOKIE_SECRET || process.env.JWT_SECRET || "barber-pro-client-fallback";
+const CLIENT_COOKIE_SECURE = process.env.NODE_ENV === "production";
+function encodeClientSession(data: any): string {
+  const payload = Buffer.from(JSON.stringify(data)).toString("base64url");
+  const sig = crypto.createHmac("sha256", CLIENT_SESSION_SECRET).update(payload).digest("base64url");
+  return payload + "." + sig;
+}
+function decodeClientSession(token?: string | null): any | null {
+  try {
+    if (!token) return null;
+    const [payload, sig] = token.split(".");
+    if (!payload || !sig) return null;
+    const expected = crypto.createHmac("sha256", CLIENT_SESSION_SECRET).update(payload).digest("base64url");
+    const a = Buffer.from(sig), b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+    return JSON.parse(Buffer.from(payload, "base64url").toString());
+  } catch { return null; }
+}
 import { asaasEnabled, getOrCreateAsaasCustomer, createAsaasCharge, createAsaasSubscription, asaasDefaultDueDate, getAsaasPaymentStatus } from "./asaas";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -534,7 +555,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   const clientSessionRaw = req?.cookies?.[`client_session_${slug}`] ;
   let loggedClient: { id: number; name: string; email: string } | null = null;
   if (clientSessionRaw) {
-    try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+    loggedClient = decodeClientSession(clientSessionRaw);
   }
   const isLoggedIn = !!loggedClient;
 
@@ -1208,7 +1229,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
   const clientSessionRaw = req?.cookies?.[`client_session_${slug}`] ;
   let loggedClient: { id: number; name: string; email: string } | null = null;
   if (clientSessionRaw) {
-    try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+    loggedClient = decodeClientSession(clientSessionRaw);
   }
 
   const waNumber = ((settings as any)?.whatsapp || (settings as any)?.phone || "").replace(/\D/g, "");
@@ -2585,7 +2606,7 @@ async function renderPerfilPage(slug: string, res: Response, req: Request) {
   const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
   let loggedClient: { id: number; name: string; email: string; phone?: string } | null = null;
   if (clientSessionRaw) {
-    try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+    loggedClient = decodeClientSession(clientSessionRaw);
   }
   if (!loggedClient) { res.redirect(`/pub/${slug}/login?redirect=perfil`); return; }
 
@@ -2987,7 +3008,7 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
   const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
   let loggedClient: { id: number; name: string; email: string } | null = null;
   if (clientSessionRaw) {
-    try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+    loggedClient = decodeClientSession(clientSessionRaw);
   }
 
   if (!loggedClient) {
@@ -3503,7 +3524,7 @@ async function renderServiceDetailPage(slug: string, serviceId: number, res: Res
   const sessionData = req.cookies?.[`client_session_${slug}`] ;
   const isLoggedIn = !!sessionData;
   let clientInfo: any = null;
-  if (sessionData) { try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {} }
+  if (sessionData) { clientInfo = decodeClientSession(sessionData); }
   const images = media.filter(m => m.type === "image");
   const videos = media.filter(m => m.type === "video");
   const mediaHtml = images.length === 0 && videos.length === 0
@@ -3566,7 +3587,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
   const sessionData = req.cookies?.[`client_session_${slug}`] ;
   const isLoggedIn = !!sessionData;
   let clientInfo: any = null;
-  if (sessionData) { try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {} }
+  if (sessionData) { clientInfo = decodeClientSession(sessionData); }
   // Buscar plano, serviços, produtos e barbeiros
   let plan: any = null;
   let planServices: any[] = [];
@@ -4157,7 +4178,7 @@ async function renderProductDetailPage(slug: string, productId: number, res: Res
   const sessionData = req.cookies?.[`client_session_${slug}`] ;
   const isLoggedIn = !!sessionData;
   let clientInfo: any = null;
-  if (sessionData) { try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch {} }
+  if (sessionData) { clientInfo = decodeClientSession(sessionData); }
   const images = media.filter(m => m.type === "image");
   const videos = media.filter(m => m.type === "video");
   const mediaHtml = images.length === 0 && videos.length === 0
@@ -4378,7 +4399,8 @@ export function registerPublicRoutes(app: Express): void {
       const sessionData = req.cookies?.[`client_session_${slug}`] ;
       if (!sessionData) { res.status(401).json({ error: "Não autenticado" }); return; }
       let clientInfo: any;
-      try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch { res.status(401).json({ error: "Sessão inválida" }); return; }
+      clientInfo = decodeClientSession(sessionData);
+      if (!clientInfo) { res.status(401).json({ error: "Sessão inválida" }); return; }
 
       const tenant = await db.getTenantBySlug(slug);
       if (!tenant) { res.status(404).json({ error: "Barbearia não encontrada" }); return; }
@@ -4468,7 +4490,8 @@ export function registerPublicRoutes(app: Express): void {
       const sessionData = req.cookies?.[`client_session_${slug}`] ;
       if (!sessionData) { res.status(401).json({ error: "Não autenticado" }); return; }
       let clientInfo: any;
-      try { clientInfo = JSON.parse(Buffer.from(sessionData, "base64").toString()); } catch { res.status(401).json({ error: "Sessão inválida" }); return; }
+      clientInfo = decodeClientSession(sessionData);
+      if (!clientInfo) { res.status(401).json({ error: "Sessão inválida" }); return; }
       const product = await db.getProductById(parseInt(productId));
       if (!product) { res.status(404).json({ error: "Produto não encontrado" }); return; }
       const tenant = await db.getTenantBySlug(slug);
@@ -4530,9 +4553,9 @@ export function registerPublicRoutes(app: Express): void {
       if (!valid) { res.status(401).json({ error: "Email ou senha incorretos" }); return; }
       const client = await db.getClientById(account.clientId);
       if (!client) { res.status(404).json({ error: "Cliente não encontrado" }); return; }
-      const sessionData = Buffer.from(JSON.stringify({ id: client.id, name: client.name, email: client.email, cpf: (client as any).cpf ?? null })).toString("base64");
+      const sessionData = encodeClientSession({ id: client.id, name: client.name, email: client.email });
       const slug = req.body.slug as string;
-      res.cookie(`client_session_${slug}`, sessionData, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+      res.cookie(`client_session_${slug}`, sessionData, { httpOnly: true, secure: CLIENT_COOKIE_SECURE, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
       res.json({ id: client.id, name: client.name, email: client.email });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -4561,8 +4584,8 @@ export function registerPublicRoutes(app: Express): void {
           userAgent: req.headers["user-agent"]?.substring(0, 500) ?? undefined,
         });
       }
-      const sessionData = Buffer.from(JSON.stringify({ id: clientId, name, email, cpf: cpf ?? null })).toString("base64");
-      res.cookie(`client_session_${slug}`, sessionData, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+      const sessionData = encodeClientSession({ id: clientId, name, email });
+      res.cookie(`client_session_${slug}`, sessionData, { httpOnly: true, secure: CLIENT_COOKIE_SECURE, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
       res.json({ id: clientId, name, email });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -4785,9 +4808,9 @@ export function registerPublicRoutes(app: Express): void {
 
       // Criar sessão de cliente público
       const sessionData = { id: clientId, name: clientName, email: userInfo.email };
-      const sessionCookie = Buffer.from(JSON.stringify(sessionData)).toString("base64");
+      const sessionCookie = encodeClientSession(sessionData);
       const cookieKey = slug ? `client_session_${slug}` : "client_session";
-      res.cookie(cookieKey, sessionCookie, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+      res.cookie(cookieKey, sessionCookie, { httpOnly: true, secure: CLIENT_COOKIE_SECURE, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: "lax" });
 
       // Redirecionar de volta
       const qs = `?service=${service}&date=${date}&barber=${barber}&start=${start}&end=${end}`;
@@ -4942,7 +4965,7 @@ export function registerPublicRoutes(app: Express): void {
       const clientSessionRaw = req.cookies?.[`client_session_${slug}`];
       if (!clientSessionRaw) { res.status(401).json({ error: "Não autenticado" }); return; }
       let loggedClient: { id: number; name: string } | null = null;
-      try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+      loggedClient = decodeClientSession(clientSessionRaw);
       if (!loggedClient) { res.status(401).json({ error: "Sessão inválida" }); return; }
       const tenant = await db.getTenantBySlug(slug);
       if (!tenant) { res.status(404).json({ error: "Barbearia não encontrada" }); return; }
@@ -4997,7 +5020,7 @@ export function registerPublicRoutes(app: Express): void {
       const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
       if (!clientSessionRaw) { res.status(401).json({ error: "Não autenticado" }); return; }
       let loggedClient: { id: number } | null = null;
-      try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+      loggedClient = decodeClientSession(clientSessionRaw);
       if (!loggedClient) { res.status(401).json({ error: "Sessão inválida" }); return; }
       // Verificar que o agendamento pertence ao cliente
       const appts = await db.getClientAppointments(loggedClient.id);
@@ -5019,7 +5042,7 @@ export function registerPublicRoutes(app: Express): void {
       const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
       if (!clientSessionRaw) { res.status(401).json({ error: "Não autenticado" }); return; }
       let loggedClient: { id: number } | null = null;
-      try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+      loggedClient = decodeClientSession(clientSessionRaw);
       if (!loggedClient) { res.status(401).json({ error: "Sessão inválida" }); return; }
       const order = await db.getProductOrderById(parseInt(orderId));
       if (!order) { res.status(404).json({ error: "Encomenda não encontrada" }); return; }
@@ -5041,7 +5064,7 @@ export function registerPublicRoutes(app: Express): void {
       const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
       if (!clientSessionRaw) { res.status(401).json({ error: "Não autenticado" }); return; }
       let loggedClient: { id: number } | null = null;
-      try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+      loggedClient = decodeClientSession(clientSessionRaw);
       if (!loggedClient) { res.status(401).json({ error: "Sessão inválida" }); return; }
       const order = await db.getProductOrderById(parseInt(orderId));
       if (!order) { res.status(404).json({ error: "Encomenda não encontrada" }); return; }
@@ -5068,7 +5091,7 @@ export function registerPublicRoutes(app: Express): void {
       const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
       if (!clientSessionRaw) { res.redirect(`/pub/${slug}/login?redirect=perfil`); return; }
       let loggedClient: { id: number; name: string; email: string } | null = null;
-      try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+      loggedClient = decodeClientSession(clientSessionRaw);
       if (!loggedClient) { res.redirect(`/pub/${slug}/login?redirect=perfil`); return; }
       // Atualizar dados do cliente no banco
       await db.updateClient(loggedClient.id, {
@@ -5078,8 +5101,8 @@ export function registerPublicRoutes(app: Express): void {
       });
       // Atualizar cookie de sessão com o novo nome
       const updatedSession = { ...loggedClient, name: name.trim(), email: email?.trim() || loggedClient.email };
-      const sessionValue = Buffer.from(JSON.stringify(updatedSession)).toString("base64");
-      res.cookie(`client_session_${slug}`, sessionValue, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+      const sessionValue = encodeClientSession(updatedSession);
+      res.cookie(`client_session_${slug}`, sessionValue, { httpOnly: true, secure: CLIENT_COOKIE_SECURE, maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: "lax" });
       res.redirect(`/pub/${slug}/perfil?saved=1`);
     } catch (e: any) {
       const { slug } = req.body;
@@ -5529,7 +5552,7 @@ export function registerPublicRoutes(app: Express): void {
     const clientSessionRaw = req.cookies?.[`client_session_${slug}`] ;
     let loggedClient: { id: number; name: string; email: string; phone?: string } | null = null;
     if (clientSessionRaw) {
-      try { loggedClient = JSON.parse(Buffer.from(clientSessionRaw, "base64").toString()); } catch {}
+      loggedClient = decodeClientSession(clientSessionRaw);
     }
     if (!loggedClient) { res.redirect(`/pub/${slug}/login?redirect=agendamento/${id}`); return; }
     const apptId = parseInt(id);

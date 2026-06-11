@@ -1,0 +1,111 @@
+From f74ca64c12079db1482fe5fd249a4554e4e81289 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Tue, 9 Jun 2026 18:34:57 +0000
+Subject: [PATCH 7/7] =?UTF-8?q?fix:=20remover=20requireFeature=20das=20rot?=
+ =?UTF-8?q?as=20GET=20=E2=80=94=20bloqueio=20agora=20s=C3=B3=20no=20sideba?=
+ =?UTF-8?q?r=20(modal),=20POSTs=20mant=C3=AAm=20seguran=C3=A7a?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ server/admin-routes.ts | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 59940c3..29cd641 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -9000,7 +9000,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── CRUD Produtos ────────────────────────────────────────────────────────
+-  app.get("/admin/produtos", requireAdminAuth, requireFeature("products"), (req, res) => renderProdutos(req, res));
++  app.get("/admin/produtos", requireAdminAuth, (req, res) => renderProdutos(req, res));
+   app.post("/admin/produtos", requireAdminAuth, requireFeature("products"), async (req: Request, res: Response) => {
+     const { name, description, price, costPrice, productType, stockQuantity, minStockAlert, isActive, mediaBase64, mediaMime, supplierId } = req.body;
+     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+@@ -9298,7 +9298,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Cupons ────────────────────────────────────────────────────────────────
+-  app.get("/admin/cupons", requireAdminAuth, requireFeature("coupons"), withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
++  app.get("/admin/cupons", requireAdminAuth, withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
+     const barber = await db.getBarberById((req as any).adminSession.barberId);
+     const tenantId = barber?.tenantId ?? null;
+     const allCoupons = await db.getAllCoupons(tenantId);
+@@ -9485,7 +9485,7 @@ document.addEventListener('input', function(e) {
+   }));
+ 
+   // ─── Comissões ────────────────────────────────────────────────────────────
+-  app.get("/admin/comissoes", requireAdminAuth, requireFeature("commissions"), withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
++  app.get("/admin/comissoes", requireAdminAuth, withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
+     const barber = await db.getBarberById((req as any).adminSession.barberId);
+     const tenantId = barber?.tenantId ?? null;
+     const configs = await db.listCommissionConfigs(tenantId);
+@@ -10169,7 +10169,7 @@ document.addEventListener('input', function(e) {
+ 
+ 
+   // ─── Planos de Assinatura ────────────────────────────────────────────────────
+-  app.get("/admin/planos", requireAdminAuth, requireFeature("subscription_plans"), withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
++  app.get("/admin/planos", requireAdminAuth, withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+@@ -10420,7 +10420,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Estoque ─────────────────────────────────────────────────────────────────
+-  app.get("/admin/estoque", requireAdminAuth, requireFeature("stock"), withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
++  app.get("/admin/estoque", requireAdminAuth, withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -10699,7 +10699,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+     // ─── Histórico de Estoque ─────────────────────────────────────────────
+-  app.get("/admin/estoque/:id/historico", requireAdminAuth, requireFeature("stock"), withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
++  app.get("/admin/estoque/:id/historico", requireAdminAuth, withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -11712,7 +11712,7 @@ document.addEventListener('input', function(e) {
+ 
+ 
+   // ─── Clientes em Órbita ──────────────────────────────────────────────────────
+-  app.get("/admin/orbita", requireAdminAuth, requireFeature("orbit"), withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
++  app.get("/admin/orbita", requireAdminAuth, withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -11860,7 +11860,7 @@ document.addEventListener('input', function(e) {
+   }));
+ 
+   // ─── Encomendas de Produtos ────────────────────────────────────────────────
+-  app.get("/admin/encomendas", requireAdminAuth, requireFeature("orders"), withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
++  app.get("/admin/encomendas", requireAdminAuth, withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+@@ -12438,7 +12438,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Fornecedores ─────────────────────────────────────────────────────────
+-  app.get("/admin/fornecedores", requireAdminAuth, requireFeature("suppliers"), withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
++  app.get("/admin/fornecedores", requireAdminAuth, withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession as { barberId: number; role: string };
+     const barber = await db.getBarberById(session.barberId);
+@@ -12582,7 +12582,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Detalhes do Fornecedor (/admin/fornecedores/:id) ─────────────────────────
+-  app.get("/admin/fornecedores/:id", requireAdminAuth, requireFeature("suppliers"), withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
++  app.get("/admin/fornecedores/:id", requireAdminAuth, withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession as { barberId: number; role: string };
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+-- 
+2.43.0
+

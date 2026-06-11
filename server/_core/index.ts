@@ -674,18 +674,31 @@ async function startServer() {
   // Confiar no proxy reverso do Railway (necessário para rate limit e IP real)
   app.set("trust proxy", 1);
 
-  // Enable CORS for all routes - reflect the request origin to support credentials
+  // CORS com allowlist — refletir qualquer origem com credentials é falha grave
+  const CORS_ALLOWED = new Set([
+    "https://usebarberpro.com",
+    "https://www.usebarberpro.com",
+    ...(process.env.NODE_ENV !== "production" ? [
+      "http://localhost:3000", "http://localhost:8081", "http://localhost:19006",
+    ] : []),
+  ]);
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin) {
+    if (origin && CORS_ALLOWED.has(origin)) {
       res.header("Access-Control-Allow-Origin", origin);
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Vary", "Origin");
     }
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.header(
       "Access-Control-Allow-Headers",
       "Origin, X-Requested-With, Content-Type, Accept, Authorization",
     );
-    res.header("Access-Control-Allow-Credentials", "true");
+    // Headers de segurança básicos (clickjacking, MIME sniffing, referrer)
+    res.header("X-Frame-Options", "SAMEORIGIN");
+    res.header("X-Content-Type-Options", "nosniff");
+    res.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.header("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)");
 
     // Handle preflight requests
     if (req.method === "OPTIONS") {

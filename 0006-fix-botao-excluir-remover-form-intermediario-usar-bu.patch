@@ -1,0 +1,47 @@
+From 6bfc17d88543af2192ce427a9b9dcd2ee3e8c663 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Wed, 10 Jun 2026 11:59:40 +0000
+Subject: [PATCH 6/6] =?UTF-8?q?fix:=20botao=20excluir=20=E2=80=94=20remove?=
+ =?UTF-8?q?r=20form=20intermediario,=20usar=20button=20onclick=20direto?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ server/admin-routes.ts | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 34e499b..14011a4 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -4864,16 +4864,12 @@ async function renderConfiguracoes(req: Request, res: Response) {
+                     <input type="hidden" name="isActive" value="${!b.isActive}" />
+                     <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px">${b.isActive ? 'Desativar' : 'Reativar'}</button>
+                   </form>
+-                  <form method="POST" action="/admin/configuracoes/equipe/excluir" style="display:inline" onsubmit="return false" onclick="openDeleteModal(${b.id}, '${esc(b.name)}')">
+-                    <input type="hidden" name="id" value="${b.id}" />
+-                    <button type="submit" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:#ef4444">🗑 Excluir</button>
+-                  </form>
++                  <button type="button" onclick="openDeleteModal(${b.id}, '${esc(b.name).replace(/'/g,"''")}');" class="btn btn-ghost" style="font-size:11px;padding:4px 10px;color:#ef4444">🗑 Excluir</button>
+                 </td>
+               </tr>`).join('')}
+         </tbody>
+       </table>
+     </div>
+-
+     <div id="card-novo-prof" style="display:none" class="card">
+       <div class="card-header">
+         <div class="card-title">Novo Profissional</div>
+@@ -4994,7 +4990,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
+       <form method="POST" action="/admin/configuracoes/equipe/excluir" style="display:flex;gap:10px;justify-content:center">
+         <input type="hidden" name="id" id="del-prof-id" />
+         <button type="button" onclick="closeDeleteModal()" class="btn btn-ghost" style="padding:11px 24px;flex:1">Cancelar</button>
+-        <button type="submit" class="btn" style="padding:11px 24px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;flex:1">Excluir</button>
++        <button type="submit" style="padding:11px 24px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;flex:1">Excluir</button>
+       </form>
+     </div>
+   </div>
+-- 
+2.43.0
+

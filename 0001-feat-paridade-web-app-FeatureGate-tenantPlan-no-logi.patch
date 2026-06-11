@@ -1,0 +1,869 @@
+From 4dd304a014e6b160a77cd81d3498d5d7c9db4fe5 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Tue, 9 Jun 2026 11:17:55 +0000
+Subject: [PATCH] =?UTF-8?q?feat:=20paridade=20web/app=20=E2=80=94=20Featur?=
+ =?UTF-8?q?eGate,=20tenantPlan=20no=20login,=20pre=C3=A7os=20corretos,=20s?=
+ =?UTF-8?q?lugs=20alinhados=20(solo/team/studio)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ app/admin/(tabs)/commissions.tsx        |  12 +-
+ app/admin/(tabs)/coupons.tsx            |  12 +-
+ app/admin/(tabs)/orbit.tsx              |  12 +-
+ app/admin/(tabs)/orders.tsx             |  12 +-
+ app/admin/(tabs)/products.tsx           |   6 +-
+ app/admin/(tabs)/stock.tsx              |  12 +-
+ app/admin/(tabs)/subscription-plans.tsx |  12 +-
+ app/admin/(tabs)/suppliers.tsx          |  12 +-
+ app/admin/barberpro-paywall.tsx         |  25 +--
+ components/feature-gate.tsx             | 239 ++++++++++++++++++++++++
+ hooks/usePlanFeature.ts                 |  14 ++
+ lib/auth-context.tsx                    |   3 +
+ lib/plan-features.ts                    | 104 +++++++++++
+ server/admin-routes.ts                  |  18 +-
+ server/plan-features.ts                 |  16 +-
+ server/routers.ts                       |   9 +-
+ 16 files changed, 478 insertions(+), 40 deletions(-)
+ create mode 100644 components/feature-gate.tsx
+ create mode 100644 hooks/usePlanFeature.ts
+ create mode 100644 lib/plan-features.ts
+
+diff --git a/app/admin/(tabs)/commissions.tsx b/app/admin/(tabs)/commissions.tsx
+index 7376e09..57f5b93 100644
+--- a/app/admin/(tabs)/commissions.tsx
++++ b/app/admin/(tabs)/commissions.tsx
+@@ -33,7 +33,9 @@ function fmt(value: number) {
+ 
+ const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+ 
+-export default function CommissionsScreen() {
++import { FeatureGate } from "@/components/feature-gate";
++
++function CommissionsScreenInner() {
+   const colors = useColors();
+   const { barber } = useBarberAuth();
+   const tenantId = barber?.tenantId ?? undefined;
+@@ -402,3 +404,11 @@ const styles = StyleSheet.create({
+   quickRates: { flexDirection: "row", gap: 8, marginBottom: 24 },
+   quickRateBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, alignItems: "center" },
+ });
++
++export default function CommissionsScreen() {
++  return (
++    <FeatureGate feature="commissions">
++      <CommissionsScreenInner />
++    </FeatureGate>
++  );
++}
+diff --git a/app/admin/(tabs)/coupons.tsx b/app/admin/(tabs)/coupons.tsx
+index 9b6ac60..c7e3578 100644
+--- a/app/admin/(tabs)/coupons.tsx
++++ b/app/admin/(tabs)/coupons.tsx
+@@ -7,7 +7,9 @@ import { useBarberAuth } from "@/lib/auth-context";
+ import { useColors } from "@/hooks/use-colors";
+ import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+ 
+-export default function CouponsScreen() {
++import { FeatureGate } from "@/components/feature-gate";
++
++function CouponsScreenInner() {
+   const { barber } = useBarberAuth();
+   const colors = useColors();
+   const tabBarHeight = useTabBarHeight();
+@@ -164,3 +166,11 @@ export default function CouponsScreen() {
+     </ScreenContainer>
+   );
+ }
++
++export default function CouponsScreen() {
++  return (
++    <FeatureGate feature="coupons">
++      <CouponsScreenInner />
++    </FeatureGate>
++  );
++}
+diff --git a/app/admin/(tabs)/orbit.tsx b/app/admin/(tabs)/orbit.tsx
+index 04aaa05..c896f62 100644
+--- a/app/admin/(tabs)/orbit.tsx
++++ b/app/admin/(tabs)/orbit.tsx
+@@ -47,7 +47,9 @@ function timeSince(d: Date | string | null | undefined): string {
+   return `${days}d atrás`;
+ }
+ 
+-export default function OrbitScreen() {
++import { FeatureGate } from "@/components/feature-gate";
++
++function OrbitScreenInner() {
+   const { barber } = useBarberAuth();
+   const tenantId = barber?.tenantId ?? 0;
+ 
+@@ -414,3 +416,11 @@ const styles = StyleSheet.create({
+     fontSize: 18,
+   },
+ });
++
++export default function OrbitScreen() {
++  return (
++    <FeatureGate feature="orbit">
++      <OrbitScreenInner />
++    </FeatureGate>
++  );
++}
+diff --git a/app/admin/(tabs)/orders.tsx b/app/admin/(tabs)/orders.tsx
+index d9e45ea..1e7e948 100644
+--- a/app/admin/(tabs)/orders.tsx
++++ b/app/admin/(tabs)/orders.tsx
+@@ -97,7 +97,9 @@ function urgencyScore(order: Order): number {
+   return days; // negativo = vencido (mais urgente)
+ }
+ 
+-export default function OrdersScreen() {
++import { FeatureGate } from "@/components/feature-gate";
++
++function OrdersScreenInner() {
+   const colors = useColors();
+   const styles = createStyles(colors);
+   const tabBarHeight = useTabBarHeight();
+@@ -971,3 +973,11 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
+   periodChipTextActive: { color: "#C9A84C", fontWeight: "700" },
+ });
+ }
++
++export default function OrdersScreen() {
++  return (
++    <FeatureGate feature="orders">
++      <OrdersScreenInner />
++    </FeatureGate>
++  );
++}
+diff --git a/app/admin/(tabs)/products.tsx b/app/admin/(tabs)/products.tsx
+index 44cc60e..a3b1a1d 100644
+--- a/app/admin/(tabs)/products.tsx
++++ b/app/admin/(tabs)/products.tsx
+@@ -26,6 +26,7 @@ import { useBarberAuth } from "@/lib/auth-context";
+ import { ErrorBoundary } from "@/components/error-boundary";
+ import { useColors } from "@/hooks/use-colors";
+ import { applyPriceMask, parsePriceMask } from "@/hooks/use-mask";
++import { FeatureGate } from "@/components/feature-gate";
+ 
+ type Supplier = {
+   id: number;
+@@ -801,10 +802,11 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
+ });
+ }
+ 
++
+ export default function ProductsScreen() {
+   return (
+-    <ErrorBoundary screenName="Produtos">
++    <FeatureGate feature="products">
+       <ProductsScreenInner />
+-    </ErrorBoundary>
++    </FeatureGate>
+   );
+ }
+diff --git a/app/admin/(tabs)/stock.tsx b/app/admin/(tabs)/stock.tsx
+index adf0b6e..9a1c0f8 100644
+--- a/app/admin/(tabs)/stock.tsx
++++ b/app/admin/(tabs)/stock.tsx
+@@ -44,7 +44,9 @@ function today() {
+   return toLocalDate(new Date());
+ }
+ 
+-export default function StockScreen() {
++import { FeatureGate } from "@/components/feature-gate";
++
++function StockScreenInner() {
+   const colors = useColors();
+   const { barber } = useBarberAuth();
+   const tenantId = barber?.tenantId ?? undefined;
+@@ -533,3 +535,11 @@ const styles = StyleSheet.create({
+   movDate: { fontSize: 12, marginTop: 1 },
+   movQty: { fontSize: 16, fontWeight: "800" },
+ });
++
++export default function StockScreen() {
++  return (
++    <FeatureGate feature="stock">
++      <StockScreenInner />
++    </FeatureGate>
++  );
++}
+diff --git a/app/admin/(tabs)/subscription-plans.tsx b/app/admin/(tabs)/subscription-plans.tsx
+index 0368e2d..b5e33f5 100644
+--- a/app/admin/(tabs)/subscription-plans.tsx
++++ b/app/admin/(tabs)/subscription-plans.tsx
+@@ -54,7 +54,9 @@ const DISCOUNT_FACTOR = 0.85; // 15% de desconto para sugestão de preço
+ 
+ // ─── Componente principal ─────────────────────────────────────────────────────
+ 
+-export default function SubscriptionPlansScreen() {
++import { FeatureGate } from "@/components/feature-gate";
++
++function SubscriptionPlansScreenInner() {
+   const colors = useColors();
+   const { barber } = useBarberAuth();
+   const tenantId = barber?.tenantId ?? 0;
+@@ -667,3 +669,11 @@ const styles = StyleSheet.create({
+     paddingVertical: 6,
+   },
+ });
++
++export default function SubscriptionPlansScreen() {
++  return (
++    <FeatureGate feature="subscription_plans">
++      <SubscriptionPlansScreenInner />
++    </FeatureGate>
++  );
++}
+diff --git a/app/admin/(tabs)/suppliers.tsx b/app/admin/(tabs)/suppliers.tsx
+index d8c0e2e..5af9426 100644
+--- a/app/admin/(tabs)/suppliers.tsx
++++ b/app/admin/(tabs)/suppliers.tsx
+@@ -68,7 +68,9 @@ type FormData = {
+ 
+ const EMPTY_FORM: FormData = { name: "", phone: "", email: "", cnpj: "", address: "", notes: "" };
+ 
+-export default function SuppliersScreen() {
++import { FeatureGate } from "@/components/feature-gate";
++
++function SuppliersScreenInner() {
+   const colors = useColors();
+   const { barber } = useBarberAuth();
+   const tenantId = barber?.tenantId ?? 0;
+@@ -598,3 +600,11 @@ const styles = StyleSheet.create({
+   modalBtn: { flex: 1, paddingVertical: 13, borderRadius: 10, alignItems: "center" },
+   modalBtnText: { fontWeight: "700", fontSize: 15 },
+ });
++
++export default function SuppliersScreen() {
++  return (
++    <FeatureGate feature="suppliers">
++      <SuppliersScreenInner />
++    </FeatureGate>
++  );
++}
+diff --git a/app/admin/barberpro-paywall.tsx b/app/admin/barberpro-paywall.tsx
+index 32e2419..8ab5ce0 100644
+--- a/app/admin/barberpro-paywall.tsx
++++ b/app/admin/barberpro-paywall.tsx
+@@ -29,25 +29,28 @@ const PLANS = [
+   {
+     key: "solo",
+     label: "Solo",
+-    price: 49,
++    price: 49.90,
++    priceAnnual: 39.90,
+     description: "Para barbearias com 1 profissional",
+-    features: ["1 barbeiro", "Agendamento online", "Financeiro", "Relatórios"],
++    features: ["1 barbeiro", "Agendamento online", "Financeiro", "Relatórios básicos"],
+     highlight: false,
+   },
+   {
+     key: "team",
+     label: "Equipe",
+-    price: 89,
++    price: 99.90,
++    priceAnnual: 79.90,
+     description: "Para barbearias com equipe",
+-    features: ["Até 5 barbeiros", "Tudo do Solo", "Comissões", "Promoções"],
++    features: ["Até 3 barbeiros", "Tudo do Solo", "Produtos e Estoque", "Cupons e Planos de assinatura"],
+     highlight: true,
+   },
+   {
+     key: "studio",
+     label: "Estúdio",
+-    price: 149,
++    price: 169.90,
++    priceAnnual: 135.90,
+     description: "Para estúdios e franquias",
+-    features: ["Barbeiros ilimitados", "Tudo do Equipe", "Multi-unidade", "Suporte prioritário"],
++    features: ["Barbeiros ilimitados", "Tudo do Equipe", "Comissões automáticas", "Radar de Leads"],
+     highlight: false,
+   },
+ ] as const;
+@@ -356,7 +359,7 @@ export default function BarberProPaywallScreen() {
+             borderWidth: 1, borderColor: "#C9A84C", width: "100%", alignItems: "center",
+           }}>
+             <Text style={{ fontSize: 13, color: "#9BA1A6", marginBottom: 4 }}>Plano ativo</Text>
+-            <Text style={{ fontSize: 20, fontWeight: "700", color: "#C9A84C" }}>{plan.label} — R$ {plan.price}/mês</Text>
++            <Text style={{ fontSize: 20, fontWeight: "700", color: "#C9A84C" }}>{plan.label} — R$ {plan.price.toFixed(2).replace(".", ",")}/mês</Text>
+           </View>
+           <Text style={{ fontSize: 12, color: "#687076", textAlign: "center", marginTop: 24 }}>
+             Redirecionando automaticamente...
+@@ -380,7 +383,7 @@ export default function BarberProPaywallScreen() {
+             <Text style={styles.subtitle}>
+               {isCard
+                 ? "Sua assinatura foi criada com cartão. O acesso será liberado automaticamente."
+-                : `Plano ${plan.label} — R$ ${plan.price}/mês`}
++                : `Plano ${plan.label} — R$ ${plan.price.toFixed(2).replace(".", ",")}/mês`}
+             </Text>
+           </View>
+ 
+@@ -481,7 +484,7 @@ export default function BarberProPaywallScreen() {
+                   "Abra o app do seu banco",
+                   "Escolha pagar via Pix",
+                   "Escaneie o QR Code ou cole o código",
+-                  "Confirme o pagamento de R$ " + plan.price,
++                  "Confirme o pagamento de R$ " + plan.price.toFixed(2).replace(".", ","),
+                   "Seu acesso será liberado automaticamente",
+                 ].map((step, i) => (
+                   <View key={i} style={styles.instructionRow}>
+@@ -510,7 +513,7 @@ export default function BarberProPaywallScreen() {
+               <View style={styles.pendingIcon}>
+                 <IconSymbol name="checkmark.circle.fill" size={32} color="#C9A84C" />
+               </View>
+-              <Text style={styles.pendingTitle}>Plano {plan.label} — R$ {plan.price}/mês</Text>
++              <Text style={styles.pendingTitle}>Plano {plan.label} — R$ {plan.price.toFixed(2).replace(".", ",")}/mês</Text>
+               <Text style={styles.pendingDesc}>
+                 Seu cartão foi registrado. O acesso será liberado após a confirmação do pagamento pelo Asaas.
+               </Text>
+@@ -538,7 +541,7 @@ export default function BarberProPaywallScreen() {
+           <Text style={styles.subtitle}>
+             {step === "plans"
+               ? "Seu período de trial encerrou. Assine agora para continuar usando o Barber Pro."
+-              : `Plano ${plan.label} — R$ ${plan.price}/mês`}
++              : `Plano ${plan.label} — R$ ${plan.price.toFixed(2).replace(".", ",")}/mês`}
+           </Text>
+         </View>
+ 
+diff --git a/components/feature-gate.tsx b/components/feature-gate.tsx
+new file mode 100644
+index 0000000..b86a8dc
+--- /dev/null
++++ b/components/feature-gate.tsx
+@@ -0,0 +1,239 @@
++import React from "react";
++import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
++import { router } from "expo-router";
++import { useBarberAuth } from "@/lib/auth-context";
++import { planHasFeature, FEATURE_LABELS, FEATURE_REQUIRED_PLAN, PLAN_PRICING, type FeatureKey } from "@/lib/plan-features";
++
++interface FeatureGateProps {
++  feature: FeatureKey;
++  children: React.ReactNode;
++}
++
++/**
++ * Envolve uma tela ou seção com um guard de plano.
++ * Se o tenant não tiver acesso à feature, exibe uma tela de upgrade.
++ *
++ * @example
++ * export default function ProductsScreen() {
++ *   return (
++ *     <FeatureGate feature="products">
++ *       <ActualProductsContent />
++ *     </FeatureGate>
++ *   );
++ * }
++ */
++export function FeatureGate({ feature, children }: FeatureGateProps) {
++  const { barber } = useBarberAuth();
++  const plan = barber?.tenantPlan;
++
++  if (planHasFeature(plan, feature)) {
++    return <>{children}</>;
++  }
++
++  return <UpgradeScreen feature={feature} />;
++}
++
++function UpgradeScreen({ feature }: { feature: FeatureKey }) {
++  const requiredPlan = FEATURE_REQUIRED_PLAN[feature];
++  const pricing = PLAN_PRICING[requiredPlan];
++  const featureLabel = FEATURE_LABELS[feature];
++
++  // Features incluídas no plano requerido
++  const planFeatureLabels: Record<string, string[]> = {
++    team: [
++      "Produtos e Estoque",
++      "Fornecedores e Encomendas",
++      "Cupons de desconto",
++      "Planos de assinatura",
++      "Relatórios completos + CSV",
++      "Até 3 barbeiros",
++    ],
++    studio: [
++      "Tudo do plano Equipe",
++      "Comissões automáticas",
++      "Radar de Leads (Órbita)",
++      "Suporte prioritário",
++      "Barbeiros ilimitados",
++    ],
++  };
++
++  const features = planFeatureLabels[requiredPlan] ?? [];
++
++  return (
++    <ScrollView
++      style={styles.container}
++      contentContainerStyle={styles.content}
++      showsVerticalScrollIndicator={false}
++    >
++      {/* Ícone de cadeado */}
++      <View style={styles.lockCircle}>
++        <Text style={styles.lockIcon}>🔒</Text>
++      </View>
++
++      {/* Título */}
++      <Text style={styles.title}>{featureLabel}</Text>
++      <Text style={styles.subtitle}>
++        Este recurso está disponível a partir do plano{" "}
++        <Text style={styles.planName}>{pricing.label}</Text>.
++      </Text>
++
++      {/* Card do plano */}
++      <View style={styles.planCard}>
++        <View style={styles.planHeader}>
++          <Text style={styles.planLabel}>{pricing.label}</Text>
++          <View style={styles.priceBox}>
++            <Text style={styles.priceValue}>
++              R$ {pricing.monthly.toFixed(2).replace(".", ",")}
++            </Text>
++            <Text style={styles.pricePer}>/mês</Text>
++          </View>
++        </View>
++
++        <View style={styles.divider} />
++
++        {features.map((f, i) => (
++          <View key={i} style={styles.featureRow}>
++            <Text style={styles.checkmark}>✓</Text>
++            <Text style={styles.featureText}>{f}</Text>
++          </View>
++        ))}
++      </View>
++
++      {/* CTA */}
++      <Pressable
++        style={({ pressed }) => [styles.ctaBtn, pressed && { opacity: 0.85 }]}
++        onPress={() => router.push("/admin/(tabs)/settings" as any)}
++      >
++        <Text style={styles.ctaBtnText}>Ver planos e fazer upgrade →</Text>
++      </Pressable>
++
++      <Pressable
++        style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
++        onPress={() => router.back()}
++      >
++        <Text style={styles.backBtnText}>← Voltar</Text>
++      </Pressable>
++    </ScrollView>
++  );
++}
++
++const styles = StyleSheet.create({
++  container: {
++    flex: 1,
++    backgroundColor: "#0f0f0f",
++  },
++  content: {
++    alignItems: "center",
++    padding: 28,
++    paddingTop: 48,
++    paddingBottom: 48,
++  },
++  lockCircle: {
++    width: 80,
++    height: 80,
++    borderRadius: 40,
++    backgroundColor: "#1a1a1a",
++    borderWidth: 1,
++    borderColor: "#2a2a2a",
++    alignItems: "center",
++    justifyContent: "center",
++    marginBottom: 20,
++  },
++  lockIcon: {
++    fontSize: 36,
++  },
++  title: {
++    fontSize: 22,
++    fontWeight: "800",
++    color: "#ECEDEE",
++    textAlign: "center",
++    marginBottom: 8,
++  },
++  subtitle: {
++    fontSize: 14,
++    color: "#9BA1A6",
++    textAlign: "center",
++    lineHeight: 22,
++    marginBottom: 28,
++  },
++  planName: {
++    color: "#C9A84C",
++    fontWeight: "700",
++  },
++  planCard: {
++    width: "100%",
++    backgroundColor: "#1a1a1a",
++    borderRadius: 16,
++    borderWidth: 1.5,
++    borderColor: "#C9A84C",
++    padding: 20,
++    marginBottom: 24,
++  },
++  planHeader: {
++    flexDirection: "row",
++    justifyContent: "space-between",
++    alignItems: "center",
++    marginBottom: 16,
++  },
++  planLabel: {
++    fontSize: 18,
++    fontWeight: "800",
++    color: "#C9A84C",
++  },
++  priceBox: {
++    flexDirection: "row",
++    alignItems: "baseline",
++    gap: 2,
++  },
++  priceValue: {
++    fontSize: 20,
++    fontWeight: "800",
++    color: "#ECEDEE",
++  },
++  pricePer: {
++    fontSize: 12,
++    color: "#9BA1A6",
++  },
++  divider: {
++    height: 1,
++    backgroundColor: "#2a2a2a",
++    marginBottom: 16,
++  },
++  featureRow: {
++    flexDirection: "row",
++    alignItems: "center",
++    gap: 10,
++    marginBottom: 10,
++  },
++  checkmark: {
++    fontSize: 14,
++    color: "#C9A84C",
++    fontWeight: "700",
++    width: 16,
++  },
++  featureText: {
++    fontSize: 13,
++    color: "#9BA1A6",
++    flex: 1,
++  },
++  ctaBtn: {
++    width: "100%",
++    backgroundColor: "#C9A84C",
++    borderRadius: 12,
++    paddingVertical: 16,
++    alignItems: "center",
++    marginBottom: 12,
++  },
++  ctaBtnText: {
++    fontSize: 15,
++    fontWeight: "800",
++    color: "#000",
++  },
++  backBtn: {
++    paddingVertical: 8,
++  },
++  backBtnText: {
++    fontSize: 14,
++    color: "#555",
++  },
++});
+diff --git a/hooks/usePlanFeature.ts b/hooks/usePlanFeature.ts
+new file mode 100644
+index 0000000..4412ad0
+--- /dev/null
++++ b/hooks/usePlanFeature.ts
+@@ -0,0 +1,14 @@
++import { useBarberAuth } from "@/lib/auth-context";
++import { planHasFeature, type FeatureKey } from "@/lib/plan-features";
++
++/**
++ * Retorna se o tenant atual tem acesso à feature solicitada.
++ *
++ * @example
++ * const canUseProducts = usePlanFeature("products");
++ * if (!canUseProducts) return <UpgradePrompt />;
++ */
++export function usePlanFeature(feature: FeatureKey): boolean {
++  const { barber } = useBarberAuth();
++  return planHasFeature(barber?.tenantPlan, feature);
++}
+diff --git a/lib/auth-context.tsx b/lib/auth-context.tsx
+index 140c4cb..843640b 100644
+--- a/lib/auth-context.tsx
++++ b/lib/auth-context.tsx
+@@ -5,6 +5,8 @@ import { removeBarberJwt } from "@/lib/trpc";
+ 
+ export type BarberRole = "super_admin" | "barber" | "receptionist";
+ 
++export type TenantPlan = "solo" | "team" | "studio";
++
+ export interface AuthBarber {
+   id: number;
+   name: string;
+@@ -14,6 +16,7 @@ export interface AuthBarber {
+   role: BarberRole;
+   specialties: string | null;
+   tenantId?: number | null;
++  tenantPlan?: TenantPlan | null;
+ }
+ 
+ interface AuthContextType {
+diff --git a/lib/plan-features.ts b/lib/plan-features.ts
+new file mode 100644
+index 0000000..b6de5dc
+--- /dev/null
++++ b/lib/plan-features.ts
+@@ -0,0 +1,104 @@
++/**
++ * plan-features.ts (mobile)
++ * Espelho do server/plan-features.ts — mantê-los sincronizados.
++ * Slugs do banco: solo | team | studio
++ */
++
++export type TenantPlan = "solo" | "team" | "studio";
++
++export type FeatureKey =
++  | "products"
++  | "stock"
++  | "suppliers"
++  | "orders"
++  | "coupons"
++  | "subscription_plans"
++  | "commissions"
++  | "orbit"
++  | "reports_full"
++  | "priority_support";
++
++// ─── Preços ───────────────────────────────────────────────────────────────────
++
++export const PLAN_PRICING: Record<TenantPlan, { monthly: number; annual: number; label: string }> = {
++  solo:   { monthly: 49.90,  annual: 39.90,  label: "Solo"    },
++  team:   { monthly: 99.90,  annual: 79.90,  label: "Equipe"  },
++  studio: { monthly: 169.90, annual: 135.90, label: "Estúdio" },
++};
++
++// ─── Limites de barbeiros ─────────────────────────────────────────────────────
++
++export const PLAN_BARBER_LIMITS: Record<TenantPlan, number> = {
++  solo:   1,
++  team:   3,
++  studio: Infinity,
++};
++
++// ─── Features por plano ───────────────────────────────────────────────────────
++
++export const PLAN_FEATURES: Record<TenantPlan, Set<FeatureKey>> = {
++  solo: new Set([]),
++  team: new Set([
++    "products",
++    "stock",
++    "suppliers",
++    "orders",
++    "coupons",
++    "subscription_plans",
++    "reports_full",
++  ]),
++  studio: new Set([
++    "products",
++    "stock",
++    "suppliers",
++    "orders",
++    "coupons",
++    "subscription_plans",
++    "reports_full",
++    "commissions",
++    "orbit",
++    "priority_support",
++  ]),
++};
++
++// ─── Labels de features para exibição ────────────────────────────────────────
++
++export const FEATURE_LABELS: Record<FeatureKey, string> = {
++  products:           "Produtos",
++  stock:              "Estoque",
++  suppliers:          "Fornecedores",
++  orders:             "Encomendas",
++  coupons:            "Cupons",
++  subscription_plans: "Planos de Assinatura",
++  commissions:        "Comissões Automáticas",
++  orbit:              "Radar de Leads (Órbita)",
++  reports_full:       "Relatórios Completos",
++  priority_support:   "Suporte Prioritário",
++};
++
++// ─── Qual plano desbloqueia a feature ─────────────────────────────────────────
++
++export const FEATURE_REQUIRED_PLAN: Record<FeatureKey, TenantPlan> = {
++  products:           "team",
++  stock:              "team",
++  suppliers:          "team",
++  orders:             "team",
++  coupons:            "team",
++  subscription_plans: "team",
++  reports_full:       "team",
++  commissions:        "studio",
++  orbit:              "studio",
++  priority_support:   "studio",
++};
++
++// ─── Helpers ──────────────────────────────────────────────────────────────────
++
++export function planHasFeature(plan: TenantPlan | null | undefined, feature: FeatureKey): boolean {
++  if (!plan) return false;
++  return PLAN_FEATURES[plan]?.has(feature) ?? false;
++}
++
++export function planBarberLimit(plan: TenantPlan | null | undefined): number {
++  if (!plan) return 1;
++  return PLAN_BARBER_LIMITS[plan] ?? 1;
++}
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index ff9773f..5ac9e54 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -4954,7 +4954,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
+     solo: 'Solo', team: 'Equipe', studio: 'Estúdio',
+     starter: 'Starter', professional: 'Professional', premium: 'Premium', // legado
+   };
+-  const bpPlanPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
++  const bpPlanPriceMap: Record<string, number> = { solo: 49.90, team: 99.90, studio: 169.90 };
+   // Plano real do tenant (campo plan da tabela tenants)
+   const tenantRealPlan = (tenant as any)?.plan ?? 'solo';
+   // Se o tenant ainda não tem plano Barber Pro registrado, usar o plano real do tenant
+@@ -4983,9 +4983,9 @@ async function renderConfiguracoes(req: Request, res: Response) {
+               <div id="subscribe-widget" style="display:flex;flex-direction:column;gap:10px;width:100%">
+                 <!-- Seletor de plano -->
+                 <select id="sub-plan" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;width:100%">
+-                  <option value="solo" ${tenantRealPlan === 'solo' ? 'selected' : ''}>Solo — R$ 49/mês (1 barbeiro)</option>
+-                  <option value="team" ${tenantRealPlan === 'team' ? 'selected' : ''}>Equipe — R$ 89/mês (até 5 barbeiros)</option>
+-                  <option value="studio" ${tenantRealPlan === 'studio' ? 'selected' : ''}>Estúdio — R$ 149/mês (ilimitado)</option>
++                  <option value="solo" ${tenantRealPlan === 'solo' ? 'selected' : ''}>Solo — R$ 49,90/mês (1 barbeiro)</option>
++                  <option value="team" ${tenantRealPlan === 'team' ? 'selected' : ''}>Equipe — R$ 99,90/mês (até 3 barbeiros)</option>
++                  <option value="studio" ${tenantRealPlan === 'studio' ? 'selected' : ''}>Estúdio — R$ 169,90/mês (ilimitado)</option>
+                 </select>
+                 <!-- Seletor de forma de pagamento -->
+                 <!-- Seletor de forma de pagamento -->
+@@ -5097,9 +5097,9 @@ async function renderConfiguracoes(req: Request, res: Response) {
+             ${bpStatus === 'active' ? `
+               <form method="POST" action="/admin/configuracoes/asaas/upgrade-plan" style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+                 <select name="newPlan" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer">
+-                  <option value="solo" ${effectivePlanName === 'solo' ? 'selected' : ''}>Solo — R$ 49/mês (1 barbeiro)</option>
+-                  <option value="team" ${effectivePlanName === 'team' ? 'selected' : ''}>Equipe — R$ 89/mês (até 5 barbeiros)</option>
+-                  <option value="studio" ${effectivePlanName === 'studio' ? 'selected' : ''}>Estúdio — R$ 149/mês (ilimitado)</option>
++                  <option value="solo" ${effectivePlanName === 'solo' ? 'selected' : ''}>Solo — R$ 49,90/mês (1 barbeiro)</option>
++                  <option value="team" ${effectivePlanName === 'team' ? 'selected' : ''}>Equipe — R$ 99,90/mês (até 3 barbeiros)</option>
++                  <option value="studio" ${effectivePlanName === 'studio' ? 'selected' : ''}>Estúdio — R$ 169,90/mês (ilimitado)</option>
+                 </select>
+                 <button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px" onclick="return confirm('Alterar o plano cancelará a assinatura atual e criará uma nova. Confirmar?')">Alterar plano</button>
+               </form>
+@@ -7966,7 +7966,7 @@ document.addEventListener('input', function(e) {
+       const rawBilling = ((req.body as any)?.billingType ?? 'PIX') as string;
+       const allowedBillings = ['PIX', 'CREDIT_CARD', 'UNDEFINED'];
+       const billingType: string = allowedBillings.includes(rawBilling) ? rawBilling : 'PIX';
+-      const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
++      const planPriceMap: Record<string, number> = { solo: 49.90, team: 99.90, studio: 169.90 };
+       const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
+       const planPrice = planPriceMap[selectedPlan] ?? 49;
+       const planLabel = planLabelMap[selectedPlan] ?? selectedPlan;
+@@ -8232,7 +8232,7 @@ document.addEventListener('input', function(e) {
+       if (!barber?.tenantId) { res.redirect("/admin/configuracoes?tab=pagamentos"); return; }
+ 
+       const newPlan = (req.body as any)?.newPlan ?? 'solo';
+-      const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
++      const planPriceMap: Record<string, number> = { solo: 49.90, team: 99.90, studio: 169.90 };
+       const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
+       const newPrice = planPriceMap[newPlan] ?? 49;
+       const newLabel = planLabelMap[newPlan] ?? newPlan;
+diff --git a/server/plan-features.ts b/server/plan-features.ts
+index 0496404..5cbde1e 100644
+--- a/server/plan-features.ts
++++ b/server/plan-features.ts
+@@ -3,9 +3,9 @@ import type { Request, Response, NextFunction } from "express";
+ // ─── Preços ───────────────────────────────────────────────────────────────────
+ 
+ export const PLAN_PRICING = {
+-  solo:    { monthly: 49.90, annual: 39.90, annualTotal: 478.80 },
+-  equipe:  { monthly: 99.90, annual: 79.90, annualTotal: 958.80 },
+-  estudio: { monthly: 169.90, annual: 135.90, annualTotal: 1630.80 },
++  solo:   { monthly: 49.90, annual: 39.90, annualTotal: 478.80  },
++  team:   { monthly: 99.90, annual: 79.90, annualTotal: 958.80  },
++  studio: { monthly: 169.90, annual: 135.90, annualTotal: 1630.80 },
+ } as const;
+ 
+ export type PlanSlug = keyof typeof PLAN_PRICING;
+@@ -13,9 +13,9 @@ export type PlanSlug = keyof typeof PLAN_PRICING;
+ // ─── Limites de barbeiros ─────────────────────────────────────────────────────
+ 
+ export const PLAN_BARBER_LIMITS: Record<PlanSlug, number> = {
+-  solo:    1,
+-  equipe:  3,
+-  estudio: Infinity,
++  solo:   1,
++  team:   3,
++  studio: Infinity,
+ };
+ 
+ // ─── Features por plano ───────────────────────────────────────────────────────
+@@ -34,7 +34,7 @@ export type FeatureKey =
+ 
+ export const PLAN_FEATURES: Record<PlanSlug, Set<FeatureKey>> = {
+   solo: new Set([]),
+-  equipe: new Set([
++  team: new Set([
+     "products",
+     "stock",
+     "suppliers",
+@@ -43,7 +43,7 @@ export const PLAN_FEATURES: Record<PlanSlug, Set<FeatureKey>> = {
+     "subscription_plans",
+     "reports_full",
+   ]),
+-  estudio: new Set([
++  studio: new Set([
+     "products",
+     "stock",
+     "suppliers",
+diff --git a/server/routers.ts b/server/routers.ts
+index 7747135..85ee168 100644
+--- a/server/routers.ts
++++ b/server/routers.ts
+@@ -111,7 +111,8 @@ export const appRouter = router({
+         if (!valid) throw new Error("Credenciais inválidas");
+         const payload = { barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any };
+         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
+-        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, token, refreshToken };
++        const tenant = barber.tenantId ? await db.getTenantById(barber.tenantId) : null;
++        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, tenantPlan: tenant?.plan ?? null, token, refreshToken };
+       }),
+     googleLogin: publicProcedure
+       .input(z.object({
+@@ -156,7 +157,8 @@ export const appRouter = router({
+         if (photoUrl && !barber2.photoUrl) await db.updateBarber(barber2.id, { photoUrl } as any);
+         const payload = { barberId: barber2.id, tenantId: barber2.tenantId ?? null, role: barber2.role as any };
+         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
+-        return { id: barber2.id, name: barber2.name, email: barber2.email, phone: barber2.phone, photoUrl: photoUrl ?? barber2.photoUrl, role: barber2.role, specialties: barber2.specialties, tenantId: barber2.tenantId, token, refreshToken };
++        const tenant2 = barber2.tenantId ? await db.getTenantById(barber2.tenantId) : null;
++        return { id: barber2.id, name: barber2.name, email: barber2.email, phone: barber2.phone, photoUrl: photoUrl ?? barber2.photoUrl, role: barber2.role, specialties: barber2.specialties, tenantId: barber2.tenantId, tenantPlan: tenant2?.plan ?? null, token, refreshToken };
+       }),
+   }),
+ 
+@@ -171,7 +173,8 @@ export const appRouter = router({
+         if (!valid) throw new Error("Credenciais inválidas");
+         const payload = { barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any };
+         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
+-        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, token, refreshToken };
++        const tenantAdmin = barber.tenantId ? await db.getTenantById(barber.tenantId) : null;
++        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, tenantPlan: tenantAdmin?.plan ?? null, token, refreshToken };
+       }),
+     setup: publicProcedure
+       .input(z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(6) }))
+-- 
+2.43.0
+

@@ -10,6 +10,7 @@
  *   suporte     — somente visualização de tenants e erros (sem ações destrutivas)
  */
 
+import crypto from "crypto";
 import type { Express, Request, Response, NextFunction } from "express";
 import * as bcrypt from "bcryptjs";
 import * as db from "./db";
@@ -32,7 +33,7 @@ const SESSION_SECRET = process.env.BO_SESSION_SECRET ?? "bp-bo-secret-2025-x9k";
 
 function encodeSession(data: BOSession): string {
   const payload = Buffer.from(JSON.stringify(data)).toString("base64");
-  const sig = Buffer.from(payload + SESSION_SECRET).toString("base64").slice(0, 16);
+  const sig = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
   return `${payload}.${sig}`;
 }
 
@@ -40,8 +41,10 @@ function decodeSession(token: string): BOSession | null {
   try {
     const [payload, sig] = token.split(".");
     if (!payload || !sig) return null;
-    const expectedSig = Buffer.from(payload + SESSION_SECRET).toString("base64").slice(0, 16);
-    if (sig !== expectedSig) return null;
+    const expectedSig = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
+    const sigBuf = Buffer.from(sig);
+    const expBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null;
     return JSON.parse(Buffer.from(payload, "base64").toString("utf8")) as BOSession;
   } catch {
     return null;

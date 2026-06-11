@@ -1,0 +1,133 @@
+From 4d8fd3d004fad578fe48b8c8b0000cacb89cbc97 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Tue, 9 Jun 2026 12:07:23 +0000
+Subject: [PATCH] =?UTF-8?q?fix:=20onboarding=20=E2=80=94=20pre=C3=A7os=20c?=
+ =?UTF-8?q?orretos=20(49,90/99,90/169,90),=20limite=203=20barbeiros,=20fea?=
+ =?UTF-8?q?tures=20atualizadas?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ app/onboarding/plan-selection.tsx | 41 ++++++++++++++++---------------
+ app/onboarding/register.tsx       |  2 +-
+ app/onboarding/welcome.tsx        |  4 +--
+ 3 files changed, 24 insertions(+), 23 deletions(-)
+
+diff --git a/app/onboarding/plan-selection.tsx b/app/onboarding/plan-selection.tsx
+index 88bbbef..1452c73 100644
+--- a/app/onboarding/plan-selection.tsx
++++ b/app/onboarding/plan-selection.tsx
+@@ -34,7 +34,7 @@ const PLANS: Plan[] = [
+   {
+     key: "solo",
+     name: "Solo",
+-    price: 49,
++    price: 49.90,
+     description: "Para o barbeiro autônomo que trabalha sozinho.",
+     features: [
+       { text: "1 barbeiro / profissional", included: true },
+@@ -43,44 +43,45 @@ const PLANS: Plan[] = [
+       { text: "Sistema de fidelidade", included: true },
+       { text: "Notificações push", included: true },
+       { text: "Pagamento via Pix e cartão", included: true },
++      { text: "Despesas e controle de lucros", included: true },
+       { text: "Múltiplos barbeiros", included: false },
+-      { text: "Relatórios avançados", included: false },
+-      { text: "Controle de estoque", included: false },
++      { text: "Produtos e estoque", included: false },
++      { text: "Cupons e encomendas", included: false },
++      { text: "Relatórios completos + CSV", included: false },
+     ],
+   },
+   {
+     key: "team",
+     name: "Equipe",
+-    price: 89,
+-    description: "Para barbearias com equipe de até 5 profissionais.",
++    price: 99.90,
++    description: "Para barbearias com até 3 profissionais.",
+     badge: "MAIS POPULAR",
+     features: [
+-      { text: "Até 5 barbeiros / profissionais", included: true },
++      { text: "Até 3 barbeiros / profissionais", included: true },
+       { text: "Agendamento online pelo cliente", included: true },
+       { text: "Gestão financeira completa", included: true },
+       { text: "Sistema de fidelidade", included: true },
+       { text: "Notificações push", included: true },
+       { text: "Pagamento via Pix e cartão", included: true },
+-      { text: "Múltiplos barbeiros", included: true },
+-      { text: "Relatórios avançados", included: true },
+-      { text: "Controle de estoque", included: false },
++      { text: "Produtos, estoque e fornecedores", included: true },
++      { text: "Cupons e encomendas", included: true },
++      { text: "Planos de assinatura p/ clientes", included: true },
++      { text: "Relatórios completos + CSV", included: true },
++      { text: "Comissões automáticas", included: false },
++      { text: "Radar de Leads", included: false },
+     ],
+   },
+   {
+     key: "studio",
+     name: "Estúdio",
+-    price: 149,
+-    description: "Para salões e estúdios com equipe completa e estoque.",
++    price: 169.90,
++    description: "Para grandes barbearias e estúdios.",
+     features: [
+       { text: "Barbeiros ilimitados", included: true },
+-      { text: "Agendamento online pelo cliente", included: true },
+-      { text: "Gestão financeira completa", included: true },
+-      { text: "Sistema de fidelidade", included: true },
+-      { text: "Notificações push", included: true },
+-      { text: "Pagamento via Pix e cartão", included: true },
+-      { text: "Múltiplos barbeiros", included: true },
+-      { text: "Relatórios avançados", included: true },
+-      { text: "Controle de estoque", included: true },
++      { text: "Tudo do plano Equipe", included: true },
++      { text: "Comissões automáticas", included: true },
++      { text: "Radar de Leads (Órbita)", included: true },
++      { text: "Suporte prioritário", included: true },
+     ],
+   },
+ ];
+@@ -170,7 +171,7 @@ export default function PlanSelectionScreen() {
+                   <View style={styles.priceBox}>
+                     <Text style={[styles.priceCurrency, isSelected && styles.priceSelected]}>R$</Text>
+                     <Text style={[styles.priceValue, isSelected && styles.priceSelected]}>
+-                      {plan.price}
++                      {plan.price.toFixed(2).replace(".", ",")}
+                     </Text>
+                     <Text style={[styles.pricePeriod, isSelected && styles.pricePeriodSelected]}>/mês</Text>
+                   </View>
+diff --git a/app/onboarding/register.tsx b/app/onboarding/register.tsx
+index d99ecea..e40e90c 100644
+--- a/app/onboarding/register.tsx
++++ b/app/onboarding/register.tsx
+@@ -105,7 +105,7 @@ export default function OnboardingRegisterScreen() {
+   const [step5, setStep5] = useState<Step5Data>({ paymentMethod: null });
+   const [loadingCep, setLoadingCep] = useState(false);
+   const planLabel = selectedPlan === "team" ? "Equipe" : selectedPlan === "studio" ? "Estúdio" : "Solo";
+-  const planPrice = selectedPlan === "team" ? "R$89" : selectedPlan === "studio" ? "R$149" : "R$49";
++  const planPrice = selectedPlan === "team" ? "R$99,90" : selectedPlan === "studio" ? "R$169,90" : "R$49,90";
+ 
+   const registerMutation = trpc.onboarding.register.useMutation({
+     onSuccess: async (data) => {
+diff --git a/app/onboarding/welcome.tsx b/app/onboarding/welcome.tsx
+index 3c35c23..ac434a9 100644
+--- a/app/onboarding/welcome.tsx
++++ b/app/onboarding/welcome.tsx
+@@ -62,8 +62,8 @@ export default function WelcomeScreen() {
+   const shopName = params.shopName ?? "sua barbearia";
+   const plan = (params.plan as "solo" | "team" | "studio") ?? "solo";
+   const planLabel = plan === "team" ? "Equipe" : plan === "studio" ? "Estúdio" : "Solo";
+-  const planPrice = plan === "team" ? "R$89" : plan === "studio" ? "R$149" : "R$49";
+-  const planDesc = plan === "team" ? "Até 5 barbeiros" : plan === "studio" ? "Barbeiros ilimitados" : "1 barbeiro";
++  const planPrice = plan === "team" ? "R$99,90" : plan === "studio" ? "R$169,90" : "R$49,90";
++  const planDesc = plan === "team" ? "Até 3 barbeiros" : plan === "studio" ? "Barbeiros ilimitados" : "1 barbeiro";
+ 
+   // Animações de entrada
+   const logoScale = useSharedValue(0);
+-- 
+2.43.0
+

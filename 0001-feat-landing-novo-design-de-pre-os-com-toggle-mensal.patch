@@ -1,0 +1,395 @@
+From 0f4c2e38fc0ebaeb2529f32d8a9dcb8fe180abbc Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Tue, 9 Jun 2026 12:04:05 +0000
+Subject: [PATCH] =?UTF-8?q?feat:=20landing=20=E2=80=94=20novo=20design=20d?=
+ =?UTF-8?q?e=20pre=C3=A7os=20com=20toggle=20mensal/anual,=20timer=20e=20pr?=
+ =?UTF-8?q?e=C3=A7os=20corretos=20(R$49,90/99,90/169,90)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ server/landing/index.html | 294 ++++++++++++++++++++++++++++----------
+ 1 file changed, 222 insertions(+), 72 deletions(-)
+
+diff --git a/server/landing/index.html b/server/landing/index.html
+index 9dfd07e..d3984b9 100644
+--- a/server/landing/index.html
++++ b/server/landing/index.html
+@@ -508,7 +508,7 @@
+     </ul>
+     <div class="nav-actions">
+       <a href="/admin/login" class="btn-ghost">Entrar</a>
+-      <a href="#planos" class="btn-gold" onclick="openModal('Equipe','R$89');return false;">Testar grátis</a>
++      <a href="#planos" class="btn-gold" onclick="openModal('Equipe','R$99,90');return false;">Testar grátis</a>
+     </div>
+     <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Menu">
+       <span></span><span></span><span></span>
+@@ -523,7 +523,7 @@
+   <a href="#planos" onclick="closeMobileMenu()">Planos</a>
+   <a href="#faq" onclick="closeMobileMenu()">FAQ</a>
+   <a href="/admin/login" onclick="closeMobileMenu()">Entrar no painel</a>
+-  <a href="#planos" class="drawer-cta" onclick="closeMobileMenu();openModal('Equipe','R$89');">✦ Testar 14 dias grátis</a>
++  <a href="#planos" class="drawer-cta" onclick="closeMobileMenu();openModal('Equipe','R$99,90');">✦ Testar 14 dias grátis</a>
+ </div>
+ 
+ <!-- SOCIAL PROOF BAR -->
+@@ -555,7 +555,7 @@
+       </h1>
+       <p class="hero-sub">O <strong>Barber Pro</strong> automatiza seus agendamentos, garante faturamento com assinaturas e organiza seu financeiro. Tudo em um só lugar, sem complicação.</p>
+       <div class="hero-actions">
+-        <button class="btn-primary" onclick="openModal('Equipe', 'R$89')">✦ TESTAR 14 DIAS GRÁTIS</button>
++        <button class="btn-primary" onclick="openModal('Equipe','R$99,90')">✦ TESTAR 14 DIAS GRÁTIS</button>
+         <a href="#funcionalidades" class="btn-outline">Ver funcionalidades →</a>
+       </div>
+ 
+@@ -1041,78 +1041,228 @@
+ 
+ <hr class="section-divider">
+ <!-- PLANOS -->
+-<section id="planos" class="section">
+-  <div class="container">
+-    <div class="text-center">
++<section id="planos" style="background:#0A0A0A;padding:80px 24px">
++  <div style="max-width:1100px;margin:0 auto">
++
++    <!-- Título -->
++    <div style="text-align:center;margin-bottom:48px">
+       <div class="section-label">Planos e preços</div>
+-      <h2 class="section-title">Escolha o plano<br/><span class="gold-gradient">ideal para você</span></h2>
+-      <p class="section-sub mx-auto" style="max-width:480px">Sem taxas por agendamento. Sem surpresas. Cancele quando quiser.</p>
++      <h2 class="section-title">Planos que cabem<br/><span class="gold-gradient">no seu bolso</span></h2>
++      <p class="section-sub mx-auto" style="max-width:500px">Comece grátis por 14 dias. Sem cartão de crédito. Cancele quando quiser.</p>
+     </div>
+-    <div class="pricing-grid">
+-      <div class="price-card">
+-        <div class="price-plan">Solo</div>
+-        <div class="price-val"><sup>R$</sup>49</div>
+-        <div class="price-period">por mês</div>
+-        <div class="price-divider"></div>
+-        <ul class="price-feats">
+-          <li>1 barbeiro</li>
+-          <li>Agendamento online ilimitado</li>
+-          <li>Página pública personalizada</li>
+-          <li>Controle financeiro básico</li>
+-          <li>Notificações push</li>
+-          <li class="off">Programa de fidelidade</li>
+-          <li class="off">Cupons e promoções</li>
+-          <li class="off">Relatórios avançados</li>
+-        </ul>
+-        <button class="btn-plan btn-plan-outline" onclick="openModal('Solo', 'R$49')">Começar grátis</button>
++
++    <!-- Banner de lançamento -->
++    <div style="background:#120D00;border:1px solid rgba(201,168,76,0.35);border-radius:14px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:32px">
++      <div style="display:flex;align-items:center;gap:12px">
++        <span style="font-size:22px">🚀</span>
++        <div>
++          <div style="font-size:14px;font-weight:600;color:#F0EEE8">Oferta de lançamento — 2 meses grátis no plano anual</div>
++          <div style="font-size:12px;color:#8A7A4A;margin-top:2px">Somente nos primeiros 30 dias após o lançamento oficial</div>
++        </div>
+       </div>
+-      <div class="price-card best">
+-        <div class="price-badge">Mais popular</div>
+-        <div class="price-plan">Equipe</div>
+-        <div class="price-val"><sup>R$</sup>89</div>
+-        <div class="price-period">por mês</div>
+-        <div class="price-divider"></div>
+-        <ul class="price-feats">
+-          <li>Até 5 barbeiros</li>
+-          <li>Agendamento online ilimitado</li>
+-          <li>Página pública personalizada</li>
+-          <li>Controle financeiro completo</li>
+-          <li>Notificações push</li>
+-          <li>Programa de fidelidade</li>
+-          <li>Cupons e promoções</li>
+-          <li>Relatórios avançados</li>
+-        </ul>
+-        <button class="btn-plan btn-plan-gold" onclick="openModal('Equipe', 'R$89')">Começar grátis</button>
++      <div style="display:flex;gap:6px;align-items:center" id="bp-timer-wrap">
++        <div class="bp-t-unit"><span class="bp-t-num" id="bp-td">30</span><span class="bp-t-lbl">dias</span></div>
++        <span style="color:#C9A84C;font-size:18px;opacity:.4;font-weight:500">:</span>
++        <div class="bp-t-unit"><span class="bp-t-num" id="bp-th">00</span><span class="bp-t-lbl">horas</span></div>
++        <span style="color:#C9A84C;font-size:18px;opacity:.4;font-weight:500">:</span>
++        <div class="bp-t-unit"><span class="bp-t-num" id="bp-tm">00</span><span class="bp-t-lbl">min</span></div>
++        <span style="color:#C9A84C;font-size:18px;opacity:.4;font-weight:500">:</span>
++        <div class="bp-t-unit"><span class="bp-t-num" id="bp-ts">00</span><span class="bp-t-lbl">seg</span></div>
+       </div>
+-      <div class="price-card">
+-        <div class="price-plan">Estúdio</div>
+-        <div class="price-val"><sup>R$</sup>149</div>
+-        <div class="price-period">por mês</div>
+-        <div class="price-divider"></div>
+-        <ul class="price-feats">
+-          <li>Barbeiros ilimitados</li>
+-          <li>Agendamento online ilimitado</li>
+-          <li>Página pública personalizada</li>
+-          <li>Controle financeiro completo</li>
+-          <li>Notificações push</li>
+-          <li>Programa de fidelidade</li>
+-          <li>Cupons e promoções</li>
+-          <li>Relatórios avançados + exportação</li>
+-        </ul>
+-        <button class="btn-plan btn-plan-outline" onclick="openModal('Estúdio', 'R$149')">Começar grátis</button>
++    </div>
++
++    <!-- Toggle mensal/anual -->
++    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:40px">
++      <span id="bp-lm" style="font-size:14px;font-weight:600;color:#F0EEE8;transition:all .2s">Mensal</span>
++      <div id="bp-sw" onclick="bpToggle()" role="switch" aria-checked="false" tabindex="0"
++           style="position:relative;width:52px;height:28px;background:#1A1A1A;border:1px solid #2A2A2A;border-radius:99px;cursor:pointer;transition:all .2s">
++        <div id="bp-knob" style="position:absolute;top:4px;left:4px;width:18px;height:18px;background:#3A3A3A;border-radius:50%;transition:all .2s"></div>
+       </div>
++      <span id="bp-la" style="font-size:14px;color:#666;transition:all .2s">Anual</span>
++      <span id="bp-badge" style="display:none;background:rgba(34,197,94,.12);color:#4ADE80;border:1px solid rgba(34,197,94,.2);font-size:12px;font-weight:500;padding:3px 12px;border-radius:99px">2 meses grátis</span>
+     </div>
+-        <div class="pricing-guarantee">
+-      <span class="pricing-guarantee-icon">🛡️</span>
+-      <div>
+-        <strong>Garantia de 14 dias. Zero risco.</strong>
+-        <span>Se não gostar, cancele sem burocracia. Sem cartão de crédito para testar.</span>
++
++    <!-- Grid de planos -->
++    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;max-width:1000px;margin:0 auto 40px">
++
++      <!-- SOLO -->
++      <div style="background:#111;border:1px solid #222;border-radius:16px;padding:28px 24px">
++        <div style="font-size:16px;font-weight:700;color:#F0EEE8;margin-bottom:4px">Solo</div>
++        <div style="font-size:12px;color:#555;margin-bottom:14px">Para o barbeiro autônomo</div>
++        <div style="display:inline-flex;align-items:center;gap:6px;background:#1A1A1A;border:1px solid #2A2A2A;border-radius:99px;padding:4px 12px;font-size:12px;color:#888;margin-bottom:16px">👤 1 barbeiro</div>
++        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:4px">
++          <span id="bp-so" style="font-size:13px;color:#444;text-decoration:line-through;display:none">R$49,90</span>
++          <span id="bp-sp" style="font-size:28px;font-weight:700;color:#F0EEE8">R$49,90</span>
++          <span style="font-size:12px;color:#555">/mês</span>
++        </div>
++        <div id="bp-sa" style="font-size:11px;color:#4ADE80;min-height:16px;margin-bottom:18px"></div>
++        <button onclick="openModal('Solo','R$49,90')" style="display:block;width:100%;text-align:center;padding:11px;border-radius:10px;border:1px solid #2A2A2A;background:#1A1A1A;color:#C9A84C;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:20px;transition:background .15s" onmouseover="this.style.background='#222'" onmouseout="this.style.background='#1A1A1A'">Testar 14 dias grátis ↗</button>
++        <hr style="border:none;border-top:1px solid #1A1A1A;margin-bottom:14px">
++        <div style="font-size:10px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Incluso</div>
++        <div class="bp-fi">✓ Agendamento online 24h</div>
++        <div class="bp-fi">✓ Pagamento Pix e cartão</div>
++        <div class="bp-fi">✓ Programa de fidelidade</div>
++        <div class="bp-fi">✓ App mobile</div>
++        <div class="bp-fi">✓ Lembretes automáticos</div>
++        <div class="bp-fi">✓ Dashboard financeiro básico</div>
++        <div class="bp-fi">✓ Despesas e controle de lucros</div>
++        <div class="bp-fi">✓ Relatórios simplificados</div>
++        <div class="bp-fi">✓ Página pública da barbearia</div>
++        <div style="font-size:10px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px">Bloqueado</div>
++        <div class="bp-fl">🔒 Múltiplos barbeiros</div>
++        <div class="bp-fl">🔒 Produtos e estoque</div>
++        <div class="bp-fl">🔒 Encomendas e cupons</div>
++        <div class="bp-fl">🔒 Relatórios completos + CSV</div>
++        <div class="bp-fl">🔒 Planos de assinatura p/ clientes</div>
++      </div>
++
++      <!-- EQUIPE (destacado) -->
++      <div style="background:#120E00;border:2px solid rgba(201,168,76,0.45);border-radius:16px;padding:28px 24px;position:relative">
++        <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#C9A84C;color:#0A0A0A;font-size:11px;font-weight:700;padding:3px 14px;border-radius:99px;white-space:nowrap">⭐ Mais popular</div>
++        <div style="font-size:16px;font-weight:700;color:#F0EEE8;margin-bottom:4px">Equipe</div>
++        <div style="font-size:12px;color:#555;margin-bottom:14px">Para barbearias com equipe</div>
++        <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:99px;padding:4px 12px;font-size:12px;color:#C9A84C;margin-bottom:16px">👥 Até 3 barbeiros</div>
++        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:4px">
++          <span id="bp-eo" style="font-size:13px;color:#444;text-decoration:line-through;display:none">R$99,90</span>
++          <span id="bp-ep" style="font-size:28px;font-weight:700;color:#C9A84C">R$99,90</span>
++          <span style="font-size:12px;color:#555">/mês</span>
++        </div>
++        <div id="bp-ea" style="font-size:11px;color:#4ADE80;min-height:16px;margin-bottom:18px"></div>
++        <button onclick="openModal('Equipe','R$99,90')" style="display:block;width:100%;text-align:center;padding:11px;border-radius:10px;background:#C9A84C;border:none;color:#0A0A0A;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:20px;transition:background .15s" onmouseover="this.style.background='#B8973B'" onmouseout="this.style.background='#C9A84C'">Testar 14 dias grátis ↗</button>
++        <hr style="border:none;border-top:1px solid rgba(201,168,76,0.12);margin-bottom:14px">
++        <div style="font-size:10px;font-weight:600;color:rgba(201,168,76,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Incluso</div>
++        <div class="bp-fi">✓ Até 3 barbeiros</div>
++        <div class="bp-fi">✓ Agendamento online 24h</div>
++        <div class="bp-fi">✓ Pagamento Pix e cartão</div>
++        <div class="bp-fi">✓ Programa de fidelidade</div>
++        <div class="bp-fi">✓ App mobile</div>
++        <div class="bp-fi">✓ Lembretes automáticos</div>
++        <div class="bp-fi">✓ Dashboard financeiro completo</div>
++        <div class="bp-fi">✓ Despesas e controle de lucros</div>
++        <div class="bp-fi">✓ Relatórios completos + CSV</div>
++        <div class="bp-fi">✓ Página pública da barbearia</div>
++        <div class="bp-fi">✓ Produtos e estoque</div>
++        <div class="bp-fi">✓ Fornecedores</div>
++        <div class="bp-fi">✓ Encomendas</div>
++        <div class="bp-fi">✓ Planos de assinatura p/ clientes</div>
++        <div class="bp-fi">✓ Cupons e promoções</div>
++        <div style="font-size:10px;font-weight:600;color:rgba(201,168,76,0.4);text-transform:uppercase;letter-spacing:1px;margin:12px 0 8px">Bloqueado</div>
++        <div class="bp-fl">🔒 Comissões por barbeiro</div>
++        <div class="bp-fl">🔒 Radar de Leads</div>
++        <div class="bp-fl">🔒 Suporte prioritário</div>
++      </div>
++
++      <!-- ESTÚDIO -->
++      <div style="background:#111;border:1px solid #222;border-radius:16px;padding:28px 24px">
++        <div style="font-size:16px;font-weight:700;color:#F0EEE8;margin-bottom:4px">Estúdio</div>
++        <div style="font-size:12px;color:#555;margin-bottom:14px">Para grandes barbearias</div>
++        <div style="display:inline-flex;align-items:center;gap:6px;background:#1A1A1A;border:1px solid #2A2A2A;border-radius:99px;padding:4px 12px;font-size:12px;color:#888;margin-bottom:16px">👥 Ilimitado</div>
++        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:4px">
++          <span id="bp-to" style="font-size:13px;color:#444;text-decoration:line-through;display:none">R$169,90</span>
++          <span id="bp-tp" style="font-size:28px;font-weight:700;color:#F0EEE8">R$169,90</span>
++          <span style="font-size:12px;color:#555">/mês</span>
++        </div>
++        <div id="bp-ta" style="font-size:11px;color:#4ADE80;min-height:16px;margin-bottom:18px"></div>
++        <button onclick="openModal('Estúdio','R$169,90')" style="display:block;width:100%;text-align:center;padding:11px;border-radius:10px;border:1px solid #2A2A2A;background:#1A1A1A;color:#C9A84C;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:20px;transition:background .15s" onmouseover="this.style.background='#222'" onmouseout="this.style.background='#1A1A1A'">Testar 14 dias grátis ↗</button>
++        <hr style="border:none;border-top:1px solid #1A1A1A;margin-bottom:14px">
++        <div style="font-size:10px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Tudo do Equipe, mais</div>
++        <div class="bp-fi">✓ Barbeiros ilimitados</div>
++        <div class="bp-fi">✓ Comissões automáticas</div>
++        <div class="bp-fi">✓ Radar de Leads</div>
++        <div class="bp-fi">✓ Suporte prioritário</div>
++        <div class="bp-fi">✓ Agendamento online 24h</div>
++        <div class="bp-fi">✓ Pagamento Pix e cartão</div>
++        <div class="bp-fi">✓ Programa de fidelidade</div>
++        <div class="bp-fi">✓ App mobile</div>
++        <div class="bp-fi">✓ Lembretes automáticos</div>
++        <div class="bp-fi">✓ Dashboard financeiro completo</div>
++        <div class="bp-fi">✓ Despesas e controle de lucros</div>
++        <div class="bp-fi">✓ Relatórios completos + CSV</div>
++        <div class="bp-fi">✓ Página pública da barbearia</div>
++        <div class="bp-fi">✓ Produtos e estoque</div>
++        <div class="bp-fi">✓ Fornecedores</div>
++        <div class="bp-fi">✓ Encomendas</div>
++        <div class="bp-fi">✓ Planos de assinatura p/ clientes</div>
++        <div class="bp-fi">✓ Cupons e promoções</div>
+       </div>
+     </div>
+ 
++    <!-- Linha de confiança -->
++    <div style="display:flex;align-items:center;justify-content:center;gap:28px;flex-wrap:wrap;padding-top:28px;border-top:1px solid #1A1A1A">
++      <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555">📅 14 dias grátis</span>
++      <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555">💳 Sem cartão no trial</span>
++      <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555">🔒 Pagamento seguro via Asaas</span>
++      <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555">↩ Cancele quando quiser</span>
++    </div>
++
+   </div>
+ </section>
+ 
++<!-- CSS auxiliar dos planos -->
++<style>
++.bp-t-unit{background:#0A0A0A;border:1px solid rgba(201,168,76,0.25);border-radius:8px;padding:5px 8px;text-align:center;min-width:44px}
++.bp-t-num{font-size:16px;font-weight:600;color:#C9A84C;display:block;line-height:1}
++.bp-t-lbl{font-size:9px;color:#6A5A2A;margin-top:2px;display:block;text-transform:uppercase;letter-spacing:.5px}
++.bp-fi{font-size:12px;color:#CCC;padding:3px 0;display:flex;gap:7px}
++.bp-fl{font-size:12px;color:#333;padding:3px 0;display:flex;gap:7px}
++</style>
++
++<!-- JS do toggle e timer -->
++<script>
++(function(){
++  var ann=false;
++  var P={s:[49.90,478.80],e:[99.90,958.80],t:[169.90,1630.80]};
++  var dl=new Date();dl.setDate(dl.getDate()+30);
++  function fmt(n){return'R$'+n.toFixed(2).replace('.',',');}
++  window.bpToggle=function(){
++    ann=!ann;
++    var sw=document.getElementById('bp-sw');
++    var knob=document.getElementById('bp-knob');
++    sw.setAttribute('aria-checked',ann);
++    if(ann){sw.style.background='rgba(201,168,76,0.12)';sw.style.borderColor='rgba(201,168,76,0.5)';knob.style.transform='translateX(24px)';knob.style.background='#C9A84C';}
++    else{sw.style.background='#1A1A1A';sw.style.borderColor='#2A2A2A';knob.style.transform='translateX(0)';knob.style.background='#3A3A3A';}
++    document.getElementById('bp-lm').style.color=ann?'#666':'#F0EEE8';
++    document.getElementById('bp-lm').style.fontWeight=ann?'400':'600';
++    document.getElementById('bp-la').style.color=ann?'#F0EEE8':'#666';
++    document.getElementById('bp-la').style.fontWeight=ann?'600':'400';
++    document.getElementById('bp-badge').style.display=ann?'inline-flex':'none';
++    updatePrices();
++  };
++  function updatePrices(){
++    var pairs=[['bp-so','bp-sp','bp-sa',P.s],['bp-eo','bp-ep','bp-ea',P.e],['bp-to','bp-tp','bp-ta',P.t]];
++    pairs.forEach(function(x){
++      var oldEl=document.getElementById(x[0]);
++      var prEl=document.getElementById(x[1]);
++      var anEl=document.getElementById(x[2]);
++      var p=x[3];
++      if(ann){
++        var mo=p[1]/12;
++        oldEl.style.display='inline';
++        oldEl.textContent=fmt(p[0]);
++        prEl.textContent=fmt(mo);
++        var saved=Math.round(p[0]*12-p[1]);
++        anEl.textContent=fmt(p[1])+'/ano — economize R$'+saved;
++      }else{
++        oldEl.style.display='none';
++        prEl.textContent=fmt(p[0]);
++        anEl.textContent='';
++      }
++    });
++  }
++  function tick(){
++    var diff=Math.max(0,dl-new Date());
++    if(diff===0){var w=document.getElementById('bp-timer-wrap');if(w)w.innerHTML='<span style="font-size:13px;color:#C9A84C;font-weight:600">Oferta encerrada</span>';return;}
++    var d=Math.floor(diff/86400000),h=Math.floor(diff%86400000/3600000),m=Math.floor(diff%3600000/60000),s=Math.floor(diff%60000/1000);
++    var td=document.getElementById('bp-td'),th=document.getElementById('bp-th'),tm=document.getElementById('bp-tm'),ts=document.getElementById('bp-ts');
++    if(td)td.textContent=String(d).padStart(2,'0');
++    if(th)th.textContent=String(h).padStart(2,'0');
++    if(tm)tm.textContent=String(m).padStart(2,'0');
++    if(ts)ts.textContent=String(s).padStart(2,'0');
++  }
++  tick();setInterval(tick,1000);
++})();
++</script>
++
+ 
+ 
+ <!-- FAQ -->
+@@ -1165,7 +1315,7 @@
+       <h2 class="cta-title">Evolua com o Barber Pro<br/>e <span class="gold-gradient">pare de perder tempo e dinheiro.</span></h2>
+       <p class="cta-sub">Teste o sistema completo por 14 dias grátis e coloque ordem na sua barbearia hoje.</p>
+       <div class="cta-actions">
+-        <button class="btn-primary" onclick="openModal('Equipe', 'R$89')">✦ TESTAR 14 DIAS GRÁTIS</button>
++        <button class="btn-primary" onclick="openModal('Equipe','R$99,90')">✦ TESTAR 14 DIAS GRÁTIS</button>
+         <a href="#planos" class="btn-outline">Ver planos →</a>
+       </div>
+       <p class="cta-note">Sem cartão de crédito · Cancele quando quiser · Suporte incluído</p>
+@@ -1251,7 +1401,7 @@
+       <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+       Entrar com Google
+     </button>
+-    <p style="text-align:center;font-size:14px;color:var(--gray)">Não tem conta? <a href="#" onclick="closeLoginModal(); openModal('Equipe', 'R$89'); return false;" style="color:var(--gold-light);font-weight:600">Criar barbearia grátis</a></p>
++    <p style="text-align:center;font-size:14px;color:var(--gray)">Não tem conta? <a href="#" onclick="closeLoginModal(); openModal('Equipe','R$99,90'); return false;" style="color:var(--gold-light);font-weight:600">Criar barbearia grátis</a></p>
+   </div>
+ </div>
+ 
+@@ -1277,15 +1427,15 @@
+           <div style="font-size:12px;color:var(--gray);margin-top:2px">14 dias grátis, depois</div>
+         </div>
+         <div style="display:flex;align-items:center;gap:8px">
+-          <div class="modal-plan-price" id="modalPlanPrice">R$89<span style="font-size:13px;color:var(--gray)">/mês</span></div>
++          <div class="modal-plan-price" id="modalPlanPrice">R$99,90<span style="font-size:13px;color:var(--gray)">/mês</span></div>
+           <span style="font-size:11px;color:var(--gold);font-weight:700">Trocar ▾</span>
+         </div>
+       </div>
+       <!-- Seletor de plano expandível -->
+       <div id="planSelectorDropdown" style="display:none;background:var(--black-4);border:1px solid var(--gold-border);border-radius:12px;margin-bottom:16px;overflow:hidden">
+-        <button type="button" onclick="changePlan('Solo','R$49')" class="plan-option-btn" id="planOpt-Solo">Solo — R$49/mês <span style="font-size:11px;color:var(--gray)">1 barbeiro</span></button>
+-        <button type="button" onclick="changePlan('Equipe','R$89')" class="plan-option-btn plan-option-active" id="planOpt-Equipe">Equipe — R$89/mês <span style="font-size:11px;color:var(--gray)">Até 5 barbeiros</span></button>
+-        <button type="button" onclick="changePlan('Estúdio','R$149')" class="plan-option-btn" id="planOpt-Estúdio">Estúdio — R$149/mês <span style="font-size:11px;color:var(--gray)">Ilimitado</span></button>
++        <button type="button" onclick="changePlan('Solo','R$49,90')" class="plan-option-btn" id="planOpt-Solo">Solo — R$49,90/mês <span style="font-size:11px;color:var(--gray)">1 barbeiro</span></button>
++        <button type="button" onclick="changePlan('Equipe','R$99,90')" class="plan-option-btn plan-option-active" id="planOpt-Equipe">Equipe — R$99,90/mês <span style="font-size:11px;color:var(--gray)">Até 3 barbeiros</span></button>
++        <button type="button" onclick="changePlan('Estúdio','R$169,90')" class="plan-option-btn" id="planOpt-Estúdio">Estúdio — R$169,90/mês <span style="font-size:11px;color:var(--gray)">Ilimitado</span></button>
+       </div>
+       <!-- Step 1: Dados da Barbearia -->
+       <div id="formStep1">
+@@ -1499,7 +1649,7 @@
+       var email = params.get('email')||'';
+       var openId = params.get('openId')||'';
+       // Abrir modal no step 1, pré-preenchendo dados do Google nos passos corretos
+-      openModal('Equipe','R$89');
++      openModal('Equipe','R$99,90');
+       showStep(1);
+       // Guardar dados do Google para preencher no step 4
+       window._googleOpenId=openId;
+@@ -1541,8 +1691,8 @@ function toggleMobileMenu(){var h=document.getElementById('nav-hamburger'),d=doc
+   function closeMobileMenu(){document.getElementById('nav-hamburger').classList.remove('open');document.getElementById('nav-drawer').classList.remove('open');document.body.style.overflow='';}
+   // Animações removidas — elementos sempre visíveis via CSS
+   // Modal signup
+-  var currentPlan='Equipe',currentPrice='R$89';
+-  function openModal(plan,price){currentPlan=plan||'Equipe';currentPrice=price||'R$89';document.getElementById('modalPlanName').textContent=currentPlan;document.getElementById('modalPlanPrice').innerHTML=currentPrice+'<span style="font-size:13px;color:var(--gray)">/mês</span>';document.getElementById('signupModal').classList.add('open');document.body.style.overflow='hidden';resetModal();}
++  var currentPlan='Equipe',currentPrice='R$99,90';
++  function openModal(plan,price){currentPlan=plan||'Equipe';currentPrice=price||'R$99,90';document.getElementById('modalPlanName').textContent=currentPlan;document.getElementById('modalPlanPrice').innerHTML=currentPrice+'<span style="font-size:13px;color:var(--gray)">/mês</span>';document.getElementById('signupModal').classList.add('open');document.body.style.overflow='hidden';resetModal();}
+   // Seletor de plano no modal
+   function togglePlanSelector(){var d=document.getElementById('planSelectorDropdown');d.style.display=d.style.display==='none'?'block':'none';}
+   function changePlan(plan,price){currentPlan=plan;currentPrice=price;document.getElementById('modalPlanName').textContent=plan;document.getElementById('modalPlanPrice').innerHTML=price+'<span style="font-size:13px;color:var(--gray)">/mês</span>';document.querySelectorAll('.plan-option-btn').forEach(function(b){b.classList.remove('plan-option-active');});var opt=document.getElementById('planOpt-'+plan);if(opt)opt.classList.add('plan-option-active');document.getElementById('planSelectorDropdown').style.display='none';}
+-- 
+2.43.0
+

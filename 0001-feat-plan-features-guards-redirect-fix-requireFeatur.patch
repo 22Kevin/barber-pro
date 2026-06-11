@@ -1,0 +1,418 @@
+From 0ea54cdce91db25b18930b41f78540ffd84dca47 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Tue, 9 Jun 2026 10:52:01 +0000
+Subject: [PATCH] =?UTF-8?q?feat:=20plan-features=20guards=20=E2=80=94=20re?=
+ =?UTF-8?q?direct=20fix,=20requireFeature=20middleware,=20barber=20limit?=
+ =?UTF-8?q?=20update?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ server/admin-routes.ts  |  41 +++++-----
+ server/plan-features.ts | 166 ++++++++++++++++++++++++++++++++++++++++
+ server/routers.ts       |  27 +++----
+ 3 files changed, 203 insertions(+), 31 deletions(-)
+ create mode 100644 server/plan-features.ts
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index b33cfe6..ff9773f 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -25,6 +25,7 @@ import { asaasEnabled, asaasApi, createAsaasSubAccount, getAsaasSubAccount, ensu
+ import { sendEmail, sendPasswordResetEmail, sendBookingConfirmationEmail, sendBarberNotificationEmail, sendReviewRequestEmail, emailLayout, alertBox, ctaButton, detailRow, BRAND_COLOR } from "./email";
+ import axios from "axios";
+ import PDFDocument from "pdfkit";
++import { requireFeature } from "./plan-features";
+ import bcrypt from "bcryptjs";
+ 
+ const ADMIN_SESSION_COOKIE = "bp_admin_session";
+@@ -204,6 +205,10 @@ async function requireActiveSubscription(req: Request, res: Response, next: Next
+     // Bloquear apenas se expirado ou cancelado (nunca bloquear pending/overdue para não impedir pagamento)
+     const isBlocked = status === 'expired' || status === 'cancelled' || (status === 'trial' && trialExpiredPastGrace);
+     if (isBlocked) {
++      if (req.path.startsWith('/admin/configuracoes') || req.path.startsWith('/admin/logout')) {
++        (req as any).adminSession = session;
++        return next();
++      }
+       return res.redirect("/admin/configuracoes?tab=pagamentos&expired=1");
+     }
+     // Durante o grace period: mostra banner de aviso sem bloquear
+@@ -8946,8 +8951,8 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── CRUD Produtos ────────────────────────────────────────────────────────
+-  app.get("/admin/produtos", requireAdminAuth, (req, res) => renderProdutos(req, res));
+-  app.post("/admin/produtos", requireAdminAuth, async (req: Request, res: Response) => {
++  app.get("/admin/produtos", requireAdminAuth, requireFeature("products"), (req, res) => renderProdutos(req, res));
++  app.post("/admin/produtos", requireAdminAuth, requireFeature("products"), async (req: Request, res: Response) => {
+     const { name, description, price, costPrice, productType, stockQuantity, minStockAlert, isActive, mediaBase64, mediaMime, supplierId } = req.body;
+     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+     const supplierIdNum = supplierId ? parseInt(supplierId) : null;
+@@ -8993,12 +8998,12 @@ document.addEventListener('input', function(e) {
+     }
+     res.redirect("/admin/produtos?saved=1");
+   });
+-  app.post("/admin/produtos/toggle", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/produtos/toggle", requireAdminAuth, requireFeature("products"), async (req: Request, res: Response) => {
+     const { id, isActive } = req.body;
+     await db.updateProduct(parseInt(id), { isActive: isActive === "true" });
+     res.redirect("/admin/produtos");
+   });
+-  app.post("/admin/produtos/delete", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/produtos/delete", requireAdminAuth, requireFeature("products"), async (req: Request, res: Response) => {
+     const { id } = req.body;
+     await db.deleteProduct(parseInt(id));
+     res.redirect("/admin/produtos?deleted=1");
+@@ -9244,7 +9249,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Cupons ────────────────────────────────────────────────────────────────
+-  app.get("/admin/cupons", requireAdminAuth, withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
++  app.get("/admin/cupons", requireAdminAuth, requireFeature("coupons"), withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
+     const barber = await db.getBarberById((req as any).adminSession.barberId);
+     const tenantId = barber?.tenantId ?? null;
+     const allCoupons = await db.getAllCoupons(tenantId);
+@@ -9431,7 +9436,7 @@ document.addEventListener('input', function(e) {
+   }));
+ 
+   // ─── Comissões ────────────────────────────────────────────────────────────
+-  app.get("/admin/comissoes", requireAdminAuth, withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
++  app.get("/admin/comissoes", requireAdminAuth, requireFeature("commissions"), withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
+     const barber = await db.getBarberById((req as any).adminSession.barberId);
+     const tenantId = barber?.tenantId ?? null;
+     const configs = await db.listCommissionConfigs(tenantId);
+@@ -9544,7 +9549,7 @@ document.addEventListener('input', function(e) {
+   res.send(adminLayoutWithGrace(res, "Comissões", "comissoes", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Comissões",href:"/admin/comissoes"}]));
+   }));
+ 
+-  app.post("/admin/comissoes/config", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/comissoes/config", requireAdminAuth, requireFeature("commissions"), async (req: Request, res: Response) => {
+     const session2 = (req as any).adminSession;
+     const barber2 = await db.getBarberById(session2.barberId);
+     const barbers = await db.getAllBarbers(barber2?.tenantId);
+@@ -10115,7 +10120,7 @@ document.addEventListener('input', function(e) {
+ 
+ 
+   // ─── Planos de Assinatura ────────────────────────────────────────────────────
+-  app.get("/admin/planos", requireAdminAuth, withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
++  app.get("/admin/planos", requireAdminAuth, requireFeature("subscription_plans"), withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+@@ -10286,7 +10291,7 @@ document.addEventListener('input', function(e) {
+     }
+   }));
+ 
+-  app.post("/admin/planos", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/planos", requireAdminAuth, requireFeature("subscription_plans"), async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -10366,7 +10371,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Estoque ─────────────────────────────────────────────────────────────────
+-  app.get("/admin/estoque", requireAdminAuth, withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
++  app.get("/admin/estoque", requireAdminAuth, requireFeature("stock"), withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -10600,7 +10605,7 @@ document.addEventListener('input', function(e) {
+   res.send(adminLayoutWithGrace(res, "Estoque", "estoque", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Estoque",href:"/admin/estoque"}]));
+   }));
+ 
+-  app.post("/admin/estoque/movimentacao", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/estoque/movimentacao", requireAdminAuth, requireFeature("stock"), async (req: Request, res: Response) => {
+     const { productId, type, quantity, reason, date, unitCost, paymentMethod, updateCostPrice } = req.body;
+     if (!productId || !type || !quantity || !date) { res.redirect("/admin/estoque?error=1"); return; }
+     const session = (req as any).adminSession as { barberId: number };
+@@ -10645,7 +10650,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+     // ─── Histórico de Estoque ─────────────────────────────────────────────
+-  app.get("/admin/estoque/:id/historico", requireAdminAuth, withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
++  app.get("/admin/estoque/:id/historico", requireAdminAuth, requireFeature("stock"), withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -11658,7 +11663,7 @@ document.addEventListener('input', function(e) {
+ 
+ 
+   // ─── Clientes em Órbita ──────────────────────────────────────────────────────
+-  app.get("/admin/orbita", requireAdminAuth, withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
++  app.get("/admin/orbita", requireAdminAuth, requireFeature("orbit"), withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -11806,7 +11811,7 @@ document.addEventListener('input', function(e) {
+   }));
+ 
+   // ─── Encomendas de Produtos ────────────────────────────────────────────────
+-  app.get("/admin/encomendas", requireAdminAuth, withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
++  app.get("/admin/encomendas", requireAdminAuth, requireFeature("orders"), withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+@@ -12384,7 +12389,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Fornecedores ─────────────────────────────────────────────────────────
+-  app.get("/admin/fornecedores", requireAdminAuth, withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
++  app.get("/admin/fornecedores", requireAdminAuth, requireFeature("suppliers"), withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession as { barberId: number; role: string };
+     const barber = await db.getBarberById(session.barberId);
+@@ -12506,7 +12511,7 @@ document.addEventListener('input', function(e) {
+     }
+   }));
+ 
+-  app.post("/admin/fornecedores", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/fornecedores", requireAdminAuth, requireFeature("suppliers"), async (req: Request, res: Response) => {
+     const session = (req as any).adminSession as { barberId: number; role: string };
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -12521,14 +12526,14 @@ document.addEventListener('input', function(e) {
+     res.redirect("/admin/fornecedores?saved=1");
+   });
+ 
+-  app.post("/admin/fornecedores/delete", requireAdminAuth, async (req: Request, res: Response) => {
++  app.post("/admin/fornecedores/delete", requireAdminAuth, requireFeature("suppliers"), async (req: Request, res: Response) => {
+     const { id } = req.body;
+     await db.deleteSupplier(parseInt(id));
+     res.redirect("/admin/fornecedores?deleted=1");
+   });
+ 
+   // ─── Detalhes do Fornecedor (/admin/fornecedores/:id) ─────────────────────────
+-  app.get("/admin/fornecedores/:id", requireAdminAuth, withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
++  app.get("/admin/fornecedores/:id", requireAdminAuth, requireFeature("suppliers"), withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession as { barberId: number; role: string };
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+diff --git a/server/plan-features.ts b/server/plan-features.ts
+new file mode 100644
+index 0000000..0496404
+--- /dev/null
++++ b/server/plan-features.ts
+@@ -0,0 +1,166 @@
++import type { Request, Response, NextFunction } from "express";
++
++// ─── Preços ───────────────────────────────────────────────────────────────────
++
++export const PLAN_PRICING = {
++  solo:    { monthly: 49.90, annual: 39.90, annualTotal: 478.80 },
++  equipe:  { monthly: 99.90, annual: 79.90, annualTotal: 958.80 },
++  estudio: { monthly: 169.90, annual: 135.90, annualTotal: 1630.80 },
++} as const;
++
++export type PlanSlug = keyof typeof PLAN_PRICING;
++
++// ─── Limites de barbeiros ─────────────────────────────────────────────────────
++
++export const PLAN_BARBER_LIMITS: Record<PlanSlug, number> = {
++  solo:    1,
++  equipe:  3,
++  estudio: Infinity,
++};
++
++// ─── Features por plano ───────────────────────────────────────────────────────
++
++export type FeatureKey =
++  | "products"
++  | "stock"
++  | "suppliers"
++  | "orders"
++  | "coupons"
++  | "subscription_plans"
++  | "commissions"
++  | "orbit"
++  | "reports_full"
++  | "priority_support";
++
++export const PLAN_FEATURES: Record<PlanSlug, Set<FeatureKey>> = {
++  solo: new Set([]),
++  equipe: new Set([
++    "products",
++    "stock",
++    "suppliers",
++    "orders",
++    "coupons",
++    "subscription_plans",
++    "reports_full",
++  ]),
++  estudio: new Set([
++    "products",
++    "stock",
++    "suppliers",
++    "orders",
++    "coupons",
++    "subscription_plans",
++    "reports_full",
++    "commissions",
++    "orbit",
++    "priority_support",
++  ]),
++};
++
++// ─── Helpers ──────────────────────────────────────────────────────────────────
++
++export function planHasFeature(plan: string | null | undefined, feature: FeatureKey): boolean {
++  if (!plan) return false;
++  const slug = plan.toLowerCase() as PlanSlug;
++  return PLAN_FEATURES[slug]?.has(feature) ?? false;
++}
++
++export function planBarberLimit(plan: string | null | undefined): number {
++  if (!plan) return 1;
++  const slug = plan.toLowerCase() as PlanSlug;
++  return PLAN_BARBER_LIMITS[slug] ?? 1;
++}
++
++// ─── HTML de upgrade ──────────────────────────────────────────────────────────
++
++export function upgradePage(feature: FeatureKey): string {
++  const featureNames: Record<FeatureKey, string> = {
++    products:           "Produtos",
++    stock:              "Estoque",
++    suppliers:          "Fornecedores",
++    orders:             "Encomendas",
++    coupons:            "Cupons",
++    subscription_plans: "Planos de Assinatura",
++    commissions:        "Comissões Automáticas",
++    orbit:              "Radar de Leads (Órbita)",
++    reports_full:       "Relatórios Completos",
++    priority_support:   "Suporte Prioritário",
++  };
++
++  const name = featureNames[feature] ?? feature;
++
++  return `<!DOCTYPE html>
++<html lang="pt-BR">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>Recurso bloqueado — Barber Pro</title>
++  <style>
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++    body {
++      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
++      background: #0f0f0f; color: #fff;
++      display: flex; align-items: center; justify-content: center;
++      min-height: 100vh; padding: 24px;
++    }
++    .card {
++      background: #1a1a1a; border: 1px solid #333;
++      border-radius: 16px; padding: 48px 40px;
++      max-width: 480px; width: 100%; text-align: center;
++    }
++    .lock { font-size: 48px; margin-bottom: 16px; }
++    h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
++    p { color: #aaa; font-size: 14px; line-height: 1.6; margin-bottom: 32px; }
++    a.btn {
++      display: inline-block;
++      background: linear-gradient(135deg, #c9a227, #e8bc30);
++      color: #000; font-weight: 700; font-size: 15px;
++      padding: 14px 32px; border-radius: 8px;
++      text-decoration: none; transition: opacity .2s;
++    }
++    a.btn:hover { opacity: .85; }
++    .back { margin-top: 16px; }
++    .back a { color: #666; font-size: 13px; text-decoration: none; }
++    .back a:hover { color: #aaa; }
++  </style>
++</head>
++<body>
++  <div class="card">
++    <div class="lock">🔒</div>
++    <h1>${name}</h1>
++    <p>Este recurso não está disponível no seu plano atual.<br>Faça upgrade para desbloquear.</p>
++    <a href="/admin/configuracoes?tab=pagamentos" class="btn">Ver planos e fazer upgrade</a>
++    <div class="back"><a href="javascript:history.back()">← Voltar</a></div>
++  </div>
++</body>
++</html>`;
++}
++
++// ─── Middleware Express ───────────────────────────────────────────────────────
++
++export function requireFeature(feature: FeatureKey) {
++  return (req: Request, res: Response, next: NextFunction) => {
++    const session = (req as any).adminSession;
++    const plan: string | undefined = session?.plan;
++    if (planHasFeature(plan, feature)) {
++      return next();
++    }
++    return res.status(403).send(upgradePage(feature));
++  };
++}
++
++// ─── Guard tRPC ───────────────────────────────────────────────────────────────
++
++export function assertFeature(plan: string | null | undefined, feature: FeatureKey): void {
++  if (!planHasFeature(plan, feature)) {
++    throw new Error(`UPGRADE_REQUIRED:${feature}`);
++  }
++}
++
++export function assertBarberLimit(plan: string | null | undefined, currentCount: number): void {
++  const limit = planBarberLimit(plan);
++  if (currentCount >= limit) {
++    const slug = (plan?.toLowerCase() ?? "solo") as PlanSlug;
++    throw new Error(`BARBER_LIMIT_REACHED:${limit}:${slug}`);
++  }
++}
+diff --git a/server/routers.ts b/server/routers.ts
+index e0b4082..7747135 100644
+--- a/server/routers.ts
++++ b/server/routers.ts
+@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
+ import { publicProcedure, router, barberProcedure } from "./_core/trpc";
+ import { signBarberToken, signBarberRefreshToken, verifyBarberRefreshToken } from "./barber-jwt.js";
+ import * as db from "./db";
++import { assertFeature, assertBarberLimit } from "./plan-features";
+ import { storagePut } from "./storage";
+ import * as crypto from "crypto";
+ import * as QRCode from "qrcode";
+@@ -291,18 +292,12 @@ export const appRouter = router({
+         if (input.tenantId != null) {
+           const tenant = await db.getTenantById(input.tenantId);
+           if (tenant) {
+-            const limits: Record<string, number> = { solo: 1, team: 5, studio: Infinity };
+-            const limit = limits[tenant.plan] ?? Infinity;
+-            if (limit !== Infinity) {
+-              const existing = await db.getAllBarbersIncludingInactive(input.tenantId);
+-              const activeBarbers = existing.filter((b) => b.isActive);
+-              if (activeBarbers.length >= limit) {
+-                const planNames: Record<string, string> = { solo: "Solo (máx. 1 barbeiro)", team: "Equipe (máx. 5 barbeiros)" };
+-                throw new TRPCError({
+-                  code: "FORBIDDEN",
+-                  message: `Limite de barbeiros atingido para o plano ${planNames[tenant.plan] ?? tenant.plan}. Faça upgrade do plano para adicionar mais profissionais.`,
+-                });
+-              }
++            const existing = await db.getAllBarbersIncludingInactive(input.tenantId);
++            const activeBarbers = existing.filter((b) => b.isActive);
++            try {
++              assertBarberLimit(tenant.plan, activeBarbers.length);
++            } catch (e: any) {
++              throw new TRPCError({ code: "FORBIDDEN", message: "Limite de barbeiros atingido para o seu plano. Faça upgrade para adicionar mais profissionais." });
+             }
+           }
+         }
+@@ -729,7 +724,13 @@ export const appRouter = router({
+       }),
+     create: barberProcedure
+       .input(z.object({ code: z.string().min(3), description: z.string().optional(), discountType: z.enum(["percent", "fixed"]), discountValue: z.string(), minOrderValue: z.string().optional(), maxUses: z.number().optional(), validFrom: z.string().optional(), validUntil: z.string().optional(), tenantId: z.number().optional().nullable() }))
+-      .mutation(({ input }) => db.createCoupon(input)),
++      .mutation(async ({ input }) => {
++        if (input.tenantId != null) {
++          const tenant = await db.getTenantById(input.tenantId);
++          assertFeature(tenant?.plan, "coupons");
++        }
++        return db.createCoupon(input);
++      }),
+     update: barberProcedure
+       .input(z.object({ id: z.number(), isActive: z.boolean().optional(), description: z.string().optional(), maxUses: z.number().optional().nullable(), validUntil: z.string().optional().nullable() }))
+       .mutation(({ input }) => { const { id, ...data } = input; return db.updateCoupon(id, data as any); }),
+-- 
+2.43.0
+

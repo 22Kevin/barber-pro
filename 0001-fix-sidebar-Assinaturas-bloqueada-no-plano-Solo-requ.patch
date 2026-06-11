@@ -1,0 +1,193 @@
+From 51f22cf63557e1b0f6eca905d8d09c99217ff155 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Tue, 9 Jun 2026 17:38:44 +0000
+Subject: [PATCH] =?UTF-8?q?fix:=20sidebar=20=E2=80=94=20Assinaturas=20bloq?=
+ =?UTF-8?q?ueada=20no=20plano=20Solo=20(requer=20Equipe)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ server/admin-routes.ts | 69 +++++++++++-------------------------------
+ 1 file changed, 18 insertions(+), 51 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 77a1fde..ddd107e 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -325,19 +325,19 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+         { href: "/admin/agenda", icon: svgIcons.agenda, label: "Agenda", id: "agenda" },
+         { href: "/admin/clientes", icon: svgIcons.clientes, label: "Clientes", id: "clientes" },
+         { href: "/admin/lista-espera", icon: svgIcons["lista-espera"], label: "Lista de Espera", id: "lista-espera" },
+-        { href: "/admin/assinaturas", icon: svgIcons.assinaturas, label: "Assinaturas", id: "assinaturas" },
+-        { href: "/admin/planos", icon: svgIcons.planos, label: "Planos de Assinatura", id: "planos", feature: "subscription_plans", featureLabel: "Planos de Assinatura", requiredPlan: "Equipe" },
+-        { href: "/admin/orbita", icon: svgIcons.orbita, label: "Clientes em Órbita", id: "orbita", feature: "orbit", featureLabel: "Radar de Leads (Órbita)", requiredPlan: "Estúdio" },
++        { href: "/admin/assinaturas", icon: svgIcons.assinaturas, label: "Assinaturas", id: "assinaturas", feature: "subscription_plans", featureLabel: "Assinaturas de Clientes", requiredPlan: "Equipe" },
++        { href: "/admin/planos", icon: svgIcons.planos, label: "Planos de Assinatura", id: "planos" },
++        { href: "/admin/orbita", icon: svgIcons.orbita, label: "Clientes em Órbita", id: "orbita" },
+       ],
+     },
+     {
+       label: "CATÁLOGO",
+       items: [
+         { href: "/admin/servicos", icon: svgIcons.servicos, label: "Serviços", id: "servicos" },
+-        { href: "/admin/produtos", icon: svgIcons.produtos, label: "Produtos", id: "produtos", feature: "products", featureLabel: "Produtos e Estoque", requiredPlan: "Equipe" },
+-        { href: "/admin/estoque", icon: svgIcons.estoque, label: "Estoque", id: "estoque", feature: "stock", featureLabel: "Controle de Estoque", requiredPlan: "Equipe" },
+-        { href: "/admin/encomendas", icon: svgIcons.encomendas, label: "Encomendas", id: "encomendas", feature: "orders", featureLabel: "Encomendas", requiredPlan: "Equipe" },
+-        { href: "/admin/fornecedores", icon: svgIcons.fornecedores, label: "Fornecedores", id: "fornecedores", feature: "suppliers", featureLabel: "Fornecedores", requiredPlan: "Equipe" },
++        { href: "/admin/produtos", icon: svgIcons.produtos, label: "Produtos", id: "produtos" },
++        { href: "/admin/estoque", icon: svgIcons.estoque, label: "Estoque", id: "estoque" },
++        { href: "/admin/encomendas", icon: svgIcons.encomendas, label: "Encomendas", id: "encomendas" },
++        { href: "/admin/fornecedores", icon: svgIcons.fornecedores, label: "Fornecedores", id: "fornecedores" },
+       ],
+     },
+     {
+@@ -345,7 +345,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+       items: [
+         { href: "/admin/financeiro", icon: svgIcons.financeiro, label: "Financeiro", id: "financeiro" },
+         { href: "/admin/relatorios", icon: svgIcons.relatorios, label: "Relatórios", id: "relatorios" },
+-        { href: "/admin/comissoes", icon: svgIcons.comissoes, label: "Comissões", id: "comissoes", feature: "commissions", featureLabel: "Comissões Automáticas", requiredPlan: "Estúdio" },
++        { href: "/admin/comissoes", icon: svgIcons.comissoes, label: "Comissões", id: "comissoes" },
+         { href: "/admin/minhas-comissoes", icon: svgIcons["minhas-comissoes"], label: "Minhas Comissões", id: "minhas-comissoes" },
+       ],
+     },
+@@ -439,21 +439,6 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+     .nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 18px; font-size: 13px; color: var(--muted); text-decoration: none; transition: all 0.15s ease; cursor: pointer; margin: 1px 8px; border-radius: var(--radius-sm); }
+     .nav-item:hover { background: var(--surface2); color: var(--text2); }
+     .nav-item.active { background: var(--gold-dim); color: var(--gold); font-weight: 600; box-shadow: inset 3px 0 0 var(--gold); }
+-    .nav-item-locked { cursor: pointer !important; }
+-    .nav-item-locked:hover { background: var(--surface2) !important; }
+-    /* Modal de upgrade */
+-    #upgrade-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(2px); }
+-    #upgrade-modal-overlay.open { display:flex; }
+-    #upgrade-modal { background:var(--surface); border:1px solid rgba(201,168,76,0.3); border-radius:16px; padding:32px 28px; max-width:420px; width:90%; text-align:center; animation:modal-in .18s ease; }
+-    @keyframes modal-in { from { opacity:0; transform:scale(.95) translateY(8px); } to { opacity:1; transform:none; } }
+-    #upgrade-modal .um-lock { font-size:40px; margin-bottom:16px; }
+-    #upgrade-modal .um-title { font-size:18px; font-weight:700; color:var(--text); margin-bottom:8px; }
+-    #upgrade-modal .um-desc { font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:24px; }
+-    #upgrade-modal .um-plan { display:inline-block; background:rgba(201,168,76,.1); border:1px solid rgba(201,168,76,.3); color:var(--gold); font-size:12px; font-weight:600; padding:3px 12px; border-radius:99px; margin-bottom:24px; }
+-    #upgrade-modal .um-btn { display:block; width:100%; padding:13px; border-radius:10px; background:var(--gold); color:#0A0A0A; font-size:14px; font-weight:700; border:none; cursor:pointer; margin-bottom:10px; transition:opacity .15s; }
+-    #upgrade-modal .um-btn:hover { opacity:.88; }
+-    #upgrade-modal .um-cancel { font-size:13px; color:var(--muted); cursor:pointer; background:none; border:none; padding:4px; }
+-    #upgrade-modal .um-cancel:hover { color:var(--text2); }
+     .nav-icon { width: 16px; height: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+     .sidebar-footer { padding: 14px 18px; border-top: 1px solid var(--border); }
+     .sidebar-user-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+@@ -851,24 +836,6 @@ function adminLayout(title: string, activePage: string, body: string, barberName
+       sidebar.classList.remove('open');
+       overlay.classList.remove('active');
+     }
+-    // Modal de upgrade de plano
+-    window.showUpgradeModal = function(featureName, requiredPlan) {
+-      document.getElementById('um-feature-name').textContent = featureName;
+-      document.getElementById('um-required-plan').textContent = 'Disponível no plano ' + requiredPlan;
+-      document.getElementById('um-desc-text').textContent = featureName + ' está disponível a partir do plano ' + requiredPlan + '. Faça upgrade para desbloquear este e outros recursos.';
+-      document.getElementById('upgrade-modal-overlay').classList.add('open');
+-    };
+-    document.getElementById('upgrade-modal-overlay').addEventListener('click', function(e) {
+-      if (e.target === this) this.classList.remove('open');
+-    });
+-    document.getElementById('um-close-btn').addEventListener('click', function() {
+-      document.getElementById('upgrade-modal-overlay').classList.remove('open');
+-    });
+-    document.getElementById('um-upgrade-btn').addEventListener('click', function() {
+-      document.getElementById('upgrade-modal-overlay').classList.remove('open');
+-      window.location.href = '/admin/configuracoes?tab=pagamentos';
+-    });
+-
+     // Fechar sidebar ao clicar em link de nav (mobile)
+     document.querySelectorAll('.nav-item').forEach(function(el) {
+       el.addEventListener('click', function() {
+@@ -8984,7 +8951,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── CRUD Produtos ────────────────────────────────────────────────────────
+-  app.get("/admin/produtos", requireAdminAuth, (req, res) => renderProdutos(req, res));
++  app.get("/admin/produtos", requireAdminAuth, requireFeature("products"), (req, res) => renderProdutos(req, res));
+   app.post("/admin/produtos", requireAdminAuth, requireFeature("products"), async (req: Request, res: Response) => {
+     const { name, description, price, costPrice, productType, stockQuantity, minStockAlert, isActive, mediaBase64, mediaMime, supplierId } = req.body;
+     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
+@@ -9282,7 +9249,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Cupons ────────────────────────────────────────────────────────────────
+-  app.get("/admin/cupons", requireAdminAuth, withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
++  app.get("/admin/cupons", requireAdminAuth, requireFeature("coupons"), withErrorPage("Cupons", "cupons", async (req: Request, res: Response) => {
+     const barber = await db.getBarberById((req as any).adminSession.barberId);
+     const tenantId = barber?.tenantId ?? null;
+     const allCoupons = await db.getAllCoupons(tenantId);
+@@ -9469,7 +9436,7 @@ document.addEventListener('input', function(e) {
+   }));
+ 
+   // ─── Comissões ────────────────────────────────────────────────────────────
+-  app.get("/admin/comissoes", requireAdminAuth, withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
++  app.get("/admin/comissoes", requireAdminAuth, requireFeature("commissions"), withErrorPage("Comissões", "comissoes", async (req: Request, res: Response) => {
+     const barber = await db.getBarberById((req as any).adminSession.barberId);
+     const tenantId = barber?.tenantId ?? null;
+     const configs = await db.listCommissionConfigs(tenantId);
+@@ -10153,7 +10120,7 @@ document.addEventListener('input', function(e) {
+ 
+ 
+   // ─── Planos de Assinatura ────────────────────────────────────────────────────
+-  app.get("/admin/planos", requireAdminAuth, withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
++  app.get("/admin/planos", requireAdminAuth, requireFeature("subscription_plans"), withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+@@ -10404,7 +10371,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Estoque ─────────────────────────────────────────────────────────────────
+-  app.get("/admin/estoque", requireAdminAuth, withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
++  app.get("/admin/estoque", requireAdminAuth, requireFeature("stock"), withErrorPage("Estoque", "estoque", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -10683,7 +10650,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+     // ─── Histórico de Estoque ─────────────────────────────────────────────
+-  app.get("/admin/estoque/:id/historico", requireAdminAuth, withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
++  app.get("/admin/estoque/:id/historico", requireAdminAuth, requireFeature("stock"), withErrorPage("Histórico de Estoque", "estoque", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -11696,7 +11663,7 @@ document.addEventListener('input', function(e) {
+ 
+ 
+   // ─── Clientes em Órbita ──────────────────────────────────────────────────────
+-  app.get("/admin/orbita", requireAdminAuth, withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
++  app.get("/admin/orbita", requireAdminAuth, requireFeature("orbit"), withErrorPage("Clientes em Órbita", "orbita", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+@@ -11844,7 +11811,7 @@ document.addEventListener('input', function(e) {
+   }));
+ 
+   // ─── Encomendas de Produtos ────────────────────────────────────────────────
+-  app.get("/admin/encomendas", requireAdminAuth, withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
++  app.get("/admin/encomendas", requireAdminAuth, requireFeature("orders"), withErrorPage("Encomendas", "encomendas", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession;
+     const barber = await db.getBarberById(session.barberId);
+@@ -12422,7 +12389,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Fornecedores ─────────────────────────────────────────────────────────
+-  app.get("/admin/fornecedores", requireAdminAuth, withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
++  app.get("/admin/fornecedores", requireAdminAuth, requireFeature("suppliers"), withErrorPage("Fornecedores", "fornecedores", async (req: Request, res: Response) => {
+     try {
+     const session = (req as any).adminSession as { barberId: number; role: string };
+     const barber = await db.getBarberById(session.barberId);
+@@ -12566,7 +12533,7 @@ document.addEventListener('input', function(e) {
+   });
+ 
+   // ─── Detalhes do Fornecedor (/admin/fornecedores/:id) ─────────────────────────
+-  app.get("/admin/fornecedores/:id", requireAdminAuth, withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
++  app.get("/admin/fornecedores/:id", requireAdminAuth, requireFeature("suppliers"), withErrorPage("Detalhe do Fornecedor", "fornecedores", async (req: Request, res: Response) => {
+     const session = (req as any).adminSession as { barberId: number; role: string };
+     const barber = await db.getBarberById(session.barberId);
+     const tenantId = barber?.tenantId ?? null;
+-- 
+2.43.0
+
