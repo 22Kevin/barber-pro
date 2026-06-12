@@ -731,8 +731,14 @@ async function startServer() {
     const origin = req.headers.origin;
     if (!origin) return next(); // mobile app, webhooks Asaas, curl — sem Origin
     try {
-      const originHost = new URL(origin).host;
-      if (originHost === req.headers.host || CORS_ALLOWED.has(origin)) return next();
+      const originHost = new URL(origin).host.replace(/:443$|:80$/, "");
+      const reqHost = (req.headers.host || "").replace(/:443$|:80$/, "");
+      // Permitir: mesmo host, domínio configurado, ou subdomínio do mesmo domínio
+      const PROD_DOMAIN = "usebarberpro.com";
+      const sameHost = originHost === reqHost;
+      const allowedOrigin = CORS_ALLOWED.has(origin);
+      const sameDomain = originHost === PROD_DOMAIN || originHost.endsWith("." + PROD_DOMAIN);
+      if (sameHost || allowedOrigin || sameDomain) return next();
     } catch {}
     console.warn("[csrf] Bloqueado POST de origem não autorizada:", origin, req.path);
     res.status(403).json({ error: "Origem não autorizada" });
