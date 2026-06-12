@@ -704,11 +704,11 @@ async function startServer() {
     res.header("Content-Security-Policy",
       "default-src 'self'; " +
       "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com; " +
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-      "font-src 'self' data: https://fonts.gstatic.com; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://use.typekit.net; " +
+      "font-src 'self' data: https://fonts.gstatic.com https://use.typekit.net https://p.typekit.net; " +
       "img-src 'self' data: blob: https:; " +
       "media-src 'self' blob: https:; " +
-      "connect-src 'self' https://accounts.google.com https://cloudflareinsights.com https://static.cloudflareinsights.com; " +
+      "connect-src 'self' https://accounts.google.com https://cloudflareinsights.com https://static.cloudflareinsights.com https://performance.typekit.net; " +
       "frame-src https://accounts.google.com; " +
       "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'");
     if (process.env.NODE_ENV === "production") {
