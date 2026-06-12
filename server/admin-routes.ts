@@ -4922,20 +4922,22 @@ async function renderConfiguracoes(req: Request, res: Response) {
 
   // Buscar equipe e horários de trabalho
   const allBarbers = await db.getAllBarbersIncludingInactive(barber?.tenantId) as any[];
-  // Buscar permissions via rawQuery pois a coluna não está no schema Drizzle
+  // Buscar permissions e role via rawQuery (colunas fora do schema Drizzle)
   try {
-    const dbConn = await db.getDb();
-    if (dbConn && allBarbers.length > 0) {
+    if (!_pool) await db.getDb();
+    if (_pool && allBarbers.length > 0) {
       const ids = allBarbers.map((b: any) => b.id).join(',');
-      const rows = await (dbConn as any).execute('SELECT id, permissions FROM barbers WHERE id IN (' + ids + ')') as any;
-      const permsMap: Record<number, any> = {};
-      const rowArr = Array.isArray(rows) ? rows[0] : (rows?.rows ?? []);
-      for (const row of rowArr) {
-        if (row.permissions) {
-          try { permsMap[row.id] = JSON.parse(row.permissions); } catch(e) { permsMap[row.id] = null; }
-        }
+      const rows = await _pool.query('SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id IN (' + ids + ')');
+      const dataMap: Record<number, any> = {};
+      for (const row of rows.rows) { dataMap[row.id] = row; }
+      for (const b of allBarbers) {
+        const row = dataMap[b.id];
+        if (row?.permissions) {
+          try { (b as any).permissions = JSON.parse(row.permissions); } catch(e) { (b as any).permissions = null; }
+        } else { (b as any).permissions = null; }
+        if (row?.role) (b as any).role = row.role;
+        if (row?.jobTitle) (b as any).jobTitle = row.jobTitle;
       }
-      for (const b of allBarbers) { (b as any).permissions = permsMap[b.id] ?? null; }
     }
   } catch(e) {}
   const workingHoursMap: Record<number, any[]> = {};

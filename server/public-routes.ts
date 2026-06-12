@@ -736,7 +736,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
               : `<div class="team-photo-placeholder">💈</div>`
             }
             <div class="team-name">${escapeHtml(b.name)}</div>
-            <div class="team-role">${(b as any).role === "super_admin" ? "Proprietário" : "Barbeiro"}</div>
+            <div class="team-role">${(b as any).role === "super_admin" ? "Proprietário" : (b as any).role === "receptionist" ? "Recepcionista" : (b as any).jobTitle || "Barbeiro"}</div>
           </div>
         `).join("")}
       </div>
@@ -1244,13 +1244,14 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
     thumbnailUrl: (s as any).thumbnailUrl ?? null,
     description: (s as any).description ?? null,
   })));
-  const barbersJson = JSON.stringify(barberList.map((b) => ({
+  const bookableBarbers = (barberList as any[]).filter((b: any) => b.role !== "receptionist");
+  const barbersJson = JSON.stringify(bookableBarbers.map((b) => ({
     id: b.id,
     name: b.name,
     photoUrl: b.photoUrl ?? null,
     specialties: b.specialties ?? null,
   })));
-  const firstBarberId = barberList[0]?.id ?? 1;
+  const firstBarberId = bookableBarbers[0]?.id ?? 1;
 
   const loggedClientJson = loggedClient ? JSON.stringify(loggedClient) : "null";
   const hasAsaas = !!(process.env.ASAAS_API_KEY);
