@@ -218,7 +218,7 @@ function requireOwner(req: Request, res: Response, next: NextFunction) {
   return next();
 }
 
-async function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
+function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.[ADMIN_SESSION_COOKIE];
   const isApiCall = req.path.startsWith('/admin-api/') || (req.headers['content-type'] ?? '').includes('application/json');
   if (!token) {
@@ -233,21 +233,14 @@ async function requireAdminAuth(req: Request, res: Response, next: NextFunction)
   }
   (req as any).adminSession = session;
   if (res && res.locals) res.locals.barberRole = session.role || "super_admin";
-  // Carregar permissions + seletor sincronamente com timeout de segurança
-  try {
-    const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T | null> =>
-      Promise.race([p, new Promise<null>(r => setTimeout(() => r(null), ms))]);
-    const b = await withTimeout(db.getBarberById(session.barberId), 2000);
-    if (b) {
-      if ((b as any).permissions) {
-        try { (req as any).adminSession.permissions = JSON.parse((b as any).permissions as string); }
-        catch(e) { (req as any).adminSession.permissions = null; }
-      } else { (req as any).adminSession.permissions = null; }
-      // Seletor de filial — com timeout de 2s para não bloquear
-      const html = await withTimeout(buildBranchSelectorHtml(session.barberId), 2000);
-      (req as any).adminSession.branchSelectorHtml = html || "";
-    }
-  } catch(e) {}
+  // Carregar permissions em background (não bloqueia)
+  db.getBarberById(session.barberId).then(function(b) {
+    if (!b) return;
+    if ((b as any).permissions) {
+      try { (req as any).adminSession.permissions = JSON.parse((b as any).permissions as string); }
+      catch(e) { (req as any).adminSession.permissions = null; }
+    } else { (req as any).adminSession.permissions = null; }
+  }).catch(function() {});
   next();
 }
 
@@ -910,6 +903,7 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       </div>
       <div class="topbar-right">
         <div class="topbar-date">${new Date().toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" })}</div>
+        <div id="bsel-mount"></div>
         ${badge ? `<div style="display:inline-flex;align-items:center;gap:5px;background:${badge.bg};border:1px solid ${badge.color}33;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:${badge.color};letter-spacing:0.5px">${badge.label}</div>` : ""}
         <button id="theme-toggle-btn" onclick="toggleTheme()" title="Alternar tema claro/escuro" style="background:var(--surface);border:1px solid var(--border);cursor:pointer;color:var(--text);padding:7px 10px;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:5px;transition:all 0.2s;min-width:36px;min-height:36px;" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">
           <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;flex-shrink:0"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -1274,6 +1268,32 @@ ${barberRole === "super_admin" ? `
       overlay.onclick = function(e) { if (e.target === overlay) { overlay.style.display='none'; overlay.classList.remove('open'); } };
     };
   </script>
+</body>
+<script>
+(function(){
+  fetch("/admin-api/branch-selector",{credentials:"include"})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(!d||!d.show)return;
+    var mount=document.getElementById("bsel-mount");
+    if(!mount)return;
+    var items="";
+    if(!d.isMatrix){
+      items+='<form method="POST" action="/admin/filiais/trocar"><input type="hidden" name="branchId" value="'+d.matrixId+'"/><input type="hidden" name="returnTo" value="/admin"/><button type="submit" class="bseli" style="font-weight:600;color:var(--gold);border-bottom:1px solid var(--border)">🏠 '+d.matrixName+' <span style="font-size:10px;opacity:0.6;font-weight:400">Matriz</span></button></form>';
+    }else{
+      items+='<div style="padding:9px 14px;font-size:12px;font-weight:700;color:var(--gold);border-bottom:1px solid var(--border)">🏠 '+d.matrixName+' <span style="font-size:10px;opacity:0.6;font-weight:400">aqui</span></div>';
+    }
+    d.branches.forEach(function(b){
+      items+='<form method="POST" action="/admin/filiais/trocar"><input type="hidden" name="branchId" value="'+b.id+'"/><input type="hidden" name="returnTo" value="/admin"/><button type="submit" class="bseli">🏪 '+b.name+'</button></form>';
+    });
+    mount.innerHTML='<style>.bseli{width:100%;text-align:left;padding:9px 14px;background:transparent;border:none;color:var(--text);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px}.bseli:hover{background:var(--surface2)}</style><div style="position:relative" id="bsel-wrap"><button id="bsel-btn" style="display:inline-flex;align-items:center;gap:6px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--gold);cursor:pointer;white-space:nowrap">🏪 '+d.currentName+'<svg width=\"10\" height=\"10\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\"><polyline points=\"6 9 12 15 18 9\"/></svg></button><div id=\"bsel-dd\" style=\"display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.3);overflow:hidden\">'+items+'</div></div>';
+    var btn=document.getElementById("bsel-btn");
+    var dd=document.getElementById("bsel-dd");
+    btn.addEventListener("click",function(){dd.style.display=dd.style.display==="block"?"none":"block";});
+    document.addEventListener("click",function(e){var w=document.getElementById("bsel-wrap");if(w&&dd&&!w.contains(e.target))dd.style.display="none";},true);
+  }).catch(function(){});
+})();
+</script>
 </body>
 </html>`;
 }
@@ -9209,6 +9229,29 @@ document.addEventListener('input', function(e) {
 
   // Middleware global de verificação de assinatura ativa para todas as rotas /admin (exceto configurações e login)
   app.use("/admin", requireAdminAuth, requireActiveSubscription);
+
+  // API: dados de filiais para o seletor do header (chamado via fetch pelo client)
+  app.get("/admin-api/branch-selector", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number };
+      const b = await db.getBarberById(session.barberId);
+      if (!b?.tenantId) { res.json({ show: false }); return; }
+      const t: any = await db.getTenantById(b.tenantId);
+      if (t?.plan !== "studio") { res.json({ show: false }); return; }
+      const parentId = t.parentTenantId ?? null;
+      const allBranches: any[] = parentId ? await db.getBranches(parentId) : await db.getBranches(b.tenantId);
+      if (allBranches.length === 0 && !parentId) { res.json({ show: false }); return; }
+      const matrixT: any = parentId ? await db.getTenantById(parentId) : t;
+      res.json({
+        show: true,
+        isMatrix: !parentId,
+        currentName: t.displayName || t.name || (parentId ? "Filial" : "Matriz"),
+        matrixName: matrixT?.displayName || matrixT?.name || "Matriz",
+        matrixId: parentId || b.tenantId,
+        branches: allBranches.map((br: any) => ({ id: br.id, name: br.displayName || br.name || "Filial" })),
+      });
+    } catch(e) { res.json({ show: false }); }
+  });
 
   // Rotas protegidas
   app.get("/admin", requireAdminAuth, withErrorPage("Dashboard", "dashboard", renderDashboard));
