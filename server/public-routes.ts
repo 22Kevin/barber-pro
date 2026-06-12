@@ -4329,7 +4329,35 @@ export function registerPublicRoutes(app: Express): void {
   app.use(cookieParser());
   // Rota de desenvolvimento: /pub/:slug
   app.get("/pub/:slug", async (req: Request, res: Response) => {
-    await renderShopPage(req.params.slug, res, req);
+    const slug = req.params.slug;
+    try {
+      const tenant2 = await db.getTenantBySlug(slug);
+      if (tenant2 && !(tenant2 as any).parentTenantId) {
+        const branches2 = await db.getBranches(tenant2.id);
+        if (branches2.length > 0) {
+          const esc2 = (s: any) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+          const settings2: any = await db.getShopSettings(tenant2.id);
+          const shopName2 = esc2(settings2?.shopName || tenant2.name);
+          const pc = settings2?.primaryColor || '#C9A84C';
+          const logo2 = settings2?.logoUrl ? '<img src="'+esc2(settings2.logoUrl)+'" style="height:48px;border-radius:10px;margin-bottom:16px">' : '';
+          const units = [
+            { name: (tenant2 as any).displayName || tenant2.name, address: settings2?.address || '', slug: tenant2.slug },
+            ...branches2.map((b: any) => ({ name: b.displayName || b.name, address: b.address || '', slug: b.slug }))
+          ];
+          const ucards = units.map(u =>
+            '<a href="/pub/'+esc2(u.slug)+'/agendar" style="display:block;background:#1a1a1a;border:2px solid #2a2a2a;border-radius:14px;padding:20px 24px;text-decoration:none;color:#fff;margin-bottom:12px">'
+            +'<div style="display:flex;align-items:center;gap:14px">'
+            +'<div style="width:44px;height:44px;border-radius:10px;background:'+pc+'22;border:1px solid '+pc+'44;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🏪</div>'
+            +'<div><div style="font-size:15px;font-weight:700">'+esc2(u.name)+'</div>'+(u.address?'<div style="font-size:12px;color:#888;margin-top:3px">'+esc2(u.address)+'</div>':'')+'</div>'
+            +'<svg style="margin-left:auto;opacity:0.4;flex-shrink:0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>'
+            +'</div></a>'
+          ).join('');
+          res.send('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+shopName2+' — Escolha a unidade</title><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#0f0f0f;color:#fff;font-family:-apple-system,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}</style></head><body><div style="max-width:480px;width:100%"><div style="text-align:center;margin-bottom:32px">'+logo2+'<div style="font-size:22px;font-weight:800;margin-bottom:8px">'+shopName2+'</div><div style="font-size:14px;color:#888">Selecione a unidade desejada</div></div>'+ucards+'<div style="text-align:center;margin-top:24px;font-size:11px;color:#444">Powered by <a href="https://usebarberpro.com" style="color:'+pc+';text-decoration:none">Barber Pro</a></div></div></body></html>');
+          return;
+        }
+      }
+    } catch(e3) {}
+    await renderShopPage(slug, res, req);
   });
 
   app.get("/pub/:slug/agendar", async (req: Request, res: Response) => {

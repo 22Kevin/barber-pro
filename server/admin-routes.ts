@@ -349,11 +349,11 @@ export async function generateMagicLink(tenantId: number, baseUrl = "https://use
 
 // ─── Layout base do painel ────────────────────────────────────────────────────
 // Helper used by route handlers to auto-inject trialGrace from res object
-function adminLayoutWithGrace(res: any, title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>): string {
+function adminLayoutWithGrace(res: any, title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, branchSelectorHtml = ""): string {
   const bRole = (res && res.locals && res.locals.barberRole) || "super_admin";
   let bPerms: string[] | null = null;
   try { const p = res && res.req && (res.req as any).adminSession && (res.req as any).adminSession.permissions; if (Array.isArray(p)) bPerms = p; } catch(e) {}
-  return adminLayout(title, activePage, body, barberName, tenantPlan, breadcrumb, res?.trialGrace ?? null, bRole, bPerms);
+  return adminLayout(title, activePage, body, barberName, tenantPlan, breadcrumb, res?.trialGrace ?? null, bRole, bPerms, branchSelectorHtml);
 }
 
 function adminLayout(title: string, activePage: string, body: string, barberName = "", tenantPlan = "", breadcrumb?: Array<{label: string, href: string}>, trialGrace?: { hoursLeft: number } | null, barberRole = "super_admin", barberPerms: any = null): string {
@@ -4808,11 +4808,16 @@ async function renderFinanceiro(req: Request, res: Response) {
 
 // ─── Configurações ────────────────────────────────────────────
 // ── renderBranchTab ────────────────────────────────────────────────────────
-function renderBranchTab(branches: any[]): string {
+function renderBranchTab(branches: any[], matrixTenant?: any): string {
   const stateOpts = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(s=>'<option value="'+s+'">'+s+'</option>').join('');
+  const mName = matrixTenant ? (matrixTenant.displayName||matrixTenant.name||'Matriz') : '';
+  const mSlug = matrixTenant ? (matrixTenant.slug||'') : '';
+  const matrixCard = matrixTenant
+    ? '<div style="background:linear-gradient(135deg,rgba(201,168,76,0.08),rgba(201,168,76,0.03));border:1px solid rgba(201,168,76,0.3);border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;margin-bottom:12px"><div style="width:48px;height:48px;border-radius:12px;background:rgba(201,168,76,0.15);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🏠</div><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--gold)">'+mName+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase">Matriz · Conta atual</div><div style="font-size:11px;margin-top:4px"><a href="https://usebarberpro.com/pub/'+mSlug+'" target="_blank" style="color:var(--gold);text-decoration:none;opacity:0.7">usebarberpro.com/pub/'+mSlug+'</a></div></div><div style="font-size:11px;color:var(--muted);background:var(--surface2);padding:6px 12px;border-radius:8px;border:1px solid var(--border)">Você está aqui</div></div>'
+    : '';
   const cards = branches.length === 0
-    ? '<div style="text-align:center;padding:60px 20px;background:var(--surface);border:1px solid var(--border);border-radius:16px"><div style="font-size:40px;margin-bottom:12px">🏪</div><div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">Nenhuma filial cadastrada</div><div style="font-size:13px;color:var(--muted)">Crie sua primeira filial para começar a gerenciar sua rede.</div></div>'
-    : '<div style="display:grid;gap:12px">' + branches.map(b => {
+    ? matrixCard + '<div style="text-align:center;padding:60px 20px;background:var(--surface);border:1px solid var(--border);border-radius:16px"><div style="font-size:40px;margin-bottom:12px">🏪</div><div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">Nenhuma filial cadastrada</div><div style="font-size:13px;color:var(--muted)">Crie sua primeira filial para começar a gerenciar sua rede.</div></div>'
+    : matrixCard + '<div style="display:grid;gap:12px">' + branches.map(b => {
         const dname = (b.displayName||b.name||'').replace(/"/g,'&quot;');
         const addr  = (b.address||'Endereço não cadastrado');
         const bslug = b.slug||'';
@@ -4904,6 +4909,33 @@ async function renderConfiguracoes(req: Request, res: Response) {
   if (isStudioPlan && !parentTenantId && barber?.tenantId) branches = await db.getBranches(barber.tenantId);
   if (parentTenantId) matrixTenant = await db.getTenantById(parentTenantId);
   const showBranchTab = isStudioPlan && !parentTenantId;
+
+  // Seletor de filial para o header
+  let branchSelectorHtml = "";
+  if (isStudioPlan && (branches.length > 0 || parentTenantId)) {
+    try {
+      const currentName = parentTenantId
+        ? ((tenant as any)?.displayName || (tenant as any)?.name || 'Filial')
+        : ((tenant as any)?.displayName || (tenant as any)?.name || 'Matriz');
+      const allBranches2 = parentTenantId ? await db.getBranches(parentTenantId) : branches;
+      const matrixId2 = parentTenantId || barber!.tenantId;
+      const matrixT2: any = parentTenantId ? await db.getTenantById(parentTenantId) : (tenant as any);
+      const matrixName2 = matrixT2?.displayName || matrixT2?.name || 'Matriz';
+      const branchItems = allBranches2.map((b: any) => {
+        const bn = (b.displayName||b.name||'Filial').replace(/"/g,'&quot;');
+        return '<form method="POST" action="/admin/filiais/trocar"><input type="hidden" name="branchId" value="'+b.id+'"/><input type="hidden" name="returnTo" value="/admin"/><button type="submit" style="width:100%;text-align:left;padding:9px 14px;background:transparent;border:none;color:var(--text);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px">🏪 '+bn+'</button></form>';
+      }).join('');
+      const backBtn = parentTenantId
+        ? '<form method="POST" action="/admin/filiais/trocar"><input type="hidden" name="branchId" value="'+matrixId2+'"/><input type="hidden" name="returnTo" value="/admin"/><button type="submit" style="width:100%;text-align:left;padding:9px 14px;background:transparent;border:none;color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)">🏠 '+matrixName2+' <span style="font-size:10px;color:var(--muted);font-weight:400">Matriz</span></button></form>'
+        : '<div style="padding:9px 14px;font-size:12px;font-weight:700;color:var(--gold);border-bottom:1px solid var(--border)">🏠 '+matrixName2+' <span style="font-size:10px;color:var(--muted);font-weight:400">aqui</span></div>';
+      const cn = currentName.replace(/"/g,'&quot;');
+      branchSelectorHtml = '<div style="position:relative;z-index:200" id="bsel-wrap">'
+        +'<button id="bsel-btn" style="display:inline-flex;align-items:center;gap:6px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--gold);cursor:pointer;white-space:nowrap">🏪 '+cn+'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg></button>'
+        +'<div id="bsel-dd" style="display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.3);overflow:hidden">'
+        +backBtn+branchItems+'</div>'
+        +'<script>document.getElementById("bsel-btn").addEventListener("click",function(){var x=document.getElementById("bsel-dd");x.style.display=x.style.display==="block"?"none":"block";});document.addEventListener("click",function(e){var w=document.getElementById("bsel-wrap");var d=document.getElementById("bsel-dd");if(w&&d&&!w.contains(e.target))d.style.display="none";},true);<\/script></div>'
+    } catch(e) {}
+  }
   const isBranchContext = !!parentTenantId;
   const currentSlug = tenant?.slug ?? "";
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "";
@@ -6169,7 +6201,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
   `;
 
   const tabFiliais = showBranchTab
-    ? renderBranchTab(branches)
+    ? renderBranchTab(branches, tenant)
     : (isBranchContext ? `
       <div style="text-align:center;padding:50px 20px;background:var(--surface);border:1px solid var(--border);border-radius:16px;max-width:480px;margin:0 auto">
         <div style="font-size:40px;margin-bottom:12px">🏪</div>
@@ -9310,10 +9342,16 @@ document.addEventListener('input', function(e) {
       const baseSlug = (name as string).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').substring(0,50);
       let slug = baseSlug; let att = 0;
       while (await db.getTenantBySlug(slug)) { att++; slug = baseSlug + '-' + att; }
-      await db.createBranch(barber!.tenantId!, {
+      const newBranchId: number = await db.createBranch(barber!.tenantId!, {
         name, displayName, slug, phone, cnpj, address, cep, addressNumber, city, state,
         ownerName: barber!.name, ownerEmail: barber!.email ?? undefined, ownerPasswordHash: (barber as any).passwordHash ?? undefined,
       });
+      try {
+        const matrixSvcs = await db.getAllServicesWithMedia(false, barber!.tenantId!);
+        for (const svc of matrixSvcs as any[]) {
+          await db.createService({ tenantId: newBranchId, name: svc.name, description: svc.description ?? null, price: svc.price, durationMinutes: svc.durationMinutes, isActive: svc.isActive } as any);
+        }
+      } catch(e2) { console.error('[filiais] catalogo:', (e2 as any)?.message); }
       res.redirect('/admin/configuracoes?tab=filiais&saved=1');
     } catch(e: any) { res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent(e.message)); }
   });
