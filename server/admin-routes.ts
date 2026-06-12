@@ -189,11 +189,7 @@ function requireOwner(req: Request, res: Response, next: NextFunction) {
   return next();
 }
 
-// Cache de plan por barberId — TTL de 5 minutos para evitar queries a cada requisição
-const _planCache = new Map<number, { plan: string; permissions: any; ts: number }>();
-const PLAN_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-
-async function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
+function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.[ADMIN_SESSION_COOKIE];
   const isApiCall = req.path.startsWith('/admin-api/') || (req.headers['content-type'] ?? '').includes('application/json');
   if (!token) {
@@ -208,43 +204,13 @@ async function requireAdminAuth(req: Request, res: Response, next: NextFunction)
   }
   (req as any).adminSession = session;
   if (res && res.locals) res.locals.barberRole = session.role || "super_admin";
-
-  // Verificar cache antes de ir ao banco
-  const cached = _planCache.get(session.barberId);
-  if (cached && Date.now() - cached.ts < PLAN_CACHE_TTL) {
-    (req as any).adminSession.plan = cached.plan;
-    (req as any).adminSession.permissions = cached.permissions;
-    return next();
-  }
-
-  // Cache expirado ou inexistente — buscar no banco com timeout de segurança
-  try {
-    const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T | null> =>
-      Promise.race([p, new Promise<null>(r => setTimeout(() => r(null), ms))]);
-
-    const b = await withTimeout(db.getBarberById(session.barberId), 3000);
-    if (b) {
-      let permissions: any = null;
-      if ((b as any).permissions) {
-        try { permissions = JSON.parse((b as any).permissions); } catch(e) {}
-      }
-      let plan = "solo";
-      if ((b as any).tenantId) {
-        const t = await withTimeout(db.getTenantById((b as any).tenantId), 3000);
-        plan = (t as any)?.plan ?? "solo";
-      }
-      (req as any).adminSession.plan = plan;
-      (req as any).adminSession.permissions = permissions;
-      // Salvar no cache
-      _planCache.set(session.barberId, { plan, permissions, ts: Date.now() });
-    }
-  } catch(e) {
-    // Falha no banco — não bloquear, usar cache antigo se existir
-    if (cached) {
-      (req as any).adminSession.plan = cached.plan;
-      (req as any).adminSession.permissions = cached.permissions;
-    }
-  }
+  // Carregar permissions do banco em background (não bloqueia a requisição)
+  db.getBarberById(session.barberId).then(function(b) {
+    if (b && (b as any).permissions) {
+      try { (req as any).adminSession.permissions = JSON.parse((b as any).permissions); }
+      catch(e) { (req as any).adminSession.permissions = null; }
+    } else { (req as any).adminSession.permissions = null; }
+  }).catch(function() {});
   next();
 }
 

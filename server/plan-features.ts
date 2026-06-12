@@ -139,12 +139,32 @@ export function upgradePage(feature: FeatureKey): string {
 // ─── Middleware Express ───────────────────────────────────────────────────────
 
 export function requireFeature(feature: FeatureKey) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     const session = (req as any).adminSession;
-    const plan: string | undefined = session?.plan;
-    if (planHasFeature(plan, feature)) {
-      return next();
+    // Se o plano já está na sessão, usar diretamente
+    if (session?.plan) {
+      return planHasFeature(session.plan, feature) ? next() : res.status(403).send(upgradePage(feature));
     }
+    // Fallback: buscar plano do banco (barberId sempre está na sessão)
+    try {
+      const { getDb } = await import("./db");
+      const db = await getDb();
+      if (db && session?.barberId) {
+        const barberRows = await (db as any).select().from((await import("../drizzle/schema")).barbers)
+          .where((await import("drizzle-orm")).eq((await import("../drizzle/schema")).barbers.id, session.barberId))
+          .limit(1);
+        const barber = barberRows?.[0];
+        if (barber?.tenantId) {
+          const tenantRows = await (db as any).select().from((await import("../drizzle/schema")).tenants)
+            .where((await import("drizzle-orm")).eq((await import("../drizzle/schema")).tenants.id, barber.tenantId))
+            .limit(1);
+          const plan = tenantRows?.[0]?.plan ?? "solo";
+          session.plan = plan; // cachear na sessão para próximas chamadas
+          return planHasFeature(plan, feature) ? next() : res.status(403).send(upgradePage(feature));
+        }
+      }
+    } catch(e) {}
+    // Se não conseguiu buscar, negar por segurança
     return res.status(403).send(upgradePage(feature));
   };
 }
