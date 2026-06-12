@@ -5542,6 +5542,12 @@ async function renderConfiguracoes(req: Request, res: Response) {
                   ✔ Já paguei — verificar status
                 </button>
                 <div id="check-payment-msg" style="font-size:12px;text-align:center;display:none"></div>
+                <form id="form-cancel-pending" method="POST" action="/admin/configuracoes/asaas/cancel-subscription">
+                  <button type="button" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:4px 0;text-decoration:underline;width:100%;text-align:center"
+                    onclick="bpConfirm({icon:'⚠️',title:'Cancelar e descartar pagamento',msg:'Isso cancelará o pagamento pendente e encerrará sua conta. Tem certeza?',okLabel:'Cancelar pagamento',danger:true,onConfirm:function(){document.getElementById(\'form-cancel-pending\').submit();}})">
+                    Cancelar e descartar pagamento pendente
+                  </button>
+                </form>
               </div>
             ` : ''}
           </div>
