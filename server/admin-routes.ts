@@ -4922,17 +4922,16 @@ async function renderConfiguracoes(req: Request, res: Response) {
 
   // Buscar equipe e horários de trabalho
   const allBarbers = await db.getAllBarbersIncludingInactive(barber?.tenantId) as any[];
-  // Buscar permissions, role e jobTitle via rawQuery
+  // Buscar permissions, role e jobTitle via db.rawQuery (usa _pool.query internamente)
   try {
-    const dbConn = await db.getDb();
-    if (dbConn && allBarbers.length > 0) {
+    if (allBarbers.length > 0) {
       const ids = allBarbers.map((b: any) => b.id).join(',');
-      const result = await (dbConn as any).execute(
-        `SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id IN (${ids})` as any
+      const rows = await db.rawQuery(
+        `SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id IN (${ids})`
       );
-      const rowArr: any[] = Array.isArray(result) ? result[0] ?? [] : (result?.rows ?? []);
+      console.log('[allBarbers] rawQuery rows:', rows.length, rows.map((r: any) => ({id:r.id, role:r.role, hasPerms:!!r.permissions})));
       const dataMap: Record<number, any> = {};
-      for (const row of rowArr) { dataMap[row.id] = row; }
+      for (const row of rows) { dataMap[row.id] = row; }
       for (const b of allBarbers) {
         const row = dataMap[b.id];
         if (row?.permissions) {
@@ -4942,7 +4941,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
         if (row?.jobTitle) (b as any).jobTitle = row.jobTitle;
       }
     }
-  } catch(e) { console.error('[allBarbers rawQuery]', (e as any)?.message); }
+  } catch(e) { console.error('[allBarbers rawQuery] ERRO:', (e as any)?.message); }
   const workingHoursMap: Record<number, any[]> = {};
   for (const b of allBarbers) {
     workingHoursMap[b.id] = await db.getWorkingHours(b.id);
