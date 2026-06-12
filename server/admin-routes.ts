@@ -218,7 +218,7 @@ function requireOwner(req: Request, res: Response, next: NextFunction) {
   return next();
 }
 
-function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
+async function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.[ADMIN_SESSION_COOKIE];
   const isApiCall = req.path.startsWith('/admin-api/') || (req.headers['content-type'] ?? '').includes('application/json');
   if (!token) {
@@ -233,14 +233,21 @@ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
   }
   (req as any).adminSession = session;
   if (res && res.locals) res.locals.barberRole = session.role || "super_admin";
-  // Carregar permissions em background (não bloqueia)
-  db.getBarberById(session.barberId).then(function(b) {
-    if (!b) return;
-    if ((b as any).permissions) {
-      try { (req as any).adminSession.permissions = JSON.parse((b as any).permissions as string); }
-      catch(e) { (req as any).adminSession.permissions = null; }
-    } else { (req as any).adminSession.permissions = null; }
-  }).catch(function() {});
+  // Carregar permissions + seletor sincronamente com timeout de segurança
+  try {
+    const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T | null> =>
+      Promise.race([p, new Promise<null>(r => setTimeout(() => r(null), ms))]);
+    const b = await withTimeout(db.getBarberById(session.barberId), 2000);
+    if (b) {
+      if ((b as any).permissions) {
+        try { (req as any).adminSession.permissions = JSON.parse((b as any).permissions as string); }
+        catch(e) { (req as any).adminSession.permissions = null; }
+      } else { (req as any).adminSession.permissions = null; }
+      // Seletor de filial — com timeout de 2s para não bloquear
+      const html = await withTimeout(buildBranchSelectorHtml(session.barberId), 2000);
+      (req as any).adminSession.branchSelectorHtml = html || "";
+    }
+  } catch(e) {}
   next();
 }
 
@@ -9202,18 +9209,6 @@ document.addEventListener('input', function(e) {
 
   // Middleware global de verificação de assinatura ativa para todas as rotas /admin (exceto configurações e login)
   app.use("/admin", requireAdminAuth, requireActiveSubscription);
-
-  // Middleware de seletor de filial — deve estar ANTES de todas as rotas
-  app.use("/admin", async (req: Request, res: Response, next: NextFunction) => {
-    const session = (req as any).adminSession;
-    if (session?.barberId && !session.branchSelectorHtml) {
-      try {
-        session.branchSelectorHtml = await buildBranchSelectorHtml(session.barberId);
-        if (session.branchSelectorHtml) console.log("[bsel] gerado para barbeiro", session.barberId);
-      } catch(e) {}
-    }
-    next();
-  });
 
   // Rotas protegidas
   app.get("/admin", requireAdminAuth, withErrorPage("Dashboard", "dashboard", renderDashboard));
