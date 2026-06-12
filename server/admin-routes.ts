@@ -8298,6 +8298,11 @@ document.addEventListener('input', function(e) {
         res.redirect("/admin/configuracoes?tab=pagamentos&saved=1"); return;
       }
 
+      // Verificar se a chave API é válida para criar subcontas (precisa ser chave master)
+      if (!process.env.ASAAS_API_KEY || process.env.ASAAS_API_KEY.length < 10) {
+        res.redirect("/admin/configuracoes?tab=pagamentos&error=" + encodeURIComponent("Chave Asaas não configurada no servidor")); return;
+      }
+
       // Criar subconta no Asaas
       const subAccount = await createAsaasSubAccount({
         name: name.trim(),
@@ -8330,8 +8335,15 @@ document.addEventListener('input', function(e) {
 
       res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
     } catch (e: any) {
-      const msg = encodeURIComponent(e?.response?.data?.errors?.[0]?.description ?? e.message ?? "Erro ao criar conta");
-      res.redirect(`/admin/configuracoes?tab=pagamentos&error=${msg}`);
+      const statusCode = e.response?.status;
+      const asaasMsg = e?.response?.data?.errors?.[0]?.description ?? e?.response?.data?.error ?? e.message ?? "Erro ao criar conta";
+      console.error("[asaas/setup] status:", statusCode, "msg:", asaasMsg, "body:", JSON.stringify(e?.response?.data ?? {}));
+      const userMsg = statusCode === 403
+        ? "Acesso negado pelo Asaas (403). Verifique se a ASAAS_API_KEY é da conta master."
+        : statusCode === 400
+        ? "Dados inválidos: " + asaasMsg
+        : asaasMsg;
+      res.redirect(`/admin/configuracoes?tab=pagamentos&error=${encodeURIComponent(userMsg)}`);
     }
   });
 
