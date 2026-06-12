@@ -46,6 +46,34 @@ function assertValidUpload(b64: string, mime: string, kind: "image" | "media"): 
   return buf;
 }
 
+// ─── Helper universal de parsing de valores monetários ────────────────────────
+// Aceita qualquer formato: "1.234,56" "1,234.56" "1234.56" "1234,56" "0,15" "0.15"
+function parseMoneyInput(val: any, defaultVal = 0): number {
+  if (val === null || val === undefined || val === '') return defaultVal;
+  const s = String(val).trim();
+  if (!s) return defaultVal;
+  // Detectar formato: se tem vírgula E ponto, o último separador é o decimal
+  const lastComma = s.lastIndexOf(',');
+  const lastDot = s.lastIndexOf('.');
+  let normalized: string;
+  if (lastComma > lastDot) {
+    // Formato BR: 1.234,56 → remover pontos, trocar vírgula por ponto
+    normalized = s.replace(/\./g, '').replace(',', '.');
+  } else if (lastDot > lastComma) {
+    // Formato US: 1,234.56 → remover vírgulas
+    normalized = s.replace(/,/g, '');
+  } else {
+    // Sem separador decimal: apenas dígitos
+    normalized = s.replace(/[^0-9]/g, '');
+  }
+  const n = parseFloat(normalized);
+  return isNaN(n) ? defaultVal : n;
+}
+function moneyStr(val: any, defaultVal = '0.00'): string {
+  const n = parseMoneyInput(val);
+  return n > 0 ? n.toFixed(2) : defaultVal;
+}
+
 const ADMIN_SESSION_COOKIE = "bp_admin_session";
 const SESSION_MAX_AGE = 8 * 60 * 60; // 8 horas
 const SESSION_MAX_AGE_REMEMBER = 30 * 24 * 60 * 60; // 30 dias
@@ -9020,7 +9048,8 @@ document.addEventListener('input', function(e) {
     try {
       const session = (req as any).adminSession as { barberId: number };
       const barber = await db.getBarberById(session.barberId);
-      const { appointmentId, serviceId, serviceName, clientId, barberId, amount, paymentMethod } = req.body;
+      const { appointmentId, serviceId, serviceName, clientId, barberId, paymentMethod } = req.body;
+      const amount = moneyStr(req.body.amount);
       const numAmount = parseFloat(String(amount));
       const safeAmount = isNaN(numAmount) || numAmount <= 0 ? "0.00" : numAmount.toFixed(2);
       const safeServiceId = parseInt(serviceId) || 0;
@@ -9155,7 +9184,8 @@ document.addEventListener('input', function(e) {
   app.post("/admin/financeiro/despesa", requireAdminAuth, requireOwner, async (req: Request, res: Response) => {
     try {
       const session = (req as any).adminSession as { barberId: number; role: string };
-      const { description, category, amount, date, paymentMethod } = req.body ?? {};
+      const { description, category, date, paymentMethod } = req.body ?? {};
+      const amount = moneyStr(req.body.amount);
       if (!description || !category || !amount || !date) { res.redirect("/admin/financeiro?tab=despesas&error=Preencha+todos+os+campos"); return; }
       await db.createExpense({
         description: description.trim(),
@@ -9554,8 +9584,7 @@ document.addEventListener('input', function(e) {
   // ─── CRUD Serviços ──────────────────────────────────────────────────
   app.post("/admin/servicos", requireAdminAuth, async (req: Request, res: Response) => {
     const { name, description, durationMinutes, isActive, mediaBase64, mediaMime } = req.body;
-    const rawPrice = (req.body.price ?? '').toString().replace(/\./g, '').replace(',', '.');
-    const price = isNaN(parseFloat(rawPrice)) ? '0' : String(parseFloat(rawPrice));
+    const price = moneyStr(req.body.price);
     const editId = req.query.edit ? parseInt(req.query.edit as string) : null;
     // Obter tenantId da sessão (fonte segura) — não confiar no body
     const _svcSession = (req as any).adminSession as { barberId: number; role: string };
@@ -9607,11 +9636,9 @@ document.addEventListener('input', function(e) {
     const _prdSession = (req as any).adminSession as { barberId: number; role: string };
     const _prdBarber = await db.getBarberById(_prdSession.barberId);
     const _prdTenantId = _prdBarber?.tenantId ?? null;
-    // Normalizar preços (vêm do form com máscara "1.234,56" → banco espera "1234.56")
-    const priceNum = price ? parseFloat(String(price).replace(/\./g,'').replace(',','.')) : 0;
-    const priceStr = priceNum > 0 ? priceNum.toFixed(2) : "0.00";
-    const costPriceNum = costPrice ? parseFloat(String(costPrice).replace(/\./g,'').replace(',','.')) : null;
-    const costPriceStr = costPriceNum && costPriceNum > 0 ? costPriceNum.toFixed(2) : null;
+    const priceStr = moneyStr(price);
+    const costPriceNum = parseMoneyInput(costPrice);
+    const costPriceStr = costPriceNum > 0 ? costPriceNum.toFixed(2) : null;
     let productId: number;
     if (editId) {
       await db.updateProduct(editId, { name, description, price: priceStr, costPrice: costPriceStr, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true", supplierId: supplierIdNum } as any);
@@ -11262,7 +11289,7 @@ document.addEventListener('input', function(e) {
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
     const qtyNum = parseInt(quantity);
-    const unitCostNum = unitCost ? parseFloat(unitCost.replace(/\./g,'').replace(',','.')) : null;
+    const unitCostNum = unitCost ? parseMoneyInput(unitCost) : null;
 
     await db.addStockMovement({
       productId: parseInt(productId),
@@ -12589,7 +12616,8 @@ document.addEventListener('input', function(e) {
       const barber = await db.getBarberById(session.barberId);
       if (!barber?.tenantId) { res.status(400).json({ error: "Tenant não encontrado." }); return; }
 
-      const { appointmentId, clientId, clientName, clientPhone, amount, description } = req.body;
+      const { appointmentId, clientId, clientName, clientPhone, description } = req.body;
+      const amount = moneyStr(req.body.amount);
       if (!amount || parseFloat(amount) <= 0) { res.status(400).json({ error: "Valor inválido." }); return; }
 
       // Buscar asaasApiKey da subconta do tenant — pagamento vai direto para a barbearia
