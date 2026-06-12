@@ -9203,6 +9203,18 @@ document.addEventListener('input', function(e) {
   // Middleware global de verificação de assinatura ativa para todas as rotas /admin (exceto configurações e login)
   app.use("/admin", requireAdminAuth, requireActiveSubscription);
 
+  // Middleware de seletor de filial — deve estar ANTES de todas as rotas
+  app.use("/admin", async (req: Request, res: Response, next: NextFunction) => {
+    const session = (req as any).adminSession;
+    if (session?.barberId && !session.branchSelectorHtml) {
+      try {
+        session.branchSelectorHtml = await buildBranchSelectorHtml(session.barberId);
+        if (session.branchSelectorHtml) console.log("[bsel] gerado para barbeiro", session.barberId);
+      } catch(e) {}
+    }
+    next();
+  });
+
   // Rotas protegidas
   app.get("/admin", requireAdminAuth, withErrorPage("Dashboard", "dashboard", renderDashboard));
   app.get("/admin/agenda", requireAdminAuth, withErrorPage("Agenda", "agenda", renderAgenda));
@@ -9366,15 +9378,6 @@ document.addEventListener('input', function(e) {
   });
 
 
-
-  // Middleware: pré-computar seletor de filial para todas as rotas /admin
-  app.use("/admin", async (req: Request, res: Response, next: NextFunction) => {
-    const session = (req as any).adminSession;
-    if (session?.barberId && !session.branchSelectorHtml) {
-      session.branchSelectorHtml = await buildBranchSelectorHtml(session.barberId);
-    }
-    next();
-  });
 
   app.post("/admin/filiais/criar", requireAdminAuth, async (req: Request, res: Response) => {
     try {
