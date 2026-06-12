@@ -405,7 +405,6 @@ function adminLayout(title: string, activePage: string, body: string, barberName
         { href: "/admin/clientes", icon: svgIcons.clientes, label: "Clientes", id: "clientes" },
         { href: "/admin/lista-espera", icon: svgIcons["lista-espera"], label: "Lista de Espera", id: "lista-espera" },
         { href: "/admin/assinaturas", icon: svgIcons.assinaturas, label: "Assinaturas", id: "assinaturas", feature: "subscription_plans", featureLabel: "Assinaturas de Clientes", requiredPlan: "Equipe" },
-        { href: "/admin/planos", icon: svgIcons.planos, label: "Planos de Assinatura", id: "planos", feature: "subscription_plans", featureLabel: "Planos de Assinatura", requiredPlan: "Equipe" },
         { href: "/admin/orbita", icon: svgIcons.orbita, label: "Radar de Leads", id: "orbita", feature: "orbit", featureLabel: "Radar de Leads (Órbita)", requiredPlan: "Estúdio" },
       ],
     },
@@ -10389,7 +10388,7 @@ document.addEventListener('input', function(e) {
           <p style="color:var(--muted);font-size:14px;margin-top:4px;">Clientes com agendamentos periódicos configurados</p>
         </div>
         <div style="display:flex;gap:10px;align-items:center;">
-          <a href="/admin/planos" class="btn btn-ghost" style="border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px;">
+          <a href="/admin/planos-gerenciar" class="btn btn-ghost" style="border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             Planos
           </a>
@@ -10798,7 +10797,11 @@ document.addEventListener('input', function(e) {
 
 
   // ─── Planos de Assinatura ────────────────────────────────────────────────────
-  app.get("/admin/planos", requireAdminAuth, withErrorPage("Planos de Assinatura", "planos", async (req: Request, res: Response) => {
+  // Redirecionar /admin/planos → /admin/assinaturas (unificado)
+  app.get("/admin/planos", requireAdminAuth, (req: Request, res: Response) => {
+    res.redirect("/admin/assinaturas");
+  });
+  app.get("/admin/planos-gerenciar", requireAdminAuth, withErrorPage("Planos de Assinatura", "assinaturas", async (req: Request, res: Response) => {
     try {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
@@ -10962,10 +10965,10 @@ document.addEventListener('input', function(e) {
       </div>
     `;
     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
-    res.send(adminLayoutWithGrace(res, "Planos de Assinatura", "planos", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Planos de Assinatura",href:"/admin/planos"}]));
+    res.send(adminLayoutWithGrace(res, "Planos de Assinatura", "assinaturas", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Assinaturas",href:"/admin/assinaturas"},{label:"Planos",href:"/admin/planos-gerenciar"}]));
     } catch (err: any) {
       console.error('[/admin/planos] Erro:', err?.message);
-      res.send(adminLayoutWithGrace(res, "Planos de Assinatura", "planos", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/planos" class="btn btn-primary">Tentar novamente</a></div>`));
+      res.send(adminLayoutWithGrace(res, "Planos de Assinatura", "assinaturas", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema de conexão com o banco de dados. Aguarde alguns segundos e tente novamente.</p><a href="/admin/planos-gerenciar" class="btn btn-primary">Tentar novamente</a></div>`));
     }
   }));
 
