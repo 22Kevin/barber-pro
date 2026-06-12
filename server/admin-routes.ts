@@ -46,33 +46,6 @@ function assertValidUpload(b64: string, mime: string, kind: "image" | "media"): 
   return buf;
 }
 
-// ─── Helper universal de parsing de valores monetários ────────────────────────
-// Aceita qualquer formato: "1.234,56" "1,234.56" "1234.56" "1234,56" "0,15" "0.15"
-function parseMoneyInput(val: any, defaultVal = 0): number {
-  if (val === null || val === undefined || val === '') return defaultVal;
-  const s = String(val).trim();
-  if (!s) return defaultVal;
-  // Detectar formato: se tem vírgula E ponto, o último separador é o decimal
-  const lastComma = s.lastIndexOf(',');
-  const lastDot = s.lastIndexOf('.');
-  let normalized: string;
-  if (lastComma > lastDot) {
-    // Formato BR: 1.234,56 → remover pontos, trocar vírgula por ponto
-    normalized = s.replace(/\./g, '').replace(',', '.');
-  } else if (lastDot > lastComma) {
-    // Formato US: 1,234.56 → remover vírgulas
-    normalized = s.replace(/,/g, '');
-  } else {
-    // Sem separador decimal: apenas dígitos
-    normalized = s.replace(/[^0-9]/g, '');
-  }
-  const n = parseFloat(normalized);
-  return isNaN(n) ? defaultVal : n;
-}
-function moneyStr(val: any, defaultVal = '0.00'): string {
-  const n = parseMoneyInput(val);
-  return n > 0 ? n.toFixed(2) : defaultVal;
-}
 
 // ─── Helper universal de parsing de valores monetários ────────────────────────
 // Aceita qualquer formato: "1.234,56" "1,234.56" "1234.56" "1234,56" "0,15" "0.15"
