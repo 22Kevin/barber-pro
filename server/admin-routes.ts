@@ -9607,16 +9607,18 @@ document.addEventListener('input', function(e) {
     const _prdSession = (req as any).adminSession as { barberId: number; role: string };
     const _prdBarber = await db.getBarberById(_prdSession.barberId);
     const _prdTenantId = _prdBarber?.tenantId ?? null;
-    // Normalizar preço de custo (vem do form com máscara "1.234,56")
-    const costPriceNum = costPrice ? parseFloat(costPrice.replace(/\./g,'').replace(',','.')) : null;
+    // Normalizar preços (vêm do form com máscara "1.234,56" → banco espera "1234.56")
+    const priceNum = price ? parseFloat(String(price).replace(/\./g,'').replace(',','.')) : 0;
+    const priceStr = priceNum > 0 ? priceNum.toFixed(2) : "0.00";
+    const costPriceNum = costPrice ? parseFloat(String(costPrice).replace(/\./g,'').replace(',','.')) : null;
     const costPriceStr = costPriceNum && costPriceNum > 0 ? costPriceNum.toFixed(2) : null;
     let productId: number;
     if (editId) {
-      await db.updateProduct(editId, { name, description, price, costPrice: costPriceStr, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true", supplierId: supplierIdNum } as any);
+      await db.updateProduct(editId, { name, description, price: priceStr, costPrice: costPriceStr, productType, stockQuantity: parseInt(stockQuantity), minStockAlert: parseInt(minStockAlert), isActive: isActive === "true", supplierId: supplierIdNum } as any);
       productId = editId;
     } else {
       const qtyNum = parseInt(stockQuantity) || 0;
-      const newProduct = await db.createProduct({ name, description, price: String(price), costPrice: costPriceStr, productType: productType || "sale", stockQuantity: qtyNum, minStockAlert: parseInt(minStockAlert) || 5, isActive: isActive === "true", supplierId: supplierIdNum, tenantId: _prdTenantId } as any);
+      const newProduct = await db.createProduct({ name, description, price: priceStr, costPrice: costPriceStr, productType: productType || "sale", stockQuantity: qtyNum, minStockAlert: parseInt(minStockAlert) || 5, isActive: isActive === "true", supplierId: supplierIdNum, tenantId: _prdTenantId } as any);
       productId = (newProduct as any) ?? 0;
       // Criar despesa do estoque inicial automaticamente
       if (qtyNum > 0 && costPriceNum && costPriceNum > 0 && productId) {
