@@ -899,6 +899,8 @@ export async function runAutoMigrate(db: any): Promise<void> {
     { name: 'tenants."barberproNextDueDate"',        sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproNextDueDate" DATE` },
     { name: 'tenants."barberproAsaasCustomerId"',    sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproAsaasCustomerId" VARCHAR(100)` },
     { name: 'tenants."barberproTrialEndsAt"',        sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproTrialEndsAt" DATE` },
+    // ── used_trials: coluna cpfCnpj pode não existir em bancos antigos ────────
+    { name: 'used_trials."cpfCnpj"', sql: `ALTER TABLE used_trials ADD COLUMN IF NOT EXISTS "cpfCnpj" VARCHAR(20)` },
     // ── Filiais (Plano Estúdio) ──────────────────────────────────────────────
     { name: 'tenants."parentTenantId"', sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "parentTenantId" INTEGER REFERENCES tenants(id) ON DELETE CASCADE` },
     { name: 'tenants."displayName"',    sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "displayName" VARCHAR(100)` },

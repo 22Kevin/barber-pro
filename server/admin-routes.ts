@@ -8694,16 +8694,15 @@ document.addEventListener('input', function(e) {
         const tData = Array.isArray(tenantRow) ? tenantRow[0]?.[0] : tenantRow?.rows?.[0];
         const cleanCpfCnpj = tData?.cnpj ? tData.cnpj.replace(/\D/g, "") : null;
 
-        await dbConn.execute(sql`
-          INSERT INTO used_trials (email, "cpfCnpj", "tenantId", reason)
-          VALUES (
-            ${barber.email.toLowerCase()},
-            ${cleanCpfCnpj ?? null},
-            ${barber.tenantId},
-            'cancelled'
-          )
-          ON CONFLICT DO NOTHING
-        `);
+        // Usar rawQuery para evitar erro de coluna não existente
+        if (!_pool) await db.getDb();
+        if (_pool) {
+          await _pool.query(
+            `INSERT INTO used_trials (email, "cpfCnpj", "tenantId", reason)
+             VALUES ($1, $2, $3, 'cancelled') ON CONFLICT DO NOTHING`,
+            [barber.email.toLowerCase(), cleanCpfCnpj ?? null, barber.tenantId]
+          ).catch(() => {});
+        }
       } catch {}
 
       res.redirect("/admin/configuracoes?tab=pagamentos&saved=1");
