@@ -233,42 +233,13 @@ function requireAdminAuth(req: Request, res: Response, next: NextFunction) {
   }
   (req as any).adminSession = session;
   if (res && res.locals) res.locals.barberRole = session.role || "super_admin";
-  // Carregar permissions + seletor de filial em background (não bloqueia a requisição)
-  db.getBarberById(session.barberId).then(async function(b) {
+  // Carregar permissions em background (não bloqueia)
+  db.getBarberById(session.barberId).then(function(b) {
     if (!b) return;
     if ((b as any).permissions) {
       try { (req as any).adminSession.permissions = JSON.parse((b as any).permissions as string); }
       catch(e) { (req as any).adminSession.permissions = null; }
     } else { (req as any).adminSession.permissions = null; }
-    // Gerar seletor de filial se plano Estúdio
-    try {
-      if (b.tenantId) {
-        const t: any = await db.getTenantById(b.tenantId);
-        if (t?.plan === 'studio') {
-          const parentId = t.parentTenantId ?? null;
-          const allBranches: any[] = parentId ? await db.getBranches(parentId) : await db.getBranches(b.tenantId);
-          if (allBranches.length > 0 || parentId) {
-            const currentName = parentId ? (t.displayName || t.name || 'Filial') : (t.displayName || t.name || 'Matriz');
-            const matrixT: any = parentId ? await db.getTenantById(parentId) : t;
-            const matrixName = matrixT?.displayName || matrixT?.name || 'Matriz';
-            const matrixId = parentId || b.tenantId;
-            const items = allBranches.map((br: any) => {
-              const bn = (br.displayName||br.name||'Filial').replace(/"/g,'&quot;');
-              return '<form method="POST" action="/admin/filiais/trocar"><input type="hidden" name="branchId" value="'+br.id+'"/><input type="hidden" name="returnTo" value="/admin"/><button type="submit" style="width:100%;text-align:left;padding:9px 14px;background:transparent;border:none;color:var(--text);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px"">🏪 '+bn+'</button></form>';
-            }).join('');
-            const back = parentId
-              ? '<form method="POST" action="/admin/filiais/trocar"><input type="hidden" name="branchId" value="'+matrixId+'"/><input type="hidden" name="returnTo" value="/admin"/><button type="submit" style="width:100%;text-align:left;padding:9px 14px;background:transparent;border:none;color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid #2a2a2a"">🏠 '+matrixName+' <span style="font-size:10px;color:#888;font-weight:400">Matriz</span></button></form>'
-              : '<div style="padding:9px 14px;font-size:12px;font-weight:700;color:var(--gold);border-bottom:1px solid #2a2a2a">🏠 '+matrixName+' <span style="font-size:10px;color:#888;font-weight:400">aqui</span></div>';
-            const cn = currentName.replace(/"/g,'&quot;');
-            (req as any).adminSession.branchSelectorHtml = '<div style="position:relative;z-index:200" id="bsel-wrap">'
-              +'<button id="bsel-btn" style="display:inline-flex;align-items:center;gap:6px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--gold);cursor:pointer;white-space:nowrap">🏪 '+cn+'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg></button>'
-              +'<div id="bsel-dd" style="display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.3);overflow:hidden">'
-              +back+items+'</div>'
-              +'<script>document.getElementById("bsel-btn").addEventListener("click",function(){var x=document.getElementById("bsel-dd");x.style.display=x.style.display==="block"?"none":"block";});document.addEventListener("click",function(e){var w=document.getElementById("bsel-wrap");var d=document.getElementById("bsel-dd");if(w&&d&&!w.contains(e.target))d.style.display="none";},true);<\/script></div>';
-          }
-        }
-      }
-    } catch(e2) {}
   }).catch(function() {});
   next();
 }
@@ -375,6 +346,36 @@ export async function generateMagicLink(tenantId: number, baseUrl = "https://use
     team:   `${base}&plan=team`,
     studio: `${base}&plan=studio`,
   };
+}
+
+// ─── Seletor de filial para o header ──────────────────────────────────────────
+async function buildBranchSelectorHtml(barberId: number): Promise<string> {
+  try {
+    const b = await db.getBarberById(barberId);
+    if (!b?.tenantId) return "";
+    const t: any = await db.getTenantById(b.tenantId);
+    if (t?.plan !== "studio") return "";
+    const parentId = t.parentTenantId ?? null;
+    const allBranches: any[] = parentId ? await db.getBranches(parentId) : await db.getBranches(b.tenantId);
+    if (allBranches.length === 0 && !parentId) return "";
+    const currentName = parentId ? (t.displayName || t.name || "Filial") : (t.displayName || t.name || "Matriz");
+    const matrixT: any = parentId ? await db.getTenantById(parentId) : t;
+    const matrixName = matrixT?.displayName || matrixT?.name || "Matriz";
+    const matrixId = parentId || b.tenantId;
+    const items = allBranches.map((br: any) => {
+      const bn = (br.displayName||br.name||"Filial").replace(/"/g,"&quot;");
+      return "<form method=\"POST\" action=\"/admin/filiais/trocar\"><input type=\"hidden\" name=\"branchId\" value=\""+br.id+"\"/><input type=\"hidden\" name=\"returnTo\" value=\"/admin\"/><button type=\"submit\" style=\"width:100%;text-align:left;padding:9px 14px;background:transparent;border:none;color:var(--text);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px\">🏪 "+bn+"</button></form>";
+    }).join("");
+    const back = parentId
+      ? "<form method=\"POST\" action=\"/admin/filiais/trocar\"><input type=\"hidden\" name=\"branchId\" value=\""+matrixId+"\"/><input type=\"hidden\" name=\"returnTo\" value=\"/admin\"/><button type=\"submit\" style=\"width:100%;text-align:left;padding:9px 14px;background:transparent;border:none;color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid #2a2a2a\">🏠 "+matrixName+" <span style=\"font-size:10px;color:#888;font-weight:400\">Matriz</span></button></form>"
+      : "<div style=\"padding:9px 14px;font-size:12px;font-weight:700;color:var(--gold);border-bottom:1px solid #2a2a2a\">🏠 "+matrixName+" <span style=\"font-size:10px;color:#888;font-weight:400\">aqui</span></div>";
+    const cn = currentName.replace(/"/g,"&quot;");
+    return "<div style=\"position:relative;z-index:200\" id=\"bsel-wrap\">"
+      +"<button id=\"bsel-btn\" style=\"display:inline-flex;align-items:center;gap:6px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--gold);cursor:pointer;white-space:nowrap\">🏪 "+cn+"<svg width=\"10\" height=\"10\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\"><polyline points=\"6 9 12 15 18 9\"/></svg></button>"
+      +"<div id=\"bsel-dd\" style=\"display:none;position:absolute;top:calc(100% + 6px);right:0;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.3);overflow:hidden\">"
+      +back+items+"</div>"
+      +"<script>document.getElementById(\"bsel-btn\").addEventListener(\"click\",function(){var x=document.getElementById(\"bsel-dd\");x.style.display=x.style.display===\"block\"?\"none\":\"block\";});document.addEventListener(\"click\",function(e){var w=document.getElementById(\"bsel-wrap\");var d=document.getElementById(\"bsel-dd\");if(w&&d&&!w.contains(e.target))d.style.display=\"none\";},true);<\/script></div>";
+  } catch(e) { return ""; }
 }
 
 // ─── Layout base do painel ────────────────────────────────────────────────────
@@ -9366,6 +9367,15 @@ document.addEventListener('input', function(e) {
 
 
 
+  // Middleware: pré-computar seletor de filial para todas as rotas /admin
+  app.use("/admin", async (req: Request, res: Response, next: NextFunction) => {
+    const session = (req as any).adminSession;
+    if (session?.barberId && !session.branchSelectorHtml) {
+      session.branchSelectorHtml = await buildBranchSelectorHtml(session.barberId);
+    }
+    next();
+  });
+
   app.post("/admin/filiais/criar", requireAdminAuth, async (req: Request, res: Response) => {
     try {
       const session = (req as any).adminSession as { barberId: number; role: string };
@@ -9430,16 +9440,23 @@ document.addEventListener('input', function(e) {
       if (session.role !== 'super_admin') { res.redirect('/admin'); return; }
       const adminBarber = await db.getBarberById(session.barberId);
       if (!adminBarber?.tenantId || !adminBarber.email) { res.redirect('/admin'); return; }
-      const targetTenantId = parseInt(req.body.branchId);
       const currentTenant = await db.getTenantById(adminBarber.tenantId);
+      const myParent = (currentTenant as any)?.parentTenantId ?? null;
+
+      // branchId=0 é atalho para "voltar para a matriz"
+      let targetTenantId = parseInt(req.body.branchId);
+      if (targetTenantId === 0 || isNaN(targetTenantId)) {
+        targetTenantId = myParent ?? adminBarber.tenantId;
+      }
+
       const targetTenant = await db.getTenantById(targetTenantId);
       if (!targetTenant) { res.redirect('/admin'); return; }
 
       // Caso 1: estou numa filial e quero voltar para a matriz
-      const myParent = (currentTenant as any)?.parentTenantId ?? null;
-      const targetIsMyMatrix = myParent === targetTenantId;
+      const targetIsMyMatrix = myParent === targetTenantId || targetTenantId === adminBarber.tenantId;
       // Caso 2: estou na matriz e quero entrar numa filial minha
-      const targetIsMyBranch = (targetTenant as any)?.parentTenantId === adminBarber.tenantId;
+      const matrixId = myParent ?? adminBarber.tenantId;
+      const targetIsMyBranch = (targetTenant as any)?.parentTenantId === matrixId;
 
       if (!targetIsMyMatrix && !targetIsMyBranch) {
         res.redirect('/admin?erro=acesso_restrito'); return;
