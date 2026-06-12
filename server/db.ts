@@ -160,10 +160,10 @@ export async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T
  * Usar quando o Drizzle parametriza automaticamente e o driver rejeita $1.
  * Interpolação deve ser feita pelo caller com escape adequado.
  */
-export async function rawQuery(sql: string): Promise<any[]> {
+export async function rawQuery(sql: string, params?: any[]): Promise<any[]> {
   if (!_pool) await getDb();
   if (!_pool) throw new Error("Database not available");
-  const result = await _pool.query(sql);
+  const result = params ? await _pool.query(sql, params) : await _pool.query(sql);
   return result.rows;
 }
 

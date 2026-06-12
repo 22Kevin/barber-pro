@@ -8218,9 +8218,8 @@ document.addEventListener('input', function(e) {
       const updates: any = { name, email, phone: phone || null, role: dbRole };
       if (password && password.length >= 6) updates.passwordHash = await bcrypt.hash(password, 10);
       await db.updateBarber(Number(id), updates);
-      const safePerms = JSON.stringify(permissions).replace(/'/g, "''");
-      const dbConn = await db.getDb();
-      if (dbConn) await (dbConn as any).execute("UPDATE barbers SET permissions = '" + safePerms + "' WHERE id = " + Number(id));
+      await db.rawQuery("UPDATE barbers SET permissions = $1 WHERE id = $2",
+        [JSON.stringify(permissions), Number(id)]);
       res.redirect("/admin/configuracoes?tab=equipe&saved=1");
     } catch (e: any) { res.redirect("/admin/configuracoes?tab=equipe&error=" + encodeURIComponent(e.message)); }
   });
@@ -8258,7 +8257,7 @@ document.addEventListener('input', function(e) {
       const session = (req as any).adminSession;
       const currentBarber = await db.getBarberById(session.barberId);
       const tenantId = currentBarber?.tenantId ?? null;
-      const { name, email, password, phone } = req.body ?? {};
+      const { name, email, password, phone, jobRole } = req.body ?? {};
       if (!name || !email || !password) {
         res.redirect("/admin/configuracoes?tab=equipe&novo=1&error=Preencha+todos+os+campos"); return;
       }
@@ -8266,7 +8265,17 @@ document.addEventListener('input', function(e) {
         res.redirect("/admin/configuracoes?tab=equipe&novo=1&error=Senha+deve+ter+m%C3%ADnimo+6+caracteres"); return;
       }
       const passwordHash = await bcrypt.hash(password, 10);
-      await db.createBarber({ name, email, phone: phone || null, passwordHash, role: "barber", isActive: true, tenantId });
+      const dbRole = jobRole === "admin" ? "super_admin" : jobRole === "receptionist" ? "receptionist" : "barber";
+      const rawPerms = req.body.permissions;
+      const permissions = dbRole === "super_admin"
+        ? ["agenda","clientes","lista-espera","servicos","financeiro","relatorios","comissoes","minhas-comissoes","produtos","marketing","configuracoes"]
+        : (Array.isArray(rawPerms) ? rawPerms : (rawPerms ? [rawPerms] : []));
+      const newBarber = await db.createBarber({ name, email, phone: phone || null, passwordHash, role: dbRole, isActive: true, tenantId });
+      const newId = (newBarber as any)?.id ?? (newBarber as any);
+      if (newId) {
+        await db.rawQuery("UPDATE barbers SET permissions = $1 WHERE id = $2",
+          [JSON.stringify(permissions), newId]);
+      }
       res.redirect("/admin/configuracoes?tab=equipe&saved=1");
     } catch (e: any) {
       const msg = e.message?.includes("Duplicate") ? "E-mail+j%C3%A1+cadastrado" : encodeURIComponent(e.message);
