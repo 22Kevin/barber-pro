@@ -4922,14 +4922,17 @@ async function renderConfiguracoes(req: Request, res: Response) {
 
   // Buscar equipe e horários de trabalho
   const allBarbers = await db.getAllBarbersIncludingInactive(barber?.tenantId) as any[];
-  // Buscar permissions e role via rawQuery (colunas fora do schema Drizzle)
+  // Buscar permissions, role e jobTitle via rawQuery
   try {
-    if (!_pool) await db.getDb();
-    if (_pool && allBarbers.length > 0) {
+    const dbConn = await db.getDb();
+    if (dbConn && allBarbers.length > 0) {
       const ids = allBarbers.map((b: any) => b.id).join(',');
-      const rows = await _pool.query('SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id IN (' + ids + ')');
+      const result = await (dbConn as any).execute(
+        `SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id IN (${ids})` as any
+      );
+      const rowArr: any[] = Array.isArray(result) ? result[0] ?? [] : (result?.rows ?? []);
       const dataMap: Record<number, any> = {};
-      for (const row of rows.rows) { dataMap[row.id] = row; }
+      for (const row of rowArr) { dataMap[row.id] = row; }
       for (const b of allBarbers) {
         const row = dataMap[b.id];
         if (row?.permissions) {
@@ -4939,7 +4942,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
         if (row?.jobTitle) (b as any).jobTitle = row.jobTitle;
       }
     }
-  } catch(e) {}
+  } catch(e) { console.error('[allBarbers rawQuery]', (e as any)?.message); }
   const workingHoursMap: Record<number, any[]> = {};
   for (const b of allBarbers) {
     workingHoursMap[b.id] = await db.getWorkingHours(b.id);
