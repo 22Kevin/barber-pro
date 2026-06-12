@@ -182,6 +182,7 @@ export const products = pgTable("products", {
   stockQuantity: integer("stockQuantity").default(0).notNull(),
   minStockAlert: integer("minStockAlert").default(5).notNull(),
   supplierId: integer("supplierId"),
+  costPrice: numeric("costPrice", { precision: 10, scale: 2 }),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
