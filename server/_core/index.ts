@@ -740,7 +740,7 @@ async function startServer() {
       const sameDomain = originHost === PROD_DOMAIN || originHost.endsWith("." + PROD_DOMAIN);
       if (sameHost || allowedOrigin || sameDomain) return next();
     } catch {}
-    console.warn("[csrf] Bloqueado POST de origem não autorizada:", origin, req.path);
+    console.warn("[csrf] BLOQUEADO — origin:", origin, "| host:", req.headers.host, "| path:", req.path, "| originHost:", (() => { try { return new URL(origin).host; } catch { return "INVALID"; } })());
     res.status(403).json({ error: "Origem não autorizada" });
   });
 
