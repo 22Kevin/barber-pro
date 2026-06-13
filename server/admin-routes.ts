@@ -4880,8 +4880,10 @@ async function renderFinanceiro(req: Request, res: Response) {
 
 // ─── Configurações ────────────────────────────────────────────
 // ── renderBranchTab ────────────────────────────────────────────────────────
-function renderBranchTab(branches: any[], matrixTenant?: any, isInBranch = false, currentBranchParentId?: number | null): string {
+function renderBranchTab(branches: any[], matrixTenant?: any, isInBranch = false, currentBranchParentId?: number | null, syncMsg?: string | null): string {
   const stateOpts = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(s=>'<option value="'+s+'">'+s+'</option>').join('');
+  const syncMsgHtml = syncMsg ? '<div style="background:#4ADE8022;border:1px solid #4ADE8044;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#4ADE80">✅ '+syncMsg+'</div>' : '';
+  const syncBtnHtml = isInBranch ? '<form method="POST" action="/admin/filiais/sincronizar-catalogo" style="display:inline"><button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 16px;border-color:var(--gold);color:var(--gold)">🔄 Sincronizar catálogo da Matriz</button></form>' : '';
   const mName = matrixTenant ? (matrixTenant.displayName||matrixTenant.name||'Matriz') : '';
   const mSlug = matrixTenant ? (matrixTenant.slug||'') : '';
   // Card da matriz — se estamos NUMA FILIAL, mostrar botão de voltar; senão, "Você está aqui"
@@ -4915,11 +4917,13 @@ function renderBranchTab(branches: any[], matrixTenant?: any, isInBranch = false
           +'</div></div>';
       }).join('')+'</div>';
 
-  return '<div style="margin-bottom:24px">'
+  const _syncHtml = syncMsg ? '<div style="background:#4ADE8022;border:1px solid #4ADE8044;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#4ADE80">Sincronizado: '+syncMsg+'</div>' : '';
+  const _syncBtn = isInBranch ? '<form method="POST" action="/admin/filiais/sincronizar-catalogo" style="display:inline;margin-right:8px"><button type="submit" class="btn btn-ghost" style="font-size:12px;padding:8px 14px;border-color:var(--gold);color:var(--gold)">Sincronizar catalogo da Matriz</button></form>' : '';
+  return _syncHtml + '<div style="margin-bottom:24px">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
     +'<div><h2 style="font-size:18px;font-weight:700;color:var(--text);margin:0 0 4px">Filiais</h2>'
     +'<p style="font-size:13px;color:var(--muted);margin:0">Gerencie as unidades da sua rede.</p></div>'
-    +'<button onclick="document.getElementById(\'modal-nova-filial\').style.display=\'flex\'" class="btn btn-primary" style="padding:10px 20px">+ Nova Filial</button></div>'
+    +'<div style="display:flex;gap:8px">'+_syncBtn+'<button onclick="document.getElementById(\'modal-nova-filial\').style.display=\'flex\'" class="btn btn-primary" style="padding:10px 20px">+ Nova Filial</button></div></div>'
     +cards
     +'<div id="modal-nova-filial" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;align-items:center;justify-content:center">'
     +'<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:520px;width:95%;max-height:90vh;overflow-y:auto">'
@@ -6292,7 +6296,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
   `;
 
   const tabFiliais = showBranchTab
-    ? renderBranchTab(branches, isBranchContext ? matrixTenant : (tenantRaw || tenant), isBranchContext, parentTenantId)
+    ? renderBranchTab(branches, isBranchContext ? matrixTenant : (tenantRaw || tenant), isBranchContext, parentTenantId, req.query.msg ? decodeURIComponent(req.query.msg as string) : null)
     : '';
   const tabs = [
     { id: 'dados', label: 'Dados' },
@@ -9442,6 +9446,80 @@ document.addEventListener('input', function(e) {
   });
 
 
+
+  // Sincronizar catálogo da matriz para a filial atual (ou filial específica)
+  app.post("/admin/filiais/sincronizar-catalogo", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number; role: string };
+      if (session.role !== 'super_admin') { res.redirect('/admin/configuracoes?tab=filiais'); return; }
+      const barber = await db.getBarberById(session.barberId);
+      if (!barber?.tenantId) { res.redirect('/admin/configuracoes?tab=filiais'); return; }
+
+      // Descobrir se estamos na filial ou na matriz
+      const tenantRaw = (await db.rawQuery('SELECT id, plan, "parentTenantId" FROM tenants WHERE id = $1', [barber.tenantId]))[0];
+      const parentId: number | null = tenantRaw?.parentTenantId ?? null;
+      // branchId no body indica qual filial sincronizar (da matriz); se não vier, sincronizar a filial atual
+      const targetBranchId: number = req.body.branchId ? parseInt(req.body.branchId) : (parentId ? barber.tenantId : 0);
+      const matrixId: number = parentId ?? barber.tenantId;
+
+      if (!targetBranchId || targetBranchId === matrixId) {
+        res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent('Selecione uma filial para sincronizar')); return;
+      }
+
+      // Verificar ownership
+      const branchRows = await db.rawQuery('SELECT "parentTenantId" FROM tenants WHERE id = $1', [targetBranchId]);
+      if (branchRows[0]?.parentTenantId !== matrixId) {
+        res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent('Filial não pertence à sua rede')); return;
+      }
+
+      let syncedServices = 0, syncedProducts = 0, syncedSuppliers = 0;
+
+      // Sincronizar Serviços
+      try {
+        const matrixServices = await db.getAllServicesWithMedia(false, matrixId) as any[];
+        const existingServices = await db.rawQuery('SELECT name FROM services WHERE "tenantId" = $1', [targetBranchId]);
+        const existingNames = new Set(existingServices.map((s: any) => s.name.toLowerCase()));
+        for (const svc of matrixServices) {
+          if (!existingNames.has((svc.name || '').toLowerCase())) {
+            await db.createService({ tenantId: targetBranchId, name: svc.name, description: svc.description ?? null, price: svc.price, durationMinutes: svc.durationMinutes, isActive: svc.isActive } as any);
+            syncedServices++;
+          }
+        }
+      } catch(e) { console.error('[sync] serviços:', (e as any)?.message); }
+
+      // Sincronizar Produtos
+      try {
+        const matrixProducts = await db.getAllProducts(false, matrixId) as any[];
+        const existingProducts = await db.rawQuery('SELECT name FROM products WHERE "tenantId" = $1', [targetBranchId]);
+        const existingPNames = new Set(existingProducts.map((p: any) => p.name.toLowerCase()));
+        for (const prd of matrixProducts) {
+          if (!existingPNames.has((prd.name || '').toLowerCase())) {
+            await db.createProduct({ tenantId: targetBranchId, name: prd.name, description: prd.description ?? null, price: prd.price, productType: prd.productType ?? 'sale', isActive: prd.isActive, stockQuantity: 0, minStockAlert: prd.minStockAlert ?? 5 } as any);
+            syncedProducts++;
+          }
+        }
+      } catch(e) { console.error('[sync] produtos:', (e as any)?.message); }
+
+      // Sincronizar Fornecedores
+      try {
+        const matrixSuppliers = await db.getSuppliersByTenant(matrixId) as any[];
+        const existingSuppliers = await db.rawQuery('SELECT name FROM suppliers WHERE "tenantId" = $1', [targetBranchId]);
+        const existingSNames = new Set(existingSuppliers.map((s: any) => s.name.toLowerCase()));
+        for (const sup of matrixSuppliers) {
+          if (!existingSNames.has((sup.name || '').toLowerCase())) {
+            await db.createSupplier({ tenantId: targetBranchId, name: sup.name, phone: sup.phone ?? null, email: sup.email ?? null, cnpj: sup.cnpj ?? null, address: sup.address ?? null, notes: sup.notes ?? null } as any);
+            syncedSuppliers++;
+          }
+        }
+      } catch(e) { console.error('[sync] fornecedores:', (e as any)?.message); }
+
+      const msg = `Sincronizado: ${syncedServices} serviços, ${syncedProducts} produtos, ${syncedSuppliers} fornecedores`;
+      const returnTo = parentId ? '/admin/servicos' : '/admin/configuracoes?tab=filiais';
+      res.redirect(returnTo + '&saved=1&msg=' + encodeURIComponent(msg));
+    } catch(e: any) {
+      res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent(e.message));
+    }
+  });
 
   app.post("/admin/filiais/criar", requireAdminAuth, async (req: Request, res: Response) => {
     try {
