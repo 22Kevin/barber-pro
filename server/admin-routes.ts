@@ -6296,7 +6296,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
   `;
 
   const tabFiliais = showBranchTab
-    ? renderBranchTab(branches, isBranchContext ? matrixTenant : (tenantRaw || tenant), isBranchContext, parentTenantId, req.query.msg ? decodeURIComponent(req.query.msg as string) : null)
+    ? renderBranchTab(branches, isBranchContext ? matrixTenant : (tenantRaw || tenant), isBranchContext, parentTenantId, (req.query.msg || req.query.syncmsg) ? decodeURIComponent((req.query.msg || req.query.syncmsg) as string) : null)
     : '';
   const tabs = [
     { id: 'dados', label: 'Dados' },
@@ -9474,27 +9474,33 @@ document.addEventListener('input', function(e) {
 
       let syncedServices = 0, syncedProducts = 0, syncedSuppliers = 0;
 
-      // Sincronizar Serviços
+      // Sincronizar Serviços (com imagens)
       try {
         const matrixServices = await db.getAllServicesWithMedia(false, matrixId) as any[];
         const existingServices = await db.rawQuery('SELECT name FROM services WHERE "tenantId" = $1', [targetBranchId]);
         const existingNames = new Set(existingServices.map((s: any) => s.name.toLowerCase()));
         for (const svc of matrixServices) {
           if (!existingNames.has((svc.name || '').toLowerCase())) {
-            await db.createService({ tenantId: targetBranchId, name: svc.name, description: svc.description ?? null, price: svc.price, durationMinutes: svc.durationMinutes, isActive: svc.isActive } as any);
+            const newId = await db.createService({ tenantId: targetBranchId, name: svc.name, description: svc.description ?? null, price: svc.price, durationMinutes: svc.durationMinutes, isActive: svc.isActive } as any);
+            if (newId && svc.thumbnailUrl) {
+              await db.addMediaFile({ entityType: 'service', entityId: Number(newId), url: svc.thumbnailUrl, type: 'image', order: 0 });
+            }
             syncedServices++;
           }
         }
       } catch(e) { console.error('[sync] serviços:', (e as any)?.message); }
 
-      // Sincronizar Produtos
+      // Sincronizar Produtos (com imagens)
       try {
-        const matrixProducts = await db.getAllProducts(false, matrixId) as any[];
+        const matrixProducts = await db.getAllProductsWithMedia(false, matrixId) as any[];
         const existingProducts = await db.rawQuery('SELECT name FROM products WHERE "tenantId" = $1', [targetBranchId]);
         const existingPNames = new Set(existingProducts.map((p: any) => p.name.toLowerCase()));
         for (const prd of matrixProducts) {
           if (!existingPNames.has((prd.name || '').toLowerCase())) {
-            await db.createProduct({ tenantId: targetBranchId, name: prd.name, description: prd.description ?? null, price: prd.price, productType: prd.productType ?? 'sale', isActive: prd.isActive, stockQuantity: 0, minStockAlert: prd.minStockAlert ?? 5 } as any);
+            const newPid = await db.createProduct({ tenantId: targetBranchId, name: prd.name, description: prd.description ?? null, price: prd.price, productType: prd.productType ?? 'sale', isActive: prd.isActive, stockQuantity: 0, minStockAlert: prd.minStockAlert ?? 5 } as any);
+            if (newPid && prd.thumbnailUrl) {
+              await db.addMediaFile({ entityType: 'product', entityId: Number(newPid), url: prd.thumbnailUrl, type: 'image', order: 0 });
+            }
             syncedProducts++;
           }
         }
@@ -9514,7 +9520,7 @@ document.addEventListener('input', function(e) {
       } catch(e) { console.error('[sync] fornecedores:', (e as any)?.message); }
 
       const msg = `${syncedServices} serviços, ${syncedProducts} produtos, ${syncedSuppliers} fornecedores`;
-      res.redirect('/admin/configuracoes?tab=filiais&saved=1&msg=' + encodeURIComponent(msg));
+      res.redirect('/admin/configuracoes?tab=filiais&syncmsg=' + encodeURIComponent(msg));
     } catch(e: any) {
       res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent(e.message));
     }
@@ -9539,7 +9545,10 @@ document.addEventListener('input', function(e) {
       try {
         const matrixSvcs = await db.getAllServicesWithMedia(false, barber!.tenantId!);
         for (const svc of matrixSvcs as any[]) {
-          await db.createService({ tenantId: newBranchId, name: svc.name, description: svc.description ?? null, price: svc.price, durationMinutes: svc.durationMinutes, isActive: svc.isActive } as any);
+          const newSvcId = await db.createService({ tenantId: newBranchId, name: svc.name, description: svc.description ?? null, price: svc.price, durationMinutes: svc.durationMinutes, isActive: svc.isActive } as any);
+          if (newSvcId && (svc as any).thumbnailUrl) {
+            await db.addMediaFile({ entityType: 'service', entityId: Number(newSvcId), url: (svc as any).thumbnailUrl, type: 'image', order: 0 });
+          }
         }
       } catch(e2) { console.error('[filiais] catalogo:', (e2 as any)?.message); }
       res.redirect('/admin/configuracoes?tab=filiais&saved=1');
