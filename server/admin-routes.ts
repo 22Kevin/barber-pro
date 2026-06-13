@@ -9991,7 +9991,6 @@ document.addEventListener('input', function(e) {
       db.getAllCoupons(tenantId),
     ]);
     const saved = req.query.saved === "1";
-    const estMsg = req.query.msg ? decodeURIComponent(req.query.msg as string) : null;
     const rewardTypes: Record<string, string> = {
       free_service: "Serviço Grátis",
       discount_percent: "Desconto %",
@@ -11351,6 +11350,7 @@ document.addEventListener('input', function(e) {
     const tenantId = barber?.tenantId ?? null;
     const activeTab = (req.query.tab as string) || "todos";
     const saved = req.query.saved === "1";
+    const estMsg = req.query.msg ? decodeURIComponent(req.query.msg as string) : null;
     const searchProd = ((req.query.q as string) || "").toLowerCase();
 
     // Buscar todos os produtos (incluindo inativos para histórico)
@@ -11457,7 +11457,7 @@ document.addEventListener('input', function(e) {
         </div>
         <div style="display:flex;gap:8px">${isStudioEst ? '<form method="POST" action="/admin/filiais/sincronizar-catalogo"><button type="submit" class="btn btn-ghost" style="font-size:12px;padding:6px 14px;border-color:var(--gold);color:var(--gold)">🔄 Sincronizar catálogo</button></form>' : ''}<a href="/admin/export/estoque.csv" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a></div>
       </div>
-      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ ${estMsg || 'Movimentação registrada com sucesso.'}</div>` : ""}
+      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px;display:flex;align-items:center;gap:10px"><span style="font-size:18px">✅</span><span>${estMsg || 'Movimentação registrada com sucesso.'}</span></div>` : ""}
       ${lowStock.length > 0 ? `
         <div style="background:rgba(239,68,68,0.1);border:1px solid var(--error);color:var(--error);border-radius:8px;padding:12px 16px;margin-bottom:20px">
           <strong>${lowStock.length} produto(s) com estoque baixo:</strong> ${lowStock.map((p: any) => esc(p.name)).join(", ")}
@@ -11583,9 +11583,18 @@ document.addEventListener('input', function(e) {
           if (qty > _currentStock) { alert('Quantidade maior que o estoque disponível (' + _currentStock + ' unidades).'); return false; }
           if (_currentStock === 0) { alert('Estoque zerado. Não é possível transferir.'); return false; }
           var remaining = _currentStock - qty;
-          var warn = document.getElementById('transferWarning');
+          if (remaining < 0) { alert('Quantidade maior que o estoque disponível (' + _currentStock + ' unidades).'); return false; }
           if (remaining <= _currentMinAlert) {
-            if (!confirm('⚠️ Após a transferência, o estoque ficará em ' + remaining + ' unidade(s), abaixo do alerta mínimo (' + _currentMinAlert + '). Confirma?')) return false;
+            // Usar bpConfirm em vez de confirm() nativo
+            bpConfirm({
+              icon: '⚠️',
+              title: 'Estoque baixo após transferência',
+              msg: 'Após a transferência, o estoque ficará em ' + remaining + ' unidade(s), abaixo do alerta mínimo (' + _currentMinAlert + '). Confirma?',
+              okLabel: 'Sim, transferir',
+              danger: true,
+              onConfirm: function() { document.getElementById('stockModal').querySelector('form').submit(); }
+            });
+            return false; // bpConfirm cuida do submit
           }
           return true;
         }
