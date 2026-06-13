@@ -703,7 +703,7 @@ async function startServer() {
     // contra object/embed, base hijack e clickjacking via frame-ancestors
     res.header("Content-Security-Policy",
       "default-src 'self'; " +
-      "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com; " +
+      "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com; " +
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://use.typekit.net; " +
       "font-src 'self' data: https://fonts.gstatic.com https://use.typekit.net https://p.typekit.net; " +
       "img-src 'self' data: blob: https:; " +

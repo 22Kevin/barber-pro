@@ -9503,9 +9503,19 @@ document.addEventListener('input', function(e) {
         res.redirect('/admin?erro=acesso_restrito'); return;
       }
 
-      // Localizar o barbeiro-espelho (mesmo e-mail, super_admin) no tenant destino
-      const mirror = await db.getMirrorAdmin(targetTenantId, adminBarber.email);
-      if (!mirror) { res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent('Conta de acesso à filial não encontrada')); return; }
+      // Localizar (ou criar) o barbeiro-espelho no tenant destino
+      let mirror = await db.getMirrorAdmin(targetTenantId, adminBarber.email);
+      if (!mirror) {
+        // Espelho não existe — criar agora (filial criada antes do fix)
+        try {
+          await db.rawQuery(
+            "INSERT INTO barbers (\"tenantId\", name, email, \"passwordHash\", role, \"isActive\") VALUES ($1, $2, $3, $4, 'super_admin', true)",
+            [targetTenantId, adminBarber.name, adminBarber.email, (adminBarber as any).passwordHash || '']
+          );
+          mirror = await db.getMirrorAdmin(targetTenantId, adminBarber.email);
+        } catch(e3) {}
+        if (!mirror) { res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent('Não foi possível criar acesso à filial')); return; }
+      }
 
       const token = encodeSession(mirror.id, 'super_admin');
       res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax${SECURE_COOKIE}; Max-Age=${SESSION_MAX_AGE}`);
