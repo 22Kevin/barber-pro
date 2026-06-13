@@ -291,8 +291,22 @@ export const appRouter = router({
     list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getAllBarbers(input?.tenantId)),
     listAll: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getAllBarbersIncludingInactive(input?.tenantId)),
     reactivate: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.reactivateBarber(input.id)),
+    listWithPermissions: barberProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+      const barbers = await db.getAllBarbersIncludingInactive(input?.tenantId);
+      if (!barbers.length) return barbers;
+      const ids = barbers.map((b: any) => b.id).join(',');
+      const rows = await db.rawQuery(`SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id IN (${ids})`);
+      const map: Record<number, any> = {};
+      for (const r of rows) { map[r.id] = r; }
+      return barbers.map((b: any) => {
+        const row = map[b.id];
+        let perms = null;
+        if (row?.permissions) { try { perms = JSON.parse(row.permissions); } catch {} }
+        return { ...b, permissions: perms, role: row?.role ?? b.role, jobTitle: row?.jobTitle ?? null };
+      });
+    }),
     create: barberProcedure
-      .input(z.object({ name: z.string().min(2), email: z.string().email().optional(), phone: z.string().optional(), password: z.string().min(6), role: z.enum(["super_admin", "barber", "receptionist"]).default("barber"), specialties: z.string().optional(), tenantId: z.number().optional().nullable() }))
+      .input(z.object({ name: z.string().min(2), email: z.string().email().optional(), phone: z.string().optional(), password: z.string().min(6), role: z.enum(["super_admin", "barber", "receptionist"]).default("barber"), specialties: z.string().optional(), tenantId: z.number().optional().nullable(), permissions: z.array(z.string()).optional().nullable() }))
       .mutation(async ({ input }) => {
         // Validação de limite de barbeiros por plano
         if (input.tenantId != null) {
@@ -308,15 +322,25 @@ export const appRouter = router({
           }
         }
         const passwordHash = await hashPassword(input.password);
-        return db.createBarber({ ...input, passwordHash, isActive: true });
+        const { permissions: permsArr, ...barberData } = input as any;
+        const newId = await db.createBarber({ ...barberData, passwordHash, isActive: true });
+        if (permsArr && newId) {
+          await db.rawQuery('UPDATE barbers SET permissions = $1 WHERE id = $2', [JSON.stringify(permsArr), newId]);
+        }
+        return newId;
       }),
     update: barberProcedure
-      .input(z.object({ id: z.number(), name: z.string().min(2).optional(), email: z.string().email().optional().nullable(), phone: z.string().optional().nullable(), photoUrl: z.string().optional().nullable(), role: z.enum(["super_admin", "barber", "receptionist"]).optional(), specialties: z.string().optional().nullable(), isActive: z.boolean().optional(), password: z.string().min(6).optional() }))
+      .input(z.object({ id: z.number(), name: z.string().min(2).optional(), email: z.string().email().optional().nullable(), phone: z.string().optional().nullable(), photoUrl: z.string().optional().nullable(), role: z.enum(["super_admin", "barber", "receptionist"]).optional(), specialties: z.string().optional().nullable(), isActive: z.boolean().optional(), password: z.string().min(6).optional(), permissions: z.array(z.string()).optional().nullable() }))
       .mutation(async ({ input }) => {
-        const { id, password, ...data } = input;
+        const { id, password, permissions, ...data } = input;
         const updateData: Record<string, unknown> = { ...data };
         if (password) updateData.passwordHash = await hashPassword(password);
+        if (permissions !== undefined) updateData.permissions = permissions ? JSON.stringify(permissions) : null;
         await db.updateBarber(id, updateData as any);
+        // Se permissions foi passado, usar rawQuery para garantir
+        if (permissions !== undefined) {
+          await db.rawQuery('UPDATE barbers SET permissions = $1 WHERE id = $2', [permissions ? JSON.stringify(permissions) : null, id]);
+        }
         return { success: true };
       }),
     delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBarber(input.id)),
@@ -328,6 +352,83 @@ export const appRouter = router({
       upsert: barberProcedure
         .input(z.object({ barberId: z.number(), dayOfWeek: z.number().min(0).max(6), startTime: z.string(), endTime: z.string(), lunchStart: z.string().optional().nullable(), lunchEnd: z.string().optional().nullable(), isWorking: z.boolean() }))
         .mutation(({ input }) => { const { barberId, dayOfWeek, ...data } = input; return db.upsertWorkingHours(barberId, dayOfWeek, data); }),
+    }),
+  }),
+
+  // Rotas de filiais para o app mobile
+  branches: router({
+    list: barberProcedure.input(z.object({ tenantId: z.number() })).query(async ({ input }) => {
+      const tenantRows = await db.rawQuery('SELECT id, plan, "parentTenantId" FROM tenants WHERE id = $1', [input.tenantId]);
+      const t = tenantRows[0];
+      if (!t || t.plan !== 'studio') return { show: false, branches: [], isMatrix: true, matrixId: input.tenantId, matrixName: '' };
+      const parentId: number | null = t.parentTenantId ?? null;
+      const matrixId: number = parentId ?? input.tenantId;
+      const allBranches = await db.getBranches(matrixId);
+      const matrixRows = parentId ? await db.rawQuery('SELECT id, name, "displayName" FROM tenants WHERE id = $1', [matrixId]) : null;
+      const matrixName = parentId ? (matrixRows?.[0]?.displayName || matrixRows?.[0]?.name || 'Matriz') : '';
+      return {
+        show: true,
+        isMatrix: !parentId,
+        matrixId,
+        matrixName,
+        currentTenantId: input.tenantId,
+        branches: allBranches.map((b: any) => ({ id: b.id, name: b.displayName || b.name, slug: b.slug })),
+      };
+    }),
+    syncCatalog: barberProcedure.input(z.object({ matrixId: z.number(), targetBranchId: z.number() })).mutation(async ({ input }) => {
+      let syncedServices = 0, syncedProducts = 0, syncedSuppliers = 0;
+      try {
+        const matrixServices = await db.getAllServicesWithMedia(false, input.matrixId) as any[];
+        const existing = await db.rawQuery('SELECT name FROM services WHERE "tenantId" = $1', [input.targetBranchId]);
+        const existingNames = new Set(existing.map((s: any) => s.name.toLowerCase()));
+        for (const svc of matrixServices) {
+          if (!existingNames.has((svc.name || '').toLowerCase())) {
+            const newId = await db.createService({ tenantId: input.targetBranchId, name: svc.name, description: svc.description ?? null, price: svc.price, durationMinutes: svc.durationMinutes, isActive: svc.isActive } as any);
+            if (newId && svc.thumbnailUrl) await db.addMediaFile({ entityType: 'service', entityId: Number(newId), url: svc.thumbnailUrl, type: 'image', order: 0 });
+            syncedServices++;
+          }
+        }
+      } catch {}
+      try {
+        const matrixProducts = await db.getAllProductsWithMedia(false, input.matrixId) as any[];
+        const existing = await db.rawQuery('SELECT name FROM products WHERE "tenantId" = $1', [input.targetBranchId]);
+        const existingNames = new Set(existing.map((p: any) => p.name.toLowerCase()));
+        for (const prd of matrixProducts) {
+          if (!existingNames.has((prd.name || '').toLowerCase())) {
+            const newId = await db.createProduct({ tenantId: input.targetBranchId, name: prd.name, description: prd.description ?? null, price: prd.price, productType: prd.productType ?? 'sale', isActive: prd.isActive, stockQuantity: 0, minStockAlert: prd.minStockAlert ?? 5 } as any);
+            if (newId && prd.thumbnailUrl) await db.addMediaFile({ entityType: 'product', entityId: Number(newId), url: prd.thumbnailUrl, type: 'image', order: 0 });
+            syncedProducts++;
+          }
+        }
+      } catch {}
+      try {
+        const matrixSuppliers = await db.getSuppliersByTenant(input.matrixId) as any[];
+        const existing = await db.rawQuery('SELECT name FROM suppliers WHERE "tenantId" = $1', [input.targetBranchId]);
+        const existingNames = new Set(existing.map((s: any) => s.name.toLowerCase()));
+        for (const sup of matrixSuppliers) {
+          if (!existingNames.has((sup.name || '').toLowerCase())) {
+            await db.createSupplier({ tenantId: input.targetBranchId, name: sup.name, phone: sup.phone ?? null, email: sup.email ?? null, cnpj: sup.cnpj ?? null, address: sup.address ?? null, notes: sup.notes ?? null } as any);
+            syncedSuppliers++;
+          }
+        }
+      } catch {}
+      return { syncedServices, syncedProducts, syncedSuppliers };
+    }),
+    transfer: barberProcedure.input(z.object({ productId: z.number(), targetBranchId: z.number(), quantity: z.number().min(1), matrixId: z.number(), sourceTenantId: z.number(), reason: z.string().optional() })).mutation(async ({ ctx, input }) => {
+      const sourceProduct = await db.getProductById(input.productId);
+      if (!sourceProduct) throw new Error('Produto não encontrado');
+      const currentStock = (sourceProduct as any).stockQuantity ?? 0;
+      if (currentStock === 0) throw new Error('Estoque zerado. Não é possível transferir.');
+      if (input.quantity > currentStock) throw new Error('Quantidade maior que o estoque disponível (' + currentStock + ' unidades).');
+      // Verificar produto no destino
+      const destProducts = await db.rawQuery('SELECT id FROM products WHERE "tenantId" = $1 AND LOWER(name) = LOWER($2) LIMIT 1', [input.targetBranchId, sourceProduct.name]);
+      if (!destProducts[0]) throw new Error('Produto não encontrado na unidade destino. Sincronize o catálogo primeiro.');
+      const destProductId = destProducts[0].id;
+      const barberId = ctx.barberId;
+      const date = new Date().toISOString().split('T')[0];
+      await db.addStockMovement({ productId: input.productId, type: 'out', quantity: input.quantity, reason: 'Transferência para filial ID ' + input.targetBranchId + (input.reason ? ' — ' + input.reason : ''), date, barberId } as any);
+      await db.addStockMovement({ productId: destProductId, type: 'in', quantity: input.quantity, reason: 'Transferência recebida de filial ID ' + input.sourceTenantId + (input.reason ? ' — ' + input.reason : ''), date, barberId } as any);
+      return { success: true, transferred: input.quantity, productName: sourceProduct.name };
     }),
   }),
 

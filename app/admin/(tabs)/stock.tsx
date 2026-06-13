@@ -26,18 +26,20 @@ function toLocalDate(d: Date): string {
   return `${y}-${m}-${dd}`;
 }
 
-type MovementType = "in" | "out" | "adjustment";
+type MovementType = "in" | "out" | "adjustment" | "transfer";
 
 const TYPE_LABELS: Record<MovementType, string> = {
   in: "Entrada",
   out: "Saída",
   adjustment: "Ajuste",
+  transfer: "Transferência",
 };
 
 const TYPE_COLORS: Record<MovementType, string> = {
   in: "#22C55E",
   out: "#EF4444",
   adjustment: "#F59E0B",
+  transfer: "#C9A84C",
 };
 
 function today() {
@@ -78,12 +80,53 @@ function StockScreenInner() {
   const [movQty, setMovQty] = useState("1");
   const [movReason, setMovReason] = useState("");
   const [movSupplierId, setMovSupplierId] = useState<number | null>(null);
+  const [targetBranchId, setTargetBranchId] = useState<number | null>(null);
+  const [syncLoading, setSyncLoading] = useState(false);
 
   const suppliersQuery = trpc.suppliers.list.useQuery(
     { tenantId: tenantId ?? 0 },
     { enabled: (tenantId ?? 0) > 0 }
   );
   const suppliersList = (suppliersQuery.data ?? []) as Array<{ id: number; name: string; phone: string | null }>;
+
+  const branchesQuery = trpc.branches.list.useQuery(
+    { tenantId: tenantId ?? 0 },
+    { enabled: (tenantId ?? 0) > 0 }
+  );
+  const branchData = branchesQuery.data;
+  const networkBranches = branchData?.show ? branchData.branches : [];
+  const isStudio = branchData?.show ?? false;
+
+  const transferMutation = trpc.branches.transfer.useMutation({
+    onSuccess: (data) => {
+      utils.stock.list.invalidate();
+      setShowMovementModal(false);
+      setMovQty("1"); setMovReason(""); setTargetBranchId(null); setMovType("in");
+      Alert.alert("Transferência realizada!", `${data.transferred}x ${data.productName} transferido com sucesso.`);
+    },
+    onError: (e) => Alert.alert("Erro na transferência", e.message),
+  });
+
+  const syncMutation = trpc.branches.syncCatalog.useMutation({
+    onSuccess: (data) => {
+      utils.stock.list.invalidate();
+      setSyncLoading(false);
+      Alert.alert("Sincronização concluída!", `${data.syncedServices} serviços, ${data.syncedProducts} produtos, ${data.syncedSuppliers} fornecedores sincronizados.`);
+    },
+    onError: (e) => { setSyncLoading(false); Alert.alert("Erro", e.message); },
+  });
+
+  async function handleSyncCatalog() {
+    if (!branchData?.show) return;
+    const matrixId = branchData.matrixId;
+    const targetId = branchData.isMatrix ? null : tenantId;
+    if (!targetId || !matrixId) {
+      Alert.alert("Atenção", "Sincronização disponível apenas dentro de uma filial.");
+      return;
+    }
+    setSyncLoading(true);
+    syncMutation.mutate({ matrixId, targetBranchId: targetId! });
+  }
 
   const stockQuery = trpc.stock.list.useQuery({ tenantId });
   const movementsQuery = trpc.stock.movements.useQuery(
@@ -102,6 +145,7 @@ function StockScreenInner() {
       setMovQty("1");
       setMovReason("");
       setMovSupplierId(null);
+      setTargetBranchId(null);
     },
     onError: (e) => Alert.alert("Erro", e.message),
   });
@@ -120,6 +164,33 @@ function StockScreenInner() {
       Alert.alert("Quantidade inválida", "Informe uma quantidade maior que zero.");
       return;
     }
+    // Lógica de transferência entre filiais
+    if (movType === "transfer") {
+      if (!targetBranchId) { Alert.alert("Atenção", "Selecione a unidade destino."); return; }
+      const stock = selectedProduct?.stockQuantity ?? 0;
+      if (stock === 0) { Alert.alert("Estoque zerado", "Não é possível transferir. O produto está sem estoque."); return; }
+      if (qty > stock) { Alert.alert("Estoque insuficiente", `Quantidade maior que o disponível (${stock} unidades).`); return; }
+      const remaining = stock - qty;
+      const minAlert = selectedProduct?.minStockAlert ?? 5;
+      const doTransfer = () => transferMutation.mutate({
+        productId: selectedProduct.id,
+        targetBranchId,
+        quantity: qty,
+        matrixId: branchData?.matrixId ?? tenantId ?? 0,
+        sourceTenantId: tenantId ?? 0,
+        reason: movReason || undefined,
+      });
+      if (remaining <= minAlert) {
+        Alert.alert(
+          "Estoque baixo após transferência",
+          `Após a transferência, o estoque ficará em ${remaining} unidade(s), abaixo do alerta mínimo (${minAlert}). Confirma?`,
+          [{ text: "Cancelar", style: "cancel" }, { text: "Sim, transferir", style: "destructive", onPress: doTransfer }]
+        );
+      } else {
+        doTransfer();
+      }
+      return;
+    }
     addMovementMutation.mutate({
       productId: selectedProduct.id,
       type: movType,
@@ -135,12 +206,23 @@ function StockScreenInner() {
       <AdminHeader
         title="Controle de Estoque"
         rightElement={
-          <Pressable
-            style={({ pressed }) => [{ padding: 8, borderRadius: 8, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
-            onPress={handleExportCsv}
-          >
-            <Text style={{ fontSize: 14 }}>📥</Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {isStudio && !branchData?.isMatrix && (
+              <Pressable
+                style={({ pressed }) => [{ padding: 8, borderRadius: 8, backgroundColor: 'rgba(201,168,76,0.1)', borderWidth: 1, borderColor: '#C9A84C', opacity: pressed ? 0.7 : 1 }]}
+                onPress={handleSyncCatalog}
+                disabled={syncLoading}
+              >
+                <Text style={{ fontSize: 13, color: '#C9A84C' }}>{syncLoading ? '⏳' : '🔄'}</Text>
+              </Pressable>
+            )}
+            <Pressable
+              style={({ pressed }) => [{ padding: 8, borderRadius: 8, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+              onPress={handleExportCsv}
+            >
+              <Text style={{ fontSize: 14 }}>📥</Text>
+            </Pressable>
+          </View>
         }
       />
 
@@ -297,7 +379,7 @@ function StockScreenInner() {
             {/* Tipo de movimentação */}
             <Text style={[styles.fieldLabel, { color: colors.muted }]}>Tipo</Text>
             <View style={styles.typeRow}>
-              {(["in", "out", "adjustment"] as MovementType[]).map((t) => (
+              {(["in", "out", "adjustment", ...(networkBranches.length > 0 ? ["transfer" as MovementType] : [])] as MovementType[]).map((t) => (
                 <Pressable
                   key={t}
                   style={({ pressed }) => [
@@ -317,6 +399,32 @@ function StockScreenInner() {
               ))}
             </View>
 
+            {/* Seletor de unidade destino — só para transferência */}
+            {movType === "transfer" && networkBranches.length > 0 && (
+              <>
+                <Text style={[styles.fieldLabel, { color: colors.muted }]}>Transferir para</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    {networkBranches.map((b: any) => (
+                      <Pressable
+                        key={b.id}
+                        onPress={() => setTargetBranchId(b.id)}
+                        style={({ pressed }) => ({
+                          paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                          backgroundColor: targetBranchId === b.id ? '#C9A84C22' : colors.background,
+                          borderWidth: 1, borderColor: targetBranchId === b.id ? '#C9A84C' : colors.border,
+                          opacity: pressed ? 0.7 : 1,
+                        })}
+                      >
+                        <Text style={{ color: targetBranchId === b.id ? '#C9A84C' : colors.muted, fontSize: 13, fontWeight: targetBranchId === b.id ? '700' : '400' }}>
+                          {b.name}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            )}
             {/* Quantidade */}
             <Text style={[styles.fieldLabel, { color: colors.muted }]}>Quantidade</Text>
             <TextInput

@@ -148,6 +148,7 @@ export default function BarbeariaScreen() {
   const [bPassword, setBPassword] = useState("");
   const [bRole, setBRole] = useState("barber");
   const [bSpecialties, setBSpecialties] = useState("");
+  const [bPermissions, setBPermissions] = useState<string[]>([]);
 
   // Horários
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -201,7 +202,7 @@ export default function BarbeariaScreen() {
 
   const [showInactiveBarbers, setShowInactiveBarbers] = useState(false);
   const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
-  const allBarbersQuery = trpc.barbers.listAll.useQuery({ tenantId }, { enabled: showInactiveBarbers });
+  const allBarbersQuery = trpc.barbers.listWithPermissions.useQuery({ tenantId }, { enabled: showInactiveBarbers });
   const workingHoursQuery = trpc.barbers.workingHours.get.useQuery(
     { barberId: selectedBarberId ?? 0 },
     { enabled: !!selectedBarberId }
@@ -312,15 +313,24 @@ export default function BarbeariaScreen() {
     );
   }
 
+  const ALL_PERMISSIONS = ["agenda","clientes","lista-espera","servicos","financeiro","relatorios","comissoes","minhas-comissoes","produtos","marketing","configuracoes"];
+  const PERMISSION_LABELS: Record<string, string> = {
+    "agenda": "Agenda", "clientes": "Clientes", "lista-espera": "Lista de Espera",
+    "servicos": "Serviços", "financeiro": "Financeiro", "relatorios": "Relatórios",
+    "comissoes": "Comissões", "minhas-comissoes": "Minhas Comissões", "produtos": "Produtos/Estoque",
+    "marketing": "Marketing", "configuracoes": "Configurações",
+  };
+
   function openCreateBarber() {
     setEditingBarber(null);
-    setBName(""); setBEmail(""); setBPhone(""); setBPassword(""); setBRole("barber"); setBSpecialties("");
+    setBName(""); setBEmail(""); setBPhone(""); setBPassword(""); setBRole("barber"); setBSpecialties(""); setBPermissions([]);
     setShowBarberModal(true);
   }
 
   function openEditBarber(b: any) {
     setEditingBarber(b);
     setBName(b.name); setBEmail(b.email ?? ""); setBPhone(applyPhoneMask(b.phone ?? "")); setBPassword(""); setBRole(b.role); setBSpecialties(b.specialties ?? "");
+    setBPermissions(Array.isArray(b.permissions) ? b.permissions : []);
     setShowBarberModal(true);
   }
 
@@ -329,15 +339,16 @@ export default function BarbeariaScreen() {
   function handleSaveBarber() {
     if (!bName.trim()) { Alert.alert("Atenção", "Informe o nome."); return; }
     if (!editingBarber && (!bPassword || bPassword.length < 6)) { Alert.alert("Atenção", "Senha deve ter pelo menos 6 caracteres."); return; }
+    const finalPerms = bRole === 'super_admin' ? ALL_PERMISSIONS : bPermissions;
     if (editingBarber) {
-      const data: any = { id: editingBarber.id, name: bName.trim(), role: bRole as any };
+      const data: any = { id: editingBarber.id, name: bName.trim(), role: bRole as any, permissions: finalPerms };
       if (bEmail) data.email = bEmail.trim();
       if (bPhone) data.phone = stripMask(bPhone).trim();
       if (bSpecialties) data.specialties = bSpecialties.trim();
       if (bPassword && bPassword.length >= 6) data.password = bPassword;
       updateBarberMutation.mutate(data);
     } else {
-      createBarberMutation.mutate({ name: bName.trim(), email: bEmail.trim() || undefined, phone: stripMask(bPhone).trim() || undefined, password: bPassword, role: bRole as any, specialties: bSpecialties.trim() || undefined, tenantId } as any);
+      createBarberMutation.mutate({ name: bName.trim(), email: bEmail.trim() || undefined, phone: stripMask(bPhone).trim() || undefined, password: bPassword, role: bRole as any, specialties: bSpecialties.trim() || undefined, tenantId, permissions: finalPerms } as any);
     }
   }
 
@@ -893,6 +904,28 @@ export default function BarbeariaScreen() {
                     </Pressable>
                   ))}
                 </View>
+                {bRole !== 'super_admin' && (
+                  <>
+                    <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Permissões</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                      {ALL_PERMISSIONS.map(perm => {
+                        const active = bPermissions.includes(perm);
+                        return (
+                          <Pressable
+                            key={perm}
+                            onPress={() => setBPermissions(prev => active ? prev.filter(p => p !== perm) : [...prev, perm])}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: active ? 'rgba(201,168,76,0.15)' : 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: active ? '#C9A84C' : '#333', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+                          >
+                            <View style={{ width: 14, height: 14, borderRadius: 3, borderWidth: 2, borderColor: active ? '#C9A84C' : '#555', backgroundColor: active ? '#C9A84C' : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                              {active && <Text style={{ color: '#0A0A0A', fontSize: 10, fontWeight: '700' }}>✓</Text>}
+                            </View>
+                            <Text style={{ color: active ? '#C9A84C' : '#999', fontSize: 12 }}>{PERMISSION_LABELS[perm] || perm}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </>
+                )}
                 <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleSaveBarber} disabled={createBarberMutation.isPending || updateBarberMutation.isPending}>
                   {(createBarberMutation.isPending || updateBarberMutation.isPending) ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>{editingBarber ? "SALVAR" : "CADASTRAR"}</Text>}
                 </Pressable>
