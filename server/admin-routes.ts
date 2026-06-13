@@ -353,15 +353,23 @@ async function buildBranchSelectorHtml(barberId: number): Promise<string> {
   try {
     const b = await db.getBarberById(barberId);
     if (!b?.tenantId) return "";
-    const t: any = await db.getTenantById(b.tenantId);
-    if (t?.plan !== "studio") return "";
-    const parentId = t.parentTenantId ?? null;
-    const allBranches: any[] = parentId ? await db.getBranches(parentId) : await db.getBranches(b.tenantId);
+    const tenantRows = await db.rawQuery(
+      'SELECT id, name, "displayName", plan, "parentTenantId" FROM tenants WHERE id = $1',
+      [b.tenantId]
+    );
+    const t = tenantRows[0];
+    if (!t || t.plan !== "studio") return "";
+    const parentId: number | null = t.parentTenantId ?? null;
+    const matrixId2: number = parentId ?? b.tenantId;
+    const allBranches: any[] = await db.getBranches(matrixId2);
     if (allBranches.length === 0 && !parentId) return "";
     const currentName = parentId ? (t.displayName || t.name || "Filial") : (t.displayName || t.name || "Matriz");
-    const matrixT: any = parentId ? await db.getTenantById(parentId) : t;
+    const matrixRows2 = parentId
+      ? await db.rawQuery('SELECT id, name, "displayName" FROM tenants WHERE id = $1', [parentId])
+      : [t];
+    const matrixT: any = matrixRows2[0];
     const matrixName = matrixT?.displayName || matrixT?.name || "Matriz";
-    const matrixId = parentId || b.tenantId;
+    const matrixId = matrixId2;
     const items = allBranches.map((br: any) => {
       const bn = (br.displayName||br.name||"Filial").replace(/"/g,"&quot;");
       return "<form method=\"POST\" action=\"/admin/filiais/trocar\"><input type=\"hidden\" name=\"branchId\" value=\""+br.id+"\"/><input type=\"hidden\" name=\"returnTo\" value=\"/admin\"/><button type=\"submit\" style=\"width:100%;text-align:left;padding:9px 14px;background:transparent;border:none;color:var(--text);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px\">🏪 "+bn+"</button></form>";
@@ -9236,18 +9244,27 @@ document.addEventListener('input', function(e) {
       const session = (req as any).adminSession as { barberId: number };
       const b = await db.getBarberById(session.barberId);
       if (!b?.tenantId) { res.json({ show: false }); return; }
-      const t: any = await db.getTenantById(b.tenantId);
-      if (t?.plan !== "studio") { res.json({ show: false }); return; }
-      const parentId = t.parentTenantId ?? null;
-      const allBranches: any[] = parentId ? await db.getBranches(parentId) : await db.getBranches(b.tenantId);
+      // rawQuery para pegar parentTenantId e plan (parentTenantId fora do schema Drizzle)
+      const tenantRows = await db.rawQuery(
+        'SELECT id, name, "displayName", plan, "parentTenantId" FROM tenants WHERE id = $1',
+        [b.tenantId]
+      );
+      const t = tenantRows[0];
+      if (!t || t.plan !== "studio") { res.json({ show: false }); return; }
+      const parentId: number | null = t.parentTenantId ?? null;
+      const matrixId: number = parentId ?? b.tenantId;
+      const allBranches: any[] = await db.getBranches(matrixId);
       if (allBranches.length === 0 && !parentId) { res.json({ show: false }); return; }
-      const matrixT: any = parentId ? await db.getTenantById(parentId) : t;
+      const matrixRows = parentId
+        ? await db.rawQuery('SELECT id, name, "displayName" FROM tenants WHERE id = $1', [parentId])
+        : [t];
+      const matrixT = matrixRows[0];
       res.json({
         show: true,
         isMatrix: !parentId,
         currentName: t.displayName || t.name || (parentId ? "Filial" : "Matriz"),
         matrixName: matrixT?.displayName || matrixT?.name || "Matriz",
-        matrixId: parentId || b.tenantId,
+        matrixId,
         branches: allBranches.map((br: any) => ({ id: br.id, name: br.displayName || br.name || "Filial" })),
       });
     } catch(e) { res.json({ show: false }); }
