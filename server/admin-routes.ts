@@ -9481,23 +9481,28 @@ document.addEventListener('input', function(e) {
       if (session.role !== 'super_admin') { res.redirect('/admin'); return; }
       const adminBarber = await db.getBarberById(session.barberId);
       if (!adminBarber?.tenantId || !adminBarber.email) { res.redirect('/admin'); return; }
-      const currentTenant = await db.getTenantById(adminBarber.tenantId);
-      const myParent = (currentTenant as any)?.parentTenantId ?? null;
+
+      // Usar rawQuery para garantir que parentTenantId é retornado (fora do schema Drizzle)
+      const currentRows = await db.rawQuery('SELECT id, "parentTenantId" FROM tenants WHERE id = $1', [adminBarber.tenantId]);
+      const myParent: number | null = currentRows[0]?.parentTenantId ?? null;
+      const matrixId: number = myParent ?? adminBarber.tenantId;
 
       // branchId=0 é atalho para "voltar para a matriz"
       let targetTenantId = parseInt(req.body.branchId);
       if (targetTenantId === 0 || isNaN(targetTenantId)) {
-        targetTenantId = myParent ?? adminBarber.tenantId;
+        targetTenantId = matrixId;
       }
 
-      const targetTenant = await db.getTenantById(targetTenantId);
-      if (!targetTenant) { res.redirect('/admin'); return; }
+      const targetRows = await db.rawQuery('SELECT id, "parentTenantId" FROM tenants WHERE id = $1', [targetTenantId]);
+      if (!targetRows[0]) { res.redirect('/admin'); return; }
+      const targetParentId: number | null = targetRows[0].parentTenantId ?? null;
 
-      // Caso 1: estou numa filial e quero voltar para a matriz
-      const targetIsMyMatrix = myParent === targetTenantId || targetTenantId === adminBarber.tenantId;
-      // Caso 2: estou na matriz e quero entrar numa filial minha
-      const matrixId = myParent ?? adminBarber.tenantId;
-      const targetIsMyBranch = (targetTenant as any)?.parentTenantId === matrixId;
+      // Caso 1: target é a minha matriz (voltar)
+      const targetIsMyMatrix = targetTenantId === matrixId;
+      // Caso 2: target é uma filial da minha rede
+      const targetIsMyBranch = targetParentId === matrixId;
+
+      console.log('[trocar] barbeiro:', session.barberId, 'atual:', adminBarber.tenantId, 'myParent:', myParent, 'matrixId:', matrixId, 'targetId:', targetTenantId, 'targetParent:', targetParentId, 'isMatrix:', targetIsMyMatrix, 'isBranch:', targetIsMyBranch);
 
       if (!targetIsMyMatrix && !targetIsMyBranch) {
         res.redirect('/admin?erro=acesso_restrito'); return;
