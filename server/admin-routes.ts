@@ -9513,9 +9513,8 @@ document.addEventListener('input', function(e) {
         }
       } catch(e) { console.error('[sync] fornecedores:', (e as any)?.message); }
 
-      const msg = `Sincronizado: ${syncedServices} serviços, ${syncedProducts} produtos, ${syncedSuppliers} fornecedores`;
-      const returnTo = parentId ? '/admin/servicos' : '/admin/configuracoes?tab=filiais';
-      res.redirect(returnTo + '&saved=1&msg=' + encodeURIComponent(msg));
+      const msg = `${syncedServices} serviços, ${syncedProducts} produtos, ${syncedSuppliers} fornecedores`;
+      res.redirect('/admin/configuracoes?tab=filiais&saved=1&msg=' + encodeURIComponent(msg));
     } catch(e: any) {
       res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent(e.message));
     }
