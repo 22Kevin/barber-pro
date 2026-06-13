@@ -915,7 +915,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
           '      document.getElementById("svcCheck_" + id).textContent = "";',
           '    } else {',
           '      if (_planData.maxSvc < 999 && _planData.selectedServices.length >= _planData.maxSvc) {',
-          '        alert("Voc\u00ea pode escolher no m\u00e1ximo " + _planData.maxSvc + " servi\u00e7o" + (_planData.maxSvc !== 1 ? "s" : "") + ".");',
+          '        pubAlert("Você pode escolher no máximo " + _planData.maxSvc + " serviço" + (_planData.maxSvc !== 1 ? "s" : "") + ".", "warning");',
           '        return;',
           '      }',
           '      _planData.selectedServices.push(id);',
@@ -925,7 +925,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
           '  }',
           '  function confirmPlanSubscription() {',
           '    if (_planData.services.length > 0 && _planData.selectedServices.length === 0) {',
-          '      alert("Selecione pelo menos um servi\u00e7o para continuar.");',
+          '      pubAlert("Selecione pelo menos um serviço para continuar.", "warning");',
           '      return;',
           '    }',
           '    var url = _pubBase + "/agendar?planId=" + _planData.planId + "&selectedServices=" + _planData.selectedServices.join(",");',
@@ -1528,9 +1528,9 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       // ─── Navegação entre etapas ─────────────────────────────────────────────
       function goToStep(n) {
         if (n === 1) { /* sem validação */ }
-        else if (n === 2 && !selectedService) { alert('Selecione um serviço primeiro.'); return; }
+        else if (n === 2 && !selectedService) { pubAlert('Selecione um serviço primeiro.', 'warning'); return; }
         else if (n === 3) { /* barbeiro já tem padrão */ }
-        else if (n === 4 && !selectedSlot) { alert('Selecione um horário primeiro.'); return; }
+        else if (n === 4 && !selectedSlot) { pubAlert('Selecione um horário primeiro.', 'warning'); return; }
 
         for (var i = 1; i <= 4; i++) {
           var el = document.getElementById('step-' + i);
@@ -2221,7 +2221,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       }
       function copyPixCode() {
         var el = document.getElementById('pix-code');
-        if (el) { navigator.clipboard.writeText(el.textContent).then(function() { alert('Código Pix copiado!'); }); }
+        if (el) { navigator.clipboard.writeText(el.textContent).then(function() { pubAlert('Código Pix copiado! ✓', 'success'); }); }
       }
       async function checkPixPayment(paymentId) {
         try {
@@ -3381,7 +3381,7 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
 
       // ─── Cancelar encomenda ────────────────────────────────────────────────
       async function cancelOrder(id, btn) {
-        if (!confirm('Deseja cancelar esta encomenda?')) return;
+        if (!await pubConfirm('Deseja cancelar esta encomenda?')) return;
         btn.disabled = true; btn.textContent = 'Cancelando...';
         try {
           var r = await fetch('/pub-api/cancel-order', {
@@ -3393,14 +3393,14 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
           if (!r.ok) throw new Error(data.error || 'Erro ao cancelar');
           window.location.reload();
         } catch(e) {
-          alert(e.message);
+          pubAlert(e.message, 'error');
           btn.disabled = false; btn.textContent = 'Cancelar encomenda';
         }
       }
 
       // ─── Confirmar recebimento pelo cliente ────────────────────────────────
       async function confirmOrderReceipt(id, btn) {
-        if (!confirm('Confirmar que você retirou este pedido?')) return;
+        if (!await pubConfirm('Confirmar que você retirou este pedido?')) return;
         btn.disabled = true; btn.textContent = 'Confirmando...';
         try {
           var r = await fetch('/pub-api/confirm-order-receipt', {
@@ -3412,7 +3412,7 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
           if (!r.ok) throw new Error(data.error || 'Erro ao confirmar');
           window.location.reload();
         } catch(e) {
-          alert(e.message);
+          pubAlert(e.message, 'error');
           btn.disabled = false; btn.textContent = '\u2705 Confirmar Recebimento';
         }
       }
@@ -3454,7 +3454,7 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
       }
       async function submitProductReview() {
         var modal = document.getElementById('productReviewModal');
-        if (!modal._rating) { alert('Selecione uma nota de 1 a 5 estrelas'); return; }
+        if (!modal._rating) { pubAlert('Selecione uma nota de 1 a 5 estrelas', 'warning'); return; }
         var btn = document.getElementById('prSubmit');
         btn.disabled = true; btn.textContent = 'Enviando...';
         try {
@@ -3465,16 +3465,16 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
           });
           if (!r.ok) throw new Error('Erro ao enviar');
           modal.style.display = 'none';
-          alert('Avaliação enviada! Obrigado 🙏');
+          pubAlert('Avaliação enviada! Obrigado 🙏', 'success');
         } catch(e) {
-          alert(e.message);
+          pubAlert(e.message, 'error');
           btn.disabled = false; btn.textContent = 'Enviar Avaliação';
         }
       }
 
       // ─── Cancelar agendamento ──────────────────────────────────────────────
       async function cancelAppt(id, btn) {
-        if (!confirm('Deseja cancelar este agendamento?')) return;
+        if (!await pubConfirm('Deseja cancelar este agendamento?')) return;
         btn.disabled = true;
         btn.textContent = 'Cancelando...';
         try {
@@ -3487,14 +3487,14 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
           if (!r.ok) throw new Error(data.error || 'Erro ao cancelar');
           window.location.reload();
         } catch(e) {
-          alert(e.message);
+          pubAlert(e.message, 'error');
           btn.disabled = false;
           btn.textContent = 'Cancelar agendamento';
         }
       }
 
       async function cancelSub(id, planName) {
-        if (!confirm('Deseja cancelar a assinatura do plano "' + planName + '"?\n\nVocê perderá acesso aos benefícios ao final do período atual.')) return;
+        if (!await pubConfirm('Deseja cancelar a assinatura do plano "' + planName + '"? Você perderá acesso aos benefícios ao final do período atual.')) return;
         try {
           var r = await fetch('/pub-api/cancel-subscription', {
             method: 'POST',
@@ -3505,7 +3505,7 @@ async function renderMyAppointmentsPage(slug: string, res: Response, req: Reques
           if (!data.success) throw new Error(data.error || 'Erro ao cancelar assinatura');
           window.location.reload();
         } catch(e) {
-          alert(e.message);
+          pubAlert(e.message, 'error');
         }
       }
     </script>
@@ -4055,7 +4055,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
         if (exists) return;
         // Verificar limite de agendamentos
         if (planSelectedAppts.length >= PLAN.recurrences) {
-          alert('Você já selecionou o máximo de ' + PLAN.recurrences + ' agendamento(s) para este plano.');
+          pubAlert('Você já selecionou o máximo de ' + PLAN.recurrences + ' agendamento(s) para este plano.', 'warning');
           return;
         }
         planSelectedAppts.push({ date: planSelectedDate, time: time, barberId: planSelectedBarber ? planSelectedBarber.id : null });
@@ -5664,10 +5664,10 @@ export function registerPublicRoutes(app: Express): void {
       </div>
       <script>
         async function cancelAppt(id) {
-          if (!confirm("Tem certeza que deseja cancelar este agendamento?")) return;
+          if (!await pubConfirm("Tem certeza que deseja cancelar este agendamento?")) return;
           const r = await fetch("/pub-api/cancel-appointment", { method: "POST", headers: {"Content-Type":"application/json"}, credentials: "include", body: JSON.stringify({appointmentId: id, slug: "${slug}"}) });
           if (r.ok) { location.href = "/pub/${slug}/meus-agendamentos"; }
-          else { const e = await r.json(); alert("Erro: " + (e.error || "Não foi possível cancelar")); }
+          else { const e = await r.json(); pubAlert("Erro: " + (e.error || "Não foi possível cancelar"), 'error'); }
         }
       </script>
     `;
