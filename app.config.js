@@ -36,6 +36,10 @@ const config = {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
   },
+  androidStatusBar: {
+    backgroundColor: "#0A0A0A",
+    barStyle: "light-content",
+  },
   android: {
     adaptiveIcon: {
       backgroundColor: "#0A0A0A",
@@ -43,6 +47,8 @@ const config = {
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
+    navigationBarColor: "#0A0A0A",
+    statusBarColor: "#0A0A0A",
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: env.androidPackage,
