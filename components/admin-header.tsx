@@ -5,11 +5,12 @@ import { useAdminDrawer } from "@/lib/admin-drawer-context";
 import { useColors } from "@/hooks/use-colors";
 
 interface AdminHeaderProps {
-  title: string;
+  title?: string;
+  titleNode?: React.ReactNode;
   rightElement?: React.ReactNode;
 }
 
-export function AdminHeader({ title, rightElement }: AdminHeaderProps) {
+export function AdminHeader({ title, titleNode, rightElement }: AdminHeaderProps) {
   const colors = useColors();
   const styles = createStyles(colors);
   const { toggleDrawer } = useAdminDrawer();
@@ -25,9 +26,11 @@ export function AdminHeader({ title, rightElement }: AdminHeaderProps) {
       </TouchableOpacity>
 
       {/* Título */}
-      <Text style={styles.title} numberOfLines={1}>
-        {title}
-      </Text>
+      {titleNode ?? (
+        <Text style={styles.title} numberOfLines={1}>
+          {title}
+        </Text>
+      )}
 
       {/* Elemento direito (ação contextual) */}
       <View style={styles.rightSlot}>

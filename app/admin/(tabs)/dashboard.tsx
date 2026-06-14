@@ -18,6 +18,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useIsBarberRole } from "@/hooks/usePermission";
 import { AdminHeader } from "@/components/admin-header";
+import { HeaderBranchTitle } from "@/components/BranchSelector";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
@@ -146,7 +147,7 @@ export default function DashboardScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
-      <AdminHeader title="Dashboard" />
+      <AdminHeader titleNode={<HeaderBranchTitle />} />
       {isLoadingInitial ? (
         <DashboardSkeleton />
       ) : (
