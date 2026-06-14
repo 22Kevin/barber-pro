@@ -14,21 +14,21 @@ export async function createContext(opts: CreateExpressContextOptions): Promise<
   let user: User | null = null;
   let barber: BarberJwtPayload | null = null;
 
-  try {
-    user = await sdk.authenticateRequest(opts.req);
-  } catch {
-    // Authentication is optional for public procedures.
-    user = null;
-  }
+  const bearerToken = extractBarberTokenFromRequest(opts.req as any);
 
-  // Tentar autenticar como barbeiro via JWT
-  try {
-    const token = extractBarberTokenFromRequest(opts.req as any);
-    if (token) {
-      barber = await verifyBarberToken(token);
+  if (bearerToken) {
+    // Bearer token presente — tentar como barber JWT primeiro.
+    // Não chamar sdk.authenticateRequest aqui: o barber JWT é assinado com
+    // "barber:<JWT_SECRET>", enquanto verifySession usa só "<JWT_SECRET>".
+    // Chamar os dois causaria JWSSignatureVerificationFailed em todo request mobile.
+    barber = await verifyBarberToken(bearerToken).catch(() => null);
+  } else {
+    // Sem Bearer token — tentar autenticação via session cookie (fluxo web OAuth)
+    try {
+      user = await sdk.authenticateRequest(opts.req);
+    } catch {
+      user = null;
     }
-  } catch {
-    barber = null;
   }
 
   return {
