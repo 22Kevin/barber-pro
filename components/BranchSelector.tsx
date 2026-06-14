@@ -185,6 +185,7 @@ const BranchSelectorSheet = React.forwardRef<BottomSheet>((_props, ref) => {
       ref={ref}
       index={-1}
       snapPoints={["48%"]}
+      enableDynamicSizing={false}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
       backgroundStyle={styles.sheetBg}
