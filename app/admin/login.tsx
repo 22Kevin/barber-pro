@@ -128,10 +128,18 @@ export default function AdminLoginScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
+          {/* Background glow */}
+          <View style={styles.glowOuter} pointerEvents="none" />
+          <View style={styles.glowInner} pointerEvents="none" />
+
           {/* Logo + marca */}
           <View style={styles.logoArea}>
-            <View style={styles.logoRing}>
-              <Image source={require("@/assets/images/icon.png")} style={styles.logo} resizeMode="contain" />
+            <View style={styles.ringOuter}>
+              <View style={styles.ringInner}>
+                <View style={styles.logoRing}>
+                  <Image source={require("@/assets/images/icon.png")} style={styles.logo} resizeMode="contain" />
+                </View>
+              </View>
             </View>
             <Text style={styles.brand}>BARBER PRO</Text>
             <Text style={styles.brandSub}>Painel Administrativo</Text>
@@ -217,12 +225,16 @@ export default function AdminLoginScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: "center", padding: 24, backgroundColor: BG },
+  glowOuter: { position: 'absolute', width: 400, height: 400, borderRadius: 200, backgroundColor: 'rgba(201,168,76,0.06)', alignSelf: 'center', top: 0 },
+  glowInner: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(201,168,76,0.04)', alignSelf: 'center', top: 100 },
   logoArea: { alignItems: "center", marginBottom: 36 },
-  logoRing: { width: 104, height: 104, borderRadius: 52, borderWidth: 2, borderColor: GOLD + '55', backgroundColor: SURFACE, alignItems: 'center', justifyContent: 'center', marginBottom: 16, shadowColor: GOLD, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8 },
+  ringOuter: { width: 124, height: 124, borderRadius: 62, borderWidth: 1, borderColor: 'rgba(201,168,76,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  ringInner: { width: 112, height: 112, borderRadius: 56, borderWidth: 1, borderColor: 'rgba(201,168,76,0.3)', alignItems: 'center', justifyContent: 'center' },
+  logoRing: { width: 104, height: 104, borderRadius: 52, borderWidth: 2, borderColor: GOLD + '55', backgroundColor: SURFACE, alignItems: 'center', justifyContent: 'center', elevation: 0 },
   logo: { width: 88, height: 88, borderRadius: 44 },
   brand: { fontSize: 26, fontWeight: "900", color: GOLD, letterSpacing: 5, marginBottom: 4 },
   brandSub: { fontSize: 12, color: MUTED, letterSpacing: 2, textTransform: "uppercase" },
-  card: { backgroundColor: SURFACE, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: BORDER },
+  card: { backgroundColor: SURFACE, borderRadius: 20, padding: 24, borderWidth: 1, borderColor: 'rgba(201,168,76,0.2)' },
   cardTitle: { fontSize: 22, fontWeight: "800", color: TEXT, marginBottom: 4 },
   cardSub: { fontSize: 13, color: MUTED, marginBottom: 24 },
   field: { marginBottom: 16 },
