@@ -21,14 +21,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   Pressable,
-  ActivityIndicator,
 } from "react-native";
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { Ionicons } from "@expo/vector-icons";
+import { skipToken } from "@trpc/client";
 import { trpc } from "@/lib/trpc";
+import { useBarberAuth } from "@/lib/auth-context";
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const GOLD = "#C9A84C";
@@ -69,38 +70,38 @@ export function useBranch() {
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export function BranchProvider({ children }: { children: React.ReactNode }) {
   const sheetRef = useRef<BottomSheet>(null);
+  const { barber } = useBarberAuth();
+  const tenantId = barber?.tenantId ?? null;
+
+  const { data, isLoading } = trpc.branches.list.useQuery(
+    tenantId != null ? { tenantId } : skipToken,
+  );
+
+  // Derivar branches com isMatrix inferido do matrixId retornado pelo servidor
+  const branches: Branch[] = (data?.branches ?? []).map((b: any) => ({
+    ...b,
+    isMatrix: b.id === data?.matrixId,
+  }));
+
+  // Tenant ativo: o que o servidor reconhece como currentTenantId
   const [current, setCurrent] = useState<Branch | null>(null);
-
-  const { data, isLoading } = trpc.branches.list.useQuery(undefined, {
-    onSuccess: (d: any) => {
-      if (!current && d?.current) setCurrent(d.current);
-    },
-  });
-
-  const transferMutation = trpc.branches.transfer.useMutation();
-
-  const branches: Branch[] = data?.branches ?? [];
+  const activeCurrent =
+    current ??
+    branches.find((b) => b.id === (data?.currentTenantId ?? tenantId)) ??
+    null;
 
   const openSelector = useCallback(() => {
     sheetRef.current?.expand();
   }, []);
 
+  // Troca de filial é apenas local — atualiza o contexto sem chamar mutation de estoque
   const switchBranch = useCallback(
     (branch: Branch) => {
-      transferMutation.mutate(
-        { branchId: branch.isMatrix ? 0 : branch.id },
-        {
-          onSuccess: () => {
-            setCurrent(branch);
-            sheetRef.current?.close();
-          },
-        }
-      );
+      setCurrent(branch);
+      sheetRef.current?.close();
     },
-    [transferMutation]
+    [],
   );
-
-  const activeCurrent = current ?? (data?.current as Branch | null) ?? null;
 
   return (
     <BranchContext.Provider
@@ -113,11 +114,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-      <BranchSelectorSheet
-        ref={sheetRef}
-        isSwitching={transferMutation.isLoading}
-        switchingId={transferMutation.variables?.branchId}
-      />
+      <BranchSelectorSheet ref={sheetRef} />
     </BranchContext.Provider>
   );
 }
@@ -165,85 +162,67 @@ export function NavbarBranchIndicator({ children }: { children: React.ReactNode 
 }
 
 // ─── Bottom Sheet ──────────────────────────────────────────────────────────────
-type SheetProps = {
-  isSwitching: boolean;
-  switchingId?: number;
-};
+const BranchSelectorSheet = React.forwardRef<BottomSheet>((_props, ref) => {
+  const { current, branches } = useBranch();
 
-const BranchSelectorSheet = React.forwardRef<BottomSheet, SheetProps>(
-  ({ isSwitching, switchingId }, ref) => {
-    const { current, branches } = useBranch();
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.6}
+      />
+    ),
+    [],
+  );
 
-    const renderBackdrop = useCallback(
-      (props: any) => (
-        <BottomSheetBackdrop
-          {...props}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-          opacity={0.6}
-        />
-      ),
-      []
-    );
+  const matrix = branches.find((b) => b.isMatrix);
+  const filiais = branches.filter((b) => !b.isMatrix);
 
-    const matrix = branches.find((b) => b.isMatrix);
-    const filiais = branches.filter((b) => !b.isMatrix);
+  return (
+    <BottomSheet
+      ref={ref}
+      index={-1}
+      snapPoints={["48%"]}
+      enablePanDownToClose
+      backdropComponent={renderBackdrop}
+      backgroundStyle={styles.sheetBg}
+      handleIndicatorStyle={styles.sheetHandle}
+    >
+      <BottomSheetView style={styles.sheetContent}>
+        <View style={styles.sheetHeader}>
+          <Text style={styles.sheetTitle}>Suas unidades</Text>
+          <Text style={styles.sheetSub}>Toque para trocar</Text>
+        </View>
 
-    return (
-      <BottomSheet
-        ref={ref}
-        index={-1}
-        snapPoints={["48%"]}
-        enablePanDownToClose
-        backdropComponent={renderBackdrop}
-        backgroundStyle={styles.sheetBg}
-        handleIndicatorStyle={styles.sheetHandle}
-      >
-        <BottomSheetView style={styles.sheetContent}>
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Suas unidades</Text>
-            <Text style={styles.sheetSub}>Toque para trocar</Text>
-          </View>
+        {matrix && (
+          <>
+            <Text style={styles.sectionLabel}>MATRIZ</Text>
+            <BranchCard branch={matrix} isActive={current?.id === matrix.id} />
+          </>
+        )}
 
-          {matrix && (
-            <>
-              <Text style={styles.sectionLabel}>MATRIZ</Text>
-              <BranchCard
-                branch={matrix}
-                isActive={current?.id === matrix.id}
-                isSwitching={isSwitching && switchingId === 0}
-              />
-            </>
-          )}
-
-          {filiais.length > 0 && (
-            <>
-              <Text style={[styles.sectionLabel, { marginTop: 16 }]}>FILIAIS</Text>
-              {filiais.map((b) => (
-                <BranchCard
-                  key={b.id}
-                  branch={b}
-                  isActive={current?.id === b.id}
-                  isSwitching={isSwitching && switchingId === b.id}
-                />
-              ))}
-            </>
-          )}
-        </BottomSheetView>
-      </BottomSheet>
-    );
-  }
-);
+        {filiais.length > 0 && (
+          <>
+            <Text style={[styles.sectionLabel, { marginTop: 16 }]}>FILIAIS</Text>
+            {filiais.map((b) => (
+              <BranchCard key={b.id} branch={b} isActive={current?.id === b.id} />
+            ))}
+          </>
+        )}
+      </BottomSheetView>
+    </BottomSheet>
+  );
+});
 
 // ─── Card ──────────────────────────────────────────────────────────────────────
 function BranchCard({
   branch,
   isActive,
-  isSwitching,
 }: {
   branch: Branch;
   isActive: boolean;
-  isSwitching: boolean;
 }) {
   const { switchBranch } = useBranch();
 
@@ -273,9 +252,7 @@ function BranchCard({
         ) : null}
       </View>
 
-      {isSwitching ? (
-        <ActivityIndicator size="small" color={GOLD} />
-      ) : isActive ? (
+      {isActive ? (
         <View style={styles.activeBadge}>
           <View style={styles.activeDot} />
           <Text style={styles.activeBadgeText}>Atual</Text>
