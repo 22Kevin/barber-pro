@@ -1,31 +1,32 @@
 /**
  * BranchSelector — Seletor de unidade para o app Barber Pro
+ * Implementado com Modal + Animated nativo — sem dependências externas.
  *
  * Exporta:
- *   BranchProvider       — envolve o layout raiz
- *   HeaderBranchTitle    — título clicável no header
- *   NavbarBranchIndicator — dot dourado no ícone ativo da navbar
- *   useBranch            — hook para acessar estado atual
+ *   BranchProvider         — envolve o layout das tabs
+ *   HeaderBranchTitle      — título clicável no header
+ *   NavbarBranchIndicator  — dot dourado no ícone ativo da navbar
+ *   useBranch              — hook para acessar estado atual
  */
 
 import React, {
+  createContext,
   useCallback,
+  useContext,
   useRef,
   useState,
-  createContext,
-  useContext,
 } from "react";
 import {
-  View,
+  Animated,
+  Dimensions,
+  Modal,
+  Pressable,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  Pressable,
+  TouchableWithoutFeedback,
+  View,
 } from "react-native";
-import BottomSheet, {
-  BottomSheetBackdrop,
-  BottomSheetView,
-} from "@gorhom/bottom-sheet";
 import { Ionicons } from "@expo/vector-icons";
 import { skipToken } from "@trpc/client";
 import { trpc } from "@/lib/trpc";
@@ -40,6 +41,8 @@ const SURFACE2 = "#232323";
 const TEXT = "#FFFFFF";
 const TEXT_MUTED = "#666666";
 const GREEN = "#22C55E";
+
+const SHEET_HEIGHT = Math.round(Dimensions.get("window").height * 0.52);
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Branch = {
@@ -69,7 +72,9 @@ export function useBranch() {
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 export function BranchProvider({ children }: { children: React.ReactNode }) {
-  const sheetRef = useRef<BottomSheet>(null);
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+
   const { barber } = useBarberAuth();
   const tenantId = barber?.tenantId ?? null;
 
@@ -77,13 +82,15 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     tenantId != null ? { tenantId } : skipToken,
   );
 
-  // Derivar branches com isMatrix inferido do matrixId retornado pelo servidor
+  // Mapear branches adicionando isMatrix inferido via matrixId do servidor
   const branches: Branch[] = (data?.branches ?? []).map((b: any) => ({
-    ...b,
+    id: b.id,
+    name: b.name,
+    slug: b.slug,
     isMatrix: b.id === data?.matrixId,
+    address: b.address,
   }));
 
-  // Tenant ativo: o que o servidor reconhece como currentTenantId
   const [current, setCurrent] = useState<Branch | null>(null);
   const activeCurrent =
     current ??
@@ -91,31 +98,141 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     null;
 
   const openSelector = useCallback(() => {
-    sheetRef.current?.expand();
-  }, []);
+    setSheetVisible(true);
+    Animated.spring(translateY, {
+      toValue: 0,
+      useNativeDriver: true,
+      damping: 22,
+      stiffness: 160,
+    }).start();
+  }, [translateY]);
 
-  // Troca de filial é apenas local — atualiza o contexto sem chamar mutation de estoque
+  const closeSelector = useCallback(() => {
+    Animated.timing(translateY, {
+      toValue: SHEET_HEIGHT,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => setSheetVisible(false));
+  }, [translateY]);
+
   const switchBranch = useCallback(
     (branch: Branch) => {
       setCurrent(branch);
-      sheetRef.current?.close();
+      closeSelector();
     },
-    [],
+    [closeSelector],
   );
 
   return (
     <BranchContext.Provider
-      value={{
-        current: activeCurrent,
-        branches,
-        isLoading,
-        openSelector,
-        switchBranch,
-      }}
+      value={{ current: activeCurrent, branches, isLoading, openSelector, switchBranch }}
     >
       {children}
-      <BranchSelectorSheet ref={sheetRef} />
+      <BranchSelectorSheet
+        visible={sheetVisible}
+        translateY={translateY}
+        onClose={closeSelector}
+      />
     </BranchContext.Provider>
+  );
+}
+
+// ─── Bottom Sheet (Modal nativo) ───────────────────────────────────────────────
+type SheetProps = {
+  visible: boolean;
+  translateY: Animated.Value;
+  onClose: () => void;
+};
+
+function BranchSelectorSheet({ visible, translateY, onClose }: SheetProps) {
+  const { current, branches } = useBranch();
+  const matrix = branches.find((b) => b.isMatrix);
+  const filiais = branches.filter((b) => !b.isMatrix);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      {/* Backdrop */}
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.backdrop} />
+      </TouchableWithoutFeedback>
+
+      {/* Sheet */}
+      <Animated.View
+        style={[styles.sheet, { transform: [{ translateY }] }]}
+      >
+        {/* Handle */}
+        <View style={styles.handle} />
+
+        <View style={styles.sheetHeader}>
+          <Text style={styles.sheetTitle}>Suas unidades</Text>
+          <Text style={styles.sheetSub}>Toque para trocar</Text>
+        </View>
+
+        {matrix && (
+          <>
+            <Text style={styles.sectionLabel}>MATRIZ</Text>
+            <BranchCard branch={matrix} isActive={current?.id === matrix.id} />
+          </>
+        )}
+
+        {filiais.length > 0 && (
+          <>
+            <Text style={[styles.sectionLabel, { marginTop: 16 }]}>FILIAIS</Text>
+            {filiais.map((b) => (
+              <BranchCard key={b.id} branch={b} isActive={current?.id === b.id} />
+            ))}
+          </>
+        )}
+      </Animated.View>
+    </Modal>
+  );
+}
+
+// ─── Card ──────────────────────────────────────────────────────────────────────
+function BranchCard({ branch, isActive }: { branch: Branch; isActive: boolean }) {
+  const { switchBranch } = useBranch();
+
+  return (
+    <Pressable
+      onPress={() => !isActive && switchBranch(branch)}
+      style={({ pressed }) => [
+        styles.card,
+        isActive && styles.cardActive,
+        pressed && !isActive && styles.cardPressed,
+      ]}
+    >
+      <View style={[styles.cardIcon, isActive && styles.cardIconActive]}>
+        <Ionicons
+          name={branch.isMatrix ? "home" : "storefront"}
+          size={20}
+          color={isActive ? BG : TEXT_MUTED}
+        />
+      </View>
+
+      <View style={styles.cardInfo}>
+        <Text style={[styles.cardName, isActive && styles.cardNameActive]}>
+          {branch.name}
+        </Text>
+        {branch.address ? (
+          <Text style={styles.cardAddress}>{branch.address}</Text>
+        ) : null}
+      </View>
+
+      {isActive ? (
+        <View style={styles.activeBadge}>
+          <View style={styles.activeDot} />
+          <Text style={styles.activeBadgeText}>Atual</Text>
+        </View>
+      ) : (
+        <Ionicons name="chevron-forward" size={16} color={TEXT_MUTED} />
+      )}
+    </Pressable>
   );
 }
 
@@ -161,151 +278,34 @@ export function NavbarBranchIndicator({ children }: { children: React.ReactNode 
   );
 }
 
-// ─── Bottom Sheet ──────────────────────────────────────────────────────────────
-const BranchSelectorSheet = React.forwardRef<BottomSheet>((_props, ref) => {
-  const { current, branches } = useBranch();
-
-  const renderBackdrop = useCallback(
-    (props: any) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={0.6}
-      />
-    ),
-    [],
-  );
-
-  const matrix = branches.find((b) => b.isMatrix);
-  const filiais = branches.filter((b) => !b.isMatrix);
-
-  return (
-    <BottomSheet
-      ref={ref}
-      index={-1}
-      snapPoints={["48%"]}
-      enableDynamicSizing={false}
-      enablePanDownToClose
-      backdropComponent={renderBackdrop}
-      backgroundStyle={styles.sheetBg}
-      handleIndicatorStyle={styles.sheetHandle}
-    >
-      <BottomSheetView style={styles.sheetContent}>
-        <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle}>Suas unidades</Text>
-          <Text style={styles.sheetSub}>Toque para trocar</Text>
-        </View>
-
-        {matrix && (
-          <>
-            <Text style={styles.sectionLabel}>MATRIZ</Text>
-            <BranchCard branch={matrix} isActive={current?.id === matrix.id} />
-          </>
-        )}
-
-        {filiais.length > 0 && (
-          <>
-            <Text style={[styles.sectionLabel, { marginTop: 16 }]}>FILIAIS</Text>
-            {filiais.map((b) => (
-              <BranchCard key={b.id} branch={b} isActive={current?.id === b.id} />
-            ))}
-          </>
-        )}
-      </BottomSheetView>
-    </BottomSheet>
-  );
-});
-
-// ─── Card ──────────────────────────────────────────────────────────────────────
-function BranchCard({
-  branch,
-  isActive,
-}: {
-  branch: Branch;
-  isActive: boolean;
-}) {
-  const { switchBranch } = useBranch();
-
-  return (
-    <Pressable
-      onPress={() => !isActive && switchBranch(branch)}
-      style={({ pressed }) => [
-        styles.card,
-        isActive && styles.cardActive,
-        pressed && !isActive && styles.cardPressed,
-      ]}
-    >
-      <View style={[styles.cardIcon, isActive && styles.cardIconActive]}>
-        <Ionicons
-          name={branch.isMatrix ? "home" : "storefront"}
-          size={20}
-          color={isActive ? BG : TEXT_MUTED}
-        />
-      </View>
-
-      <View style={styles.cardInfo}>
-        <Text style={[styles.cardName, isActive && styles.cardNameActive]}>
-          {branch.name}
-        </Text>
-        {branch.address ? (
-          <Text style={styles.cardAddress}>{branch.address}</Text>
-        ) : null}
-      </View>
-
-      {isActive ? (
-        <View style={styles.activeBadge}>
-          <View style={styles.activeDot} />
-          <Text style={styles.activeBadgeText}>Atual</Text>
-        </View>
-      ) : (
-        <Ionicons name="chevron-forward" size={16} color={TEXT_MUTED} />
-      )}
-    </Pressable>
-  );
-}
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  headerTitleBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+  // Modal
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.6)",
   },
-  headerTitleText: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: TEXT,
-    maxWidth: 200,
-  },
-  headerTitleStatic: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: TEXT,
-  },
-  filialDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: GOLD,
-  },
-  navWrap: { position: "relative" },
-  navDot: {
+  sheet: {
     position: "absolute",
-    top: -2,
-    right: -4,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: GOLD,
-    borderWidth: 1.5,
-    borderColor: BG,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: SHEET_HEIGHT,
+    backgroundColor: SURFACE,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
   },
-  sheetBg: { backgroundColor: SURFACE },
-  sheetHandle: { backgroundColor: "#444", width: 36 },
-  sheetContent: { flex: 1, paddingHorizontal: 20, paddingBottom: 32 },
+  handle: {
+    alignSelf: "center",
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#444",
+    marginTop: 12,
+    marginBottom: 4,
+  },
   sheetHeader: {
     flexDirection: "row",
     alignItems: "baseline",
@@ -322,6 +322,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
     marginBottom: 8,
   },
+
+  // Card
   card: {
     flexDirection: "row",
     alignItems: "center",
@@ -359,4 +361,44 @@ const styles = StyleSheet.create({
   },
   activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN },
   activeBadgeText: { fontSize: 11, fontWeight: "600", color: GREEN },
+
+  // Header title
+  headerTitleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  headerTitleText: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: TEXT,
+    maxWidth: 200,
+  },
+  headerTitleStatic: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: TEXT,
+  },
+  filialDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: GOLD,
+  },
+
+  // Navbar
+  navWrap: { position: "relative" },
+  navDot: {
+    position: "absolute",
+    top: -2,
+    right: -4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: GOLD,
+    borderWidth: 1.5,
+    borderColor: BG,
+  },
 });

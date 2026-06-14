@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useIsOwner, usePermission } from "@/hooks/usePermission";
+import { BranchProvider } from "@/components/BranchSelector";
 
 export default function AdminTabsLayout() {
   const { isAuthenticated, isLoading } = useBarberAuth();
@@ -19,6 +20,7 @@ export default function AdminTabsLayout() {
   const tabBarHeight = 56 + bottomPadding;
 
   return (
+    <BranchProvider>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -253,5 +255,6 @@ export default function AdminTabsLayout() {
         }}
       />
     </Tabs>
+    </BranchProvider>
   );
 }
