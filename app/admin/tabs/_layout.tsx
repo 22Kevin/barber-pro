@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useIsOwner, usePermission } from "@/hooks/usePermission";
-import { BranchProvider, NavbarBranchIndicator } from "@/components/BranchSelector";
+// import { BranchProvider, NavbarBranchIndicator } from "@/components/BranchSelector"; // temporariamente desabilitado para isolamento de crash
 
 export default function AdminTabsLayout() {
   const { isAuthenticated, isLoading } = useBarberAuth();
@@ -20,7 +20,7 @@ export default function AdminTabsLayout() {
   const tabBarHeight = 56 + bottomPadding;
 
   return (
-    <BranchProvider>
+    <>
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -45,10 +45,8 @@ export default function AdminTabsLayout() {
           name="dashboard"
           options={{
             title: "Dashboard",
-            tabBarIcon: ({ color, focused }) => (
-              <NavbarBranchIndicator>
-                <IconSymbol name="chart.bar.fill" size={24} color={color} />
-              </NavbarBranchIndicator>
+            tabBarIcon: ({ color }) => (
+              <IconSymbol name="chart.bar.fill" size={24} color={color} />
             ),
           }}
         />
@@ -103,6 +101,6 @@ export default function AdminTabsLayout() {
         <Tabs.Screen name="suporte" options={{ title: "Suporte", tabBarItemStyle: { display: "none" } }} />
         <Tabs.Screen name="suppliers" options={{ title: "Fornecedores", tabBarItemStyle: { display: "none" } }} />
       </Tabs>
-    </BranchProvider>
+    </>
   );
 }

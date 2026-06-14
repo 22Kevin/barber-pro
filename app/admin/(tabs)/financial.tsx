@@ -17,7 +17,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { AdminHeader } from "@/components/admin-header";
-import { HeaderBranchTitle } from "@/components/BranchSelector";
+// import { HeaderBranchTitle } from "@/components/BranchSelector"; // temporariamente desabilitado
 import { trpc } from "@/lib/trpc";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
@@ -187,7 +187,7 @@ export default function FinancialScreen() {
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
-        titleNode={<HeaderBranchTitle />}
+        title="Financeiro"
         rightElement={
           <View style={styles.headerActions}>
             <Pressable style={({ pressed }) => [styles.expenseBtn, pressed && { opacity: 0.8 }]} onPress={() => setShowExpenseModal(true)}>
