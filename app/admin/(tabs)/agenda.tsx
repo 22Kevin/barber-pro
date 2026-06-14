@@ -24,6 +24,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { AdminHeader } from "@/components/admin-header";
+import { HeaderBranchTitle } from "@/components/BranchSelector";
 import { SwipeableAppointmentCard } from "@/components/swipeable-appointment-card";
 import { PaymentStatusModal } from "@/components/payment-status-modal";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -551,7 +552,7 @@ export default function AgendaScreen() {
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
-        title="Agenda"
+        titleNode={<HeaderBranchTitle />}
         rightElement={
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable

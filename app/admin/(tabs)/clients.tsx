@@ -31,6 +31,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { DatePickerModal } from "@/components/date-picker-modal";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { AdminHeader } from "@/components/admin-header";
+import { HeaderBranchTitle } from "@/components/BranchSelector";
 import { trpc } from "@/lib/trpc";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { applyPhoneMask, stripMask } from "@/hooks/use-mask";
@@ -194,7 +195,7 @@ export default function ClientsScreen() {
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
-        title="Clientes"
+        titleNode={<HeaderBranchTitle />}
         rightElement={
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable
