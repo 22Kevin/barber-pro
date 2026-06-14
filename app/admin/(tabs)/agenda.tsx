@@ -3,6 +3,7 @@ import { EmptyState } from "@/components/empty-state";
 import { hapticSuccess, hapticError, hapticMedium, hapticLight } from "@/lib/haptics";
 import { toast } from "@/components/toast";
 import {
+  Animated,
   ActivityIndicator,
   Alert,
   FlatList,
@@ -18,6 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useScreenFadeIn } from "@/hooks/useScreenFadeIn";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
 import { ScreenContainer } from "@/components/screen-container";
@@ -124,6 +126,7 @@ function generateTimeSlots(
 }
 
 export default function AgendaScreen() {
+  const { fadeStyle } = useScreenFadeIn();
   const { barber } = useBarberAuth();
   const router = useRouter();
   const params = useLocalSearchParams<{ openAppointmentId?: string; highlightApproval?: string }>();
@@ -550,6 +553,7 @@ export default function AgendaScreen() {
   const isLoadingAppointments = isManager ? allAppointmentsQuery.isLoading : appointmentsQuery.isLoading;
 
   return (
+    <Animated.View style={[{ flex: 1 }, fadeStyle]}>
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
         titleNode={<HeaderBranchTitle />}
@@ -1346,6 +1350,7 @@ export default function AgendaScreen() {
         </View>
       </Modal>
     </ScreenContainer>
+    </Animated.View>
   );
 }
 

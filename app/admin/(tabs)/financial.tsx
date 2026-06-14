@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Animated,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
@@ -13,6 +14,7 @@ import {
   View,
   RefreshControl,
 } from "react-native";
+import { useScreenFadeIn } from "@/hooks/useScreenFadeIn";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
@@ -60,6 +62,7 @@ function getMonthRange(offset = 0) {
 }
 
 export default function FinancialScreen() {
+  const { fadeStyle } = useScreenFadeIn();
   const colors = useColors();
   const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
@@ -185,6 +188,7 @@ export default function FinancialScreen() {
   })).filter(pm => pm.total > 0);
 
   return (
+    <Animated.View style={[{ flex: 1 }, fadeStyle]}>
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
         titleNode={<HeaderBranchTitle />}
@@ -551,6 +555,7 @@ export default function FinancialScreen() {
         </View>
       </Modal>
     </ScreenContainer>
+    </Animated.View>
   );
 }
 

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useCountUp } from "@/hooks/use-animated-number";
+import { useScreenFadeIn } from "@/hooks/useScreenFadeIn";
 import { DashboardSkeleton } from "@/components/skeleton";
 import {
   Animated,
@@ -48,6 +49,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function DashboardScreen() {
+  const { fadeStyle } = useScreenFadeIn();
   const { barber, logout } = useBarberAuth();
   const isBarberRole = useIsBarberRole();
   const myBarberId = barber?.id;
@@ -146,6 +148,7 @@ export default function DashboardScreen() {
   const isLoadingInitial = statsQuery.isLoading && !statsQuery.data;
 
   return (
+    <Animated.View style={[{ flex: 1 }, fadeStyle]}>
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader titleNode={<HeaderBranchTitle />} />
       {isLoadingInitial ? (
@@ -409,6 +412,7 @@ export default function DashboardScreen() {
       </ScrollView>
       )}
     </ScreenContainer>
+    </Animated.View>
   );
 }
 

@@ -12,6 +12,7 @@ function formatPhone(phone: string): string {
 }
 import { Swipeable } from "react-native-gesture-handler";
 import {
+  Animated,
   ActivityIndicator,
   Alert,
   FlatList,
@@ -27,6 +28,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useScreenFadeIn } from "@/hooks/useScreenFadeIn";
 import { ScreenContainer } from "@/components/screen-container";
 import { DatePickerModal } from "@/components/date-picker-modal";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -79,6 +81,7 @@ const MONTH_NAMES = [
 ];
 
 export default function ClientsScreen() {
+  const { fadeStyle } = useScreenFadeIn();
   const colors = useColors();
   const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
@@ -193,6 +196,7 @@ export default function ClientsScreen() {
   };
 
   return (
+    <Animated.View style={[{ flex: 1 }, fadeStyle]}>
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
         titleNode={<HeaderBranchTitle />}
@@ -553,6 +557,7 @@ export default function ClientsScreen() {
         onCancel={() => setShowDatePicker(false)}
       />
     </ScreenContainer>
+    </Animated.View>
   );
 }
 
