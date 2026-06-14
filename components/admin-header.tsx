@@ -26,11 +26,13 @@ export function AdminHeader({ title, titleNode, rightElement }: AdminHeaderProps
       </TouchableOpacity>
 
       {/* Título */}
-      {titleNode ?? (
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
-      )}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        {titleNode ?? (
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+        )}
+      </View>
 
       {/* Elemento direito (ação contextual) */}
       <View style={styles.rightSlot}>
@@ -68,19 +70,16 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
     backgroundColor: "#C9A84C",
   },
   title: {
-    flex: 1,
     fontSize: 18,
     fontWeight: "700",
     color: "#FFFFFF",
     letterSpacing: 0.3,
-    flexShrink: 1,
-    minWidth: 0,
   },
   rightSlot: {
     flexShrink: 0,
     flexGrow: 0,
     alignItems: "flex-end",
-    minWidth: 160,
+    minWidth: 40,
   },
 });
 }

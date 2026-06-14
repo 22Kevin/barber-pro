@@ -570,7 +570,7 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   countText: { fontSize: 13, color: c.muted, paddingHorizontal: 20, marginTop: 8, marginBottom: 4 },
   emptyCard: { alignItems: "center", paddingVertical: 60, gap: 10 },
   emptyText: { color: c.muted, fontSize: 16, fontWeight: "600" },
-  card: { backgroundColor: c.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center", gap: 12 },
+  card: { backgroundColor: c.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.15)", flexDirection: "row", alignItems: "center", gap: 12 },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: "#C9A84C22", justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: "#C9A84C44" },
   avatarBirthday: { backgroundColor: "#1A1000", borderColor: "#EAB308", borderWidth: 2 },
   avatarText: { color: "#C9A84C", fontSize: 20, fontWeight: "700" },

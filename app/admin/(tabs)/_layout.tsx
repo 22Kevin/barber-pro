@@ -17,7 +17,7 @@ export default function AdminTabsLayout() {
   }
 
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
-  const tabBarHeight = 56 + bottomPadding;
+  const tabBarHeight = 52 + bottomPadding;
 
   return (
     <BranchProvider>
@@ -34,39 +34,32 @@ export default function AdminTabsLayout() {
           borderTopColor: "#2A2A2A",
           borderTopWidth: 0.5,
         },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "600",
-        },
+        tabBarShowLabel: false,
       }}
     >
       {/* ── 4 abas principais no rodapé ── */}
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color }) => <IconSymbol name="chart.bar.fill" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="chart.bar.fill" size={26} color={color} />,
         }}
       />
       <Tabs.Screen
         name="agenda"
         options={{
-          title: "Agenda",
-          tabBarIcon: ({ color }) => <IconSymbol name="calendar" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="calendar" size={26} color={color} />,
         }}
       />
       <Tabs.Screen
         name="clients"
         options={{
-          title: "Clientes",
-          tabBarIcon: ({ color }) => <IconSymbol name="person.2.fill" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="person.2.fill" size={26} color={color} />,
         }}
       />
       <Tabs.Screen
         name="financial"
         options={{
-          title: "Financeiro",
-          tabBarIcon: ({ color }) => <IconSymbol name="dollarsign.circle.fill" size={24} color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol name="dollarsign.circle.fill" size={26} color={color} />,
           tabBarItemStyle: canFinanceiro ? undefined : { display: "none" },
         }}
       />

@@ -527,9 +527,8 @@ export default function BarbeariaScreen() {
               <Text style={styles.addBtnText}>Membro</Text>
             </Pressable>
           ) : activeTab === "filiais" && isSuperAdmin ? (
-            <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openFilialModal}>
-              <IconSymbol name="plus" size={18} color="#0A0A0A" />
-              <Text style={styles.addBtnText}>Filial</Text>
+            <Pressable style={({ pressed }) => [styles.addBtnIcon, pressed && { opacity: 0.8 }]} onPress={openFilialModal}>
+              <IconSymbol name="plus" size={20} color="#0A0A0A" />
             </Pressable>
           ) : <View style={{ width: 40 }} />
         }
@@ -1221,6 +1220,7 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   return StyleSheet.create({
   addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
+  addBtnIcon: { width: 40, height: 40, alignItems: "center", justifyContent: "center", backgroundColor: "#C9A84C", borderRadius: 10 },
   tabsWrapper: { height: 52, flexShrink: 0, marginBottom: 4 },
   tabsContent: { flexDirection: "row", gap: 8, paddingVertical: 10, paddingHorizontal: 16, paddingRight: 24, alignItems: "center" },
   tab: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border },
