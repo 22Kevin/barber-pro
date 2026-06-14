@@ -80,8 +80,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { tryRefreshBarberToken, getBarberJwt, isJwtValid } = await import("@/lib/trpc");
           const currentToken = await getBarberJwt?.();
           if (currentToken) {
-            // Token exists - let the tRPC client handle refresh automatically
-            // No action needed here
+            // Se tenantId está ausente nos dados salvos, extrai do JWT para corrigir dados stale
+            if (barberData.tenantId == null) {
+              try {
+                const parts = currentToken.split(".");
+                const jwtPayload = JSON.parse(
+                  Buffer.from(parts[1], "base64url").toString()
+                );
+                if (typeof jwtPayload.tenantId === "number") {
+                  const patched = { ...barberData, tenantId: jwtPayload.tenantId };
+                  setBarber(patched);
+                  await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(patched));
+                }
+              } catch {
+                // JWT mal-formado — manter dados como estão
+              }
+            }
           } else {
             // No token but have barber data - try to get a new token via refresh
             const newToken = await tryRefreshBarberToken();

@@ -24,7 +24,7 @@ for (const f of ["web.css", "ios.js", "android.js", "native.js", "macos.js", "wi
   if (!fs.existsSync(fp)) fs.writeFileSync(fp, "");
 }
 
-const projectRoot = new URL(".", import.meta.url).pathname.replace(/\/$/, "");
+const projectRoot = __dirname;
 const config = getDefaultConfig(projectRoot);
 
 config.resolver = {

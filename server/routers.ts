@@ -231,7 +231,7 @@ export const appRouter = router({
         // Verificar se o barbeiro ainda está ativo
         const barber = await db.getBarberById(decoded.barberId);
         if (!barber || !(barber as any).isActive) throw new TRPCError({ code: "UNAUTHORIZED", message: "Conta inativa. Faça login novamente." });
-        const payload = { barberId: decoded.barberId, tenantId: decoded.tenantId, role: decoded.role };
+        const payload = { barberId: decoded.barberId, tenantId: (barber as any).tenantId ?? decoded.tenantId, role: decoded.role };
         const [newToken, newRefreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
         return { token: newToken, refreshToken: newRefreshToken };
       }),
@@ -272,6 +272,8 @@ export const appRouter = router({
 
         const payload = { barberId: barber.id, tenantId: barber.tenantId ?? null, role: barber.role as any };
         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
+        const tenantG = barber.tenantId ? await db.getTenantById(barber.tenantId) : null;
+        const _pG = (barber as any).permissions; let _ppG = null; try { _ppG = _pG ? JSON.parse(_pG) : null; } catch(e) {}
         return {
           id: barber.id,
           name: barber.name,
@@ -281,6 +283,8 @@ export const appRouter = router({
           role: barber.role,
           specialties: barber.specialties,
           tenantId: barber.tenantId,
+          tenantPlan: tenantG?.plan ?? null,
+          permissions: _ppG,
           token,
           refreshToken,
         };
@@ -364,15 +368,19 @@ export const appRouter = router({
       const parentId: number | null = t.parentTenantId ?? null;
       const matrixId: number = parentId ?? input.tenantId;
       const allBranches = await db.getBranches(matrixId);
-      const matrixRows = parentId ? await db.rawQuery('SELECT id, name, "displayName" FROM tenants WHERE id = $1', [matrixId]) : null;
-      const matrixName = parentId ? (matrixRows?.[0]?.displayName || matrixRows?.[0]?.name || 'Matriz') : '';
+      const mxRows = await db.rawQuery('SELECT id, "displayName", name, slug, address FROM tenants WHERE id = $1', [matrixId]);
+      const mx = mxRows[0];
+      const matrixName = mx ? (mx.displayName || mx.name || 'Matriz') : '';
       return {
         show: true,
         isMatrix: !parentId,
         matrixId,
         matrixName,
         currentTenantId: input.tenantId,
-        branches: allBranches.map((b: any) => ({ id: b.id, name: b.displayName || b.name, slug: b.slug })),
+        branches: [
+          ...(mx ? [{ id: mx.id, name: mx.displayName || mx.name, slug: mx.slug ?? '', address: mx.address ?? null }] : []),
+          ...allBranches.map((b: any) => ({ id: b.id, name: b.displayName || b.name, slug: b.slug ?? '', address: b.address ?? null })),
+        ],
       };
     }),
     syncCatalog: barberProcedure.input(z.object({ matrixId: z.number(), targetBranchId: z.number() })).mutation(async ({ input }) => {
@@ -414,6 +422,91 @@ export const appRouter = router({
       } catch {}
       return { syncedServices, syncedProducts, syncedSuppliers };
     }),
+    create: barberProcedure.input(z.object({
+      name: z.string().min(2),
+      displayName: z.string().min(1),
+      phone: z.string().optional().nullable(),
+      address: z.string().optional().nullable(),
+      cep: z.string().optional().nullable(),
+      addressNumber: z.string().optional().nullable(),
+      city: z.string().optional().nullable(),
+      state: z.string().optional().nullable(),
+      cnpj: z.string().optional().nullable(),
+    })).mutation(async ({ ctx, input }) => {
+      const barber = await db.getBarberById(ctx.barberId);
+      if (!barber || barber.role !== 'super_admin') throw new TRPCError({ code: 'FORBIDDEN', message: 'Apenas super_admin pode criar filiais' });
+      const adminTenantId = (barber as any).tenantId;
+      const tenant = adminTenantId ? await db.getTenantById(adminTenantId) : null;
+      if ((tenant as any)?.plan !== 'studio') throw new TRPCError({ code: 'FORBIDDEN', message: 'Recurso exclusivo do plano Estúdio' });
+      const tenantRows = await db.rawQuery('SELECT "parentTenantId" FROM tenants WHERE id = $1', [adminTenantId]);
+      const matrixId: number = tenantRows[0]?.parentTenantId ?? adminTenantId;
+      const baseSlug = input.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 50);
+      let slug = baseSlug; let att = 0;
+      while (await db.getTenantBySlug(slug)) { att++; slug = `${baseSlug}-${att}`; }
+      const newBranchId = await db.createBranch(matrixId, {
+        name: input.name, displayName: input.displayName, slug,
+        phone: input.phone ?? undefined, address: input.address ?? undefined,
+        cep: input.cep ?? undefined, addressNumber: input.addressNumber ?? undefined,
+        city: input.city ?? undefined, state: input.state ?? undefined,
+        cnpj: input.cnpj ?? undefined,
+        ownerName: barber.name, ownerEmail: barber.email ?? undefined,
+        ownerPasswordHash: (barber as any).passwordHash ?? undefined,
+      });
+      return { id: newBranchId };
+    }),
+
+    delete: barberProcedure.input(z.object({ branchId: z.number() })).mutation(async ({ ctx, input }) => {
+      const barber = await db.getBarberById(ctx.barberId);
+      if (!barber || barber.role !== 'super_admin') throw new TRPCError({ code: 'FORBIDDEN' });
+      const adminTenantId = (barber as any).tenantId;
+      const tenantRows = await db.rawQuery('SELECT "parentTenantId" FROM tenants WHERE id = $1', [adminTenantId]);
+      const matrixId: number = tenantRows[0]?.parentTenantId ?? adminTenantId;
+      const branchRows = await db.rawQuery('SELECT "parentTenantId" FROM tenants WHERE id = $1', [input.branchId]);
+      if (!branchRows[0] || branchRows[0].parentTenantId !== matrixId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Filial não pertence à sua rede' });
+      const result = await db.deleteBranch(input.branchId);
+      if (!result.success) throw new TRPCError({ code: 'BAD_REQUEST', message: result.error ?? 'Erro ao excluir' });
+      return { success: true };
+    }),
+
+    switch: barberProcedure.input(z.object({ branchId: z.number() })).mutation(async ({ ctx, input }) => {
+      const barber = await db.getBarberById(ctx.barberId);
+      if (!barber || barber.role !== 'super_admin' || !barber.email) throw new TRPCError({ code: 'FORBIDDEN' });
+      const adminTenantId = (barber as any).tenantId;
+      const tenantRows = await db.rawQuery('SELECT "parentTenantId" FROM tenants WHERE id = $1', [adminTenantId]);
+      const parentId = tenantRows[0]?.parentTenantId ?? null;
+      const matrixId: number = parentId ?? adminTenantId;
+      const targetTenantId = input.branchId === 0 ? matrixId : input.branchId;
+      const targetRows = await db.rawQuery('SELECT id, "parentTenantId" FROM tenants WHERE id = $1', [targetTenantId]);
+      if (!targetRows[0]) throw new TRPCError({ code: 'NOT_FOUND' });
+      const targetParentId = targetRows[0].parentTenantId ?? null;
+      if (targetTenantId !== matrixId && targetParentId !== matrixId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Filial não pertence à sua rede' });
+      let mirror = await db.getMirrorAdmin(targetTenantId, barber.email);
+      if (!mirror) {
+        try {
+          await db.rawQuery(
+            `INSERT INTO barbers ("tenantId", name, email, "passwordHash", role, "isActive") VALUES ($1,$2,$3,$4,'super_admin',true)`,
+            [targetTenantId, barber.name, barber.email, (barber as any).passwordHash || '']
+          );
+          mirror = await db.getMirrorAdmin(targetTenantId, barber.email);
+        } catch {}
+        if (!mirror) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Não foi possível criar acesso à filial' });
+      }
+      const jwtPayload = { barberId: mirror.id, tenantId: targetTenantId, role: 'super_admin' as const };
+      const [token, refreshToken] = await Promise.all([signBarberToken(jwtPayload), signBarberRefreshToken(jwtPayload)]);
+      const targetTenant = await db.getTenantById(targetTenantId);
+      return {
+        token, refreshToken,
+        barber: {
+          id: mirror.id, name: mirror.name, email: mirror.email, phone: mirror.phone,
+          photoUrl: mirror.photoUrl, role: 'super_admin' as const,
+          specialties: mirror.specialties ?? null,
+          tenantId: targetTenantId,
+          tenantPlan: (targetTenant as any)?.plan ?? null,
+          permissions: null,
+        },
+      };
+    }),
+
     transfer: barberProcedure.input(z.object({ productId: z.number(), targetBranchId: z.number(), quantity: z.number().min(1), matrixId: z.number(), sourceTenantId: z.number(), reason: z.string().optional() })).mutation(async ({ ctx, input }) => {
       const sourceProduct = await db.getProductById(input.productId);
       if (!sourceProduct) throw new Error('Produto não encontrado');

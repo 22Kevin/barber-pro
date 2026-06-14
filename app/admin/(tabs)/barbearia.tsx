@@ -13,10 +13,13 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
+import { saveBarberJwt, saveBarberRefreshJwt } from "@/lib/trpc";
+import { HeaderBranchTitle } from "@/components/BranchSelector";
 import { SingleImageUploader } from "@/components/media-uploader";
 import { SortableGallery } from "@/components/sortable-gallery";
 import { TimePickerModal } from "@/components/time-picker-modal";
@@ -26,7 +29,7 @@ import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { useColors } from "@/hooks/use-colors";
 
-type BarbeariaTab = "dados" | "equipe" | "horarios" | "integracoes";
+type BarbeariaTab = "dados" | "equipe" | "horarios" | "integracoes" | "filiais";
 
 const GOOGLE_MAPS_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
@@ -41,9 +44,29 @@ export default function BarbeariaScreen() {
   const colors = useColors();
   const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
-  const { barber } = useBarberAuth();
+  const { barber, login } = useBarberAuth();
   const tenantId = barber?.tenantId ?? undefined;
+  const router = useRouter();
+  const isStudio = barber?.tenantPlan === "studio";
   const [activeTab, setActiveTab] = useState<BarbeariaTab>("dados");
+
+  // ── Estado modal Nova Filial ───────────────────────────────────────────────
+  const [showFilialModal, setShowFilialModal] = useState(false);
+  const [fName, setFName] = useState("");
+  const [fDisplayName, setFDisplayName] = useState("");
+  const [fPhone, setFPhone] = useState("");
+  const [fAddress, setFAddress] = useState("");
+  const [fCep, setFCep] = useState("");
+  const [fAddressNumber, setFAddressNumber] = useState("");
+  const [fCity, setFCity] = useState("");
+  const [fState, setFState] = useState("");
+  const [fCnpj, setFCnpj] = useState("");
+
+  function openFilialModal() {
+    setFName(""); setFDisplayName(""); setFPhone(""); setFAddress("");
+    setFCep(""); setFAddressNumber(""); setFCity(""); setFState(""); setFCnpj("");
+    setShowFilialModal(true);
+  }
   const [showBarberModal, setShowBarberModal] = useState(false);
   const [editingBarber, setEditingBarber] = useState<any>(null);
   const [selectedBarberId, setSelectedBarberId] = useState<number | null>(null);
@@ -245,6 +268,64 @@ export default function BarbeariaScreen() {
     onSuccess: () => utils.barbers.workingHours.get.invalidate(),
   });
 
+  // ── Mutations de Filiais ───────────────────────────────────────────────────
+  const createFilialMutation = trpc.branches.create.useMutation({
+    onSuccess: () => {
+      utils.branches.list.invalidate();
+      setShowFilialModal(false);
+      Alert.alert("Sucesso", "Filial criada com sucesso!");
+    },
+    onError: (e: any) => Alert.alert("Erro", e.message),
+  });
+
+  const deleteFilialMutation = trpc.branches.delete.useMutation({
+    onSuccess: () => { utils.branches.list.invalidate(); Alert.alert("Sucesso", "Filial excluída."); },
+    onError: (e: any) => Alert.alert("Erro", e.message),
+  });
+
+  const switchBranchMutation = trpc.branches.switch.useMutation({
+    onSuccess: async (data) => {
+      await saveBarberJwt(data.token);
+      await saveBarberRefreshJwt(data.refreshToken);
+      await login(data.barber as any);
+      router.replace("/(tabs)/dashboard" as any);
+    },
+    onError: (e: any) => Alert.alert("Erro", e.message),
+  });
+
+  const syncCatalogMutation = trpc.branches.syncCatalog.useMutation({
+    onSuccess: (data) => Alert.alert("Catálogo sincronizado", `${data.syncedServices} serviços · ${data.syncedProducts} produtos · ${data.syncedSuppliers} fornecedores`),
+    onError: (e: any) => Alert.alert("Erro", e.message),
+  });
+
+  function handleSwitchBranch(branchId: number, branchName: string) {
+    Alert.alert("Acessar unidade", `Trocar para "${branchName}"?`, [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Acessar", onPress: () => switchBranchMutation.mutate({ branchId }) },
+    ]);
+  }
+
+  function handleDeleteFilial(branchId: number, branchName: string) {
+    Alert.alert("Excluir filial", `Excluir "${branchName}"? Esta ação não pode ser desfeita.`, [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Excluir", style: "destructive", onPress: () => deleteFilialMutation.mutate({ branchId }) },
+    ]);
+  }
+
+  function handleSaveFilial() {
+    if (!fName.trim() || !fDisplayName.trim()) {
+      Alert.alert("Atenção", "Nome completo e nome curto são obrigatórios.");
+      return;
+    }
+    createFilialMutation.mutate({
+      name: fName.trim(), displayName: fDisplayName.trim(),
+      phone: stripMask(fPhone).trim() || null, address: fAddress.trim() || null,
+      cep: stripMask(fCep).trim() || null, addressNumber: fAddressNumber.trim() || null,
+      city: fCity.trim() || null, state: fState.trim() || null,
+      cnpj: stripMask(fCnpj).trim() || null,
+    });
+  }
+
   // Bloqueio em lote
   const [batchBlockStart, setBatchBlockStart] = useState("");
   const [batchBlockEnd, setBatchBlockEnd] = useState("");
@@ -431,17 +512,24 @@ export default function BarbeariaScreen() {
     { key: "equipe", label: "Equipe", icon: "person.2.fill" },
     { key: "horarios", label: "Horários", icon: "clock.fill" },
     { key: "integracoes", label: "Integrações", icon: "link" },
+    ...(isStudio ? [{ key: "filiais" as BarbeariaTab, label: "Filiais", icon: "storefront" }] : []),
   ];
 
   return (
     <ScreenContainer containerClassName="bg-background" edges={["top"]}>
       <AdminHeader
-        title="Barbearia"
+        title={activeTab === "filiais" ? undefined : "Barbearia"}
+        titleNode={activeTab === "filiais" ? <HeaderBranchTitle /> : undefined}
         rightElement={
           activeTab === "equipe" && isSuperAdmin ? (
             <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreateBarber}>
               <IconSymbol name="plus" size={18} color="#0A0A0A" />
               <Text style={styles.addBtnText}>Membro</Text>
+            </Pressable>
+          ) : activeTab === "filiais" && isSuperAdmin ? (
+            <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openFilialModal}>
+              <IconSymbol name="plus" size={18} color="#0A0A0A" />
+              <Text style={styles.addBtnText}>Filial</Text>
             </Pressable>
           ) : <View style={{ width: 40 }} />
         }
@@ -857,6 +945,20 @@ export default function BarbeariaScreen() {
             </Pressable>
           </>
         )}
+        {/* ── ABA FILIAIS ── */}
+        {activeTab === "filiais" && (
+          <FilialTabContent
+            tenantId={tenantId!}
+            isSuperAdmin={isSuperAdmin}
+            onSwitch={handleSwitchBranch}
+            onDelete={handleDeleteFilial}
+            onSync={(matrixId, branchId) => syncCatalogMutation.mutate({ matrixId, targetBranchId: branchId })}
+            isSwitching={switchBranchMutation.isPending}
+            isSyncing={syncCatalogMutation.isPending}
+            isDeleting={deleteFilialMutation.isPending}
+            utils={utils}
+          />
+        )}
       </ScrollView>
 
       {/* Time Picker */}
@@ -934,9 +1036,186 @@ export default function BarbeariaScreen() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
+      {/* Modal Nova Filial */}
+      <Modal visible={showFilialModal} animationType="slide" transparent onRequestClose={() => setShowFilialModal(false)}>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Nova Filial</Text>
+                <Pressable onPress={() => setShowFilialModal(false)}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {[
+                  { label: "Nome completo *", value: fName, setter: setFName, placeholder: "Barber Pro - Unidade Centro" },
+                  { label: "Nome curto *", value: fDisplayName, setter: setFDisplayName, placeholder: "Centro" },
+                  { label: "Telefone", value: fPhone, setter: (v: string) => setFPhone(applyPhoneMask(v)), placeholder: "(11) 99999-9999" },
+                  { label: "Endereço", value: fAddress, setter: setFAddress, placeholder: "Rua das Flores, 123" },
+                  { label: "CEP", value: fCep, setter: (v: string) => setFCep(applyCepMask(v)), placeholder: "00000-000" },
+                  { label: "Número", value: fAddressNumber, setter: setFAddressNumber, placeholder: "123" },
+                  { label: "Cidade", value: fCity, setter: setFCity, placeholder: "São Paulo" },
+                  { label: "Estado (UF)", value: fState, setter: setFState, placeholder: "SP" },
+                  { label: "CNPJ", value: fCnpj, setter: (v: string) => setFCnpj(applyDocumentMask(v)), placeholder: "00.000.000/0001-00" },
+                ].map(f => (
+                  <View key={f.label} style={{ marginBottom: 14 }}>
+                    <Text style={styles.fieldLabel}>{f.label}</Text>
+                    <TextInput style={styles.input} value={f.value} onChangeText={f.setter} placeholder={f.placeholder} placeholderTextColor="#555" autoCorrect={false} />
+                  </View>
+                ))}
+                <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleSaveFilial} disabled={createFilialMutation.isPending}>
+                  {createFilialMutation.isPending ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>CRIAR FILIAL</Text>}
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
+
+// ─── FilialTabContent ─────────────────────────────────────────────────────────
+function FilialTabContent({
+  tenantId, isSuperAdmin, onSwitch, onDelete, onSync, isSwitching, isSyncing, isDeleting, utils,
+}: {
+  tenantId: number;
+  isSuperAdmin: boolean;
+  onSwitch: (id: number, name: string) => void;
+  onDelete: (id: number, name: string) => void;
+  onSync: (matrixId: number, branchId: number) => void;
+  isSwitching: boolean;
+  isSyncing: boolean;
+  isDeleting: boolean;
+  utils: any;
+}) {
+  const { data, isLoading } = trpc.branches.list.useQuery({ tenantId }, { enabled: !!tenantId });
+
+  if (isLoading) return <ActivityIndicator color="#C9A84C" style={{ marginTop: 40 }} />;
+
+  if (!data?.show) {
+    return (
+      <View style={filialStyles.upgradeCard}>
+        <Text style={{ fontSize: 28, marginBottom: 12 }}>🏪</Text>
+        <Text style={filialStyles.upgradeTitle}>Multi-unidades</Text>
+        <Text style={filialStyles.upgradeText}>O gerenciamento de filiais é exclusivo do plano Estúdio. Faça upgrade para criar e gerenciar múltiplas unidades da sua barbearia.</Text>
+      </View>
+    );
+  }
+
+  const matrixBranch = data.branches.find((b: any) => b.id === data.matrixId);
+  const filiais = data.branches.filter((b: any) => b.id !== data.matrixId);
+  const isOnMatrix = data.isMatrix;
+
+  return (
+    <>
+      {/* Card da Matriz */}
+      <View style={filialStyles.matrixCard}>
+        <View style={filialStyles.matrixTop}>
+          <View style={{ flex: 1 }}>
+            <View style={filialStyles.matrizBadge}>
+              <Text style={filialStyles.matrizBadgeText}>MATRIZ</Text>
+            </View>
+            <Text style={filialStyles.matrixName}>{matrixBranch?.name ?? data.matrixName ?? "Matriz"}</Text>
+            {matrixBranch?.address ? <Text style={filialStyles.matrixAddress}>{matrixBranch.address}</Text> : null}
+          </View>
+          <IconSymbol name="home" size={28} color="#C9A84C" />
+        </View>
+        {!isOnMatrix && (
+          <Pressable
+            style={({ pressed }) => [filialStyles.voltarBtn, pressed && { opacity: 0.8 }]}
+            onPress={() => onSwitch(data.matrixId, data.matrixName || "Matriz")}
+            disabled={isSwitching}
+          >
+            {isSwitching
+              ? <ActivityIndicator color="#C9A84C" size="small" />
+              : <><IconSymbol name="arrow.left" size={14} color="#C9A84C" /><Text style={filialStyles.voltarBtnText}>Voltar para Matriz</Text></>
+            }
+          </Pressable>
+        )}
+      </View>
+
+      {/* Botão Sincronizar Catálogo (só quando estamos numa filial) */}
+      {!isOnMatrix && (
+        <Pressable
+          style={({ pressed }) => [filialStyles.syncBtn, pressed && { opacity: 0.8 }]}
+          onPress={() => onSync(data.matrixId, tenantId)}
+          disabled={isSyncing}
+        >
+          {isSyncing
+            ? <ActivityIndicator color="#C9A84C" size="small" />
+            : <><IconSymbol name="arrow.triangle.2.circlepath" size={15} color="#C9A84C" /><Text style={filialStyles.syncBtnText}>Sincronizar Catálogo da Matriz</Text></>
+          }
+        </Pressable>
+      )}
+
+      {/* Lista de filiais */}
+      {filiais.length === 0 ? (
+        <View style={filialStyles.emptyFiliais}>
+          <IconSymbol name="storefront" size={36} color="#2A2A2A" />
+          <Text style={filialStyles.emptyText}>Nenhuma filial cadastrada</Text>
+          {isSuperAdmin && <Text style={filialStyles.emptySubtext}>Toque em "+ Filial" para adicionar</Text>}
+        </View>
+      ) : (
+        filiais.map((b: any) => (
+          <View key={b.id} style={filialStyles.filialCard}>
+            <View style={filialStyles.filialIcon}>
+              <IconSymbol name="storefront" size={20} color="#C9A84C" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={filialStyles.filialName}>{b.name}</Text>
+              {b.address ? <Text style={filialStyles.filialAddress}>{b.address}</Text> : null}
+            </View>
+            <View style={filialStyles.filialActions}>
+              <Pressable
+                style={({ pressed }) => [filialStyles.actionBtn, pressed && { opacity: 0.6 }]}
+                onPress={() => onSwitch(b.id, b.name)}
+                disabled={isSwitching}
+              >
+                <Text style={filialStyles.actionBtnText}>Acessar</Text>
+              </Pressable>
+              {isSuperAdmin && (
+                <Pressable
+                  style={({ pressed }) => [filialStyles.actionBtn, filialStyles.actionBtnDanger, pressed && { opacity: 0.6 }]}
+                  onPress={() => onDelete(b.id, b.name)}
+                  disabled={isDeleting}
+                >
+                  <Text style={[filialStyles.actionBtnText, { color: "#EF4444" }]}>Excluir</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        ))
+      )}
+    </>
+  );
+}
+
+const filialStyles = StyleSheet.create({
+  upgradeCard: { backgroundColor: "#141414", borderRadius: 16, padding: 24, borderWidth: 1, borderColor: "#2A2A2A", alignItems: "center", marginTop: 8 },
+  upgradeTitle: { fontSize: 18, fontWeight: "700", color: "#F5F5F0", marginBottom: 8 },
+  upgradeText: { fontSize: 13, color: "#888880", textAlign: "center", lineHeight: 20 },
+  matrixCard: { backgroundColor: "#1A1500", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#C9A84C44", marginBottom: 12 },
+  matrixTop: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  matrizBadge: { backgroundColor: "#C9A84C22", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "#C9A84C55", alignSelf: "flex-start", marginBottom: 6 },
+  matrizBadgeText: { fontSize: 10, fontWeight: "700", color: "#C9A84C", letterSpacing: 1.2 },
+  matrixName: { fontSize: 16, fontWeight: "700", color: "#F5F5F0" },
+  matrixAddress: { fontSize: 12, color: "#888880", marginTop: 2 },
+  voltarBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: "#C9A84C44", alignSelf: "flex-start" },
+  voltarBtnText: { fontSize: 13, fontWeight: "600", color: "#C9A84C" },
+  syncBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#C9A84C11", borderRadius: 10, paddingVertical: 11, paddingHorizontal: 14, borderWidth: 1, borderColor: "#C9A84C33", marginBottom: 16 },
+  syncBtnText: { fontSize: 13, fontWeight: "600", color: "#C9A84C", flex: 1 },
+  emptyFiliais: { alignItems: "center", paddingVertical: 48, gap: 10 },
+  emptyText: { fontSize: 16, fontWeight: "600", color: "#888880" },
+  emptySubtext: { fontSize: 13, color: "#555" },
+  filialCard: { backgroundColor: "#141414", borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "#2A2A2A", flexDirection: "row", alignItems: "center", gap: 12 },
+  filialIcon: { width: 44, height: 44, borderRadius: 10, backgroundColor: "#C9A84C11", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#C9A84C33" },
+  filialName: { fontSize: 15, fontWeight: "600", color: "#F5F5F0" },
+  filialAddress: { fontSize: 12, color: "#888880", marginTop: 2 },
+  filialActions: { flexDirection: "column", gap: 6, alignItems: "flex-end" },
+  actionBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: "#C9A84C22", borderWidth: 1, borderColor: "#C9A84C55" },
+  actionBtnDanger: { backgroundColor: "#EF444411", borderColor: "#EF444433" },
+  actionBtnText: { fontSize: 12, fontWeight: "700", color: "#C9A84C" },
+});
 
 function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColors>) {
   return StyleSheet.create({
