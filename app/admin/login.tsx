@@ -38,6 +38,8 @@ export default function AdminLoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true); // Default: manter conectado
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(REMEMBER_ME_KEY).then((saved) => {
@@ -153,14 +155,14 @@ export default function AdminLoginScreen() {
             {/* E-mail */}
             <View style={styles.field}>
               <Text style={styles.label}>E-mail</Text>
-              <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="seu@email.com" placeholderTextColor={MUTED} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} returnKeyType="next" />
+              <TextInput style={[styles.input, emailFocused && styles.inputFocused]} value={email} onChangeText={setEmail} onFocus={() => setEmailFocused(true)} onBlur={() => setEmailFocused(false)} placeholder="seu@email.com" placeholderTextColor={MUTED} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} returnKeyType="next" />
             </View>
 
             {/* Senha */}
             <View style={styles.field}>
               <Text style={styles.label}>Senha</Text>
               <View style={styles.passwordRow}>
-                <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} value={password} onChangeText={setPassword} placeholder="••••••••" placeholderTextColor={MUTED} secureTextEntry={!showPassword} returnKeyType="done" onSubmitEditing={handleLogin} />
+                <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }, passwordFocused && styles.inputFocused]} value={password} onChangeText={setPassword} onFocus={() => setPasswordFocused(true)} onBlur={() => setPasswordFocused(false)} placeholder="••••••••" placeholderTextColor={MUTED} secureTextEntry={!showPassword} returnKeyType="done" onSubmitEditing={handleLogin} />
                 <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
                   <IconSymbol name={showPassword ? "eye.slash.fill" : "eye.fill"} size={20} color={MUTED} />
                 </Pressable>
@@ -250,11 +252,11 @@ const styles = StyleSheet.create({
   btn: { backgroundColor: GOLD, borderRadius: 14, paddingVertical: 15, alignItems: "center", marginBottom: 16 },
   btnText: { color: BG, fontSize: 15, fontWeight: "900", letterSpacing: 0.5 },
   divider: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
-  dividerLine: { flex: 1, height: 1, backgroundColor: BORDER },
+  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(201,168,76,0.2)' },
   dividerText: { fontSize: 12, color: MUTED },
-  googleBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: SURFACE2, borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingVertical: 14, marginBottom: 20 },
-  googleIconBox: { width: 24, height: 24, borderRadius: 12, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
-  googleIconText: { fontSize: 14, fontWeight: "900", color: "#4285F4" },
+  googleBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: SURFACE2, borderWidth: 1, borderColor: 'rgba(201,168,76,0.3)', borderRadius: 14, paddingVertical: 14, marginBottom: 20 },
+  googleIconBox: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(201,168,76,0.15)', alignItems: "center", justifyContent: "center" },
+  googleIconText: { fontSize: 14, fontWeight: "900", color: GOLD },
   googleBtnText: { fontSize: 15, color: TEXT, fontWeight: "600" },
   link: { alignItems: "center", paddingVertical: 6 },
   linkText: { fontSize: 13, color: MUTED },
