@@ -19,7 +19,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
 import { saveBarberJwt, saveBarberRefreshJwt } from "@/lib/trpc";
-import { HeaderBranchTitle } from "@/components/BranchSelector";
+import { HeaderBranchTitle, useBranch } from "@/components/BranchSelector";
 import { SingleImageUploader } from "@/components/media-uploader";
 import { SortableGallery } from "@/components/sortable-gallery";
 import { TimePickerModal } from "@/components/time-picker-modal";
@@ -45,7 +45,9 @@ export default function BarbeariaScreen() {
   const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
   const { barber, login } = useBarberAuth();
+  const { current } = useBranch();
   const tenantId = barber?.tenantId ?? undefined;
+  const activeTenantId = current?.id ?? tenantId;
   const router = useRouter();
   const isStudio = barber?.tenantPlan === "studio";
   const [activeTab, setActiveTab] = useState<BarbeariaTab>("dados");
@@ -178,7 +180,8 @@ export default function BarbeariaScreen() {
   const [timePickerTarget, setTimePickerTarget] = useState<{ dayOfWeek: number; field: "start" | "end" | "lunchStart" | "lunchEnd"; existing: any } | null>(null);
 
   const utils = trpc.useUtils();
-  const settingsQuery = trpc.settings.get.useQuery({ tenantId });
+  const settingsQuery = trpc.settings.get.useQuery({ tenantId: activeTenantId });
+  useEffect(() => { setDataLoaded(false); }, [activeTenantId]);
   useEffect(() => {
     if (settingsQuery.data && !dataLoaded) {
       const d = settingsQuery.data as any;
@@ -224,8 +227,8 @@ export default function BarbeariaScreen() {
   }
 
   const [showInactiveBarbers, setShowInactiveBarbers] = useState(false);
-  const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
-  const allBarbersQuery = trpc.barbers.listWithPermissions.useQuery({ tenantId }, { enabled: showInactiveBarbers });
+  const barbersQuery = trpc.barbers.list.useQuery({ tenantId: activeTenantId });
+  const allBarbersQuery = trpc.barbers.listWithPermissions.useQuery({ tenantId: activeTenantId }, { enabled: showInactiveBarbers });
   const workingHoursQuery = trpc.barbers.workingHours.get.useQuery(
     { barberId: selectedBarberId ?? 0 },
     { enabled: !!selectedBarberId }
@@ -429,7 +432,7 @@ export default function BarbeariaScreen() {
       if (bPassword && bPassword.length >= 6) data.password = bPassword;
       updateBarberMutation.mutate(data);
     } else {
-      createBarberMutation.mutate({ name: bName.trim(), email: bEmail.trim() || undefined, phone: stripMask(bPhone).trim() || undefined, password: bPassword, role: bRole as any, specialties: bSpecialties.trim() || undefined, tenantId, permissions: finalPerms } as any);
+      createBarberMutation.mutate({ name: bName.trim(), email: bEmail.trim() || undefined, phone: stripMask(bPhone).trim() || undefined, password: bPassword, role: bRole as any, specialties: bSpecialties.trim() || undefined, tenantId: activeTenantId, permissions: finalPerms } as any);
     }
   }
 
@@ -447,14 +450,14 @@ export default function BarbeariaScreen() {
       googleMapsUrl: shopGoogleMapsUrl.trim() || null,
       logoUrl: shopLogoUrl || null,
       galleryUrls: shopGallery.length > 0 ? JSON.stringify(shopGallery) : null,
-      tenantId,
+      tenantId: activeTenantId,
     } as any);
   }
 
   function handleSaveIntegracoes() {
     updateSettingsMutation.mutate({
       pixKey: shopPixKey.trim() || null,
-      tenantId,
+      tenantId: activeTenantId,
     } as any);
   }
 
@@ -518,8 +521,7 @@ export default function BarbeariaScreen() {
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
-        title={activeTab === "filiais" ? undefined : "Barbearia"}
-        titleNode={activeTab === "filiais" ? <HeaderBranchTitle /> : undefined}
+        titleNode={<HeaderBranchTitle />}
         rightElement={
           activeTab === "equipe" && isSuperAdmin ? (
             <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreateBarber}>
