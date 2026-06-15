@@ -32,6 +32,7 @@ import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { useBarberAuth } from "@/lib/auth-context";
+import { useBranch } from "@/components/BranchSelector";
 import { useColors } from "@/hooks/use-colors";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { SingleImageUploader } from "@/components/media-uploader";
@@ -309,14 +310,15 @@ export default function PaginaClienteScreen() {
   const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
   const { barber } = useBarberAuth();
-  const tenantId = barber?.tenantId ?? undefined;
+  const { current } = useBranch();
+  const activeTenantId = current?.id ?? barber?.tenantId ?? undefined;
   const utils = trpc.useUtils();
 
   // Queries
-  const settingsQuery = trpc.settings.get.useQuery({ tenantId });
+  const settingsQuery = trpc.settings.get.useQuery({ tenantId: activeTenantId });
   const tenantQuery = trpc.onboarding.getById.useQuery(
-    { id: tenantId ?? 0 },
-    { enabled: !!tenantId }
+    { id: activeTenantId ?? 0 },
+    { enabled: !!activeTenantId }
   );
 
   const settings = settingsQuery.data;
@@ -445,7 +447,7 @@ export default function PaginaClienteScreen() {
       bannerUrl: bannerUrl ?? null,
       logoUrl: logoUrl ?? null,
       galleryUrls: gallery.length > 0 ? JSON.stringify(gallery) : null,
-      tenantId,
+      tenantId: activeTenantId,
     } as any);
     Alert.alert("Salvo!", "Aparência atualizada com sucesso.");
   }
@@ -457,7 +459,7 @@ export default function PaginaClienteScreen() {
       seoImageUrl: ogImageUrl || null,
       ga4MeasurementId: ga4Id || null,
       facebookPixelId: pixelId || null,
-      tenantId,
+      tenantId: activeTenantId,
     } as any);
     Alert.alert("Salvo!", "Configurações salvas com sucesso.");
   }
@@ -718,13 +720,13 @@ export default function PaginaClienteScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.previewBtn,
-              { borderColor: activeColor, backgroundColor: activeColor + "15" },
+              { borderColor: "#C9A84C", backgroundColor: "#C9A84C18" },
               pressed && { opacity: 0.8 },
             ]}
             onPress={() => setShowPreview(true)}
           >
             <Text style={styles.previewBtnIcon}>👁</Text>
-            <Text style={[styles.previewBtnText, { color: activeColor }]}>
+            <Text style={[styles.previewBtnText, { color: "#C9A84C" }]}>
               Ver como ficará minha página
             </Text>
           </Pressable>
@@ -928,7 +930,7 @@ export default function PaginaClienteScreen() {
               value={logoUrl}
               onUpload={(url) => {
                 setLogoUrl(url);
-                updateMutation.mutate({ logoUrl: url, tenantId } as any);
+                updateMutation.mutate({ logoUrl: url, tenantId: activeTenantId } as any);
               }}
               imageType="logo"
               label="Logo"
@@ -972,7 +974,7 @@ export default function PaginaClienteScreen() {
               setGallery(newGallery);
               updateMutation.mutate({
                 galleryUrls: newGallery.length > 0 ? JSON.stringify(newGallery) : null,
-                tenantId,
+                tenantId: activeTenantId,
               } as any);
             }}
             maxImages={8}

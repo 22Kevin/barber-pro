@@ -128,10 +128,15 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   }, [translateY]);
 
   const switchMutation = trpc.branches.switch.useMutation({
-    onSuccess: async (data) => {
+    onSuccess: async (data, variables) => {
       await saveBarberJwt(data.token);
       if (data.refreshToken) await saveBarberRefreshJwt(data.refreshToken);
       await login(data.barber as any);
+      // Atualiza current só após confirmação do servidor (sem update otimista)
+      const targetBranch = branches.find((b) =>
+        variables.branchId === 0 ? b.isMatrix : b.id === variables.branchId
+      );
+      if (targetBranch) setCurrent(targetBranch);
       setTimeout(() => { queryClient.invalidateQueries(); }, 300);
     },
     onError: (e: any) => {
@@ -141,7 +146,6 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
 
   const switchBranch = useCallback(
     (branch: Branch) => {
-      setCurrent(branch);
       switchMutation.mutate({ branchId: branch.isMatrix ? 0 : branch.id });
       closeSelector();
     },
