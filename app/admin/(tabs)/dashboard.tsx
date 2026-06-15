@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 16,
     backgroundColor: "#141410",
     borderRadius: 16, padding: 20,
-    borderWidth: 1, borderColor: "#C9A84C33",
+    borderWidth: 1, borderColor: "rgba(201,168,76,0.3)",
     marginBottom: 16,
   },
   monthRevenueLabel: { fontSize: 10, color: "#C9A84C88", fontWeight: "800", letterSpacing: 2, marginBottom: 6 },

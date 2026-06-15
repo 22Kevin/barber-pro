@@ -438,8 +438,8 @@ function OrdersScreenInner() {
         </View>
       ) : orders.length === 0 ? (
         <View style={styles.center}>
-          <IconSymbol name="cube.box.fill" size={48} color="#333" />
-          <Text style={styles.emptyText}>Nenhuma encomenda encontrada</Text>
+          <View style={{ opacity: 0.6 }}><IconSymbol name="cube.box.fill" size={48} color="#C9A84C" /></View>
+          <Text style={[styles.emptyText, { color: "#C9A84C" }]}>Nenhuma encomenda encontrada</Text>
         </View>
       ) : (
         <FlatList

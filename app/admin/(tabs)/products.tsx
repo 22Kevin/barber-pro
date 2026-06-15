@@ -262,7 +262,7 @@ function ProductsScreenInner() {
                     style={({ pressed }) => [styles.whatsappBtn, pressed && { opacity: 0.7 }]}
                     onPress={() => handleWhatsAppAlert(p)}
                   >
-                    <Text style={styles.whatsappBtnText}>📱 WhatsApp</Text>
+                    <Text style={styles.whatsappBtnText}>WA</Text>
                   </Pressable>
                 ) : (
                   <View style={styles.whatsappBtnDisabled}>
@@ -361,8 +361,8 @@ function ProductsScreenInner() {
                         <Text style={styles.priceText}>R$ {parseFloat(item.price).toFixed(2).replace(".", ",")}</Text>
                       </View>
                       {item.costPrice && parseFloat(item.costPrice) > 0 && parseFloat(item.price) > parseFloat(item.costPrice) && (
-                        <View style={[styles.metaChip, { backgroundColor: "#0D2B1A" }]}>
-                          <Text style={{ fontSize: 11, color: "#4ADE80", fontWeight: "700" }}>
+                        <View style={[styles.metaChip, { backgroundColor: "#C9A84C20" }]}>
+                          <Text style={{ fontSize: 11, color: "#C9A84C", fontWeight: "700" }}>
                             {((parseFloat(item.price) - parseFloat(item.costPrice)) / parseFloat(item.price) * 100).toFixed(0)}% margem
                           </Text>
                         </View>
@@ -377,15 +377,15 @@ function ProductsScreenInner() {
                 </View>
                 <View style={styles.cardActions}>
                   {isLowStock && item.isActive && supplier?.phone && (
-                    <Pressable onPress={() => handleWhatsAppAlert(item)} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
-                      <Text style={{ fontSize: 16 }}>📱</Text>
+                    <Pressable onPress={() => handleWhatsAppAlert(item)} style={({ pressed }) => [styles.actionBtn, { backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "rgba(201,168,76,0.4)", borderRadius: 8 }, pressed && { opacity: 0.6 }]}>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: "#C9A84C" }}>WA</Text>
                     </Pressable>
                   )}
                   <Pressable onPress={() => { setHistoryProduct(item); setShowHistoryModal(true); }} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
                     <IconSymbol name="chart.bar.fill" size={18} color="#C9A84C" />
                   </Pressable>
                   <Pressable onPress={() => openRestock(item)} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
-                    <IconSymbol name="plus.circle.fill" size={18} color="#22C55E" />
+                    <IconSymbol name="plus.circle.fill" size={18} color="#C9A84C" />
                   </Pressable>
                   <Pressable onPress={() => openEdit(item)} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
                     <IconSymbol name="pencil" size={18} color="#C9A84C" />
@@ -775,8 +775,8 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   alertItem: { flexDirection: "row", alignItems: "center", paddingVertical: 8, borderTopWidth: 1, borderTopColor: "#FF980022", gap: 10 },
   alertProductName: { fontSize: 13, fontWeight: "700", color: c.foreground },
   alertStockText: { fontSize: 12, color: c.muted, marginTop: 2 },
-  whatsappBtn: { backgroundColor: "#25D36622", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: "#25D36644" },
-  whatsappBtnText: { fontSize: 12, fontWeight: "700", color: "#25D366" },
+  whatsappBtn: { backgroundColor: "#1A1A1A", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: "rgba(201,168,76,0.4)" },
+  whatsappBtnText: { fontSize: 12, fontWeight: "700", color: "#C9A84C" },
   whatsappBtnDisabled: { backgroundColor: "#2A2A2A", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7 },
   whatsappBtnDisabledText: { fontSize: 11, color: "#555" },
   // Modal

@@ -165,8 +165,8 @@ export default function PromotionsScreen() {
         <ActivityIndicator color={colors.primary} style={{ marginTop: 60 }} />
       ) : promotions.length === 0 ? (
         <View style={styles.emptyState}>
-          <IconSymbol name="megaphone" size={48} color={colors.muted} />
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Nenhuma promoção enviada</Text>
+          <View style={{ opacity: 0.6 }}><IconSymbol name="megaphone" size={48} color="#C9A84C" /></View>
+          <Text style={[styles.emptyTitle, { color: "#C9A84C" }]}>Nenhuma promoção enviada</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
             Crie sua primeira promoção para engajar os clientes.
           </Text>

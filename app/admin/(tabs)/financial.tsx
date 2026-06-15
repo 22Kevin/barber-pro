@@ -254,10 +254,10 @@ export default function FinancialScreen() {
                 </View>
 
                 <View style={styles.metricsGrid}>
-                  <MetricCard label="Receita Total" value={formatCurrency(totalRevenue)} color="#4CAF50" icon="chart.line.uptrend.xyaxis" />
+                  <MetricCard label="Receita Total" value={formatCurrency(totalRevenue)} color="#C9A84C" icon="chart.line.uptrend.xyaxis" />
                   <MetricCard label="Despesas" value={formatCurrency(totalExpenses)} color="#F44336" icon="minus.circle.fill" />
                   <MetricCard label="Vendas" value={String(sales.length)} color="#C9A84C" icon="cart.fill" />
-                  <MetricCard label="Ticket Médio" value={formatCurrency(sales.length > 0 ? totalRevenue / sales.length : 0)} color="#2196F3" icon="dollarsign.circle.fill" />
+                  <MetricCard label="Ticket Médio" value={formatCurrency(sales.length > 0 ? totalRevenue / sales.length : 0)} color="#C9A84C" icon="dollarsign.circle.fill" />
                 </View>
 
                 {paymentBreakdown.length > 0 && (

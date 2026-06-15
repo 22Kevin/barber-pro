@@ -242,8 +242,8 @@ export default function ClientsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C9A84C" colors={["#C9A84C"]} />}
           ListEmptyComponent={
             <View style={styles.emptyCard}>
-              <IconSymbol name="person.2.fill" size={40} color="#2A2A2A" />
-              <Text style={styles.emptyText}>Nenhum cliente encontrado</Text>
+              <View style={{ opacity: 0.6 }}><IconSymbol name="person.2.fill" size={40} color="#C9A84C" /></View>
+              <Text style={[styles.emptyText, { color: "#C9A84C" }]}>Nenhum cliente encontrado</Text>
             </View>
           }
           renderItem={({ item }) => (
