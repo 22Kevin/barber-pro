@@ -20,6 +20,7 @@ import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { exportCsv } from "@/hooks/use-csv-export";
 import { useBarberAuth } from "@/lib/auth-context";
+import { useBranch } from "@/components/BranchSelector";
 
 
 function toLocalDate(d: Date): string {
@@ -52,7 +53,8 @@ import { FeatureGate } from "@/components/feature-gate";
 function StockScreenInner() {
   const colors = useColors();
   const { barber } = useBarberAuth();
-  const tenantId = barber?.tenantId ?? undefined;
+  const { current } = useBranch();
+  const tenantId = current?.id ?? barber?.tenantId ?? undefined;
   const utils = trpc.useUtils();
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => { setRefreshing(true); await utils.invalidate(); setRefreshing(false); };

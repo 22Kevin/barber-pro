@@ -132,7 +132,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
       await saveBarberJwt(data.token);
       if (data.refreshToken) await saveBarberRefreshJwt(data.refreshToken);
       await login(data.barber as any);
-      await queryClient.invalidateQueries();
+      setTimeout(() => { queryClient.invalidateQueries(); }, 300);
     },
     onError: (e: any) => {
       console.error("[BranchSelector] switchBranch error:", e.message);
