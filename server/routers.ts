@@ -292,11 +292,11 @@ export const appRouter = router({
   }),
 
   barbers: router({
-    list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ ctx, input }) => db.getAllBarbers(ctx.barber?.tenantId ?? input?.tenantId)),
-    listAll: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ ctx, input }) => db.getAllBarbersIncludingInactive(ctx.barber?.tenantId ?? input?.tenantId)),
+    list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ ctx, input }) => db.getAllBarbers(input?.tenantId ?? ctx.barber?.tenantId)),
+    listAll: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ ctx, input }) => db.getAllBarbersIncludingInactive(input?.tenantId ?? ctx.barber?.tenantId)),
     reactivate: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.reactivateBarber(input.id)),
     listWithPermissions: barberProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ ctx, input }) => {
-      const barbers = await db.getAllBarbersIncludingInactive(ctx.barber.tenantId);
+      const barbers = await db.getAllBarbersIncludingInactive(input?.tenantId ?? ctx.barber.tenantId);
       if (!barbers.length) return barbers;
       const ids = barbers.map((b: any) => b.id).join(',');
       const rows = await db.rawQuery(`SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id IN (${ids})`);
@@ -362,8 +362,8 @@ export const appRouter = router({
   // Rotas de filiais para o app mobile
   branches: router({
     list: barberProcedure.input(z.object({ tenantId: z.number() })).query(async ({ ctx, input }) => {
-      // Usa o tenantId do JWT (sempre correto), ignorando o input que pode ser stale
-      const effectiveTenantId = ctx.barber.tenantId;
+      // Usa o tenantId do input (enviado pelo app via current?.id, síncrono), JWT como fallback
+      const effectiveTenantId = input.tenantId ?? ctx.barber.tenantId;
       const tenantRows = await db.rawQuery('SELECT id, plan, "parentTenantId" FROM tenants WHERE id = $1', [effectiveTenantId]);
       const t = tenantRows[0];
       if (!t) return { show: false, branches: [], isMatrix: true, matrixId: effectiveTenantId, matrixName: '' };
@@ -576,9 +576,9 @@ export const appRouter = router({
   }),
 
   services: router({
-    list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllServices(input.activeOnly, ctx.barber?.tenantId ?? input.tenantId)),
-    listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllServicesWithMedia(input.activeOnly, ctx.barber?.tenantId ?? input.tenantId)),
-    listWithMediaAndRatings: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllServicesWithMediaAndRatings(input.activeOnly, ctx.barber?.tenantId ?? input.tenantId)),
+    list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllServices(input.activeOnly, input.tenantId ?? ctx.barber?.tenantId)),
+    listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllServicesWithMedia(input.activeOnly, input.tenantId ?? ctx.barber?.tenantId)),
+    listWithMediaAndRatings: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllServicesWithMediaAndRatings(input.activeOnly, input.tenantId ?? ctx.barber?.tenantId)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getServiceById(input.id)),
     create: barberProcedure
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), durationMinutes: z.number().min(5), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true), tenantId: z.number().optional().nullable() }))
@@ -594,8 +594,8 @@ export const appRouter = router({
   }),
 
   products: router({
-    list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllProducts(input.activeOnly, ctx.barber?.tenantId ?? input.tenantId)),
-    listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllProductsWithMedia(input.activeOnly, ctx.barber?.tenantId ?? input.tenantId)),
+    list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllProducts(input.activeOnly, input.tenantId ?? ctx.barber?.tenantId)),
+    listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllProductsWithMedia(input.activeOnly, input.tenantId ?? ctx.barber?.tenantId)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getProductById(input.id)),
     create: barberProcedure
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), costPrice: z.string().optional().nullable(), stock: z.number().min(0).default(0), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true), tenantId: z.number().optional().nullable() }))
@@ -659,11 +659,11 @@ export const appRouter = router({
   appointments: router({
     byDate: publicProcedure.input(z.object({ barberId: z.number(), date: z.string() })).query(({ input }) => db.getAppointmentsByDate(input.barberId, input.date)),
     byId: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getAppointmentById(input.id)),
-    allByDate: publicProcedure.input(z.object({ date: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllAppointmentsByDate(input.date, ctx.barber?.tenantId ?? input.tenantId)),
-    allByDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllAppointmentsByDateRangeFullForTenant(input.startDate, input.endDate, ctx.barber?.tenantId ?? input.tenantId)),
+    allByDate: publicProcedure.input(z.object({ date: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllAppointmentsByDate(input.date, input.tenantId ?? ctx.barber?.tenantId)),
+    allByDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllAppointmentsByDateRangeFullForTenant(input.startDate, input.endDate, input.tenantId ?? ctx.barber?.tenantId)),
     nextByClient: publicProcedure.input(z.object({ clientId: z.number() })).query(({ input }) => db.getNextClientAppointment(input.clientId)),
     byDateRange: publicProcedure.input(z.object({ barberId: z.number(), startDate: z.string(), endDate: z.string() })).query(({ input }) => db.getAppointmentsByDateRange(input.barberId, input.startDate, input.endDate)),
-    datesWithAppointments: publicProcedure.input(z.object({ barberId: z.number().optional(), startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllAppointmentsByDateRangeForTenant(input.startDate, input.endDate, ctx.barber?.tenantId ?? input.tenantId)),
+    datesWithAppointments: publicProcedure.input(z.object({ barberId: z.number().optional(), startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllAppointmentsByDateRangeForTenant(input.startDate, input.endDate, input.tenantId ?? ctx.barber?.tenantId)),
     checkAvailability: publicProcedure
       .input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), excludeId: z.number().optional() }))
       .query(({ input }) => db.checkSlotAvailability(input.barberId, input.date, input.startTime, input.endTime, input.excludeId)),
@@ -880,7 +880,7 @@ export const appRouter = router({
   }),
 
   sales: router({
-    byDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), barberId: z.number().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getSalesByDateRange(input.startDate, input.endDate, input.barberId, ctx.barber?.tenantId ?? input.tenantId)),
+    byDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), barberId: z.number().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getSalesByDateRange(input.startDate, input.endDate, input.barberId, input.tenantId ?? ctx.barber?.tenantId)),
     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getSaleById(input.id)),
     create: barberProcedure
       .input(z.object({ clientId: z.number().optional().nullable(), barberId: z.number(), appointmentId: z.number().optional().nullable(), subtotal: z.string(), discount: z.string().default("0"), total: z.string(), paymentMethod: z.enum(["cash", "credit_card", "debit_card", "pix", "asaas", "other"]), paymentStatus: z.enum(["pending", "paid", "cancelled", "refunded"]).default("paid"), couponCode: z.string().optional().nullable(), notes: z.string().optional().nullable(), items: z.array(z.object({ itemType: z.enum(["service", "product"]), itemId: z.number(), itemName: z.string(), quantity: z.number().min(1), unitPrice: z.string(), total: z.string() })) }))
@@ -908,7 +908,7 @@ export const appRouter = router({
   }),
 
   expenses: router({
-    byDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getExpensesByDateRange(input.startDate, input.endDate, ctx.barber?.tenantId ?? input.tenantId)),
+    byDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getExpensesByDateRange(input.startDate, input.endDate, input.tenantId ?? ctx.barber?.tenantId)),
     create: barberProcedure
       .input(z.object({ category: z.string().min(1), description: z.string().min(1), amount: z.string(), date: z.string(), paymentMethod: z.string().optional().nullable(), barberId: z.number().optional().nullable() }))
       .mutation(({ input }) => db.createExpense(input as any)),
@@ -1031,7 +1031,7 @@ export const appRouter = router({
   }),
 
   settings: router({
-    get: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ ctx, input }) => db.getShopSettings(ctx.barber?.tenantId ?? input?.tenantId)),
+    get: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ ctx, input }) => db.getShopSettings(input?.tenantId ?? ctx.barber?.tenantId)),
     generateQr: publicProcedure
       .input(z.object({ url: z.string() }))
       .query(async ({ input }) => {
@@ -1054,7 +1054,7 @@ export const appRouter = router({
   }),
 
   dashboard: router({
-    stats: publicProcedure.input(z.object({ date: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getDashboardStats(input.date, ctx.barber?.tenantId ?? input.tenantId)),
+    stats: publicProcedure.input(z.object({ date: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getDashboardStats(input.date, input.tenantId ?? ctx.barber?.tenantId)),
   }),
 
   // ─── Área do Cliente ────────────────────────────────────────────────────────
@@ -1244,7 +1244,7 @@ export const appRouter = router({
     clientsCsv: publicProcedure
       .input(z.object({ tenantId: z.number().optional().nullable() }))
       .query(async ({ ctx, input }) => {
-        const allClients = await db.getAllClients(ctx.barber?.tenantId ?? input.tenantId);
+        const allClients = await db.getAllClients(input.tenantId ?? ctx.barber?.tenantId);
         const rows = [
           ["ID", "Nome", "Telefone", "Email", "Data Nasc.", "Ativo", "Cadastrado em"],
           ...allClients.map((c: any) => [
@@ -1258,7 +1258,7 @@ export const appRouter = router({
     financeiroCsv: publicProcedure
       .input(z.object({ tenantId: z.number().optional().nullable(), days: z.number().optional() }))
       .query(async ({ ctx, input }) => {
-        const effectiveTenantId = ctx.barber?.tenantId ?? input.tenantId;
+        const effectiveTenantId = input.tenantId ?? ctx.barber?.tenantId;
         const days = input.days ?? 30;
         const endDate = new Date();
         const startDate = new Date();
@@ -1282,7 +1282,7 @@ export const appRouter = router({
     estoqueCsv: publicProcedure
       .input(z.object({ tenantId: z.number().optional().nullable() }))
       .query(async ({ ctx, input }) => {
-        const products = await db.getAllProducts(false, ctx.barber?.tenantId ?? input.tenantId);
+        const products = await db.getAllProducts(false, input.tenantId ?? ctx.barber?.tenantId);
         const rows = [
           ["ID", "Nome", "Tipo", "Preço", "Estoque Atual", "Alerta Mínimo", "Ativo"],
           ...products.map((p: any) => [
@@ -2125,9 +2125,7 @@ export const appRouter = router({
 
   stock: router({
     list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ ctx, input }) => {
-      const effectiveTenantId = ctx.barber?.tenantId ?? input?.tenantId;
-      console.log("[stock.list] ctx.barber?.tenantId:", ctx.barber?.tenantId, "input?.tenantId:", input?.tenantId, "effectiveTenantId usado:", effectiveTenantId);
-      return db.getStockProducts(effectiveTenantId);
+      return db.getStockProducts(input?.tenantId ?? ctx.barber?.tenantId);
     }),
     addMovement: publicProcedure
       .input(z.object({
@@ -2152,7 +2150,7 @@ export const appRouter = router({
         return db.getStockConsumptionAverage(input.productId);
       }),
     lowStock: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ ctx, input }) => {
-      return db.getLowStockProducts(ctx.barber?.tenantId ?? input?.tenantId);
+      return db.getLowStockProducts(input?.tenantId ?? ctx.barber?.tenantId);
     }),
     restock: publicProcedure
       .input(z.object({
@@ -3225,7 +3223,7 @@ export const appRouter = router({
   suppliers: router({
     list: publicProcedure
       .input(z.object({ tenantId: z.number() }))
-      .query(({ ctx, input }) => db.getSuppliersByTenant(ctx.barber?.tenantId ?? input.tenantId)),
+      .query(({ ctx, input }) => db.getSuppliersByTenant(input.tenantId ?? ctx.barber?.tenantId)),
     create: publicProcedure
       .input(z.object({
         tenantId: z.number(),
