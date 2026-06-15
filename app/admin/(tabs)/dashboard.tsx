@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useCountUp } from "@/hooks/use-animated-number";
 import { useScreenFadeIn } from "@/hooks/useScreenFadeIn";
-import { DashboardSkeleton } from "@/components/skeleton";
+import { SkeletonCard } from "@/components/SkeletonCard";
 import {
   Animated,
   ActivityIndicator,
@@ -152,7 +152,12 @@ export default function DashboardScreen() {
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader titleNode={<HeaderBranchTitle />} />
       {isLoadingInitial ? (
-        <DashboardSkeleton />
+        <View style={{ padding: 16, gap: 12 }}>
+          <SkeletonCard width="100%" height={100} borderRadius={14} />
+          <SkeletonCard width="100%" height={100} borderRadius={14} />
+          <SkeletonCard width="100%" height={100} borderRadius={14} />
+          <SkeletonCard width="100%" height={100} borderRadius={14} />
+        </View>
       ) : (
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
