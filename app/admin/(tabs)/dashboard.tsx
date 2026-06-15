@@ -19,7 +19,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useIsBarberRole } from "@/hooks/usePermission";
 import { AdminHeader } from "@/components/admin-header";
-import { HeaderBranchTitle } from "@/components/BranchSelector";
+import { HeaderBranchTitle, useBranch } from "@/components/BranchSelector";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
@@ -58,6 +58,7 @@ export default function DashboardScreen() {
   const today = getTodayString();
   const [refreshing, setRefreshing] = useState(false);
 
+  const { current } = useBranch();
   const tenantId = barber?.tenantId ?? undefined;
   const statsQuery = trpc.dashboard.stats.useQuery({ date: today, tenantId });
   const appointmentsQuery = trpc.appointments.allByDate.useQuery({ date: today, tenantId });
@@ -300,15 +301,15 @@ export default function DashboardScreen() {
         </View>
 
         {/* Card Página Pública */}
-        {tenant?.slug && (
+        {(current?.slug ?? tenant?.slug) && (
           <View style={{ marginHorizontal: 16, marginBottom: 12, backgroundColor: '#1A1505', borderRadius: 14, borderWidth: 1, borderColor: '#C9A84C33', overflow: 'hidden' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderBottomWidth: 1, borderBottomColor: '#C9A84C22' }}>
               <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: '#C9A84C22', borderWidth: 1, borderColor: '#C9A84C44', justifyContent: 'center', alignItems: 'center' }}>
                 <Text style={{ fontSize: 18 }}>✂️</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#ECEDEE' }}>{tenant?.name}</Text>
-                <Text style={{ fontSize: 11, color: '#666', fontFamily: 'monospace' }} numberOfLines={1}>usebarberpro.com/pub/{tenant.slug}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#ECEDEE' }}>{current?.name ?? tenant?.name}</Text>
+                <Text style={{ fontSize: 11, color: '#666', fontFamily: 'monospace' }} numberOfLines={1}>usebarberpro.com/pub/{current?.slug ?? tenant?.slug}</Text>
               </View>
             </View>
             <View style={{ flexDirection: 'row' }}>
