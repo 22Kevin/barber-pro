@@ -358,7 +358,7 @@ function ReportsScreenInner() {
                   <Text style={styles.rankCount}>{projection.progressPct.toFixed(0)}% do mês</Text>
                 </View>
                 <View style={[styles.barBg, { height: 8 }]}>
-                  <View style={[styles.barFill, { width: `${projection.progressPct}%` as any, height: 8, backgroundColor: "#6366F1" }]} />
+                  <View style={[styles.barFill, { width: `${projection.progressPct}%` as any, height: 8, backgroundColor: "#C9A84C" }]} />
                 </View>
               </View>
               {/* KPIs de projeção */}

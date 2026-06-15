@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Animated,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
@@ -14,12 +13,10 @@ import {
   View,
   RefreshControl,
 } from "react-native";
-import { useScreenFadeIn } from "@/hooks/useScreenFadeIn";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { AdminHeader } from "@/components/admin-header";
-import { HeaderBranchTitle } from "@/components/BranchSelector";
 import { trpc } from "@/lib/trpc";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
@@ -62,7 +59,6 @@ function getMonthRange(offset = 0) {
 }
 
 export default function FinancialScreen() {
-  const { fadeStyle } = useScreenFadeIn();
   const colors = useColors();
   const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
@@ -188,10 +184,9 @@ export default function FinancialScreen() {
   })).filter(pm => pm.total > 0);
 
   return (
-    <Animated.View style={[{ flex: 1 }, fadeStyle]}>
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
-        titleNode={<HeaderBranchTitle />}
+        title="Financeiro"
         rightElement={
           <View style={styles.headerActions}>
             <Pressable style={({ pressed }) => [styles.expenseBtn, pressed && { opacity: 0.8 }]} onPress={() => setShowExpenseModal(true)}>
@@ -555,7 +550,6 @@ export default function FinancialScreen() {
         </View>
       </Modal>
     </ScreenContainer>
-    </Animated.View>
   );
 }
 
@@ -589,9 +583,9 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, paddingBottom: 12 },
   title: { fontSize: 24, fontWeight: "800", color: c.foreground },
   headerActions: { flexDirection: "row", gap: 8 },
-  addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, gap: 4 },
+  addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, gap: 4 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 13 },
-  expenseBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#F4433622", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, gap: 4, borderWidth: 1, borderColor: "#F4433644" },
+  expenseBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#F4433622", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, gap: 4, borderWidth: 1, borderColor: "#F4433644" },
   expenseBtnText: { color: "#F44336", fontWeight: "700", fontSize: 13 },
   monthSelector: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 12 },
   monthArrow: { padding: 8 },
@@ -621,13 +615,13 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   tabIcon: { fontSize: 14 },
   tabLabel: { fontSize: 10, color: "#666", fontWeight: "700", letterSpacing: 0.3 },
   tabLabelActive: { color: "#0A0A0A" },
-  profitCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: c.surface, borderRadius: 14, padding: 20, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.15)" },
+  profitCard: { marginHorizontal: 16, marginBottom: 12, backgroundColor: c.surface, borderRadius: 14, padding: 20, borderWidth: 1, borderColor: c.border },
   profitLabel: { fontSize: 13, color: c.muted, marginBottom: 4 },
   profitValue: { fontSize: 34, fontWeight: "800", marginBottom: 12 },
   profitBar: { height: 4, backgroundColor: c.border, borderRadius: 2, overflow: "hidden" },
   profitBarFill: { height: "100%", borderRadius: 2 },
   metricsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 12, gap: 10, marginBottom: 8 },
-  metricCard: { flex: 1, minWidth: "45%", backgroundColor: c.surface, borderRadius: 14, padding: 14, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.15)" },
+  metricCard: { flex: 1, minWidth: "45%", backgroundColor: c.surface, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: c.border },
   metricIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: "center", alignItems: "center", marginBottom: 8 },
   metricValue: { fontSize: 18, fontWeight: "800", color: c.foreground, marginBottom: 2 },
   metricLabel: { fontSize: 12, color: c.muted },
@@ -635,7 +629,7 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   breakdownRow: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.border },
   breakdownLabel: { fontSize: 14, color: c.muted },
   breakdownValue: { fontSize: 14, color: c.foreground, fontWeight: "600" },
-  transactionCard: { flexDirection: "row", alignItems: "center", marginHorizontal: 16, marginBottom: 8, backgroundColor: c.surface, borderRadius: 12, padding: 14, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.15)", gap: 12 },
+  transactionCard: { flexDirection: "row", alignItems: "center", marginHorizontal: 16, marginBottom: 8, backgroundColor: c.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: c.border, gap: 12 },
   transactionIcon: { width: 40, height: 40, borderRadius: 10, justifyContent: "center", alignItems: "center" },
   transactionDesc: { fontSize: 14, fontWeight: "600", color: c.foreground, marginBottom: 2 },
   transactionMeta: { fontSize: 12, color: c.muted },

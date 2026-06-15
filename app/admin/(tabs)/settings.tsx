@@ -44,7 +44,7 @@ const PLAN_KEY_MAP: Record<string, PlanKey> = {
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   active: { label: "Ativa", color: "#4ADE80", bg: "#4ADE8022" },
   trial: { label: "Trial gratuito", color: "#FBBF24", bg: "#FBBF2422" },
-  pending: { label: "Pendente", color: "#60A5FA", bg: "#60A5FA22" },
+  pending: { label: "Pendente", color: "#C9A84C", bg: "#C9A84C26" },
   expired: { label: "Expirado", color: "#F87171", bg: "#F8717122" },
   cancelled: { label: "Cancelado", color: "#888", bg: "#44444422" },
   overdue: { label: "Em atraso", color: "#F87171", bg: "#F8717122" },

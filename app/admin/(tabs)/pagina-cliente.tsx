@@ -633,12 +633,12 @@ export default function PaginaClienteScreen() {
 
               {/* Botão Abrir minha página */}
               <Pressable
-                style={({ pressed }) => [styles.openPageBtn, { borderColor: activeColor, backgroundColor: `${activeColor}18` }, pressed && { opacity: 0.75 }]}
+                style={({ pressed }) => [styles.openPageBtn, { borderColor: "#C9A84C", backgroundColor: "#C9A84C18" }, pressed && { opacity: 0.75 }]}
                 onPress={() => Linking.openURL(publicUrl).catch(() => Alert.alert("Erro", "Não foi possível abrir a página."))}
               >
                 <Text style={{ fontSize: 16 }}>🌐</Text>
-                <Text style={[styles.openPageBtnText, { color: activeColor }]}>Abrir minha página</Text>
-                <Text style={{ fontSize: 12, color: activeColor, opacity: 0.7 }}>↗</Text>
+                <Text style={[styles.openPageBtnText, { color: "#C9A84C" }]}>Abrir minha página</Text>
+                <Text style={{ fontSize: 12, color: "#C9A84C", opacity: 0.7 }}>↗</Text>
               </Pressable>
             </View>
           ) : (

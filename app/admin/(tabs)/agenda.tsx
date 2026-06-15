@@ -3,7 +3,6 @@ import { EmptyState } from "@/components/empty-state";
 import { hapticSuccess, hapticError, hapticMedium, hapticLight } from "@/lib/haptics";
 import { toast } from "@/components/toast";
 import {
-  Animated,
   ActivityIndicator,
   Alert,
   FlatList,
@@ -19,14 +18,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useScreenFadeIn } from "@/hooks/useScreenFadeIn";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useMemo } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { AdminHeader } from "@/components/admin-header";
-import { HeaderBranchTitle } from "@/components/BranchSelector";
 import { SwipeableAppointmentCard } from "@/components/swipeable-appointment-card";
 import { PaymentStatusModal } from "@/components/payment-status-modal";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -126,7 +123,6 @@ function generateTimeSlots(
 }
 
 export default function AgendaScreen() {
-  const { fadeStyle } = useScreenFadeIn();
   const { barber } = useBarberAuth();
   const router = useRouter();
   const params = useLocalSearchParams<{ openAppointmentId?: string; highlightApproval?: string }>();
@@ -553,18 +549,16 @@ export default function AgendaScreen() {
   const isLoadingAppointments = isManager ? allAppointmentsQuery.isLoading : appointmentsQuery.isLoading;
 
   return (
-    <Animated.View style={[{ flex: 1 }, fadeStyle]}>
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
-        titleNode={<HeaderBranchTitle />}
+        title="Agenda"
         rightElement={
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable
-              style={({ pressed }) => [styles.addBtn, { backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#C9A84C" }, pressed && { opacity: 0.8 }]}
+              style={({ pressed }) => [styles.addBtn, { width: 40, height: 40, backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "#C9A84C", paddingHorizontal: 0, justifyContent: "center" }, pressed && { opacity: 0.8 }]}
               onPress={() => router.push("/admin/(tabs)/plan-booking" as any)}
             >
-              <IconSymbol name="star.fill" size={14} color="#C9A84C" />
-              <Text style={[styles.addBtnText, { color: "#C9A84C" }]}>Plano</Text>
+              <IconSymbol name="star.fill" size={16} color="#C9A84C" />
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.addBtn, { backgroundColor: "#C9A84C" }, pressed && { opacity: 0.8 }]}
@@ -1350,7 +1344,6 @@ export default function AgendaScreen() {
         </View>
       </Modal>
     </ScreenContainer>
-    </Animated.View>
   );
 }
 
@@ -1360,7 +1353,7 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   title: { fontSize: 24, fontWeight: "800", color: c.foreground },
   addBtn: { flexDirection: "row", alignItems: "center", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
   addBtnText: { fontWeight: "700", fontSize: 14 },
-  calendarCard: { marginHorizontal: 16, backgroundColor: c.surface, borderRadius: 16, padding: 20, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.15)", marginBottom: 16 },
+  calendarCard: { marginHorizontal: 16, backgroundColor: c.surface, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: c.border, marginBottom: 16 },
   calendarHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   calendarTitle: { fontSize: 19, fontWeight: "700", color: c.foreground },
   daysRow: { flexDirection: "row", marginBottom: 12 },
@@ -1378,7 +1371,7 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   sectionCount: { fontSize: 13, color: c.muted },
   emptyCard: { alignItems: "center", paddingVertical: 40, gap: 10 },
   emptyText: { color: c.muted, fontSize: 14 },
-  aptCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: c.surface, borderRadius: 12, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.15)", flexDirection: "row", alignItems: "center", overflow: "hidden" },
+  aptCard: { marginHorizontal: 16, marginBottom: 8, backgroundColor: c.surface, borderRadius: 12, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center", overflow: "hidden" },
   aptStatusBar: { width: 4, alignSelf: "stretch" },
   aptContent: { flex: 1, padding: 14 },
   aptRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
@@ -1453,7 +1446,7 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   timelineNowDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#F44336", marginLeft: -3 },
   timelineNowLine: { flex: 1, height: 1.5, backgroundColor: "#F44336" },
   timelineEvents: { flex: 1, gap: 4, paddingBottom: 4 },
-  timelineCard: { backgroundColor: c.surface, borderRadius: 10, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.15)", borderLeftWidth: 4, padding: 10, marginBottom: 2 },
+  timelineCard: { backgroundColor: c.surface, borderRadius: 10, borderWidth: 1, borderColor: c.border, borderLeftWidth: 4, padding: 10, marginBottom: 2 },
   timelineCardTime: { fontSize: 11, color: c.muted, fontWeight: "600", marginBottom: 2 },
   timelineCardClient: { fontSize: 14, fontWeight: "700", color: c.foreground, marginBottom: 1 },
   timelineCardService: { fontSize: 12, color: c.muted },

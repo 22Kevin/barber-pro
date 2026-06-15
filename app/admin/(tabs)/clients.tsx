@@ -12,7 +12,6 @@ function formatPhone(phone: string): string {
 }
 import { Swipeable } from "react-native-gesture-handler";
 import {
-  Animated,
   ActivityIndicator,
   Alert,
   FlatList,
@@ -28,12 +27,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useScreenFadeIn } from "@/hooks/useScreenFadeIn";
 import { ScreenContainer } from "@/components/screen-container";
 import { DatePickerModal } from "@/components/date-picker-modal";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { AdminHeader } from "@/components/admin-header";
-import { HeaderBranchTitle } from "@/components/BranchSelector";
 import { trpc } from "@/lib/trpc";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { applyPhoneMask, stripMask } from "@/hooks/use-mask";
@@ -81,7 +78,6 @@ const MONTH_NAMES = [
 ];
 
 export default function ClientsScreen() {
-  const { fadeStyle } = useScreenFadeIn();
   const colors = useColors();
   const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
@@ -196,17 +192,16 @@ export default function ClientsScreen() {
   };
 
   return (
-    <Animated.View style={[{ flex: 1 }, fadeStyle]}>
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
-        titleNode={<HeaderBranchTitle />}
+        title="Clientes"
         rightElement={
           <View style={{ flexDirection: "row", gap: 8 }}>
             <Pressable
               style={({ pressed }) => [styles.birthdayBtn, pressed && { opacity: 0.8 }]}
               onPress={() => setShowBirthdayPanel(true)}
             >
-              <Text style={{ fontSize: 16 }}>🎂</Text>
+              <IconSymbol name="gift" size={18} color="#C9A84C" />
               {birthdayToday.length > 0 && (
                 <View style={styles.birthdayBadge}>
                   <Text style={styles.birthdayBadgeText}>{birthdayToday.length}</Text>
@@ -217,7 +212,7 @@ export default function ClientsScreen() {
               style={({ pressed }) => [styles.birthdayBtn, pressed && { opacity: 0.8 }]}
               onPress={handleExportCsv}
             >
-              <Text style={{ fontSize: 14 }}>📥</Text>
+              <IconSymbol name="arrow.down.doc" size={18} color="#C9A84C" />
             </Pressable>
             <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreate}>
               <IconSymbol name="person.badge.plus" size={18} color="#0A0A0A" />
@@ -557,7 +552,6 @@ export default function ClientsScreen() {
         onCancel={() => setShowDatePicker(false)}
       />
     </ScreenContainer>
-    </Animated.View>
   );
 }
 
@@ -575,7 +569,7 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   countText: { fontSize: 13, color: c.muted, paddingHorizontal: 20, marginTop: 8, marginBottom: 4 },
   emptyCard: { alignItems: "center", paddingVertical: 60, gap: 10 },
   emptyText: { color: c.muted, fontSize: 16, fontWeight: "600" },
-  card: { backgroundColor: c.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.15)", flexDirection: "row", alignItems: "center", gap: 12 },
+  card: { backgroundColor: c.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: c.border, flexDirection: "row", alignItems: "center", gap: 12 },
   avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: "#C9A84C22", justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: "#C9A84C44" },
   avatarBirthday: { backgroundColor: "#1A1000", borderColor: "#EAB308", borderWidth: 2 },
   avatarText: { color: "#C9A84C", fontSize: 20, fontWeight: "700" },

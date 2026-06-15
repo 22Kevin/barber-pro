@@ -382,7 +382,7 @@ function ProductsScreenInner() {
                     </Pressable>
                   )}
                   <Pressable onPress={() => { setHistoryProduct(item); setShowHistoryModal(true); }} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
-                    <IconSymbol name="chart.bar.fill" size={18} color="#3B82F6" />
+                    <IconSymbol name="chart.bar.fill" size={18} color="#C9A84C" />
                   </Pressable>
                   <Pressable onPress={() => openRestock(item)} style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.6 }]}>
                     <IconSymbol name="plus.circle.fill" size={18} color="#22C55E" />
