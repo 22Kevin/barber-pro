@@ -269,7 +269,7 @@ export function HeaderBranchTitle() {
       style={styles.headerTitleBtn}
     >
       {isFilial && <View style={styles.filialDot} />}
-      <Text style={styles.headerTitleText} numberOfLines={1}>
+      <Text style={styles.headerTitleText} numberOfLines={1} ellipsizeMode="tail">
         {current?.name ?? "Barber Pro"}
       </Text>
       <Ionicons name="chevron-down" size={13} color={GOLD} style={{ marginTop: 1 }} />
@@ -381,12 +381,13 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 4,
     paddingVertical: 4,
+    maxWidth: 180,
   },
   headerTitleText: {
     fontSize: 17,
     fontWeight: "700",
     color: TEXT,
-    maxWidth: 200,
+    flexShrink: 1,
   },
   headerTitleStatic: {
     fontSize: 17,
