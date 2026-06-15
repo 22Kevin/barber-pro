@@ -201,7 +201,7 @@ export default function ClientsScreen() {
               style={({ pressed }) => [styles.birthdayBtn, pressed && { opacity: 0.8 }]}
               onPress={() => setShowBirthdayPanel(true)}
             >
-              <IconSymbol name="gift" size={18} color="#C9A84C" />
+              <Text style={{ fontSize: 18 }}>🎂</Text>
               {birthdayToday.length > 0 && (
                 <View style={styles.birthdayBadge}>
                   <Text style={styles.birthdayBadgeText}>{birthdayToday.length}</Text>
@@ -212,7 +212,7 @@ export default function ClientsScreen() {
               style={({ pressed }) => [styles.birthdayBtn, pressed && { opacity: 0.8 }]}
               onPress={handleExportCsv}
             >
-              <IconSymbol name="arrow.down.doc" size={18} color="#C9A84C" />
+              <Text style={{ fontSize: 20, color: "#C9A84C" }}>⬇</Text>
             </Pressable>
             <Pressable style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.8 }]} onPress={openCreate}>
               <IconSymbol name="person.badge.plus" size={18} color="#0A0A0A" />
@@ -561,7 +561,7 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
   title: { fontSize: 24, fontWeight: "800", color: c.foreground },
   addBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
   addBtnText: { color: "#0A0A0A", fontWeight: "700", fontSize: 14 },
-  birthdayBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: "#1A1000", borderWidth: 1, borderColor: "#C9A84C44", justifyContent: "center", alignItems: "center" },
+  birthdayBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: "#1A1A1A", justifyContent: "center", alignItems: "center" },
   birthdayBadge: { position: "absolute", top: -4, right: -4, backgroundColor: "#EAB308", borderRadius: 8, minWidth: 16, height: 16, justifyContent: "center", alignItems: "center", paddingHorizontal: 3 },
   birthdayBadgeText: { color: "#000", fontSize: 10, fontWeight: "800" },
   searchRow: { flexDirection: "row", alignItems: "center", marginHorizontal: 16, backgroundColor: c.surface, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: c.border, gap: 8, marginBottom: 4 },

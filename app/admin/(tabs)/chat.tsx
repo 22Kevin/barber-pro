@@ -313,7 +313,7 @@ export default function ChatScreen() {
   // Tela de chat com cliente selecionado
   if (selectedClient) {
     return (
-      <ScreenContainer edges={["top", "left", "right"]}>
+      <ScreenContainer edges={["left", "right"]}>
         <AdminHeader title="Chat WhatsApp" />
         <View style={dyn.chatContainer}>
           {/* Header do chat */}

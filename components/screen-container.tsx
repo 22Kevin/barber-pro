@@ -13,7 +13,7 @@ export interface ScreenContainerProps extends ViewProps {
 
 export function ScreenContainer({
   children,
-  edges = ["top", "left", "right"],
+  edges = ["left", "right"],
   style,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   className: _c,

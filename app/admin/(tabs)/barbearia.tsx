@@ -516,7 +516,7 @@ export default function BarbeariaScreen() {
   ];
 
   return (
-    <ScreenContainer containerClassName="bg-background" edges={["top"]}>
+    <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
         title={activeTab === "filiais" ? undefined : "Barbearia"}
         titleNode={activeTab === "filiais" ? <HeaderBranchTitle /> : undefined}
