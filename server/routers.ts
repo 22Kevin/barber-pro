@@ -2125,7 +2125,9 @@ export const appRouter = router({
 
   stock: router({
     list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ ctx, input }) => {
-      return db.getStockProducts(ctx.barber?.tenantId ?? input?.tenantId);
+      const effectiveTenantId = ctx.barber?.tenantId ?? input?.tenantId;
+      console.log("[stock.list] ctx.barber?.tenantId:", ctx.barber?.tenantId, "input?.tenantId:", input?.tenantId, "effectiveTenantId usado:", effectiveTenantId);
+      return db.getStockProducts(effectiveTenantId);
     }),
     addMovement: publicProcedure
       .input(z.object({
