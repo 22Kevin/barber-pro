@@ -16,6 +16,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Animated,
   Dimensions,
@@ -29,7 +30,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { skipToken } from "@trpc/client";
-import { trpc } from "@/lib/trpc";
+import { trpc, saveBarberJwt, saveBarberRefreshJwt } from "@/lib/trpc";
 import { useBarberAuth } from "@/lib/auth-context";
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
@@ -75,8 +76,9 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   const [sheetVisible, setSheetVisible] = useState(false);
   const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
 
-  const { barber } = useBarberAuth();
+  const { barber, login } = useBarberAuth();
   const tenantId = barber?.tenantId ?? null;
+  const queryClient = useQueryClient();
 
   console.log("[BranchProvider] barber:", JSON.stringify(barber));
   console.log("[BranchProvider] tenantId:", tenantId);
@@ -125,12 +127,25 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     }).start(() => setSheetVisible(false));
   }, [translateY]);
 
+  const switchMutation = trpc.branches.switch.useMutation({
+    onSuccess: async (data) => {
+      await saveBarberJwt(data.token);
+      if (data.refreshToken) await saveBarberRefreshJwt(data.refreshToken);
+      await login(data.barber as any);
+      await queryClient.invalidateQueries();
+    },
+    onError: (e: any) => {
+      console.error("[BranchSelector] switchBranch error:", e.message);
+    },
+  });
+
   const switchBranch = useCallback(
     (branch: Branch) => {
       setCurrent(branch);
+      switchMutation.mutate({ branchId: branch.isMatrix ? 0 : branch.id });
       closeSelector();
     },
-    [closeSelector],
+    [closeSelector, switchMutation],
   );
 
   return (
