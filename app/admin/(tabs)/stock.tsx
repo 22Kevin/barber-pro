@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
+import { HeaderBranchTitle } from "@/components/BranchSelector";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
@@ -204,7 +205,7 @@ function StockScreenInner() {
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
       <AdminHeader
-        title="Controle de Estoque"
+        titleNode={<HeaderBranchTitle />}
         rightElement={
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {isStudio && !branchData?.isMatrix && (
