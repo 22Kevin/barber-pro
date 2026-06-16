@@ -773,6 +773,12 @@ async function startServer() {
   const maintenancePath = existsSync(maintenanceDevPath) ? maintenanceDevPath : maintenanceProdPath;
   const distPath = path.join(__dirname, "..", "..", "dist-web");
 
+  // Assets estáticos da landing page (ex: badge da Google Play)
+  const landingAssetsDevPath = path.join(__dirname, "..", "landing", "assets");
+  const landingAssetsProdPath = path.join(process.cwd(), "server", "landing", "assets");
+  const landingAssetsPath = existsSync(landingAssetsDevPath) ? landingAssetsDevPath : landingAssetsProdPath;
+  app.use("/assets", express.static(landingAssetsPath));
+
   // Middleware de detecção de subdomínio
   app.use((req, _res, next) => {
     const host = req.hostname || "";

@@ -1,0 +1,24 @@
+PLACEHOLDER — substituir por uma imagem real antes de publicar.
+
+Este diretório precisa do arquivo:
+  google-play-badge-pt.png
+
+Ele é referenciado em server/landing/index.html (hero, seção #app-mobile e footer)
+como /assets/google-play-badge-pt.png — já servido estaticamente pelo Express
+(ver server/_core/index.ts, mount "/assets" -> server/landing/assets).
+
+Onde baixar o badge oficial "Disponível no Google Play" em português:
+  https://play.google.com/intl/pt-BR/badges/
+
+1. Acesse o link acima.
+2. Selecione o idioma "Português (Brasil)".
+3. Baixe o PNG (recomendado: a versão com fundo transparente, tamanho grande
+   para boa nitidez em telas retina — o HTML já redimensiona via width/height).
+4. Salve o arquivo como google-play-badge-pt.png nesta mesma pasta
+   (server/landing/assets/google-play-badge-pt.png).
+5. Apague este arquivo .txt depois de adicionar o PNG (ou mantenha, ele é
+   apenas instrucional e não é referenciado em nenhum lugar do site).
+
+Importante: use apenas o badge oficial do Google, sem alterar suas
+proporções, cores ou adicionar elementos — isso viola as diretrizes de
+marca do Google Play.
