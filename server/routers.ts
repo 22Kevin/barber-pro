@@ -485,10 +485,18 @@ export const appRouter = router({
         const tenantRows = await db.rawQuery('SELECT "parentTenantId" FROM tenants WHERE id = $1', [adminTenantId]);
         const parentId = tenantRows[0]?.parentTenantId ?? null;
         const matrixId: number = parentId ?? adminTenantId;
-        const targetTenantId = input.branchId === 0 ? matrixId : input.branchId;
-        const targetRows = await db.rawQuery('SELECT id, "parentTenantId" FROM tenants WHERE id = $1', [targetTenantId]);
-        if (!targetRows[0]) throw new TRPCError({ code: 'NOT_FOUND' });
-        const targetParentId = targetRows[0].parentTenantId ?? null;
+        let targetTenantId: number;
+        let targetParentId: number | null;
+        if (input.branchId === 0) {
+          // Voltando para a matriz: o destino já é o próprio matrixId, sem precisar buscar parentTenantId
+          targetTenantId = matrixId;
+          targetParentId = null;
+        } else {
+          targetTenantId = input.branchId;
+          const targetRows = await db.rawQuery('SELECT id, "parentTenantId" FROM tenants WHERE id = $1', [targetTenantId]);
+          if (!targetRows[0]) throw new TRPCError({ code: 'NOT_FOUND' });
+          targetParentId = targetRows[0].parentTenantId ?? null;
+        }
         console.log("[branches.switch] barber:", ctx.barber?.barberId, "tenantId:", ctx.barber?.tenantId, "branchId input:", input.branchId, "matrixId:", matrixId, "targetParentId:", targetParentId);
         if (targetTenantId !== matrixId && targetParentId !== matrixId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Filial não pertence à sua rede' });
         let mirror = await db.getMirrorAdmin(targetTenantId, barber.email);

@@ -129,9 +129,12 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   }, [translateY]);
 
   const switchMutation = trpc.branches.switch.useMutation();
+  const switchingRef = useRef(false);
 
   const switchBranch = useCallback(
     (branch: Branch) => {
+      if (switchingRef.current) return;
+      switchingRef.current = true;
       closeSelector();
       switchMutation.mutate(
         { branchId: branch.isMatrix ? 0 : branch.id },
@@ -142,6 +145,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
             setCurrent(branch);
             await login(data.barber as any);
             setTimeout(() => { queryClient.invalidateQueries(); }, 300);
+            switchingRef.current = false;
           },
           onError: (e: any) => {
             console.error("[BranchSelector] switchBranch error:", e.message);
@@ -149,6 +153,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
               "Erro ao trocar de unidade",
               "Não foi possível trocar de unidade. Tente novamente.",
             );
+            switchingRef.current = false;
           },
         },
       );

@@ -206,6 +206,7 @@ function BranchSwitcherInline() {
             style={({ pressed }) => [
               {
                 height: 36,
+                minWidth: 120,
                 paddingHorizontal: 20,
                 borderRadius: 20,
                 alignItems: "center",
@@ -218,6 +219,7 @@ function BranchSwitcherInline() {
             ]}
           >
             <Text
+              numberOfLines={1}
               style={{
                 fontSize: 14,
                 fontWeight: "700",
