@@ -32,6 +32,7 @@ import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
 import { useBarberAuth } from "@/lib/auth-context";
+import { useBranch } from "@/components/BranchSelector";
 import { useColors } from "@/hooks/use-colors";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { SingleImageUploader } from "@/components/media-uploader";
@@ -181,6 +182,52 @@ function FieldInput({
         ]}
       />
     </View>
+  );
+}
+
+// ─── Seletor de filial inline ────────────────────────────────────────────────
+function BranchSwitcherInline({ colors }: { colors: ReturnType<typeof useColors> }) {
+  const { current, branches, switchBranch } = useBranch();
+
+  if (branches.length <= 1) return null;
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingVertical: 12, paddingHorizontal: 4, gap: 8 }}
+    >
+      {branches.map((b) => {
+        const isActive = current?.id === b.id;
+        return (
+          <Pressable
+            key={b.id}
+            onPress={() => !isActive && switchBranch(b)}
+            style={({ pressed }) => [
+              {
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 20,
+                borderWidth: 1.5,
+                borderColor: isActive ? "#C9A84C" : "#C9A84C44",
+                backgroundColor: isActive ? "#C9A84C" : "transparent",
+              },
+              pressed && !isActive && { opacity: 0.7 },
+            ]}
+          >
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "700",
+                color: isActive ? "#0A0A0A" : colors.foreground,
+              }}
+            >
+              {b.name}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
   );
 }
 
@@ -477,6 +524,8 @@ export default function PaginaClienteScreen() {
   return (
     <ScreenContainer>
       <AdminHeader title="Minha Página" />
+
+      <BranchSwitcherInline colors={colors} />
 
       {/* Modal de pré-visualização */}
       <PagePreviewModal

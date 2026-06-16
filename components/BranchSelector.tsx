@@ -18,6 +18,7 @@ import React, {
 } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  Alert,
   Animated,
   Dimensions,
   Modal,
@@ -127,25 +128,32 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     }).start(() => setSheetVisible(false));
   }, [translateY]);
 
-  const switchMutation = trpc.branches.switch.useMutation({
-    onSuccess: async (data) => {
-      await saveBarberJwt(data.token);
-      if (data.refreshToken) await saveBarberRefreshJwt(data.refreshToken);
-      await login(data.barber as any);
-      setTimeout(() => { queryClient.invalidateQueries(); }, 300);
-    },
-    onError: (e: any) => {
-      console.error("[BranchSelector] switchBranch error:", e.message);
-    },
-  });
+  const switchMutation = trpc.branches.switch.useMutation();
 
   const switchBranch = useCallback(
     (branch: Branch) => {
-      setCurrent(branch);
-      switchMutation.mutate({ branchId: branch.isMatrix ? 0 : branch.id });
       closeSelector();
+      switchMutation.mutate(
+        { branchId: branch.isMatrix ? 0 : branch.id },
+        {
+          onSuccess: async (data) => {
+            await saveBarberJwt(data.token);
+            if (data.refreshToken) await saveBarberRefreshJwt(data.refreshToken);
+            setCurrent(branch);
+            await login(data.barber as any);
+            setTimeout(() => { queryClient.invalidateQueries(); }, 300);
+          },
+          onError: (e: any) => {
+            console.error("[BranchSelector] switchBranch error:", e.message);
+            Alert.alert(
+              "Erro ao trocar de unidade",
+              "Não foi possível trocar de unidade. Tente novamente.",
+            );
+          },
+        },
+      );
     },
-    [closeSelector, switchMutation],
+    [closeSelector, switchMutation, login, queryClient],
   );
 
   return (
