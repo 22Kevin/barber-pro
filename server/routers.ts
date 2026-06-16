@@ -479,7 +479,7 @@ export const appRouter = router({
 
     switch: barberProcedure.input(z.object({ branchId: z.number() })).mutation(async ({ ctx, input }) => {
       try {
-        const barber = await db.getBarberById(ctx.barberId);
+        const barber = await db.getBarberById(ctx.barber.barberId);
         if (!barber || barber.role !== 'super_admin' || !barber.email) throw new TRPCError({ code: 'FORBIDDEN' });
         const adminTenantId = (barber as any).tenantId;
         const tenantRows = await db.rawQuery('SELECT "parentTenantId" FROM tenants WHERE id = $1', [adminTenantId]);
@@ -489,6 +489,7 @@ export const appRouter = router({
         const targetRows = await db.rawQuery('SELECT id, "parentTenantId" FROM tenants WHERE id = $1', [targetTenantId]);
         if (!targetRows[0]) throw new TRPCError({ code: 'NOT_FOUND' });
         const targetParentId = targetRows[0].parentTenantId ?? null;
+        console.log("[branches.switch] barber:", ctx.barber?.barberId, "tenantId:", ctx.barber?.tenantId, "branchId input:", input.branchId, "matrixId:", matrixId, "targetParentId:", targetParentId);
         if (targetTenantId !== matrixId && targetParentId !== matrixId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Filial não pertence à sua rede' });
         let mirror = await db.getMirrorAdmin(targetTenantId, barber.email);
         if (!mirror) {
