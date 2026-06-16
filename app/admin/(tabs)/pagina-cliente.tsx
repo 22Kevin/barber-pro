@@ -187,7 +187,7 @@ function FieldInput({
 
 // ─── Seletor de filial inline ────────────────────────────────────────────────
 function BranchSwitcherInline() {
-  const { current, branches, switchBranch } = useBranch();
+  const { current, branches, switchBranch, isSwitching } = useBranch();
 
   if (branches.length <= 1) return null;
 
@@ -202,7 +202,8 @@ function BranchSwitcherInline() {
         return (
           <Pressable
             key={b.id}
-            onPress={() => !isActive && switchBranch(b)}
+            onPress={() => switchBranch(b)}
+            disabled={isSwitching || isActive}
             style={({ pressed }) => [
               {
                 height: 36,
@@ -214,6 +215,7 @@ function BranchSwitcherInline() {
                 borderWidth: 1,
                 borderColor: isActive ? "#C9A84C" : "rgba(201,168,76,0.4)",
                 backgroundColor: isActive ? "#C9A84C" : "#1A1A1A",
+                opacity: isSwitching && !isActive ? 0.5 : 1,
               },
               pressed && !isActive && { opacity: 0.7 },
             ]}

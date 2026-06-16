@@ -22,7 +22,6 @@ import {
   Animated,
   Dimensions,
   Modal,
-  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -59,6 +58,7 @@ type BranchContextType = {
   current: Branch | null;
   branches: Branch[];
   isLoading: boolean;
+  isSwitching: boolean;
   openSelector: () => void;
   switchBranch: (branch: Branch) => void;
 };
@@ -129,12 +129,12 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   }, [translateY]);
 
   const switchMutation = trpc.branches.switch.useMutation();
-  const switchingRef = useRef(false);
+  const [isSwitching, setIsSwitching] = useState(false);
 
   const switchBranch = useCallback(
     (branch: Branch) => {
-      if (switchingRef.current) return;
-      switchingRef.current = true;
+      if (isSwitching) return;
+      setIsSwitching(true);
       closeSelector();
       switchMutation.mutate(
         { branchId: branch.isMatrix ? 0 : branch.id },
@@ -145,7 +145,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
             setCurrent(branch);
             await login(data.barber as any);
             setTimeout(() => { queryClient.invalidateQueries(); }, 300);
-            switchingRef.current = false;
+            setIsSwitching(false);
           },
           onError: (e: any) => {
             console.error("[BranchSelector] switchBranch error:", e.message);
@@ -153,17 +153,17 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
               "Erro ao trocar de unidade",
               "Não foi possível trocar de unidade. Tente novamente.",
             );
-            switchingRef.current = false;
+            setIsSwitching(false);
           },
         },
       );
     },
-    [closeSelector, switchMutation, login, queryClient],
+    [isSwitching, closeSelector, switchMutation, login, queryClient],
   );
 
   return (
     <BranchContext.Provider
-      value={{ current: activeCurrent, branches, isLoading, openSelector, switchBranch }}
+      value={{ current: activeCurrent, branches, isLoading, isSwitching, openSelector, switchBranch }}
     >
       {children}
       <BranchSelectorSheet
@@ -234,16 +234,14 @@ function BranchSelectorSheet({ visible, translateY, onClose }: SheetProps) {
 
 // ─── Card ──────────────────────────────────────────────────────────────────────
 function BranchCard({ branch, isActive }: { branch: Branch; isActive: boolean }) {
-  const { switchBranch } = useBranch();
+  const { switchBranch, isSwitching } = useBranch();
 
   return (
-    <Pressable
-      onPress={() => !isActive && switchBranch(branch)}
-      style={({ pressed }) => [
-        styles.card,
-        isActive && styles.cardActive,
-        pressed && !isActive && styles.cardPressed,
-      ]}
+    <TouchableOpacity
+      onPress={() => switchBranch(branch)}
+      disabled={isSwitching || isActive}
+      activeOpacity={0.7}
+      style={[styles.card, isActive && styles.cardActive]}
     >
       <View style={[styles.cardIcon, isActive && styles.cardIconActive]}>
         <Ionicons
@@ -270,7 +268,7 @@ function BranchCard({ branch, isActive }: { branch: Branch; isActive: boolean })
       ) : (
         <Ionicons name="chevron-forward" size={16} color={TEXT_MUTED} />
       )}
-    </Pressable>
+    </TouchableOpacity>
   );
 }
 
