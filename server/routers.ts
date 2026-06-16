@@ -478,42 +478,47 @@ export const appRouter = router({
     }),
 
     switch: barberProcedure.input(z.object({ branchId: z.number() })).mutation(async ({ ctx, input }) => {
-      const barber = await db.getBarberById(ctx.barberId);
-      if (!barber || barber.role !== 'super_admin' || !barber.email) throw new TRPCError({ code: 'FORBIDDEN' });
-      const adminTenantId = (barber as any).tenantId;
-      const tenantRows = await db.rawQuery('SELECT "parentTenantId" FROM tenants WHERE id = $1', [adminTenantId]);
-      const parentId = tenantRows[0]?.parentTenantId ?? null;
-      const matrixId: number = parentId ?? adminTenantId;
-      const targetTenantId = input.branchId === 0 ? matrixId : input.branchId;
-      const targetRows = await db.rawQuery('SELECT id, "parentTenantId" FROM tenants WHERE id = $1', [targetTenantId]);
-      if (!targetRows[0]) throw new TRPCError({ code: 'NOT_FOUND' });
-      const targetParentId = targetRows[0].parentTenantId ?? null;
-      if (targetTenantId !== matrixId && targetParentId !== matrixId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Filial não pertence à sua rede' });
-      let mirror = await db.getMirrorAdmin(targetTenantId, barber.email);
-      if (!mirror) {
-        try {
-          await db.rawQuery(
-            `INSERT INTO barbers ("tenantId", name, email, "passwordHash", role, "isActive") VALUES ($1,$2,$3,$4,'super_admin',true)`,
-            [targetTenantId, barber.name, barber.email, (barber as any).passwordHash || '']
-          );
-          mirror = await db.getMirrorAdmin(targetTenantId, barber.email);
-        } catch {}
-        if (!mirror) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Não foi possível criar acesso à filial' });
+      try {
+        const barber = await db.getBarberById(ctx.barberId);
+        if (!barber || barber.role !== 'super_admin' || !barber.email) throw new TRPCError({ code: 'FORBIDDEN' });
+        const adminTenantId = (barber as any).tenantId;
+        const tenantRows = await db.rawQuery('SELECT "parentTenantId" FROM tenants WHERE id = $1', [adminTenantId]);
+        const parentId = tenantRows[0]?.parentTenantId ?? null;
+        const matrixId: number = parentId ?? adminTenantId;
+        const targetTenantId = input.branchId === 0 ? matrixId : input.branchId;
+        const targetRows = await db.rawQuery('SELECT id, "parentTenantId" FROM tenants WHERE id = $1', [targetTenantId]);
+        if (!targetRows[0]) throw new TRPCError({ code: 'NOT_FOUND' });
+        const targetParentId = targetRows[0].parentTenantId ?? null;
+        if (targetTenantId !== matrixId && targetParentId !== matrixId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Filial não pertence à sua rede' });
+        let mirror = await db.getMirrorAdmin(targetTenantId, barber.email);
+        if (!mirror) {
+          try {
+            await db.rawQuery(
+              `INSERT INTO barbers ("tenantId", name, email, "passwordHash", role, "isActive") VALUES ($1,$2,$3,$4,'super_admin',true)`,
+              [targetTenantId, barber.name, barber.email, (barber as any).passwordHash || '']
+            );
+            mirror = await db.getMirrorAdmin(targetTenantId, barber.email);
+          } catch {}
+          if (!mirror) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Não foi possível criar acesso à filial' });
+        }
+        const jwtPayload = { barberId: mirror.id, tenantId: targetTenantId, role: 'super_admin' as const };
+        const [token, refreshToken] = await Promise.all([signBarberToken(jwtPayload), signBarberRefreshToken(jwtPayload)]);
+        const targetTenant = await db.getTenantById(targetTenantId);
+        return {
+          token, refreshToken,
+          barber: {
+            id: mirror.id, name: mirror.name, email: mirror.email, phone: mirror.phone,
+            photoUrl: mirror.photoUrl, role: 'super_admin' as const,
+            specialties: mirror.specialties ?? null,
+            tenantId: targetTenantId,
+            tenantPlan: (targetTenant as any)?.plan ?? null,
+            permissions: null,
+          },
+        };
+      } catch (e) {
+        console.error("[branches.switch] erro:", e);
+        throw e;
       }
-      const jwtPayload = { barberId: mirror.id, tenantId: targetTenantId, role: 'super_admin' as const };
-      const [token, refreshToken] = await Promise.all([signBarberToken(jwtPayload), signBarberRefreshToken(jwtPayload)]);
-      const targetTenant = await db.getTenantById(targetTenantId);
-      return {
-        token, refreshToken,
-        barber: {
-          id: mirror.id, name: mirror.name, email: mirror.email, phone: mirror.phone,
-          photoUrl: mirror.photoUrl, role: 'super_admin' as const,
-          specialties: mirror.specialties ?? null,
-          tenantId: targetTenantId,
-          tenantPlan: (targetTenant as any)?.plan ?? null,
-          permissions: null,
-        },
-      };
     }),
 
     transfer: barberProcedure.input(z.object({ productId: z.number(), targetBranchId: z.number(), quantity: z.number().min(1), matrixId: z.number(), sourceTenantId: z.number(), reason: z.string().optional() })).mutation(async ({ ctx, input }) => {

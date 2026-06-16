@@ -186,7 +186,7 @@ function FieldInput({
 }
 
 // ─── Seletor de filial inline ────────────────────────────────────────────────
-function BranchSwitcherInline({ colors }: { colors: ReturnType<typeof useColors> }) {
+function BranchSwitcherInline() {
   const { current, branches, switchBranch } = useBranch();
 
   if (branches.length <= 1) return null;
@@ -195,7 +195,7 @@ function BranchSwitcherInline({ colors }: { colors: ReturnType<typeof useColors>
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingVertical: 12, paddingHorizontal: 4, gap: 8 }}
+      contentContainerStyle={{ paddingVertical: 12, paddingHorizontal: 16, gap: 8 }}
     >
       {branches.map((b) => {
         const isActive = current?.id === b.id;
@@ -205,21 +205,23 @@ function BranchSwitcherInline({ colors }: { colors: ReturnType<typeof useColors>
             onPress={() => !isActive && switchBranch(b)}
             style={({ pressed }) => [
               {
-                paddingHorizontal: 16,
-                paddingVertical: 8,
+                height: 36,
+                paddingHorizontal: 20,
                 borderRadius: 20,
-                borderWidth: 1.5,
-                borderColor: isActive ? "#C9A84C" : "#C9A84C44",
-                backgroundColor: isActive ? "#C9A84C" : "transparent",
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: isActive ? "#C9A84C" : "rgba(201,168,76,0.4)",
+                backgroundColor: isActive ? "#C9A84C" : "#1A1A1A",
               },
               pressed && !isActive && { opacity: 0.7 },
             ]}
           >
             <Text
               style={{
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: "700",
-                color: isActive ? "#0A0A0A" : colors.foreground,
+                color: isActive ? "#0A0A0A" : "#FFFFFF",
               }}
             >
               {b.name}
@@ -525,7 +527,7 @@ export default function PaginaClienteScreen() {
     <ScreenContainer>
       <AdminHeader title="Minha Página" />
 
-      <BranchSwitcherInline colors={colors} />
+      <BranchSwitcherInline />
 
       {/* Modal de pré-visualização */}
       <PagePreviewModal
