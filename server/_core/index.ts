@@ -1538,8 +1538,8 @@ async function startServer() {
     } catch { return next(); }
   });
 
-  // GET /:slug/* → sub-rotas da barbearia (agendar, login, cadastro, etc.)
-  app.get("/:slug/*", async (req, res, next) => {
+  // GET /:slug/*path → sub-rotas da barbearia (agendar, login, cadastro, etc.)
+  app.get("/:slug/*path", async (req, res, next) => {
     const { slug } = req.params;
     if (SYSTEM_PATHS.has(slug)) return next();
     try {
@@ -1547,7 +1547,7 @@ async function startServer() {
       const tenant = await getTenantBySlug(slug);
       if (!tenant || !["active", "trial"].includes((tenant as any).status ?? "")) return next();
       // Extrair o sub-path após /:slug/
-      const subPath = (req.params as any)[0] || "";
+      const subPath = (req.params as any).path || "";
       const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
       return res.redirect(301, `/pub/${slug}/${subPath}${qs}`);
     } catch { return next(); }
