@@ -4345,7 +4345,7 @@ export function registerPublicRoutes(app: Express): void {
             ...branches2.map((b: any) => ({ name: b.displayName || b.name, address: b.address || '', slug: b.slug }))
           ];
           const ucards = units.map(u =>
-            '<a href="/pub/'+esc2(u.slug)+'/agendar" style="display:block;background:#1a1a1a;border:2px solid #2a2a2a;border-radius:14px;padding:20px 24px;text-decoration:none;color:#fff;margin-bottom:12px">'
+            '<a href="/pub/'+esc2(u.slug)+'" style="display:block;background:#1a1a1a;border:2px solid #2a2a2a;border-radius:14px;padding:20px 24px;text-decoration:none;color:#fff;margin-bottom:12px">'
             +'<div style="display:flex;align-items:center;gap:14px">'
             +'<div style="width:44px;height:44px;border-radius:10px;background:'+pc+'22;border:1px solid '+pc+'44;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🏪</div>'
             +'<div><div style="font-size:15px;font-weight:700">'+esc2(u.name)+'</div>'+(u.address?'<div style="font-size:12px;color:#888;margin-top:3px">'+esc2(u.address)+'</div>':'')+'</div>'
