@@ -438,6 +438,33 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
     }
   </script>
   ${body}
+  <!-- Rodapé Barber Pro -->
+  <footer style="background:#0A0A0A;border-top:1px solid #1A1A1A;padding:40px 24px 32px;margin-top:48px;">
+    <div style="max-width:900px;margin:0 auto;">
+      <div style="text-align:center;margin-bottom:28px;">
+        <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <span style="width:36px;height:36px;border-radius:10px;background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:18px;">✂️</span>
+          <span style="font-size:18px;font-weight:900;color:#C9A84C;letter-spacing:0.5px;">Barber Pro</span>
+        </div>
+        <div style="font-size:13px;color:#555;margin-bottom:20px;line-height:1.5;">Sistema completo de gestão para barbearias</div>
+        <a href="https://usebarberpro.com" style="display:inline-block;background:#C9A84C;color:#0A0A0A;font-size:13px;font-weight:800;padding:12px 24px;border-radius:50px;letter-spacing:0.3px;text-decoration:none;">Criar minha conta gratuita</a>
+      </div>
+      <div style="text-align:center;margin-bottom:16px;padding-top:20px;border-top:1px solid #1A1A1A;">
+        <div style="font-size:11px;color:#3A3A3A;margin-bottom:8px;">Powered by Barber Pro — Eldunari Ltda | CNPJ: 66.991.137/0001-63 — Franca/SP</div>
+        <div style="font-size:11px;">
+          <a href="/privacidade" style="color:#555;text-decoration:none;">Privacidade</a>
+          <span style="color:#2A2A2A;margin:0 6px;">|</span>
+          <a href="/termos" style="color:#555;text-decoration:none;">Termos</a>
+          <span style="color:#2A2A2A;margin:0 6px;">|</span>
+          <a href="/lgpd" style="color:#555;text-decoration:none;">LGPD</a>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:11px;color:#333;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <span>🔒</span>
+        <span>Seus dados são protegidos pela <a href="/privacidade" style="color:#555;text-decoration:underline;">LGPD</a></span>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>`;
 }
@@ -482,7 +509,10 @@ function notFoundPage(slug: string): string {
     <a href="https://usebarberpro.com" class="btn-primary">🏠 Voltar para o início</a>
     <a href="https://usebarberpro.com/#cadastro" class="btn-ghost">✂️ Cadastrar minha barbearia</a>
   </div>
-  <div class="footer">Powered by Barber Pro — Sistema de Gestão para Barbearias</div>
+  <div class="footer">
+    <div style="margin-bottom:8px;"><span style="color:#C9A84C;font-weight:800;">Barber Pro</span> — Eldunari Ltda | CNPJ: 66.991.137/0001-63</div>
+    <div><a href="/privacidade" style="color:#555;font-size:11px;text-decoration:none;">Privacidade</a> | <a href="/termos" style="color:#555;font-size:11px;text-decoration:none;">Termos</a> | <a href="/lgpd" style="color:#555;font-size:11px;text-decoration:none;">LGPD</a></div>
+  </div>
 </body>
 </html>`;
 }
@@ -529,7 +559,10 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     <a href="https://usebarberpro.com" class="btn-primary">🏠 Voltar para o início</a>
     <a href="https://usebarberpro.com/#cadastro" class="btn-ghost">✂️ Cadastrar minha barbearia</a>
   </div>
-  <div class="footer">Powered by Barber Pro — Sistema de Gestão para Barbearias</div>
+  <div class="footer">
+    <div style="margin-bottom:8px;"><span style="color:#C9A84C;font-weight:800;">Barber Pro</span> — Eldunari Ltda | CNPJ: 66.991.137/0001-63</div>
+    <div><a href="/privacidade" style="color:#555;font-size:11px;text-decoration:none;">Privacidade</a> | <a href="/termos" style="color:#555;font-size:11px;text-decoration:none;">Termos</a> | <a href="/lgpd" style="color:#555;font-size:11px;text-decoration:none;">LGPD</a></div>
+  </div>
 </body>
 </html>`);
 
@@ -1134,9 +1167,6 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
     ${reviewsHtml}
     ${infoHtml}
 
-    <div class="footer">
-      Powered by <a href="https://barberpro.com.br" target="_blank">Barber Pro</a>
-    </div>
 
     <!-- CTA fixo mobile -->
     <div class="cta-fixed">
@@ -1451,6 +1481,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         <!-- Resumo dos serviços extras selecionados -->
         <div id="selected-summary" style="display:none" class="selected-summary"></div>
 
+        ${!loggedClient ? `<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted);text-align:center;padding:12px;margin-top:16px;">Você precisará fazer login ou criar uma conta gratuita para confirmar o agendamento.</div>` : ""}
         <div class="booking-nav">
           <button class="btn-next-step" id="btn-step1-next" onclick="goToStep(2)" style="flex:1">Próximo →</button>
         </div>
@@ -2524,11 +2555,19 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
             <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">DATA DE NASCIMENTO <span style="color:var(--muted);font-weight:400">(opcional — usamos para enviar um cupom no seu aniversário 🎂)</span></label>
             <input type="date" id="birth-date-input" style="width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px" />
           </div>` : ""}
-          ${!isLogin ? `<div style="margin-bottom:20px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:12px">
-            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+          ${!isLogin ? `<div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:12px;padding:16px;margin:16px 0">
+            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:12px">
               <input type="checkbox" id="lgpd-consent" required style="margin-top:2px;width:16px;height:16px;accent-color:var(--primary);flex-shrink:0" />
-              <span style="font-size:12px;color:var(--muted);line-height:1.5">Autorizo o compartilhamento do meu contato com esta barbearia para suporte e agendamentos, conforme a <a href="https://barberpro.com.br/privacidade" target="_blank" style="color:var(--primary)">Pol&iacute;tica de Privacidade</a>.</span>
+              <span style="font-size:12px;color:var(--muted);line-height:1.6">Li e aceito a <a href="/privacidade" style="color:var(--primary)">Pol&iacute;tica de Privacidade</a> e autorizo o tratamento dos meus dados pessoais (nome, e-mail, telefone, CPF) pela Eldunari LTDA (Barber Pro) para gerenciar minha conta de agendamentos, conforme a Lei 13.709/2018 (LGPD). <strong style="color:var(--text)">Obrigat&oacute;rio para criar sua conta.</strong></span>
             </label>
+            <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:14px">
+              <input type="checkbox" id="marketing-consent" style="margin-top:2px;width:16px;height:16px;accent-color:var(--primary);flex-shrink:0" />
+              <span style="font-size:12px;color:var(--muted);line-height:1.6">Aceito receber promo&ccedil;&otilde;es e lembretes desta barbearia via WhatsApp e e-mail. <strong style="color:var(--muted)">Opcional.</strong></span>
+            </label>
+            <div style="font-size:11px;color:#444;line-height:1.6;padding-top:12px;border-top:1px solid rgba(201,168,76,0.15)">
+              Seus dados s&atilde;o usados apenas para gerenciar seus agendamentos e nunca ser&atilde;o vendidos a terceiros.<br>
+              <a href="/privacidade" style="color:#C9A84C;text-decoration:none;">Pol&iacute;tica de Privacidade</a> &middot; <a href="/lgpd" style="color:#C9A84C;text-decoration:none;">LGPD</a>
+            </div>
           </div>` : ""}
           <button type="submit" id="submit-btn" style="width:100%;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:800;padding:16px;border-radius:14px;border:none;cursor:pointer">
             ${isLogin ? "Entrar" : "Criar Conta"}
@@ -2568,7 +2607,7 @@ async function renderLoginPage(slug: string, res: Response, req: Request, mode: 
           password: document.getElementById('password-input').value,
           slug: '${slug}'
         };
-        ${!isLogin ? `body.name = document.getElementById('name-input').value; body.phone = document.getElementById('phone-input').value; body.lgpdConsent = true; var bdEl = document.getElementById('birth-date-input'); if (bdEl && bdEl.value) body.birthDate = bdEl.value; var cpfEl = document.getElementById('cpf-input'); if (cpfEl && cpfEl.value) body.cpf = cpfEl.value.replace(/[^0-9]/g,'');` : ""}
+        ${!isLogin ? `body.name = document.getElementById('name-input').value; body.phone = document.getElementById('phone-input').value; body.lgpdConsent = true; var mkEl = document.getElementById('marketing-consent'); body.marketingConsent = mkEl ? mkEl.checked : false; var bdEl = document.getElementById('birth-date-input'); if (bdEl && bdEl.value) body.birthDate = bdEl.value; var cpfEl = document.getElementById('cpf-input'); if (cpfEl && cpfEl.value) body.cpf = cpfEl.value.replace(/[^0-9]/g,'');` : ""}
         try {
           var r = await fetch('/pub-api/${isLogin ? "login" : "register"}', {
             method: 'POST',
