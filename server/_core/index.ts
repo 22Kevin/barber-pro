@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import helmet from "helmet";
 
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY ?? "barber_migrate_2026";
 import { createServer } from "http";
@@ -676,6 +677,25 @@ async function startServer() {
   // Confiar no proxy reverso do Railway (necessário para rate limit e IP real)
   app.set("trust proxy", 1);
 
+  // Helmet: headers de segurança HTTP (CSP desabilitado — configurado manualmente abaixo)
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    xFrameOptions: { action: "deny" },
+    strictTransportSecurity: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+    },
+  }));
+
+  // Headers adicionais que o Helmet não cobre
+  app.use((_req, res, next) => {
+    res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+    next();
+  });
+
   // CORS com allowlist — refletir qualquer origem com credentials é falha grave
   const CORS_ALLOWED = new Set([
     "https://usebarberpro.com",
@@ -731,7 +751,18 @@ async function startServer() {
   app.use((req, res, next) => {
     if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return next();
     const origin = req.headers.origin;
-    if (!origin) return next(); // mobile app, webhooks Asaas, curl — sem Origin
+    if (!origin) {
+      // tRPC (Bearer token), webhooks Asaas e health check não enviam Origin — OK
+      const isApiRoute = req.path.startsWith("/api/trpc") ||
+        req.path.startsWith("/api/asaas/webhook") ||
+        req.path === "/health";
+      if (isApiRoute) return next();
+      // Rotas admin web usam cookie de sessão — exige Origin para CSRF
+      if (req.path.startsWith("/admin-api/")) {
+        return res.status(403).json({ error: "Origin header required" });
+      }
+      return next(); // rotas públicas sem Origin (apps nativos, curl) — OK
+    }
     try {
       const originHost = new URL(origin).host.replace(/:443$|:80$/, "");
       const reqHost = (req.headers.host || "").replace(/:443$|:80$/, "");
