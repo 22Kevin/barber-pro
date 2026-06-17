@@ -4332,7 +4332,7 @@ export function registerPublicRoutes(app: Express): void {
     const slug = req.params.slug;
     try {
       const tenant2 = await db.getTenantBySlug(slug);
-      if (tenant2 && !(tenant2 as any).parentTenantId) {
+      if (tenant2 && !(tenant2 as any).parentTenantId && !req.query.direct) {
         const branches2 = await db.getBranches(tenant2.id);
         if (branches2.length > 0) {
           const esc2 = (s: any) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -4344,8 +4344,8 @@ export function registerPublicRoutes(app: Express): void {
             { name: (tenant2 as any).displayName || tenant2.name, address: settings2?.address || '', slug: tenant2.slug },
             ...branches2.map((b: any) => ({ name: b.displayName || b.name, address: b.address || '', slug: b.slug }))
           ];
-          const ucards = units.map(u =>
-            '<a href="/pub/'+esc2(u.slug)+'" style="display:block;background:#1a1a1a;border:2px solid #2a2a2a;border-radius:14px;padding:20px 24px;text-decoration:none;color:#fff;margin-bottom:12px">'
+          const ucards = units.map((u, i) =>
+            '<a href="/pub/'+esc2(u.slug)+(i === 0 ? '?direct=1' : '')+'" style="display:block;background:#1a1a1a;border:2px solid #2a2a2a;border-radius:14px;padding:20px 24px;text-decoration:none;color:#fff;margin-bottom:12px">'
             +'<div style="display:flex;align-items:center;gap:14px">'
             +'<div style="width:44px;height:44px;border-radius:10px;background:'+pc+'22;border:1px solid '+pc+'44;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🏪</div>'
             +'<div><div style="font-size:15px;font-weight:700">'+esc2(u.name)+'</div>'+(u.address?'<div style="font-size:12px;color:#888;margin-top:3px">'+esc2(u.address)+'</div>':'')+'</div>'
