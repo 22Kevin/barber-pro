@@ -29,7 +29,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { skipToken } from "@trpc/client";
+import { skipToken } from "@tanstack/react-query";
 import { trpc, saveBarberJwt, saveBarberRefreshJwt } from "@/lib/trpc";
 import { useBarberAuth } from "@/lib/auth-context";
 
