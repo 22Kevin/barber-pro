@@ -1,5 +1,7 @@
 import "dotenv/config";
 import express from "express";
+
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY ?? "barber_migrate_2026";
 import { createServer } from "http";
 import net from "net";
 import path from "path";
@@ -1069,7 +1071,7 @@ async function startServer() {
 
   // Rota interna de migração — cria tabelas novas sem afetar as existentes
   app.post("/internal/migrate", async (req, res) => {
-    if (req.headers["x-internal-key"] !== "barber_migrate_2026") {
+    if (req.headers["x-internal-key"] !== INTERNAL_API_KEY) {
       return res.status(403).json({ error: "forbidden" });
     }
     try {
@@ -1449,7 +1451,7 @@ async function startServer() {
 
   // GET /api/asaas/account-status — Diagnóstico da subconta Asaas (requer x-internal-key)
   app.get("/api/asaas/account-status", async (req, res) => {
-    if (req.headers["x-internal-key"] !== "barber_migrate_2026") {
+    if (req.headers["x-internal-key"] !== INTERNAL_API_KEY) {
       return res.status(403).json({ error: "forbidden" });
     }
     try {
@@ -1471,7 +1473,7 @@ async function startServer() {
 
   // ─── Endpoint de diagnóstico do banco de dados ─────────────────────────────────────────
   app.get("/api/db-columns", async (req, res) => {
-    if (req.headers["x-internal-key"] !== "barber_migrate_2026") {
+    if (req.headers["x-internal-key"] !== INTERNAL_API_KEY) {
       return res.status(403).json({ error: "forbidden" });
     }
     try {

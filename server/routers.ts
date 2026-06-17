@@ -2258,11 +2258,11 @@ export const appRouter = router({
                 // 1b. Verificar se este email ou CPF/CNPJ já usou o trial gratuito
         {
           const cleanCpfCnpj = input.shop.cnpj ? input.shop.cnpj.replace(/\D/g, "") : null;
-          const safeEmail = input.admin.email.toLowerCase().replace(/'/g, "''");
 
-          // Checar por email — usa rawQuery (pool pg direto) para evitar parametrização automática
+          // Checar por email — query parametrizada para prevenir SQL injection
           const emailRows = await db.rawQuery(
-            `SELECT id FROM used_trials WHERE email = '${safeEmail}' LIMIT 1`
+            `SELECT id FROM used_trials WHERE email = $1 LIMIT 1`,
+            [input.admin.email.toLowerCase()]
           );
           if (emailRows.length > 0) {
             throw new Error("Este e-mail já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");
@@ -2271,9 +2271,9 @@ export const appRouter = router({
           // Checar por CPF/CNPJ (coluna pode não existir em instâncias antigas — try/catch seguro)
           if (cleanCpfCnpj && cleanCpfCnpj.length >= 11) {
             try {
-              const safeCpfCnpj = cleanCpfCnpj.replace(/'/g, "''");
               const cpfRows = await db.rawQuery(
-                `SELECT id FROM used_trials WHERE "cpfCnpj" = '${safeCpfCnpj}' LIMIT 1`
+                `SELECT id FROM used_trials WHERE "cpfCnpj" = $1 LIMIT 1`,
+                [cleanCpfCnpj]
               );
               if (cpfRows.length > 0) {
                 throw new Error("Este CPF/CNPJ já utilizou o período de teste gratuito. Para continuar, assine um dos planos diretamente.");

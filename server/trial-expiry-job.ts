@@ -258,7 +258,7 @@ async function runTrialExpiryJob() {
   try {
     resetDailyCache();
 
-    const { getDb, getBarberPushToken, sendExpoPushNotification, getAllBarbers } = await import("./db");
+    const { getDb, getBarberPushToken, sendExpoPushNotification, getAllBarbers, rawQuery } = await import("./db");
     const dbConn = await getDb();
     if (!dbConn) return;
 
@@ -381,11 +381,10 @@ Planos a partir de R$49,90/mês. 💈`;
         // Registrar email e CPF/CNPJ em used_trials quando trial expirou (daysLeft <= 0)
         if (daysLeft <= 0 && tenant.adminEmail) {
           try {
-            const safeEmail = tenant.adminEmail.toLowerCase().replace(/'/g, "");
             const cleanCnpj = tenant.tenantCnpj ? tenant.tenantCnpj.replace(/\D/g, "") : null;
-            const cnpjVal = cleanCnpj ? `'${cleanCnpj}'` : "NULL";
-            await (dbConn as any).execute(
-              `INSERT INTO used_trials (email, "cpfCnpj", "tenantId", reason) VALUES ('${safeEmail}', ${cnpjVal}, ${tenantId}, 'trial_expired') ON CONFLICT DO NOTHING`
+            await rawQuery(
+              `INSERT INTO used_trials (email, "cpfCnpj", "tenantId", reason) VALUES ($1, $2, $3, 'trial_expired') ON CONFLICT DO NOTHING`,
+              [tenant.adminEmail.toLowerCase(), cleanCnpj ?? null, tenantId]
             );
           } catch {}
         }

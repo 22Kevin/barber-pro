@@ -178,7 +178,8 @@ function monthRange(): { start: string; end: string } {
 }
 
 // ─── Sessão simples (JWT-less, cookie assinado com barberId) ──────────────────────────────────────────────────────────
-const SESSION_HMAC_SECRET = process.env.COOKIE_SECRET || process.env.JWT_SECRET || "barber-pro-session-fallback";
+const SESSION_HMAC_SECRET = process.env.COOKIE_SECRET || process.env.JWT_SECRET;
+if (!SESSION_HMAC_SECRET) throw new Error("COOKIE_SECRET or JWT_SECRET env var is required");
 const SECURE_COOKIE = process.env.NODE_ENV === "production" ? "; Secure" : "";
 
 function signSessionPayload(payload: string): string {

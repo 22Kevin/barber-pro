@@ -28,7 +28,8 @@ const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 dias
 
 function getBarberSecret(): Uint8Array {
   // Usa JWT_SECRET do servidor — mesma chave, namespace diferente via issuer/audience
-  const secret = ENV.cookieSecret || "barber-pro-fallback-secret-change-in-production";
+  const secret = ENV.cookieSecret;
+  if (!secret) throw new Error("JWT_SECRET env var is required");
   return new TextEncoder().encode(`barber:${secret}`);
 }
 

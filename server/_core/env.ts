@@ -10,5 +10,5 @@ export const ENV = {
   s3AccessKey: process.env.S3_ACCESS_KEY ?? "",
   s3SecretKey: process.env.S3_SECRET_KEY ?? "",
   s3Bucket: process.env.S3_BUCKET ?? "",
-  superadminPassword: process.env.SUPERADMIN_PASSWORD ?? "barber-superadmin-2025",
+  superadminPassword: process.env.SUPERADMIN_PASSWORD ?? (() => { throw new Error("SUPERADMIN_PASSWORD env var is required"); })(),
 };
