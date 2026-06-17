@@ -29,11 +29,25 @@ import { requireFeature } from "./plan-features";
 import bcrypt from "bcryptjs";
 import { createHmac, timingSafeEqual } from "crypto";
 
-// ─── Validação de uploads base64 (mime allowlist + limite de tamanho) ─────────
+// ─── Validação de uploads base64 (mime allowlist + magic bytes + limite de tamanho) ─────────
 const UPLOAD_IMAGE_MIMES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
 const UPLOAD_VIDEO_MIMES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
 const UPLOAD_MAX_IMAGE = 5 * 1024 * 1024;   // 5 MB
 const UPLOAD_MAX_VIDEO = 20 * 1024 * 1024;  // 20 MB
+
+function validateImageMagicBytes(buf: Buffer): boolean {
+  if (buf.length < 12) return false;
+  // JPEG: FF D8 FF
+  if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) return true;
+  // PNG: 89 50 4E 47
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return true;
+  // GIF: 47 49 46
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return true;
+  // WebP: bytes 8-11 = 57 45 42 50 ("WEBP")
+  if (buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) return true;
+  return false;
+}
+
 function assertValidUpload(b64: string, mime: string, kind: "image" | "media"): Buffer {
   const m = (mime || "").toLowerCase().trim();
   const isImage = UPLOAD_IMAGE_MIMES.has(m);
@@ -43,6 +57,7 @@ function assertValidUpload(b64: string, mime: string, kind: "image" | "media"): 
   const max = isVideo ? UPLOAD_MAX_VIDEO : UPLOAD_MAX_IMAGE;
   if (buf.length > max) throw new Error("Arquivo excede o limite de " + Math.round(max / 1024 / 1024) + "MB");
   if (buf.length < 50) throw new Error("Arquivo inválido ou vazio");
+  if (isImage && !validateImageMagicBytes(buf)) throw new Error("Arquivo inválido: formato não reconhecido");
   return buf;
 }
 

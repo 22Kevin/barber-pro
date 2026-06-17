@@ -298,8 +298,7 @@ export const appRouter = router({
     listWithPermissions: barberProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ ctx, input }) => {
       const barbers = await db.getAllBarbersIncludingInactive(input?.tenantId ?? ctx.barber.tenantId);
       if (!barbers.length) return barbers;
-      const ids = barbers.map((b: any) => b.id).join(',');
-      const rows = await db.rawQuery(`SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id IN (${ids})`);
+      const rows = await db.rawQuery(`SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id = ANY($1::int[])`, [barbers.map((b: any) => b.id)]);
       const map: Record<number, any> = {};
       for (const r of rows) { map[r.id] = r; }
       return barbers.map((b: any) => {
