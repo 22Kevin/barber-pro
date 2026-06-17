@@ -162,8 +162,8 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
 
     /* Cards de serviço */
     .services-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-    .service-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: border-color 0.2s; }
-    .service-card:hover { border-color: var(--primary); }
+    .service-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: border-color 0.2s, transform 0.25s cubic-bezier(0.4,0,0.2,1); will-change: transform; transform: translateZ(0); backface-visibility: hidden; }
+    .service-card:hover { border-color: var(--primary); transform: scale(1.03) translateZ(0); }
     .service-thumb { width: 100%; height: 160px; object-fit: cover; background: var(--surface2); }
     .service-thumb-placeholder { width: 100%; height: 160px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 36px; }
     .service-body { padding: 16px; }
@@ -214,14 +214,14 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
     @media (max-width: 380px) { .tab-cards-grid { grid-template-columns: 1fr; gap: 12px; } }
 
     /* Card unificado — 1 card = 1 elemento completo */
-    .tab-card { background: #1a2035; border: 1px solid rgba(155,48,255,0.15); border-radius: 16px; overflow: hidden; transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; cursor: pointer; display: flex !important; flex-direction: column !important; text-decoration: none; color: inherit; height: 100%; }
-    .tab-card:hover { border-color: rgba(155,48,255,0.5); transform: translateY(-4px); box-shadow: 0 8px 32px rgba(155,48,255,0.15); }
+    .tab-card { background: #1a2035; border: 1px solid rgba(155,48,255,0.15); border-radius: 16px; overflow: hidden; transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), border-color 0.2s ease, box-shadow 0.25s cubic-bezier(0.4,0,0.2,1); will-change: transform; transform: translateZ(0); backface-visibility: hidden; cursor: pointer; display: flex !important; flex-direction: column !important; text-decoration: none; color: inherit; height: 100%; }
+    .tab-card:hover { border-color: rgba(155,48,255,0.5); transform: scale(1.03) translateZ(0); box-shadow: 0 8px 32px rgba(155,48,255,0.15); }
 
     /* Imagem do card */
     .tab-card-img-wrap { position: relative; width: 100%; aspect-ratio: 4/3; overflow: hidden; flex-shrink: 0; }
     .tab-card-img-wrap::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 50%; background: linear-gradient(to bottom, transparent, #1a2035); pointer-events: none; }
-    .tab-card-thumb { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s ease; }
-    .tab-card:hover .tab-card-thumb { transform: scale(1.04); }
+    .tab-card-thumb { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.25s cubic-bezier(0.4,0,0.2,1); will-change: transform; backface-visibility: hidden; }
+    .tab-card:hover .tab-card-thumb { transform: scale(1.03); }
     .tab-card-thumb-placeholder { width: 100%; height: 100%; background: linear-gradient(135deg, #1e1040 0%, #2d1b69 50%, #1a0a3d 100%); display: flex !important; align-items: center; justify-content: center; font-size: 48px; color: rgba(155,48,255,0.5); }
 
     /* Corpo do card */
@@ -1326,8 +1326,8 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
       .step-section-title { font-size: 17px; font-weight: 800; margin-bottom: 16px; }
       .services-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
       @media (max-width: 360px) { .services-grid2 { grid-template-columns: 1fr; } }
-      .svc-card2 { background: var(--surface); border: 2px solid var(--border); border-radius: 16px; overflow: hidden; cursor: pointer; transition: border-color 0.15s, transform 0.15s; position: relative; }
-      .svc-card2:hover { border-color: var(--primary); transform: translateY(-2px); }
+      .svc-card2 { background: var(--surface); border: 2px solid var(--border); border-radius: 16px; overflow: hidden; cursor: pointer; transition: border-color 0.15s, transform 0.25s cubic-bezier(0.4,0,0.2,1); position: relative; will-change: transform; transform: translateZ(0); backface-visibility: hidden; }
+      .svc-card2:hover { border-color: var(--primary); transform: scale(1.03) translateZ(0); }
       .svc-card2.selected { border-color: var(--primary); }
       .svc-card2.selected::after { content: '✓'; position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: #0A0A0A; font-size: 12px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
       .svc-thumb2 { width: 100%; height: 110px; object-fit: cover; background: var(--surface2); display: block; }
