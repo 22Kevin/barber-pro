@@ -75,19 +75,19 @@ export default function DashboardScreen() {
   const dyn = useMemo(() => StyleSheet.create({
     greeting:        { fontSize: 24, fontWeight: "800", color: colors.foreground },
     date:            { fontSize: 12, color: colors.muted, marginTop: 3, letterSpacing: 0.5 },
-    metricCard:      { flex: 1, minWidth: "45%", backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.15)", alignItems: "flex-start", borderLeftWidth: 3 },
-    metricValue:     { fontSize: 28, fontWeight: "900", color: colors.foreground, marginBottom: 4, lineHeight: 32 },
+    metricCard:      { flex: 1, minWidth: "45%", backgroundColor: colors.surface, borderRadius: 16, padding: 16, paddingVertical: 20, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.15)", alignItems: "flex-start", borderLeftWidth: 3 },
+    metricValue:     { fontSize: 32, fontWeight: "800", color: colors.foreground, marginBottom: 4, lineHeight: 36 },
     metricLabel:     { fontSize: 11, color: colors.muted, letterSpacing: 0.5, textTransform: "uppercase" },
     sectionTitle:    { fontSize: 13, fontWeight: "700", color: colors.muted, paddingHorizontal: 20, marginTop: 20, marginBottom: 10, letterSpacing: 2, textTransform: "uppercase" },
     seeAll:          { fontSize: 13, color: colors.primary },
-    quickActionBtn:  { flex: 1, minWidth: "45%", backgroundColor: "#141410", borderRadius: 14, padding: 16, alignItems: "center", borderWidth: 1, borderColor: "#C9A84C33" },
-    quickActionIcon: { width: 48, height: 48, borderRadius: 14, backgroundColor: colors.primary + "18", justifyContent: "center", alignItems: "center", marginBottom: 10 },
-    quickActionLabel:{ fontSize: 12, color: colors.foreground, fontWeight: "600", textAlign: "center", lineHeight: 16 },
+    quickActionBtn:  { flex: 1, minWidth: "45%", height: 110, backgroundColor: "#141410", borderRadius: 14, padding: 16, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#C9A84C33" },
+    quickActionIcon: { borderRadius: 14, backgroundColor: "rgba(201,168,76,0.2)", justifyContent: "center", alignItems: "center", padding: 14 },
+    quickActionLabel:{ fontSize: 13, color: colors.foreground, fontWeight: "600", textAlign: "center", lineHeight: 16, marginTop: 10 },
     emptyCard:       { marginHorizontal: 20, backgroundColor: colors.surface, borderRadius: 12, padding: 20, alignItems: "center", borderWidth: 0.5, borderColor: "rgba(201,168,76,0.15)" },
     emptyText:       { color: colors.muted, fontSize: 14 },
     appointmentCard: { marginHorizontal: 20, marginBottom: 8, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 0.5, borderColor: "rgba(201,168,76,0.15)", flexDirection: "row", overflow: "hidden" },
     aptTime:         { fontSize: 15, fontWeight: "700", color: colors.foreground },
-    aptBarber:       { fontSize: 13, color: colors.muted },
+    aptBarber:       { fontSize: 14, color: colors.muted },
     aptNotes:        { fontSize: 12, color: colors.muted, marginTop: 4, fontStyle: "italic" },
   }), [colors]);
 
@@ -188,6 +188,7 @@ export default function DashboardScreen() {
           onPress={() => setRevenueVisible(v => !v)}
           accessible accessibilityLabel={revenueVisible ? "Ocultar faturamento" : "Revelar faturamento"}
         >
+          <View style={styles.monthRevenueOverlay} pointerEvents="none" />
           <View style={{ flex: 1 }}>
             <Text style={styles.monthRevenueLabel}>
               💵 FATURAMENTO · {monthLabel.toUpperCase()}
@@ -230,18 +231,18 @@ export default function DashboardScreen() {
               style={({ pressed }) => [dyn.metricCard, { borderLeftColor: "#C9A84C" }, pressed && { opacity: 0.75 }]}
               onPress={() => router.push("/admin/(tabs)/agenda" as any)}
             >
-              <View style={[styles.metricIcon, { backgroundColor: colors.primary + "22" }]}>
-                <IconSymbol name="calendar" size={22} color={colors.primary} />
+              <View style={[styles.metricIcon, { backgroundColor: "rgba(201,168,76,0.15)" }]}>
+                <IconSymbol name="calendar" size={28} color="#C9A84C" />
               </View>
               <Animated.Text style={dyn.metricValue}>{animAppts.interpolate({ inputRange: [0, stats?.appointmentsToday || 1], outputRange: ["0", String(stats?.appointmentsToday ?? 0)] })}</Animated.Text>
               <Text style={dyn.metricLabel}>Agendamentos</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [dyn.metricCard, { borderLeftColor: "#4CAF50" }, pressed && { opacity: 0.75 }]}
+              style={({ pressed }) => [dyn.metricCard, { borderLeftColor: "#C9A84C" }, pressed && { opacity: 0.75 }]}
               onPress={() => router.push("/admin/(tabs)/financial" as any)}
             >
-              <View style={[styles.metricIcon, { backgroundColor: "#4CAF5022" }]}>
-                <IconSymbol name="dollarsign.circle.fill" size={22} color="#4CAF50" />
+              <View style={[styles.metricIcon, { backgroundColor: "rgba(201,168,76,0.15)" }]}>
+                <IconSymbol name="dollarsign.circle.fill" size={28} color="#C9A84C" />
               </View>
               <Text style={dyn.metricValue}>{formatCurrency(stats?.revenueToday ?? 0)}</Text>
               <Text style={dyn.metricLabel}>Receita Hoje</Text>
@@ -252,29 +253,26 @@ export default function DashboardScreen() {
                   </Text>
                 </View>
               )}
-              <Text style={{ fontSize: 10, color: "#4CAF5066", marginTop: 2 }}>→ Financeiro</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [dyn.metricCard, { borderLeftColor: "#2196F3" }, pressed && { opacity: 0.75 }]}
+              style={({ pressed }) => [dyn.metricCard, { borderLeftColor: "#C9A84C" }, pressed && { opacity: 0.75 }]}
               onPress={() => router.push("/admin/(tabs)/clients" as any)}
             >
-              <View style={[styles.metricIcon, { backgroundColor: "#2196F322" }]}>
-                <IconSymbol name="person.2.fill" size={22} color="#2196F3" />
+              <View style={[styles.metricIcon, { backgroundColor: "rgba(201,168,76,0.15)" }]}>
+                <IconSymbol name="person.2.fill" size={28} color="#C9A84C" />
               </View>
               <Animated.Text style={dyn.metricValue}>{animClients.interpolate({ inputRange: [0, stats?.clientsToday || 1], outputRange: ["0", String(stats?.clientsToday ?? 0)] })}</Animated.Text>
               <Text style={dyn.metricLabel}>Clientes</Text>
-              <Text style={{ fontSize: 10, color: "#2196F366", marginTop: 6 }}>→ Clientes</Text>
             </Pressable>
             <Pressable
-              style={({ pressed }) => [dyn.metricCard, { borderLeftColor: "#FF9800" }, pressed && { opacity: 0.75 }]}
+              style={({ pressed }) => [dyn.metricCard, { borderLeftColor: "#C9A84C" }, pressed && { opacity: 0.75 }]}
               onPress={() => router.push("/admin/(tabs)/agenda" as any)}
             >
-              <View style={[styles.metricIcon, { backgroundColor: "#FF980022" }]}>
-                <IconSymbol name="clock.fill" size={22} color="#FF9800" />
+              <View style={[styles.metricIcon, { backgroundColor: "rgba(201,168,76,0.15)" }]}>
+                <IconSymbol name="clock.fill" size={28} color="#C9A84C" />
               </View>
               <Animated.Text style={dyn.metricValue}>{animPending.interpolate({ inputRange: [0, stats?.pendingAppointments || 1], outputRange: ["0", String(stats?.pendingAppointments ?? 0)] })}</Animated.Text>
               <Text style={dyn.metricLabel}>Pendentes</Text>
-              <Text style={{ fontSize: 10, color: "#FF980066", marginTop: 6 }}>→ Agenda</Text>
             </Pressable>
           </View>
         )}
@@ -283,29 +281,29 @@ export default function DashboardScreen() {
         <Text style={dyn.sectionTitle}>Ações Rápidas</Text>
         <View style={styles.quickActions}>
           <Pressable style={({ pressed }) => [dyn.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push("/admin/(tabs)/agenda" as any)}>
-            <View style={dyn.quickActionIcon}><IconSymbol name="calendar.badge.plus" size={22} color={colors.primary} /></View>
+            <View style={dyn.quickActionIcon}><IconSymbol name="calendar.badge.plus" size={30} color={colors.primary} /></View>
             <Text style={dyn.quickActionLabel}>Novo Agendamento</Text>
           </Pressable>
           <Pressable style={({ pressed }) => [dyn.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push("/admin/(tabs)/clients" as any)}>
-            <View style={dyn.quickActionIcon}><IconSymbol name="person.badge.plus" size={22} color={colors.primary} /></View>
+            <View style={dyn.quickActionIcon}><IconSymbol name="person.badge.plus" size={30} color={colors.primary} /></View>
             <Text style={dyn.quickActionLabel}>Novo Cliente</Text>
           </Pressable>
           <Pressable style={({ pressed }) => [dyn.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push("/admin/(tabs)/financial" as any)}>
-            <View style={dyn.quickActionIcon}><IconSymbol name="dollarsign.circle.fill" size={22} color={colors.primary} /></View>
+            <View style={dyn.quickActionIcon}><IconSymbol name="dollarsign.circle.fill" size={30} color={colors.primary} /></View>
             <Text style={dyn.quickActionLabel}>Nova Venda</Text>
           </Pressable>
           <Pressable style={({ pressed }) => [dyn.quickActionBtn, pressed && { opacity: 0.7 }]} onPress={() => router.push("/admin/(tabs)/services" as any)}>
-            <View style={dyn.quickActionIcon}><IconSymbol name="scissors" size={22} color={colors.primary} /></View>
+            <View style={dyn.quickActionIcon}><IconSymbol name="scissors" size={30} color={colors.primary} /></View>
             <Text style={dyn.quickActionLabel}>Serviços</Text>
           </Pressable>
         </View>
 
         {/* Card Página Pública */}
         {(current?.slug ?? tenant?.slug) && (
-          <View style={{ marginHorizontal: 16, marginBottom: 12, backgroundColor: '#1A1505', borderRadius: 14, borderWidth: 1, borderColor: '#C9A84C33', overflow: 'hidden' }}>
+          <View style={{ marginHorizontal: 16, marginBottom: 12, backgroundColor: '#1A1505', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(201,168,76,0.3)', overflow: 'hidden' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderBottomWidth: 1, borderBottomColor: '#C9A84C22' }}>
               <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: '#C9A84C22', borderWidth: 1, borderColor: '#C9A84C44', justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ fontSize: 18 }}>✂️</Text>
+                <IconSymbol name="link" size={18} color="#C9A84C" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: '#ECEDEE' }}>{current?.name ?? tenant?.name}</Text>
@@ -314,15 +312,15 @@ export default function DashboardScreen() {
             </View>
             <View style={{ flexDirection: 'row' }}>
               <View style={{ flex: 1, padding: 12, alignItems: 'center', borderRightWidth: 1, borderRightColor: '#C9A84C22' }}>
-                <Text style={{ fontSize: 20, fontWeight: '900', color: '#C9A84C' }}>{appointments.length}</Text>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: '#C9A84C' }}>{appointments.length}</Text>
                 <Text style={{ fontSize: 10, color: '#888', marginTop: 2 }}>agendamentos hoje</Text>
               </View>
               <View style={{ flex: 1, padding: 12, alignItems: 'center', borderRightWidth: 1, borderRightColor: '#C9A84C22' }}>
-                <Text style={{ fontSize: 20, fontWeight: '900', color: '#C9A84C' }}>{appointments.filter((a: any) => a.source === 'online' || a.source === 'public').length}</Text>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: '#C9A84C' }}>{appointments.filter((a: any) => a.source === 'online' || a.source === 'public').length}</Text>
                 <Text style={{ fontSize: 10, color: '#888', marginTop: 2 }}>agendados online</Text>
               </View>
               <View style={{ flex: 1, padding: 12, alignItems: 'center' }}>
-                <Text style={{ fontSize: 20, fontWeight: '900', color: '#C9A84C' }}>{String(stats?.avgRating ?? '—')}</Text>
+                <Text style={{ fontSize: 22, fontWeight: '800', color: '#C9A84C' }}>{String(stats?.avgRating ?? '—')}</Text>
                 <Text style={{ fontSize: 10, color: '#888', marginTop: 2 }}>{(stats?.reviewCount ?? 0) === 1 ? 'avaliação' : 'avaliações'}</Text>
               </View>
             </View>
@@ -425,11 +423,11 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   greetingRow:  { padding: 20, paddingTop: 16, paddingBottom: 8 },
   metricsGrid:  { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 12, gap: 10, marginBottom: 8 },
-  metricIcon:   { width: 40, height: 40, borderRadius: 10, justifyContent: "center", alignItems: "center", marginBottom: 10 },
+  metricIcon:   { width: 44, height: 44, borderRadius: 10, justifyContent: "center", alignItems: "center", marginBottom: 10 },
   sectionHeader:{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginTop: 16, marginBottom: 10 },
   quickActions: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 12, gap: 10, marginBottom: 4 },
   statusBar:    { width: 4 },
-  aptContent:   { flex: 1, padding: 14 },
+  aptContent:   { flex: 1, padding: 14, paddingVertical: 14 },
   aptRow:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   statusBadge:  { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   statusText:   { fontSize: 11, fontWeight: "600" },
@@ -437,13 +435,18 @@ const styles = StyleSheet.create({
   pctText:  { fontSize: 10, fontWeight: "700" },
   monthRevenueCard: {
     flexDirection: "row", alignItems: "center", gap: 16,
-    backgroundColor: "#141410",
+    backgroundColor: "#1A1A1A",
     borderRadius: 16, padding: 20,
     borderWidth: 1, borderColor: "rgba(201,168,76,0.3)",
     marginBottom: 16,
+    overflow: "hidden",
   },
-  monthRevenueLabel: { fontSize: 10, color: "#C9A84C88", fontWeight: "800", letterSpacing: 2, marginBottom: 6 },
-  monthRevenueValue: { fontSize: 28, fontWeight: "900", color: "#C9A84C", letterSpacing: -0.5, marginBottom: 4 },
+  monthRevenueOverlay: {
+    position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: "rgba(201,168,76,0.05)",
+  },
+  monthRevenueLabel: { fontSize: 11, color: "#C9A84C88", fontWeight: "800", letterSpacing: 2, marginBottom: 6 },
+  monthRevenueValue: { fontSize: 36, fontWeight: "800", color: "#C9A84C", letterSpacing: -0.5, marginBottom: 4 },
   monthRevenueMask: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 },
   monthRevenueDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#C9A84C" },
   monthRevenueHint: { fontSize: 11, color: "#444" },
@@ -457,7 +460,7 @@ const styles = StyleSheet.create({
   trialBannerIcon:   { fontSize: 14 },
   trialBannerText:   { flex: 1, fontSize: 13, color: "#C9A84C", fontWeight: "600" },
   trialBannerTextUrgent: { color: "#F87171" },
-  lowStockBanner: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginTop: 12, marginBottom: 4, backgroundColor: "#1A0D00", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: "#F9730044" },
+  lowStockBanner: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginTop: 12, marginBottom: 4, backgroundColor: "#1A0D00", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14, borderWidth: 1, borderColor: "#F9730044" },
   lowStockIcon: { fontSize: 20 },
   lowStockTitle: { fontSize: 13, color: "#F97316", fontWeight: "700", marginBottom: 2 },
   lowStockSub: { fontSize: 11, color: "#9CA3AF" },
