@@ -1,6 +1,5 @@
 import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink } from "@trpc/client";
-import superjson from "superjson";
 import type { AppRouter } from "@/server/routers";
 import { getApiBaseUrl, BARBER_JWT_KEY } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
@@ -39,13 +38,6 @@ function isJwtExpiredOrExpiringSoon(token: string): boolean {
 
 export const BARBER_REFRESH_JWT_KEY = "barber_refresh_jwt_token";
 
-/**
- * tRPC React client for type-safe API calls.
- *
- * IMPORTANT (tRPC v11): The `transformer` must be inside `httpBatchLink`,
- * NOT at the root createClient level. This ensures client and server
- * use the same serialization format (superjson).
- */
 export const trpc = createTRPCReact<AppRouter>();
 
 /**
@@ -167,8 +159,6 @@ export function createTRPCClient() {
     links: [
       httpBatchLink({
         url: `${getApiBaseUrl()}/api/trpc`,
-        // tRPC v11: transformer MUST be inside httpBatchLink, not at root
-        transformer: superjson,
         async headers() {
           // Prioridade: JWT do barbeiro > token de sessão OAuth
           let barberToken = await getBarberJwt();
