@@ -19,6 +19,7 @@
     "qr": "node scripts/generate_qr.mjs"
   },
   "dependencies": {
+    "@expo/metro-runtime": "6.1.2",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-google-signin/google-signin": "^16.1.2",
@@ -122,12 +123,6 @@
         "@shopify/react-native-skia",
         "@react-navigation/bottom-tabs"
       ]
-    }
-  },
-  "pnpm": {
-    "overrides": {
-      "@react-native/babel-preset": "0.81.5",
-      "@react-native/metro-config": "0.81.5"
     }
   }
 }
