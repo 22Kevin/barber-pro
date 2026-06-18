@@ -5,13 +5,13 @@ import { NetworkBanner } from "@/components/network-banner";
 import { ToastProvider } from "@/components/toast";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 // Keep splash screen visible while fonts/resources load
 SplashScreen.preventAutoHideAsync().catch(() => {});
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
-import { Platform } from "react-native";
+import { Platform, View, Text } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import {
@@ -28,6 +28,27 @@ import { NotificationsSetup } from "@/components/notifications-setup";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
+
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: string | null }
+> {
+  state = { error: null };
+  static getDerivedStateFromError(e: Error) {
+    return { error: e.message };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, backgroundColor: "#0A0A0A", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <Text style={{ color: "#C9A84C", fontSize: 18, fontWeight: "700", marginBottom: 12 }}>Erro ao iniciar</Text>
+          <Text style={{ color: "#fff", fontSize: 12, textAlign: "center" }}>{this.state.error}</Text>
+        </View>
+      );
+    }
+    return this.props.children as React.ReactElement;
+  }
+}
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -128,26 +149,30 @@ export default function RootLayout() {
 
   if (shouldOverrideSafeArea) {
     return (
-      <ThemeProvider>
-        <SafeAreaProvider initialMetrics={providerInitialMetrics}>
-          <SafeAreaFrameContext.Provider value={frame}>
-            <SafeAreaInsetsContext.Provider value={insets}>
-              {content}
-            </SafeAreaInsetsContext.Provider>
-          </SafeAreaFrameContext.Provider>
-        </SafeAreaProvider>
-      </ThemeProvider>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <SafeAreaProvider initialMetrics={providerInitialMetrics}>
+            <SafeAreaFrameContext.Provider value={frame}>
+              <SafeAreaInsetsContext.Provider value={insets}>
+                {content}
+              </SafeAreaInsetsContext.Provider>
+            </SafeAreaFrameContext.Provider>
+          </SafeAreaProvider>
+        </ThemeProvider>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <ThemeProvider>
-      <SafeAreaProvider initialMetrics={providerInitialMetrics}>
-        {content}
-        <NetworkBanner />
-        <ToastProvider />
-      </SafeAreaProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <SafeAreaProvider initialMetrics={providerInitialMetrics}>
+          {content}
+          <NetworkBanner />
+          <ToastProvider />
+        </SafeAreaProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 // cache bust 1780082832
