@@ -1313,10 +1313,17 @@ export async function getDashboardStats(date: string, tenantId?: number | null) 
     clientsPct = pct(uniqueClients, clientsPrev);
   } catch { /* dados de comparação opcionais */ }
 
+  const [clientCountRow] = await db
+    .select({ count: count() })
+    .from(clients)
+    .where(and(eq(clients.isActive, true), eq(clients.tenantId, tenantId)));
+  const totalClients = Number(clientCountRow?.count ?? 0);
+
   return {
     appointmentsToday: todayAppointments.length,
     revenueToday,
     clientsToday: uniqueClients,
+    totalClients,
     pendingAppointments: pending,
     avgRating: 0,
     reviewCount: 0,

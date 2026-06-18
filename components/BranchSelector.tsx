@@ -130,10 +130,12 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
 
   const switchMutation = trpc.branches.switch.useMutation();
   const [isSwitching, setIsSwitching] = useState(false);
+  const isSwitchingRef = useRef(false);
 
   const switchBranch = useCallback(
     (branch: Branch) => {
-      if (isSwitching) return;
+      if (isSwitchingRef.current) return;
+      isSwitchingRef.current = true;
       setIsSwitching(true);
       closeSelector();
       switchMutation.mutate(
@@ -145,6 +147,7 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
             setCurrent(branch);
             await login(data.barber as any);
             setTimeout(() => { queryClient.invalidateQueries(); }, 300);
+            isSwitchingRef.current = false;
             setIsSwitching(false);
           },
           onError: (e: any) => {
@@ -153,12 +156,13 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
               "Erro ao trocar de unidade",
               "Não foi possível trocar de unidade. Tente novamente.",
             );
+            isSwitchingRef.current = false;
             setIsSwitching(false);
           },
         },
       );
     },
-    [isSwitching, closeSelector, switchMutation, login, queryClient],
+    [closeSelector, switchMutation, login, queryClient],
   );
 
   return (

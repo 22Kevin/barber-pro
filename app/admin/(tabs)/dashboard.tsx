@@ -130,7 +130,7 @@ export default function DashboardScreen() {
   // Animated counters for metrics
   const animAppts    = useCountUp(stats?.appointmentsToday ?? 0);
   const animPending  = useCountUp(stats?.pendingAppointments ?? 0);
-  const animClients  = useCountUp(stats?.clientsToday ?? 0);
+  const animClients  = useCountUp(stats?.totalClients ?? 0);
 
   const getBarberName = (id: number) => barbers.find(b => b.id === id)?.name ?? "—";
 
@@ -261,7 +261,7 @@ export default function DashboardScreen() {
               <View style={[styles.metricIcon, { backgroundColor: "rgba(201,168,76,0.15)" }]}>
                 <IconSymbol name="person.2.fill" size={28} color="#C9A84C" />
               </View>
-              <Animated.Text style={dyn.metricValue}>{animClients.interpolate({ inputRange: [0, stats?.clientsToday || 1], outputRange: ["0", String(stats?.clientsToday ?? 0)] })}</Animated.Text>
+              <Animated.Text style={dyn.metricValue}>{animClients.interpolate({ inputRange: [0, stats?.totalClients || 1], outputRange: ["0", String(stats?.totalClients ?? 0)] })}</Animated.Text>
               <Text style={dyn.metricLabel}>Clientes</Text>
             </Pressable>
             <Pressable
