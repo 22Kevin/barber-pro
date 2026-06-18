@@ -1,5 +1,6 @@
 import { createTRPCReact } from "@trpc/react-query";
 import { httpBatchLink } from "@trpc/client";
+import superjson from "superjson";
 import type { AppRouter } from "@/server/routers";
 import { getApiBaseUrl, BARBER_JWT_KEY } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
@@ -158,6 +159,7 @@ export function createTRPCClient() {
   return trpc.createClient({
     links: [
       httpBatchLink({
+        transformer: superjson,
         url: `${getApiBaseUrl()}/api/trpc`,
         async headers() {
           // Prioridade: JWT do barbeiro > token de sessão OAuth
