@@ -3070,7 +3070,6 @@ async function renderAgenda(req: Request, res: Response) {
             var date = document.querySelector('#newApptModal [name="date"]')?.value;
             var serviceId = document.getElementById('newApptServiceSelect')?.value;
             var barberId = document.querySelector('#newApptModal [name="barberId"]')?.value;
-            console.log('[slots] date:', date, 'barberId:', barberId, 'serviceId:', serviceId);
             var duration = 30;
             var sel = document.getElementById('newApptServiceSelect');
             if (sel && sel.value) {
@@ -3438,7 +3437,6 @@ async function renderAgenda(req: Request, res: Response) {
                 );
               }
               // Concluido: modal de pagamento
-              console.log('[concluir] payment:', JSON.stringify(d.payment));
               if (status === 'completed') {
                 if (d.payment) {
                   showPaymentModal(d.payment);
@@ -5072,7 +5070,6 @@ async function renderConfiguracoes(req: Request, res: Response) {
       const rows = await db.rawQuery(
         `SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id IN (${ids})`
       );
-      console.log('[allBarbers] rawQuery rows:', rows.length, rows.map((r: any) => ({id:r.id, role:r.role, hasPerms:!!r.permissions})));
       const dataMap: Record<number, any> = {};
       for (const row of rows) { dataMap[row.id] = row; }
       for (const b of allBarbers) {
@@ -7939,11 +7936,9 @@ export function registerAdminRoutes(app: Express): void {
       if (!email || !password) return res.redirect("/admin/login?error=1");
 
       const barber = await db.getBarberByEmail(email);
-      console.log(`[login] email=${email} found=${!!barber} isActive=${barber?.isActive} hasHash=${!!barber?.passwordHash}`);
       if (!barber || !barber.isActive || !barber.passwordHash) return res.redirect("/admin/login?error=1");
 
       const valid = await bcrypt.compare(password, barber.passwordHash);
-      console.log(`[login] valid=${valid}`);
       if (!valid) return res.redirect("/admin/login?error=1");
 
       const rememberMe = remember === "1" || remember === "true";
@@ -9074,7 +9069,6 @@ document.addEventListener('input', function(e) {
       const id = parseInt(req.body.id);
       const status = req.body.status as string;
       const validStatuses = ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "pending_approval"];
-      console.log("[appointment-status] id:", id, "status:", status);
       if (!id || isNaN(id) || !validStatuses.includes(status)) {
         res.status(400).json({ error: "Parâmetros inválidos: id=" + id + " status=" + status });
         return;
@@ -9173,7 +9167,6 @@ document.addEventListener('input', function(e) {
             appointmentId: id,
             barberId: appt?.barberId,
           };
-          console.log("[appointment-status/completed] paymentData:", JSON.stringify({ amount: servicePrice, serviceId: svc?.id ?? appt?.serviceId, serviceName }));
 
           // WhatsApp de avaliação
           if (client?.phone) {
@@ -9653,7 +9646,6 @@ document.addEventListener('input', function(e) {
       // Caso 2: target é uma filial da minha rede
       const targetIsMyBranch = targetParentId === matrixId;
 
-      console.log('[trocar] barbeiro:', session.barberId, 'atual:', adminBarber.tenantId, 'myParent:', myParent, 'matrixId:', matrixId, 'targetId:', targetTenantId, 'targetParent:', targetParentId, 'isMatrix:', targetIsMyMatrix, 'isBranch:', targetIsMyBranch);
 
       if (!targetIsMyMatrix && !targetIsMyBranch) {
         res.redirect('/admin?erro=acesso_restrito'); return;

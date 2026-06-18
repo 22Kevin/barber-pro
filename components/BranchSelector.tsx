@@ -81,15 +81,9 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
   const tenantId = barber?.tenantId ?? null;
   const queryClient = useQueryClient();
 
-  console.log("[BranchProvider] barber:", JSON.stringify(barber));
-  console.log("[BranchProvider] tenantId:", tenantId);
-
   const { data, isLoading } = trpc.branches.list.useQuery(
     tenantId != null ? { tenantId } : skipToken,
   );
-
-  console.log("[BranchProvider] query data:", JSON.stringify(data));
-  console.log("[BranchProvider] isLoading:", isLoading);
 
   // Mapear branches adicionando isMatrix inferido via matrixId do servidor
   const branches: Branch[] = (data?.branches ?? []).map((b: any) => ({
@@ -100,15 +94,11 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     address: b.address,
   }));
 
-  console.log("[BranchProvider] branches:", JSON.stringify(branches));
-
   const [current, setCurrent] = useState<Branch | null>(null);
   const activeCurrent =
     current ??
     branches.find((b) => b.id === (data?.currentTenantId ?? tenantId)) ??
     null;
-
-  console.log("[BranchProvider] activeCurrent:", JSON.stringify(activeCurrent));
 
   const openSelector = useCallback(() => {
     setSheetVisible(true);
@@ -279,8 +269,6 @@ function BranchCard({ branch, isActive }: { branch: Branch; isActive: boolean })
 // ─── Título do Header ──────────────────────────────────────────────────────────
 export function HeaderBranchTitle() {
   const { current, branches, openSelector } = useBranch();
-
-  console.log("[HeaderBranchTitle] render — branches.length:", branches.length, "current:", current?.name);
 
   if (branches.length <= 1) {
     return (

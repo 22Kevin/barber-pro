@@ -496,7 +496,6 @@ export const appRouter = router({
           if (!targetRows[0]) throw new TRPCError({ code: 'NOT_FOUND' });
           targetParentId = targetRows[0].parentTenantId ?? null;
         }
-        console.log("[branches.switch] barber:", ctx.barber?.barberId, "tenantId:", ctx.barber?.tenantId, "branchId input:", input.branchId, "matrixId:", matrixId, "targetParentId:", targetParentId);
         if (targetTenantId !== matrixId && targetParentId !== matrixId) throw new TRPCError({ code: 'FORBIDDEN', message: 'Filial não pertence à sua rede' });
         let mirror = await db.getMirrorAdmin(targetTenantId, barber.email);
         if (!mirror) {
@@ -2484,7 +2483,6 @@ export const appRouter = router({
               const qty = (orderBefore as any).quantity ?? 1;
               const newStock = Math.max(0, product.stockQuantity - qty);
               await db.updateProduct(product.id, { stockQuantity: newStock });
-              console.log(`[productOrders] Estoque "${product.name}": ${product.stockQuantity} → ${newStock}`);
             }
           } catch (stockErr: any) {
             console.error("[productOrders] Erro ao abater estoque:", stockErr.message);
