@@ -4,7 +4,6 @@ import { hapticSuccess, hapticError, hapticMedium, hapticLight } from "@/lib/hap
 import { toast } from "@/components/toast";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -286,7 +285,7 @@ export default function AgendaScreen() {
       }
 
       closeNewModal();
-      const clientName = clients.find((c: any) => c.id === selectedClientId)?.name ?? "Cliente";
+      const clientName = (clientsQuery.data ?? []).find((c: any) => c.id === selectedClientId)?.name ?? "Cliente";
       const serviceNames = selectedServices.map((s: any) => s.name).join(", ");
       toast.confirm(
         "Agendamento confirmado! ✓",
@@ -299,16 +298,15 @@ export default function AgendaScreen() {
         const extraH = Math.floor(extra / 60);
         const extraM = extra % 60;
         const extraStr = extraH > 0 ? `${extraH}h${extraM > 0 ? extraM + "min" : ""}` : `${extraM}min`;
-        Alert.alert(
-          "⚠️ Agendamento aguarda aprovação",
-          `Este agendamento termina às ${endHHMM}, ou seja ${extraStr} após o horário de fechamento (${closeHHMM}).\n\nO agendamento foi criado com status "Aguarda aprovação". Você pode aprovar ou recusar na tela de detalhes.`,
-          [{ text: "Entendido" }]
+        toast.info(
+          "⚠️ Aguarda aprovação",
+          `Termina às ${endHHMM}, ${extraStr} após o fechamento (${closeHHMM}). Aprove na tela de detalhes.`
         );
       } else {
         // Agendamento criado normalmente — toast já foi exibido acima
       }
     },
-    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
+    onError: (e) => { hapticError(); toast.error("Erro", e.message); },
   });
 
   const approveMutation = trpc.appointments.approveOvertime.useMutation({
@@ -316,14 +314,13 @@ export default function AgendaScreen() {
       utils.appointments.byDateRange.invalidate(); utils.appointments.allByDateRange.invalidate();
       utils.dashboard.stats.invalidate();
       setShowDetailModal(false);
-      Alert.alert(
-        variables.approve ? "✅ Aprovado" : "❌ Recusado",
-        variables.approve
-          ? "Agendamento confirmado! O cliente será notificado."
-          : "Agendamento cancelado. O cliente será notificado."
-      );
+      if (variables.approve) {
+        toast.success("✅ Aprovado", "Agendamento confirmado! O cliente será notificado.");
+      } else {
+        toast.error("❌ Recusado", "Agendamento cancelado. O cliente será notificado.");
+      }
     },
-    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
+    onError: (e) => { hapticError(); toast.error("Erro", e.message); },
   });
 
   const updateMutation = trpc.appointments.update.useMutation({
@@ -335,7 +332,7 @@ export default function AgendaScreen() {
       utils.dashboard.stats.invalidate();
       setShowDetailModal(false);
     },
-    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
+    onError: (e) => { hapticError(); toast.error("Erro", e.message); },
   });
   const cancelWithReasonMutation = trpc.appointments.cancelWithReason.useMutation({
     onSuccess: () => {
@@ -345,7 +342,7 @@ export default function AgendaScreen() {
       setCancelReason("");
       setCancelApptId(null);
     },
-    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
+    onError: (e) => { hapticError(); toast.error("Erro", e.message); },
   });
   function handleCancelWithReason(id: number) {
     setCancelApptId(id);
@@ -380,9 +377,9 @@ export default function AgendaScreen() {
   }
 
   function handleCreateAppointment() {
-    if (!selectedClient) { Alert.alert("Atenção", "Selecione um cliente."); return; }
-    if (selectedServices.length === 0) { Alert.alert("Atenção", "Selecione ao menos um serviço."); return; }
-    if (!selectedTime) { Alert.alert("Atenção", "Selecione um horário."); return; }
+    if (!selectedClient) { toast.info("Selecione um cliente."); return; }
+    if (selectedServices.length === 0) { toast.info("Selecione ao menos um serviço."); return; }
+    if (!selectedTime) { toast.info("Selecione um horário."); return; }
     const endTime = addMinutes(selectedTime, totalDuration);
     // Monta string de nomes de serviços para exibir no card da agenda
     const serviceNamesStr = selectedServices.length > 1
@@ -403,48 +400,36 @@ export default function AgendaScreen() {
 
   function handleStatusChange(id: number, status: string) {
     if (status === "completed") {
-      Alert.alert("Alterar Status", `Mudar para "${STATUS_CONFIG[status]?.label}"?`, [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Confirmar",
-          onPress: () => {
-            updateMutation.mutate({ id, status: status as any }, {
-              onSuccess: () => {
-                const allApts = [
-                  ...(appointmentsQuery.data ?? []),
-                  ...(allAppointmentsQuery.data ?? []),
-                ];
-                const apt = allApts.find((a: any) => a.id === id);
-                if (apt) {
-                  const service = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
-                  const client = (clientsQuery.data ?? []).find((c: any) => c.id === apt.clientId);
-                  // Calcular preço — tentar service.price, depois apt.servicePrice, depois 0
-                  const rawPrice = service?.price ?? apt.servicePrice ?? "0";
-                  const numericPrice = parseFloat(String(rawPrice));
-                  const safePrice = isNaN(numericPrice) ? "0" : String(numericPrice);
-                  setPaymentAppointment({
-                    ...apt,
-                    clientName: client?.name ?? apt.clientName,
-                    clientPhone: client?.phone ?? apt.clientPhone,
-                    serviceName: service?.name ?? apt.serviceName ?? apt.serviceNames ?? "Serviço",
-                    servicePrice: safePrice,
-                    serviceId: apt.serviceId ?? service?.id ?? 0,
-                  });
-                  setShowDetailModal(false);
-                  setShowPaymentModal(true);
-                  setPaymentPendingMap(prev => ({ ...prev, [id]: true }));
-                }
-              },
+      updateMutation.mutate({ id, status: status as any }, {
+        onSuccess: () => {
+          const allApts = [
+            ...(appointmentsQuery.data ?? []),
+            ...(allAppointmentsQuery.data ?? []),
+          ];
+          const apt = allApts.find((a: any) => a.id === id);
+          if (apt) {
+            const service = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
+            const client = (clientsQuery.data ?? []).find((c: any) => c.id === apt.clientId);
+            const rawPrice = service?.price ?? apt.servicePrice ?? "0";
+            const numericPrice = parseFloat(String(rawPrice));
+            const safePrice = isNaN(numericPrice) ? "0" : String(numericPrice);
+            setPaymentAppointment({
+              ...apt,
+              clientName: client?.name ?? apt.clientName,
+              clientPhone: client?.phone ?? apt.clientPhone,
+              serviceName: service?.name ?? apt.serviceName ?? apt.serviceNames ?? "Serviço",
+              servicePrice: safePrice,
+              serviceId: apt.serviceId ?? service?.id ?? 0,
             });
-          },
+            setShowDetailModal(false);
+            setShowPaymentModal(true);
+            setPaymentPendingMap(prev => ({ ...prev, [id]: true }));
+          }
         },
-      ]);
+      });
       return;
     }
-    Alert.alert("Alterar Status", `Mudar para "${STATUS_CONFIG[status]?.label}"?`, [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Confirmar", onPress: () => updateMutation.mutate({ id, status: status as any }) },
-    ]);
+    updateMutation.mutate({ id, status: status as any });
   }
 
   function handleAppointmentCompleted(apt: any) {
@@ -824,12 +809,12 @@ export default function AgendaScreen() {
                     const tenantId = barber?.tenantId ?? 0;
                     const link = await utils.asaasPayments.getPaymentLink.fetch({ appointmentId: apptId, tenantId });
                     const phone = apt.clientPhone?.replace(/\D/g, "");
-                    if (!phone) { Alert.alert("Atenção", "Cliente sem telefone cadastrado."); return; }
+                    if (!phone) { toast.info("Cliente sem telefone cadastrado."); return; }
                     const url = link?.invoiceUrl ?? link?.pixCopyCola ?? null;
-                    if (!url) { Alert.alert("Atenção", "Nenhum link de pagamento encontrado para este agendamento."); return; }
+                    if (!url) { toast.info("Nenhum link de pagamento encontrado."); return; }
                     const msg = encodeURIComponent(`Olá ${apt.clientName}! Segue o link para pagamento do seu agendamento: ${url}`);
                     Linking.openURL(`https://wa.me/55${phone}?text=${msg}`);
-                  } catch { Alert.alert("Erro", "Não foi possível buscar o link de pagamento."); }
+                  } catch { toast.error("Não foi possível buscar o link de pagamento."); }
                 }}
                 paymentPending={apt.status === "completed" ? (paymentPendingMap[apt.id] ?? true) : undefined}
               />
@@ -1215,7 +1200,7 @@ export default function AgendaScreen() {
                       style={[styles.saveBtn, { marginBottom: 16, opacity: editServices.length === 0 ? 0.5 : 1 }]}
                       onPress={() => {
                         if (editServices.length === 0) {
-                          Alert.alert("Atenção", "Selecione ao menos um serviço.");
+                          toast.info("Selecione ao menos um serviço.");
                           return;
                         }
                         const newEndTime = addMinutes(selectedAppointment.startTime, editTotalDuration);
