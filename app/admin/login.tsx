@@ -55,8 +55,7 @@ export default function AdminLoginScreen() {
   useEffect(() => {
     if (!GoogleSignin || !WEB_CLIENT_ID) return;
     try {
-      const ANDROID_CLIENT_ID = "398675034994-221cpiiammapce83jsp0iskibgjufrb0.apps.googleusercontent.com";
-      GoogleSignin.configure({ webClientId: WEB_CLIENT_ID, iosClientId: IOS_CLIENT_ID || undefined, androidClientId: ANDROID_CLIENT_ID, offlineAccess: false });
+      GoogleSignin.configure({ webClientId: WEB_CLIENT_ID, iosClientID: IOS_CLIENT_ID || undefined, offlineAccess: false });
     } catch {}
   }, []);
 
