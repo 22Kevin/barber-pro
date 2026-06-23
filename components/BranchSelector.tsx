@@ -141,11 +141,8 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
             setIsSwitching(false);
           },
           onError: (e: any) => {
-            console.error("[BranchSelector] switchBranch error:", e.message);
-            Alert.alert(
-              "Erro ao trocar de unidade",
-              "Não foi possível trocar de unidade. Tente novamente.",
-            );
+            console.error("[switchBranch] erro:", e);
+            Alert.alert("Erro", e.message || "Não foi possível trocar de unidade.");
             isSwitchingRef.current = false;
             setIsSwitching(false);
           },

@@ -76,6 +76,16 @@ function toMinutes(t: string) {
   return h * 60 + m;
 }
 
+function isSlotBlocked(slot: string, durationMin: number, bookedAppts: any[]) {
+  const slotStart = toMinutes(slot);
+  const slotEnd = slotStart + durationMin;
+  return bookedAppts.some((a: any) => {
+    const aStart = toMinutes((a.startTime ?? "00:00").substring(0, 5));
+    const aEnd = toMinutes((a.endTime ?? "00:30").substring(0, 5));
+    return slotStart < aEnd && slotEnd > aStart;
+  });
+}
+
 /**
  * Gera slots de horário respeitando:
  * - Intervalo de almoço do barbeiro
@@ -185,6 +195,14 @@ export default function AgendaScreen() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelApptId, setCancelApptId] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  // Quando o modal de novo agendamento abre para managers, limpa o barbeiro selecionado
+  useEffect(() => {
+    if (showNewModal && (barber?.role === "super_admin" || barber?.role === "receptionist")) {
+      setSelectedBarber(null);
+      setSelectedTime("");
+    }
+  }, [showNewModal]);
+
   // Filtro de barbeiro para managers (null = todos)
   const [filterBarberId, setFilterBarberId] = useState<number | null>(null);
   const isManager = barber?.role === "super_admin" || barber?.role === "receptionist";
@@ -237,9 +255,10 @@ export default function AgendaScreen() {
     return { data, isLoading: allAppointmentsByMonthQuery.isLoading, refetch: allAppointmentsByMonthQuery.refetch };
   }, [allAppointmentsByMonthQuery.data, allAppointmentsByMonthQuery.isLoading, allAppointmentsByMonthQuery.refetch, dateStr]);
 
+  const modalBarberId = (isManager ? selectedBarber?.id : barber?.id) ?? 0;
   const workingHoursQuery = trpc.barbers.workingHours.get.useQuery(
-    { barberId: barber?.id ?? 0 },
-    { enabled: !!barber?.id }
+    { barberId: modalBarberId },
+    { enabled: !!modalBarberId }
   );
 
   // Datas com agendamentos — derivar do cache mensal (sem query extra)
@@ -279,13 +298,13 @@ export default function AgendaScreen() {
         scheduleAppointmentReminder(
           typeof apptId === "number" ? apptId : Number(apptId),
           serviceNames,
-          barber?.name ?? "Barbeiro",
+          selectedBarber?.name ?? barber?.name ?? "Barbeiro",
           appointmentDateTime
         ).catch(() => null);
       }
 
       closeNewModal();
-      const clientName = (clientsQuery.data ?? []).find((c: any) => c.id === selectedClientId)?.name ?? "Cliente";
+      const clientName = (clientsQuery.data ?? []).find((c: any) => c.id === selectedClient?.id)?.name ?? "Cliente";
       const serviceNames = selectedServices.map((s: any) => s.name).join(", ");
       toast.confirm(
         "Agendamento confirmado! ✓",
@@ -373,22 +392,24 @@ export default function AgendaScreen() {
 
   function closeNewModal() {
     setShowNewModal(false);
-    setSelectedClient(null); setSelectedServices([]); setSelectedTime(""); setNotes(""); setClientSearch("");
+    setSelectedClient(null);
+    setSelectedBarber(isManager ? null : barber);
+    setSelectedServices([]); setSelectedTime(""); setNotes(""); setClientSearch("");
   }
 
   function handleCreateAppointment() {
     if (!selectedClient) { toast.info("Selecione um cliente."); return; }
+    if (isManager && !selectedBarber) { toast.info("Selecione um barbeiro."); return; }
     if (selectedServices.length === 0) { toast.info("Selecione ao menos um serviço."); return; }
     if (!selectedTime) { toast.info("Selecione um horário."); return; }
     const endTime = addMinutes(selectedTime, totalDuration);
-    // Monta string de nomes de serviços para exibir no card da agenda
     const serviceNamesStr = selectedServices.length > 1
       ? selectedServices.map((s: any) => s.name).join(" + ")
       : undefined;
     createMutation.mutate({
       clientId: selectedClient.id,
-      barberId: barber?.id ?? 0,
-      serviceId: selectedService!.id, // serviço principal
+      barberId: selectedBarber?.id ?? barber?.id ?? 0,
+      serviceId: selectedService!.id,
       serviceNames: serviceNamesStr,
       date: dateStr,
       startTime: selectedTime,
@@ -475,11 +496,14 @@ export default function AgendaScreen() {
       )
     : [];
 
-  const bookedTimes = new Set(
-    (appointmentsQuery.data ?? [])
-      .filter(a => a.status !== "cancelled" && a.status !== "no_show")
-      .map(a => a.startTime)
-  );
+  const modalBookedAppointments = useMemo(() => {
+    const data = isManager
+      ? (allAppointmentsByMonthQuery.data ?? []).filter(
+          (a: any) => a.date === dateStr && a.barberId === selectedBarber?.id
+        )
+      : (appointmentsQuery.data ?? []);
+    return data.filter((a: any) => a.status !== "cancelled" && a.status !== "no_show");
+  }, [isManager, allAppointmentsByMonthQuery.data, appointmentsQuery.data, dateStr, selectedBarber?.id]);
 
   const filteredClients = (clientsQuery.data ?? []).filter(c =>
     c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
@@ -953,6 +977,28 @@ export default function AgendaScreen() {
                   <IconSymbol name="chevron.right" size={16} color="#888880" />
                 </Pressable>
 
+                {isManager && (
+                  <>
+                    <Text style={styles.fieldLabel}>Barbeiro *</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        {(barbersQuery.data ?? []).map((b: any) => {
+                          const isSel = selectedBarber?.id === b.id;
+                          return (
+                            <Pressable
+                              key={b.id}
+                              style={[styles.serviceChip, isSel && styles.serviceChipActive]}
+                              onPress={() => { setSelectedBarber(b); setSelectedTime(""); }}
+                            >
+                              <Text style={[styles.serviceChipText, isSel && styles.serviceChipTextActive]}>{b.name}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </ScrollView>
+                  </>
+                )}
+
                 <Text style={styles.fieldLabel}>Serviço{selectedServices.length > 1 ? "s" : ""} * <Text style={{ color: "#888880", fontWeight: "400", fontSize: 12 }}>(selecione um ou mais)</Text></Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: selectedServices.length > 0 ? 8 : 14 }}>
                   <View style={{ flexDirection: "row", gap: 8 }}>
@@ -993,7 +1039,11 @@ export default function AgendaScreen() {
                 )}
 
                 <Text style={styles.fieldLabel}>Horário *</Text>
-                {!workingDay?.isWorking ? (
+                {isManager && !selectedBarber ? (
+                  <View style={styles.infoBox}>
+                    <Text style={[styles.infoText, { color: "#888880" }]}>Selecione um barbeiro acima para ver os horários disponíveis</Text>
+                  </View>
+                ) : !workingDay?.isWorking ? (
                   <View style={styles.infoBox}>
                     <Text style={[styles.infoText, { color: "#F44336" }]}>Barbeiro não trabalha neste dia</Text>
                   </View>
@@ -1014,7 +1064,7 @@ export default function AgendaScreen() {
                           <Text style={styles.timePeriodLabel}>{label}</Text>
                           <View style={styles.timeSlotsGrid}>
                             {slots.map(slot => {
-                              const isBooked = bookedTimes.has(slot);
+                              const isBooked = isSlotBlocked(slot, Math.max(totalDuration || 30, 30), modalBookedAppointments);
                               const isActive = selectedTime === slot;
                               return (
                                 <Pressable
