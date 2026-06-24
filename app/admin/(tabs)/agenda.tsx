@@ -724,7 +724,7 @@ export default function AgendaScreen() {
                   Todos
                 </Text>
               </Pressable>
-              {(barbersQuery.data ?? []).map((b: any) => (
+              {(barbersQuery.data ?? []).filter((b: any) => b.role !== "receptionist").map((b: any) => (
                 <Pressable
                   key={b.id}
                   style={[styles.barberFilterChip, filterBarberId === b.id && styles.barberFilterChipActive]}
@@ -856,7 +856,7 @@ export default function AgendaScreen() {
                 >
                   <Text style={[styles.barberFilterChipText, timelineFilterBarberId === null && styles.barberFilterChipTextActive]}>Todos</Text>
                 </Pressable>
-                {(barbersQuery.data ?? []).map((b: any) => (
+                {(barbersQuery.data ?? []).filter((b: any) => b.role !== "receptionist").map((b: any) => (
                   <Pressable
                     key={b.id}
                     style={[styles.barberFilterChip, timelineFilterBarberId === b.id && styles.barberFilterChipActive]}
@@ -982,7 +982,7 @@ export default function AgendaScreen() {
                     <Text style={styles.fieldLabel}>Barbeiro *</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
                       <View style={{ flexDirection: "row", gap: 8 }}>
-                        {(barbersQuery.data ?? []).map((b: any) => {
+                        {(barbersQuery.data ?? []).filter((b: any) => b.role !== "receptionist").map((b: any) => {
                           const isSel = selectedBarber?.id === b.id;
                           return (
                             <Pressable
