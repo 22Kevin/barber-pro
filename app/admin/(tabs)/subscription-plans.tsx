@@ -138,18 +138,30 @@ function SubscriptionPlansScreenInner() {
       form.selectedProductIds.includes(p.id)
     );
 
-    // Considera apenas os itens dentro do limite escolhido
-    const svcSlice = selectedServices.slice(0, form.maxServices || selectedServices.length);
-    const prdSlice = selectedProducts.slice(0, form.maxProducts || selectedProducts.length);
+    if (selectedServices.length === 0) return { perSession: 0, fullPrice: 0, suggested: 0 };
 
-    const svcTotal = svcSlice.reduce((acc, s) => acc + (Number(s.price) || 0), 0);
-    const prdTotal = prdSlice.reduce((acc, p) => acc + (Number(p.price) || 0), 0);
+    // Preço médio dos serviços selecionados (cliente escolhe maxServices deles)
+    const maxSvc = form.maxServices || 1;
+    const svcsSorted = [...selectedServices].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+    const topServices = svcsSorted.slice(0, maxSvc);
+    const avgServicePrice = topServices.reduce((acc, s) => acc + (Number(s.price) || 0), 0) / topServices.length;
 
-    const perSession = svcTotal + prdTotal;
-    const fullPrice = perSession * form.recurrences;
+    // Custo por sessão = preço médio do serviço
+    const perSession = avgServicePrice;
+
+    // Produtos: divididos igualmente pelas sessões do mês
+    const maxPrd = form.maxProducts || 0;
+    const prdSlice = selectedProducts.slice(0, maxPrd);
+    const prdMonthlyTotal = prdSlice.reduce((acc, p) => acc + (Number(p.price) || 0), 0);
+    const prdPerSession = form.recurrences > 0 ? prdMonthlyTotal / form.recurrences : 0;
+
+    // Preço cheio = (preço por sessão + rateio de produto) × recorrências
+    const fullPrice = (perSession + prdPerSession) * form.recurrences;
+
+    // Sugestão com 15% de desconto de fidelidade
     const suggested = fullPrice * DISCOUNT_FACTOR;
 
-    return { perSession, fullPrice, suggested };
+    return { perSession: perSession + prdPerSession, fullPrice, suggested };
   }, [
     form.selectedServiceIds,
     form.selectedProductIds,
@@ -421,16 +433,16 @@ function SubscriptionPlansScreenInner() {
           {suggestedPrice.fullPrice > 0 && (
             <View style={[styles.priceBox, { backgroundColor: "#C9A84C18", borderColor: "#C9A84C" }]}>
               <Text style={{ color: "#C9A84C", fontWeight: "700", fontSize: 13, marginBottom: 6 }}>
-                💡 Resumo de Custo
+                💡 Sugestão de Preço
               </Text>
               <View style={styles.priceRow}>
-                <Text style={{ color: colors.muted, fontSize: 13 }}>Custo por sessão</Text>
+                <Text style={{ color: colors.muted, fontSize: 13 }}>Preço médio por sessão</Text>
                 <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "600" }}>
                   R$ {suggestedPrice.perSession.toFixed(2)}
                 </Text>
               </View>
               <View style={styles.priceRow}>
-                <Text style={{ color: colors.muted, fontSize: 13 }}>Preço cheio ({form.recurrences}x)</Text>
+                <Text style={{ color: colors.muted, fontSize: 13 }}>Sem desconto ({form.recurrences}x sessões)</Text>
                 <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "600" }}>
                   R$ {suggestedPrice.fullPrice.toFixed(2)}
                 </Text>
