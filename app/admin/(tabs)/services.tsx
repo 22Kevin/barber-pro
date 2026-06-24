@@ -1,8 +1,8 @@
 import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { useState } from "react";
 import {
-  ActivityIndicator
-  
+  ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,

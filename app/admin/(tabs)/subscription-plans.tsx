@@ -4,8 +4,8 @@
  */
 import React, { useState, useMemo } from "react";
 import {
-  ActivityIndicator
-  
+  ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,

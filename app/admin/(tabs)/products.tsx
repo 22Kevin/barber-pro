@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  ActivityIndicator
-  
+  ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
