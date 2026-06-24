@@ -225,12 +225,6 @@ export default function AgendaScreen() {
   const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
   const clientsQuery = trpc.clients.list.useQuery({ tenantId });
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
-  // DEBUG
-  useEffect(() => {
-    if (barbersQuery.data) {
-      console.log("[DEBUG barbers]", JSON.stringify(barbersQuery.data.map((b: any) => ({ id: b.id, name: b.name, role: b.role }))));
-    }
-  }, [barbersQuery.data]);
 
   // ── Busca o mês inteiro de uma vez — sem query por dia ──────────────────────
   const monthStart = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-01`;
