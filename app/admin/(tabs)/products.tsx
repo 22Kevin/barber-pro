@@ -95,7 +95,7 @@ function ProductsScreenInner() {
   );
   const movements = movementsQuery.data ?? [];
 
-  const productsQuery = trpc.products.list.useQuery({ activeOnly: false, tenantId });
+  const productsQuery = trpc.products.listWithMedia.useQuery({ activeOnly: false, tenantId });
   const suppliersQuery = trpc.suppliers.list.useQuery(
     { tenantId: tenantId ?? 0 },
     { enabled: (tenantId ?? 0) > 0 }
@@ -104,19 +104,19 @@ function ProductsScreenInner() {
 
   const createMutation = trpc.products.create.useMutation({
     onSuccess: (newId) => {
-      utils.products.list.invalidate();
+      utils.products.listWithMedia.invalidate(); utils.products.list.invalidate();
       setSavedProductId(newId as any);
     },
     onError: (e) => Alert.alert("Erro", e.message),
   });
   const updateMutation = trpc.products.update.useMutation({
-    onSuccess: () => { utils.products.list.invalidate(); closeModal(); },
+    onSuccess: () => { utils.products.listWithMedia.invalidate(); utils.products.list.invalidate(); closeModal(); },
     onError: (e) => Alert.alert("Erro", e.message),
   });
 
   const restockMutation = trpc.stock.restock.useMutation({
     onSuccess: () => {
-      utils.products.list.invalidate();
+      utils.products.listWithMedia.invalidate(); utils.products.list.invalidate();
       utils.stock.movements.invalidate();
       setShowRestockModal(false);
       setRestockProduct(null);
@@ -340,7 +340,11 @@ function ProductsScreenInner() {
               <View style={[styles.card, !item.isActive && styles.cardInactive]}>
                 <View style={styles.cardLeft}>
                   <View style={styles.cardIconBox}>
-                    <IconSymbol name="cube.box.fill" size={20} color="#C9A84C" />
+                    {item.thumbnailUrl ? (
+                      <Image source={{ uri: item.thumbnailUrl }} style={{ width: 44, height: 44, borderRadius: 8 }} />
+                    ) : (
+                      <IconSymbol name="cube.box.fill" size={20} color="#C9A84C" />
+                    )}
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={styles.cardTitleRow}>

@@ -62,10 +62,10 @@ export default function ServicesScreen() {
   const utils = trpc.useUtils();
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = async () => { setRefreshing(true); await utils.invalidate(); setRefreshing(false); };
-  const servicesQuery = trpc.services.list.useQuery({ activeOnly: false, tenantId });
+  const servicesQuery = trpc.services.listWithMedia.useQuery({ activeOnly: false, tenantId });
   const createMutation = trpc.services.create.useMutation({
     onSuccess: (newId) => {
-      utils.services.list.invalidate();
+      utils.services.listWithMedia.invalidate(); utils.services.list.invalidate();
       // Não fecha o modal: atualiza o ID para mostrar o MediaUploader imediatamente
       if (newId) setSavedServiceId(newId as any);
       else closeModal(); // fallback: fecha o modal se não retornou ID
@@ -73,7 +73,7 @@ export default function ServicesScreen() {
     onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
   });
   const updateMutation = trpc.services.update.useMutation({
-    onSuccess: () => { hapticSuccess(); utils.services.list.invalidate(); closeModal(); },
+    onSuccess: () => { hapticSuccess(); utils.services.listWithMedia.invalidate(); utils.services.list.invalidate(); closeModal(); },
     onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
   });
   const deleteMutation = trpc.services.delete.useMutation({
@@ -173,7 +173,11 @@ export default function ServicesScreen() {
             <View style={[styles.card, !item.isActive && styles.cardInactive]}>
               <View style={styles.cardLeft}>
                 <View style={styles.cardIconBox}>
-                  <IconSymbol name="scissors" size={20} color="#C9A84C" />
+                  {item.thumbnailUrl ? (
+                    <Image source={{ uri: item.thumbnailUrl }} style={{ width: 44, height: 44, borderRadius: 8 }} />
+                  ) : (
+                    <IconSymbol name="scissors" size={20} color="#C9A84C" />
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={styles.cardTitleRow}>
