@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
-  ActivityIndicator,
-  Alert,
+  ActivityIndicator
+  
   FlatList,
   Platform,
   Pressable,
@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { useBarberAuth } from "@/lib/auth-context";
@@ -686,7 +687,7 @@ export default function RecurringScreen() {
       setShowForm(false);
       setForm(EMPTY_FORM);
     },
-    onError: (err) => Alert.alert("Erro", err.message),
+    onError: (err) => AppAlert.alert("Erro", err.message),
   });
 
   const clients = useMemo(
@@ -729,10 +730,10 @@ export default function RecurringScreen() {
   }
 
   function handleCreate() {
-    if (!form.clientId) { Alert.alert("Atenção", "Selecione um cliente."); return; }
-    if (!form.barberId) { Alert.alert("Atenção", "Selecione um barbeiro."); return; }
-    if (!form.serviceId) { Alert.alert("Atenção", "Selecione um serviço."); return; }
-    if (!form.startDate) { Alert.alert("Atenção", "Informe a data de início."); return; }
+    if (!form.clientId) { AppAlert.alert("Atenção", "Selecione um cliente."); return; }
+    if (!form.barberId) { AppAlert.alert("Atenção", "Selecione um barbeiro."); return; }
+    if (!form.serviceId) { AppAlert.alert("Atenção", "Selecione um serviço."); return; }
+    if (!form.startDate) { AppAlert.alert("Atenção", "Informe a data de início."); return; }
     // Mostrar card de confirmação antes de salvar
     setShowConfirm(true);
   }

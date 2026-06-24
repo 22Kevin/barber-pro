@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import {
-  ActivityIndicator,
-  Alert,
+  ActivityIndicator
+  
   FlatList,
   Pressable,
   ScrollView,
@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { useBarberAuth } from "@/lib/auth-context";
@@ -154,14 +155,14 @@ export default function PlanBookingScreen() {
   const createMutation = trpc.subscriptionPlans.createSubscription.useMutation({
     onSuccess: () => {
       utils.subscriptionPlans.listSubscriptions.invalidate();
-      Alert.alert(
+      AppAlert.alert(
         "Assinatura criada!",
         "A assinatura foi registrada com sucesso.",
         [{ text: "OK", onPress: () => router.back() }]
       );
     },
     onError: (e) => {
-      Alert.alert("Erro", e.message ?? "Não foi possível criar a assinatura.");
+      AppAlert.alert("Erro", e.message ?? "Não foi possível criar a assinatura.");
     },
   });
 
@@ -651,7 +652,7 @@ export default function PlanBookingScreen() {
                         ]}
                         onPress={() => {
                           if (usedInOtherSlot) {
-                            Alert.alert("Horário duplicado", "Este horário já foi escolhido para outra sessão deste plano.");
+                            AppAlert.alert("Horário duplicado", "Este horário já foi escolhido para outra sessão deste plano.");
                             return;
                           }
                           updateSlot(index, "time", t);

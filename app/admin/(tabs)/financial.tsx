@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
+  ActivityIndicator
+  
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,6 +17,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { AdminHeader } from "@/components/admin-header";
+import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
@@ -100,7 +101,7 @@ export default function FinancialScreen() {
       utils.dashboard.stats.invalidate();
       closeSaleModal();
     },
-    onError: (e: any) => Alert.alert("Erro", e.message),
+    onError: (e: any) => AppAlert.alert("Erro", e.message),
   });
 
   const createExpenseMutation = trpc.expenses.create.useMutation({
@@ -110,7 +111,7 @@ export default function FinancialScreen() {
       setShowExpenseModal(false);
       setExpenseDescription(""); setExpenseAmount(""); setExpenseCategory("Outros");
     },
-    onError: (e: any) => Alert.alert("Erro", e.message),
+    onError: (e: any) => AppAlert.alert("Erro", e.message),
   });
 
   function closeSaleModal() {
@@ -128,8 +129,8 @@ export default function FinancialScreen() {
 
   function handleCreateSale() {
     const amount = parseFloat(saleAmount.replace(",", "."));
-    if (!saleDescription.trim()) { Alert.alert("Atenção", "Informe a descrição."); return; }
-    if (isNaN(amount) || amount <= 0) { Alert.alert("Atenção", "Informe um valor válido."); return; }
+    if (!saleDescription.trim()) { AppAlert.alert("Atenção", "Informe a descrição."); return; }
+    if (isNaN(amount) || amount <= 0) { AppAlert.alert("Atenção", "Informe um valor válido."); return; }
     createSaleMutation.mutate({
       barberId: barber?.id ?? 0,
       subtotal: amount.toFixed(2),
@@ -151,8 +152,8 @@ export default function FinancialScreen() {
 
   function handleCreateExpense() {
     const amount = parseFloat(expenseAmount.replace(",", "."));
-    if (!expenseDescription.trim()) { Alert.alert("Atenção", "Informe a descrição."); return; }
-    if (isNaN(amount) || amount <= 0) { Alert.alert("Atenção", "Informe um valor válido."); return; }
+    if (!expenseDescription.trim()) { AppAlert.alert("Atenção", "Informe a descrição."); return; }
+    if (isNaN(amount) || amount <= 0) { AppAlert.alert("Atenção", "Informe um valor válido."); return; }
     createExpenseMutation.mutate({
       description: expenseDescription.trim(),
       amount: amount.toFixed(2),
@@ -167,7 +168,7 @@ export default function FinancialScreen() {
   );
   const cancelChargeMutation = trpc.asaasPayments.cancelCharge.useMutation({
     onSuccess: () => { utils.asaasPayments.listByTenant.invalidate(); },
-    onError: (e: any) => Alert.alert("Erro", e.message),
+    onError: (e: any) => AppAlert.alert("Erro", e.message),
   });
 
   const sales = salesQuery.data ?? [];
@@ -413,7 +414,7 @@ export default function FinancialScreen() {
                         </View>
                         {(pmt.status === "PENDING" || pmt.status === "OVERDUE") && (
                           <Pressable
-                            onPress={() => Alert.alert("Cancelar cobrança?", "Esta ação não pode ser desfeita.", [
+                            onPress={() => AppAlert.alert("Cancelar cobrança?", "Esta ação não pode ser desfeita.", [
                               { text: "Cancelar", style: "cancel" },
                               { text: "Confirmar", style: "destructive", onPress: () => cancelChargeMutation.mutate({ asaasPaymentId: pmt.asaasPaymentId, tenantId: tenantId ?? 0 }) },
                             ])}

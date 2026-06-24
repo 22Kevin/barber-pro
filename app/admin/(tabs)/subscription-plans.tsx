@@ -4,8 +4,8 @@
  */
 import React, { useState, useMemo } from "react";
 import {
-  ActivityIndicator,
-  Alert,
+  ActivityIndicator
+  
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -21,6 +21,7 @@ import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { useBarberAuth } from "@/lib/auth-context";
@@ -96,7 +97,7 @@ function SubscriptionPlansScreenInner() {
       setShowForm(false);
       setForm(EMPTY_FORM);
     },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => AppAlert.alert("Erro", e.message),
   });
 
   const updateMutation = trpc.subscriptionPlans.updatePlan.useMutation({
@@ -106,7 +107,7 @@ function SubscriptionPlansScreenInner() {
       setEditingId(null);
       setForm(EMPTY_FORM);
     },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => AppAlert.alert("Erro", e.message),
   });
 
   const deleteMutation = trpc.subscriptionPlans.deletePlan.useMutation({
@@ -114,7 +115,7 @@ function SubscriptionPlansScreenInner() {
       utils.subscriptionPlans.listPlans.invalidate();
       utils.subscriptionPlans.stats.invalidate();
     },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => AppAlert.alert("Erro", e.message),
   });
 
   const toggleMutation = trpc.subscriptionPlans.togglePlanActive.useMutation({
@@ -183,7 +184,7 @@ function SubscriptionPlansScreenInner() {
   }
 
   function handleDeletePlan(plan: any) {
-    Alert.alert(
+    AppAlert.alert(
       "Excluir Plano",
       `Deseja excluir o plano "${plan.name}"? Esta ação não pode ser desfeita.`,
       [
@@ -221,16 +222,16 @@ function SubscriptionPlansScreenInner() {
 
   function handleSave() {
     if (!form.name.trim()) {
-      Alert.alert("Atenção", "Informe o nome do plano.");
+      AppAlert.alert("Atenção", "Informe o nome do plano.");
       return;
     }
     if (form.selectedServiceIds.length === 0) {
-      Alert.alert("Atenção", "Selecione ao menos um serviço para o plano. Serviços são obrigatórios para criar um plano de assinatura.");
+      AppAlert.alert("Atenção", "Selecione ao menos um serviço para o plano. Serviços são obrigatórios para criar um plano de assinatura.");
       return;
     }
     const price = parseFloat(form.price.replace(",", "."));
     if (isNaN(price) || price <= 0) {
-      Alert.alert("Atenção", "Informe um preço válido para o plano.");
+      AppAlert.alert("Atenção", "Informe um preço válido para o plano.");
       return;
     }
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
+  ActivityIndicator
+  
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
+import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
 import { saveBarberJwt, saveBarberRefreshJwt } from "@/lib/trpc";
 import { HeaderBranchTitle, useBranch } from "@/components/BranchSelector";
@@ -235,30 +236,30 @@ export default function BarbeariaScreen() {
   );
 
   const updateSettingsMutation = trpc.settings.update.useMutation({
-    onSuccess: () => { utils.settings.get.invalidate(); Alert.alert("Sucesso", "Dados salvos com sucesso!"); },
-    onError: (e: any) => Alert.alert("Erro", e.message),
+    onSuccess: () => { utils.settings.get.invalidate(); AppAlert.alert("Sucesso", "Dados salvos com sucesso!"); },
+    onError: (e: any) => AppAlert.alert("Erro", e.message),
   });
 
   const createBarberMutation = trpc.barbers.create.useMutation({
     onSuccess: () => { utils.barbers.list.invalidate(); closeBarberModal(); },
-    onError: (e: any) => Alert.alert("Erro", e.message),
+    onError: (e: any) => AppAlert.alert("Erro", e.message),
   });
 
   const updateBarberMutation = trpc.barbers.update.useMutation({
     onSuccess: () => { utils.barbers.list.invalidate(); closeBarberModal(); },
-    onError: (e: any) => Alert.alert("Erro", e.message),
+    onError: (e: any) => AppAlert.alert("Erro", e.message),
   });
 
   const deleteBarberMutation = trpc.barbers.delete.useMutation({
     onSuccess: () => { utils.barbers.list.invalidate(); utils.barbers.listAll.invalidate(); },
-    onError: (e: any) => Alert.alert("Erro", e.message),
+    onError: (e: any) => AppAlert.alert("Erro", e.message),
   });
   const reactivateBarberMutation = trpc.barbers.reactivate.useMutation({
-    onSuccess: () => { utils.barbers.list.invalidate(); utils.barbers.listAll.invalidate(); Alert.alert("Sucesso", "Usuário reativado com sucesso!"); },
-    onError: (e: any) => Alert.alert("Erro", e.message),
+    onSuccess: () => { utils.barbers.list.invalidate(); utils.barbers.listAll.invalidate(); AppAlert.alert("Sucesso", "Usuário reativado com sucesso!"); },
+    onError: (e: any) => AppAlert.alert("Erro", e.message),
   });
   function handleReactivateBarber(b: any) {
-    Alert.alert(
+    AppAlert.alert(
       "Reativar usuário",
       `Deseja reativar "${b.name}"? O acesso será restaurado.`,
       [
@@ -276,14 +277,14 @@ export default function BarbeariaScreen() {
     onSuccess: () => {
       utils.branches.list.invalidate();
       setShowFilialModal(false);
-      Alert.alert("Sucesso", "Filial criada com sucesso!");
+      AppAlert.alert("Sucesso", "Filial criada com sucesso!");
     },
-    onError: (e: any) => Alert.alert("Erro", e.message),
+    onError: (e: any) => AppAlert.alert("Erro", e.message),
   });
 
   const deleteFilialMutation = trpc.branches.delete.useMutation({
-    onSuccess: () => { utils.branches.list.invalidate(); Alert.alert("Sucesso", "Filial excluída."); },
-    onError: (e: any) => Alert.alert("Erro", e.message),
+    onSuccess: () => { utils.branches.list.invalidate(); AppAlert.alert("Sucesso", "Filial excluída."); },
+    onError: (e: any) => AppAlert.alert("Erro", e.message),
   });
 
   const switchBranchMutation = trpc.branches.switch.useMutation({
@@ -293,23 +294,23 @@ export default function BarbeariaScreen() {
       await login(data.barber as any);
       router.replace("/(tabs)/dashboard" as any);
     },
-    onError: (e: any) => Alert.alert("Erro", e.message),
+    onError: (e: any) => AppAlert.alert("Erro", e.message),
   });
 
   const syncCatalogMutation = trpc.branches.syncCatalog.useMutation({
-    onSuccess: (data) => Alert.alert("Catálogo sincronizado", `${data.syncedServices} serviços · ${data.syncedProducts} produtos · ${data.syncedSuppliers} fornecedores`),
-    onError: (e: any) => Alert.alert("Erro", e.message),
+    onSuccess: (data) => AppAlert.alert("Catálogo sincronizado", `${data.syncedServices} serviços · ${data.syncedProducts} produtos · ${data.syncedSuppliers} fornecedores`),
+    onError: (e: any) => AppAlert.alert("Erro", e.message),
   });
 
   function handleSwitchBranch(branchId: number, branchName: string) {
-    Alert.alert("Acessar unidade", `Trocar para "${branchName}"?`, [
+    AppAlert.alert("Acessar unidade", `Trocar para "${branchName}"?`, [
       { text: "Cancelar", style: "cancel" },
       { text: "Acessar", onPress: () => switchBranchMutation.mutate({ branchId }) },
     ]);
   }
 
   function handleDeleteFilial(branchId: number, branchName: string) {
-    Alert.alert("Excluir filial", `Excluir "${branchName}"? Esta ação não pode ser desfeita.`, [
+    AppAlert.alert("Excluir filial", `Excluir "${branchName}"? Esta ação não pode ser desfeita.`, [
       { text: "Cancelar", style: "cancel" },
       { text: "Excluir", style: "destructive", onPress: () => deleteFilialMutation.mutate({ branchId }) },
     ]);
@@ -317,7 +318,7 @@ export default function BarbeariaScreen() {
 
   function handleSaveFilial() {
     if (!fName.trim() || !fDisplayName.trim()) {
-      Alert.alert("Atenção", "Nome completo e nome curto são obrigatórios.");
+      AppAlert.alert("Atenção", "Nome completo e nome curto são obrigatórios.");
       return;
     }
     createFilialMutation.mutate({
@@ -339,16 +340,16 @@ export default function BarbeariaScreen() {
 
   async function handleBatchBlock() {
     if (!selectedBarberId || !batchBlockStart || !batchBlockEnd) {
-      Alert.alert("Atenção", "Selecione o barbeiro e as datas de início e fim.");
+      AppAlert.alert("Atenção", "Selecione o barbeiro e as datas de início e fim.");
       return;
     }
     const start = new Date(batchBlockStart + "T12:00:00");
     const end = new Date(batchBlockEnd + "T12:00:00");
-    if (end < start) { Alert.alert("Erro", "A data de fim deve ser após a data de início."); return; }
+    if (end < start) { AppAlert.alert("Erro", "A data de fim deve ser após a data de início."); return; }
     const days = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
-    if (days > 60) { Alert.alert("Limite", "Máximo de 60 dias por bloqueio."); return; }
+    if (days > 60) { AppAlert.alert("Limite", "Máximo de 60 dias por bloqueio."); return; }
     const barberName = activeBarbers.find((b: any) => b.id === selectedBarberId)?.name ?? "barbeiro";
-    Alert.alert(
+    AppAlert.alert(
       "Confirmar bloqueio",
       `Bloquear ${days} dia${days > 1 ? "s" : ""} (${batchBlockStart} a ${batchBlockEnd}) para ${barberName}?`,
       [
@@ -370,11 +371,11 @@ export default function BarbeariaScreen() {
               }));
             }
             await Promise.all(promises);
-            Alert.alert("Sucesso", `${days} dia${days > 1 ? "s bloqueados" : " bloqueado"} com sucesso!`);
+            AppAlert.alert("Sucesso", `${days} dia${days > 1 ? "s bloqueados" : " bloqueado"} com sucesso!`);
             setBatchBlockStart("");
             setBatchBlockEnd("");
           } catch (e: any) {
-            Alert.alert("Erro", e.message);
+            AppAlert.alert("Erro", e.message);
           } finally {
             setBatchBlockLoading(false);
           }
@@ -384,10 +385,10 @@ export default function BarbeariaScreen() {
   }
   function handleDeleteBarber(b: any) {
     if (b.role === "super_admin") {
-      Alert.alert("Não permitido", "Não é possível excluir o Super Admin.");
+      AppAlert.alert("Não permitido", "Não é possível excluir o Super Admin.");
       return;
     }
-    Alert.alert(
+    AppAlert.alert(
       "Excluir usuário",
       `Tem certeza que deseja excluir "${b.name}"? Esta ação desativará o acesso deste usuário.`,
       [
@@ -421,8 +422,8 @@ export default function BarbeariaScreen() {
   function closeBarberModal() { setShowBarberModal(false); setEditingBarber(null); }
 
   function handleSaveBarber() {
-    if (!bName.trim()) { Alert.alert("Atenção", "Informe o nome."); return; }
-    if (!editingBarber && (!bPassword || bPassword.length < 6)) { Alert.alert("Atenção", "Senha deve ter pelo menos 6 caracteres."); return; }
+    if (!bName.trim()) { AppAlert.alert("Atenção", "Informe o nome."); return; }
+    if (!editingBarber && (!bPassword || bPassword.length < 6)) { AppAlert.alert("Atenção", "Senha deve ter pelo menos 6 caracteres."); return; }
     const finalPerms = bRole === 'super_admin' ? ALL_PERMISSIONS : bPermissions;
     if (editingBarber) {
       const data: any = { id: editingBarber.id, name: bName.trim(), role: bRole as any, permissions: finalPerms };

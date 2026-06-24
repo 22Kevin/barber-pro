@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated } from "react-native";
 import {
-  ActivityIndicator, Alert, Image, KeyboardAvoidingView,
+  ActivityIndicator  Image, KeyboardAvoidingView,
   Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { router } from "expo-router";
@@ -63,7 +63,7 @@ export default function AdminLoginScreen() {
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: async (data) => {
-      if (!data?.token) { Alert.alert("Erro", "Resposta inválida do servidor."); return; }
+      if (!data?.token) { AppAlert.alert("Erro", "Resposta inválida do servidor."); return; }
       await saveBarberJwt(data.token);
       if (data.refreshToken) await saveBarberRefreshJwt(data.refreshToken);
       if (rememberMe) {
@@ -80,28 +80,28 @@ export default function AdminLoginScreen() {
       } catch {}
       router.replace("/admin/(tabs)/dashboard" as any);
     },
-    onError: (e) => Alert.alert("Erro ao entrar", e.message ?? "Verifique suas credenciais."),
+    onError: (e) => AppAlert.alert("Erro ao entrar", e.message ?? "Verifique suas credenciais."),
   });
 
   const googleLoginMutation = trpc.auth.googleLogin.useMutation({
     onSuccess: async (data) => {
-      if (!data?.token) { Alert.alert("Erro", "Falha na autenticação Google."); return; }
+      if (!data?.token) { AppAlert.alert("Erro", "Falha na autenticação Google."); return; }
       await saveBarberJwt(data.token);
       if (data.refreshToken) await saveBarberRefreshJwt(data.refreshToken);
       login(data.barber ?? data);
       router.replace("/admin/(tabs)/dashboard" as any);
     },
-    onError: (e) => Alert.alert("Erro Google", e.message),
+    onError: (e) => AppAlert.alert("Erro Google", e.message),
   });
 
   async function handleLogin() {
-    if (!email.trim() || !password) { Alert.alert("Atenção", "Preencha e-mail e senha."); return; }
+    if (!email.trim() || !password) { AppAlert.alert("Atenção", "Preencha e-mail e senha."); return; }
     loginMutation.mutate({ email: email.trim().toLowerCase(), password });
   }
 
   async function handleGoogleLogin() {
     if (!GoogleSignin || !WEB_CLIENT_ID) {
-      Alert.alert(
+      AppAlert.alert(
         "Login com Google",
         "Para usar o login com Google no app, é necessário configurar o ID do cliente Google nas configurações do projeto.\n\nAlternativamente, acesse o painel pelo navegador em usebarberpro.com",
         [{ text: "Entendi" }]
@@ -116,7 +116,7 @@ export default function AdminLoginScreen() {
       if (!idToken) throw new Error("Token Google não disponível");
       googleLoginMutation.mutate({ idToken });
     } catch (e: any) {
-      if (e?.code !== statusCodes?.SIGN_IN_CANCELLED) Alert.alert("Erro Google", e?.message ?? "Falha na autenticação");
+      if (e?.code !== statusCodes?.SIGN_IN_CANCELLED) AppAlert.alert("Erro Google", e?.message ?? "Falha na autenticação");
     } finally {
       setGoogleLoading(false);
     }

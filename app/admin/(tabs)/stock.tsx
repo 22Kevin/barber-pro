@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
+  ActivityIndicator
+  
   FlatList,
   Modal,
   Pressable,
@@ -16,6 +16,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
 import { HeaderBranchTitle } from "@/components/BranchSelector";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 import { exportCsv } from "@/hooks/use-csv-export";
@@ -71,7 +72,7 @@ function StockScreenInner() {
         await exportCsv(result.data, "estoque.csv");
       }
     } catch (e: any) {
-      Alert.alert("Erro ao exportar", e?.message ?? "Falha na exportação");
+      AppAlert.alert("Erro ao exportar", e?.message ?? "Falha na exportação");
     }
   }
 
@@ -105,18 +106,18 @@ function StockScreenInner() {
       utils.stock.list.invalidate();
       setShowMovementModal(false);
       setMovQty("1"); setMovReason(""); setTargetBranchId(null); setMovType("in");
-      Alert.alert("Transferência realizada!", `${data.transferred}x ${data.productName} transferido com sucesso.`);
+      AppAlert.alert("Transferência realizada!", `${data.transferred}x ${data.productName} transferido com sucesso.`);
     },
-    onError: (e) => Alert.alert("Erro na transferência", e.message),
+    onError: (e) => AppAlert.alert("Erro na transferência", e.message),
   });
 
   const syncMutation = trpc.branches.syncCatalog.useMutation({
     onSuccess: (data) => {
       utils.stock.list.invalidate();
       setSyncLoading(false);
-      Alert.alert("Sincronização concluída!", `${data.syncedServices} serviços, ${data.syncedProducts} produtos, ${data.syncedSuppliers} fornecedores sincronizados.`);
+      AppAlert.alert("Sincronização concluída!", `${data.syncedServices} serviços, ${data.syncedProducts} produtos, ${data.syncedSuppliers} fornecedores sincronizados.`);
     },
-    onError: (e) => { setSyncLoading(false); Alert.alert("Erro", e.message); },
+    onError: (e) => { setSyncLoading(false); AppAlert.alert("Erro", e.message); },
   });
 
   async function handleSyncCatalog() {
@@ -124,7 +125,7 @@ function StockScreenInner() {
     const matrixId = branchData.matrixId;
     const targetId = branchData.isMatrix ? null : tenantId;
     if (!targetId || !matrixId) {
-      Alert.alert("Atenção", "Sincronização disponível apenas dentro de uma filial.");
+      AppAlert.alert("Atenção", "Sincronização disponível apenas dentro de uma filial.");
       return;
     }
     setSyncLoading(true);
@@ -150,7 +151,7 @@ function StockScreenInner() {
       setMovSupplierId(null);
       setTargetBranchId(null);
     },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => AppAlert.alert("Erro", e.message),
   });
 
   const allProducts = stockQuery.data ?? [];
@@ -164,15 +165,15 @@ function StockScreenInner() {
     if (!selectedProduct) return;
     const qty = parseInt(movQty, 10);
     if (isNaN(qty) || qty <= 0) {
-      Alert.alert("Quantidade inválida", "Informe uma quantidade maior que zero.");
+      AppAlert.alert("Quantidade inválida", "Informe uma quantidade maior que zero.");
       return;
     }
     // Lógica de transferência entre filiais
     if (movType === "transfer") {
-      if (!targetBranchId) { Alert.alert("Atenção", "Selecione a unidade destino."); return; }
+      if (!targetBranchId) { AppAlert.alert("Atenção", "Selecione a unidade destino."); return; }
       const stock = selectedProduct?.stockQuantity ?? 0;
-      if (stock === 0) { Alert.alert("Estoque zerado", "Não é possível transferir. O produto está sem estoque."); return; }
-      if (qty > stock) { Alert.alert("Estoque insuficiente", `Quantidade maior que o disponível (${stock} unidades).`); return; }
+      if (stock === 0) { AppAlert.alert("Estoque zerado", "Não é possível transferir. O produto está sem estoque."); return; }
+      if (qty > stock) { AppAlert.alert("Estoque insuficiente", `Quantidade maior que o disponível (${stock} unidades).`); return; }
       const remaining = stock - qty;
       const minAlert = selectedProduct?.minStockAlert ?? 5;
       const doTransfer = () => transferMutation.mutate({
@@ -184,7 +185,7 @@ function StockScreenInner() {
         reason: movReason || undefined,
       });
       if (remaining <= minAlert) {
-        Alert.alert(
+        AppAlert.alert(
           "Estoque baixo após transferência",
           `Após a transferência, o estoque ficará em ${remaining} unidade(s), abaixo do alerta mínimo (${minAlert}). Confirma?`,
           [{ text: "Cancelar", style: "cancel" }, { text: "Sim, transferir", style: "destructive", onPress: doTransfer }]

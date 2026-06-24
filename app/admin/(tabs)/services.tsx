@@ -1,8 +1,8 @@
 import { hapticSuccess, hapticError } from "@/lib/haptics";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
+  ActivityIndicator
+  
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
 import { MediaUploader } from "@/components/media-uploader";
 import { DurationPicker } from "@/components/duration-picker";
@@ -71,15 +72,15 @@ export default function ServicesScreen() {
       if (newId) setSavedServiceId(newId as any);
       else closeModal(); // fallback: fecha o modal se não retornou ID
     },
-    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
+    onError: (e) => { hapticError(); AppAlert.alert("Erro", e.message); },
   });
   const updateMutation = trpc.services.update.useMutation({
     onSuccess: () => { hapticSuccess(); utils.services.listWithMedia.invalidate(); utils.services.list.invalidate(); closeModal(); },
-    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
+    onError: (e) => { hapticError(); AppAlert.alert("Erro", e.message); },
   });
   const deleteMutation = trpc.services.delete.useMutation({
     onSuccess: () => utils.services.list.invalidate(),
-    onError: (e) => { hapticError(); Alert.alert("Erro", e.message); },
+    onError: (e) => { hapticError(); AppAlert.alert("Erro", e.message); },
   });
 
   function openCreate() {
@@ -99,11 +100,11 @@ export default function ServicesScreen() {
   function closeModal() { setShowModal(false); setEditing(null); setSavedServiceId(null); }
 
   function handleSave() {
-    if (!name.trim()) { Alert.alert("Atenção", "Informe o nome do serviço."); return; }
+    if (!name.trim()) { AppAlert.alert("Atenção", "Informe o nome do serviço."); return; }
     const priceNum = parsePriceMask(price);
-    if (isNaN(priceNum) || priceNum <= 0) { Alert.alert("Atenção", "Informe um preço válido (ex: 35,00)."); return; }
-    if (!tenantId) { Alert.alert("Erro", "Sessão expirada. Faça login novamente."); return; }
-    if (!duration || duration < 1) { Alert.alert("Atenção", "A duração deve ser de pelo menos 1 minuto."); return; }
+    if (isNaN(priceNum) || priceNum <= 0) { AppAlert.alert("Atenção", "Informe um preço válido (ex: 35,00)."); return; }
+    if (!tenantId) { AppAlert.alert("Erro", "Sessão expirada. Faça login novamente."); return; }
+    if (!duration || duration < 1) { AppAlert.alert("Atenção", "A duração deve ser de pelo menos 1 minuto."); return; }
     const data = { name: name.trim(), description: description.trim() || null, price: priceNum.toFixed(2), durationMinutes: duration, isActive };
     if (editing) {
       updateMutation.mutate({ id: editing.id, ...data });
@@ -113,7 +114,7 @@ export default function ServicesScreen() {
   }
 
   function handleDelete(s: Service) {
-    Alert.alert("Excluir Serviço", `Deseja desativar "${s.name}"?`, [
+    AppAlert.alert("Excluir Serviço", `Deseja desativar "${s.name}"?`, [
       { text: "Cancelar", style: "cancel" },
       { text: "Desativar", style: "destructive", onPress: () => deleteMutation.mutate({ id: s.id }) },
     ]);

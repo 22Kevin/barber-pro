@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
+  ActivityIndicator
+  
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
 import { MediaUploader } from "@/components/media-uploader";
 import { AdminHeader } from "@/components/admin-header";
@@ -108,11 +109,11 @@ function ProductsScreenInner() {
       utils.products.listWithMedia.invalidate(); utils.products.list.invalidate();
       setSavedProductId(newId as any);
     },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => AppAlert.alert("Erro", e.message),
   });
   const updateMutation = trpc.products.update.useMutation({
     onSuccess: () => { utils.products.listWithMedia.invalidate(); utils.products.list.invalidate(); closeModal(); },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => AppAlert.alert("Erro", e.message),
   });
 
   const restockMutation = trpc.stock.restock.useMutation({
@@ -121,9 +122,9 @@ function ProductsScreenInner() {
       utils.stock.movements.invalidate();
       setShowRestockModal(false);
       setRestockProduct(null);
-      Alert.alert("Estoque Reposto", "Estoque atualizado com sucesso!");
+      AppAlert.alert("Estoque Reposto", "Estoque atualizado com sucesso!");
     },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => AppAlert.alert("Erro", e.message),
   });
 
   function openRestock(p: Product) {
@@ -141,7 +142,7 @@ function ProductsScreenInner() {
   function confirmRestock() {
     if (!restockProduct) return;
     const qty = parseInt(restockQty);
-    if (isNaN(qty) || qty < 1) { Alert.alert("Atenção", "Informe uma quantidade válida."); return; }
+    if (isNaN(qty) || qty < 1) { AppAlert.alert("Atenção", "Informe uma quantidade válida."); return; }
     const cost = restockCost ? parseFloat(restockCost.replace(",", ".")) : undefined;
     restockMutation.mutate({
       productId: restockProduct.id,
@@ -175,9 +176,9 @@ function ProductsScreenInner() {
   function closeModal() { setShowModal(false); setEditing(null); setSavedProductId(null); }
 
   function handleSave() {
-    if (!name.trim()) { Alert.alert("Atenção", "Informe o nome do produto."); return; }
+    if (!name.trim()) { AppAlert.alert("Atenção", "Informe o nome do produto."); return; }
     const priceNum = parsePriceMask(price);
-    if (isNaN(priceNum) || priceNum <= 0) { Alert.alert("Atenção", "Informe um preço válido."); return; }
+    if (isNaN(priceNum) || priceNum <= 0) { AppAlert.alert("Atenção", "Informe um preço válido."); return; }
     const stockNum = parseInt(stock) || 0;
     const costPriceNum = costPrice ? parsePriceMask(costPrice) : null;
     const data = { name: name.trim(), description: description.trim() || null, price: priceNum.toFixed(2), costPrice: costPriceNum && !isNaN(costPriceNum) ? costPriceNum.toFixed(2) : null, stock: stockNum, isActive, supplierId: selectedSupplierId ?? null };
@@ -191,11 +192,11 @@ function ProductsScreenInner() {
   function handleWhatsAppAlert(product: Product) {
     const supplier = suppliersList.find(s => s.id === product.supplierId);
     if (!supplier) {
-      Alert.alert("Sem fornecedor", "Este produto não tem fornecedor vinculado.");
+      AppAlert.alert("Sem fornecedor", "Este produto não tem fornecedor vinculado.");
       return;
     }
     if (!supplier.phone) {
-      Alert.alert("Sem telefone", `O fornecedor "${supplier.name}" não tem telefone cadastrado. Acesse o painel web para adicionar.`);
+      AppAlert.alert("Sem telefone", `O fornecedor "${supplier.name}" não tem telefone cadastrado. Acesse o painel web para adicionar.`);
       return;
     }
     const phone = supplier.phone.replace(/\D/g, "");
