@@ -118,8 +118,8 @@ export default function PlanBookingScreen() {
   const [slots, setSlots] = useState<SlotEntry[]>([]);
   const [clientSearch, setClientSearch] = useState("");
 
-  // Calendário para cada slot
-  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  // Calendário independente para cada slot
+  const [calendarMonths, setCalendarMonths] = useState<Date[]>([]);
   const [editingSlotIndex, setEditingSlotIndex] = useState<number | null>(null);
   const [pickingTime, setPickingTime] = useState(false);
   const [tempDate, setTempDate] = useState<string | null>(null);
@@ -192,21 +192,56 @@ export default function PlanBookingScreen() {
   const initSlots = () => {
     if (!planDetail) return;
     const count = planDetail.recurrences ?? 1;
-    // Sugestão: mesmo dia da semana, semanas consecutivas
     const today = new Date();
     const initial: SlotEntry[] = [];
+    const initialMonths: Date[] = [];
     for (let i = 0; i < count; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i * 7);
-      initial.push({ date: formatDate(d), time: "09:00" });
+      initial.push({ date: formatDate(d), time: "" });
+      initialMonths.push(new Date(d.getFullYear(), d.getMonth(), 1));
     }
     setSlots(initial);
+    setCalendarMonths(initialMonths);
   };
 
   // ── Atualizar slot ────────────────────────────────────────────────────────
 
   const updateSlot = (index: number, field: "date" | "time", value: string) => {
-    setSlots((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
+    setSlots((prev) => {
+      const updated = prev.map((s, i) => (i === index ? { ...s, [field]: value } : s));
+      // Auto-preenchimento: quando o usuário define a data do 1º slot,
+      // preenche os demais pulando 7 dias, mas só se ainda não foram preenchidos
+      if (field === "date" && index === 0) {
+        const baseDate = new Date(value + "T12:00:00");
+        return updated.map((s, i) => {
+          if (i === 0) return s;
+          const next = new Date(baseDate);
+          next.setDate(baseDate.getDate() + i * 7);
+          const nextStr = formatDate(next);
+          return { ...s, date: nextStr, time: s.time };
+        });
+      }
+      return updated;
+    });
+    // Sincronizar o mês do calendário do slot quando a data muda
+    if (field === "date") {
+      const d = new Date(value + "T12:00:00");
+      setCalendarMonths((prev) => {
+        const updated = [...prev];
+        if (index === 0) {
+          // Auto-preencher meses dos outros slots
+          const baseDate = new Date(d);
+          return updated.map((_, i) => {
+            const next = new Date(baseDate);
+            next.setDate(baseDate.getDate() + i * 7);
+            return new Date(next.getFullYear(), next.getMonth(), 1);
+          });
+        }
+        updated[index] = new Date(d.getFullYear(), d.getMonth(), 1);
+        return updated;
+      });
+    }
   };
 
   // ── Confirmar assinatura ──────────────────────────────────────────────────
@@ -508,9 +543,6 @@ export default function PlanBookingScreen() {
   // ─── STEP: Horários ───────────────────────────────────────────────────────
 
   if (step === "schedule") {
-    const year = calendarMonth.getFullYear();
-    const month = calendarMonth.getMonth();
-    const cells = daysInMonth(year, month);
     const today = formatDate(new Date());
 
     return (
@@ -531,10 +563,15 @@ export default function PlanBookingScreen() {
             Defina os {planDetail?.recurrences ?? 1} horários do mês
           </Text>
           <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 16 }}>
-            Por padrão, os horários seguem o mesmo dia da semana. Você pode alterar individualmente.
+            Escolha a data do 1º agendamento — os demais serão preenchidos automaticamente (semanal). Você pode ajustar individualmente.
           </Text>
 
-          {slots.map((slot, index) => (
+          {slots.map((slot, index) => {
+            const slotMonth = calendarMonths[index] ?? new Date();
+            const year = slotMonth.getFullYear();
+            const month = slotMonth.getMonth();
+            const cells = daysInMonth(year, month);
+            return (
             <View key={index} style={[styles.slotCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
                 <View style={styles.slotBadge}>
@@ -548,13 +585,13 @@ export default function PlanBookingScreen() {
               {/* Calendário inline */}
               <View style={[styles.miniCalendar, { borderColor: colors.border }]}>
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <Pressable onPress={() => setCalendarMonth(new Date(year, month - 1, 1))}>
+                  <Pressable onPress={() => setCalendarMonths((prev) => { const u = [...prev]; u[index] = new Date(year, month - 1, 1); return u; })}>
                     <IconSymbol name="chevron.left" size={18} color="#C9A84C" />
                   </Pressable>
                   <Text style={{ color: colors.foreground, fontWeight: "700" }}>
                     {MONTHS_PT[month]} {year}
                   </Text>
-                  <Pressable onPress={() => setCalendarMonth(new Date(year, month + 1, 1))}>
+                  <Pressable onPress={() => setCalendarMonths((prev) => { const u = [...prev]; u[index] = new Date(year, month + 1, 1); return u; })}>
                     <IconSymbol name="chevron.right" size={18} color="#C9A84C" />
                   </Pressable>
                 </View>
@@ -629,7 +666,8 @@ export default function PlanBookingScreen() {
               </ScrollView>
               )}
             </View>
-          ))}
+            );
+          })}
 
           <Pressable
             style={styles.nextBtn}
