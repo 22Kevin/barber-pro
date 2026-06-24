@@ -206,6 +206,12 @@ export default function AgendaScreen() {
   // Filtro de barbeiro para managers (null = todos)
   const [filterBarberId, setFilterBarberId] = useState<number | null>(null);
   const isManager = barber?.role === "super_admin" || barber?.role === "receptionist";
+  // DEBUG: log barbers data
+  useEffect(() => {
+    if (barbersQuery.data) {
+      console.log("[DEBUG] barbersQuery.data:", JSON.stringify(barbersQuery.data.map((b: any) => ({ id: b.id, name: b.name, role: b.role }))));
+    }
+  }, [barbersQuery.data]);
 
   // Estado de edição de serviços no modal de detalhes
   const [editServices, setEditServices] = useState<any[]>([]);
