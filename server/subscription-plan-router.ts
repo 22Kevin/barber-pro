@@ -243,7 +243,7 @@ export const subscriptionPlanRouter = router({
             "maxProducts"=${input.maxProducts}, price=${input.price},
             "suggestedPrice"=${input.suggestedPrice ?? null}, "isActive"=${isActiveVal},
             "updatedAt"=NOW()
-        WHERE id=${input.id} AND tenantid=${input.tenantId}
+        WHERE id=${input.id} AND "tenantId"=${input.tenantId}
       `);
 
       // subscription_plan_services/products: colunas camelCase
@@ -280,7 +280,7 @@ export const subscriptionPlanRouter = router({
 
       await mutateSql(sql`DELETE FROM subscription_plan_services WHERE "planId"=${input.id}`);
       await mutateSql(sql`DELETE FROM subscription_plan_products WHERE "planId"=${input.id}`);
-      await mutateSql(sql`DELETE FROM subscription_plans WHERE id=${input.id} AND tenantid=${input.tenantId}`);
+      await mutateSql(sql`DELETE FROM subscription_plans WHERE id=${input.id} AND "tenantId"=${input.tenantId}`);
 
       return { ok: true };
     }),
@@ -291,7 +291,7 @@ export const subscriptionPlanRouter = router({
       // subscription_plans: colunas minúsculas
       await mutateSql(sql`
         UPDATE subscription_plans SET "isActive"=${input.isActive}, "updatedAt"=NOW()
-        WHERE id=${input.id} AND tenantid=${input.tenantId}
+        WHERE id=${input.id} AND "tenantId"=${input.tenantId}
       `);
       return { ok: true };
     }),
