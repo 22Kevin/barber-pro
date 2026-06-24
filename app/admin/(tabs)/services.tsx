@@ -15,6 +15,7 @@ import {
   TextInput,
   View,
   RefreshControl,
+  Image,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
