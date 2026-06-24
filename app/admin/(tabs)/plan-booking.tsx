@@ -153,7 +153,14 @@ export default function PlanBookingScreen() {
   const createMutation = trpc.subscriptionPlans.createSubscription.useMutation({
     onSuccess: () => {
       utils.subscriptionPlans.listSubscriptions.invalidate();
-      router.back();
+      Alert.alert(
+        "Assinatura criada!",
+        "A assinatura foi registrada com sucesso.",
+        [{ text: "OK", onPress: () => router.back() }]
+      );
+    },
+    onError: (e) => {
+      Alert.alert("Erro", e.message ?? "Não foi possível criar a assinatura.");
     },
   });
 
@@ -681,8 +688,8 @@ export default function PlanBookingScreen() {
           </View>
 
           <Pressable
-            style={[styles.nextBtn, { opacity: createMutation.isPending ? 0.6 : 1 }]}
-            disabled={createMutation.isPending}
+            style={[styles.nextBtn, { opacity: (createMutation.isPending || createMutation.isSuccess) ? 0.6 : 1 }]}
+            disabled={createMutation.isPending || createMutation.isSuccess}
             onPress={handleConfirm}
           >
             {createMutation.isPending ? (
