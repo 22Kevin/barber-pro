@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -276,7 +278,8 @@ function SubscriptionPlansScreenInner() {
             </TouchableOpacity>
           }
         />
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={80}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
 
           {/* Nome */}
           <Text style={[styles.label, { color: colors.foreground }]}>Nome do Plano *</Text>
@@ -466,6 +469,7 @@ function SubscriptionPlansScreenInner() {
             )}
           </TouchableOpacity>
         </ScrollView>
+        </KeyboardAvoidingView>
       </ScreenContainer>
     );
   }
