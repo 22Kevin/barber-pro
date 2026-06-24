@@ -435,6 +435,31 @@ export const subscriptionPlanRouter = router({
           ? timeRaw + ":00"
           : timeRaw;
         const endTimeEsc = addMinutes(appt.time, serviceDurationMinutes);
+
+        // Verificar duplicata dentro do mesmo plano
+        const isDuplicate = input.appointments.slice(0, i).some(
+          (prev) => prev.date === appt.date && prev.time === appt.time
+        );
+        if (isDuplicate) {
+          throw new Error(`Horário duplicado: ${appt.date} às ${appt.time}. Cada sessão do plano deve ter um horário único.`);
+        }
+
+        // Verificar conflito com agendamentos existentes no banco
+        if (apptBarberId) {
+          const conflicts = await selectSql(sql`
+            SELECT id FROM appointments
+            WHERE "barberId" = ${apptBarberId}
+              AND date = ${dateEsc}
+              AND status NOT IN ('cancelled', 'no_show')
+              AND "startTime" < ${endTimeEsc}
+              AND "endTime" > ${startTimeEsc}
+            LIMIT 1
+          `) as { id: number }[];
+          if (conflicts.length > 0) {
+            throw new Error(`Conflito de horário: ${appt.date} às ${appt.time} já está ocupado.`);
+          }
+        }
+
         const barberIdStr = apptBarberId !== null ? String(Number(apptBarberId)) : 'NULL';
 
         const appointmentId = await insertRawReturningId(
