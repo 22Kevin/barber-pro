@@ -206,12 +206,6 @@ export default function AgendaScreen() {
   // Filtro de barbeiro para managers (null = todos)
   const [filterBarberId, setFilterBarberId] = useState<number | null>(null);
   const isManager = barber?.role === "super_admin" || barber?.role === "receptionist";
-  // DEBUG: log barbers data
-  useEffect(() => {
-    if (barbersQuery.data) {
-      console.log("[DEBUG] barbersQuery.data:", JSON.stringify(barbersQuery.data.map((b: any) => ({ id: b.id, name: b.name, role: b.role }))));
-    }
-  }, [barbersQuery.data]);
 
   // Estado de edição de serviços no modal de detalhes
   const [editServices, setEditServices] = useState<any[]>([]);
@@ -231,6 +225,12 @@ export default function AgendaScreen() {
   const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
   const clientsQuery = trpc.clients.list.useQuery({ tenantId });
   const servicesQuery = trpc.services.list.useQuery({ activeOnly: true, tenantId });
+  // DEBUG
+  useEffect(() => {
+    if (barbersQuery.data) {
+      console.log("[DEBUG barbers]", JSON.stringify(barbersQuery.data.map((b: any) => ({ id: b.id, name: b.name, role: b.role }))));
+    }
+  }, [barbersQuery.data]);
 
   // ── Busca o mês inteiro de uma vez — sem query por dia ──────────────────────
   const monthStart = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-01`;
