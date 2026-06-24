@@ -119,9 +119,11 @@ export default function DashboardScreen() {
   );
   const monthRevenue = useMemo(() => {
     const sales = monthlySalesQuery.data ?? [];
+    console.log("[DEBUG monthly] sales count:", sales.length, "status:", monthlySalesQuery.status, "tenantId:", barber?.tenantId);
     const filtered = isBarberRole
       ? sales.filter((s: any) => s.barberId === myBarberId && s.paymentStatus === "paid")
       : sales.filter((s: any) => s.paymentStatus === "paid");
+    console.log("[DEBUG monthly] filtered count:", filtered.length, "total:", filtered.reduce((sum: number, s: any) => sum + parseFloat(s.total || "0"), 0));
     return filtered.reduce((sum: number, s: any) => sum + parseFloat(s.total || "0"), 0);
   }, [monthlySalesQuery.data, isBarberRole, myBarberId]);
   const [revenueVisible, setRevenueVisible] = useState(false);
