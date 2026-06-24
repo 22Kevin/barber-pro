@@ -259,14 +259,25 @@ export default function PlanBookingScreen() {
       dateStr,
     );
 
-    // Filtrar horários já agendados para o barbeiro nesta data
-    const booked = new Set(
-      (bookedAppointmentsQuery.data ?? [])
-        .filter((a: any) => a.date === dateStr && a.status !== "cancelled" && a.status !== "no_show")
-        .map((a: any) => a.startTime)
-    );
+    // Filtrar horários já agendados para o barbeiro nesta data (considerando duração)
+    const bookedRanges = (bookedAppointmentsQuery.data ?? [])
+      .filter((a: any) => a.date === dateStr && a.status !== "cancelled" && a.status !== "no_show")
+      .map((a: any) => {
+        const [sh, sm] = (a.startTime ?? "00:00").split(":").map(Number);
+        const [eh, em] = (a.endTime ?? a.startTime ?? "00:00").split(":").map(Number);
+        return { start: sh * 60 + sm, end: eh * 60 + em };
+      });
 
-    return allSlots.filter((t) => !booked.has(t));
+    const serviceDuration = planDetail?.maxServices
+      ? (planDetail as any).durationMinutes ?? 30
+      : 30;
+
+    return allSlots.filter((t) => {
+      const [th, tm] = t.split(":").map(Number);
+      const slotStart = th * 60 + tm;
+      const slotEnd = slotStart + serviceDuration;
+      return !bookedRanges.some((r) => slotStart < r.end && slotEnd > r.start);
+    });
   };
 
   // ─── STEP: Plano + Cliente ────────────────────────────────────────────────
