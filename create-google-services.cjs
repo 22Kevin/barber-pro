@@ -17,11 +17,19 @@ const content = {
       },
       "oauth_client": [
         {
-          "client_id": "398675034994-221cpiiammapce83jsp0iskibgjufrb0.apps.googleusercontent.com",
+          "client_id": "398675034994-l3052po61a7d87h57hb5uc44mqeq7b5q.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.usebarberpro.app",
             "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "398675034994-221cpiiammapce83jsp0iskibgjufrb0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.usebarberpro.app",
+            "certificate_hash": "9313ce059f5de50b610a37dcdfa906747a97eb20"
           }
         },
         {
