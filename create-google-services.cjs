@@ -3,14 +3,14 @@ const path = require("path");
 
 const content = {
   "project_info": {
-    "project_number": "494525836627",
-    "project_id": "barber-pro-6d0d3",
-    "storage_bucket": "barber-pro-6d0d3.firebasestorage.app"
+    "project_number": "398675034994",
+    "project_id": "barber-pro-488313",
+    "storage_bucket": "barber-pro-488313.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:494525836627:android:2937069edf4c8244c705a6",
+        "mobilesdk_app_id": "1:398675034994:android:barberprodebug",
         "android_client_info": {
           "package_name": "com.usebarberpro.app"
         }
@@ -39,7 +39,7 @@ const content = {
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAbGQxKeEXiE-tswVEUcXxMOzYOLxg-eZM"
+          "current_key": ""
         }
       ],
       "services": {
