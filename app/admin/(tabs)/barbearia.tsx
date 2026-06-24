@@ -942,6 +942,23 @@ export default function BarbeariaScreen() {
 
             <View style={styles.divider} />
 
+            {/* Pagamentos Online (Asaas) */}
+            <Pressable style={[styles.integrationCard, { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}
+              onPress={() => router.push("/admin/(tabs)/asaas-setup" as any)}>
+              <View style={styles.integrationHeader}>
+                <View style={[styles.integrationIcon, { backgroundColor: "#1A1A1A", borderWidth: 1, borderColor: "rgba(201,168,76,0.3)" }]}>
+                  <Text style={{ fontSize: 20 }}>💳</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.integrationTitle}>Pagamentos Online</Text>
+                  <Text style={styles.integrationSubtitle}>Pix e cartão via Asaas</Text>
+                </View>
+              </View>
+              <IconSymbol name="chevron.right" size={16} color="#C9A84C" />
+            </Pressable>
+
+            <View style={styles.divider} />
+
             <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleSaveIntegracoes} disabled={updateSettingsMutation.isPending}>
               {updateSettingsMutation.isPending ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>SALVAR INTEGRAÇÕES</Text>}
             </Pressable>
