@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated } from "react-native";
 import {
-  ActivityIndicator  Image, KeyboardAvoidingView,
+  ActivityIndicator, Alert, Image, KeyboardAvoidingView,
   Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from "react-native";
 import { router } from "expo-router";
