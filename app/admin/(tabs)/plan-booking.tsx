@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   ScrollView,
@@ -599,19 +600,31 @@ export default function PlanBookingScreen() {
               ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: "row", gap: 8, paddingBottom: 4 }}>
-                  {getTimeSlots(slot.date).map((t) => (
-                    <Pressable
-                      key={t}
-                      style={[
-                        styles.timeChip,
-                        slot.time === t && { backgroundColor: "#C9A84C", borderColor: "#C9A84C" },
-                        { borderColor: colors.border },
-                      ]}
-                      onPress={() => updateSlot(index, "time", t)}
-                    >
-                      <Text style={{ fontSize: 13, color: slot.time === t ? "#0A0A0A" : colors.foreground, fontWeight: "600" }}>{t}</Text>
-                    </Pressable>
-                  ))}
+                  {getTimeSlots(slot.date).map((t) => {
+                    const isSelected = slot.time === t;
+                    const usedInOtherSlot = slots.some((s, i) => i !== index && s.date === slot.date && s.time === t);
+                    return (
+                      <Pressable
+                        key={t}
+                        style={[
+                          styles.timeChip,
+                          isSelected && { backgroundColor: "#C9A84C", borderColor: "#C9A84C" },
+                          usedInOtherSlot && !isSelected && { backgroundColor: "#2A1A1A", borderColor: "#5A2A2A", opacity: 0.6 },
+                          { borderColor: colors.border },
+                        ]}
+                        onPress={() => {
+                          if (usedInOtherSlot) {
+                            Alert.alert("Horário duplicado", "Este horário já foi escolhido para outra sessão deste plano.");
+                            return;
+                          }
+                          updateSlot(index, "time", t);
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, color: isSelected ? "#0A0A0A" : usedInOtherSlot ? "#884444" : colors.foreground, fontWeight: "600" }}>{t}</Text>
+                        {usedInOtherSlot && <Text style={{ fontSize: 9, color: "#884444", marginTop: 1 }}>já usado</Text>}
+                      </Pressable>
+                    );
+                  })}
                 </View>
               </ScrollView>
               )}
