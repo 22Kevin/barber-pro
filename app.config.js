@@ -79,6 +79,7 @@ const config = {
     orientation: "portrait",
   },
   plugins: [
+    "./plugins/withSoftInputMode.cjs",
     "expo-router",
     [
       "expo-location",
