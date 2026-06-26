@@ -234,7 +234,7 @@ export default function FinancialScreen() {
         ))}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: tabBarHeight }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: tabBarHeight }} keyboardShouldPersistTaps="handled">
         {/* Overview */}
         {activeTab === "overview" && (
           <>
@@ -343,7 +343,7 @@ export default function FinancialScreen() {
         {activeTab === "online" && (
           <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
             {/* Filtro de status */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} keyboardShouldPersistTaps="handled">
               <View style={{ flexDirection: "row", gap: 8, paddingBottom: 4 }}>
                 {[
                   { key: "all",       label: "Todos",     color: "#888" },
@@ -436,7 +436,7 @@ export default function FinancialScreen() {
       {/* Modal Nova Venda */}
       <Modal visible={showSaleModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Registrar Venda</Text>
@@ -495,7 +495,7 @@ export default function FinancialScreen() {
                 <TextInput style={styles.input} value={saleAmount} onChangeText={setSaleAmount} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
 
                 <Text style={styles.fieldLabel}>Forma de Pagamento</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} keyboardShouldPersistTaps="handled">
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {PAYMENT_METHODS.map(pm => (
                       <Pressable key={pm.key} style={[styles.paymentChip, salePayment === pm.key && styles.paymentChipActive]} onPress={() => setSalePayment(pm.key)}>
@@ -518,7 +518,7 @@ export default function FinancialScreen() {
       {/* Modal Nova Despesa */}
       <Modal visible={showExpenseModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Registrar Despesa</Text>
@@ -532,7 +532,7 @@ export default function FinancialScreen() {
                 <TextInput style={styles.input} value={expenseAmount} onChangeText={setExpenseAmount} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
 
                 <Text style={styles.fieldLabel}>Categoria</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} keyboardShouldPersistTaps="handled">
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {EXPENSE_CATEGORIES.map(cat => (
                       <Pressable key={cat} style={[styles.paymentChip, expenseCategory === cat && styles.paymentChipActive]} onPress={() => setExpenseCategory(cat)}>

@@ -188,7 +188,7 @@ export default function LoyaltyScreen() {
         ))}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: tabBarHeight }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: tabBarHeight }} keyboardShouldPersistTaps="handled">
         {/* Config de Pontos */}
         {activeTab === "config" && (
           <>
@@ -332,7 +332,7 @@ export default function LoyaltyScreen() {
       {/* Modal Nova Recompensa */}
       <Modal visible={showRewardModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Nova Recompensa</Text>
@@ -376,7 +376,7 @@ export default function LoyaltyScreen() {
       {/* Modal Novo Cupom */}
       <Modal visible={showCouponModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Novo Cupom</Text>

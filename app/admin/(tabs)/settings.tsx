@@ -395,7 +395,7 @@ export default function SettingsScreen() {
   return (
     <ScreenContainer containerClassName="bg-background">
       <AdminHeader title="Configurações" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: tabBarHeight }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: tabBarHeight }} keyboardShouldPersistTaps="handled">
 
         {/* Minha Assinatura */}
         <SubscriptionSection />

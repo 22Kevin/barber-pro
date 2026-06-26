@@ -214,7 +214,7 @@ export default function ServicesScreen() {
       {/* Modal de criação/edição */}
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{editing ? "Editar Serviço" : "Novo Serviço"}</Text>

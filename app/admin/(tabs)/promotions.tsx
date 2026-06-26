@@ -204,7 +204,7 @@ export default function PromotionsScreen() {
             </Pressable>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
             <Text style={dyn.label}>Título da notificação</Text>
             <TextInput
               style={dyn.input}

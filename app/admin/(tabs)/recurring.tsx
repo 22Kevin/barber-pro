@@ -10,7 +10,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View,,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -118,7 +120,7 @@ function InlineTimePicker({
           overflow: "hidden",
         }]}>
           {/* Horas */}
-          <ScrollView style={{ flex: 1, maxHeight: 180 }} showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ flex: 1, maxHeight: 180 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {hours.map((hr) => (
               <TouchableOpacity
                 key={hr}
@@ -143,7 +145,7 @@ function InlineTimePicker({
           </ScrollView>
           <View style={{ width: 1, backgroundColor: colors.border }} />
           {/* Minutos */}
-          <ScrollView style={{ flex: 1, maxHeight: 180 }} showsVerticalScrollIndicator={false}>
+          <ScrollView style={{ flex: 1, maxHeight: 180 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {minutes.map((min) => (
               <TouchableOpacity
                 key={min}

@@ -313,7 +313,7 @@ export default function ClientsScreen() {
                 <IconSymbol name="xmark" size={22} color="#888880" />
               </Pressable>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               {/* Hoje */}
               <Text style={styles.birthdaySectionTitle}>Hoje</Text>
               {birthdayToday.length === 0 ? (
@@ -384,7 +384,7 @@ export default function ClientsScreen() {
       {/* Modal Criar/Editar */}
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{editing ? "Editar Cliente" : "Novo Cliente"}</Text>
@@ -465,7 +465,7 @@ export default function ClientsScreen() {
               <Pressable onPress={() => setShowDetailModal(false)}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
             </View>
             {selectedClient && (
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 {/* Info */}
                 <View style={styles.clientDetailHeader}>
                   <View style={[styles.avatarLarge, isBirthdayToday(selectedClient.birthDate) && styles.avatarBirthday]}>

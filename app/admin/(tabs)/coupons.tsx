@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, Switch, Text, TextInput, View } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
@@ -83,7 +83,9 @@ function CouponsScreenInner() {
           <Text style={{ fontSize: 13, fontWeight: "700", color: "#0A0A0A" }}>{showForm ? "Cancelar" : "+ Novo"}</Text>
         </Pressable>
       } />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
@@ -163,6 +165,7 @@ function CouponsScreenInner() {
 
         <View style={{ height: tabBarHeight + 16 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </ScreenContainer>
   );
 }

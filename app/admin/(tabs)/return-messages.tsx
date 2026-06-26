@@ -235,7 +235,7 @@ export default function ReturnMessagesScreen() {
             </Pressable>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
             {/* Seletor de serviço com busca */}
             <Text style={dyn.label}>Serviço</Text>
             <TextInput

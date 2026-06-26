@@ -10,7 +10,9 @@ import {
   Text,
   TextInput,
   View,
-  RefreshControl,
+  RefreshControl,,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
@@ -230,7 +232,7 @@ function StockScreenInner() {
         }
       />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
         {/* Alerta de estoque baixo */}
         {lowStockCount > 0 && (
           <View style={[styles.alertBanner, { backgroundColor: "#FEF3C7", borderColor: "#F59E0B" }]}>
@@ -407,7 +409,7 @@ function StockScreenInner() {
             {movType === "transfer" && networkBranches.length > 0 && (
               <>
                 <Text style={[styles.fieldLabel, { color: colors.muted }]}>Transferir para</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} keyboardShouldPersistTaps="handled">
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {networkBranches.map((b: any) => (
                       <Pressable
@@ -444,7 +446,7 @@ function StockScreenInner() {
             {movType === "in" && suppliersList.length > 0 && (
               <>
                 <Text style={[styles.fieldLabel, { color: colors.muted }]}>Fornecedor (opcional)</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }} keyboardShouldPersistTaps="handled">
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <Pressable
                       style={({ pressed }) => ({

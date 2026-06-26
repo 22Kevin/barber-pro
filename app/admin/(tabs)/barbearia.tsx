@@ -539,7 +539,7 @@ export default function BarbeariaScreen() {
 
       {/* Tabs */}
       <View style={styles.tabsWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent} keyboardShouldPersistTaps="handled">
           {TABS.map(tab => (
             <Pressable key={tab.key} style={[styles.tab, activeTab === tab.key && styles.tabActive]} onPress={() => setActiveTab(tab.key)}>
               <IconSymbol name={tab.icon as any} size={14} color={activeTab === tab.key ? "#0A0A0A" : "#888880"} />
@@ -759,7 +759,7 @@ export default function BarbeariaScreen() {
         {activeTab === "horarios" && (
           <>
             <Text style={styles.sectionTitle}>Selecione o Membro</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} keyboardShouldPersistTaps="handled">
               <View style={{ flexDirection: "row", gap: 8 }}>
                 {barbers.map((b: any) => (
                   <Pressable key={b.id} style={[styles.barberChip, selectedBarberId === b.id && styles.barberChipActive]} onPress={() => setSelectedBarberId(b.id)}>
@@ -867,7 +867,7 @@ export default function BarbeariaScreen() {
 
                 {/* Motivo */}
                 <Text style={{ color: "#888880", fontSize: 12, marginBottom: 8 }}>Motivo</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }} keyboardShouldPersistTaps="handled">
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {BLOCK_REASONS.map(r => (
                       <Pressable key={r} style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: batchBlockReason === r ? "#EF4444" : "#1E1E1E", borderWidth: 1, borderColor: batchBlockReason === r ? "#EF4444" : "#2A2A2A" }} onPress={() => setBatchBlockReason(r)}>
@@ -992,7 +992,7 @@ export default function BarbeariaScreen() {
       {/* Modal Membro */}
       <Modal visible={showBarberModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{editingBarber ? "Editar Membro" : "Novo Membro"}</Text>
@@ -1058,7 +1058,7 @@ export default function BarbeariaScreen() {
       {/* Modal Nova Filial */}
       <Modal visible={showFilialModal} animationType="slide" transparent onRequestClose={() => setShowFilialModal(false)}>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Nova Filial</Text>

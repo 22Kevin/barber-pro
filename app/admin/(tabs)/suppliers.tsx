@@ -11,7 +11,9 @@ import {
   ActivityIndicator,
   ScrollView,
   Linking,
-  Pressable,
+  Pressable,,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -461,7 +463,7 @@ function SuppliersScreenInner() {
               {editingId ? "Editar Fornecedor" : "Novo Fornecedor"}
             </Text>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={[styles.label, { color: colors.muted }]}>Nome *</Text>
               <TextInput
                 style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}

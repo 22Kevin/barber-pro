@@ -289,7 +289,7 @@ function ProductsScreenInner() {
           showsHorizontalScrollIndicator={false}
           style={{ maxHeight: 44 }}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8, gap: 8, flexDirection: "row" }}
-        >
+         keyboardShouldPersistTaps="handled">
           <Pressable
             style={({ pressed }) => ({
               paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
@@ -406,7 +406,7 @@ function ProductsScreenInner() {
       {/* Modal de Criação/Edição de Produto */}
       <Modal visible={showModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>{editing ? "Editar Produto" : "Novo Produto"}</Text>
@@ -470,7 +470,7 @@ function ProductsScreenInner() {
                       </Text>
                     </View>
                   ) : (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }} keyboardShouldPersistTaps="handled">
                       <View style={{ flexDirection: "row", gap: 8 }}>
                         {suppliersList.map((s) => (
                           <Pressable
@@ -604,7 +604,7 @@ function ProductsScreenInner() {
       {/* Modal de Reposição de Estoque */}
       <Modal visible={showRestockModal} transparent animationType="slide" onRequestClose={() => setShowRestockModal(false)}>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: "100%" }} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Repor Estoque</Text>
