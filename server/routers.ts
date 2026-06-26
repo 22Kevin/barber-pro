@@ -612,6 +612,8 @@ export const appRouter = router({
     create: barberProcedure
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), costPrice: z.string().optional().nullable(), stock: z.number().min(0).default(0), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true), tenantId: z.number().optional().nullable() }))
       .mutation(async ({ input, ctx }) => {
+        const tenantForGuard = await db.getTenantById(ctx.barber.tenantId);
+        assertFeature(tenantForGuard?.plan, "products");
         const productId = await db.createProduct(input as any);
         // Registrar despesa do estoque inicial automaticamente
         if (input.stock > 0 && input.costPrice && parseFloat(input.costPrice) > 0) {
@@ -2062,12 +2064,14 @@ export const appRouter = router({
     listConfigs: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
       return db.listCommissionConfigs(input?.tenantId);
     }),
-    saveConfig: publicProcedure
+    saveConfig: barberProcedure
       .input(z.object({
         barberId: z.number(),
         defaultRate: z.number().min(0).max(100),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        const tenantForGuard = await db.getTenantById(ctx.barber.tenantId);
+        assertFeature(tenantForGuard?.plan, "commissions");
         return db.upsertCommissionConfig(input);
       }),
     listEntries: publicProcedure

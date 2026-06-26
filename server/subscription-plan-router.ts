@@ -13,9 +13,13 @@
  *   cancelledAt, cancelReason, autoRenew, createdAt, updatedAt, subscriptionId,
  *   appointmentId, recurrenceIndex
  */
+import { assertFeature } from "./plan-features";
 import { sql } from "drizzle-orm";
+import { assertFeature } from "./plan-features";
 import { z } from "zod";
+import { assertFeature } from "./plan-features";
 import { publicProcedure, router } from "./_core/trpc";
+import { assertFeature } from "./plan-features";
 import { getDb } from "./db";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -189,6 +193,9 @@ export const subscriptionPlanRouter = router({
       productIds: z.array(z.number()),
     }))
     .mutation(async ({ input }) => {
+      const { getDb, getTenantById } = await import("./db");
+      const tenantForGuard = await getTenantById(input.tenantId);
+      assertFeature(tenantForGuard?.plan, "subscription_plans");
       // subscription_plans: colunas minúsculas, usar RETURNING id para PostgreSQL
       const planId = await insertReturningId(sql`
         INSERT INTO subscription_plans ("tenantId", name, description, recurrences, "maxServices", "maxProducts", price, "suggestedPrice")
