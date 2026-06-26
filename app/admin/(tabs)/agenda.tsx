@@ -268,6 +268,7 @@ export default function AgendaScreen() {
 
   const allAppointmentsQuery = useMemo(() => {
     const data = (allAppointmentsByMonthQuery.data ?? []).filter((a: any) => a.date === dateStr);
+    console.log("[DEBUG allApptQ] dateStr:", dateStr, "total:", allAppointmentsByMonthQuery.data?.length, "filtered:", data.length);
     return { data, isLoading: allAppointmentsByMonthQuery.isLoading, refetch: allAppointmentsByMonthQuery.refetch };
   }, [allAppointmentsByMonthQuery.data, allAppointmentsByMonthQuery.isLoading, allAppointmentsByMonthQuery.refetch, dateStr]);
 
