@@ -26,6 +26,7 @@ import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { NotificationsSetup } from "@/components/notifications-setup";
 import { AppAlertProviderWithGlobal, AppAlert } from "@/components/app-alert";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -168,11 +169,13 @@ export default function RootLayout() {
     <ErrorBoundary>
       <ThemeProvider>
         <SafeAreaProvider initialMetrics={providerInitialMetrics}>
+          <KeyboardProvider>
           <AppAlertProviderWithGlobal>
           {content}
           <NetworkBanner />
           <ToastProvider />
           </AppAlertProviderWithGlobal>
+          </KeyboardProvider>
         </SafeAreaProvider>
       </ThemeProvider>
     </ErrorBoundary>

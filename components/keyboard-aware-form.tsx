@@ -1,74 +1,20 @@
-/**
- * KeyboardAwareForm
- * Wrapper confiável para formulários que precisam evitar o teclado no Android.
- * Usa useWindowDimensions + keyboard events para calcular o offset correto,
- * funcionando mesmo com edgeToEdgeEnabled: true.
- */
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  Keyboard,
-  KeyboardEvent,
-  Platform,
-  ScrollView,
-  ScrollViewProps,
-  StyleSheet,
-  View,
-} from "react-native";
+import React from "react";
+import { ScrollViewProps } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 interface Props extends ScrollViewProps {
   children: React.ReactNode;
-  extraScrollHeight?: number;
 }
 
-export function KeyboardAwareForm({
-  children,
-  extraScrollHeight = 24,
-  style,
-  contentContainerStyle,
-  ...rest
-}: Props) {
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
-
-  useEffect(() => {
-    if (Platform.OS !== "android") return;
-
-    const onShow = (e: KeyboardEvent) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    };
-    const onHide = () => {
-      setKeyboardHeight(0);
-    };
-
-    const showSub = Keyboard.addListener("keyboardDidShow", onShow);
-    const hideSub = Keyboard.addListener("keyboardDidHide", onHide);
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
+export function KeyboardAwareForm({ children, ...rest }: Props) {
   return (
-    <ScrollView
-      ref={scrollRef}
-      style={[styles.container, style]}
-      contentContainerStyle={[
-        { paddingBottom: keyboardHeight + extraScrollHeight },
-        contentContainerStyle,
-      ]}
+    <KeyboardAwareScrollView
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
-      automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+      bottomOffset={24}
       {...rest}
     >
       {children}
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
