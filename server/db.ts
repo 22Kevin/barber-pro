@@ -39,6 +39,7 @@ import {
   suppliers,
   subscriptionPlans,
   subscriptionPlanServices,
+  subscriptionAppointments,
   type Supplier,
   type InsertSupplier,
   type WhatsappMessage,
@@ -705,6 +706,7 @@ const appointmentFields = {
   servicePrice: services.price,
   clientName: clients.name,
   clientPhone: clients.phone,
+  subscriptionAppointmentId: subscriptionAppointments.id,
 };
 
 export async function getAppointmentsByDate(barberId: number, date: string) {
@@ -715,6 +717,7 @@ export async function getAppointmentsByDate(barberId: number, date: string) {
     .from(appointments)
     .leftJoin(services, eq(appointments.serviceId, services.id))
     .leftJoin(clients, eq(appointments.clientId, clients.id))
+    .leftJoin(subscriptionAppointments, eq(subscriptionAppointments.appointmentId, appointments.id))
     .where(and(eq(appointments.barberId, barberId), eq(appointments.date, date),
       sql`${appointments.status} NOT IN ('cancelled', 'no_show')`))
     .orderBy(appointments.startTime);
@@ -728,6 +731,7 @@ export async function getAppointmentsByDateRange(barberId: number, startDate: st
     .from(appointments)
     .leftJoin(services, eq(appointments.serviceId, services.id))
     .leftJoin(clients, eq(appointments.clientId, clients.id))
+    .leftJoin(subscriptionAppointments, eq(subscriptionAppointments.appointmentId, appointments.id))
     .where(and(eq(appointments.barberId, barberId),
       gte(appointments.date, startDate), lte(appointments.date, endDate),
       sql`${appointments.status} NOT IN ('cancelled', 'no_show')`))

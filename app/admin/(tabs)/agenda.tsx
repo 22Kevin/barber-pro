@@ -840,7 +840,7 @@ export default function AgendaScreen() {
                     Linking.openURL(`https://wa.me/55${phone}?text=${msg}`);
                   } catch { toast.error("Não foi possível buscar o link de pagamento."); }
                 }}
-                paymentPending={apt.status === "completed" ? (paymentPendingMap[apt.id] ?? true) : undefined}
+                paymentPending={apt.status === "completed" && !apt.subscriptionAppointmentId ? (paymentPendingMap[apt.id] ?? true) : undefined}
               />
             ))}
           </GestureHandlerRootView>

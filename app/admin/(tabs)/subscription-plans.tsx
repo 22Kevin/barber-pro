@@ -504,10 +504,11 @@ function SubscriptionPlansScreenInner() {
               <Text style={{ color: "#C9A84C", fontSize: 22, fontWeight: "700" }}>{stats.activePlans}</Text>
               <Text style={{ color: colors.muted, fontSize: 11, marginTop: 2 }}>Planos ativos</Text>
             </View>
-            <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <TouchableOpacity style={[styles.statCard, { backgroundColor: colors.surface, borderColor: "#C9A84C44" }]}
+              onPress={() => router.push("/admin/(tabs)/subscribers" as any)}>
               <Text style={{ color: "#C9A84C", fontSize: 22, fontWeight: "700" }}>{stats.activeSubs}</Text>
-              <Text style={{ color: colors.muted, fontSize: 11, marginTop: 2 }}>Assinantes</Text>
-            </View>
+              <Text style={{ color: "#C9A84C", fontSize: 11, marginTop: 2 }}>Assinantes →</Text>
+            </TouchableOpacity>
             <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <Text style={{ color: "#C9A84C", fontSize: 22, fontWeight: "700" }}>
                 R$ {stats.mrr.toFixed(0)}
