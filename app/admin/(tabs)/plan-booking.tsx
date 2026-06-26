@@ -155,6 +155,9 @@ export default function PlanBookingScreen() {
   const createMutation = trpc.subscriptionPlans.createSubscription.useMutation({
     onSuccess: () => {
       utils.subscriptionPlans.listSubscriptions.invalidate();
+      utils.appointments.allByDateRange.invalidate();
+      utils.appointments.subscriptionAppointmentIds.invalidate();
+      utils.dashboard.stats.invalidate();
       AppAlert.alert(
         "Assinatura criada!",
         "A assinatura foi registrada com sucesso.",
