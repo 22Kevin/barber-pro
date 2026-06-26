@@ -679,10 +679,19 @@ export const appRouter = router({
       const tenantId = input.tenantId ?? ctx.barber?.tenantId;
       if (!tenantId) return [];
       const rows = await db.rawQuery(
-        `SELECT sa."appointmentId" FROM subscription_appointments sa JOIN appointments a ON a.id = sa."appointmentId" WHERE a.date >= $1 AND a.date <= $2 AND sa."tenantId" = $3`,
+        `SELECT sa."appointmentId", cs."selectedServiceIds", cs."selectedProductIds", cs."planId"
+         FROM subscription_appointments sa
+         JOIN client_subscriptions cs ON cs.id = sa."subscriptionId"
+         JOIN appointments a ON a.id = sa."appointmentId"
+         WHERE a.date >= $1 AND a.date <= $2 AND sa."tenantId" = $3`,
         [input.startDate, input.endDate, tenantId]
       );
-      return (rows as any[]).map((r: any) => r.appointmentId as number);
+      return (rows as any[]).map((r: any) => ({
+        appointmentId: r.appointmentId as number,
+        selectedServiceIds: r.selectedServiceIds,
+        selectedProductIds: r.selectedProductIds,
+        planId: r.planId,
+      }));
     }),
     nextByClient: publicProcedure.input(z.object({ clientId: z.number() })).query(({ input }) => db.getNextClientAppointment(input.clientId)),
     byDateRange: publicProcedure.input(z.object({ barberId: z.number(), startDate: z.string(), endDate: z.string() })).query(({ input }) => db.getAppointmentsByDateRange(input.barberId, input.startDate, input.endDate)),

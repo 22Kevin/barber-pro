@@ -482,6 +482,44 @@ export const subscriptionPlanRouter = router({
       return { ok: true, id: subscriptionId, appointmentIds };
     }),
 
+  updateSubscription: publicProcedure
+    .input(z.object({
+      id: z.number(),
+      tenantId: z.number(),
+      selectedServiceIds: z.array(z.number()),
+      selectedProductIds: z.array(z.number()),
+    }))
+    .mutation(async ({ input }) => {
+      const svcJson = JSON.stringify(input.selectedServiceIds);
+      const prdJson = JSON.stringify(input.selectedProductIds);
+      await mutateSql(sql`
+        UPDATE client_subscriptions
+        SET "selectedServiceIds" = ${svcJson},
+            "selectedProductIds" = ${prdJson},
+            "updatedAt" = NOW()
+        WHERE id = ${input.id} AND "tenantId" = ${input.tenantId}
+      `);
+      return { ok: true };
+    }),
+
+  getPlanItems: publicProcedure
+    .input(z.object({ planId: z.number() }))
+    .query(async ({ input }) => {
+      const services = await selectSql(sql`
+        SELECT sps."serviceId" as id, s.name, s.price, s."durationMinutes" as duration
+        FROM subscription_plan_services sps
+        JOIN services s ON s.id = sps."serviceId"
+        WHERE sps."planId" = ${input.planId}
+      `);
+      const products = await selectSql(sql`
+        SELECT spp."productId" as id, p.name, p.price
+        FROM subscription_plan_products spp
+        JOIN products p ON p.id = spp."productId"
+        WHERE spp."planId" = ${input.planId}
+      `);
+      return { services, products };
+    }),
+
   cancelSubscription: publicProcedure
     .input(z.object({
       id: z.number(),

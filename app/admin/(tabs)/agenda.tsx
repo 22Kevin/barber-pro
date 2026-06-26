@@ -258,7 +258,13 @@ export default function AgendaScreen() {
     { startDate: monthStart, endDate: monthEnd, tenantId },
     { enabled: !!tenantId, staleTime: 60000 }
   );
-  const subscriptionApptIds = useMemo(() => new Set(subscriptionApptIdsQuery.data ?? []), [subscriptionApptIdsQuery.data]);
+  const subscriptionApptIds = useMemo(() => {
+    const map = new Map<number, { selectedServiceIds: string; planId: number }>();
+    for (const r of (subscriptionApptIdsQuery.data ?? [])) {
+      map.set(r.appointmentId, { selectedServiceIds: r.selectedServiceIds, planId: r.planId });
+    }
+    return map;
+  }, [subscriptionApptIdsQuery.data]);
 
   // Filtrar localmente pelo dia selecionado (sem nova requisição)
   const appointmentsQuery = useMemo(() => {
@@ -861,9 +867,21 @@ export default function AgendaScreen() {
                     setShowPaymentModal(true);
                   } else {
                     setSelectedAppointment({ ...apt });
-                    // Inicializa editServices com o serviço atual do agendamento
-                    const currentService = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
-                    setEditServices(currentService ? [currentService] : []);
+                    // Se for agendamento de assinatura, filtrar pelos serviços do plano
+                    const subData = subscriptionApptIds.get(apt.id);
+                    if (subData?.selectedServiceIds) {
+                      try {
+                        const planSvcIds: number[] = JSON.parse(subData.selectedServiceIds);
+                        const planServices = (servicesQuery.data ?? []).filter((s: any) => planSvcIds.includes(s.id));
+                        setEditServices(planServices.length > 0 ? planServices : (servicesQuery.data ?? []).filter((s: any) => s.id === apt.serviceId));
+                      } catch {
+                        const currentService = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
+                        setEditServices(currentService ? [currentService] : []);
+                      }
+                    } else {
+                      const currentService = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
+                      setEditServices(currentService ? [currentService] : []);
+                    }
                     setShowDetailModal(true);
                   }
                 }}
@@ -1257,26 +1275,41 @@ export default function AgendaScreen() {
                 {selectedAppointment.status !== "completed" && selectedAppointment.status !== "cancelled" && selectedAppointment.status !== "no_show" && (
                   <View>
                     <Text style={[styles.fieldLabel, { marginTop: 20, marginBottom: 8 }]}>Editar Serviços</Text>
+                    {subscriptionApptIds.has(selectedAppointment.id) && (
+                      <Text style={{ color: "#C9A84C", fontSize: 11, marginBottom: 8, fontStyle: "italic" }}>
+                        ⭐ Exibindo apenas serviços do plano de assinatura
+                      </Text>
+                    )}
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-                      {(servicesQuery.data ?? []).map((svc: any) => {
-                        const isSelected = editServices.some((s) => s.id === svc.id);
-                        return (
-                          <Pressable
-                            key={svc.id}
-                            style={[styles.serviceChip, isSelected && styles.serviceChipActive]}
-                            onPress={() => setEditServices((prev) =>
-                              isSelected ? prev.filter((s) => s.id !== svc.id) : [...prev, svc]
-                            )}
-                          >
-                            <Text style={[styles.serviceChipText, isSelected && styles.serviceChipTextActive]}>
-                              {svc.name}
-                            </Text>
-                            <Text style={[styles.serviceChipText, isSelected && styles.serviceChipTextActive, { fontSize: 11, opacity: 0.8 }]}>
-                              {svc.durationMinutes} min
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
+                      {(() => {
+                        const subData = subscriptionApptIds.get(selectedAppointment.id);
+                        let availableServices = servicesQuery.data ?? [];
+                        if (subData?.selectedServiceIds) {
+                          try {
+                            const planSvcIds: number[] = JSON.parse(subData.selectedServiceIds);
+                            availableServices = availableServices.filter((s: any) => planSvcIds.includes(s.id));
+                          } catch {}
+                        }
+                        return availableServices.map((svc: any) => {
+                          const isSelected = editServices.some((s) => s.id === svc.id);
+                          return (
+                            <Pressable
+                              key={svc.id}
+                              style={[styles.serviceChip, isSelected && styles.serviceChipActive]}
+                              onPress={() => setEditServices((prev) =>
+                                isSelected ? prev.filter((s) => s.id !== svc.id) : [...prev, svc]
+                              )}
+                            >
+                              <Text style={[styles.serviceChipText, isSelected && styles.serviceChipTextActive]}>
+                                {svc.name}
+                              </Text>
+                              <Text style={[styles.serviceChipText, isSelected && styles.serviceChipTextActive, { fontSize: 11, opacity: 0.8 }]}>
+                                {svc.durationMinutes} min
+                              </Text>
+                            </Pressable>
+                          );
+                        });
+                      })()}
                     </View>
                     {editServices.length > 0 && (
                       <View style={[styles.serviceChip, { backgroundColor: "#1A1A1A", borderColor: "#C9A84C", marginBottom: 12, flexDirection: "row", justifyContent: "space-between" }]}>
