@@ -70,7 +70,6 @@ const DRAWER_GROUPS: DrawerGroup[] = [
       { label: "Estoque",         icon: "tray.full.fill",              route: "/admin/(tabs)/stock",             roles: ["super_admin"], feature: "stock", requiredPlan: "Equipe" },
       { label: "Fornecedores",     icon: "building.2.fill",             route: "/admin/(tabs)/suppliers",         roles: ["super_admin"], feature: "suppliers", requiredPlan: "Equipe" },
       { label: "Assinaturas",       icon: "arrow.clockwise",             route: "/admin/subscription-plans",      roles: ["super_admin", "receptionist"], feature: "subscription_plans", requiredPlan: "Equipe" },
-      { label: "Assinantes",        icon: "person.badge.clock",          route: "/admin/(tabs)/subscribers",      roles: ["super_admin", "receptionist"], feature: "subscription_plans", requiredPlan: "Equipe" },
     ],
   },
   {

@@ -779,7 +779,49 @@ export const appRouter = router({
         serviceNames: z.string().optional().nullable(),
         endTime: z.string().optional(),
       }))
-      .mutation(({ input }) => { const { id, ...data } = input; return db.updateAppointment(id, data as any); }),
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateAppointment(id, data as any);
+
+        // Se completou, verificar se é agendamento de assinatura
+        if (input.status === "completed") {
+          try {
+            const dbConn = await db.getDb();
+            if (dbConn) {
+              const subApptRows = await db.rawQuery(
+                `SELECT sa.id, sa."subscriptionId", cs."usedRecurrences", cs."autoRenew",
+                        sp.recurrences as "totalRecurrences", sp.name as "planName"
+                 FROM subscription_appointments sa
+                 JOIN client_subscriptions cs ON cs.id = sa."subscriptionId"
+                 JOIN subscription_plans sp ON sp.id = cs."planId"
+                 WHERE sa."appointmentId" = $1 LIMIT 1`,
+                [id]
+              ) as any[];
+
+              if (subApptRows.length > 0) {
+                const sub = subApptRows[0];
+                const newUsed = (sub.usedRecurrences ?? 0) + 1;
+                await db.rawQuery(
+                  `UPDATE client_subscriptions SET "usedRecurrences" = $1, "updatedAt" = NOW() WHERE id = $2`,
+                  [newUsed, sub.subscriptionId]
+                );
+                return {
+                  isSubscription: true,
+                  sessionNumber: newUsed,
+                  totalSessions: sub.totalRecurrences,
+                  isLast: newUsed >= sub.totalRecurrences,
+                  autoRenew: !!sub.autoRenew,
+                  planName: sub.planName,
+                };
+              }
+            }
+          } catch (e: any) {
+            console.error("[appointment.update] Erro ao processar assinatura:", e.message);
+          }
+        }
+
+        return { isSubscription: false };
+      }),
     approveOvertime: barberProcedure
       .input(z.object({ id: z.number(), approve: z.boolean(), clientPushToken: z.string().optional() }))
       .mutation(async ({ input }) => {

@@ -27,6 +27,7 @@ import { SwipeableAppointmentCard } from "@/components/swipeable-appointment-car
 import { PaymentStatusModal } from "@/components/payment-status-modal";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { trpc } from "@/lib/trpc";
+import { AppAlert } from "@/components/app-alert";
 import { scheduleAppointmentReminder, cancelAppointmentReminder, clearAppBadge } from "@/lib/use-notifications";
 import { useColors } from "@/hooks/use-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -350,13 +351,32 @@ export default function AgendaScreen() {
   });
 
   const updateMutation = trpc.appointments.update.useMutation({
-    onSuccess: (_data: unknown, variables: any) => {
+    onSuccess: (data: any, variables: any) => {
       if (variables.status === "cancelled" || variables.status === "no_show") {
         cancelAppointmentReminder(variables.id).catch(() => null);
       }
       utils.appointments.byDateRange.invalidate(); utils.appointments.allByDateRange.invalidate();
+      utils.appointments.subscriptionAppointmentIds.invalidate();
       utils.dashboard.stats.invalidate();
       setShowDetailModal(false);
+
+      // Se completou um agendamento de assinatura, mostrar modal informativo
+      if (variables.status === "completed" && data?.isSubscription) {
+        const { sessionNumber, totalSessions, isLast, autoRenew, planName } = data;
+        if (isLast && !autoRenew) {
+          AppAlert.alert(
+            "🎉 Última sessão do plano!",
+            `${planName}\n\nEsta foi a sessão ${sessionNumber} de ${totalSessions} — o plano foi concluído!\n\nLembre de oferecer a renovação ao cliente.`,
+            [{ text: "Entendido" }]
+          );
+        } else if (!isLast) {
+          AppAlert.alert(
+            `✅ Sessão ${sessionNumber} de ${totalSessions} concluída`,
+            `${planName}\n\n${totalSessions - sessionNumber} sessão(ões) restante(s) neste ciclo.`,
+            [{ text: "OK" }]
+          );
+        }
+      }
     },
     onError: (e) => { hapticError(); toast.error("Erro", e.message); },
   });
@@ -461,6 +481,12 @@ export default function AgendaScreen() {
   }
 
   function handleAppointmentCompleted(apt: any) {
+    // Se for agendamento de assinatura, não abrir modal de pagamento
+    if (subscriptionApptIds.has(apt.id)) {
+      // Apenas marca como concluído — o servidor cuidará do incremento e retornará info da sessão
+      updateMutation.mutate({ id: apt.id, status: "completed" });
+      return;
+    }
     const client = (clientsQuery.data ?? []).find(c => c.id === apt.clientId);
     const service = (servicesQuery.data ?? []).find(s => s.id === apt.serviceId);
     setPaymentAppointment({
