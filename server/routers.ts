@@ -679,9 +679,10 @@ export const appRouter = router({
       const tenantId = input.tenantId ?? ctx.barber?.tenantId;
       if (!tenantId) return [];
       const rows = await db.rawQuery(
-        `SELECT sa."appointmentId", cs."selectedServiceIds", cs."selectedProductIds", cs."planId"
+        `SELECT sa."appointmentId", cs."selectedServiceIds", cs."selectedProductIds", cs."planId", cs.price as "planPrice", sp.name as "planName"
          FROM subscription_appointments sa
          JOIN client_subscriptions cs ON cs.id = sa."subscriptionId"
+         JOIN subscription_plans sp ON sp.id = cs."planId"
          JOIN appointments a ON a.id = sa."appointmentId"
          WHERE a.date >= $1 AND a.date <= $2 AND sa."tenantId" = $3`,
         [input.startDate, input.endDate, tenantId]
@@ -691,6 +692,8 @@ export const appRouter = router({
         selectedServiceIds: r.selectedServiceIds,
         selectedProductIds: r.selectedProductIds,
         planId: r.planId,
+        planPrice: r.planPrice,
+        planName: r.planName,
       }));
     }),
     nextByClient: publicProcedure.input(z.object({ clientId: z.number() })).query(({ input }) => db.getNextClientAppointment(input.clientId)),

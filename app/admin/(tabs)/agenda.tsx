@@ -251,9 +251,9 @@ export default function AgendaScreen() {
     { enabled: !!tenantId, staleTime: 60000 }
   );
   const subscriptionApptIds = useMemo(() => {
-    const map = new Map<number, { selectedServiceIds: string; planId: number }>();
+    const map = new Map<number, { selectedServiceIds: string; planId: number; planPrice?: string; planName?: string }>();
     for (const r of (subscriptionApptIdsQuery.data ?? [])) {
-      map.set(r.appointmentId, { selectedServiceIds: r.selectedServiceIds, planId: r.planId });
+      map.set(r.appointmentId, { selectedServiceIds: r.selectedServiceIds, planId: r.planId, planPrice: r.planPrice, planName: r.planName });
     }
     return map;
   }, [subscriptionApptIdsQuery.data]);
@@ -1307,16 +1307,26 @@ export default function AgendaScreen() {
                         });
                       })()}
                     </View>
-                    {editServices.length > 0 && (
-                      <View style={{ backgroundColor: "#1A1A1A", borderColor: "#C9A84C", borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 12 }}>
-                        <Text style={{ color: "#C9A84C", fontSize: 13, fontWeight: "600", marginBottom: 4, flexWrap: "wrap" }}>
-                          {editServices.map((s) => s.name).join(" + ")}
-                        </Text>
-                        <Text style={{ color: "#888880", fontSize: 12 }}>
-                          {editTotalDuration} min · R$ {editTotalPrice.toFixed(2)}
-                        </Text>
-                      </View>
-                    )}
+                    {editServices.length > 0 && (() => {
+                      const subData = subscriptionApptIds.get(selectedAppointment?.id);
+                      const isSubAppt = !!subData;
+                      const displayPrice = isSubAppt && subData?.planPrice
+                        ? parseFloat(String(subData.planPrice))
+                        : editTotalPrice;
+                      const priceLabel = isSubAppt ? "Plano: " + (subData?.planName ?? "Assinatura") : "";
+                      return (
+                        <View style={{ backgroundColor: "#1A1A1A", borderColor: "#C9A84C", borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                          <Text style={{ color: "#C9A84C", fontSize: 13, fontWeight: "600", marginBottom: 4, flexWrap: "wrap" }}>
+                            {editServices.map((s) => s.name).join(" + ")}
+                          </Text>
+                          <Text style={{ color: "#888880", fontSize: 12 }}>
+                            {editTotalDuration} min · R$ {displayPrice.toFixed(2)}
+                            {isSubAppt ? " (plano)" : ""}
+                          </Text>
+                          {priceLabel ? <Text style={{ color: "#C9A84C88", fontSize: 11, marginTop: 2 }}>{priceLabel}</Text> : null}
+                        </View>
+                      );
+                    })()}
                     <Pressable
                       style={[styles.saveBtn, { marginBottom: 16, opacity: editServices.length === 0 ? 0.5 : 1 }]}
                       onPress={() => {

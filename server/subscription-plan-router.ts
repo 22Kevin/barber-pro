@@ -479,6 +479,29 @@ export const subscriptionPlanRouter = router({
         );
       }
 
+      // Registrar venda na tabela sales para aparecer no faturamento
+      try {
+        const paymentMethodMap: Record<string, string> = {
+          cash: "cash", pix: "pix", credit_card: "credit", debit: "debit", credit: "credit", debit_card: "debit",
+        };
+        const saleMethod = paymentMethodMap[input.paymentMethod] ?? "cash";
+        const planNameRow = await selectSql(sql`SELECT name FROM subscription_plans WHERE id = ${input.planId} LIMIT 1`) as { name: string }[];
+        const planName = planNameRow[0]?.name ?? "Plano de Assinatura";
+        const clientNameRow = await selectSql(sql`SELECT name FROM clients WHERE id = ${input.clientId} LIMIT 1`) as { name: string }[];
+        const clientName = clientNameRow[0]?.name ?? "Cliente";
+        const barberIdForSale = input.barberId ?? null;
+        await mutateSql(sql`
+          INSERT INTO sales ("tenantId", "barberId", "clientId", date, total, "paymentMethod", "paymentStatus", notes)
+          VALUES (
+            ${input.tenantId}, ${barberIdForSale}, ${input.clientId},
+            ${cycleStart}, ${input.price}, ${saleMethod}, 'paid',
+            ${"Assinatura: " + planName + " - " + clientName}
+          )
+        `);
+      } catch (e: any) {
+        console.warn("[createSubscription] Erro ao registrar venda:", e.message);
+      }
+
       return { ok: true, id: subscriptionId, appointmentIds };
     }),
 
