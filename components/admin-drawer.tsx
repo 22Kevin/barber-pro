@@ -35,11 +35,6 @@ function planHasFeature(plan: string | null | undefined, feature: string): boole
   return PLAN_FEATURES[plan.toLowerCase()]?.has(feature) ?? false;
 }
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
-const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.78, 320);
-
-type Role = "super_admin" | "barber" | "receptionist";
-
 interface DrawerItem {
   label: string;
   icon: string;
