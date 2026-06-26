@@ -203,14 +203,19 @@ export function SwipeableAppointmentCard({ appointment, client, service, onPress
                 <Text style={[styles.whatsappBtnText, { color: "#60A5FA" }]}>💳 Link Pgto</Text>
               </Pressable>
             )}
-            {appointment.status === "completed" && paymentPending && (
+            {appointment.status === "completed" && paymentPending && !(appointment as any).isSubscription && (
               <View style={styles.paymentBadge}>
                 <Text style={styles.paymentBadgeText}>⏳ Pagamento pendente</Text>
               </View>
             )}
-            {appointment.status === "completed" && !paymentPending && (
+            {appointment.status === "completed" && !paymentPending && !(appointment as any).isSubscription && (
               <View style={[styles.paymentBadge, styles.paymentBadgePaid]}>
                 <Text style={[styles.paymentBadgeText, { color: "#32BCAD" }]}>✓ Pago</Text>
+              </View>
+            )}
+            {(appointment as any).isSubscription && (
+              <View style={[styles.paymentBadge, { backgroundColor: "#C9A84C22", borderColor: "#C9A84C55" }]}>
+                <Text style={[styles.paymentBadgeText, { color: "#C9A84C" }]}>⭐ Assinatura</Text>
               </View>
             )}
           </View>

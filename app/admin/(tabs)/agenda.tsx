@@ -807,9 +807,9 @@ export default function AgendaScreen() {
             {appointments.map((apt) => (
               <SwipeableAppointmentCard
                 key={apt.id}
-                appointment={apt}
+                appointment={{ ...apt, isSubscription: subscriptionApptIds.has(apt.id) }}
                 onPress={() => {
-                  if (apt.status === "completed") {
+                  if (apt.status === "completed" && !subscriptionApptIds.has(apt.id)) {
                     const svc = (servicesQuery.data ?? []).find((s: any) => s.id === apt.serviceId);
                     const cli = (clientsQuery.data ?? []).find((c: any) => c.id === apt.clientId);
                     const rawPrice = svc?.price ?? apt.servicePrice ?? "0";
