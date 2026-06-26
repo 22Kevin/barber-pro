@@ -244,6 +244,13 @@ export default function AgendaScreen() {
     { enabled: isManager, staleTime: 0 }
   );
 
+  // IDs de agendamentos de assinatura (não precisam de pagamento individual)
+  const subscriptionApptIdsQuery = trpc.appointments.subscriptionAppointmentIds.useQuery(
+    { startDate: monthStart, endDate: monthEnd, tenantId },
+    { enabled: !!tenantId, staleTime: 60000 }
+  );
+  const subscriptionApptIds = useMemo(() => new Set(subscriptionApptIdsQuery.data ?? []), [subscriptionApptIdsQuery.data]);
+
   // Filtrar localmente pelo dia selecionado (sem nova requisição)
   const appointmentsQuery = useMemo(() => {
     const data = (appointmentsByMonthQuery.data ?? []).filter((a: any) => a.date === dateStr);
@@ -840,7 +847,7 @@ export default function AgendaScreen() {
                     Linking.openURL(`https://wa.me/55${phone}?text=${msg}`);
                   } catch { toast.error("Não foi possível buscar o link de pagamento."); }
                 }}
-                paymentPending={apt.status === "completed" && !apt.subscriptionAppointmentId ? (paymentPendingMap[apt.id] ?? true) : undefined}
+                paymentPending={apt.status === "completed" && !subscriptionApptIds.has(apt.id) ? (paymentPendingMap[apt.id] ?? true) : undefined}
               />
             ))}
           </GestureHandlerRootView>

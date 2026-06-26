@@ -675,6 +675,15 @@ export const appRouter = router({
     byId: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getAppointmentById(input.id)),
     allByDate: publicProcedure.input(z.object({ date: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllAppointmentsByDate(input.date, input.tenantId ?? ctx.barber?.tenantId)),
     allByDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllAppointmentsByDateRangeFullForTenant(input.startDate, input.endDate, input.tenantId ?? ctx.barber?.tenantId)),
+    subscriptionAppointmentIds: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(async ({ ctx, input }) => {
+      const tenantId = input.tenantId ?? ctx.barber?.tenantId;
+      if (!tenantId) return [];
+      const rows = await db.rawQuery(
+        `SELECT sa."appointmentId" FROM subscription_appointments sa JOIN appointments a ON a.id = sa."appointmentId" WHERE a.date >= $1 AND a.date <= $2 AND sa."tenantId" = $3`,
+        [input.startDate, input.endDate, tenantId]
+      );
+      return (rows as any[]).map((r: any) => r.appointmentId as number);
+    }),
     nextByClient: publicProcedure.input(z.object({ clientId: z.number() })).query(({ input }) => db.getNextClientAppointment(input.clientId)),
     byDateRange: publicProcedure.input(z.object({ barberId: z.number(), startDate: z.string(), endDate: z.string() })).query(({ input }) => db.getAppointmentsByDateRange(input.barberId, input.startDate, input.endDate)),
     datesWithAppointments: publicProcedure.input(z.object({ barberId: z.number().optional(), startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllAppointmentsByDateRangeForTenant(input.startDate, input.endDate, input.tenantId ?? ctx.barber?.tenantId)),
