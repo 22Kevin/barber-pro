@@ -247,6 +247,20 @@ export default function AdminTabsLayout() {
           tabBarItemStyle: { display: "none" },
         }}
       />
+      <Tabs.Screen
+        name="asaas-setup"
+        options={{
+          title: "Pagamentos Online",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="subscribers"
+        options={{
+          title: "Assinantes",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
     </Tabs>
     </BranchProvider>
   );
