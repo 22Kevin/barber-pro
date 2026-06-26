@@ -19,6 +19,7 @@ import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
+import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
 import { useColors } from "@/hooks/use-colors";
 import { useBarberAuth } from "@/lib/auth-context";
 

@@ -20,6 +20,7 @@ import { HeaderBranchTitle } from "@/components/BranchSelector";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
+import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
 import { useColors } from "@/hooks/use-colors";
 import { exportCsv } from "@/hooks/use-csv-export";
 import { useBarberAuth } from "@/lib/auth-context";
@@ -409,7 +410,7 @@ function StockScreenInner() {
             {movType === "transfer" && networkBranches.length > 0 && (
               <>
                 <Text style={[styles.fieldLabel, { color: colors.muted }]}>Transferir para</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} keyboardShouldPersistTaps="handled">
+                <KeyboardAwareForm horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} keyboardShouldPersistTaps="handled">
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {networkBranches.map((b: any) => (
                       <Pressable
@@ -428,7 +429,7 @@ function StockScreenInner() {
                       </Pressable>
                     ))}
                   </View>
-                </ScrollView>
+                </KeyboardAwareForm>
               </>
             )}
             {/* Quantidade */}
@@ -446,7 +447,7 @@ function StockScreenInner() {
             {movType === "in" && suppliersList.length > 0 && (
               <>
                 <Text style={[styles.fieldLabel, { color: colors.muted }]}>Fornecedor (opcional)</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }} keyboardShouldPersistTaps="handled">
+                <KeyboardAwareForm horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }} keyboardShouldPersistTaps="handled">
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     <Pressable
                       style={({ pressed }) => ({
@@ -474,7 +475,7 @@ function StockScreenInner() {
                       </Pressable>
                     ))}
                   </View>
-                </ScrollView>
+                </KeyboardAwareForm>
               </>
             )}
 

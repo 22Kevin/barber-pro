@@ -105,7 +105,7 @@ const config = {
         cameraPermission: "Permitir que o Barber Pro use a câmera para fotografar produtos.",
       },
     ],
-    ["expo-build-properties", { android: { buildArchs: ["armeabi-v7a", "arm64-v8a"] } }],
+    ["expo-build-properties", { android: { buildArchs: ["armeabi-v7a", "arm64-v8a"], kotlinVersion: "1.9.25" } }],
     ...googleSignInPlugin,
   ],
   experiments: { typedRoutes: true, reactCompiler: false },

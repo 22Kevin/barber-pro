@@ -15,6 +15,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useThemeContext } from "@/lib/theme-provider";
+import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { useColors } from "@/hooks/use-colors";

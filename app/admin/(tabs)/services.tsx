@@ -1,4 +1,5 @@
 import { hapticSuccess, hapticError } from "@/lib/haptics";
+import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -223,7 +224,7 @@ export default function ServicesScreen() {
                 </Pressable>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAwareForm showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Field label="Nome do Serviço *">
                   <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Ex: Corte Degradê" placeholderTextColor="#555" />
                 </Field>
@@ -309,7 +310,7 @@ export default function ServicesScreen() {
                     <Text style={styles.saveBtnText}>{editing ? "SALVAR ALTERAÇÕES" : "CRIAR SERVIÇO"}</Text>
                   )}
                 </Pressable>
-              </ScrollView>
+              </KeyboardAwareForm>
             </View>
           </KeyboardAvoidingView>
         </View>

@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, Re
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
 import { trpc } from "@/lib/trpc";
+import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useColors } from "@/hooks/use-colors";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";

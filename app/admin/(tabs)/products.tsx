@@ -21,6 +21,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
+import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
 import { MediaUploader } from "@/components/media-uploader";
 import { AdminHeader } from "@/components/admin-header";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
@@ -413,7 +414,7 @@ function ProductsScreenInner() {
                 <Pressable onPress={closeModal}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAwareForm showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Field label="Nome do Produto *">
                   <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Ex: Pomada Modeladora" placeholderTextColor="#555" />
                 </Field>
@@ -470,7 +471,7 @@ function ProductsScreenInner() {
                       </Text>
                     </View>
                   ) : (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }} keyboardShouldPersistTaps="handled">
+                    <KeyboardAwareForm horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 4 }} keyboardShouldPersistTaps="handled">
                       <View style={{ flexDirection: "row", gap: 8 }}>
                         {suppliersList.map((s) => (
                           <Pressable
@@ -495,7 +496,7 @@ function ProductsScreenInner() {
                           </Pressable>
                         ))}
                       </View>
-                    </ScrollView>
+                    </KeyboardAwareForm>
                   )}
                 </Field>
 
@@ -536,7 +537,7 @@ function ProductsScreenInner() {
                     <Text style={styles.saveBtnText}>{editing ? "SALVAR ALTERAÇÕES" : "CRIAR PRODUTO"}</Text>
                   )}
                 </Pressable>
-              </ScrollView>
+              </KeyboardAwareForm>
             </View>
           </KeyboardAvoidingView>
         </View>

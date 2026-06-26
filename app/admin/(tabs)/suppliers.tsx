@@ -18,6 +18,7 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
+import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
 import { useColors } from "@/hooks/use-colors";
 import { AdminHeader } from "@/components/admin-header";
 import { useBarberAuth } from "@/lib/auth-context";
@@ -463,7 +464,7 @@ function SuppliersScreenInner() {
               {editingId ? "Editar Fornecedor" : "Novo Fornecedor"}
             </Text>
 
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareForm showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Text style={[styles.label, { color: colors.muted }]}>Nome *</Text>
               <TextInput
                 style={[styles.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
@@ -543,7 +544,7 @@ function SuppliersScreenInner() {
                   </Text>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
+            </KeyboardAwareForm>
           </View>
         </View>
       </Modal>

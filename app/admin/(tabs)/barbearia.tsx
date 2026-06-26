@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
+import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
 import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
 import { saveBarberJwt, saveBarberRefreshJwt } from "@/lib/trpc";
@@ -998,7 +999,7 @@ export default function BarbeariaScreen() {
                 <Text style={styles.modalTitle}>{editingBarber ? "Editar Membro" : "Novo Membro"}</Text>
                 <Pressable onPress={closeBarberModal}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAwareForm showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 {[
                   { label: "Nome *", value: bName, setter: setBName, placeholder: "João Barbeiro", keyboard: "default" as const },
                   { label: "E-mail", value: bEmail, setter: setBEmail, placeholder: "joao@email.com", keyboard: "email-address" as const },
@@ -1050,7 +1051,7 @@ export default function BarbeariaScreen() {
                 <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleSaveBarber} disabled={createBarberMutation.isPending || updateBarberMutation.isPending}>
                   {(createBarberMutation.isPending || updateBarberMutation.isPending) ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>{editingBarber ? "SALVAR" : "CADASTRAR"}</Text>}
                 </Pressable>
-              </ScrollView>
+              </KeyboardAwareForm>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -1064,7 +1065,7 @@ export default function BarbeariaScreen() {
                 <Text style={styles.modalTitle}>Nova Filial</Text>
                 <Pressable onPress={() => setShowFilialModal(false)}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAwareForm showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 {[
                   { label: "Nome completo *", value: fName, setter: setFName, placeholder: "Barber Pro - Unidade Centro" },
                   { label: "Nome curto *", value: fDisplayName, setter: setFDisplayName, placeholder: "Centro" },
@@ -1084,7 +1085,7 @@ export default function BarbeariaScreen() {
                 <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleSaveFilial} disabled={createFilialMutation.isPending}>
                   {createFilialMutation.isPending ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>CRIAR FILIAL</Text>}
                 </Pressable>
-              </ScrollView>
+              </KeyboardAwareForm>
             </View>
           </KeyboardAvoidingView>
         </View>

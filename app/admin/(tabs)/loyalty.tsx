@@ -16,6 +16,7 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { trpc } from "@/lib/trpc";
+import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
 import { AdminHeader } from "@/components/admin-header";
 import {} from "react-native-safe-area-context";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
@@ -338,7 +339,7 @@ export default function LoyaltyScreen() {
                 <Text style={styles.modalTitle}>Nova Recompensa</Text>
                 <Pressable onPress={() => { setShowRewardModal(false); resetRewardForm(); }}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAwareForm showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={styles.fieldLabel}>Nome da Recompensa *</Text>
                 <TextInput style={styles.input} value={rewardName} onChangeText={setRewardName} placeholder="Ex: Corte Grátis" placeholderTextColor="#555" />
 
@@ -367,7 +368,7 @@ export default function LoyaltyScreen() {
                 <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleCreateReward} disabled={createRewardMutation.isPending}>
                   {createRewardMutation.isPending ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>CRIAR RECOMPENSA</Text>}
                 </Pressable>
-              </ScrollView>
+              </KeyboardAwareForm>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -382,7 +383,7 @@ export default function LoyaltyScreen() {
                 <Text style={styles.modalTitle}>Novo Cupom</Text>
                 <Pressable onPress={() => { setShowCouponModal(false); resetCouponForm(); }}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAwareForm showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={styles.fieldLabel}>Código do Cupom *</Text>
                 <TextInput style={[styles.input, { textTransform: "uppercase" }]} value={couponCode} onChangeText={t => setCouponCode(t.toUpperCase())} placeholder="Ex: PROMO20" placeholderTextColor="#555" autoCapitalize="characters" />
 
@@ -420,7 +421,7 @@ export default function LoyaltyScreen() {
                 <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleCreateCoupon} disabled={createCouponMutation.isPending}>
                   {createCouponMutation.isPending ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>CRIAR CUPOM</Text>}
                 </Pressable>
-              </ScrollView>
+              </KeyboardAwareForm>
             </View>
           </KeyboardAvoidingView>
         </View>

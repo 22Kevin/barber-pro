@@ -1,4 +1,5 @@
 import { hapticSuccess, hapticError } from "@/lib/haptics";
+import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
 import { toast } from "@/components/toast";
 import { ClientListSkeleton } from "@/components/skeleton";
 import { useState } from "react";
@@ -313,7 +314,7 @@ export default function ClientsScreen() {
                 <IconSymbol name="xmark" size={22} color="#888880" />
               </Pressable>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareForm showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               {/* Hoje */}
               <Text style={styles.birthdaySectionTitle}>Hoje</Text>
               {birthdayToday.length === 0 ? (
@@ -376,7 +377,7 @@ export default function ClientsScreen() {
                 })
               )}
               <View style={{ height: 20 }} />
-            </ScrollView>
+            </KeyboardAwareForm>
           </View>
         </View>
       </Modal>
@@ -390,7 +391,7 @@ export default function ClientsScreen() {
                 <Text style={styles.modalTitle}>{editing ? "Editar Cliente" : "Novo Cliente"}</Text>
                 <Pressable onPress={closeModal}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAwareForm showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 {[
                   { label: "Nome completo *", value: name, setter: setName, placeholder: "João da Silva", keyboard: "default" as const },
                   { label: "Telefone/WhatsApp *", value: phone, setter: handlePhoneChange, placeholder: "(11) 99999-9999", keyboard: "phone-pad" as const },
@@ -450,7 +451,7 @@ export default function ClientsScreen() {
                 <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleSave} disabled={createMutation.isPending || updateMutation.isPending}>
                   {(createMutation.isPending || updateMutation.isPending) ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>{editing ? "SALVAR" : "CADASTRAR"}</Text>}
                 </Pressable>
-              </ScrollView>
+              </KeyboardAwareForm>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -465,7 +466,7 @@ export default function ClientsScreen() {
               <Pressable onPress={() => setShowDetailModal(false)}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
             </View>
             {selectedClient && (
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAwareForm showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 {/* Info */}
                 <View style={styles.clientDetailHeader}>
                   <View style={[styles.avatarLarge, isBirthdayToday(selectedClient.birthDate) && styles.avatarBirthday]}>
@@ -538,7 +539,7 @@ export default function ClientsScreen() {
                     </View>
                   ))
                 )}
-              </ScrollView>
+              </KeyboardAwareForm>
             )}
           </View>
         </View>

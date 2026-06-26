@@ -16,6 +16,7 @@ import {
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
+import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
 import { AdminHeader } from "@/components/admin-header";
 import { AppAlert } from "@/components/app-alert";
 import { trpc } from "@/lib/trpc";
@@ -442,7 +443,7 @@ export default function FinancialScreen() {
                 <Text style={styles.modalTitle}>Registrar Venda</Text>
                 <Pressable onPress={closeSaleModal}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAwareForm showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={styles.fieldLabel}>Tipo</Text>
                 <View style={styles.typeRow}>
                   {(["service", "product"] as const).map(t => (
@@ -495,7 +496,7 @@ export default function FinancialScreen() {
                 <TextInput style={styles.input} value={saleAmount} onChangeText={setSaleAmount} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
 
                 <Text style={styles.fieldLabel}>Forma de Pagamento</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} keyboardShouldPersistTaps="handled">
+                <KeyboardAwareForm horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} keyboardShouldPersistTaps="handled">
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {PAYMENT_METHODS.map(pm => (
                       <Pressable key={pm.key} style={[styles.paymentChip, salePayment === pm.key && styles.paymentChipActive]} onPress={() => setSalePayment(pm.key)}>
@@ -504,12 +505,12 @@ export default function FinancialScreen() {
                       </Pressable>
                     ))}
                   </View>
-                </ScrollView>
+                </KeyboardAwareForm>
 
                 <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleCreateSale} disabled={createSaleMutation.isPending}>
                   {createSaleMutation.isPending ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>REGISTRAR VENDA</Text>}
                 </Pressable>
-              </ScrollView>
+              </KeyboardAwareForm>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -524,7 +525,7 @@ export default function FinancialScreen() {
                 <Text style={styles.modalTitle}>Registrar Despesa</Text>
                 <Pressable onPress={() => setShowExpenseModal(false)}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
               </View>
-              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <KeyboardAwareForm showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={styles.fieldLabel}>Descrição *</Text>
                 <TextInput style={styles.input} value={expenseDescription} onChangeText={setExpenseDescription} placeholder="Ex: Compra de produtos" placeholderTextColor="#555" />
 
@@ -532,7 +533,7 @@ export default function FinancialScreen() {
                 <TextInput style={styles.input} value={expenseAmount} onChangeText={setExpenseAmount} placeholder="0,00" placeholderTextColor="#555" keyboardType="decimal-pad" />
 
                 <Text style={styles.fieldLabel}>Categoria</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} keyboardShouldPersistTaps="handled">
+                <KeyboardAwareForm horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} keyboardShouldPersistTaps="handled">
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {EXPENSE_CATEGORIES.map(cat => (
                       <Pressable key={cat} style={[styles.paymentChip, expenseCategory === cat && styles.paymentChipActive]} onPress={() => setExpenseCategory(cat)}>
@@ -540,12 +541,12 @@ export default function FinancialScreen() {
                       </Pressable>
                     ))}
                   </View>
-                </ScrollView>
+                </KeyboardAwareForm>
 
                 <Pressable style={({ pressed }) => [styles.saveBtn, { backgroundColor: "#F44336" }, pressed && { opacity: 0.8 }]} onPress={handleCreateExpense} disabled={createExpenseMutation.isPending}>
                   {createExpenseMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={[styles.saveBtnText, { color: "#fff" }]}>REGISTRAR DESPESA</Text>}
                 </Pressable>
-              </ScrollView>
+              </KeyboardAwareForm>
             </View>
           </KeyboardAvoidingView>
         </View>
