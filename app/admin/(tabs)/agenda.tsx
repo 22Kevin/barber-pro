@@ -244,6 +244,14 @@ export default function AgendaScreen() {
     { startDate: monthStart, endDate: monthEnd, tenantId },
     { enabled: isManager, staleTime: 0 }
   );
+  // DEBUG
+  useEffect(() => {
+    if (allAppointmentsByMonthQuery.data) {
+      console.log("[DEBUG agenda] allByDateRange count:", allAppointmentsByMonthQuery.data.length, "monthStart:", monthStart, "monthEnd:", monthEnd, "tenantId:", tenantId);
+      const jun26 = allAppointmentsByMonthQuery.data.filter((a: any) => a.date === "2026-06-26");
+      console.log("[DEBUG agenda] jun26:", JSON.stringify(jun26));
+    }
+  }, [allAppointmentsByMonthQuery.data]);
 
   // IDs de agendamentos de assinatura (não precisam de pagamento individual)
   const subscriptionApptIdsQuery = trpc.appointments.subscriptionAppointmentIds.useQuery(
