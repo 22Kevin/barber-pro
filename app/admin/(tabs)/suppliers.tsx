@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Linking,
-  Pressable,,
+  Pressable,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";

@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -10,9 +11,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,,
-  KeyboardAvoidingView,
-  Platform,
+  View,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";

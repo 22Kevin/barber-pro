@@ -10,7 +10,7 @@ import {
   Text,
   TextInput,
   View,
-  RefreshControl,,
+  RefreshControl,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
