@@ -489,15 +489,22 @@ export const subscriptionPlanRouter = router({
         const planName = planNameRow[0]?.name ?? "Plano de Assinatura";
         const clientNameRow = await selectSql(sql`SELECT name FROM clients WHERE id = ${input.clientId} LIMIT 1`) as { name: string }[];
         const clientName = clientNameRow[0]?.name ?? "Cliente";
-        const barberIdForSale = input.barberId ?? null;
-        await mutateSql(sql`
-          INSERT INTO sales ("tenantId", "barberId", "clientId", date, total, "paymentMethod", "paymentStatus", notes)
-          VALUES (
-            ${input.tenantId}, ${barberIdForSale}, ${input.clientId},
-            ${cycleStart}, ${input.price}, ${saleMethod}, 'paid',
-            ${"Assinatura: " + planName + " - " + clientName}
-          )
-        `);
+        // barberId obrigatório na tabela sales — usar barbeiro do input ou primeiro do tenant
+        let saleBarberIdVal = input.barberId;
+        if (!saleBarberIdVal) {
+          const firstBarber = await selectSql(sql`SELECT id FROM barbers WHERE "tenantId" = ${input.tenantId} AND "isActive" = true ORDER BY id LIMIT 1`) as { id: number }[];
+          saleBarberIdVal = firstBarber[0]?.id ?? null;
+        }
+        if (saleBarberIdVal) {
+          await mutateSql(sql`
+            INSERT INTO sales ("barberId", "clientId", date, subtotal, total, "paymentMethod", "paymentStatus", notes)
+            VALUES (
+              ${saleBarberIdVal}, ${input.clientId},
+              ${cycleStart}, ${input.price}, ${input.price}, ${saleMethod}, 'paid',
+              ${"[subscription] " + planName + " - " + clientName}
+            )
+          `);
+        }
       } catch (e: any) {
         console.warn("[createSubscription] Erro ao registrar venda:", e.message);
       }
