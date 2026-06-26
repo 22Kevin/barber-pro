@@ -244,14 +244,6 @@ export default function AgendaScreen() {
     { startDate: monthStart, endDate: monthEnd, tenantId },
     { enabled: isManager, staleTime: 0 }
   );
-  // DEBUG
-  useEffect(() => {
-    if (allAppointmentsByMonthQuery.data) {
-      console.log("[DEBUG agenda] allByDateRange count:", allAppointmentsByMonthQuery.data.length, "monthStart:", monthStart, "monthEnd:", monthEnd, "tenantId:", tenantId);
-      const jun26 = allAppointmentsByMonthQuery.data.filter((a: any) => a.date === "2026-06-26");
-      console.log("[DEBUG agenda] jun26:", JSON.stringify(jun26));
-    }
-  }, [allAppointmentsByMonthQuery.data]);
 
   // IDs de agendamentos de assinatura (não precisam de pagamento individual)
   const subscriptionApptIdsQuery = trpc.appointments.subscriptionAppointmentIds.useQuery(
@@ -274,7 +266,6 @@ export default function AgendaScreen() {
 
   const allAppointmentsQuery = useMemo(() => {
     const data = (allAppointmentsByMonthQuery.data ?? []).filter((a: any) => a.date === dateStr);
-    console.log("[DEBUG allApptQ] dateStr:", dateStr, "total:", allAppointmentsByMonthQuery.data?.length, "filtered:", data.length);
     return { data, isLoading: allAppointmentsByMonthQuery.isLoading, refetch: allAppointmentsByMonthQuery.refetch };
   }, [allAppointmentsByMonthQuery.data, allAppointmentsByMonthQuery.isLoading, allAppointmentsByMonthQuery.refetch, dateStr]);
 
@@ -463,6 +454,11 @@ export default function AgendaScreen() {
 
   function handleStatusChange(id: number, status: string) {
     if (status === "completed") {
+      // Se for assinatura, nunca mostrar modal de pagamento
+      if (subscriptionApptIds.has(id)) {
+        updateMutation.mutate({ id, status: status as any });
+        return;
+      }
       updateMutation.mutate({ id, status: status as any }, {
         onSuccess: () => {
           const allApts = [
@@ -1312,8 +1308,8 @@ export default function AgendaScreen() {
                       })()}
                     </View>
                     {editServices.length > 0 && (
-                      <View style={[styles.serviceChip, { backgroundColor: "#1A1A1A", borderColor: "#C9A84C", marginBottom: 12, flexDirection: "row", justifyContent: "space-between" }]}>
-                        <Text style={{ color: "#C9A84C", fontSize: 13, fontWeight: "600" }}>
+                      <View style={{ backgroundColor: "#1A1A1A", borderColor: "#C9A84C", borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                        <Text style={{ color: "#C9A84C", fontSize: 13, fontWeight: "600", marginBottom: 4, flexWrap: "wrap" }}>
                           {editServices.map((s) => s.name).join(" + ")}
                         </Text>
                         <Text style={{ color: "#888880", fontSize: 12 }}>
