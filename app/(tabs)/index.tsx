@@ -129,15 +129,15 @@ export default function WelcomeScreen() {
               Barber Pro © 2026 · Todos os direitos reservados
             </Text>
             <View style={{ flexDirection: "row", gap: 16, alignItems: "center" }}>
-              <Pressable onPress={() => Linking.openURL("https://usebarberpro.com/pub/politica-privacidade")}>
+              <Pressable onPress={() => Linking.openURL("https://usebarberpro.com/privacidade")}>
                 <Text style={s.footerLink}>Privacidade</Text>
               </Pressable>
               <Text style={s.footerDot}>·</Text>
-              <Pressable onPress={() => Linking.openURL("https://usebarberpro.com/pub/termos-de-uso")}>
+              <Pressable onPress={() => Linking.openURL("https://usebarberpro.com/termos")}>
                 <Text style={s.footerLink}>Termos de Uso</Text>
               </Pressable>
               <Text style={s.footerDot}>·</Text>
-              <Pressable onPress={() => Linking.openURL("https://usebarberpro.com/pub/politica-privacidade#lgpd")}>
+              <Pressable onPress={() => Linking.openURL("https://usebarberpro.com/lgpd")}>
                 <Text style={s.footerLink}>LGPD</Text>
               </Pressable>
             </View>
