@@ -70,6 +70,12 @@ export default function DashboardScreen() {
   );
   const lowStockItems = lowStockQuery.data ?? [];
 
+  const pendingOrdersQuery = trpc.productOrders.pendingDetailed.useQuery(
+    { tenantId: tenantId ?? 0 },
+    { enabled: !!tenantId, refetchInterval: 30000 }
+  );
+  const pendingOrders = pendingOrdersQuery.data ?? [];
+
   const utils = trpc.useUtils();
 
   const dyn = useMemo(() => StyleSheet.create({
@@ -344,6 +350,26 @@ export default function DashboardScreen() {
               </Text>
             </View>
             <Text style={styles.lowStockArrow}>›</Text>
+          </Pressable>
+        )}
+
+        {/* Alerta de encomendas pendentes */}
+        {pendingOrders.length > 0 && (
+          <Pressable
+            style={[styles.lowStockBanner, { borderColor: "#C9A84C44", backgroundColor: "#C9A84C0D" }]}
+            onPress={() => router.push("/admin/(tabs)/orders" as any)}
+          >
+            <Text style={styles.lowStockIcon}>📦</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.lowStockTitle, { color: "#C9A84C" }]}>
+                {pendingOrders.length} encomenda{pendingOrders.length !== 1 ? "s" : ""} pendente{pendingOrders.length !== 1 ? "s" : ""}
+              </Text>
+              <Text style={styles.lowStockSub} numberOfLines={2}>
+                {pendingOrders.slice(0, 2).map((o: any) => `${o.clientName}: ${o.quantity}x ${o.productName}`).join(" · ")}
+                {pendingOrders.length > 2 ? ` · +${pendingOrders.length - 2} mais` : ""}
+              </Text>
+            </View>
+            <Text style={[styles.lowStockArrow, { color: "#C9A84C" }]}>›</Text>
           </Pressable>
         )}
 

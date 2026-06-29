@@ -2581,6 +2581,21 @@ export const appRouter = router({
         const pending = (orders as any[]).filter((o) => !["delivered", "cancelled"].includes(o.status));
         return { count: pending.length };
       }),
+    pendingDetailed: publicProcedure
+      .input(z.object({ tenantId: z.number() }))
+      .query(async ({ input }) => {
+        const orders = await db.getProductOrdersByTenant(input.tenantId, undefined);
+        const pending = (orders as any[]).filter((o) => !["delivered", "cancelled"].includes(o.status));
+        return pending.slice(0, 5).map((o: any) => ({
+          id: o.id,
+          clientName: o.clientName ?? "Cliente",
+          productName: o.productName ?? o.product?.name ?? "Produto",
+          quantity: o.quantity ?? 1,
+          status: o.status,
+          createdAt: o.createdAt,
+          note: o.note ?? null,
+        }));
+      }),
     myOrders: publicProcedure
       .input(z.object({ clientId: z.number(), tenantId: z.number() }))
       .query(({ input }) => db.getProductOrdersByClient(input.clientId, input.tenantId)),
