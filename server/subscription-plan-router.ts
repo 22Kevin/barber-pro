@@ -482,7 +482,9 @@ export const subscriptionPlanRouter = router({
       // Registrar venda na tabela sales para aparecer no faturamento
       try {
         const paymentMethodMap: Record<string, string> = {
-          cash: "cash", pix: "pix", credit_card: "credit", debit: "debit", credit: "credit", debit_card: "debit",
+          cash: "cash", pix: "pix",
+          credit: "credit_card", credit_card: "credit_card",
+          debit: "debit_card", debit_card: "debit_card",
         };
         const saleMethod = paymentMethodMap[input.paymentMethod] ?? "cash";
         const planNameRow = await selectSql(sql`SELECT name FROM subscription_plans WHERE id = ${input.planId} LIMIT 1`) as { name: string }[];
