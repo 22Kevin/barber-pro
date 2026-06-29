@@ -312,8 +312,6 @@ export const subscriptionPlanRouter = router({
       clientId: z.number().optional(),
     }))
     .query(async ({ input }) => {
-      // client_subscriptions: colunas camelCase
-      // subscription_plans: colunas minúsculas (alias para camelCase no SELECT)
       const baseSelect = sql`
         SELECT cs.*,
           sp.name as "planName", sp.recurrences as "planRecurrences",
@@ -337,7 +335,29 @@ export const subscriptionPlanRouter = router({
         finalQuery = sql`${baseSelect} ORDER BY cs."createdAt" DESC`;
       }
 
-      return selectSql(finalQuery);
+      const rows = await selectSql(finalQuery) as any[];
+
+      // Enriquecer com nomes dos serviços e produtos selecionados
+      for (const row of rows) {
+        const svcIds: number[] = row.selectedServiceIds ? JSON.parse(row.selectedServiceIds) : [];
+        const prdIds: number[] = row.selectedProductIds ? JSON.parse(row.selectedProductIds) : [];
+
+        if (svcIds.length > 0) {
+          const svcs = await selectSql(sql`SELECT id, name FROM services WHERE id = ANY(ARRAY[${sql.raw(svcIds.join(","))}]::int[])`) as { id: number; name: string }[];
+          row.selectedServiceNames = svcs.map(s => s.name);
+        } else {
+          row.selectedServiceNames = [];
+        }
+
+        if (prdIds.length > 0) {
+          const prds = await selectSql(sql`SELECT id, name FROM products WHERE id = ANY(ARRAY[${sql.raw(prdIds.join(","))}]::int[])`) as { id: number; name: string }[];
+          row.selectedProductNames = prds.map(p => p.name);
+        } else {
+          row.selectedProductNames = [];
+        }
+      }
+
+      return rows;
     }),
 
   getSubscription: publicProcedure

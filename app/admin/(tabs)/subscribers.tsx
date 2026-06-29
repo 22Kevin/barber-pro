@@ -181,12 +181,20 @@ export default function SubscribersScreen() {
 
                 {svcIds.length > 0 && (
                   <View style={[s.itemsRow, { borderTopColor: colors.border }]}>
-                    <Text style={[s.itemsLabel, { color: colors.muted }]}>Servicos selecionados: {svcIds.length}</Text>
+                    <Text style={[s.itemsLabel, { color: colors.muted }]}>
+                      ✂ {item.selectedServiceNames?.length > 0
+                        ? item.selectedServiceNames.join(" · ")
+                        : svcIds.length + " serviço(s)"}
+                    </Text>
                   </View>
                 )}
                 {prdIds.length > 0 && (
                   <View style={[s.itemsRow, { borderTopColor: colors.border }]}>
-                    <Text style={[s.itemsLabel, { color: colors.muted }]}>Produtos selecionados: {prdIds.length}</Text>
+                    <Text style={[s.itemsLabel, { color: colors.muted }]}>
+                      📦 {item.selectedProductNames?.length > 0
+                        ? item.selectedProductNames.join(" · ")
+                        : prdIds.length + " produto(s)"}
+                    </Text>
                   </View>
                 )}
 
