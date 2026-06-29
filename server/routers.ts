@@ -113,7 +113,7 @@ export const appRouter = router({
         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
         const tenant = barber.tenantId ? await db.getTenantById(barber.tenantId) : null;
         const _p1 = (barber as any).permissions; let _pp1 = null; try { _pp1 = _p1 ? JSON.parse(_p1) : null; } catch(e) {}
-        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, tenantPlan: tenant?.plan ?? null, permissions: _pp1, token, refreshToken };
+        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, tenantPlan: tenant?.plan ?? null, bpStatus: (tenant as any)?.barberproSubscriptionStatus ?? "trial", permissions: _pp1, token, refreshToken };
       }),
     googleLogin: publicProcedure
       .input(z.object({
@@ -160,7 +160,7 @@ export const appRouter = router({
         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
         const tenant2 = barber2.tenantId ? await db.getTenantById(barber2.tenantId) : null;
         const _p2 = (barber2 as any).permissions; let _pp2 = null; try { _pp2 = _p2 ? JSON.parse(_p2) : null; } catch(e) {}
-        return { id: barber2.id, name: barber2.name, email: barber2.email, phone: barber2.phone, photoUrl: photoUrl ?? barber2.photoUrl, role: barber2.role, specialties: barber2.specialties, tenantId: barber2.tenantId, tenantPlan: tenant2?.plan ?? null, permissions: _pp2, token, refreshToken };
+        return { id: barber2.id, name: barber2.name, email: barber2.email, phone: barber2.phone, photoUrl: photoUrl ?? barber2.photoUrl, role: barber2.role, specialties: barber2.specialties, tenantId: barber2.tenantId, tenantPlan: tenant2?.plan ?? null, bpStatus: (tenant2 as any)?.barberproSubscriptionStatus ?? "trial", permissions: _pp2, token, refreshToken };
       }),
   }),
 
@@ -177,7 +177,7 @@ export const appRouter = router({
         const [token, refreshToken] = await Promise.all([signBarberToken(payload), signBarberRefreshToken(payload)]);
         const tenantAdmin = barber.tenantId ? await db.getTenantById(barber.tenantId) : null;
         const _pA = (barber as any).permissions; let _ppA = null; try { _ppA = _pA ? JSON.parse(_pA) : null; } catch(e) {}
-        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, tenantPlan: tenantAdmin?.plan ?? null, permissions: _ppA, token, refreshToken };
+        return { id: barber.id, name: barber.name, email: barber.email, phone: barber.phone, photoUrl: barber.photoUrl, role: barber.role, specialties: barber.specialties, tenantId: barber.tenantId, tenantPlan: tenantAdmin?.plan ?? null, bpStatus: (tenantAdmin as any)?.barberproSubscriptionStatus ?? "trial", permissions: _ppA, token, refreshToken };
       }),
     setup: publicProcedure
       .input(z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(6) }))

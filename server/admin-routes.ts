@@ -5761,6 +5761,19 @@ async function renderConfiguracoes(req: Request, res: Response) {
 
       <!-- Status conta de pagamentos -->
       <!-- Status atual -->
+      ${bpStatus === 'trial' ? `
+      <div style="background:#C9A84C11;border:1px solid #C9A84C44;border-radius:14px;padding:24px;margin-bottom:24px;text-align:center">
+        <div style="font-size:32px;margin-bottom:12px">🔒</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">Disponível após assinar o Barber Pro</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px">
+          A integração com pagamentos online via Asaas está disponível apenas para assinantes ativos do Barber Pro.<br>
+          Assine um plano para habilitar Pix e cartão de crédito para seus clientes.
+        </div>
+        <a href="/admin/configuracoes/assinatura" class="btn btn-primary" style="display:inline-block;padding:10px 24px;border-radius:10px;font-size:14px;font-weight:700">
+          Ver planos e assinar →
+        </a>
+      </div>
+      ` : `
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:24px">
         <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--muted);margin-bottom:8px">STATUS DA CONTA DE PAGAMENTOS</div>
         <div style="font-size:15px;font-weight:600;color:${statusColor[asaasStatus] ?? 'var(--muted)'}">${statusLabel[asaasStatus] ?? asaasStatus}</div>
@@ -5997,6 +6010,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
           </script>
         </div>
       ` : ''}
+      `}
     </div>
 
     <script>
@@ -8444,6 +8458,12 @@ document.addEventListener('input', function(e) {
       const barber = await db.getBarberById(session.barberId);
       if (!barber?.tenantId) {
         res.redirect("/admin/configuracoes?tab=pagamentos&error=Tenant+n%C3%A3o+encontrado"); return;
+      }
+      // Bloquear em trial
+      const tenantStatusRow = await (dbConn as any).execute(`SELECT "barberproSubscriptionStatus" FROM tenants WHERE id = ${barber.tenantId} LIMIT 1`);
+      const tenantBpStatus = tenantStatusRow?.rows?.[0]?.barberproSubscriptionStatus ?? 'trial';
+      if (tenantBpStatus === 'trial') {
+        res.redirect("/admin/configuracoes?tab=pagamentos&error=Pagamentos+online+dispon%C3%ADvel+apenas+para+assinantes+ativos"); return;
       }
       if (!asaasEnabled) {
         res.redirect("/admin/configuracoes?tab=pagamentos&error=Pagamentos+online+n%C3%A3o+configurados+no+servidor"); return;

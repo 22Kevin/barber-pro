@@ -47,11 +47,32 @@ export default function AsaasSetupScreen() {
   const colors = useColors();
   const tenantId = barber?.tenantId ?? 0;
   const utils = trpc.useUtils();
+  const bpStatus = (barber as any)?.bpStatus ?? "trial";
+  const isTrialing = bpStatus === "trial";
 
   const statusQuery = trpc.asaasPayments.getSubAccountStatus.useQuery(
     { tenantId },
-    { enabled: !!tenantId }
+    { enabled: !!tenantId && !isTrialing }
   );
+
+  // Bloquear em trial
+  if (isTrialing) {
+    return (
+      <ScreenContainer>
+        <AdminHeader title="Pagamentos Online" />
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 32 }}>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>🔒</Text>
+          <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground, textAlign: "center", marginBottom: 10 }}>
+            Disponível após assinar o Barber Pro
+          </Text>
+          <Text style={{ fontSize: 14, color: colors.muted, textAlign: "center", lineHeight: 22 }}>
+            A integração com pagamentos online via Asaas está disponível apenas para assinantes ativos.{"\n\n"}
+            Assine um plano para habilitar Pix e cartão de crédito para seus clientes.
+          </Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   const syncMutation = trpc.asaasPayments.syncSubAccountStatus.useMutation({
     onSuccess: () => { utils.asaasPayments.getSubAccountStatus.invalidate({ tenantId }); },
