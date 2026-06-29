@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Animated, Image, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Image, Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -124,9 +124,27 @@ export default function WelcomeScreen() {
           </Animated.View>
 
           {/* ── Footer ───────────────────────────────────────── */}
-          <Animated.Text style={[s.footer, { opacity: aFooter }]}>
-            Barber Pro © 2025 · Todos os direitos reservados
-          </Animated.Text>
+          <Animated.View style={[{ alignItems: "center", gap: 8, paddingBottom: 8 }, { opacity: aFooter }]}>
+            <Text style={s.footer}>
+              Barber Pro © 2026 · Todos os direitos reservados
+            </Text>
+            <View style={{ flexDirection: "row", gap: 16, alignItems: "center" }}>
+              <Pressable onPress={() => Linking.openURL("https://usebarberpro.com/pub/politica-privacidade")}>
+                <Text style={s.footerLink}>Privacidade</Text>
+              </Pressable>
+              <Text style={s.footerDot}>·</Text>
+              <Pressable onPress={() => Linking.openURL("https://usebarberpro.com/pub/termos-de-uso")}>
+                <Text style={s.footerLink}>Termos de Uso</Text>
+              </Pressable>
+              <Text style={s.footerDot}>·</Text>
+              <Pressable onPress={() => Linking.openURL("https://usebarberpro.com/pub/politica-privacidade#lgpd")}>
+                <Text style={s.footerLink}>LGPD</Text>
+              </Pressable>
+            </View>
+            <Text style={s.footerLgpd}>
+              Em conformidade com a LGPD (Lei nº 13.709/2018)
+            </Text>
+          </Animated.View>
 
         </View>
       </SafeAreaView>
@@ -231,4 +249,7 @@ const s = StyleSheet.create({
 
   // Footer
   footer: { fontSize: 11, color: "#2A2A25", textAlign: "center", marginTop: 36 },
+  footerLink: { fontSize: 11, color: "#C9A84C88", textDecorationLine: "underline" },
+  footerDot: { fontSize: 11, color: "#2A2A25" },
+  footerLgpd: { fontSize: 10, color: "#2A2A2588", textAlign: "center" },
 });
