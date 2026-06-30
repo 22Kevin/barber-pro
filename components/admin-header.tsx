@@ -1,29 +1,38 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useAdminDrawer } from "@/lib/admin-drawer-context";
+import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 
 interface AdminHeaderProps {
   title?: string;
   titleNode?: React.ReactNode;
   rightElement?: React.ReactNode;
+  showMenuButton?: boolean;
 }
 
-export function AdminHeader({ title, titleNode, rightElement }: AdminHeaderProps) {
+export function AdminHeader({ title, titleNode, rightElement, showMenuButton = true }: AdminHeaderProps) {
   const colors = useColors();
   const styles = createStyles(colors);
-  const { toggleDrawer } = useAdminDrawer();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + 2 }]}>
-      {/* Botão hamburguer */}
-      <TouchableOpacity style={styles.menuBtn} onPress={toggleDrawer} activeOpacity={0.7}>
-        <View style={styles.hamburgerLine} />
-        <View style={[styles.hamburgerLine, { width: 18 }]} />
-        <View style={styles.hamburgerLine} />
-      </TouchableOpacity>
+      {/* Botão de menu — leva para a aba Menu */}
+      {showMenuButton ? (
+        <TouchableOpacity
+          style={styles.menuBtn}
+          onPress={() => router.push("/admin/(tabs)/menu" as any)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.hamburgerLine} />
+          <View style={[styles.hamburgerLine, { width: 18 }]} />
+          <View style={styles.hamburgerLine} />
+        </TouchableOpacity>
+      ) : (
+        <View style={{ width: 40 }} />
+      )}
 
       {/* Título */}
       <View style={{ flex: 1, minWidth: 0 }}>

@@ -135,6 +135,7 @@ const MAPPING = {
   "magnifyingglass.circle.fill": "manage-search",
   "location.circle.fill": "my-location",
   "questionmark.circle.fill": "help",
+  "line.3.horizontal": "menu",
 } as unknown as IconMapping;
 
 export function IconSymbol({

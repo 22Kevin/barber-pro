@@ -5,6 +5,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useBarberAuth } from "@/lib/auth-context";
 import { useIsOwner, usePermission } from "@/hooks/usePermission";
 import { BranchProvider } from "@/components/BranchSelector";
+import { AdminTabBar } from "@/components/admin-tab-bar";
 
 export default function AdminTabsLayout() {
   const { isAuthenticated, isLoading } = useBarberAuth();
@@ -22,6 +23,7 @@ export default function AdminTabsLayout() {
   return (
     <BranchProvider>
     <Tabs
+      tabBar={(props) => <AdminTabBar {...props} canFinanceiro={canFinanceiro} />}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#C9A84C",
@@ -61,6 +63,13 @@ export default function AdminTabsLayout() {
         options={{
           tabBarIcon: ({ color }) => <IconSymbol name="dollarsign.circle.fill" size={26} color={color} />,
           tabBarItemStyle: canFinanceiro ? undefined : { display: "none" },
+        }}
+      />
+      <Tabs.Screen
+        name="menu"
+        options={{
+          title: "Menu",
+          tabBarIcon: ({ color }) => <IconSymbol name="line.3.horizontal" size={26} color={color} />,
         }}
       />
 
