@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Appearance, View, useColorScheme as useSystemColorScheme } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Appearance, View } from "react-native";
 import { colorScheme as nativewindColorScheme, vars } from "nativewind";
 import { SchemeColors, type ColorScheme } from "@/constants/theme";
 
@@ -12,8 +11,10 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useSystemColorScheme() ?? "light";
-  const [colorScheme, setColorSchemeState] = useState<ColorScheme>(systemScheme);
+  // O app é projetado apenas para o tema escuro (identidade visual preto/dourado).
+  // O suporte a tema claro está incompleto em várias telas administrativas,
+  // então fixamos "dark" e ignoramos o esquema do sistema por enquanto.
+  const [colorScheme] = useState<ColorScheme>("dark");
 
   const applyScheme = useCallback((scheme: ColorScheme) => {
     nativewindColorScheme.set(scheme);
@@ -29,27 +30,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const setColorScheme = useCallback((scheme: ColorScheme) => {
-    setColorSchemeState(scheme);
-    applyScheme(scheme);
-  }, [applyScheme]);
-
-  // Carregar preferência salva no startup
-  useEffect(() => {
-    AsyncStorage.getItem("@theme_preference").then((saved) => {
-      if (saved === "light" || saved === "dark") {
-        setColorSchemeState(saved);
-        applyScheme(saved);
-      } else {
-        applyScheme(systemScheme);
-      }
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const setColorScheme = useCallback((_scheme: ColorScheme) => {
+    // Tema fixo em "dark" por enquanto — ver comentário acima.
   }, []);
 
   useEffect(() => {
-    applyScheme(colorScheme);
-  }, [applyScheme, colorScheme]);
+    applyScheme("dark");
+  }, [applyScheme]);
 
   const themeVariables = useMemo(
     () =>

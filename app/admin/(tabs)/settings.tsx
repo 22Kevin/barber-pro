@@ -14,22 +14,13 @@ import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
 import { IconSymbol } from "@/components/ui/icon-symbol";
-import { useThemeContext } from "@/lib/theme-provider";
 import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
 import { useColors } from "@/hooks/use-colors";
 import { useBarberAuth } from "@/lib/auth-context";
 import { trpc } from "@/lib/trpc";
 
-type ThemeOption = "light" | "dark" | "system";
 type PlanKey = "solo" | "team" | "studio";
-
-const THEME_OPTIONS: { key: ThemeOption; label: string; icon: string; description: string }[] = [
-  { key: "light", label: "Claro", icon: "sun.max.fill", description: "Fundo branco, texto escuro" },
-  { key: "dark", label: "Escuro", icon: "moon.fill", description: "Fundo escuro, texto claro" },
-  { key: "system", label: "Sistema", icon: "gearshape.fill", description: "Segue a preferência do dispositivo" },
-];
 
 const PLANS: { key: PlanKey; label: string; price: number; features: string[] }[] = [
   { key: "solo", label: "Solo", price: 49, features: ["1 barbeiro", "Agendamento online", "Financeiro"] },
@@ -370,28 +361,6 @@ export default function SettingsScreen() {
   const colors = useColors();
   const styles = createStyles(colors);
   const tabBarHeight = useTabBarHeight();
-  const { setColorScheme } = useThemeContext();
-  const [themeOption, setThemeOption] = useState<ThemeOption>("system");
-
-  useEffect(() => {
-    AsyncStorage.getItem("@theme_preference").then((saved) => {
-      if (saved === "light" || saved === "dark" || saved === "system") {
-        setThemeOption(saved as ThemeOption);
-      }
-    });
-  }, []);
-
-  async function handleThemeChange(option: ThemeOption) {
-    setThemeOption(option);
-    await AsyncStorage.setItem("@theme_preference", option);
-    const { Appearance } = await import("react-native");
-    if (option === "system") {
-      const sys = Appearance.getColorScheme() ?? "light";
-      setColorScheme(sys as any);
-    } else {
-      setColorScheme(option as any);
-    }
-  }
 
   return (
     <ScreenContainer containerClassName="bg-background">
@@ -400,39 +369,6 @@ export default function SettingsScreen() {
 
         {/* Minha Assinatura */}
         <SubscriptionSection />
-
-        {/* Aparência */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <IconSymbol name="paintbrush.fill" size={18} color="#C9A84C" />
-            <Text style={styles.sectionTitle}>Aparência</Text>
-          </View>
-          <Text style={styles.sectionSubtitle}>Escolha o tema visual do painel administrativo.</Text>
-
-          <View style={styles.themeGrid}>
-            {THEME_OPTIONS.map((opt) => {
-              const active = themeOption === opt.key;
-              return (
-                <Pressable
-                  key={opt.key}
-                  style={({ pressed }) => [styles.themeCard, active && styles.themeCardActive, pressed && { opacity: 0.8 }]}
-                  onPress={() => handleThemeChange(opt.key)}
-                >
-                  <View style={[styles.themeIconBox, active && styles.themeIconBoxActive]}>
-                    <IconSymbol name={opt.icon as any} size={22} color={active ? "#0A0A0A" : "#888880"} />
-                  </View>
-                  <Text style={[styles.themeLabel, active && styles.themeLabelActive]}>{opt.label}</Text>
-                  <Text style={styles.themeDescription}>{opt.description}</Text>
-                  {active && (
-                    <View style={styles.themeCheck}>
-                      <IconSymbol name="checkmark" size={12} color="#0A0A0A" />
-                    </View>
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
 
         {/* Versão */}
         <View style={styles.versionCard}>
