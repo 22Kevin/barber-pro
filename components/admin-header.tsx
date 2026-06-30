@@ -1,38 +1,29 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 
 interface AdminHeaderProps {
   title?: string;
   titleNode?: React.ReactNode;
   rightElement?: React.ReactNode;
-  showMenuButton?: boolean;
 }
 
-export function AdminHeader({ title, titleNode, rightElement, showMenuButton = true }: AdminHeaderProps) {
+export function AdminHeader({ title, titleNode, rightElement }: AdminHeaderProps) {
   const colors = useColors();
   const styles = createStyles(colors);
-  const router = useRouter();
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.header, { paddingTop: insets.top + 2 }]}>
-      {/* Botão de menu — leva para a aba Menu */}
-      {showMenuButton ? (
-        <TouchableOpacity
-          style={styles.menuBtn}
-          onPress={() => router.push("/admin/(tabs)/menu" as any)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.hamburgerLine} />
-          <View style={[styles.hamburgerLine, { width: 18 }]} />
-          <View style={styles.hamburgerLine} />
-        </TouchableOpacity>
-      ) : (
-        <View style={{ width: 40 }} />
-      )}
+      {/* Selo da marca */}
+      <View style={styles.logoBadge}>
+        <Image
+          source={require("@/assets/images/icon.png")}
+          style={styles.logoImage}
+          resizeMode="cover"
+        />
+      </View>
 
       {/* Título */}
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -63,20 +54,20 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
     borderBottomColor: c.border,
     gap: 12,
   },
-  menuBtn: {
-    width: 40,
-    height: 40,
+  logoBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    borderColor: "#C9A84C",
+    overflow: "hidden",
+    backgroundColor: "#0F0F0F",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
-    borderRadius: 10,
-    backgroundColor: c.surface,
   },
-  hamburgerLine: {
-    width: 22,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: "#C9A84C",
+  logoImage: {
+    width: "100%",
+    height: "100%",
   },
   title: {
     fontSize: 18,

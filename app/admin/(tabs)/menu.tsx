@@ -133,7 +133,7 @@ export default function MenuScreen() {
 
   return (
     <ScreenContainer edges={["left", "right", "top"]}>
-      <AdminHeader title="Menu" showMenuButton={false} />
+      <AdminHeader title="Menu" />
 
       {/* Modal de upgrade de plano */}
       <Modal visible={!!upgradeModal} transparent animationType="fade" onRequestClose={() => setUpgradeModal(null)}>
