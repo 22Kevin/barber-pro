@@ -1,0 +1,50 @@
+From 42b6e619f8162fb79aa2528cd0e7b0e0f5ed3a00 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Fri, 12 Jun 2026 18:43:49 +0000
+Subject: [PATCH] fix: remover duplicata parseMoneyInput que impedia o build
+
+---
+ server/admin-routes.ts | 27 ---------------------------
+ 1 file changed, 27 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 8efffb8..af389b6 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -46,33 +46,6 @@ function assertValidUpload(b64: string, mime: string, kind: "image" | "media"):
+   return buf;
+ }
+ 
+-// ─── Helper universal de parsing de valores monetários ────────────────────────
+-// Aceita qualquer formato: "1.234,56" "1,234.56" "1234.56" "1234,56" "0,15" "0.15"
+-function parseMoneyInput(val: any, defaultVal = 0): number {
+-  if (val === null || val === undefined || val === '') return defaultVal;
+-  const s = String(val).trim();
+-  if (!s) return defaultVal;
+-  // Detectar formato: se tem vírgula E ponto, o último separador é o decimal
+-  const lastComma = s.lastIndexOf(',');
+-  const lastDot = s.lastIndexOf('.');
+-  let normalized: string;
+-  if (lastComma > lastDot) {
+-    // Formato BR: 1.234,56 → remover pontos, trocar vírgula por ponto
+-    normalized = s.replace(/\./g, '').replace(',', '.');
+-  } else if (lastDot > lastComma) {
+-    // Formato US: 1,234.56 → remover vírgulas
+-    normalized = s.replace(/,/g, '');
+-  } else {
+-    // Sem separador decimal: apenas dígitos
+-    normalized = s.replace(/[^0-9]/g, '');
+-  }
+-  const n = parseFloat(normalized);
+-  return isNaN(n) ? defaultVal : n;
+-}
+-function moneyStr(val: any, defaultVal = '0.00'): string {
+-  const n = parseMoneyInput(val);
+-  return n > 0 ? n.toFixed(2) : defaultVal;
+-}
+ 
+ // ─── Helper universal de parsing de valores monetários ────────────────────────
+ // Aceita qualquer formato: "1.234,56" "1,234.56" "1234.56" "1234,56" "0,15" "0.15"
+-- 
+2.43.0
+

@@ -1,0 +1,115 @@
+From 3b4b3edcf3e2d0fcb006bdfb7191c8b85c786230 Mon Sep 17 00:00:00 2001
+From: Barber Pro Dev <dev@barberpro.local>
+Date: Tue, 30 Jun 2026 18:31:22 +0000
+Subject: [PATCH] feat: remover hamburguer do header, substituir por selo da
+ marca
+
+- AdminHeader: remove botao hamburguer (redundante com a aba Menu)
+- Header agora mostra um selo circular dourado com a logo do Barber Pro ao lado do seletor de filiais
+- menu.tsx: removida prop showMenuButton que nao existe mais
+---
+ app/admin/(tabs)/menu.tsx   |  2 +-
+ components/admin-header.tsx | 51 +++++++++++++++----------------------
+ 2 files changed, 22 insertions(+), 31 deletions(-)
+
+diff --git a/app/admin/(tabs)/menu.tsx b/app/admin/(tabs)/menu.tsx
+index 39a72c2..6cbee13 100644
+--- a/app/admin/(tabs)/menu.tsx
++++ b/app/admin/(tabs)/menu.tsx
+@@ -133,7 +133,7 @@ export default function MenuScreen() {
+ 
+   return (
+     <ScreenContainer edges={["left", "right", "top"]}>
+-      <AdminHeader title="Menu" showMenuButton={false} />
++      <AdminHeader title="Menu" />
+ 
+       {/* Modal de upgrade de plano */}
+       <Modal visible={!!upgradeModal} transparent animationType="fade" onRequestClose={() => setUpgradeModal(null)}>
+diff --git a/components/admin-header.tsx b/components/admin-header.tsx
+index f6b48e2..e5998cd 100644
+--- a/components/admin-header.tsx
++++ b/components/admin-header.tsx
+@@ -1,38 +1,29 @@
+ import React from "react";
+-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
++import { View, Text, Image, StyleSheet } from "react-native";
+ import { useSafeAreaInsets } from "react-native-safe-area-context";
+-import { useRouter } from "expo-router";
+ import { useColors } from "@/hooks/use-colors";
+ 
+ interface AdminHeaderProps {
+   title?: string;
+   titleNode?: React.ReactNode;
+   rightElement?: React.ReactNode;
+-  showMenuButton?: boolean;
+ }
+ 
+-export function AdminHeader({ title, titleNode, rightElement, showMenuButton = true }: AdminHeaderProps) {
++export function AdminHeader({ title, titleNode, rightElement }: AdminHeaderProps) {
+   const colors = useColors();
+   const styles = createStyles(colors);
+-  const router = useRouter();
+   const insets = useSafeAreaInsets();
+ 
+   return (
+     <View style={[styles.header, { paddingTop: insets.top + 2 }]}>
+-      {/* Botão de menu — leva para a aba Menu */}
+-      {showMenuButton ? (
+-        <TouchableOpacity
+-          style={styles.menuBtn}
+-          onPress={() => router.push("/admin/(tabs)/menu" as any)}
+-          activeOpacity={0.7}
+-        >
+-          <View style={styles.hamburgerLine} />
+-          <View style={[styles.hamburgerLine, { width: 18 }]} />
+-          <View style={styles.hamburgerLine} />
+-        </TouchableOpacity>
+-      ) : (
+-        <View style={{ width: 40 }} />
+-      )}
++      {/* Selo da marca */}
++      <View style={styles.logoBadge}>
++        <Image
++          source={require("@/assets/images/icon.png")}
++          style={styles.logoImage}
++          resizeMode="cover"
++        />
++      </View>
+ 
+       {/* Título */}
+       <View style={{ flex: 1, minWidth: 0 }}>
+@@ -63,20 +54,20 @@ function createStyles(c: ReturnType<typeof import("@/hooks/use-colors").useColor
+     borderBottomColor: c.border,
+     gap: 12,
+   },
+-  menuBtn: {
+-    width: 40,
+-    height: 40,
++  logoBadge: {
++    width: 38,
++    height: 38,
++    borderRadius: 19,
++    borderWidth: 1.5,
++    borderColor: "#C9A84C",
++    overflow: "hidden",
++    backgroundColor: "#0F0F0F",
+     alignItems: "center",
+     justifyContent: "center",
+-    gap: 5,
+-    borderRadius: 10,
+-    backgroundColor: c.surface,
+   },
+-  hamburgerLine: {
+-    width: 22,
+-    height: 2,
+-    borderRadius: 1,
+-    backgroundColor: "#C9A84C",
++  logoImage: {
++    width: "100%",
++    height: "100%",
+   },
+   title: {
+     fontSize: 18,
+-- 
+2.43.0
+

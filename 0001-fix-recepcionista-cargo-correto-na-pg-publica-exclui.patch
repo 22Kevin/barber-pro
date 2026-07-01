@@ -1,0 +1,86 @@
+From 2190f953c5e71868c30da4c71768dec5d2b14476 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Fri, 12 Jun 2026 19:11:04 +0000
+Subject: [PATCH] =?UTF-8?q?fix:=20recepcionista=20=E2=80=94=20cargo=20corr?=
+ =?UTF-8?q?eto=20na=20pg=20publica,=20excluir=20do=20agendamento,=20permis?=
+ =?UTF-8?q?soes=20no=20modal=20editar?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ server/admin-routes.ts  | 24 +++++++++++++-----------
+ server/public-routes.ts |  7 ++++---
+ 2 files changed, 17 insertions(+), 14 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 52c7068..cf345a3 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -4922,20 +4922,22 @@ async function renderConfiguracoes(req: Request, res: Response) {
+ 
+   // Buscar equipe e horários de trabalho
+   const allBarbers = await db.getAllBarbersIncludingInactive(barber?.tenantId) as any[];
+-  // Buscar permissions via rawQuery pois a coluna não está no schema Drizzle
++  // Buscar permissions e role via rawQuery (colunas fora do schema Drizzle)
+   try {
+-    const dbConn = await db.getDb();
+-    if (dbConn && allBarbers.length > 0) {
++    if (!_pool) await db.getDb();
++    if (_pool && allBarbers.length > 0) {
+       const ids = allBarbers.map((b: any) => b.id).join(',');
+-      const rows = await (dbConn as any).execute('SELECT id, permissions FROM barbers WHERE id IN (' + ids + ')') as any;
+-      const permsMap: Record<number, any> = {};
+-      const rowArr = Array.isArray(rows) ? rows[0] : (rows?.rows ?? []);
+-      for (const row of rowArr) {
+-        if (row.permissions) {
+-          try { permsMap[row.id] = JSON.parse(row.permissions); } catch(e) { permsMap[row.id] = null; }
+-        }
++      const rows = await _pool.query('SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id IN (' + ids + ')');
++      const dataMap: Record<number, any> = {};
++      for (const row of rows.rows) { dataMap[row.id] = row; }
++      for (const b of allBarbers) {
++        const row = dataMap[b.id];
++        if (row?.permissions) {
++          try { (b as any).permissions = JSON.parse(row.permissions); } catch(e) { (b as any).permissions = null; }
++        } else { (b as any).permissions = null; }
++        if (row?.role) (b as any).role = row.role;
++        if (row?.jobTitle) (b as any).jobTitle = row.jobTitle;
+       }
+-      for (const b of allBarbers) { (b as any).permissions = permsMap[b.id] ?? null; }
+     }
+   } catch(e) {}
+   const workingHoursMap: Record<number, any[]> = {};
+diff --git a/server/public-routes.ts b/server/public-routes.ts
+index 556f538..acd7e73 100644
+--- a/server/public-routes.ts
++++ b/server/public-routes.ts
+@@ -736,7 +736,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
+               : `<div class="team-photo-placeholder">💈</div>`
+             }
+             <div class="team-name">${escapeHtml(b.name)}</div>
+-            <div class="team-role">${(b as any).role === "super_admin" ? "Proprietário" : "Barbeiro"}</div>
++            <div class="team-role">${(b as any).role === "super_admin" ? "Proprietário" : (b as any).role === "receptionist" ? "Recepcionista" : (b as any).jobTitle || "Barbeiro"}</div>
+           </div>
+         `).join("")}
+       </div>
+@@ -1244,13 +1244,14 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
+     thumbnailUrl: (s as any).thumbnailUrl ?? null,
+     description: (s as any).description ?? null,
+   })));
+-  const barbersJson = JSON.stringify(barberList.map((b) => ({
++  const bookableBarbers = (barberList as any[]).filter((b: any) => b.role !== "receptionist");
++  const barbersJson = JSON.stringify(bookableBarbers.map((b) => ({
+     id: b.id,
+     name: b.name,
+     photoUrl: b.photoUrl ?? null,
+     specialties: b.specialties ?? null,
+   })));
+-  const firstBarberId = barberList[0]?.id ?? 1;
++  const firstBarberId = bookableBarbers[0]?.id ?? 1;
+ 
+   const loggedClientJson = loggedClient ? JSON.stringify(loggedClient) : "null";
+   const hasAsaas = !!(process.env.ASAAS_API_KEY);
+-- 
+2.43.0
+

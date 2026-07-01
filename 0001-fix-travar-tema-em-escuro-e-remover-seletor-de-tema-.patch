@@ -1,0 +1,173 @@
+From 4d305c68edf1e61b1e5770b1fbea1e2756bb533a Mon Sep 17 00:00:00 2001
+From: Barber Pro Dev <dev@barberpro.local>
+Date: Tue, 30 Jun 2026 19:36:18 +0000
+Subject: [PATCH] fix: travar tema em escuro e remover seletor de tema claro
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- theme-provider: forca colorScheme = dark sempre, ignorando esquema do sistema e preferencia salva
+- settings.tsx: remove a secao 'Aparencia' (Claro/Escuro/Sistema), já que o suporte a tema claro esta incompleto na maioria das telas administrativas e causava UI quebrada
+- Nenhuma logica de negocio foi alterada, apenas apresentacao de tema
+---
+ app/admin/(tabs)/settings.tsx | 64 -----------------------------------
+ lib/theme-provider.tsx        | 31 +++++------------
+ 2 files changed, 9 insertions(+), 86 deletions(-)
+
+diff --git a/app/admin/(tabs)/settings.tsx b/app/admin/(tabs)/settings.tsx
+index b6e324e..68c8822 100644
+--- a/app/admin/(tabs)/settings.tsx
++++ b/app/admin/(tabs)/settings.tsx
+@@ -14,23 +14,14 @@ import { useRouter } from "expo-router";
+ import { ScreenContainer } from "@/components/screen-container";
+ import { AdminHeader } from "@/components/admin-header";
+ import { IconSymbol } from "@/components/ui/icon-symbol";
+-import { useThemeContext } from "@/lib/theme-provider";
+ import { KeyboardAwareForm } from "@/components/keyboard-aware-form";
+-import AsyncStorage from "@react-native-async-storage/async-storage";
+ import { useTabBarHeight } from "@/hooks/use-tab-bar-height";
+ import { useColors } from "@/hooks/use-colors";
+ import { useBarberAuth } from "@/lib/auth-context";
+ import { trpc } from "@/lib/trpc";
+ 
+-type ThemeOption = "light" | "dark" | "system";
+ type PlanKey = "solo" | "team" | "studio";
+ 
+-const THEME_OPTIONS: { key: ThemeOption; label: string; icon: string; description: string }[] = [
+-  { key: "light", label: "Claro", icon: "sun.max.fill", description: "Fundo branco, texto escuro" },
+-  { key: "dark", label: "Escuro", icon: "moon.fill", description: "Fundo escuro, texto claro" },
+-  { key: "system", label: "Sistema", icon: "gearshape.fill", description: "Segue a preferência do dispositivo" },
+-];
+-
+ const PLANS: { key: PlanKey; label: string; price: number; features: string[] }[] = [
+   { key: "solo", label: "Solo", price: 49, features: ["1 barbeiro", "Agendamento online", "Financeiro"] },
+   { key: "team", label: "Equipe", price: 89, features: ["Até 5 barbeiros", "Comissões", "Promoções"] },
+@@ -370,28 +361,6 @@ export default function SettingsScreen() {
+   const colors = useColors();
+   const styles = createStyles(colors);
+   const tabBarHeight = useTabBarHeight();
+-  const { setColorScheme } = useThemeContext();
+-  const [themeOption, setThemeOption] = useState<ThemeOption>("system");
+-
+-  useEffect(() => {
+-    AsyncStorage.getItem("@theme_preference").then((saved) => {
+-      if (saved === "light" || saved === "dark" || saved === "system") {
+-        setThemeOption(saved as ThemeOption);
+-      }
+-    });
+-  }, []);
+-
+-  async function handleThemeChange(option: ThemeOption) {
+-    setThemeOption(option);
+-    await AsyncStorage.setItem("@theme_preference", option);
+-    const { Appearance } = await import("react-native");
+-    if (option === "system") {
+-      const sys = Appearance.getColorScheme() ?? "light";
+-      setColorScheme(sys as any);
+-    } else {
+-      setColorScheme(option as any);
+-    }
+-  }
+ 
+   return (
+     <ScreenContainer containerClassName="bg-background">
+@@ -401,39 +370,6 @@ export default function SettingsScreen() {
+         {/* Minha Assinatura */}
+         <SubscriptionSection />
+ 
+-        {/* Aparência */}
+-        <View style={styles.section}>
+-          <View style={styles.sectionHeader}>
+-            <IconSymbol name="paintbrush.fill" size={18} color="#C9A84C" />
+-            <Text style={styles.sectionTitle}>Aparência</Text>
+-          </View>
+-          <Text style={styles.sectionSubtitle}>Escolha o tema visual do painel administrativo.</Text>
+-
+-          <View style={styles.themeGrid}>
+-            {THEME_OPTIONS.map((opt) => {
+-              const active = themeOption === opt.key;
+-              return (
+-                <Pressable
+-                  key={opt.key}
+-                  style={({ pressed }) => [styles.themeCard, active && styles.themeCardActive, pressed && { opacity: 0.8 }]}
+-                  onPress={() => handleThemeChange(opt.key)}
+-                >
+-                  <View style={[styles.themeIconBox, active && styles.themeIconBoxActive]}>
+-                    <IconSymbol name={opt.icon as any} size={22} color={active ? "#0A0A0A" : "#888880"} />
+-                  </View>
+-                  <Text style={[styles.themeLabel, active && styles.themeLabelActive]}>{opt.label}</Text>
+-                  <Text style={styles.themeDescription}>{opt.description}</Text>
+-                  {active && (
+-                    <View style={styles.themeCheck}>
+-                      <IconSymbol name="checkmark" size={12} color="#0A0A0A" />
+-                    </View>
+-                  )}
+-                </Pressable>
+-              );
+-            })}
+-          </View>
+-        </View>
+-
+         {/* Versão */}
+         <View style={styles.versionCard}>
+           <IconSymbol name="info.circle.fill" size={16} color="#555" />
+diff --git a/lib/theme-provider.tsx b/lib/theme-provider.tsx
+index 7556419..a6f3f8f 100644
+--- a/lib/theme-provider.tsx
++++ b/lib/theme-provider.tsx
+@@ -1,6 +1,5 @@
+ import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+-import { Appearance, View, useColorScheme as useSystemColorScheme } from "react-native";
+-import AsyncStorage from "@react-native-async-storage/async-storage";
++import { Appearance, View } from "react-native";
+ import { colorScheme as nativewindColorScheme, vars } from "nativewind";
+ import { SchemeColors, type ColorScheme } from "@/constants/theme";
+ 
+@@ -12,8 +11,10 @@ type ThemeContextValue = {
+ const ThemeContext = createContext<ThemeContextValue | null>(null);
+ 
+ export function ThemeProvider({ children }: { children: React.ReactNode }) {
+-  const systemScheme = useSystemColorScheme() ?? "light";
+-  const [colorScheme, setColorSchemeState] = useState<ColorScheme>(systemScheme);
++  // O app é projetado apenas para o tema escuro (identidade visual preto/dourado).
++  // O suporte a tema claro está incompleto em várias telas administrativas,
++  // então fixamos "dark" e ignoramos o esquema do sistema por enquanto.
++  const [colorScheme] = useState<ColorScheme>("dark");
+ 
+   const applyScheme = useCallback((scheme: ColorScheme) => {
+     nativewindColorScheme.set(scheme);
+@@ -29,27 +30,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
+     }
+   }, []);
+ 
+-  const setColorScheme = useCallback((scheme: ColorScheme) => {
+-    setColorSchemeState(scheme);
+-    applyScheme(scheme);
+-  }, [applyScheme]);
+-
+-  // Carregar preferência salva no startup
+-  useEffect(() => {
+-    AsyncStorage.getItem("@theme_preference").then((saved) => {
+-      if (saved === "light" || saved === "dark") {
+-        setColorSchemeState(saved);
+-        applyScheme(saved);
+-      } else {
+-        applyScheme(systemScheme);
+-      }
+-    });
+-  // eslint-disable-next-line react-hooks/exhaustive-deps
++  const setColorScheme = useCallback((_scheme: ColorScheme) => {
++    // Tema fixo em "dark" por enquanto — ver comentário acima.
+   }, []);
+ 
+   useEffect(() => {
+-    applyScheme(colorScheme);
+-  }, [applyScheme, colorScheme]);
++    applyScheme("dark");
++  }, [applyScheme]);
+ 
+   const themeVariables = useMemo(
+     () =>
+-- 
+2.43.0
+

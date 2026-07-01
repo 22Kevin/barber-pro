@@ -1,0 +1,545 @@
+From ac7f1aed8b4cc2100917fb95bd389d139f607f74 Mon Sep 17 00:00:00 2001
+From: Barber Pro Dev <dev@barberpro.local>
+Date: Wed, 1 Jul 2026 10:35:05 +0000
+Subject: [PATCH] feat: bloquear rotas tRPC do app quando trial/assinatura
+ expirar
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+SERVIDOR — server/_core/trpc.ts:
+- Novo activeBarberProcedure: herda JWT check do barberProcedure e adiciona
+  verificação de subscription no banco (status + trialEndsAt)
+- Mesma lógica de grace period de 48h do painel web
+- Fail open em erros de banco/infra (não bloqueia por instabilidade)
+- Retorna TRPCError FORBIDDEN com message 'SUBSCRIPTION_EXPIRED'
+- barberProcedure mantido intacto (usado apenas para referência futura)
+
+SERVIDOR — server/routers.ts:
+- Todas as 39 rotas de dados substituidas de barberProcedure para activeBarberProcedure
+- Rotas de auth/pagamento ja usavam publicProcedure e nao foram alteradas
+  (auth.login, auth.refreshToken, asaasPayments.getBarberproSubscription, etc)
+
+APP — app/_layout.tsx:
+- QueryClient: retry=false para erros FORBIDDEN e UNAUTHORIZED
+  (evita retry desperdicador que atrasa o redirecionamento para paywall)
+
+APP — app/admin/_layout.tsx:
+- SubscriptionGuard: novo useEffect que escuta o QueryCache globalmente
+  e redireciona para /admin/barberpro-paywall quando qualquer query retornar
+  FORBIDDEN com message SUBSCRIPTION_EXPIRED
+- Proteção adicionada tambem para a tela trial-expired (isProtectedScreen)
+---
+ app/_layout.tsx       | 21 ++++++++---
+ app/admin/_layout.tsx | 31 +++++++++++++++--
+ server/_core/trpc.ts  | 81 +++++++++++++++++++++++++++++++++++++++++++
+ server/routers.ts     | 80 +++++++++++++++++++++---------------------
+ 4 files changed, 166 insertions(+), 47 deletions(-)
+
+diff --git a/app/_layout.tsx b/app/_layout.tsx
+index 49e266a..9d8247f 100644
+--- a/app/_layout.tsx
++++ b/app/_layout.tsx
+@@ -24,9 +24,10 @@ import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
+ 
+ import { trpc, createTRPCClient } from "@/lib/trpc";
+ import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
+-import { NotificationsSetup } from "@/components/notifications-setup";
+-import { AppAlertProviderWithGlobal, AppAlert } from "@/components/app-alert";
++import { NotificationsSetup } from "@/components/notifications-setup";
++import { AppAlertProviderWithGlobal, AppAlert } from "@/components/app-alert";
+ import { KeyboardProvider } from "react-native-keyboard-controller";
++import { router as expoRouter } from "expo-router";
+ 
+ const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
+ const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
+@@ -108,8 +109,20 @@ export default function RootLayout() {
+           queries: {
+             // Disable automatic refetching on window focus for mobile
+             refetchOnWindowFocus: false,
+-            // Retry failed requests once
+-            retry: 1,
++            // Não repetir requisições que falharam com FORBIDDEN (trial expirado)
++            // — retry em 401/403 desperdiça tokens e atrasa o redirecionamento
++            retry: (failureCount, error: any) => {
++              const code = error?.data?.code ?? error?.shape?.data?.code;
++              if (code === "FORBIDDEN" || code === "UNAUTHORIZED") return false;
++              return failureCount < 1;
++            },
++          },
++          mutations: {
++            retry: (failureCount, error: any) => {
++              const code = error?.data?.code ?? error?.shape?.data?.code;
++              if (code === "FORBIDDEN" || code === "UNAUTHORIZED") return false;
++              return failureCount < 1;
++            },
+           },
+         },
+       }),
+diff --git a/app/admin/_layout.tsx b/app/admin/_layout.tsx
+index 207bc7b..a9c20e5 100644
+--- a/app/admin/_layout.tsx
++++ b/app/admin/_layout.tsx
+@@ -5,15 +5,19 @@ import { AuthProvider, useBarberAuth } from "@/lib/auth-context";
+ import { AdminDrawerProvider, useAdminDrawer } from "@/lib/admin-drawer-context";
+ import { AdminDrawer } from "@/components/admin-drawer";
+ import { trpc } from "@/lib/trpc";
++import { useQueryClient } from "@tanstack/react-query";
+ 
+ // ─── Guard de assinatura ──────────────────────────────────────────────────────
+ function SubscriptionGuard({ children }: { children: React.ReactNode }) {
+   const { barber, isLoading: authLoading } = useBarberAuth();
+   const router = useRouter();
+   const segments = useSegments();
++  const queryClient = useQueryClient();
+ 
+   const tenantId = barber?.tenantId ?? 0;
+   const isPaywallScreen = segments.includes("barberpro-paywall" as never);
++  const isTrialExpiredScreen = segments.includes("trial-expired" as never);
++  const isProtectedScreen = !isPaywallScreen && !isTrialExpiredScreen;
+ 
+   // Buscar status da assinatura apenas quando autenticado
+   const { data: subscription, isLoading: subLoading } = trpc.asaasPayments.getBarberproSubscription.useQuery(
+@@ -26,6 +30,7 @@ function SubscriptionGuard({ children }: { children: React.ReactNode }) {
+     }
+   );
+ 
++  // Redirecionar para paywall se status bloqueado (verificação proativa)
+   useEffect(() => {
+     if (authLoading || subLoading) return;
+     if (!barber) return;
+@@ -34,13 +39,33 @@ function SubscriptionGuard({ children }: { children: React.ReactNode }) {
+     const status = subscription?.status;
+     const blockedStatuses = ["expired", "cancelled"];
+ 
+-    if (status && blockedStatuses.includes(status) && !isPaywallScreen) {
++    if (status && blockedStatuses.includes(status) && isProtectedScreen) {
+       router.replace("/admin/barberpro-paywall");
+     }
+-  }, [authLoading, subLoading, barber, subscription, isPaywallScreen, tenantId]);
++  }, [authLoading, subLoading, barber, subscription, isProtectedScreen, tenantId]);
++
++  // Interceptar erro FORBIDDEN global do servidor (trial expirou durante a sessão)
++  // O servidor retorna FORBIDDEN com message "SUBSCRIPTION_EXPIRED" quando o
++  // activeBarberProcedure detecta que o trial passou do grace period de 48h.
++  useEffect(() => {
++    if (!barber || !isProtectedScreen) return;
++
++    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
++      if (event.type !== "updated") return;
++      const error = event.query.state.error as any;
++      if (!error) return;
++      const code = error?.data?.code ?? error?.shape?.data?.code;
++      const message = error?.message ?? error?.shape?.message ?? "";
++      if (code === "FORBIDDEN" && message.includes("SUBSCRIPTION_EXPIRED")) {
++        router.replace("/admin/barberpro-paywall");
++      }
++    });
++
++    return () => unsubscribe();
++  }, [barber, isProtectedScreen, queryClient, router]);
+ 
+   // Mostrar loading enquanto verifica assinatura (apenas na primeira carga)
+-  if ((authLoading || (subLoading && !subscription)) && !isPaywallScreen) {
++  if ((authLoading || (subLoading && !subscription)) && isProtectedScreen) {
+     return (
+       <View style={{ flex: 1, backgroundColor: "#0A0A0A", alignItems: "center", justifyContent: "center" }}>
+         <ActivityIndicator color="#C9A84C" />
+diff --git a/server/_core/trpc.ts b/server/_core/trpc.ts
+index b33d4cc..c5c490d 100644
+--- a/server/_core/trpc.ts
++++ b/server/_core/trpc.ts
+@@ -69,3 +69,84 @@ const requireBarber = t.middleware(async (opts) => {
+ });
+ 
+ export const barberProcedure = t.procedure.use(requireBarber);
++
++/**
++ * activeBarberProcedure — exige JWT válido + assinatura Barber Pro ativa.
++ *
++ * Além da verificação de JWT do barberProcedure, consulta o banco para
++ * confirmar que o tenant ainda está em trial válido ou com assinatura ativa.
++ * Aplica a mesma lógica de grace period de 48h do painel web.
++ *
++ * Usado em todas as rotas de dados do app mobile. Rotas de autenticação e
++ * pagamento continuam usando barberProcedure ou publicProcedure, para que
++ * usuários com trial expirado ainda consigam fazer login e efetuar pagamento.
++ *
++ * Codes retornados:
++ *  - UNAUTHORIZED  → sem JWT ou JWT inválido (herdado de requireBarber)
++ *  - FORBIDDEN     → assinatura expirada/cancelada (após grace period)
++ */
++const requireActiveSubscription = t.middleware(async (opts) => {
++  const { ctx, next } = opts;
++
++  // requireBarber já garante ctx.barber não-nulo neste ponto
++  const barber = ctx.barber as BarberJwtPayload;
++  const tenantId = barber.tenantId;
++
++  // Sem tenantId (não deveria acontecer, mas defensivo)
++  if (!tenantId) {
++    return next({ ctx: { ...ctx, barber } });
++  }
++
++  try {
++    // Importação dinâmica para evitar dependência circular com db.ts
++    const { getDb } = await import("../db.js");
++    const dbConn = await getDb();
++    if (!dbConn) {
++      // Se o banco não responder, não bloqueamos (fail open para não prejudicar
++      // usuários legítimos por falha de infraestrutura)
++      return next({ ctx: { ...ctx, barber } });
++    }
++
++    const rows = await (dbConn as any).execute(
++      `SELECT "barberproSubscriptionStatus", "trialEndsAt" FROM tenants WHERE id = ${tenantId} LIMIT 1`
++    );
++    const tenant = ((rows as any).rows as any[])?.[0];
++
++    if (!tenant) {
++      // Tenant não encontrado — não bloqueamos, pode ser tenant novo
++      return next({ ctx: { ...ctx, barber } });
++    }
++
++    const status: string = tenant.barberproSubscriptionStatus ?? "trial";
++    const trialEndsAt: Date | null = tenant.trialEndsAt ? new Date(tenant.trialEndsAt) : null;
++    const now = new Date();
++
++    // Grace period de 48h após vencimento — igual ao painel web
++    const GRACE_MS = 48 * 60 * 60 * 1000;
++    const trialExpiredPastGrace =
++      trialEndsAt !== null && now.getTime() - trialEndsAt.getTime() > GRACE_MS;
++
++    const isBlocked =
++      status === "expired" ||
++      status === "cancelled" ||
++      (status === "trial" && trialExpiredPastGrace);
++
++    if (isBlocked) {
++      throw new TRPCError({
++        code: "FORBIDDEN",
++        message: "SUBSCRIPTION_EXPIRED",
++      });
++    }
++  } catch (err) {
++    // Re-lança erros tRPC (FORBIDDEN/UNAUTHORIZED) sem engolir
++    if (err instanceof TRPCError) throw err;
++    // Erros de banco/infra: fail open — não bloqueamos por instabilidade
++    console.error("[activeBarberProcedure] Falha ao verificar assinatura:", err);
++  }
++
++  return next({ ctx: { ...ctx, barber } });
++});
++
++export const activeBarberProcedure = t.procedure
++  .use(requireBarber)
++  .use(requireActiveSubscription);
+diff --git a/server/routers.ts b/server/routers.ts
+index b73c48e..245af7d 100644
+--- a/server/routers.ts
++++ b/server/routers.ts
+@@ -4,7 +4,7 @@ import { subscriptionPlanRouter } from "./subscription-plan-router";
+ import { getSessionCookieOptions } from "./_core/cookies";
+ import { systemRouter } from "./_core/systemRouter";
+ import { TRPCError } from "@trpc/server";
+-import { publicProcedure, router, barberProcedure } from "./_core/trpc";
++import { publicProcedure, router, barberProcedure, activeBarberProcedure } from "./_core/trpc";
+ import { signBarberToken, signBarberRefreshToken, verifyBarberRefreshToken } from "./barber-jwt.js";
+ import * as db from "./db";
+ import { assertFeature, assertBarberLimit } from "./plan-features";
+@@ -294,8 +294,8 @@ export const appRouter = router({
+   barbers: router({
+     list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ ctx, input }) => db.getAllBarbers(input?.tenantId ?? ctx.barber?.tenantId)),
+     listAll: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ ctx, input }) => db.getAllBarbersIncludingInactive(input?.tenantId ?? ctx.barber?.tenantId)),
+-    reactivate: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.reactivateBarber(input.id)),
+-    listWithPermissions: barberProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ ctx, input }) => {
++    reactivate: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.reactivateBarber(input.id)),
++    listWithPermissions: activeBarberProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ ctx, input }) => {
+       const barbers = await db.getAllBarbersIncludingInactive(input?.tenantId ?? ctx.barber.tenantId);
+       if (!barbers.length) return barbers;
+       const rows = await db.rawQuery(`SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id = ANY($1::int[])`, [barbers.map((b: any) => b.id)]);
+@@ -308,7 +308,7 @@ export const appRouter = router({
+         return { ...b, permissions: perms, role: row?.role ?? b.role, jobTitle: row?.jobTitle ?? null };
+       });
+     }),
+-    create: barberProcedure
++    create: activeBarberProcedure
+       .input(z.object({ name: z.string().min(2), email: z.string().email().optional(), phone: z.string().optional(), password: z.string().min(6), role: z.enum(["super_admin", "barber", "receptionist"]).default("barber"), specialties: z.string().optional(), tenantId: z.number().optional().nullable(), permissions: z.array(z.string()).optional().nullable() }))
+       .mutation(async ({ input }) => {
+         // Validação de limite de barbeiros por plano
+@@ -332,7 +332,7 @@ export const appRouter = router({
+         }
+         return newId;
+       }),
+-    update: barberProcedure
++    update: activeBarberProcedure
+       .input(z.object({ id: z.number(), name: z.string().min(2).optional(), email: z.string().email().optional().nullable(), phone: z.string().optional().nullable(), photoUrl: z.string().optional().nullable(), role: z.enum(["super_admin", "barber", "receptionist"]).optional(), specialties: z.string().optional().nullable(), isActive: z.boolean().optional(), password: z.string().min(6).optional(), permissions: z.array(z.string()).optional().nullable() }))
+       .mutation(async ({ input }) => {
+         const { id, password, permissions, ...data } = input;
+@@ -346,13 +346,13 @@ export const appRouter = router({
+         }
+         return { success: true };
+       }),
+-    delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBarber(input.id)),
++    delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBarber(input.id)),
+     savePushToken: publicProcedure
+       .input(z.object({ barberId: z.number(), pushToken: z.string() }))
+       .mutation(({ input }) => db.saveBarberPushToken(input.barberId, input.pushToken)),
+     workingHours: router({
+       get: publicProcedure.input(z.object({ barberId: z.number() })).query(({ input }) => db.getWorkingHours(input.barberId)),
+-      upsert: barberProcedure
++      upsert: activeBarberProcedure
+         .input(z.object({ barberId: z.number(), dayOfWeek: z.number().min(0).max(6), startTime: z.string(), endTime: z.string(), lunchStart: z.string().optional().nullable(), lunchEnd: z.string().optional().nullable(), isWorking: z.boolean() }))
+         .mutation(({ input }) => { const { barberId, dayOfWeek, ...data } = input; return db.upsertWorkingHours(barberId, dayOfWeek, data); }),
+     }),
+@@ -360,7 +360,7 @@ export const appRouter = router({
+ 
+   // Rotas de filiais para o app mobile
+   branches: router({
+-    list: barberProcedure.input(z.object({ tenantId: z.number() })).query(async ({ ctx, input }) => {
++    list: activeBarberProcedure.input(z.object({ tenantId: z.number() })).query(async ({ ctx, input }) => {
+       // Usa o tenantId do input (enviado pelo app via current?.id, síncrono), JWT como fallback
+       const effectiveTenantId = input.tenantId ?? ctx.barber.tenantId;
+       const tenantRows = await db.rawQuery('SELECT id, plan, "parentTenantId" FROM tenants WHERE id = $1', [effectiveTenantId]);
+@@ -391,7 +391,7 @@ export const appRouter = router({
+         ],
+       };
+     }),
+-    syncCatalog: barberProcedure.input(z.object({ matrixId: z.number(), targetBranchId: z.number() })).mutation(async ({ input }) => {
++    syncCatalog: activeBarberProcedure.input(z.object({ matrixId: z.number(), targetBranchId: z.number() })).mutation(async ({ input }) => {
+       let syncedServices = 0, syncedProducts = 0, syncedSuppliers = 0;
+       try {
+         const matrixServices = await db.getAllServicesWithMedia(false, input.matrixId) as any[];
+@@ -430,7 +430,7 @@ export const appRouter = router({
+       } catch {}
+       return { syncedServices, syncedProducts, syncedSuppliers };
+     }),
+-    create: barberProcedure.input(z.object({
++    create: activeBarberProcedure.input(z.object({
+       name: z.string().min(2),
+       displayName: z.string().min(1),
+       phone: z.string().optional().nullable(),
+@@ -463,7 +463,7 @@ export const appRouter = router({
+       return { id: newBranchId };
+     }),
+ 
+-    delete: barberProcedure.input(z.object({ branchId: z.number() })).mutation(async ({ ctx, input }) => {
++    delete: activeBarberProcedure.input(z.object({ branchId: z.number() })).mutation(async ({ ctx, input }) => {
+       const barber = await db.getBarberById(ctx.barberId);
+       if (!barber || barber.role !== 'super_admin') throw new TRPCError({ code: 'FORBIDDEN' });
+       const adminTenantId = (barber as any).tenantId;
+@@ -476,7 +476,7 @@ export const appRouter = router({
+       return { success: true };
+     }),
+ 
+-    switch: barberProcedure.input(z.object({ branchId: z.number() })).mutation(async ({ ctx, input }) => {
++    switch: activeBarberProcedure.input(z.object({ branchId: z.number() })).mutation(async ({ ctx, input }) => {
+       try {
+         const barber = await db.getBarberById(ctx.barber.barberId);
+         if (!barber || barber.role !== 'super_admin' || !barber.email) throw new TRPCError({ code: 'FORBIDDEN' });
+@@ -528,7 +528,7 @@ export const appRouter = router({
+       }
+     }),
+ 
+-    transfer: barberProcedure.input(z.object({ productId: z.number(), targetBranchId: z.number(), quantity: z.number().min(1), matrixId: z.number(), sourceTenantId: z.number(), reason: z.string().optional() })).mutation(async ({ ctx, input }) => {
++    transfer: activeBarberProcedure.input(z.object({ productId: z.number(), targetBranchId: z.number(), quantity: z.number().min(1), matrixId: z.number(), sourceTenantId: z.number(), reason: z.string().optional() })).mutation(async ({ ctx, input }) => {
+       const sourceProduct = await db.getProductById(input.productId);
+       if (!sourceProduct) throw new Error('Produto não encontrado');
+       const currentStock = (sourceProduct as any).stockQuantity ?? 0;
+@@ -584,7 +584,7 @@ export const appRouter = router({
+ 
+   categories: router({
+     list: publicProcedure.input(z.object({ type: z.enum(["service", "product"]) })).query(({ input }) => db.getCategoriesByType(input.type)),
+-    create: barberProcedure.input(z.object({ name: z.string().min(1), type: z.enum(["service", "product"]) })).mutation(({ input }) => db.createCategory(input.name, input.type)),
++    create: activeBarberProcedure.input(z.object({ name: z.string().min(1), type: z.enum(["service", "product"]) })).mutation(({ input }) => db.createCategory(input.name, input.type)),
+   }),
+ 
+   services: router({
+@@ -592,16 +592,16 @@ export const appRouter = router({
+     listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllServicesWithMedia(input.activeOnly, input.tenantId ?? ctx.barber?.tenantId)),
+     listWithMediaAndRatings: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllServicesWithMediaAndRatings(input.activeOnly, input.tenantId ?? ctx.barber?.tenantId)),
+     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getServiceById(input.id)),
+-    create: barberProcedure
++    create: activeBarberProcedure
+       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), durationMinutes: z.number().min(5), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true), tenantId: z.number().optional().nullable() }))
+       .mutation(({ input }) => db.createService(input as any)),
+-    update: barberProcedure
++    update: activeBarberProcedure
+       .input(z.object({ id: z.number(), name: z.string().min(1).optional(), description: z.string().optional().nullable(), price: z.string().optional(), durationMinutes: z.number().min(5).optional(), categoryId: z.number().optional().nullable(), isActive: z.boolean().optional() }))
+       .mutation(({ input }) => { const { id, ...data } = input; return db.updateService(id, data as any); }),
+-    delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteService(input.id)),
++    delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteService(input.id)),
+     media: router({
+       list: publicProcedure.input(z.object({ serviceId: z.number() })).query(({ input }) => db.getMediaByEntity("service", input.serviceId)),
+-      delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteMediaFile(input.id)),
++      delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteMediaFile(input.id)),
+     }),
+   }),
+ 
+@@ -609,7 +609,7 @@ export const appRouter = router({
+     list: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllProducts(input.activeOnly, input.tenantId ?? ctx.barber?.tenantId)),
+     listWithMedia: publicProcedure.input(z.object({ activeOnly: z.boolean().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllProductsWithMedia(input.activeOnly, input.tenantId ?? ctx.barber?.tenantId)),
+     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getProductById(input.id)),
+-    create: barberProcedure
++    create: activeBarberProcedure
+       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), costPrice: z.string().optional().nullable(), stock: z.number().min(0).default(0), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true), tenantId: z.number().optional().nullable() }))
+       .mutation(async ({ input, ctx }) => {
+         const tenantForGuard = await db.getTenantById(ctx.barber.tenantId);
+@@ -630,12 +630,12 @@ export const appRouter = router({
+         }
+         return productId;
+       }),
+-    update: barberProcedure
++    update: activeBarberProcedure
+       .input(z.object({ id: z.number(), name: z.string().min(1).optional(), description: z.string().optional().nullable(), price: z.string().optional(), costPrice: z.string().optional().nullable(), stock: z.number().min(0).optional(), categoryId: z.number().optional().nullable(), isActive: z.boolean().optional() }))
+       .mutation(({ input }) => { const { id, ...data } = input; return db.updateProduct(id, data as any); }),
+     media: router({
+       list: publicProcedure.input(z.object({ productId: z.number() })).query(({ input }) => db.getMediaByEntity("product", input.productId)),
+-      delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteMediaFile(input.id)),
++      delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteMediaFile(input.id)),
+     }),
+   }),
+ 
+@@ -780,7 +780,7 @@ export const appRouter = router({
+         }
+         return { apptId, requiresApproval: exceedsClosingTime, overtimeMinutes, closingTime };
+       }),
+-    update: barberProcedure
++    update: activeBarberProcedure
+       .input(z.object({
+         id: z.number(),
+         status: z.enum(["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show", "pending_approval"]).optional(),
+@@ -834,7 +834,7 @@ export const appRouter = router({
+ 
+         return { isSubscription: false };
+       }),
+-    approveOvertime: barberProcedure
++    approveOvertime: activeBarberProcedure
+       .input(z.object({ id: z.number(), approve: z.boolean(), clientPushToken: z.string().optional() }))
+       .mutation(async ({ input }) => {
+         if (input.approve) {
+@@ -862,7 +862,7 @@ export const appRouter = router({
+         }
+         return { success: true };
+       }),
+-    cancelWithReason: barberProcedure
++    cancelWithReason: activeBarberProcedure
+       .input(z.object({ id: z.number(), reason: z.string().optional(), clientPushToken: z.string().optional() }))
+       .mutation(async ({ input }) => {
+         await db.updateAppointment(input.id, { status: "cancelled", cancelReason: input.reason ?? null } as any);
+@@ -906,7 +906,7 @@ export const appRouter = router({
+           },
+         };
+       }),
+-    registerPayment: barberProcedure
++    registerPayment: activeBarberProcedure
+       .input(z.object({
+         appointmentId: z.number(),
+         barberId: z.number(),
+@@ -951,15 +951,15 @@ export const appRouter = router({
+       }),
+     blockedSlots: router({
+       get: publicProcedure.input(z.object({ barberId: z.number(), date: z.string() })).query(({ input }) => db.getBlockedSlots(input.barberId, input.date)),
+-      create: barberProcedure.input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), reason: z.string().optional() })).mutation(({ input }) => db.createBlockedSlot(input)),
+-      delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBlockedSlot(input.id)),
++      create: activeBarberProcedure.input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), reason: z.string().optional() })).mutation(({ input }) => db.createBlockedSlot(input)),
++      delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBlockedSlot(input.id)),
+     }),
+   }),
+ 
+   sales: router({
+     byDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), barberId: z.number().optional(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getSalesByDateRange(input.startDate, input.endDate, input.barberId, input.tenantId ?? ctx.barber?.tenantId)),
+     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getSaleById(input.id)),
+-    create: barberProcedure
++    create: activeBarberProcedure
+       .input(z.object({ clientId: z.number().optional().nullable(), barberId: z.number(), appointmentId: z.number().optional().nullable(), subtotal: z.string(), discount: z.string().default("0"), total: z.string(), paymentMethod: z.enum(["cash", "credit_card", "debit_card", "pix", "asaas", "other"]), paymentStatus: z.enum(["pending", "paid", "cancelled", "refunded"]).default("paid"), couponCode: z.string().optional().nullable(), notes: z.string().optional().nullable(), items: z.array(z.object({ itemType: z.enum(["service", "product"]), itemId: z.number(), itemName: z.string(), quantity: z.number().min(1), unitPrice: z.string(), total: z.string() })) }))
+       .mutation(async ({ input }) => {
+         const { items, ...saleData } = input;
+@@ -986,13 +986,13 @@ export const appRouter = router({
+ 
+   expenses: router({
+     byDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getExpensesByDateRange(input.startDate, input.endDate, input.tenantId ?? ctx.barber?.tenantId)),
+-    create: barberProcedure
++    create: activeBarberProcedure
+       .input(z.object({ category: z.string().min(1), description: z.string().min(1), amount: z.string(), date: z.string(), paymentMethod: z.string().optional().nullable(), barberId: z.number().optional().nullable() }))
+       .mutation(({ input }) => db.createExpense(input as any)),
+-    update: barberProcedure
++    update: activeBarberProcedure
+       .input(z.object({ id: z.number(), category: z.string().optional(), description: z.string().optional(), amount: z.string().optional(), date: z.string().optional() }))
+       .mutation(({ input }) => { const { id, ...data } = input; return db.updateExpense(id, data as any); }),
+-    delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteExpense(input.id)),
++    delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteExpense(input.id)),
+   }),
+ 
+   coupons: router({
+@@ -1010,7 +1010,7 @@ export const appRouter = router({
+         const discount = coupon.discountType === "percent" ? (input.orderValue * parseFloat(coupon.discountValue)) / 100 : parseFloat(coupon.discountValue);
+         return { valid: true, coupon, discountAmount: discount };
+       }),
+-    create: barberProcedure
++    create: activeBarberProcedure
+       .input(z.object({ code: z.string().min(3), description: z.string().optional(), discountType: z.enum(["percent", "fixed"]), discountValue: z.string(), minOrderValue: z.string().optional(), maxUses: z.number().optional(), validFrom: z.string().optional(), validUntil: z.string().optional(), tenantId: z.number().optional().nullable() }))
+       .mutation(async ({ input }) => {
+         if (input.tenantId != null) {
+@@ -1019,10 +1019,10 @@ export const appRouter = router({
+         }
+         return db.createCoupon(input);
+       }),
+-    update: barberProcedure
++    update: activeBarberProcedure
+       .input(z.object({ id: z.number(), isActive: z.boolean().optional(), description: z.string().optional(), maxUses: z.number().optional().nullable(), validUntil: z.string().optional().nullable() }))
+       .mutation(({ input }) => { const { id, ...data } = input; return db.updateCoupon(id, data as any); }),
+-    toggle: barberProcedure
++    toggle: activeBarberProcedure
+       .input(z.object({ id: z.number() }))
+       .mutation(async ({ input }) => {
+         const coupons = await db.getAllCoupons();
+@@ -1090,15 +1090,15 @@ export const appRouter = router({
+   }),
+   loyalty: router({
+     getConfig: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getLoyaltyConfig(input?.tenantId)),
+-    updateConfig: barberProcedure
++    updateConfig: activeBarberProcedure
+       .input(z.object({ isActive: z.boolean(), pointsPerService: z.number().min(0), pointsPerReal: z.string(), pointsExpireMonths: z.number().min(0), tenantId: z.number().optional().nullable() }))
+       .mutation(({ input }) => db.upsertLoyaltyConfig(input)),
+     rewards: router({
+       list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getLoyaltyRewards(input?.tenantId)),
+-      create: barberProcedure
++      create: activeBarberProcedure
+         .input(z.object({ name: z.string().min(1), description: z.string().optional(), pointsRequired: z.number().min(1), rewardType: z.enum(["free_service", "discount_percent", "discount_fixed", "free_product"]), rewardValue: z.string().optional(), tenantId: z.number().optional().nullable() }))
+         .mutation(({ input }) => db.createLoyaltyReward(input)),
+-      update: barberProcedure
++      update: activeBarberProcedure
+         .input(z.object({ id: z.number(), name: z.string().optional(), pointsRequired: z.number().optional(), isActive: z.boolean().optional() }))
+         .mutation(({ input }) => { const { id, ...data } = input; return db.updateLoyaltyReward(id, data as any); }),
+     }),
+@@ -1125,7 +1125,7 @@ export const appRouter = router({
+         return db.getShopSettings(input.tenantId);
+       }),
+     openStatus: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getShopOpenStatus(input?.tenantId)),
+-    update: barberProcedure
++    update: activeBarberProcedure
+       .input(z.object({ shopName: z.string().optional(), address: z.string().optional().nullable(), phone: z.string().optional().nullable(), whatsapp: z.string().optional().nullable(), whatsappMessageTemplate: z.string().optional().nullable(), reminderMessageTemplate: z.string().optional().nullable(), instagram: z.string().optional().nullable(), cnpj: z.string().optional().nullable(), googleMapsUrl: z.string().optional().nullable(), pixKey: z.string().optional().nullable(), galleryUrls: z.string().optional().nullable(), cep: z.string().optional().nullable(), addressNumber: z.string().optional().nullable(), addressComplement: z.string().optional().nullable(), logoUrl: z.string().optional().nullable(), primaryColor: z.string().optional().nullable(), bannerUrl: z.string().optional().nullable(), customDomain: z.string().optional().nullable(), ga4MeasurementId: z.string().optional().nullable(), facebookPixelId: z.string().optional().nullable(), seoTitle: z.string().optional().nullable(), seoDescription: z.string().optional().nullable(), seoImageUrl: z.string().optional().nullable(), fontStyle: z.string().optional().nullable(), tenantId: z.number().optional().nullable() }))
+       .mutation(({ input }) => { const { tenantId, ...data } = input; return db.upsertShopSettings(data, tenantId); }),
+   }),
+@@ -2127,7 +2127,7 @@ export const appRouter = router({
+     listConfigs: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
+       return db.listCommissionConfigs(input?.tenantId);
+     }),
+-    saveConfig: barberProcedure
++    saveConfig: activeBarberProcedure
+       .input(z.object({
+         barberId: z.number(),
+         defaultRate: z.number().min(0).max(100),
+@@ -2444,7 +2444,7 @@ export const appRouter = router({
+         const existing = await db.getTenantBySlug(input.slug);
+         return { available: !existing };
+       }),
+-    updateSlug: barberProcedure
++    updateSlug: activeBarberProcedure
+       .input(z.object({ slug: z.string().min(2).max(60).regex(/^[a-z0-9-]+$/, "Use apenas letras minúsculas, números e hifens") }))
+       .mutation(async ({ ctx, input }) => {
+         const tenantId = ctx.barber.tenantId;
+-- 
+2.43.0
+
