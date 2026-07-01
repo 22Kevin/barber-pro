@@ -1271,14 +1271,14 @@ async function startServer() {
                 // Tentar extrair valor e descrição do pagamento para identificar o plano
                 const paymentValue = req.body.payment?.value ?? req.body.value ?? null;
                 const paymentDesc: string = (req.body.payment?.description ?? req.body.description ?? "").toLowerCase();
-                const planPriceMap: Record<string, number> = { solo: 49, team: 89, studio: 149 };
+                const planPriceMap: Record<string, number> = { solo: 49.90, team: 99.90, studio: 169.90 };
                 const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
 
                 // Identificar plano pelo valor ou pela descrição
                 let detectedPlan = "solo";
                 if (paymentValue) {
                   const val = parseFloat(paymentValue);
-                  if (val >= 140) detectedPlan = "studio";
+                  if (val >= 150) detectedPlan = "studio";
                   else if (val >= 80) detectedPlan = "team";
                   else detectedPlan = "solo";
                 } else if (paymentDesc.includes("estúdio") || paymentDesc.includes("studio")) {
@@ -1358,7 +1358,7 @@ async function startServer() {
                         </p>
                       </div>
                       <div style="margin-bottom:28px">
-                        ${[{n:'Solo',p:'R$ 49',d:'1 barbeiro'},{n:'Equipe',p:'R$ 89',d:'até 5 barbeiros'},{n:'Estúdio',p:'R$ 149',d:'ilimitados'}].map(pl=>`
+                        ${[{n:'Solo',p:'R$ 49,90',d:'1 barbeiro'},{n:'Equipe',p:'R$ 99,90',d:'até 3 barbeiros'},{n:'Estúdio',p:'R$ 169,90',d:'ilimitados'}].map(pl=>`
                         <div style="background:#1A1A1A;border:1px solid #2A2A2A;border-radius:12px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                           <div><div style="font-weight:700;color:#ECEDEE;font-size:14px">${pl.n}</div><div style="font-size:12px;color:#666">${pl.d}</div></div>
                           <div style="font-size:16px;font-weight:900;color:#C9A84C">${pl.p}<span style="font-size:11px;font-weight:400;color:#666">/mês</span></div>
@@ -1400,7 +1400,7 @@ async function startServer() {
                     const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
                     const planName = tenantInfo.barberproPlanName ?? 'solo';
                     const planLabel = planLabelMap[planName] ?? planName;
-                    const planPrice = tenantInfo.barberproPlanPrice ? parseFloat(tenantInfo.barberproPlanPrice) : (planName === 'studio' ? 149 : planName === 'team' ? 89 : 49);
+                    const planPrice = tenantInfo.barberproPlanPrice ? parseFloat(tenantInfo.barberproPlanPrice) : (planName === 'studio' ? 169.90 : planName === 'team' ? 99.90 : 49.90);
                     const paidAt = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
                     const nextDue = tenantInfo.barberproNextDueDate
                       ? new Date(tenantInfo.barberproNextDueDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })

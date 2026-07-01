@@ -140,7 +140,7 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
         console.log(`[trial-expiry] Processando expirado com grace: ${t.tenantName} (trial terminou em ${t.trialEndsAt})`);
 
         const plan = t.barberproPlanName ?? t.plan ?? 'team';
-        const price = PLAN_PRICES[plan] ?? 89;
+        const price = PLAN_PRICES[plan] ?? 99.90;
 
         // 1. Marcar como expirado no banco para acionar o bloqueio
         await (dbConn as any).execute(
@@ -197,7 +197,7 @@ async function processExpiredWithGrace(dbConn: any, graceCutoff: Date, graceCuto
             const { generateMagicLink } = await import("./admin-routes") as any;
             const plan = t.plan ?? 'team';
             const PLAN_PRICES_2: Record<string, number> = { solo: 49.90, starter: 49.90, team: 99.90, studio: 169.90 };
-            const price = PLAN_PRICES_2[plan] ?? 89;
+            const price = PLAN_PRICES_2[plan] ?? 99.90;
             const planLabels2: Record<string,string> = { solo:'Solo', starter:'Solo', team:'Equipe', studio:'Estúdio' };
 
             let links;
