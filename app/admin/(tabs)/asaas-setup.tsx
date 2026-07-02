@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -17,7 +17,6 @@ import { useColors } from "@/hooks/use-colors";
 import { ScreenContainer } from "@/components/screen-container";
 import { AdminHeader } from "@/components/admin-header";
 import { AppAlert } from "@/components/app-alert";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 
 function maskPhone(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 11);
@@ -35,11 +34,15 @@ function maskCep(v: string) {
   return v.replace(/\D/g, "").slice(0, 8).replace(/(\d{5})(\d{0,3})/, "$1-$2").replace(/-$/, "");
 }
 
-const STATUS_INFO: Record<string, { label: string; color: string; icon: string }> = {
-  not_configured: { label: "Não configurado", color: "#888", icon: "xmark.circle" },
-  pending: { label: "Aguardando aprovação", color: "#F59E0B", icon: "clock" },
-  active: { label: "Conta ativa ✓", color: "#22C55E", icon: "checkmark.circle.fill" },
-  rejected: { label: "Rejeitado", color: "#EF4444", icon: "xmark.circle.fill" },
+const ASAAS_URL = process.env.EXPO_PUBLIC_ASAAS_SANDBOX === "true"
+  ? "https://sandbox.asaas.com"
+  : "https://app.asaas.com";
+
+const STATUS_INFO: Record<string, { label: string; color: string }> = {
+  not_configured: { label: "Não configurado", color: "#888" },
+  pending: { label: "Aguardando aprovação", color: "#F59E0B" },
+  active: { label: "Conta ativa ✓", color: "#22C55E" },
+  rejected: { label: "Rejeitado", color: "#EF4444" },
 };
 
 export default function AsaasSetupScreen() {
@@ -158,7 +161,7 @@ export default function AsaasSetupScreen() {
               >
                 {syncMutation.isPending
                   ? <ActivityIndicator size="small" color="#C9A84C" />
-                  : <Text style={{ color: "#C9A84C", fontSize: 13 }}>↻ Verificar aprovação</Text>
+                  : <Text style={{ color: "#C9A84C", fontSize: 13 }}>↻ Verificar</Text>
                 }
               </Pressable>
             )}
@@ -176,15 +179,81 @@ export default function AsaasSetupScreen() {
           </View>
 
           {status === "active" ? (
-            <View style={[s.activeCard, { backgroundColor: "#22C55E11", borderColor: "#22C55E33" }]}>
-              <Text style={{ color: "#22C55E", fontSize: 15, fontWeight: "700", marginBottom: 4 }}>
-                ✓ Pagamentos online ativos
-              </Text>
-              <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18 }}>
-                Sua conta está ativa. Os clientes já podem pagar via Pix ou cartão de crédito. O dinheiro é depositado direto na sua conta bancária.
-              </Text>
+            <View style={{ gap: 12 }}>
+              <View style={[s.activeCard, { backgroundColor: "#22C55E11", borderColor: "#22C55E33" }]}>
+                <Text style={{ color: "#22C55E", fontSize: 15, fontWeight: "700", marginBottom: 4 }}>
+                  ✓ Pagamentos online ativos
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18 }}>
+                  Sua conta está ativa. Os clientes já podem pagar via Pix ou cartão de crédito. O dinheiro é depositado direto na sua conta bancária.
+                </Text>
+              </View>
+
+              {/* Botão acessar Asaas */}
+              <Pressable
+                style={[s.asaasBtn, { borderColor: "#C9A84C44", backgroundColor: "#C9A84C11" }]}
+                onPress={() => Linking.openURL(ASAAS_URL)}
+              >
+                <Text style={{ fontSize: 20, marginBottom: 4 }}>💰</Text>
+                <Text style={{ color: "#C9A84C", fontSize: 15, fontWeight: "700" }}>
+                  Acessar minha conta Asaas
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 12, marginTop: 4, textAlign: "center" }}>
+                  Veja seu saldo, extratos e faça saques para sua conta bancária
+                </Text>
+              </Pressable>
+
+              {/* Botão sincronizar */}
+              <Pressable
+                style={[s.syncFullBtn, { borderColor: colors.border }]}
+                onPress={() => syncMutation.mutate({ tenantId })}
+                disabled={syncMutation.isPending}
+              >
+                {syncMutation.isPending
+                  ? <ActivityIndicator size="small" color={colors.muted} />
+                  : <Text style={{ color: colors.muted, fontSize: 13 }}>↻ Atualizar status da conta</Text>
+                }
+              </Pressable>
             </View>
-          ) : status !== "pending" ? (
+
+          ) : status === "pending" ? (
+            <View style={{ gap: 12 }}>
+              <View style={[s.pendingCard, { backgroundColor: "#F59E0B11", borderColor: "#F59E0B33" }]}>
+                <Text style={{ color: "#F59E0B", fontSize: 15, fontWeight: "700", marginBottom: 4 }}>
+                  ⏳ Aguardando aprovação do Asaas
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 20 }}>
+                  Sua conta foi criada e está em análise. O processo pode levar até 24 horas.{"\n\n"}
+                  Você receberá um e-mail do Asaas quando a conta for aprovada. Toque em "Verificar aprovação" para checar o status manualmente.
+                </Text>
+              </View>
+
+              <Pressable
+                style={[s.asaasBtn, { borderColor: "#F59E0B44", backgroundColor: "#F59E0B11" }]}
+                onPress={() => Linking.openURL(ASAAS_URL)}
+              >
+                <Text style={{ fontSize: 20, marginBottom: 4 }}>🔗</Text>
+                <Text style={{ color: "#F59E0B", fontSize: 15, fontWeight: "700" }}>
+                  Acessar o Asaas
+                </Text>
+                <Text style={{ color: colors.muted, fontSize: 12, marginTop: 4, textAlign: "center" }}>
+                  Acompanhe o status da aprovação diretamente no Asaas
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={[s.syncFullBtn, { borderColor: "#F59E0B44" }]}
+                onPress={() => syncMutation.mutate({ tenantId })}
+                disabled={syncMutation.isPending}
+              >
+                {syncMutation.isPending
+                  ? <ActivityIndicator size="small" color="#F59E0B" />
+                  : <Text style={{ color: "#F59E0B", fontSize: 13 }}>↻ Verificar aprovação</Text>
+                }
+              </Pressable>
+            </View>
+
+          ) : (
             <>
               {/* Form */}
               <Text style={[s.sectionTitle, { color: colors.foreground }]}>Dados para cadastro</Text>
@@ -272,15 +341,6 @@ export default function AsaasSetupScreen() {
                 }
               </Pressable>
             </>
-          ) : (
-            <View style={[s.pendingCard, { backgroundColor: "#F59E0B11", borderColor: "#F59E0B33" }]}>
-              <Text style={{ color: "#F59E0B", fontSize: 15, fontWeight: "700", marginBottom: 4 }}>
-                ⏳ Aguardando aprovação
-              </Text>
-              <Text style={{ color: colors.muted, fontSize: 13, lineHeight: 18 }}>
-                Sua conta foi criada e está em análise pelo Asaas. O processo pode levar até 24 horas. Toque em "Verificar aprovação" para checar o status.
-              </Text>
-            </View>
           )}
 
         </ScrollView>
@@ -294,9 +354,11 @@ const s = StyleSheet.create({
   statusDot: { width: 10, height: 10, borderRadius: 5 },
   statusLabel: { fontSize: 14, fontWeight: "700" },
   syncBtn: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
+  syncFullBtn: { borderWidth: 1, borderRadius: 10, paddingVertical: 12, alignItems: "center" },
   infoBanner: { borderWidth: 1, borderRadius: 12, padding: 14, marginBottom: 20, backgroundColor: "#C9A84C08" },
-  activeCard: { borderRadius: 12, borderWidth: 1, padding: 16, marginBottom: 20 },
-  pendingCard: { borderRadius: 12, borderWidth: 1, padding: 16, marginBottom: 20 },
+  activeCard: { borderRadius: 12, borderWidth: 1, padding: 16 },
+  pendingCard: { borderRadius: 12, borderWidth: 1, padding: 16 },
+  asaasBtn: { borderWidth: 1, borderRadius: 12, padding: 16, alignItems: "center" },
   sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 14 },
   sectionDivider: { fontSize: 11, fontWeight: "700", letterSpacing: 1, paddingTop: 16, marginBottom: 14, borderTopWidth: 1 },
   label: { fontSize: 13, marginBottom: 6, marginTop: 4 },
