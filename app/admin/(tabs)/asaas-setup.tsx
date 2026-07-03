@@ -168,7 +168,7 @@ export default function AsaasSetupScreen() {
   return (
     <ScreenContainer>
       <AdminHeader title="Pagamentos Online" />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={80}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
 
           {/* Status card */}
