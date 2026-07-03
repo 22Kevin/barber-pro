@@ -34,6 +34,23 @@ function maskCep(v: string) {
   return v.replace(/\D/g, "").slice(0, 8).replace(/(\d{5})(\d{0,3})/, "$1-$2").replace(/-$/, "");
 }
 
+function maskDate(v: string) {
+  // Converte entrada do usuário para YYYY-MM-DD
+  const d = v.replace(/\D/g, "").slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
+function dateToIso(v: string): string {
+  // Converte DD/MM/YYYY para YYYY-MM-DD
+  const parts = v.split("/");
+  if (parts.length === 3 && parts[2].length === 4) {
+    return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+  }
+  return v;
+}
+
 const ASAAS_URL = process.env.EXPO_PUBLIC_ASAAS_SANDBOX === "true"
   ? "https://sandbox.asaas.com"
   : "https://app.asaas.com";
@@ -126,6 +143,12 @@ export default function AsaasSetupScreen() {
       AppAlert.alert("CPF/CNPJ inválido", "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.");
       return;
     }
+    // Validar data de nascimento para Pessoa Física
+    const isPF = !form.companyType;
+    if (isPF && form.birthDate.replace(/\D/g, "").length < 8) {
+      AppAlert.alert("Data inválida", "Informe a data de nascimento completa (DD/MM/AAAA).");
+      return;
+    }
     setupMutation.mutate({
       tenantId,
       name: form.name.trim(),
@@ -133,7 +156,8 @@ export default function AsaasSetupScreen() {
       cpfCnpj: digits,
       companyType: form.companyType || undefined,
       mobilePhone: form.mobilePhone.replace(/\D/g, ""),
-      birthDate: form.birthDate || undefined,
+      birthDate: form.birthDate ? dateToIso(form.birthDate) : undefined,
+      incomeValue: form.incomeValue ? parseFloat(form.incomeValue) : undefined,
       address: form.address || undefined,
       addressNumber: form.addressNumber || undefined,
       province: form.province || undefined,
@@ -293,8 +317,8 @@ export default function AsaasSetupScreen() {
                 <>
                   <Text style={[s.label, { color: colors.muted }]}>Data de nascimento *</Text>
                   <TextInput style={[s.input, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface }]}
-                    value={form.birthDate} onChangeText={set("birthDate")}
-                    placeholder="AAAA-MM-DD" placeholderTextColor={colors.muted} />
+                    value={form.birthDate} onChangeText={(v) => set("birthDate")(maskDate(v))}
+                    keyboardType="numeric" placeholder="DD/MM/AAAA" placeholderTextColor={colors.muted} />
                 </>
               )}
 

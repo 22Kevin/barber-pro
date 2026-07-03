@@ -381,14 +381,26 @@ export interface AsaasSubAccountResult {
 export async function createAsaasSubAccount(
   payload: AsaasSubAccountPayload
 ): Promise<AsaasSubAccountResult> {
-  const response = await asaasRootApi.post("/v3/accounts", payload);
-  const data = response.data;
-  return {
-    id: data.id,
-    apiKey: data.apiKey,
-    walletId: data.walletId,
-    accountNumber: data.accountNumber,
-  };
+  try {
+    const response = await asaasRootApi.post("/v3/accounts", payload);
+    const data = response.data;
+    return {
+      id: data.id,
+      apiKey: data.apiKey,
+      walletId: data.walletId,
+      accountNumber: data.accountNumber,
+    };
+  } catch (err: any) {
+    // Extrair mensagens de erro do Asaas e repassar de forma legível
+    const asaasErrors = err?.response?.data?.errors;
+    if (asaasErrors && Array.isArray(asaasErrors) && asaasErrors.length > 0) {
+      const messages = asaasErrors.map((e: any) => e.description ?? e.message ?? "Erro desconhecido").join("\n");
+      throw new Error(messages);
+    }
+    const asaasMessage = err?.response?.data?.message;
+    if (asaasMessage) throw new Error(asaasMessage);
+    throw err;
+  }
 }
 
 /**

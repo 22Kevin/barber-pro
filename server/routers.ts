@@ -2886,6 +2886,7 @@ export const appRouter = router({
         companyType: z.enum(["MEI", "LIMITED", "INDIVIDUAL", "ASSOCIATION"]).optional(),
         mobilePhone: z.string().min(10),
         birthDate: z.string().optional(), // YYYY-MM-DD
+        incomeValue: z.number().optional(),
         address: z.string().optional(),
         addressNumber: z.string().optional(),
         province: z.string().optional(),
@@ -2913,6 +2914,7 @@ export const appRouter = router({
           companyType: input.companyType,
           mobilePhone: input.mobilePhone.replace(/\D/g, ""),
           birthDate: input.birthDate,
+          incomeValue: input.incomeValue,
           address: input.address,
           addressNumber: input.addressNumber,
           province: input.province,
