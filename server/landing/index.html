@@ -532,6 +532,72 @@
 
   /* Form melhorado */
   .form-input:focus{border-color:var(--gold)!important;box-shadow:0 0 0 3px rgba(201,168,76,0.14)!important;background:rgba(201,168,76,0.03)!important}
+
+  /* ── RESPONSIVE EXTRA: Tablets (768px) ── */
+  @media (max-width: 768px) {
+    .hero-title { font-size: clamp(32px, 8vw, 52px); }
+    .section-title { font-size: clamp(24px, 6.5vw, 38px); }
+    .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
+    .price-card.best { transform: none; }
+    .nav-links, .nav-actions { display: none; }
+    .nav-hamburger { display: flex; }
+    .payment-flow { padding: 28px 20px; }
+    .modal-box { padding: 28px 20px; margin: 16px; }
+    .faq-list { margin-top: 32px; }
+    .hero-stats { gap: 0; flex-wrap: wrap; }
+    .hero-stat { min-width: 50%; }
+    .phone-mockup { width: 220px; height: 450px; }
+  }
+
+  /* ── RESPONSIVE EXTRA: Mobile grande (480px) ── */
+  @media (max-width: 480px) {
+    .section { padding: 48px 0; }
+    .container { padding: 0 14px; }
+    .hero-title { font-size: clamp(28px, 9vw, 42px); line-height: 1.15; }
+    .hero-sub { font-size: 15px; }
+    .btn-primary, .btn-secondary, .btn-ghost, .btn-gold { font-size: 14px; padding: 13px 20px; }
+    .hero-actions { flex-direction: column; gap: 10px; }
+    .hero-actions a { text-align: center; justify-content: center; }
+    .hero-urgency { font-size: 12px; }
+    .social-proof-bar { display: none; }
+    .section-title { font-size: clamp(22px, 8vw, 32px); }
+    .section-sub { font-size: 14px; }
+    .pricing-grid { max-width: 100%; }
+    .price-card { padding: 24px 18px; }
+    .price-amount { font-size: 40px; }
+    .price-features li { font-size: 13px; }
+    .faq-question { font-size: 13px; padding: 14px 16px; }
+    .faq-answer { font-size: 13px; padding: 0 16px 14px; }
+    .cta-box { padding: 36px 16px; border-radius: 14px; }
+    .footer-nav-group h4 { font-size: 12px; }
+    .footer-nav-group a { font-size: 13px; }
+    .showcase-tab { padding: 7px 12px; font-size: 12px; }
+    .modal-box { padding: 24px 16px; margin: 12px; }
+    .modal-title { font-size: 20px; }
+    .phone-mockup { width: 200px; height: 410px; }
+    .pain-card { padding: 20px 16px; }
+    .payment-card { padding: 20px 16px; }
+    .sub-counter { padding: 28px 20px; }
+    .wa-float { width: 48px; height: 48px; bottom: 20px; right: 16px; }
+  }
+
+  /* ── RESPONSIVE EXTRA: iPhone SE / pequenos (375px) ── */
+  @media (max-width: 390px) {
+    .container { padding: 0 12px; }
+    .hero-title { font-size: 26px; }
+    .hero-stat { min-width: 100%; }
+    .btn-primary, .btn-gold { font-size: 13px; padding: 12px 16px; }
+    .price-amount { font-size: 36px; }
+    .phone-mockup { width: 180px; height: 368px; }
+    .nav-logo-text { font-size: 14px; }
+  }
+
+  /* ── iOS Safari: safe area ── */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    nav#main-nav { padding-top: env(safe-area-inset-top); }
+    .nav-drawer { padding-bottom: env(safe-area-inset-bottom); }
+    .wa-float { bottom: calc(20px + env(safe-area-inset-bottom)); }
+  }
   </style>
 </head>
 <body>
