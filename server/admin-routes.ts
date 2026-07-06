@@ -14745,14 +14745,8 @@ REGRAS:
     res.setHeader("Content-Type", "application/javascript");
     res.setHeader("Cache-Control", "no-cache");
     res.send(`
-const CACHE = 'barberpro-v1';
-self.addEventListener('install', e => { self.skipWaiting(); });
-self.addEventListener('activate', e => { e.waitUntil(clients.claim()); });
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  if (e.request.url.includes('/admin-api/') || e.request.url.includes('/api/')) return;
-  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-});
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', () => clients.claim());
     `);
   });
 

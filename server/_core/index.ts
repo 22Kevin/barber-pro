@@ -730,7 +730,7 @@ async function startServer() {
       "font-src 'self' data: https://fonts.gstatic.com https://use.typekit.net https://p.typekit.net; " +
       "img-src 'self' data: blob: https:; " +
       "media-src 'self' blob: https:; " +
-      "connect-src 'self' https://accounts.google.com https://cloudflareinsights.com https://static.cloudflareinsights.com https://performance.typekit.net; " +
+      "connect-src 'self' https://accounts.google.com https://cloudflareinsights.com https://static.cloudflareinsights.com https://performance.typekit.net https://pub-203143bd86174070b67f8f64a13a65c2.r2.dev; " +
       "frame-src https://accounts.google.com; " +
       "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'");
     if (process.env.NODE_ENV === "production") {
