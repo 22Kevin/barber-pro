@@ -527,8 +527,15 @@ function adminLayout(title: string, activePage: string, body: string, barberName
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>${esc(title)} — Barber Pro Admin</title>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Barber Pro" />
+  <meta name="theme-color" content="#C9A84C" />
+  <link rel="apple-touch-icon" href="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/KtacAshnHHXcsNrg.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -1353,6 +1360,36 @@ ${barberRole === "super_admin" ? `
     btn.addEventListener("click",function(){dd.style.display=dd.style.display==="block"?"none":"block";});
     document.addEventListener("click",function(e){var w=document.getElementById("bsel-wrap");if(w&&dd&&!w.contains(e.target))dd.style.display="none";},true);
   }).catch(function(){});
+})();
+</script>
+
+<!-- PWA: Banner iOS "Adicionar à tela inicial" -->
+<div id="pwa-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#111;border-top:1px solid rgba(201,168,76,0.3);padding:12px 16px;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.5);">
+  <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/KtacAshnHHXcsNrg.png" style="width:40px;height:40px;border-radius:10px;flex-shrink:0;" />
+  <div style="flex:1">
+    <div style="color:#F0EEE8;font-size:13px;font-weight:700">Instalar Barber Pro</div>
+    <div style="color:#888;font-size:11px;margin-top:2px">Toque em <strong style="color:#C9A84C">Compartilhar</strong> → <strong style="color:#C9A84C">Adicionar à Tela de Início</strong></div>
+  </div>
+  <button onclick="document.getElementById('pwa-banner').style.display='none';localStorage.setItem('pwa-dismissed','1');" style="background:none;border:none;color:#666;font-size:20px;cursor:pointer;padding:4px;">✕</button>
+</div>
+
+<script>
+// Registrar service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function(){});
+  });
+}
+// Mostrar banner iOS se ainda não instalado e não dispensado
+(function() {
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var isStandalone = window.navigator.standalone === true;
+  var dismissed = localStorage.getItem('pwa-dismissed');
+  if (isIOS && !isStandalone && !dismissed) {
+    setTimeout(function() {
+      document.getElementById('pwa-banner').style.display = 'flex';
+    }, 3000);
+  }
 })();
 </script>
 </body>
@@ -14681,6 +14718,42 @@ REGRAS:
       console.error("[export]", e.message);
       res.status(500).send("Erro: " + e.message);
     }
+  });
+
+  // ── PWA: manifest.json ────────────────────────────────────────────────────
+  app.get("/manifest.json", (_req: Request, res: Response) => {
+    res.setHeader("Content-Type", "application/manifest+json");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.json({
+      name: "Barber Pro",
+      short_name: "Barber Pro",
+      description: "Gestão completa para barbearias",
+      start_url: "/admin",
+      display: "standalone",
+      background_color: "#080808",
+      theme_color: "#C9A84C",
+      orientation: "portrait",
+      icons: [
+        { src: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/KtacAshnHHXcsNrg.png", sizes: "192x192", type: "image/png" },
+        { src: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/KtacAshnHHXcsNrg.png", sizes: "512x512", type: "image/png" }
+      ]
+    });
+  });
+
+  // ── PWA: service worker ───────────────────────────────────────────────────
+  app.get("/sw.js", (_req: Request, res: Response) => {
+    res.setHeader("Content-Type", "application/javascript");
+    res.setHeader("Cache-Control", "no-cache");
+    res.send(`
+const CACHE = 'barberpro-v1';
+self.addEventListener('install', e => { self.skipWaiting(); });
+self.addEventListener('activate', e => { e.waitUntil(clients.claim()); });
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  if (e.request.url.includes('/admin-api/') || e.request.url.includes('/api/')) return;
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+});
+    `);
   });
 
 }
