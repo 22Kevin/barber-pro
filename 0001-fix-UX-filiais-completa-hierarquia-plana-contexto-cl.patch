@@ -1,0 +1,109 @@
+From eae1024bd17a26df729f7ee17209a2f1a94c1c44 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Sat, 13 Jun 2026 02:48:08 +0000
+Subject: [PATCH] =?UTF-8?q?fix:=20UX=20filiais=20completa=20=E2=80=94=20hi?=
+ =?UTF-8?q?erarquia=20plana,=20contexto=20claro,=20voltar=20para=20matriz?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ server/admin-routes.ts | 51 +++++++++++++++++++++++++-----------------
+ 1 file changed, 30 insertions(+), 21 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 60cdd45..0909965 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -4880,12 +4880,22 @@ async function renderFinanceiro(req: Request, res: Response) {
+ 
+ // ─── Configurações ────────────────────────────────────────────
+ // ── renderBranchTab ────────────────────────────────────────────────────────
+-function renderBranchTab(branches: any[], matrixTenant?: any): string {
++function renderBranchTab(branches: any[], matrixTenant?: any, isInBranch = false, currentBranchParentId?: number | null): string {
+   const stateOpts = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(s=>'<option value="'+s+'">'+s+'</option>').join('');
+   const mName = matrixTenant ? (matrixTenant.displayName||matrixTenant.name||'Matriz') : '';
+   const mSlug = matrixTenant ? (matrixTenant.slug||'') : '';
++  // Card da matriz — se estamos NUMA FILIAL, mostrar botão de voltar; senão, "Você está aqui"
+   const matrixCard = matrixTenant
+-    ? '<div style="background:linear-gradient(135deg,rgba(201,168,76,0.08),rgba(201,168,76,0.03));border:1px solid rgba(201,168,76,0.3);border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;margin-bottom:12px"><div style="width:48px;height:48px;border-radius:12px;background:rgba(201,168,76,0.15);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🏠</div><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--gold)">'+mName+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase">Matriz · Conta atual</div><div style="font-size:11px;margin-top:4px"><a href="https://usebarberpro.com/pub/'+mSlug+'" target="_blank" style="color:var(--gold);text-decoration:none;opacity:0.7">usebarberpro.com/pub/'+mSlug+'</a></div></div><div style="font-size:11px;color:var(--muted);background:var(--surface2);padding:6px 12px;border-radius:8px;border:1px solid var(--border)">Você está aqui</div></div>'
++    ? '<div style="background:linear-gradient(135deg,rgba(201,168,76,0.08),rgba(201,168,76,0.03));border:1px solid rgba(201,168,76,0.3);border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;margin-bottom:12px">'
++      +'<div style="width:48px;height:48px;border-radius:12px;background:rgba(201,168,76,0.15);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🏠</div>'
++      +'<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:700;color:var(--gold)">'+mName+'</div>'
++      +'<div style="font-size:11px;color:var(--muted);margin-top:2px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase">'+(isInBranch ? 'Matriz da rede' : 'Matriz · Você está aqui')+'</div>'
++      +'<div style="font-size:11px;margin-top:4px"><a href="https://usebarberpro.com/pub/'+mSlug+'" target="_blank" style="color:var(--gold);text-decoration:none;opacity:0.7">usebarberpro.com/pub/'+mSlug+'</a></div></div>'
++      +(isInBranch
++        ? '<form method="POST" action="/admin/filiais/trocar"><input type="hidden" name="branchId" value="'+(currentBranchParentId||0)+'"/><input type="hidden" name="returnTo" value="/admin/configuracoes?tab=filiais"/><button type="submit" class="btn btn-primary" style="font-size:12px;padding:8px 14px;white-space:nowrap">← Voltar para Matriz</button></form>'
++        : '<div style="font-size:11px;color:var(--muted);background:var(--surface2);padding:6px 12px;border-radius:8px;border:1px solid var(--border);white-space:nowrap">Você está aqui</div>'
++      )
++      +'</div>'
+     : '';
+   const cards = branches.length === 0
+     ? matrixCard + '<div style="text-align:center;padding:60px 20px;background:var(--surface);border:1px solid var(--border);border-radius:16px"><div style="font-size:40px;margin-bottom:12px">🏪</div><div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">Nenhuma filial cadastrada</div><div style="font-size:13px;color:var(--muted)">Crie sua primeira filial para começar a gerenciar sua rede.</div></div>'
+@@ -4974,13 +4984,23 @@ async function renderConfiguracoes(req: Request, res: Response) {
+ 
+   // Buscar tenant para obter o slug
+   const tenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
+-  const parentTenantId = (tenant as any)?.parentTenantId ?? null;
+-  const isStudioPlan = ((tenant as any)?.plan ?? '') === 'studio';
++  // Usar rawQuery para parentTenantId (fora do schema Drizzle)
++  const tenantRaw = barber?.tenantId
++    ? (await db.rawQuery('SELECT id, plan, name, "displayName", slug, "parentTenantId" FROM tenants WHERE id = $1', [barber.tenantId]))[0]
++    : null;
++  const parentTenantId: number | null = tenantRaw?.parentTenantId ?? null;
++  const isStudioPlan = (tenantRaw?.plan ?? '') === 'studio';
+   let branches: any[] = [];
+   let matrixTenant: any = null;
+-  if (isStudioPlan && !parentTenantId && barber?.tenantId) branches = await db.getBranches(barber.tenantId);
+-  if (parentTenantId) matrixTenant = await db.getTenantById(parentTenantId);
+-  const showBranchTab = isStudioPlan && !parentTenantId;
++  // Sempre buscar todas as filiais da rede (hierarquia plana: Matriz → Filiais)
++  const networkMatrixId: number | null = parentTenantId ?? (isStudioPlan ? barber?.tenantId ?? null : null);
++  if (networkMatrixId) branches = await db.getBranches(networkMatrixId);
++  if (parentTenantId) {
++    const mRows = await db.rawQuery('SELECT id, name, "displayName", slug FROM tenants WHERE id = $1', [parentTenantId]);
++    matrixTenant = mRows[0] ?? null;
++  }
++  const showBranchTab = isStudioPlan; // sempre mostrar — matriz E filiais
++  const isBranchContext = !!parentTenantId;
+ 
+   // Seletor de filial para o header
+   let branchSelectorHtml = "";
+@@ -5008,7 +5028,6 @@ async function renderConfiguracoes(req: Request, res: Response) {
+         +'<script>document.getElementById("bsel-btn").addEventListener("click",function(){var x=document.getElementById("bsel-dd");x.style.display=x.style.display==="block"?"none":"block";});document.addEventListener("click",function(e){var w=document.getElementById("bsel-wrap");var d=document.getElementById("bsel-dd");if(w&&d&&!w.contains(e.target))d.style.display="none";},true);<\/script></div>'
+     } catch(e) {}
+   }
+-  const isBranchContext = !!parentTenantId;
+   const currentSlug = tenant?.slug ?? "";
+   const baseUrl = process.env.PUBLIC_BASE_URL ?? "";
+   const publicUrl = currentSlug ? `https://usebarberpro.com/pub/${currentSlug}` : "";
+@@ -6273,23 +6292,13 @@ async function renderConfiguracoes(req: Request, res: Response) {
+   `;
+ 
+   const tabFiliais = showBranchTab
+-    ? renderBranchTab(branches, tenant)
+-    : (isBranchContext ? `
+-      <div style="text-align:center;padding:50px 20px;background:var(--surface);border:1px solid var(--border);border-radius:16px;max-width:480px;margin:0 auto">
+-        <div style="font-size:40px;margin-bottom:12px">🏪</div>
+-        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px">Você está na filial ${esc((tenant as any)?.displayName || tenant?.name || '')}</div>
+-        <div style="font-size:13px;color:var(--muted);margin-bottom:24px">Matriz: ${esc(matrixTenant?.name ?? '')}</div>
+-        <form method="POST" action="/admin/filiais/trocar">
+-          <input type="hidden" name="branchId" value="${parentTenantId}" />
+-          <button type="submit" class="btn btn-primary" style="padding:12px 28px">← Voltar para a matriz</button>
+-        </form>
+-      </div>
+-    ` : '');
++    ? renderBranchTab(branches, isBranchContext ? matrixTenant : (tenantRaw || tenant), isBranchContext, parentTenantId)
++    : '';
+   const tabs = [
+     { id: 'dados', label: 'Dados' },
+     { id: 'horarios', label: 'Horários' },
+     { id: 'equipe', label: 'Equipe' },
+-    ...((showBranchTab || isBranchContext) ? [{ id: 'filiais', label: '🏪 Filiais' }] : []),
++    ...(showBranchTab ? [{ id: 'filiais', label: '🏪 Filiais' }] : []),
+     { id: 'pagamentos', label: '💳 Pagamentos' },
+   ];
+ 
+-- 
+2.43.0
+

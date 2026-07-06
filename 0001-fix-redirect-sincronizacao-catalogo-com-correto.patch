@@ -1,0 +1,28 @@
+From f5bbfb2b79e2ae236d567e31df2bbf40d273ef97 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Sat, 13 Jun 2026 13:09:23 +0000
+Subject: [PATCH] fix: redirect sincronizacao catalogo com ? correto
+
+---
+ server/admin-routes.ts | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 9c827c2..b41b2cb 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -9513,9 +9513,8 @@ document.addEventListener('input', function(e) {
+         }
+       } catch(e) { console.error('[sync] fornecedores:', (e as any)?.message); }
+ 
+-      const msg = `Sincronizado: ${syncedServices} serviços, ${syncedProducts} produtos, ${syncedSuppliers} fornecedores`;
+-      const returnTo = parentId ? '/admin/servicos' : '/admin/configuracoes?tab=filiais';
+-      res.redirect(returnTo + '&saved=1&msg=' + encodeURIComponent(msg));
++      const msg = `${syncedServices} serviços, ${syncedProducts} produtos, ${syncedSuppliers} fornecedores`;
++      res.redirect('/admin/configuracoes?tab=filiais&saved=1&msg=' + encodeURIComponent(msg));
+     } catch(e: any) {
+       res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent(e.message));
+     }
+-- 
+2.43.0
+

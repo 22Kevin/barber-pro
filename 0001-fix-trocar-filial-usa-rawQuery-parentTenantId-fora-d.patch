@@ -1,0 +1,59 @@
+From 148b95e95bf87586bb7e200cd8ed17be01fc03de Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Sat, 13 Jun 2026 02:31:43 +0000
+Subject: [PATCH] =?UTF-8?q?fix:=20trocar=20filial=20usa=20rawQuery=20?=
+ =?UTF-8?q?=E2=80=94=20parentTenantId=20fora=20do=20schema=20Drizzle?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ server/admin-routes.ts | 25 +++++++++++++++----------
+ 1 file changed, 15 insertions(+), 10 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 3e6de38..6cf4ded 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -9481,23 +9481,28 @@ document.addEventListener('input', function(e) {
+       if (session.role !== 'super_admin') { res.redirect('/admin'); return; }
+       const adminBarber = await db.getBarberById(session.barberId);
+       if (!adminBarber?.tenantId || !adminBarber.email) { res.redirect('/admin'); return; }
+-      const currentTenant = await db.getTenantById(adminBarber.tenantId);
+-      const myParent = (currentTenant as any)?.parentTenantId ?? null;
++
++      // Usar rawQuery para garantir que parentTenantId é retornado (fora do schema Drizzle)
++      const currentRows = await db.rawQuery('SELECT id, "parentTenantId" FROM tenants WHERE id = $1', [adminBarber.tenantId]);
++      const myParent: number | null = currentRows[0]?.parentTenantId ?? null;
++      const matrixId: number = myParent ?? adminBarber.tenantId;
+ 
+       // branchId=0 é atalho para "voltar para a matriz"
+       let targetTenantId = parseInt(req.body.branchId);
+       if (targetTenantId === 0 || isNaN(targetTenantId)) {
+-        targetTenantId = myParent ?? adminBarber.tenantId;
++        targetTenantId = matrixId;
+       }
+ 
+-      const targetTenant = await db.getTenantById(targetTenantId);
+-      if (!targetTenant) { res.redirect('/admin'); return; }
++      const targetRows = await db.rawQuery('SELECT id, "parentTenantId" FROM tenants WHERE id = $1', [targetTenantId]);
++      if (!targetRows[0]) { res.redirect('/admin'); return; }
++      const targetParentId: number | null = targetRows[0].parentTenantId ?? null;
++
++      // Caso 1: target é a minha matriz (voltar)
++      const targetIsMyMatrix = targetTenantId === matrixId;
++      // Caso 2: target é uma filial da minha rede
++      const targetIsMyBranch = targetParentId === matrixId;
+ 
+-      // Caso 1: estou numa filial e quero voltar para a matriz
+-      const targetIsMyMatrix = myParent === targetTenantId || targetTenantId === adminBarber.tenantId;
+-      // Caso 2: estou na matriz e quero entrar numa filial minha
+-      const matrixId = myParent ?? adminBarber.tenantId;
+-      const targetIsMyBranch = (targetTenant as any)?.parentTenantId === matrixId;
++      console.log('[trocar] barbeiro:', session.barberId, 'atual:', adminBarber.tenantId, 'myParent:', myParent, 'matrixId:', matrixId, 'targetId:', targetTenantId, 'targetParent:', targetParentId, 'isMatrix:', targetIsMyMatrix, 'isBranch:', targetIsMyBranch);
+ 
+       if (!targetIsMyMatrix && !targetIsMyBranch) {
+         res.redirect('/admin?erro=acesso_restrito'); return;
+-- 
+2.43.0
+

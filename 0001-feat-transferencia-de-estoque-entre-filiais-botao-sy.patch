@@ -1,0 +1,199 @@
+From 8eca55ad525a7b7a44960582b2359349237c9b09 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Sat, 13 Jun 2026 13:54:39 +0000
+Subject: [PATCH] feat: transferencia de estoque entre filiais + botao sync na
+ pag de estoque
+
+---
+ server/admin-routes.ts | 103 +++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 98 insertions(+), 5 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 744ed7e..b6c0e01 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -9991,6 +9991,7 @@ document.addEventListener('input', function(e) {
+       db.getAllCoupons(tenantId),
+     ]);
+     const saved = req.query.saved === "1";
++    const estMsg = req.query.msg ? decodeURIComponent(req.query.msg as string) : null;
+     const rewardTypes: Record<string, string> = {
+       free_service: "Serviço Grátis",
+       discount_percent: "Desconto %",
+@@ -11362,6 +11363,17 @@ document.addEventListener('input', function(e) {
+ 
+     const lowStock = allProducts.filter((p: any) => p.isLowStock);
+ 
++    // Buscar filiais da rede para transferência de estoque
++    const tenantRawEst = tenantId
++      ? (await db.rawQuery('SELECT id, plan, "parentTenantId" FROM tenants WHERE id = $1', [tenantId]))[0]
++      : null;
++    const estParentId: number | null = tenantRawEst?.parentTenantId ?? null;
++    const estMatrixId: number = estParentId ?? (tenantId ?? 0);
++    const networkBranches: any[] = tenantRawEst?.plan === 'studio'
++      ? (await db.getBranches(estMatrixId)).filter((b: any) => b.id !== tenantId)
++      : [];
++    const isStudioEst = tenantRawEst?.plan === 'studio';
++
+     // Buscar histórico recente de movimentações (todos os produtos)
+     const recentMovements: any[] = [];
+     for (const p of allProducts.slice(0, 20)) {
+@@ -11443,9 +11455,9 @@ document.addEventListener('input', function(e) {
+           <h1 style="font-size:24px;font-weight:700;color:var(--text)">Controle de Estoque</h1>
+           <p style="color:var(--muted);font-size:14px;margin-top:4px">Movimentações e alertas de estoque dos produtos</p>
+         </div>
+-        <a href="/admin/export/estoque.csv" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a>
++        <div style="display:flex;gap:8px">${isStudioEst ? '<form method="POST" action="/admin/filiais/sincronizar-catalogo"><button type="submit" class="btn btn-ghost" style="font-size:12px;padding:6px 14px;border-color:var(--gold);color:var(--gold)">🔄 Sincronizar catálogo</button></form>' : ''}<a href="/admin/export/estoque.csv" class="btn btn-ghost" style="font-size:12px;padding:6px 12px">↓ Exportar CSV</a></div>
+       </div>
+-      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px"> Movimentação registrada!</div>` : ""}
++      ${saved ? `<div style="background:#4ADE8022;border:1px solid #4ADE8044;color:var(--success);padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:14px">✅ ${estMsg || 'Movimentação registrada com sucesso.'}</div>` : ""}
+       ${lowStock.length > 0 ? `
+         <div style="background:rgba(239,68,68,0.1);border:1px solid var(--error);color:var(--error);border-radius:8px;padding:12px 16px;margin-bottom:20px">
+           <strong>${lowStock.length} produto(s) com estoque baixo:</strong> ${lowStock.map((p: any) => esc(p.name)).join(", ")}
+@@ -11457,7 +11469,7 @@ document.addEventListener('input', function(e) {
+         <div style="background:var(--surface);border-radius:12px;padding:28px;width:400px;max-width:90vw">
+           <h2 style="font-size:18px;font-weight:700;margin-bottom:4px">Registrar Movimentação</h2>
+           <p id="stockModalProd" style="color:var(--muted);font-size:13px;margin-bottom:20px"></p>
+-          <form method="POST" action="/admin/estoque/movimentacao">
++          <form method="POST" action="/admin/estoque/movimentacao" onsubmit="return validateTransfer()">
+             <input type="hidden" name="productId" id="stockProductId" />
+             <input type="hidden" name="tab" value="${activeTab}" />
+             <input type="hidden" name="updateCostPrice" id="stockUpdateCost" value="0" />
+@@ -11467,13 +11479,24 @@ document.addEventListener('input', function(e) {
+                 <option value="in">Entrada (compra/reposição)</option>
+                 <option value="out">Saída (uso/venda manual)</option>
+                 <option value="adjustment">Ajuste de inventário</option>
++                ${networkBranches.length > 0 ? '<option value="transfer">Transferência para filial</option>' : ''}
+               </select>
+             </div>
+             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
++              ${networkBranches.length > 0 ? `
++              <div id="transferSection" style="display:none" class="form-group">
++                <label class="form-label">Transferir para</label>
++                <select name="targetBranchId" id="stockTargetBranch" class="form-input">
++                  <option value="">Selecione a unidade destino</option>
++                  ${networkBranches.map((b: any) => '<option value="'+b.id+'">'+(b.displayName||b.name)+'</option>').join('')}
++                </select>
++              </div>
++              ` : ''}
+               <div class="form-group">
+                 <label class="form-label">Quantidade</label>
+                 <input type="number" name="quantity" id="stockQty" class="form-input" min="1" required oninput="updateCostTotal()" />
+               </div>
++              <div id="transferWarning" style="display:none;background:#F59E0B22;border:1px solid #F59E0B44;border-radius:8px;padding:10px 14px;font-size:13px;color:#F59E0B;margin-bottom:12px"></div>
+               <div class="form-group">
+                 <label class="form-label">Data</label>
+                 <input type="date" name="date" class="form-input" value="${today()}" required />
+@@ -11523,12 +11546,16 @@ document.addEventListener('input', function(e) {
+       </div>
+       <script>
+         var _currentProductCost = null;
++        var _currentStock = 0;
++        var _currentMinAlert = 5;
+ 
+-        function openStockModal(id, name, qty, costPrice) {
++        function openStockModal(id, name, qty, costPrice, minAlert) {
+           document.getElementById('stockProductId').value = id;
+           document.getElementById('stockModalProd').textContent = name + ' — Estoque atual: ' + qty;
+           document.getElementById('stockUnitCost').value = costPrice ? costPrice.replace('.', ',') : '';
+           _currentProductCost = costPrice ? parseFloat(costPrice) : null;
++          _currentStock = parseInt(qty) || 0;
++          _currentMinAlert = parseInt(minAlert) || 5;
+           document.getElementById('stockUpdateCost').value = '0';
+           document.getElementById('updateCostCheck').checked = false;
+           document.getElementById('stockType').value = 'in';
+@@ -11541,6 +11568,26 @@ document.addEventListener('input', function(e) {
+         function toggleCostFields() {
+           var type = document.getElementById('stockType').value;
+           document.getElementById('costSection').style.display = type === 'in' ? 'block' : 'none';
++          var transferSec = document.getElementById('transferSection');
++          if (transferSec) transferSec.style.display = type === 'transfer' ? 'block' : 'none';
++          document.getElementById('transferWarning').style.display = 'none';
++        }
++
++        function validateTransfer() {
++          var type = document.getElementById('stockType').value;
++          if (type !== 'transfer') return true;
++          var target = document.getElementById('stockTargetBranch');
++          if (!target || !target.value) { alert('Selecione a unidade destino.'); return false; }
++          var qty = parseInt(document.getElementById('stockQty').value) || 0;
++          if (qty <= 0) { alert('Informe a quantidade a transferir.'); return false; }
++          if (qty > _currentStock) { alert('Quantidade maior que o estoque disponível (' + _currentStock + ' unidades).'); return false; }
++          if (_currentStock === 0) { alert('Estoque zerado. Não é possível transferir.'); return false; }
++          var remaining = _currentStock - qty;
++          var warn = document.getElementById('transferWarning');
++          if (remaining <= _currentMinAlert) {
++            if (!confirm('⚠️ Após a transferência, o estoque ficará em ' + remaining + ' unidade(s), abaixo do alerta mínimo (' + _currentMinAlert + '). Confirma?')) return false;
++          }
++          return true;
+         }
+ 
+         function parseMasked(v) {
+@@ -11576,10 +11623,11 @@ document.addEventListener('input', function(e) {
+     `;
+     const _tp = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+   res.send(adminLayoutWithGrace(res, "Estoque", "estoque", body, barber?.name, _tp, [{label:"Dashboard",href:"/admin"},{label:"Estoque",href:"/admin/estoque"}]));
++  // networkBranches e isStudioEst são usados acima no body
+   }));
+ 
+   app.post("/admin/estoque/movimentacao", requireAdminAuth, requireFeature("stock"), async (req: Request, res: Response) => {
+-    const { productId, type, quantity, reason, date, unitCost, paymentMethod, updateCostPrice } = req.body;
++    const { productId, type, quantity, reason, date, unitCost, paymentMethod, updateCostPrice, targetBranchId } = req.body;
+     if (!productId || !type || !quantity || !date) { res.redirect("/admin/estoque?error=1"); return; }
+     const session = (req as any).adminSession as { barberId: number };
+     const barber = await db.getBarberById(session.barberId);
+@@ -11587,6 +11635,51 @@ document.addEventListener('input', function(e) {
+     const qtyNum = parseInt(quantity);
+     const unitCostNum = unitCost ? parseMoneyInput(unitCost) : null;
+ 
++    // Transferência entre filiais
++    if (type === "transfer") {
++      if (!targetBranchId) { res.redirect("/admin/estoque?error=1"); return; }
++      const sourceProduct = await db.getProductById(parseInt(productId));
++      if (!sourceProduct) { res.redirect("/admin/estoque?error=1"); return; }
++      const currentStock = (sourceProduct as any).stockQuantity ?? 0;
++      if (qtyNum > currentStock) { res.redirect("/admin/estoque?error=Estoque+insuficiente"); return; }
++
++      // Buscar produto correspondente na filial destino (mesmo nome)
++      const destProducts = await db.rawQuery(
++        'SELECT id FROM products WHERE "tenantId" = $1 AND LOWER(name) = LOWER($2) LIMIT 1',
++        [parseInt(targetBranchId), sourceProduct.name]
++      );
++      if (!destProducts[0]) {
++        res.redirect("/admin/estoque?error=" + encodeURIComponent("Produto não encontrado na unidade destino. Sincronize o catálogo primeiro."));
++        return;
++      }
++      const destProductId = destProducts[0].id;
++
++      // Débito na origem
++      await db.addStockMovement({
++        productId: parseInt(productId),
++        type: "out",
++        quantity: qtyNum,
++        reason: "Transferência para filial ID " + targetBranchId + (reason ? " — " + reason : ""),
++        date,
++        barberId: session.barberId,
++        transferType: "TRANSFERENCIA_FILIAL",
++      } as any);
++
++      // Crédito no destino
++      await db.addStockMovement({
++        productId: destProductId,
++        type: "in",
++        quantity: qtyNum,
++        reason: "Transferência recebida de filial ID " + tenantId + (reason ? " — " + reason : ""),
++        date,
++        barberId: session.barberId,
++        transferType: "TRANSFERENCIA_FILIAL",
++      } as any);
++
++      res.redirect("/admin/estoque?saved=1&msg=" + encodeURIComponent("Transferência de " + qtyNum + "x " + sourceProduct.name + " realizada com sucesso."));
++      return;
++    }
++
+     await db.addStockMovement({
+       productId: parseInt(productId),
+       type: type as "in" | "out" | "adjustment",
+-- 
+2.43.0
+

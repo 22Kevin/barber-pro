@@ -1,0 +1,54 @@
+From 1c5f2a9e1924d2a27508bd2a56af9cb26558018f Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Sat, 13 Jun 2026 00:21:16 +0000
+Subject: [PATCH] fix: criar espelho automaticamente no Acessar + CSP
+ Cloudflare challenges
+
+---
+ server/_core/index.ts  |  2 +-
+ server/admin-routes.ts | 16 +++++++++++++---
+ 2 files changed, 14 insertions(+), 4 deletions(-)
+
+diff --git a/server/_core/index.ts b/server/_core/index.ts
+index 21011e8..43a12c8 100644
+--- a/server/_core/index.ts
++++ b/server/_core/index.ts
+@@ -703,7 +703,7 @@ async function startServer() {
+     // contra object/embed, base hijack e clickjacking via frame-ancestors
+     res.header("Content-Security-Policy",
+       "default-src 'self'; " +
+-      "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com; " +
++      "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://accounts.google.com https://static.cloudflareinsights.com https://challenges.cloudflare.com; " +
+       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://use.typekit.net; " +
+       "font-src 'self' data: https://fonts.gstatic.com https://use.typekit.net https://p.typekit.net; " +
+       "img-src 'self' data: blob: https:; " +
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index 22e9c57..3e6de38 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -9503,9 +9503,19 @@ document.addEventListener('input', function(e) {
+         res.redirect('/admin?erro=acesso_restrito'); return;
+       }
+ 
+-      // Localizar o barbeiro-espelho (mesmo e-mail, super_admin) no tenant destino
+-      const mirror = await db.getMirrorAdmin(targetTenantId, adminBarber.email);
+-      if (!mirror) { res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent('Conta de acesso à filial não encontrada')); return; }
++      // Localizar (ou criar) o barbeiro-espelho no tenant destino
++      let mirror = await db.getMirrorAdmin(targetTenantId, adminBarber.email);
++      if (!mirror) {
++        // Espelho não existe — criar agora (filial criada antes do fix)
++        try {
++          await db.rawQuery(
++            "INSERT INTO barbers (\"tenantId\", name, email, \"passwordHash\", role, \"isActive\") VALUES ($1, $2, $3, $4, 'super_admin', true)",
++            [targetTenantId, adminBarber.name, adminBarber.email, (adminBarber as any).passwordHash || '']
++          );
++          mirror = await db.getMirrorAdmin(targetTenantId, adminBarber.email);
++        } catch(e3) {}
++        if (!mirror) { res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent('Não foi possível criar acesso à filial')); return; }
++      }
+ 
+       const token = encodeSession(mirror.id, 'super_admin');
+       res.setHeader("Set-Cookie", `${ADMIN_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax${SECURE_COOKIE}; Max-Age=${SESSION_MAX_AGE}`);
+-- 
+2.43.0
+

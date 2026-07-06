@@ -1,0 +1,450 @@
+From 437f0d098e0bd70dc638db47c03de42238157911 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Sat, 13 Jun 2026 20:14:20 +0000
+Subject: [PATCH 2/2] =?UTF-8?q?feat:=20app=20mobile=20=E2=80=94=20permisso?=
+ =?UTF-8?q?es=20na=20equipe,=20transferencia=20de=20estoque,=20sync=20cata?=
+ =?UTF-8?q?logo=20filiais?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ app/admin/(tabs)/barbearia.tsx |  41 +++++++++--
+ app/admin/(tabs)/stock.tsx     | 124 ++++++++++++++++++++++++++++++---
+ server/routers.ts              | 109 +++++++++++++++++++++++++++--
+ 3 files changed, 258 insertions(+), 16 deletions(-)
+
+diff --git a/app/admin/(tabs)/barbearia.tsx b/app/admin/(tabs)/barbearia.tsx
+index 0b6a095..7dc34ee 100644
+--- a/app/admin/(tabs)/barbearia.tsx
++++ b/app/admin/(tabs)/barbearia.tsx
+@@ -148,6 +148,7 @@ export default function BarbeariaScreen() {
+   const [bPassword, setBPassword] = useState("");
+   const [bRole, setBRole] = useState("barber");
+   const [bSpecialties, setBSpecialties] = useState("");
++  const [bPermissions, setBPermissions] = useState<string[]>([]);
+ 
+   // Horários
+   const [showTimePicker, setShowTimePicker] = useState(false);
+@@ -201,7 +202,7 @@ export default function BarbeariaScreen() {
+ 
+   const [showInactiveBarbers, setShowInactiveBarbers] = useState(false);
+   const barbersQuery = trpc.barbers.list.useQuery({ tenantId });
+-  const allBarbersQuery = trpc.barbers.listAll.useQuery({ tenantId }, { enabled: showInactiveBarbers });
++  const allBarbersQuery = trpc.barbers.listWithPermissions.useQuery({ tenantId }, { enabled: showInactiveBarbers });
+   const workingHoursQuery = trpc.barbers.workingHours.get.useQuery(
+     { barberId: selectedBarberId ?? 0 },
+     { enabled: !!selectedBarberId }
+@@ -312,15 +313,24 @@ export default function BarbeariaScreen() {
+     );
+   }
+ 
++  const ALL_PERMISSIONS = ["agenda","clientes","lista-espera","servicos","financeiro","relatorios","comissoes","minhas-comissoes","produtos","marketing","configuracoes"];
++  const PERMISSION_LABELS: Record<string, string> = {
++    "agenda": "Agenda", "clientes": "Clientes", "lista-espera": "Lista de Espera",
++    "servicos": "Serviços", "financeiro": "Financeiro", "relatorios": "Relatórios",
++    "comissoes": "Comissões", "minhas-comissoes": "Minhas Comissões", "produtos": "Produtos/Estoque",
++    "marketing": "Marketing", "configuracoes": "Configurações",
++  };
++
+   function openCreateBarber() {
+     setEditingBarber(null);
+-    setBName(""); setBEmail(""); setBPhone(""); setBPassword(""); setBRole("barber"); setBSpecialties("");
++    setBName(""); setBEmail(""); setBPhone(""); setBPassword(""); setBRole("barber"); setBSpecialties(""); setBPermissions([]);
+     setShowBarberModal(true);
+   }
+ 
+   function openEditBarber(b: any) {
+     setEditingBarber(b);
+     setBName(b.name); setBEmail(b.email ?? ""); setBPhone(applyPhoneMask(b.phone ?? "")); setBPassword(""); setBRole(b.role); setBSpecialties(b.specialties ?? "");
++    setBPermissions(Array.isArray(b.permissions) ? b.permissions : []);
+     setShowBarberModal(true);
+   }
+ 
+@@ -329,15 +339,16 @@ export default function BarbeariaScreen() {
+   function handleSaveBarber() {
+     if (!bName.trim()) { Alert.alert("Atenção", "Informe o nome."); return; }
+     if (!editingBarber && (!bPassword || bPassword.length < 6)) { Alert.alert("Atenção", "Senha deve ter pelo menos 6 caracteres."); return; }
++    const finalPerms = bRole === 'super_admin' ? ALL_PERMISSIONS : bPermissions;
+     if (editingBarber) {
+-      const data: any = { id: editingBarber.id, name: bName.trim(), role: bRole as any };
++      const data: any = { id: editingBarber.id, name: bName.trim(), role: bRole as any, permissions: finalPerms };
+       if (bEmail) data.email = bEmail.trim();
+       if (bPhone) data.phone = stripMask(bPhone).trim();
+       if (bSpecialties) data.specialties = bSpecialties.trim();
+       if (bPassword && bPassword.length >= 6) data.password = bPassword;
+       updateBarberMutation.mutate(data);
+     } else {
+-      createBarberMutation.mutate({ name: bName.trim(), email: bEmail.trim() || undefined, phone: stripMask(bPhone).trim() || undefined, password: bPassword, role: bRole as any, specialties: bSpecialties.trim() || undefined, tenantId } as any);
++      createBarberMutation.mutate({ name: bName.trim(), email: bEmail.trim() || undefined, phone: stripMask(bPhone).trim() || undefined, password: bPassword, role: bRole as any, specialties: bSpecialties.trim() || undefined, tenantId, permissions: finalPerms } as any);
+     }
+   }
+ 
+@@ -893,6 +904,28 @@ export default function BarbeariaScreen() {
+                     </Pressable>
+                   ))}
+                 </View>
++                {bRole !== 'super_admin' && (
++                  <>
++                    <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Permissões</Text>
++                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
++                      {ALL_PERMISSIONS.map(perm => {
++                        const active = bPermissions.includes(perm);
++                        return (
++                          <Pressable
++                            key={perm}
++                            onPress={() => setBPermissions(prev => active ? prev.filter(p => p !== perm) : [...prev, perm])}
++                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: active ? 'rgba(201,168,76,0.15)' : 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: active ? '#C9A84C' : '#333', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
++                          >
++                            <View style={{ width: 14, height: 14, borderRadius: 3, borderWidth: 2, borderColor: active ? '#C9A84C' : '#555', backgroundColor: active ? '#C9A84C' : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
++                              {active && <Text style={{ color: '#0A0A0A', fontSize: 10, fontWeight: '700' }}>✓</Text>}
++                            </View>
++                            <Text style={{ color: active ? '#C9A84C' : '#999', fontSize: 12 }}>{PERMISSION_LABELS[perm] || perm}</Text>
++                          </Pressable>
++                        );
++                      })}
++                    </View>
++                  </>
++                )}
+                 <Pressable style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.8 }]} onPress={handleSaveBarber} disabled={createBarberMutation.isPending || updateBarberMutation.isPending}>
+                   {(createBarberMutation.isPending || updateBarberMutation.isPending) ? <ActivityIndicator color="#0A0A0A" /> : <Text style={styles.saveBtnText}>{editingBarber ? "SALVAR" : "CADASTRAR"}</Text>}
+                 </Pressable>
+diff --git a/app/admin/(tabs)/stock.tsx b/app/admin/(tabs)/stock.tsx
+index 9a1c0f8..15f3dad 100644
+--- a/app/admin/(tabs)/stock.tsx
++++ b/app/admin/(tabs)/stock.tsx
+@@ -26,18 +26,20 @@ function toLocalDate(d: Date): string {
+   return `${y}-${m}-${dd}`;
+ }
+ 
+-type MovementType = "in" | "out" | "adjustment";
++type MovementType = "in" | "out" | "adjustment" | "transfer";
+ 
+ const TYPE_LABELS: Record<MovementType, string> = {
+   in: "Entrada",
+   out: "Saída",
+   adjustment: "Ajuste",
++  transfer: "Transferência",
+ };
+ 
+ const TYPE_COLORS: Record<MovementType, string> = {
+   in: "#22C55E",
+   out: "#EF4444",
+   adjustment: "#F59E0B",
++  transfer: "#C9A84C",
+ };
+ 
+ function today() {
+@@ -78,6 +80,8 @@ function StockScreenInner() {
+   const [movQty, setMovQty] = useState("1");
+   const [movReason, setMovReason] = useState("");
+   const [movSupplierId, setMovSupplierId] = useState<number | null>(null);
++  const [targetBranchId, setTargetBranchId] = useState<number | null>(null);
++  const [syncLoading, setSyncLoading] = useState(false);
+ 
+   const suppliersQuery = trpc.suppliers.list.useQuery(
+     { tenantId: tenantId ?? 0 },
+@@ -85,6 +89,45 @@ function StockScreenInner() {
+   );
+   const suppliersList = (suppliersQuery.data ?? []) as Array<{ id: number; name: string; phone: string | null }>;
+ 
++  const branchesQuery = trpc.branches.list.useQuery(
++    { tenantId: tenantId ?? 0 },
++    { enabled: (tenantId ?? 0) > 0 }
++  );
++  const branchData = branchesQuery.data;
++  const networkBranches = branchData?.show ? branchData.branches : [];
++  const isStudio = branchData?.show ?? false;
++
++  const transferMutation = trpc.branches.transfer.useMutation({
++    onSuccess: (data) => {
++      utils.stock.list.invalidate();
++      setShowMovementModal(false);
++      setMovQty("1"); setMovReason(""); setTargetBranchId(null); setMovType("in");
++      Alert.alert("Transferência realizada!", `${data.transferred}x ${data.productName} transferido com sucesso.`);
++    },
++    onError: (e) => Alert.alert("Erro na transferência", e.message),
++  });
++
++  const syncMutation = trpc.branches.syncCatalog.useMutation({
++    onSuccess: (data) => {
++      utils.stock.list.invalidate();
++      setSyncLoading(false);
++      Alert.alert("Sincronização concluída!", `${data.syncedServices} serviços, ${data.syncedProducts} produtos, ${data.syncedSuppliers} fornecedores sincronizados.`);
++    },
++    onError: (e) => { setSyncLoading(false); Alert.alert("Erro", e.message); },
++  });
++
++  async function handleSyncCatalog() {
++    if (!branchData?.show) return;
++    const matrixId = branchData.matrixId;
++    const targetId = branchData.isMatrix ? null : tenantId;
++    if (!targetId || !matrixId) {
++      Alert.alert("Atenção", "Sincronização disponível apenas dentro de uma filial.");
++      return;
++    }
++    setSyncLoading(true);
++    syncMutation.mutate({ matrixId, targetBranchId: targetId! });
++  }
++
+   const stockQuery = trpc.stock.list.useQuery({ tenantId });
+   const movementsQuery = trpc.stock.movements.useQuery(
+     { productId: selectedProduct?.id ?? 0 },
+@@ -102,6 +145,7 @@ function StockScreenInner() {
+       setMovQty("1");
+       setMovReason("");
+       setMovSupplierId(null);
++      setTargetBranchId(null);
+     },
+     onError: (e) => Alert.alert("Erro", e.message),
+   });
+@@ -120,6 +164,33 @@ function StockScreenInner() {
+       Alert.alert("Quantidade inválida", "Informe uma quantidade maior que zero.");
+       return;
+     }
++    // Lógica de transferência entre filiais
++    if (movType === "transfer") {
++      if (!targetBranchId) { Alert.alert("Atenção", "Selecione a unidade destino."); return; }
++      const stock = selectedProduct?.stockQuantity ?? 0;
++      if (stock === 0) { Alert.alert("Estoque zerado", "Não é possível transferir. O produto está sem estoque."); return; }
++      if (qty > stock) { Alert.alert("Estoque insuficiente", `Quantidade maior que o disponível (${stock} unidades).`); return; }
++      const remaining = stock - qty;
++      const minAlert = selectedProduct?.minStockAlert ?? 5;
++      const doTransfer = () => transferMutation.mutate({
++        productId: selectedProduct.id,
++        targetBranchId,
++        quantity: qty,
++        matrixId: branchData?.matrixId ?? tenantId ?? 0,
++        sourceTenantId: tenantId ?? 0,
++        reason: movReason || undefined,
++      });
++      if (remaining <= minAlert) {
++        Alert.alert(
++          "Estoque baixo após transferência",
++          `Após a transferência, o estoque ficará em ${remaining} unidade(s), abaixo do alerta mínimo (${minAlert}). Confirma?`,
++          [{ text: "Cancelar", style: "cancel" }, { text: "Sim, transferir", style: "destructive", onPress: doTransfer }]
++        );
++      } else {
++        doTransfer();
++      }
++      return;
++    }
+     addMovementMutation.mutate({
+       productId: selectedProduct.id,
+       type: movType,
+@@ -135,12 +206,23 @@ function StockScreenInner() {
+       <AdminHeader
+         title="Controle de Estoque"
+         rightElement={
+-          <Pressable
+-            style={({ pressed }) => [{ padding: 8, borderRadius: 8, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
+-            onPress={handleExportCsv}
+-          >
+-            <Text style={{ fontSize: 14 }}>📥</Text>
+-          </Pressable>
++          <View style={{ flexDirection: 'row', gap: 8 }}>
++            {isStudio && !branchData?.isMatrix && (
++              <Pressable
++                style={({ pressed }) => [{ padding: 8, borderRadius: 8, backgroundColor: 'rgba(201,168,76,0.1)', borderWidth: 1, borderColor: '#C9A84C', opacity: pressed ? 0.7 : 1 }]}
++                onPress={handleSyncCatalog}
++                disabled={syncLoading}
++              >
++                <Text style={{ fontSize: 13, color: '#C9A84C' }}>{syncLoading ? '⏳' : '🔄'}</Text>
++              </Pressable>
++            )}
++            <Pressable
++              style={({ pressed }) => [{ padding: 8, borderRadius: 8, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 }]}
++              onPress={handleExportCsv}
++            >
++              <Text style={{ fontSize: 14 }}>📥</Text>
++            </Pressable>
++          </View>
+         }
+       />
+ 
+@@ -297,7 +379,7 @@ function StockScreenInner() {
+             {/* Tipo de movimentação */}
+             <Text style={[styles.fieldLabel, { color: colors.muted }]}>Tipo</Text>
+             <View style={styles.typeRow}>
+-              {(["in", "out", "adjustment"] as MovementType[]).map((t) => (
++              {(["in", "out", "adjustment", ...(networkBranches.length > 0 ? ["transfer" as MovementType] : [])] as MovementType[]).map((t) => (
+                 <Pressable
+                   key={t}
+                   style={({ pressed }) => [
+@@ -317,6 +399,32 @@ function StockScreenInner() {
+               ))}
+             </View>
+ 
++            {/* Seletor de unidade destino — só para transferência */}
++            {movType === "transfer" && networkBranches.length > 0 && (
++              <>
++                <Text style={[styles.fieldLabel, { color: colors.muted }]}>Transferir para</Text>
++                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
++                  <View style={{ flexDirection: "row", gap: 8 }}>
++                    {networkBranches.map((b: any) => (
++                      <Pressable
++                        key={b.id}
++                        onPress={() => setTargetBranchId(b.id)}
++                        style={({ pressed }) => ({
++                          paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
++                          backgroundColor: targetBranchId === b.id ? '#C9A84C22' : colors.background,
++                          borderWidth: 1, borderColor: targetBranchId === b.id ? '#C9A84C' : colors.border,
++                          opacity: pressed ? 0.7 : 1,
++                        })}
++                      >
++                        <Text style={{ color: targetBranchId === b.id ? '#C9A84C' : colors.muted, fontSize: 13, fontWeight: targetBranchId === b.id ? '700' : '400' }}>
++                          {b.name}
++                        </Text>
++                      </Pressable>
++                    ))}
++                  </View>
++                </ScrollView>
++              </>
++            )}
+             {/* Quantidade */}
+             <Text style={[styles.fieldLabel, { color: colors.muted }]}>Quantidade</Text>
+             <TextInput
+diff --git a/server/routers.ts b/server/routers.ts
+index b55ac6f..77b4501 100644
+--- a/server/routers.ts
++++ b/server/routers.ts
+@@ -291,8 +291,22 @@ export const appRouter = router({
+     list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getAllBarbers(input?.tenantId)),
+     listAll: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getAllBarbersIncludingInactive(input?.tenantId)),
+     reactivate: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.reactivateBarber(input.id)),
++    listWithPermissions: barberProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ input }) => {
++      const barbers = await db.getAllBarbersIncludingInactive(input?.tenantId);
++      if (!barbers.length) return barbers;
++      const ids = barbers.map((b: any) => b.id).join(',');
++      const rows = await db.rawQuery(`SELECT id, permissions, role, "jobTitle" FROM barbers WHERE id IN (${ids})`);
++      const map: Record<number, any> = {};
++      for (const r of rows) { map[r.id] = r; }
++      return barbers.map((b: any) => {
++        const row = map[b.id];
++        let perms = null;
++        if (row?.permissions) { try { perms = JSON.parse(row.permissions); } catch {} }
++        return { ...b, permissions: perms, role: row?.role ?? b.role, jobTitle: row?.jobTitle ?? null };
++      });
++    }),
+     create: barberProcedure
+-      .input(z.object({ name: z.string().min(2), email: z.string().email().optional(), phone: z.string().optional(), password: z.string().min(6), role: z.enum(["super_admin", "barber", "receptionist"]).default("barber"), specialties: z.string().optional(), tenantId: z.number().optional().nullable() }))
++      .input(z.object({ name: z.string().min(2), email: z.string().email().optional(), phone: z.string().optional(), password: z.string().min(6), role: z.enum(["super_admin", "barber", "receptionist"]).default("barber"), specialties: z.string().optional(), tenantId: z.number().optional().nullable(), permissions: z.array(z.string()).optional().nullable() }))
+       .mutation(async ({ input }) => {
+         // Validação de limite de barbeiros por plano
+         if (input.tenantId != null) {
+@@ -308,15 +322,25 @@ export const appRouter = router({
+           }
+         }
+         const passwordHash = await hashPassword(input.password);
+-        return db.createBarber({ ...input, passwordHash, isActive: true });
++        const { permissions: permsArr, ...barberData } = input as any;
++        const newId = await db.createBarber({ ...barberData, passwordHash, isActive: true });
++        if (permsArr && newId) {
++          await db.rawQuery('UPDATE barbers SET permissions = $1 WHERE id = $2', [JSON.stringify(permsArr), newId]);
++        }
++        return newId;
+       }),
+     update: barberProcedure
+-      .input(z.object({ id: z.number(), name: z.string().min(2).optional(), email: z.string().email().optional().nullable(), phone: z.string().optional().nullable(), photoUrl: z.string().optional().nullable(), role: z.enum(["super_admin", "barber", "receptionist"]).optional(), specialties: z.string().optional().nullable(), isActive: z.boolean().optional(), password: z.string().min(6).optional() }))
++      .input(z.object({ id: z.number(), name: z.string().min(2).optional(), email: z.string().email().optional().nullable(), phone: z.string().optional().nullable(), photoUrl: z.string().optional().nullable(), role: z.enum(["super_admin", "barber", "receptionist"]).optional(), specialties: z.string().optional().nullable(), isActive: z.boolean().optional(), password: z.string().min(6).optional(), permissions: z.array(z.string()).optional().nullable() }))
+       .mutation(async ({ input }) => {
+-        const { id, password, ...data } = input;
++        const { id, password, permissions, ...data } = input;
+         const updateData: Record<string, unknown> = { ...data };
+         if (password) updateData.passwordHash = await hashPassword(password);
++        if (permissions !== undefined) updateData.permissions = permissions ? JSON.stringify(permissions) : null;
+         await db.updateBarber(id, updateData as any);
++        // Se permissions foi passado, usar rawQuery para garantir
++        if (permissions !== undefined) {
++          await db.rawQuery('UPDATE barbers SET permissions = $1 WHERE id = $2', [permissions ? JSON.stringify(permissions) : null, id]);
++        }
+         return { success: true };
+       }),
+     delete: barberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBarber(input.id)),
+@@ -331,6 +355,83 @@ export const appRouter = router({
+     }),
+   }),
+ 
++  // Rotas de filiais para o app mobile
++  branches: router({
++    list: barberProcedure.input(z.object({ tenantId: z.number() })).query(async ({ input }) => {
++      const tenantRows = await db.rawQuery('SELECT id, plan, "parentTenantId" FROM tenants WHERE id = $1', [input.tenantId]);
++      const t = tenantRows[0];
++      if (!t || t.plan !== 'studio') return { show: false, branches: [], isMatrix: true, matrixId: input.tenantId, matrixName: '' };
++      const parentId: number | null = t.parentTenantId ?? null;
++      const matrixId: number = parentId ?? input.tenantId;
++      const allBranches = await db.getBranches(matrixId);
++      const matrixRows = parentId ? await db.rawQuery('SELECT id, name, "displayName" FROM tenants WHERE id = $1', [matrixId]) : null;
++      const matrixName = parentId ? (matrixRows?.[0]?.displayName || matrixRows?.[0]?.name || 'Matriz') : '';
++      return {
++        show: true,
++        isMatrix: !parentId,
++        matrixId,
++        matrixName,
++        currentTenantId: input.tenantId,
++        branches: allBranches.map((b: any) => ({ id: b.id, name: b.displayName || b.name, slug: b.slug })),
++      };
++    }),
++    syncCatalog: barberProcedure.input(z.object({ matrixId: z.number(), targetBranchId: z.number() })).mutation(async ({ input }) => {
++      let syncedServices = 0, syncedProducts = 0, syncedSuppliers = 0;
++      try {
++        const matrixServices = await db.getAllServicesWithMedia(false, input.matrixId) as any[];
++        const existing = await db.rawQuery('SELECT name FROM services WHERE "tenantId" = $1', [input.targetBranchId]);
++        const existingNames = new Set(existing.map((s: any) => s.name.toLowerCase()));
++        for (const svc of matrixServices) {
++          if (!existingNames.has((svc.name || '').toLowerCase())) {
++            const newId = await db.createService({ tenantId: input.targetBranchId, name: svc.name, description: svc.description ?? null, price: svc.price, durationMinutes: svc.durationMinutes, isActive: svc.isActive } as any);
++            if (newId && svc.thumbnailUrl) await db.addMediaFile({ entityType: 'service', entityId: Number(newId), url: svc.thumbnailUrl, type: 'image', order: 0 });
++            syncedServices++;
++          }
++        }
++      } catch {}
++      try {
++        const matrixProducts = await db.getAllProductsWithMedia(false, input.matrixId) as any[];
++        const existing = await db.rawQuery('SELECT name FROM products WHERE "tenantId" = $1', [input.targetBranchId]);
++        const existingNames = new Set(existing.map((p: any) => p.name.toLowerCase()));
++        for (const prd of matrixProducts) {
++          if (!existingNames.has((prd.name || '').toLowerCase())) {
++            const newId = await db.createProduct({ tenantId: input.targetBranchId, name: prd.name, description: prd.description ?? null, price: prd.price, productType: prd.productType ?? 'sale', isActive: prd.isActive, stockQuantity: 0, minStockAlert: prd.minStockAlert ?? 5 } as any);
++            if (newId && prd.thumbnailUrl) await db.addMediaFile({ entityType: 'product', entityId: Number(newId), url: prd.thumbnailUrl, type: 'image', order: 0 });
++            syncedProducts++;
++          }
++        }
++      } catch {}
++      try {
++        const matrixSuppliers = await db.getSuppliersByTenant(input.matrixId) as any[];
++        const existing = await db.rawQuery('SELECT name FROM suppliers WHERE "tenantId" = $1', [input.targetBranchId]);
++        const existingNames = new Set(existing.map((s: any) => s.name.toLowerCase()));
++        for (const sup of matrixSuppliers) {
++          if (!existingNames.has((sup.name || '').toLowerCase())) {
++            await db.createSupplier({ tenantId: input.targetBranchId, name: sup.name, phone: sup.phone ?? null, email: sup.email ?? null, cnpj: sup.cnpj ?? null, address: sup.address ?? null, notes: sup.notes ?? null } as any);
++            syncedSuppliers++;
++          }
++        }
++      } catch {}
++      return { syncedServices, syncedProducts, syncedSuppliers };
++    }),
++    transfer: barberProcedure.input(z.object({ productId: z.number(), targetBranchId: z.number(), quantity: z.number().min(1), matrixId: z.number(), sourceTenantId: z.number(), reason: z.string().optional() })).mutation(async ({ ctx, input }) => {
++      const sourceProduct = await db.getProductById(input.productId);
++      if (!sourceProduct) throw new Error('Produto não encontrado');
++      const currentStock = (sourceProduct as any).stockQuantity ?? 0;
++      if (currentStock === 0) throw new Error('Estoque zerado. Não é possível transferir.');
++      if (input.quantity > currentStock) throw new Error('Quantidade maior que o estoque disponível (' + currentStock + ' unidades).');
++      // Verificar produto no destino
++      const destProducts = await db.rawQuery('SELECT id FROM products WHERE "tenantId" = $1 AND LOWER(name) = LOWER($2) LIMIT 1', [input.targetBranchId, sourceProduct.name]);
++      if (!destProducts[0]) throw new Error('Produto não encontrado na unidade destino. Sincronize o catálogo primeiro.');
++      const destProductId = destProducts[0].id;
++      const barberId = ctx.barberId;
++      const date = new Date().toISOString().split('T')[0];
++      await db.addStockMovement({ productId: input.productId, type: 'out', quantity: input.quantity, reason: 'Transferência para filial ID ' + input.targetBranchId + (input.reason ? ' — ' + input.reason : ''), date, barberId } as any);
++      await db.addStockMovement({ productId: destProductId, type: 'in', quantity: input.quantity, reason: 'Transferência recebida de filial ID ' + input.sourceTenantId + (input.reason ? ' — ' + input.reason : ''), date, barberId } as any);
++      return { success: true, transferred: input.quantity, productName: sourceProduct.name };
++    }),
++  }),
++
+   clients: router({
+     list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ input }) => db.getAllClients(input?.tenantId)),
+     get: publicProcedure.input(z.object({ id: z.number() })).query(({ input }) => db.getClientById(input.id)),
+-- 
+2.43.0
+

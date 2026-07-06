@@ -852,6 +852,11 @@ async function startServer() {
   });
 
   // Páginas legais — conteúdo embutido no bundle
+  // ── SEO: favicon ─────────────────────────────────────────────────────────
+  app.get("/favicon.ico", (_req, res) => {
+    res.redirect(301, "https://pub-203143bd86174070b67f8f64a13a65c2.r2.dev/assets/barber-pro-icon-512.png");
+  });
+
   // ── SEO: robots.txt ──────────────────────────────────────────────────────
   app.get("/robots.txt", (_req, res) => {
     res.setHeader("Content-Type", "text/plain; charset=utf-8");

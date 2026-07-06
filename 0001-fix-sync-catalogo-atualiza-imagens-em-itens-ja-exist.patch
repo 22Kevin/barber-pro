@@ -1,0 +1,80 @@
+From 1fcd708ded9525b01b7910e750c7aa85286db214 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Sat, 13 Jun 2026 13:37:28 +0000
+Subject: [PATCH] fix: sync catalogo atualiza imagens em itens ja existentes na
+ filial
+
+---
+ server/admin-routes.ts | 36 ++++++++++++++++++++++++++++--------
+ 1 file changed, 28 insertions(+), 8 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index cf05f4e..744ed7e 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -9474,34 +9474,54 @@ document.addEventListener('input', function(e) {
+ 
+       let syncedServices = 0, syncedProducts = 0, syncedSuppliers = 0;
+ 
+-      // Sincronizar Serviços (com imagens)
++      // Sincronizar Serviços (com imagens — cria novos e atualiza imagens dos existentes)
+       try {
+         const matrixServices = await db.getAllServicesWithMedia(false, matrixId) as any[];
+-        const existingServices = await db.rawQuery('SELECT name FROM services WHERE "tenantId" = $1', [targetBranchId]);
+-        const existingNames = new Set(existingServices.map((s: any) => s.name.toLowerCase()));
++        const existingServices = await db.rawQuery('SELECT id, name FROM services WHERE "tenantId" = $1', [targetBranchId]);
++        const existingMap = new Map(existingServices.map((s: any) => [s.name.toLowerCase(), s.id]));
+         for (const svc of matrixServices) {
+-          if (!existingNames.has((svc.name || '').toLowerCase())) {
++          const nameKey = (svc.name || '').toLowerCase();
++          if (!existingMap.has(nameKey)) {
++            // Novo — criar com imagem
+             const newId = await db.createService({ tenantId: targetBranchId, name: svc.name, description: svc.description ?? null, price: svc.price, durationMinutes: svc.durationMinutes, isActive: svc.isActive } as any);
+             if (newId && svc.thumbnailUrl) {
+               await db.addMediaFile({ entityType: 'service', entityId: Number(newId), url: svc.thumbnailUrl, type: 'image', order: 0 });
+             }
+             syncedServices++;
++          } else if (svc.thumbnailUrl) {
++            // Já existe — atualizar imagem se não tiver
++            const existingId = existingMap.get(nameKey);
++            const hasMedia = await db.rawQuery('SELECT id FROM media_files WHERE "entityType" = $1 AND "entityId" = $2 LIMIT 1', ['service', existingId]);
++            if (hasMedia.length === 0) {
++              await db.addMediaFile({ entityType: 'service', entityId: Number(existingId), url: svc.thumbnailUrl, type: 'image', order: 0 });
++              syncedServices++;
++            }
+           }
+         }
+       } catch(e) { console.error('[sync] serviços:', (e as any)?.message); }
+ 
+-      // Sincronizar Produtos (com imagens)
++      // Sincronizar Produtos (com imagens — cria novos e atualiza imagens dos existentes)
+       try {
+         const matrixProducts = await db.getAllProductsWithMedia(false, matrixId) as any[];
+-        const existingProducts = await db.rawQuery('SELECT name FROM products WHERE "tenantId" = $1', [targetBranchId]);
+-        const existingPNames = new Set(existingProducts.map((p: any) => p.name.toLowerCase()));
++        const existingProducts = await db.rawQuery('SELECT id, name FROM products WHERE "tenantId" = $1', [targetBranchId]);
++        const existingPMap = new Map(existingProducts.map((p: any) => [p.name.toLowerCase(), p.id]));
+         for (const prd of matrixProducts) {
+-          if (!existingPNames.has((prd.name || '').toLowerCase())) {
++          const nameKey = (prd.name || '').toLowerCase();
++          if (!existingPMap.has(nameKey)) {
++            // Novo — criar com imagem
+             const newPid = await db.createProduct({ tenantId: targetBranchId, name: prd.name, description: prd.description ?? null, price: prd.price, productType: prd.productType ?? 'sale', isActive: prd.isActive, stockQuantity: 0, minStockAlert: prd.minStockAlert ?? 5 } as any);
+             if (newPid && prd.thumbnailUrl) {
+               await db.addMediaFile({ entityType: 'product', entityId: Number(newPid), url: prd.thumbnailUrl, type: 'image', order: 0 });
+             }
+             syncedProducts++;
++          } else if (prd.thumbnailUrl) {
++            // Já existe — atualizar imagem se não tiver
++            const existingPid = existingPMap.get(nameKey);
++            const hasMedia = await db.rawQuery('SELECT id FROM media_files WHERE "entityType" = $1 AND "entityId" = $2 LIMIT 1', ['product', existingPid]);
++            if (hasMedia.length === 0) {
++              await db.addMediaFile({ entityType: 'product', entityId: Number(existingPid), url: prd.thumbnailUrl, type: 'image', order: 0 });
++              syncedProducts++;
++            }
+           }
+         }
+       } catch(e) { console.error('[sync] produtos:', (e as any)?.message); }
+-- 
+2.43.0
+

@@ -1,0 +1,109 @@
+From 05b929a3338edb86812cdc1a20ea6f0054d106b1 Mon Sep 17 00:00:00 2001
+From: 22Kevin <kevin@eldunari.com.br>
+Date: Sat, 13 Jun 2026 14:16:42 +0000
+Subject: [PATCH] feat: transferencia bidirecional + bpConfirm nos alertas +
+ minStockAlert correto
+
+---
+ server/admin-routes.ts | 57 +++++++++++++++++++++++++++++++-----------
+ 1 file changed, 42 insertions(+), 15 deletions(-)
+
+diff --git a/server/admin-routes.ts b/server/admin-routes.ts
+index be2912d..1da9f8e 100644
+--- a/server/admin-routes.ts
++++ b/server/admin-routes.ts
+@@ -9466,10 +9466,13 @@ document.addEventListener('input', function(e) {
+         res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent('Selecione uma filial para sincronizar')); return;
+       }
+ 
+-      // Verificar ownership
+-      const branchRows = await db.rawQuery('SELECT "parentTenantId" FROM tenants WHERE id = $1', [targetBranchId]);
+-      if (branchRows[0]?.parentTenantId !== matrixId) {
+-        res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent('Filial não pertence à sua rede')); return;
++      // Verificar que destino pertence à mesma rede (filial ou a própria matriz)
++      const targetIsMatrixDest = parseInt(targetBranchId) === matrixId;
++      if (!targetIsMatrixDest) {
++        const branchRows = await db.rawQuery('SELECT "parentTenantId" FROM tenants WHERE id = $1', [targetBranchId]);
++        if (branchRows[0]?.parentTenantId !== matrixId) {
++          res.redirect('/admin/configuracoes?tab=filiais&error=' + encodeURIComponent('Unidade não pertence à sua rede')); return;
++        }
+       }
+ 
+       let syncedServices = 0, syncedProducts = 0, syncedSuppliers = 0;
+@@ -11363,16 +11366,29 @@ document.addEventListener('input', function(e) {
+ 
+     const lowStock = allProducts.filter((p: any) => p.isLowStock);
+ 
+-    // Buscar filiais da rede para transferência de estoque
++    // Buscar unidades da rede para transferência (bidirecional: matriz↔filial, filial↔filial)
+     const tenantRawEst = tenantId
+-      ? (await db.rawQuery('SELECT id, plan, "parentTenantId" FROM tenants WHERE id = $1', [tenantId]))[0]
++      ? (await db.rawQuery('SELECT id, name, "displayName", plan, "parentTenantId" FROM tenants WHERE id = $1', [tenantId]))[0]
+       : null;
+     const estParentId: number | null = tenantRawEst?.parentTenantId ?? null;
+     const estMatrixId: number = estParentId ?? (tenantId ?? 0);
+-    const networkBranches: any[] = tenantRawEst?.plan === 'studio'
+-      ? (await db.getBranches(estMatrixId)).filter((b: any) => b.id !== tenantId)
+-      : [];
+     const isStudioEst = tenantRawEst?.plan === 'studio';
++    let networkBranches: any[] = [];
++    if (isStudioEst) {
++      const allBranchesEst = await db.getBranches(estMatrixId);
++      if (estParentId) {
++        // Estou numa filial: incluir MATRIZ e filiais irmãs como destino
++        const matrixRowEst = await db.rawQuery('SELECT id, name, "displayName" FROM tenants WHERE id = $1', [estMatrixId]);
++        if (matrixRowEst[0]) {
++          const mName = (matrixRowEst[0].displayName || matrixRowEst[0].name || 'Matriz');
++          networkBranches.push({ id: estMatrixId, displayName: mName + ' (Matriz)', name: mName });
++        }
++        allBranchesEst.filter((b: any) => b.id !== tenantId).forEach((b: any) => networkBranches.push(b));
++      } else {
++        // Estou na matriz: todas as filiais como destino
++        networkBranches = allBranchesEst;
++      }
++    }
+ 
+     // Buscar histórico recente de movimentações (todos os produtos)
+     const recentMovements: any[] = [];
+@@ -11418,7 +11434,7 @@ document.addEventListener('input', function(e) {
+                 <td style="color:var(--muted)">${p.costPrice ? fmtCurrency(p.costPrice) : '—'}</td>
+                 <td>${p.costPrice && parseFloat(p.costPrice) > 0 && parseFloat(p.price) > parseFloat(p.costPrice) ? '<span style="color:var(--success);font-weight:700;font-size:13px">' + ((parseFloat(p.price) - parseFloat(p.costPrice)) / parseFloat(p.price) * 100).toFixed(0) + '%</span>' : '<span style="color:var(--muted)">—</span>'}</td>
+                 <td style="white-space:nowrap">
+-                  <button onclick="openStockModal(${p.id}, '${esc(p.name).replace(/'/g, "\\'")}'  , ${p.stockQuantity}, '${p.costPrice ? parseFloat(p.costPrice).toFixed(2) : ''}')" class="btn btn-primary" style="font-size:12px;padding:4px 12px">+ Mov.</button>
++                  <button onclick="openStockModal(${p.id}, '${esc(p.name).replace(/'/g, "\\'")}'  , ${p.stockQuantity}, '${p.costPrice ? parseFloat(p.costPrice).toFixed(2) : ''}', ${p.minStockAlert ?? 5})" class="btn btn-primary" style="font-size:12px;padding:4px 12px">+ Mov.</button>
+                   <a href="/admin/estoque/${p.id}/historico" class="btn btn-ghost" style="font-size:12px;padding:4px 12px;display:inline-flex;align-items:center;gap:4px" title="Ver histórico de movimentações">📋 Histórico</a>
+                 </td>
+               </tr>
+@@ -11577,13 +11593,24 @@ document.addEventListener('input', function(e) {
+           var type = document.getElementById('stockType').value;
+           if (type !== 'transfer') return true;
+           var target = document.getElementById('stockTargetBranch');
+-          if (!target || !target.value) { alert('Selecione a unidade destino.'); return false; }
++          if (!target || !target.value) {
++            bpConfirm({icon:'⚠️',title:'Atenção',msg:'Selecione a unidade destino.',okLabel:'OK',onConfirm:function(){}});
++            return false;
++          }
+           var qty = parseInt(document.getElementById('stockQty').value) || 0;
+-          if (qty <= 0) { alert('Informe a quantidade a transferir.'); return false; }
+-          if (qty > _currentStock) { alert('Quantidade maior que o estoque disponível (' + _currentStock + ' unidades).'); return false; }
+-          if (_currentStock === 0) { alert('Estoque zerado. Não é possível transferir.'); return false; }
++          if (_currentStock === 0) {
++            bpConfirm({icon:'🚫',title:'Estoque zerado',msg:'Não é possível transferir. O produto está sem estoque.',okLabel:'Entendi',onConfirm:function(){}});
++            return false;
++          }
++          if (qty <= 0) {
++            bpConfirm({icon:'⚠️',title:'Quantidade inválida',msg:'Informe a quantidade a transferir.',okLabel:'OK',onConfirm:function(){}});
++            return false;
++          }
++          if (qty > _currentStock) {
++            bpConfirm({icon:'⚠️',title:'Estoque insuficiente',msg:'Quantidade maior que o estoque disponível (' + _currentStock + ' unidades).',okLabel:'Entendi',onConfirm:function(){}});
++            return false;
++          }
+           var remaining = _currentStock - qty;
+-          if (remaining < 0) { alert('Quantidade maior que o estoque disponível (' + _currentStock + ' unidades).'); return false; }
+           if (remaining <= _currentMinAlert) {
+             // Usar bpConfirm em vez de confirm() nativo
+             bpConfirm({
+-- 
+2.43.0
+
