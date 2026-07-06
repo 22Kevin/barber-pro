@@ -1554,12 +1554,12 @@ function loginPage(error = false, errorMsg?: string, info?: string, infoEmail?: 
       <div class="brand-tagline">Gestão completa para barbearias.<br/>Agenda, financeiro e assinaturas em um único painel.</div>
       <div class="brand-stats">
         <div class="brand-stat">
-          <div class="brand-stat-value">500+</div>
-          <div class="brand-stat-label">Barbearias</div>
+          <div class="brand-stat-value">14</div>
+          <div class="brand-stat-label">Dias grátis</div>
         </div>
         <div class="brand-stat">
-          <div class="brand-stat-value">98%</div>
-          <div class="brand-stat-label">Satisfação</div>
+          <div class="brand-stat-value">5min</div>
+          <div class="brand-stat-label">Para configurar</div>
         </div>
         <div class="brand-stat">
           <div class="brand-stat-value">24/7</div>
