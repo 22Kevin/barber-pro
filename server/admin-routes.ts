@@ -14751,10 +14751,10 @@ REGRAS:
   app.get("/sw.js", (_req: Request, res: Response) => {
     res.setHeader("Content-Type", "application/javascript");
     res.setHeader("Cache-Control", "no-cache");
-    res.send(`
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', () => clients.claim());
-    `);
+    // Service worker minimo — apenas para permitir instalacao PWA no iOS
+    // Sem interceptacao de fetch para evitar problemas de CSP
+    res.send(`self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', () => clients.claim());`);
   });
 
 }

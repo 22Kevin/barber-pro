@@ -6,7 +6,7 @@
 
 import * as nodemailer from "nodemailer";
 
-const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310419663028442847/CHUXnjOFayrIGRtV.png";
+const LOGO_URL = "https://pub-203143bd86174070b67f8f64a13a65c2.r2.dev/assets/barber-pro-icon-512.png";
 export const BRAND_COLOR = "#C9A84C";
 export const BRAND_NAME = "Barber Pro";
 export const SITE_URL = "https://usebarberpro.com";
