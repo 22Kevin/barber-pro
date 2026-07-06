@@ -847,8 +847,15 @@ function adminLayout(title: string, activePage: string, body: string, barberName
       #svcModal > div, #prdModal > div, #supModal > div { padding: 20px 16px !important; }
       /* Branch selector: ainda mais compacto */
       #bsel-mount { max-width: 120px; }
+      #bsel-mount button { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
       /* Avatar: esconder nome no tooltip */
       #avatar-btn { width: 30px !important; height: 30px !important; font-size: 10px !important; }
+      /* Tabs: scroll horizontal obrigatório, sem quebra */
+      .tabs-scroll { flex-wrap: nowrap !important; overflow-x: auto !important; }
+      .tabs-scroll > * { flex-shrink: 0 !important; white-space: nowrap !important; }
+      /* Tabs inline (financeiro, config, etc) */
+      [role="tablist"], .tab-bar, div[style*="display:flex"][style*="gap:4px"][style*="border-radius:12px"] { flex-wrap: nowrap !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      [role="tablist"]::-webkit-scrollbar { display: none; }
     }
 
         /* ─── Animações de Navegação ─────────────────────────────────────────────── */
@@ -4940,9 +4947,9 @@ async function renderFinanceiro(req: Request, res: Response) {
     { id: "pagamentos", label: "Pagamentos Online" },
   ];
   const tabNav = `
-    <div style="display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:0">
+    <div style="display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;" class="tabs-scroll">
       ${tabs.map(t => `
-        <a href="/admin/financeiro?tab=${t.id}&period=${period}" style="padding:10px 20px;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px 8px 0 0;border:1px solid ${activeTab === t.id ? 'var(--border)' : 'transparent'};border-bottom:${activeTab === t.id ? '1px solid var(--surface)' : '1px solid var(--border)'};background:${activeTab === t.id ? 'var(--surface)' : 'transparent'};color:${activeTab === t.id ? '#C9A84C' : 'var(--muted)'};margin-bottom:-1px">${t.label}</a>
+        <a href="/admin/financeiro?tab=${t.id}&period=${period}" style="padding:10px 16px;font-size:14px;font-weight:600;text-decoration:none;border-radius:8px 8px 0 0;border:1px solid ${activeTab === t.id ? 'var(--border)' : 'transparent'};border-bottom:${activeTab === t.id ? '1px solid var(--surface)' : '1px solid var(--border)'};background:${activeTab === t.id ? 'var(--surface)' : 'transparent'};color:${activeTab === t.id ? '#C9A84C' : 'var(--muted)'};margin-bottom:-1px;white-space:nowrap;flex-shrink:0">${t.label}</a>
       `).join("")}
     </div>
   `;
