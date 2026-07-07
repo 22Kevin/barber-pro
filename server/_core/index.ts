@@ -851,6 +851,20 @@ async function startServer() {
     res.sendFile(landingPath);
   });
 
+  // ── Subpaginas da landing (reestruturação: cada aba do menu com conteúdo próprio) ──
+  const landingSubpages = ["sistema", "pagamentos", "assinaturas", "como-funciona"];
+  for (const slug of landingSubpages) {
+    const devPath = path.join(__dirname, "..", "landing", `${slug}.html`);
+    const prodPath = path.join(process.cwd(), "server", "landing", `${slug}.html`);
+    const subpagePath = existsSync(devPath) ? devPath : prodPath;
+    app.get(`/${slug}`, (_req, res) => {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      res.sendFile(subpagePath);
+    });
+  }
+
   // Páginas legais — conteúdo embutido no bundle
   // ── SEO: favicon ─────────────────────────────────────────────────────────
   app.get("/favicon.ico", (_req, res) => {

@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Barber Pro — Sistema Completo de Barbearia</title>
+  <meta name="description" content="Automatize agendamentos, fidelize clientes e controle seu financeiro. O sistema completo feito para barbeiros. 14 dias grátis." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Barber Pro — Coloque Ordem na Sua Barbearia" />
+  <meta property="og:description" content="Agendamento inteligente, clube de assinatura e controle financeiro. Tudo em um só lugar. Teste 14 dias grátis." />
+  <meta property="og:image" content="https://pub-203143bd86174070b67f8f64a13a65c2.r2.dev/assets/barber-pro-icon-512.png" />
+  <meta property="og:url" content="https://usebarberpro.com" />
+  <meta property="og:site_name" content="Barber Pro" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="canonical" href="https://usebarberpro.com/" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Barber Pro",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web, Android",
+    "description": "Sistema completo de gestão para barbearias: agendamento online, controle financeiro, comissões, estoque e clube de assinatura.",
+    "url": "https://usebarberpro.com",
+    "inLanguage": "pt-BR",
+    "offers": {
+      "@type": "AggregateOffer",
+      "lowPrice": "49.90",
+      "highPrice": "169.90",
+      "priceCurrency": "BRL",
+      "offerCount": "3"
+    }
+  }
+  </script>
+  <link rel="canonical" href="https://usebarberpro.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --gold: #C9A84C;
+      --gold-light: #e8c97a;
+      --gold-dim: rgba(201,168,76,0.12);
+      --gold-border: rgba(201,168,76,0.28);
+      --black: #080808;
+      --black-2: #0f0f0f;
+      --black-3: #161616;
+      --black-4: #1e1e1e;
+      --white: #F5F3EE;
+      --gray: #5a5a5a;
+      --gray-light: #9a9a9a;
+      --gray-mid: #c0c0c0;
+    }
+    html { scroll-behavior: smooth; overflow-x: hidden; }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--black); color: var(--white); overflow-x: hidden; max-width: 100%; }
+    a { text-decoration: none; color: inherit; }
+    img { max-width: 100%; display: block; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; width: 100%; }
+    .section { padding: 96px 0; overflow: hidden; }
+    .text-center { text-align: center; }
+    .mx-auto { margin-left: auto; margin-right: auto; }
+    .gold-gradient { background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 55%, #9a7a2e 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .section-label { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); background: var(--gold-dim); border: 1px solid var(--gold-border); padding: 6px 14px; border-radius: 100px; margin-bottom: 20px; }
+    .section-title { font-family: 'Playfair Display', serif; font-size: clamp(30px, 4.5vw, 50px); font-weight: 900; line-height: 1.15; margin-bottom: 18px; }
+    .section-sub { font-size: 17px; color: var(--gray-light); line-height: 1.8; }
+
+    /* ── NAV ── */
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 68px; display: flex; align-items: center; background: rgba(8,8,8,0.92); backdrop-filter: blur(24px) saturate(180%); border-bottom: 1px solid rgba(255,255,255,0.05); transition: all 0.3s; }
+    nav.scrolled { background: rgba(8,8,8,0.97); border-bottom-color: rgba(201,168,76,0.15); box-shadow: 0 4px 40px rgba(0,0,0,0.6); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+    .nav-logo { display: flex; align-items: center; gap: 10px; }
+    .nav-logo img { width: 36px; height: 36px; border-radius: 8px; object-fit: contain; }
+    .nav-logo-text { font-size: 16px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+    .nav-logo-text span { color: var(--gold); }
+    .nav-links { display: flex; align-items: center; gap: 28px; list-style: none; }
+    .nav-links a { font-size: 13.5px; font-weight: 500; color: var(--gray-light); transition: color 0.2s; position: relative; }
+    .nav-links a:hover { color: var(--white); }
+    .nav-links a.active { color: var(--gold); }
+    .nav-links a.active::after { content: ''; position: absolute; bottom: -4px; left: 0; right: 0; height: 2px; background: var(--gold); border-radius: 2px; }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+    .btn-ghost { font-size: 13px; font-weight: 600; color: var(--gray-mid); border: 1px solid rgba(255,255,255,0.1); padding: 8px 18px; border-radius: 8px; transition: all 0.2s; cursor: pointer; background: none; font-family: 'Inter', sans-serif; }
+    .btn-ghost:hover { color: var(--white); border-color: rgba(255,255,255,0.28); }
+    .btn-gold { font-size: 13px; font-weight: 700; background: var(--gold); color: var(--black); padding: 9px 20px; border-radius: 8px; transition: opacity 0.2s; cursor: pointer; border: none; font-family: 'Inter', sans-serif; }
+    .btn-gold:hover { opacity: 0.88; }
+    .nav-hamburger { display: none; flex-direction: column; gap: 5px; width: 38px; height: 38px; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; border-radius: 8px; }
+    .nav-hamburger span { display: block; height: 2px; background: var(--white); border-radius: 2px; transition: all 0.3s; }
+    .nav-hamburger span:nth-child(1) { width: 22px; }
+    .nav-hamburger span:nth-child(2) { width: 16px; }
+    .nav-hamburger span:nth-child(3) { width: 22px; }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); width: 22px; }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); width: 22px; }
+    .nav-drawer { display: none; position: fixed; top: 68px; left: 0; right: 0; z-index: 999; background: rgba(8,8,8,0.98); backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.06); padding: 20px 24px 28px; flex-direction: column; gap: 4px; transform: translateY(-8px); opacity: 0; transition: all 0.25s; pointer-events: none; }
+    .nav-drawer.open { transform: translateY(0); opacity: 1; pointer-events: all; }
+    .nav-drawer a { display: block; padding: 13px 0; font-size: 16px; font-weight: 500; color: var(--gray-light); border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .nav-drawer a:last-child { border-bottom: none; }
+    .nav-drawer .drawer-cta { margin-top: 16px; background: linear-gradient(135deg, var(--gold-light), var(--gold)); color: var(--black); font-weight: 700; text-align: center; padding: 14px; border-radius: 10px; font-size: 15px; border-bottom: none; }
+
+    /* ── HERO ── */
+    #hero { min-height: 100vh; display: flex; align-items: center; position: relative; overflow: hidden; padding: 100px 0 80px; }
+    .hero-bg-image { position: absolute; inset: 0; background: #080808; }
+    .hero-bg-overlay { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 80% at 75% 50%, rgba(201,168,76,0.07) 0%, transparent 60%), radial-gradient(ellipse 40% 60% at 20% 30%, rgba(201,168,76,0.04) 0%, transparent 50%); }
+    .hero-bg-glow { position: absolute; inset: 0; background: radial-gradient(ellipse 55% 70% at 8% 65%, rgba(201,168,76,0.06) 0%, transparent 60%); }
+    .hero-bg-image::after { content:''; position:absolute; inset:0; background-image: repeating-linear-gradient(0deg, transparent, transparent 79px, rgba(201,168,76,0.03) 80px), repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(201,168,76,0.03) 80px); }
+    .hero-content { position: relative; z-index: 2; max-width: 600px; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--gold-dim); border: 1px solid var(--gold-border); padding: 7px 14px; border-radius: 100px; font-size: 12px; font-weight: 700; color: var(--gold-light); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 28px; }
+    .hero-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)} }
+    .hero-title { font-family: 'Playfair Display', serif; font-size: clamp(42px, 6vw, 70px); font-weight: 900; line-height: 1.08; margin-bottom: 24px; }
+    .hero-sub { font-size: 18px; color: rgba(245,243,238,0.78); line-height: 1.75; margin-bottom: 40px; max-width: 480px; }
+    .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 56px; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, var(--gold-light), var(--gold)); color: var(--black); font-size: 15px; font-weight: 800; padding: 15px 30px; border-radius: 10px; transition: all 0.2s; border: none; cursor: pointer; font-family: 'Inter', sans-serif; box-shadow: 0 6px 28px rgba(201,168,76,0.3); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 36px rgba(201,168,76,0.45); }
+    .btn-outline { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.06); color: var(--white); font-size: 15px; font-weight: 600; padding: 14px 26px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); transition: all 0.2s; }
+    .btn-outline:hover { border-color: var(--gold-border); color: var(--gold-light); background: var(--gold-dim); }
+    .hero-stats { display: flex; gap: 32px; align-items: center; }
+    .hero-stat-val { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; color: var(--gold); line-height: 1; }
+    .hero-stat-lbl { font-size: 12px; color: rgba(245,243,238,0.5); margin-top: 4px; }
+    .hero-stat-div { width: 1px; background: rgba(201,168,76,0.2); align-self: stretch; }
+
+    /* ── MARQUEE ── */
+    .marquee-wrap { overflow: hidden; border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 18px 0; background: var(--black-2); }
+    .marquee-track { display: flex; animation: marquee 30s linear infinite; width: max-content; }
+    @keyframes marquee { from{transform:translateX(0)}to{transform:translateX(-50%)} }
+    .marquee-item { display: flex; align-items: center; gap: 10px; padding: 0 30px; font-size: 13px; font-weight: 600; color: var(--gray); white-space: nowrap; }
+    .marquee-dot { color: var(--gold); font-size: 10px; }
+
+    /* ── PAIN SECTION ── */
+    .pain-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 56px; }
+    .pain-card { background: var(--black-3); border: 1px solid rgba(255,255,255,0.06); border-radius: 18px; padding: 28px; transition: border-color 0.3s; }
+    .pain-card:hover { border-color: var(--gold-border); }
+    .pain-icon { font-size: 34px; margin-bottom: 16px; }
+    .pain-title { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    .pain-desc { font-size: 14px; color: var(--gray-light); line-height: 1.65; }
+    .pain-solution { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; font-weight: 600; color: var(--gold); }
+
+    /* ── FEATURES ── */
+    .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 56px; }
+    .feat-card { background: var(--black-3); border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 30px; display: flex; gap: 18px; align-items: flex-start; transition: all 0.3s; }
+    .feat-card:hover { border-color: var(--gold-border); transform: translateY(-3px); }
+    .feat-card.wide { grid-column: span 2; background: linear-gradient(135deg, rgba(201,168,76,0.1), rgba(201,168,76,0.03)); border-color: rgba(201,168,76,0.3); }
+    .feat-card.wide:hover { border-color: rgba(201,168,76,0.5); }
+    .feat-icon { width: 50px; height: 50px; background: var(--gold-dim); border: 1px solid var(--gold-border); border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+    .feat-title { font-size: 17px; font-weight: 700; margin-bottom: 9px; }
+    .feat-desc { font-size: 14px; color: var(--gray-light); line-height: 1.65; }
+    .feat-tag { display: inline-block; font-size: 11px; font-weight: 700; color: var(--gold); background: var(--gold-dim); padding: 3px 10px; border-radius: 100px; margin-top: 12px; }
+
+    /* ── MASCOT ── */
+    .mascot-section { background: var(--black-2); }
+    .mascot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center; }
+    .mascot-img-wrap { position: relative; }
+    .mascot-img { border-radius: 20px; box-shadow: 0 24px 72px rgba(0,0,0,0.65); width: 100%; }
+    .mascot-img-glow { position: absolute; inset: -1px; border-radius: 21px; background: linear-gradient(135deg, rgba(201,168,76,0.3), transparent 60%); z-index: -1; }
+    .mascot-list { list-style: none; display: flex; flex-direction: column; gap: 20px; margin: 28px 0 36px; }
+    .mascot-list li { display: flex; align-items: flex-start; gap: 14px; }
+    .mascot-list-icon { width: 38px; height: 38px; background: var(--gold-dim); border: 1px solid var(--gold-border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+    .mascot-list-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .mascot-list-desc { font-size: 13px; color: var(--gray-light); line-height: 1.55; }
+
+    /* ── STEPS ── */
+    .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 56px; position: relative; }
+    .steps-grid::before { content: ''; position: absolute; top: 27px; left: calc(16.67% + 16px); right: calc(16.67% + 16px); height: 1px; background: linear-gradient(90deg, transparent, var(--gold-border), transparent); }
+    .step-card { text-align: center; }
+    .step-num { width: 54px; height: 54px; background: var(--gold-dim); border: 1px solid var(--gold-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; color: var(--gold); margin: 0 auto 20px; position: relative; z-index: 1; }
+    .step-title { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+    .step-desc { font-size: 14px; color: var(--gray-light); line-height: 1.65; }
+
+    /* ── PRICING ── */
+    .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 56px; }
+    .price-card { background: var(--black-3); border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; padding: 36px 28px; position: relative; transition: all 0.3s; }
+    .price-card:hover { border-color: var(--gold-border); transform: translateY(-4px); }
+    .price-card.best { background: linear-gradient(160deg, rgba(201,168,76,0.13), rgba(201,168,76,0.04)); border-color: rgba(201,168,76,0.4); transform: scale(1.03); }
+    .price-card.best:hover { transform: scale(1.03) translateY(-4px); }
+    .price-badge { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, var(--gold-light), var(--gold)); color: var(--black); font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; padding: 5px 16px; border-radius: 100px; white-space: nowrap; }
+    .price-plan { font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+    .price-val { font-size: 50px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+    .price-val sup { font-size: 20px; font-weight: 700; vertical-align: top; margin-top: 10px; display: inline-block; }
+    .price-period { font-size: 13px; color: var(--gray); margin-bottom: 24px; }
+    .price-divider { height: 1px; background: rgba(255,255,255,0.07); margin-bottom: 24px; }
+    .price-feats { list-style: none; display: flex; flex-direction: column; gap: 11px; margin-bottom: 30px; }
+    .price-feats li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--gray-mid); }
+    .price-feats li::before { content: '✓'; color: var(--gold); font-weight: 700; font-size: 13px; flex-shrink: 0; }
+    .price-feats li.off { color: var(--gray); opacity: 0.4; }
+    .price-feats li.off::before { content: '–'; color: var(--gray); }
+    .btn-plan { display: block; text-align: center; padding: 14px; border-radius: 10px; font-weight: 700; font-size: 15px; transition: all 0.2s; cursor: pointer; border: none; font-family: 'Inter', sans-serif; width: 100%; }
+    .btn-plan-gold { background: linear-gradient(135deg, var(--gold-light), var(--gold)); color: var(--black); }
+    .btn-plan-gold:hover { box-shadow: 0 8px 28px rgba(201,168,76,0.4); transform: translateY(-1px); }
+    .btn-plan-outline { background: transparent; color: var(--gold); border: 1px solid var(--gold-border); }
+    .btn-plan-outline:hover { background: var(--gold-dim); border-color: var(--gold); }
+
+    /* ── TESTIMONIALS ── */
+    .testimonials-section { background: var(--black-2); }
+    .testi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 56px; }
+    .testi-card { background: var(--black-3); border: 1px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 28px; }
+    .testi-stars { color: var(--gold); font-size: 14px; letter-spacing: 2px; margin-bottom: 16px; }
+    .testi-text { font-size: 14px; color: var(--gray-light); line-height: 1.72; margin-bottom: 20px; font-style: italic; }
+    .testi-author { display: flex; align-items: center; gap: 12px; }
+    .testi-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--gold-dim); border: 1.5px solid var(--gold-border); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .testi-name { font-size: 14px; font-weight: 700; }
+    .testi-role { font-size: 12px; color: var(--gray); margin-top: 2px; }
+
+    /* ── FAQ ── */
+    .faq-list { max-width: 700px; margin: 48px auto 0; display: flex; flex-direction: column; gap: 10px; }
+    .faq-item { background: var(--black-3); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; overflow: hidden; transition: border-color 0.2s; }
+    .faq-item.open { border-color: var(--gold-border); }
+    .faq-q { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 22px; background: none; border: none; color: var(--white); font-size: 15px; font-weight: 600; cursor: pointer; text-align: left; font-family: 'Inter', sans-serif; }
+    .faq-icon { font-size: 20px; color: var(--gold); flex-shrink: 0; transition: transform 0.2s; }
+    .faq-item.open .faq-icon { transform: rotate(45deg); }
+    .faq-a { display: none; padding: 0 22px 20px; font-size: 14px; color: var(--gray-light); line-height: 1.72; }
+    .faq-item.open .faq-a { display: block; }
+
+    /* ── CTA FINAL ── */
+    .cta-box { background: linear-gradient(135deg, rgba(201,168,76,0.1), rgba(201,168,76,0.03)); border: 1px solid rgba(201,168,76,0.25); border-radius: 28px; padding: 72px 48px; text-align: center; position: relative; overflow: hidden; }
+    .cta-box::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 60% 55% at 50% 0%, rgba(201,168,76,0.14) 0%, transparent 70%); pointer-events: none; }
+    .cta-title { font-family: 'Playfair Display', serif; font-size: clamp(30px, 4vw, 46px); font-weight: 900; margin-bottom: 16px; position: relative; }
+    .cta-sub { font-size: 17px; color: var(--gray-light); margin-bottom: 36px; max-width: 460px; margin-left: auto; margin-right: auto; position: relative; }
+    .cta-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; position: relative; }
+    .cta-note { margin-top: 20px; font-size: 13px; color: var(--gray); position: relative; }
+
+    /* ── FOOTER ── */
+    footer { background: var(--black-2); border-top: 1px solid rgba(255,255,255,0.05); padding: 48px 0 32px; }
+    .footer-top { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+    .footer-logo { display: flex; align-items: center; gap: 10px; }
+    .footer-logo img { width: 32px; height: 32px; border-radius: 7px; object-fit: contain; }
+    .footer-logo-text { font-size: 15px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
+    .footer-logo-text span { color: var(--gold); }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { font-size: 13px; color: var(--gray); transition: color 0.2s; }
+    .footer-links a:hover { color: var(--white); }
+    .footer-bottom { margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .footer-copy { font-size: 12px; color: var(--gray); }
+
+    /* ── MODALS ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: var(--black-3); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 36px; width: 100%; max-width: 456px; position: relative; margin: auto; }
+    .modal-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.06); border: none; color: var(--gray-light); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .modal-close:hover { background: rgba(255,255,255,0.12); color: var(--white); }
+    .modal-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+    .modal-logo img { width: 34px; height: 34px; border-radius: 8px; object-fit: contain; }
+    .modal-logo-text { font-size: 15px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
+    .modal-logo-text span { color: var(--gold); }
+    .modal-title { font-family: 'Playfair Display', serif; font-size: 23px; font-weight: 800; margin-bottom: 8px; }
+    .modal-sub { font-size: 14px; color: var(--gray-light); margin-bottom: 22px; line-height: 1.6; }
+    .modal-steps { display: flex; gap: 6px; margin-bottom: 22px; }
+    .modal-step { flex: 1; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; transition: background 0.3s; }
+    .modal-step.active { background: var(--gold); }
+    .modal-step.done { background: rgba(201,168,76,0.45); }
+    .modal-plan-sel { display: flex; align-items: center; justify-content: space-between; background: var(--gold-dim); border: 1px solid var(--gold-border); border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; transition: opacity 0.2s; }
+    .modal-plan-sel:hover { opacity: 0.85; }
+    .plan-option-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; background: none; border: none; border-bottom: 1px solid rgba(255,255,255,0.06); color: var(--white); font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; text-align: left; transition: background 0.15s; }
+    .plan-option-btn:last-child { border-bottom: none; }
+    .plan-option-btn:hover { background: rgba(255,255,255,0.05); }
+    .plan-option-btn.plan-option-active { color: var(--gold-light); background: var(--gold-dim); }
+    .modal-plan-name { font-size: 11px; font-weight: 700; color: var(--gold); letter-spacing: 1px; text-transform: uppercase; }
+    .modal-plan-price { font-size: 18px; font-weight: 800; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 11px; font-weight: 600; color: var(--gray-mid); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .form-input { width: 100%; background: var(--black-4); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px 14px; font-size: 14px; color: var(--white); font-family: 'Inter', sans-serif; transition: border-color 0.2s; outline: none; }
+    .form-input:focus { border-color: var(--gold); }
+    .form-input::placeholder { color: var(--gray); }
+    .form-input.input-error { border-color: #F87171 !important; }
+    .field-error-msg { display: none; font-size: 11px; color: #F87171; margin-top: 4px; font-weight: 500; }
+    .field-error-msg.visible { display: block; }
+    .form-slug-preview { font-size: 12px; color: var(--gold); margin-top: 6px; font-weight: 600; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn-submit { width: 100%; background: linear-gradient(135deg, var(--gold-light), var(--gold)); color: var(--black); font-size: 15px; font-weight: 800; padding: 14px; border-radius: 10px; border: none; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; margin-top: 8px; }
+    .btn-submit:hover { box-shadow: 0 8px 28px rgba(201,168,76,0.4); }
+    .day-btn { background: var(--black-4); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 10px; font-size: 12px; font-weight: 600; color: var(--gray-light); cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; min-width: 44px; }
+    .day-btn.active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold-light); }
+    .day-btn:hover { border-color: var(--gold-border); color: var(--white); }
+    .modal-terms { font-size: 11px; color: var(--gray); text-align: center; margin-top: 16px; line-height: 1.6; }
+    .modal-terms a { color: var(--gold-light); }
+    .modal-login-link { font-size: 13px; color: var(--gray); text-align: center; margin-top: 12px; }
+    .modal-login-link a { color: var(--gold-light); font-weight: 600; }
+    .login-error { display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #F87171; font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; }
+    .login-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+    .login-divider-line { flex: 1; height: 1px; background: rgba(255,255,255,0.07); }
+    .login-divider-text { font-size: 12px; color: var(--gray); }
+    .modal-success { text-align: center; padding: 20px 0; }
+    .modal-success-icon { font-size: 54px; margin-bottom: 16px; }
+    .modal-success-title { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 800; margin-bottom: 12px; }
+    .modal-success-sub { font-size: 14px; color: var(--gray-light); line-height: 1.65; margin-bottom: 24px; }
+    .modal-success-link { font-size: 13px; font-weight: 700; color: var(--gold); background: var(--gold-dim); border: 1px solid var(--gold-border); border-radius: 8px; padding: 10px 16px; margin-bottom: 20px; word-break: break-all; }
+
+    /* ── WHATSAPP ── */
+    .wa-float { position: fixed; bottom: 28px; right: 28px; z-index: 900; width: 54px; height: 54px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(37,211,102,0.4); transition: transform 0.2s; }
+    .wa-float:hover { transform: scale(1.1); }
+    .wa-float svg { width: 26px; height: 26px; fill: white; }
+
+    /* ── FADE UP — removido, elementos sempre visíveis ── */
+    .d1, .d2, .d3 {}
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .mascot-grid { grid-template-columns: 1fr; gap: 40px; }
+      .mascot-img { max-width: 360px; margin: 0 auto; }
+      .features-grid { grid-template-columns: 1fr; }
+      .feat-card.wide { grid-column: span 1; }
+      .pain-grid, .steps-grid, .pricing-grid, .testi-grid { grid-template-columns: 1fr; }
+      .price-card.best { transform: none; }
+      .steps-grid::before { display: none; }
+      .nav-links, .nav-actions { display: none; }
+      .nav-hamburger { display: flex; }
+      .nav-drawer { display: flex; }
+      .cta-box { padding: 48px 28px; }
+      .footer-top { flex-direction: column; align-items: flex-start; }
+      .footer-bottom { flex-direction: column; align-items: flex-start; gap: 12px; }
+      /* Showcase mockups — 1 coluna em tablet */
+      .mockup-body[style*="grid-template-columns: 280px"] { display: flex !important; flex-direction: column !important; }
+      .mockup-body > div[style*="width:280px"], .mockup-body > div[style*="width: 280px"] { width: 100% !important; border-right: none !important; border-bottom: 1px solid #1a1a1a; }
+      /* Grids de 3 colunas viram 1 */
+      div[style*="grid-template-columns: repeat(3"] { display: flex !important; flex-direction: column !important; }
+      div[style*="grid-template-columns:repeat(3"] { display: flex !important; flex-direction: column !important; }
+      /* Grids de 4 colunas viram 2 */
+      div[style*="grid-template-columns: repeat(4"] { grid-template-columns: 1fr 1fr !important; }
+      div[style*="grid-template-columns:repeat(4"] { grid-template-columns: 1fr 1fr !important; }
+      /* Grids de 2 colunas viram 1 */
+      div[style*="grid-template-columns: 1.2fr 1fr"], div[style*="grid-template-columns: 1fr 1fr"], div[style*="grid-template-columns:1.2fr 1fr"] { display: flex !important; flex-direction: column !important; }
+      /* Feat mini grid */
+      .feat-grid-mini { grid-template-columns: 1fr 1fr; }
+      /* Social proof bar */
+      .social-proof-bar .container { gap: 10px; font-size: 11px; }
+      .spb-div { display: none; }
+      /* Sub steps */
+      .sub-steps { flex-direction: column; }
+      .sub-arrow { display: none; }
+      /* Payment flow steps */
+      .payment-flow-steps { flex-direction: column; align-items: center; }
+      .pf-arrow { display: none; }
+      /* Pricing guarantee */
+      .pricing-guarantee { flex-direction: column; text-align: center; }
+      /* App mobile */
+      .app-mobile-grid { grid-template-columns: 1fr; gap: 40px; }
+      .app-mobile-grid > div:last-child { order: -1; }
+    }
+    @media (max-width: 600px) {
+      html, body { overflow-x: hidden; width: 100%; }
+      .section { padding: 56px 0; }
+      .container { padding: 0 16px; }
+      .hero-actions { flex-direction: column; align-items: stretch; }
+      .hero-actions .btn-primary, .hero-actions .btn-secondary { text-align: center; justify-content: center; }
+      .hero-stats { gap: 0; flex-wrap: wrap; }
+      .hero-stat { min-width: 50%; padding: 12px; }
+      .form-row { grid-template-columns: 1fr; }
+      /* Showcase tabs — scroll horizontal */
+      .showcase-tabs { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding-bottom: 8px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .showcase-tabs::-webkit-scrollbar { display: none; }
+      .showcase-tab { white-space: nowrap; flex-shrink: 0; padding: 8px 14px; font-size: 13px; }
+      /* Mockup browsers — scroll horizontal */
+      .mockup-browser { overflow-x: auto; }
+      .mockup-body { min-width: 0; }
+      /* Grids inline forçados para coluna única */
+      div[style*="display:grid"], div[style*="display: grid"] { display: flex !important; flex-direction: column !important; gap: 10px !important; }
+      /* Exceção: grids que devem ficar em 2 colunas no mobile */
+      .feat-grid-mini { display: grid !important; grid-template-columns: 1fr 1fr !important; }
+      /* Pain grid */
+      .pain-grid { grid-template-columns: 1fr; }
+      /* Feat mini */
+      .feat-grid-mini { grid-template-columns: 1fr 1fr; }
+      /* Sub counter */
+      .sub-counter-inner { flex-direction: column; gap: 20px; }
+      .sub-counter-inner > div:nth-child(2) { display: none; }
+      /* Section titles */
+      .section-title { font-size: clamp(24px, 7vw, 40px); }
+      /* Showcase mockup body — limitar altura e scroll */
+      .showcase-screen .mockup-body { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      /* Pricing cards */
+      .pricing-grid { grid-template-columns: 1fr; }
+      /* Footer */
+      .footer-trust-badges { flex-direction: column; gap: 6px; }
+      .footer-social-links { margin-top: 12px; }
+      /* CTA box */
+      .cta-box { padding: 40px 20px; border-radius: 16px; }
+      /* FAQ */
+      .faq-question { font-size: 14px; padding: 16px 18px; }
+    }
+
+  /* SHOWCASE TABS */
+  .showcase-tabs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:28px}
+  .showcase-tab{background:transparent;border:1px solid rgba(255,255,255,.08);color:#888;border-radius:100px;padding:9px 20px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+  .showcase-tab:hover{border-color:rgba(201,168,76,.3);color:#C9A84C}
+  .showcase-tab.active{background:rgba(201,168,76,.12);border-color:rgba(201,168,76,.35);color:#C9A84C}
+  .showcase-screen{display:none}
+  .showcase-screen.active{display:block}
+  .mockup-browser{background:#111;border:1px solid #1e1e1e;border-radius:14px;overflow:hidden;width:100%}
+  .mockup-bar{background:#0A0A0A;padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1a1a1a}
+  .mockup-dots{display:flex;gap:6px}
+  .mockup-dots span{width:10px;height:10px;border-radius:50%;background:#333}
+  .mockup-dots span:nth-child(1){background:#ff5f57}
+  .mockup-dots span:nth-child(2){background:#febc2e}
+  .mockup-dots span:nth-child(3){background:#28c840}
+  .mockup-url{background:#1a1a1a;border-radius:5px;padding:4px 12px;color:#555;font-size:11px;flex:1}
+  .mockup-body{padding:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* PAYMENTS */
+  .payments-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:48px}
+  .payment-card{background:#0A0A0A;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:28px}
+  .payment-card.payment-highlight{background:rgba(201,168,76,.04);border-color:rgba(201,168,76,.22)}
+  .payment-icon{font-size:28px;margin-bottom:14px}
+  .payment-title{color:var(--white);font-size:17px;font-weight:700;margin-bottom:10px}
+  .payment-desc{color:var(--gray-light);font-size:14px;line-height:1.65}
+  .payment-flow{background:#0A0A0A;border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:40px 32px}
+  .payment-flow-title{color:var(--white);font-size:20px;font-weight:700;text-align:center;margin-bottom:32px}
+  .payment-flow-steps{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:8px;margin-bottom:28px}
+  .pf-step{text-align:center;flex:1;min-width:140px;max-width:180px}
+  .pf-num{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#C9A84C,#A07830);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:#050505;font-size:16px;font-weight:900}
+  .pf-title{color:var(--white);font-size:14px;font-weight:700;margin-bottom:6px}
+  .pf-desc{color:var(--gray-light);font-size:13px;line-height:1.5}
+  .pf-arrow{color:rgba(201,168,76,.4);font-size:24px;align-self:center;padding:0 4px;margin-top:-20px}
+  .asaas-badge{display:flex;align-items:center;gap:12px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06)}
+  .asaas-logo{width:36px;height:36px;background:#009EE3;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900;flex-shrink:0}
+  .asaas-badge p{color:var(--gray-light);font-size:13px;line-height:1.5;margin:0}
+  /* SUBSCRIPTION */
+  .sub-steps{display:flex;flex-direction:column;gap:20px;margin-bottom:56px}
+  .sub-step{background:#0F0F0F;border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:28px;position:relative;flex:1}
+  .sub-step-num{position:absolute;top:20px;right:20px;font-size:40px;font-weight:900;color:rgba(201,168,76,.07);line-height:1}
+  .sub-step-icon{font-size:28px;margin-bottom:14px}
+  .sub-step-title{color:var(--white);font-size:17px;font-weight:700;margin-bottom:8px}
+  .sub-step-desc{color:var(--gray-light);font-size:14px;line-height:1.6;margin-bottom:14px}
+  .sub-step-tag{display:inline-block;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.2);color:var(--gold);font-size:13px;font-weight:600;padding:5px 14px;border-radius:8px}
+  .sub-arrow{display:none;color:rgba(201,168,76,.4);font-size:28px;align-self:center}
+  .sub-counter{background:linear-gradient(135deg,rgba(201,168,76,.08),rgba(201,168,76,.03));border:1px solid rgba(201,168,76,.2);border-radius:20px;padding:40px 32px;text-align:center;margin-bottom:40px}
+  .sub-counter-inner{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:32px}
+  .sub-counter-num{font-size:clamp(2rem,5vw,3.5rem);font-weight:900;color:var(--white);letter-spacing:-2px;line-height:1}
+  .sub-counter-rev{font-size:clamp(2.5rem,6vw,4rem);font-weight:900;background:linear-gradient(135deg,#C9A84C,#F0C060);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-3px;line-height:1}
+  .sub-benefits{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+  .sub-benefit{display:flex;align-items:flex-start;gap:12px;background:#0A0A0A;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px 16px}
+  .sub-benefit-icon{font-size:20px;flex-shrink:0}
+  .sub-benefit span:last-child{color:#C8C4BC;font-size:14px;line-height:1.5}
+  @media(min-width:900px){
+    .sub-steps{flex-direction:row;align-items:stretch}
+    .sub-arrow{display:flex;align-items:center;flex-shrink:0;padding:0 4px}
+  }
+
+
+  /* Pain cards V2 */
+  .pain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:48px}
+  .pain-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .pain-number{font-family:'Playfair Display',serif;font-size:48px;font-weight:900;color:rgba(220,53,69,0.15);line-height:1}
+  .pain-icon-wrap{font-size:32px}
+  .pain-solution{display:inline-flex;align-items:center;gap:6px;color:var(--gold);font-size:13px;font-weight:600;margin-top:14px;padding:7px 14px;background:rgba(201,168,76,0.08);border-radius:8px;border:1px solid rgba(201,168,76,0.2)}
+  .pain-sol-icon{font-size:11px}
+
+  /* Feat mini grid */
+  .feat-grid-mini{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:40px 0 48px}
+  .feat-mini-card{background:var(--black-3);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:18px;transition:border-color 0.2s,transform 0.2s}
+  .feat-mini-card:hover{border-color:rgba(201,168,76,0.3);transform:translateY(-2px)}
+  .feat-mini-card.feat-mini-highlight{background:rgba(201,168,76,0.05);border-color:rgba(201,168,76,0.25)}
+  .feat-mini-icon{font-size:24px;margin-bottom:10px}
+  .feat-mini-title{color:var(--white);font-size:14px;font-weight:700;margin-bottom:6px}
+  .feat-mini-desc{color:var(--gray-light);font-size:13px;line-height:1.55}
+
+  /* === MELHORIAS V2 === */
+
+  /* Social proof bar */
+  .social-proof-bar{background:rgba(201,168,76,0.07);border-bottom:1px solid rgba(201,168,76,0.18);padding:9px 0;font-size:12.5px;color:rgba(245,243,238,0.72);text-align:center}
+  .social-proof-bar .container{display:flex;justify-content:center;align-items:center;gap:18px;flex-wrap:wrap}
+  .spb-div{color:rgba(201,168,76,0.35)}
+
+  /* Hero melhorado */
+  .btn-primary{font-size:17px!important;padding:17px 34px!important;animation:pulse-cta 2.5s ease-in-out infinite;letter-spacing:0.3px}
+  @keyframes pulse-cta{0%,100%{box-shadow:0 6px 28px rgba(201,168,76,0.3)}50%{box-shadow:0 6px 50px rgba(201,168,76,0.6)}}
+  .hero-urgency{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:rgba(245,243,238,0.58)}
+  .urgency-dot{width:8px;height:8px;background:#4CAF50;border-radius:50%;animation:blink 1.5s ease-in-out infinite;flex-shrink:0}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  .hero-stat-val{font-size:34px!important}
+  .hero-stats{border-top:1px solid rgba(201,168,76,0.18);padding-top:28px;margin-top:8px}
+
+  /* Pain cards com borda vermelha */
+  .pain-card{background:linear-gradient(145deg,#120a0a,#190e0e)!important;border:1px solid rgba(220,53,69,0.22)!important;position:relative;overflow:hidden}
+  .pain-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#dc3545,#ff6b35)}
+  .pain-card:hover{border-color:rgba(220,53,69,0.45)!important}
+
+  /* Pricing featured melhorado */
+  .price-card.best{background:linear-gradient(160deg,rgba(201,168,76,0.14),rgba(201,168,76,0.05))!important;border:2px solid rgba(201,168,76,0.55)!important;box-shadow:0 0 60px rgba(201,168,76,0.18),0 20px 60px rgba(0,0,0,0.5)!important}
+  .pricing-guarantee{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:28px;padding:20px 24px;background:rgba(201,168,76,0.05);border:1px solid rgba(201,168,76,0.15);border-radius:12px;flex-wrap:wrap;text-align:left}
+  .pricing-guarantee-icon{font-size:32px;flex-shrink:0}
+  .pricing-guarantee strong{display:block;color:var(--gold);font-size:15px;margin-bottom:3px}
+  .pricing-guarantee span{font-size:13px;color:rgba(245,243,238,0.58);line-height:1.5}
+
+  /* Testimonials melhorados */
+  .test-card{background:linear-gradient(145deg,#111,#181818);border:1px solid rgba(201,168,76,0.15);border-radius:16px;padding:28px;transition:border-color 0.3s,transform 0.3s;display:flex;flex-direction:column;gap:0}
+  .test-card:hover{border-color:rgba(201,168,76,0.4);transform:translateY(-4px)}
+  .test-stars{color:var(--gold);font-size:15px;letter-spacing:2px;margin-bottom:14px}
+  .test-text{font-size:15px;line-height:1.72;color:rgba(245,243,238,0.85);font-style:italic;margin-bottom:20px;flex:1}
+  .test-author{display:flex;align-items:center;gap:12px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.07)}
+  .test-avatar{width:46px;height:46px;border-radius:50%;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--black);flex-shrink:0}
+  .test-name{font-size:14px;font-weight:700;color:var(--white)}
+  .test-role{font-size:12px;color:var(--gray-light);margin-top:2px}
+  .test-verified{margin-left:auto;background:rgba(76,175,80,0.13);color:#4CAF50;font-size:11px;padding:3px 9px;border-radius:20px;border:1px solid rgba(76,175,80,0.28);white-space:nowrap}
+
+  /* FAQ melhorado */
+  .faq-item{border:1px solid rgba(201,168,76,0.12)!important;transition:border-color 0.3s,box-shadow 0.2s!important}
+  .faq-item.open{border-color:rgba(201,168,76,0.38)!important;box-shadow:0 0 20px rgba(201,168,76,0.06)}
+
+  /* Footer melhorado */
+  .footer-trust-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  .footer-trust-badge{background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.18);border-radius:8px;padding:6px 12px;font-size:12px;color:rgba(245,243,238,0.65)}
+  .footer-social-links{display:flex;gap:10px;margin-top:16px}
+  .footer-social-link{width:38px;height:38px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--gold);transition:background 0.2s;font-size:16px}
+  .footer-social-link:hover{background:rgba(201,168,76,0.22)}
+  .footer-store-badge{display:inline-block;margin-top:16px;opacity:0.85;transition:opacity 0.2s,transform 0.2s}
+  .footer-store-badge:hover{opacity:1;transform:scale(1.03)}
+
+  /* APP MOBILE */
+  .app-mobile-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:56px;align-items:center;margin-top:16px}
+  .app-feat-list{display:flex;flex-direction:column;gap:16px;margin-bottom:32px}
+  .app-feat-item{display:flex;align-items:flex-start;gap:12px;font-size:15px;color:var(--gray-mid);line-height:1.55}
+  .app-feat-check{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.32);color:var(--gold);font-size:12px;font-weight:800;flex-shrink:0;margin-top:1px}
+  .app-store-badge{display:inline-block;transition:opacity 0.2s,transform 0.2s}
+  .app-store-badge:hover{opacity:0.9;transform:scale(1.03)}
+  .phone-mockup{position:relative;width:250px;height:510px;margin:0 auto;background:#0A0A0A;border:8px solid #1c1c1c;border-radius:42px;box-shadow:0 30px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(201,168,76,0.15);overflow:hidden}
+  .phone-notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:22px;background:#1c1c1c;border-radius:0 0 14px 14px;z-index:10}
+  .phone-screen{width:100%;height:100%;background:linear-gradient(160deg,#0d0d0d,#050505);padding:34px 14px 16px;display:flex;flex-direction:column;gap:10px}
+  .phone-status{display:flex;justify-content:space-between;color:#555;font-size:10px;padding:0 4px 8px}
+  .phone-greeting{color:#F0EEE8;font-size:14px;font-weight:700;margin-bottom:2px}
+  .phone-subtext{color:#777;font-size:11px;margin-bottom:8px}
+  .phone-card{background:#141414;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px}
+  .phone-card.gold{background:rgba(201,168,76,0.1);border-color:rgba(201,168,76,0.35)}
+  .phone-card-title{color:#F0EEE8;font-size:12px;font-weight:700;margin-bottom:4px}
+  .phone-card-sub{color:#888;font-size:10.5px}
+  .phone-card-val{color:var(--gold);font-size:18px;font-weight:800}
+  .phone-fab{margin-top:auto;align-self:flex-end;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--gold-light),var(--gold));display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 8px 24px rgba(201,168,76,0.4)}
+
+  /* Divisores entre seções */
+  .section-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,0.25),transparent);border:none;margin:0}
+
+  /* Scroll animations */
+  .fade-in-up{opacity:0;transform:translateY(28px);transition:opacity 0.6s ease,transform 0.6s ease}
+  .fade-in-up.visible{opacity:1;transform:translateY(0)}
+
+  /* Form melhorado */
+  .form-input:focus{border-color:var(--gold)!important;box-shadow:0 0 0 3px rgba(201,168,76,0.14)!important;background:rgba(201,168,76,0.03)!important}
+
+  /* ── RESPONSIVE EXTRA: Tablets (768px) ── */
+  @media (max-width: 768px) {
+    .hero-title { font-size: clamp(32px, 8vw, 52px); }
+    .section-title { font-size: clamp(24px, 6.5vw, 38px); }
+    .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
+    .price-card.best { transform: none; }
+    .nav-links, .nav-actions { display: none; }
+    .nav-hamburger { display: flex; }
+    .payment-flow { padding: 28px 20px; }
+    .modal-box { padding: 28px 20px; margin: 16px; }
+    .faq-list { margin-top: 32px; }
+    .hero-stats { gap: 0; flex-wrap: wrap; }
+    .hero-stat { min-width: 50%; }
+    .phone-mockup { width: 220px; height: 450px; }
+  }
+
+  /* ── RESPONSIVE EXTRA: Mobile grande (480px) ── */
+  @media (max-width: 480px) {
+    .section { padding: 48px 0; }
+    .container { padding: 0 14px; }
+    .hero-title { font-size: clamp(28px, 9vw, 42px); line-height: 1.15; }
+    .hero-sub { font-size: 15px; }
+    .btn-primary, .btn-secondary, .btn-ghost, .btn-gold { font-size: 14px; padding: 13px 20px; }
+    .hero-actions { flex-direction: column; gap: 10px; }
+    .hero-actions a { text-align: center; justify-content: center; }
+    .hero-urgency { font-size: 12px; }
+    .social-proof-bar { display: none; }
+    .section-title { font-size: clamp(22px, 8vw, 32px); }
+    .section-sub { font-size: 14px; }
+    .pricing-grid { max-width: 100%; }
+    .price-card { padding: 24px 18px; }
+    .price-amount { font-size: 40px; }
+    .price-features li { font-size: 13px; }
+    .faq-question { font-size: 13px; padding: 14px 16px; }
+    .faq-answer { font-size: 13px; padding: 0 16px 14px; }
+    .cta-box { padding: 36px 16px; border-radius: 14px; }
+    .footer-nav-group h4 { font-size: 12px; }
+    .footer-nav-group a { font-size: 13px; }
+    .showcase-tab { padding: 7px 12px; font-size: 12px; }
+    .modal-box { padding: 24px 16px; margin: 12px; }
+    .modal-title { font-size: 20px; }
+    .phone-mockup { width: 200px; height: 410px; }
+    .pain-card { padding: 20px 16px; }
+    .payment-card { padding: 20px 16px; }
+    .sub-counter { padding: 28px 20px; }
+    .wa-float { width: 48px; height: 48px; bottom: 20px; right: 16px; }
+  }
+
+  /* ── RESPONSIVE EXTRA: iPhone SE / pequenos (375px) ── */
+  @media (max-width: 390px) {
+    .container { padding: 0 12px; }
+    .hero-title { font-size: 26px; }
+    .hero-stat { min-width: 100%; }
+    .btn-primary, .btn-gold { font-size: 13px; padding: 12px 16px; }
+    .price-amount { font-size: 36px; }
+    .phone-mockup { width: 180px; height: 368px; }
+    .nav-logo-text { font-size: 14px; }
+  }
+
+  /* ── iOS Safari: safe area ── */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    nav#main-nav { padding-top: env(safe-area-inset-top); }
+    .nav-drawer { padding-bottom: env(safe-area-inset-bottom); }
+    .wa-float { bottom: calc(20px + env(safe-area-inset-bottom)); }
+  }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <div class="container nav-inner">
+    <a href="/" class="nav-logo">
+      <img src="https://pub-203143bd86174070b67f8f64a13a65c2.r2.dev/assets/barber-pro-icon-512.png" alt="Barber Pro" />
+      <span class="nav-logo-text">BARBER <span>PRO</span></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/sistema">O Sistema</a></li>
+      <li><a href="/pagamentos">Pagamentos</a></li>
+      <li><a href="/assinaturas">Assinaturas</a></li>
+      <li><a href="/como-funciona">Como funciona</a></li>
+      <li><a href="/#planos">Planos</a></li>
+      <li><a href="/#faq">FAQ</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="/admin/login" class="btn-ghost">Entrar</a>
+      <a href="/#planos" class="btn-gold" onclick="openModal('Equipe','R$99,90');return false;">Testar grátis</a>
+    </div>
+    <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+<div class="nav-drawer" id="nav-drawer">
+  <a href="/sistema" onclick="closeMobileMenu()">O Sistema</a>
+  <a href="/pagamentos" onclick="closeMobileMenu()">Pagamentos</a>
+  <a href="/assinaturas" onclick="closeMobileMenu()">Assinaturas</a>
+  <a href="/como-funciona" onclick="closeMobileMenu()">Como funciona</a>
+  <a href="/#planos" onclick="closeMobileMenu()">Planos</a>
+  <a href="/#faq" onclick="closeMobileMenu()">FAQ</a>
+  <a href="/admin/login" onclick="closeMobileMenu()">Entrar no painel</a>
+  <a href="/#planos" class="drawer-cta" onclick="closeMobileMenu();openModal('Equipe','R$99,90');">✦ Testar 14 dias grátis</a>
+</div>
+<!-- SOCIAL PROOF BAR -->
+<div class="social-proof-bar">
+  <div class="container">
+    <span>📱 App disponível no Android</span>
+    <span class="spb-div">|</span>
+    <span>🌐 Acesso web em qualquer dispositivo</span>
+    <span class="spb-div">|</span>
+    <span>⏱️ Configure em menos de 5 minutos</span>
+    <span class="spb-div">|</span>
+    <span>🔒 Pagamentos via Asaas · regulamentado pelo Banco Central</span>
+  </div>
+</div>
+<div class="container" style="padding-top:120px;padding-bottom:0">
+  <a href="/" style="color:var(--gray-light);font-size:13px;text-decoration:none;display:inline-flex;align-items:center;gap:6px">← Voltar para a home</a>
+</div>
+<section id="sistema" class="section" style="background:var(--black-2)">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-label">Funcionalidades + Sistema</div>
+      <h2 class="section-title">Cada real que sua barbearia<br/><span class="gold-gradient">pode estar perdendo, resolvido aqui</span></h2>
+      <p class="section-sub mx-auto" style="max-width:620px">Do agendamento ao financeiro, do pagamento online à assinatura recorrente — veja como cada parte do sistema converte diretamente em dinheiro no seu bolso.</p>
+    </div>
+
+    <!-- Funcionalidades em grid antes dos mockups -->
+    <div class="feat-grid-mini">
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">📅</div>
+        <div class="feat-mini-title">Agenda Inteligente</div>
+        <div class="feat-mini-desc">Cliente agenda sozinho 24h/dia. Zero conflito de horário. Zero WhatsApp.</div>
+      </div>
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">💰</div>
+        <div class="feat-mini-title">Financeiro em Tempo Real</div>
+        <div class="feat-mini-desc">Faturamento do dia na palma da mão. Sem planilha, sem anotação.</div>
+      </div>
+      <div class="feat-mini-card feat-mini-highlight">
+        <div class="feat-mini-icon">⭐</div>
+        <div class="feat-mini-title">Assinatura Recorrente</div>
+        <div class="feat-mini-desc">Dinheiro na conta antes de abrir a porta. Todo mês, automático.</div>
+      </div>
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">💳</div>
+        <div class="feat-mini-title">Pagamento Online</div>
+        <div class="feat-mini-desc">Pix, cartão ou boleto. Sem maquininha, sem cobrar pessoalmente.</div>
+      </div>
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">🔔</div>
+        <div class="feat-mini-title">Lembretes Automáticos</div>
+        <div class="feat-mini-desc">Taxa de no-show cai para menos de 5%. Sistema lembra o cliente.</div>
+      </div>
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">🏆</div>
+        <div class="feat-mini-title">Programa de Fidelidade</div>
+        <div class="feat-mini-desc">Pontos, descontos e benefícios. Cliente volta por conta própria.</div>
+      </div>
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">👥</div>
+        <div class="feat-mini-title">Gestão de Equipe</div>
+        <div class="feat-mini-desc">Comissões automáticas. Cada barbeiro com sua agenda e perfil.</div>
+      </div>
+      <div class="feat-mini-card">
+        <div class="feat-mini-icon">🌐</div>
+        <div class="feat-mini-title">Sua Página Própria</div>
+        <div class="feat-mini-desc">Link profissional para o Instagram. Seus clientes te encontram, não o app.</div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin:0 0 28px">
+      <p style="color:var(--gray-light);font-size:15px">Explore cada parte do sistema:</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="showcase-tabs">
+      <button class="showcase-tab active" onclick="showTab('agenda')">📅 Agenda</button>
+      <button class="showcase-tab" onclick="showTab('financeiro')">💰 Financeiro</button>
+      <button class="showcase-tab" onclick="showTab('pagamentos')">💳 Pagamentos Online</button>
+      <button class="showcase-tab" onclick="showTab('assinaturas')">⭐ Planos de Assinatura</button>
+      <button class="showcase-tab" onclick="showTab('pagina')">🌐 Página da Barbearia</button>
+    </div>
+
+    <!-- Screens -->
+    <div id="tab-agenda" class="showcase-screen active">
+      <div class="mockup-browser">
+        <div class="mockup-bar"><div class="mockup-dots"><span></span><span></span><span></span></div><div class="mockup-url">usebarberpro.com/admin/agenda</div></div>
+        <div class="mockup-body" style="padding:0">
+          <div style="background:#0A0A0A;padding:10px 14px;border-bottom:1px solid #1a1a1a;display:flex;justify-content:space-between;align-items:center">
+            <div><div style="color:#F0EEE8;font-size:15px;font-weight:700">Agenda</div><div style="color:#555;font-size:11px;margin-top:2px">22/05/2026 · 12 agendamentos hoje</div></div>
+            <div style="display:flex;gap:8px"><div style="background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:5px 12px;color:#C9A84C;font-size:11px;font-weight:700">Linha do tempo</div><div style="background:#C9A84C;border-radius:6px;padding:5px 12px;color:#0A0A0A;font-size:11px;font-weight:700">+ Agendar</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px">
+            <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><div style="width:30px;height:30px;border-radius:50%;background:rgba(201,168,76,.15);display:flex;align-items:center;justify-content:center;color:#C9A84C;font-size:11px;font-weight:700">JS</div><div style="color:#F0EEE8;font-size:12px;font-weight:700">João Silva</div></div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">08:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(34,197,94,.06);border-left:2px solid #22C55E"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Matheus Lima</div><div style="color:#555;font-size:10px;margin-top:1px">Corte Simples · 30min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 30 · Concluído</div></div></div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">09:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(59,130,246,.06);border-left:2px solid #60A5FA"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Rafael Mendes</div><div style="color:#555;font-size:10px;margin-top:1px">Corte + Barba · 60min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 55 · Confirmado</div></div></div>
+              <div style="display:flex;gap:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">10:30</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(245,158,11,.06);border-left:2px solid #FCD34D"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Lucas Carvalho</div><div style="color:#555;font-size:10px;margin-top:1px">Corte Social · 30min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 35 · Em andamento</div></div></div>
+            </div>
+            <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><div style="width:30px;height:30px;border-radius:50%;background:rgba(96,165,250,.15);display:flex;align-items:center;justify-content:center;color:#60A5FA;font-size:11px;font-weight:700">CR</div><div style="color:#F0EEE8;font-size:12px;font-weight:700">Carlos Rocha</div></div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">09:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(34,197,94,.06);border-left:2px solid #22C55E"><div style="color:#F0EEE8;font-size:11px;font-weight:700">André Batista</div><div style="color:#555;font-size:10px;margin-top:1px">Corte + Barba · 60min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 55 · Concluído</div></div></div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">11:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(245,158,11,.06);border-left:2px solid #FCD34D"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Bruno Ferreira</div><div style="color:#555;font-size:10px;margin-top:1px">Degradê · 45min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 40 · Em andamento</div></div></div>
+              <div style="display:flex;gap:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">15:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(139,92,246,.06);border-left:2px solid #C4B5FD"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Paulo Henrique</div><div style="color:#555;font-size:10px;margin-top:1px">Corte Social · 30min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 35 · Agendado</div></div></div>
+            </div>
+            <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><div style="width:30px;height:30px;border-radius:50%;background:rgba(196,181,253,.15);display:flex;align-items:center;justify-content:center;color:#C4B5FD;font-size:11px;font-weight:700">PA</div><div style="color:#F0EEE8;font-size:12px;font-weight:700">Pedro Alves</div></div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">10:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(34,197,94,.06);border-left:2px solid #22C55E"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Felipe Nunes</div><div style="color:#555;font-size:10px;margin-top:1px">Corte Simples · 30min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 30 · Concluído</div></div></div>
+              <div style="display:flex;gap:8px;align-items:flex-start"><div style="color:#555;font-size:10px;min-width:40px;padding-top:3px">16:00</div><div style="flex:1;border-radius:6px;padding:6px 9px;background:rgba(59,130,246,.06);border-left:2px solid #60A5FA"><div style="color:#F0EEE8;font-size:11px;font-weight:700">Rodrigo Lima</div><div style="color:#555;font-size:10px;margin-top:1px">Corte + Barba · 60min</div><div style="color:#C9A84C;font-size:10px;font-weight:700;margin-top:2px">R$ 55 · Confirmado</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-financeiro" class="showcase-screen">
+      <div class="mockup-browser">
+        <div class="mockup-bar"><div class="mockup-dots"><span></span><span></span><span></span></div><div class="mockup-url">usebarberpro.com/admin/financeiro</div></div>
+        <div class="mockup-body" style="padding:0">
+          <div style="background:#0A0A0A;padding:10px 14px;border-bottom:1px solid #1a1a1a;display:flex;justify-content:space-between;align-items:center">
+            <div><div style="color:#F0EEE8;font-size:15px;font-weight:700">Financeiro</div><div style="color:#555;font-size:11px;margin-top:2px">maio 2026</div></div>
+            <div style="background:#1a1a1a;border:1px solid #252525;border-radius:6px;padding:5px 12px;color:#888;font-size:11px">Exportar CSV</div>
+          </div>
+          <div style="padding:14px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#22C55E;font-size:18px;font-weight:800">R$ 12.480</div><div style="color:#555;font-size:10px;margin-top:2px">Receita total</div><div style="color:#22C55E;font-size:10px;margin-top:3px">+18% vs abril</div></div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#EF4444;font-size:18px;font-weight:800">R$ 2.150</div><div style="color:#555;font-size:10px;margin-top:2px">Despesas</div><div style="color:#EF4444;font-size:10px;margin-top:3px">+5% vs abril</div></div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#C9A84C;font-size:18px;font-weight:800">R$ 10.330</div><div style="color:#555;font-size:10px;margin-top:2px">Lucro líquido</div><div style="color:#C9A84C;font-size:10px;margin-top:3px">margem 82%</div></div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#F0EEE8;font-size:18px;font-weight:800">R$ 94</div><div style="color:#555;font-size:10px;margin-top:2px">Ticket médio</div><div style="color:#22C55E;font-size:10px;margin-top:3px">132 vendas</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:12px">
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:14px">
+                <div style="color:#555;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Transações recentes</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Corte + Barba — Rafael Mendes</div><div style="color:#555;font-size:10px;margin-top:1px">Pix · João Silva</div></div><div style="color:#22C55E;font-size:11px;font-weight:800">+R$ 55,00</div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Assinatura Ouro — Bruno F.</div><div style="color:#555;font-size:10px;margin-top:1px">Asaas · recorrente</div></div><div style="color:#22C55E;font-size:11px;font-weight:800">+R$ 250,00</div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Degradê — Gabriel Souza</div><div style="color:#555;font-size:10px;margin-top:1px">Crédito · Carlos Rocha</div></div><div style="color:#22C55E;font-size:11px;font-weight:800">+R$ 45,00</div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Aluguel da loja — maio</div><div style="color:#555;font-size:10px;margin-top:1px">Despesa · 01/05/2026</div></div><div style="color:#EF4444;font-size:11px;font-weight:800">−R$ 1.200,00</div></div>
+              </div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:14px">
+                <div style="color:#555;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Por forma de pagamento</div>
+                <div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:#888;font-size:10px">Pix</span><span style="color:#C9A84C;font-size:10px;font-weight:700">R$ 5.840</span></div><div style="background:#1a1a1a;border-radius:3px;height:5px"><div style="background:#32BCAD;width:100%;height:100%;border-radius:3px"></div></div></div>
+                <div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:#888;font-size:10px">Dinheiro</span><span style="color:#C9A84C;font-size:10px;font-weight:700">R$ 3.120</span></div><div style="background:#1a1a1a;border-radius:3px;height:5px"><div style="background:#22C55E;width:53%;height:100%;border-radius:3px"></div></div></div>
+                <div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:#888;font-size:10px">Crédito</span><span style="color:#C9A84C;font-size:10px;font-weight:700">R$ 2.100</span></div><div style="background:#1a1a1a;border-radius:3px;height:5px"><div style="background:#7C3AED;width:36%;height:100%;border-radius:3px"></div></div></div>
+                <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:#888;font-size:10px">Online (Asaas)</span><span style="color:#C9A84C;font-size:10px;font-weight:700">R$ 600</span></div><div style="background:#1a1a1a;border-radius:3px;height:5px"><div style="background:#009EE3;width:10%;height:100%;border-radius:3px"></div></div></div>
+                <div style="border-top:1px solid #1a1a1a;padding-top:10px"><div style="color:#555;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px">Meta do mês</div><div style="background:#1a1a1a;border-radius:5px;height:7px;overflow:hidden"><div style="background:linear-gradient(90deg,#C9A84C,#A07830);width:74%;height:100%;border-radius:5px"></div></div><div style="display:flex;justify-content:space-between;margin-top:4px"><span style="color:#555;font-size:9px">Meta: R$ 16.800</span><span style="color:#C9A84C;font-size:9px;font-weight:700">74% atingido</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-pagamentos" class="showcase-screen">
+      <div class="mockup-browser">
+        <div class="mockup-bar"><div class="mockup-dots"><span></span><span></span><span></span></div><div class="mockup-url">usebarberpro.com/admin/configuracoes</div></div>
+        <div class="mockup-body" style="padding:0">
+          <div style="background:#0A0A0A;padding:10px 14px;border-bottom:1px solid #1a1a1a"><div style="color:#F0EEE8;font-size:15px;font-weight:700">Pagamentos Online</div><div style="color:#555;font-size:11px;margin-top:2px">Integração Asaas — subconta vinculada automaticamente</div></div>
+          <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+                <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#22C55E;font-size:18px;font-weight:800">R$ 4.800</div><div style="color:#555;font-size:10px;margin-top:2px">Recebido online</div></div>
+                <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#C9A84C;font-size:18px;font-weight:800">47</div><div style="color:#555;font-size:10px;margin-top:2px">Transações</div></div>
+              </div>
+              <div style="background:#111;border:1px solid rgba(0,158,227,.25);border-radius:10px;padding:14px">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+                  <div style="width:36px;height:36px;background:#009EE3;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900;flex-shrink:0">A</div>
+                  <div style="flex:1"><div style="color:#F0EEE8;font-size:13px;font-weight:700">Asaas</div><div style="color:#555;font-size:10px">Subconta vinculada</div></div>
+                  <div style="background:rgba(74,222,128,.12);color:#4ADE80;font-size:9px;font-weight:700;padding:2px 8px;border-radius:6px">Ativo</div>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a1a1a"><span style="color:#888;font-size:11px">💳 Cartão de crédito/débito</span><div style="width:16px;height:16px;border-radius:50%;background:rgba(74,222,128,.15);display:flex;align-items:center;justify-content:center;font-size:10px">✓</div></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a1a1a"><span style="color:#888;font-size:11px">⚡ Pix instantâneo</span><div style="width:16px;height:16px;border-radius:50%;background:rgba(74,222,128,.15);display:flex;align-items:center;justify-content:center;font-size:10px">✓</div></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1a1a1a"><span style="color:#888;font-size:11px">📄 Boleto bancário</span><div style="width:16px;height:16px;border-radius:50%;background:rgba(74,222,128,.15);display:flex;align-items:center;justify-content:center;font-size:10px">✓</div></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0"><span style="color:#888;font-size:11px">🔄 Cobrança recorrente automática</span><div style="width:16px;height:16px;border-radius:50%;background:rgba(74,222,128,.15);display:flex;align-items:center;justify-content:center;font-size:10px">✓</div></div>
+              </div>
+            </div>
+            <div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:14px;margin-bottom:12px">
+                <div style="color:#555;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Últimos pagamentos online</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Carlos Silva</div><div style="color:#555;font-size:10px">Corte + Barba · Pix</div></div><div style="text-align:right"><div style="color:#C9A84C;font-size:11px;font-weight:700">R$ 55,00</div><div style="color:#22C55E;font-size:10px">Pago</div></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Bruno Fernandes</div><div style="color:#555;font-size:10px">Assinatura Ouro · Cartão</div></div><div style="text-align:right"><div style="color:#C9A84C;font-size:11px;font-weight:700">R$ 250,00</div><div style="color:#22C55E;font-size:10px">Pago</div></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1a1a1a"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Diego Martins</div><div style="color:#555;font-size:10px">Degradê · Pix</div></div><div style="text-align:right"><div style="color:#C9A84C;font-size:11px;font-weight:700">R$ 40,00</div><div style="color:#22C55E;font-size:10px">Pago</div></div></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0"><div><div style="color:#F0EEE8;font-size:11px;font-weight:600">Rafael Costa</div><div style="color:#555;font-size:10px">Assinatura Prata · Boleto</div></div><div style="text-align:right"><div style="color:#C9A84C;font-size:11px;font-weight:700">R$ 150,00</div><div style="color:#FCD34D;font-size:10px">Aguardando</div></div></div>
+              </div>
+              <div style="background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.2);border-radius:10px;padding:14px">
+                <div style="color:#C9A84C;font-size:12px;font-weight:700;margin-bottom:6px">💡 Dinheiro na conta na hora</div>
+                <p style="color:#888;font-size:12px;line-height:1.6;margin:0">Pix confirmado em segundos. Cartão aprovado na hora. O valor cai direto na sua conta Asaas — sem intermediário, sem D+2, sem esperar.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-assinaturas" class="showcase-screen">
+      <div class="mockup-browser">
+        <div class="mockup-bar"><div class="mockup-dots"><span></span><span></span><span></span></div><div class="mockup-url">usebarberpro.com/admin/planos</div></div>
+        <div class="mockup-body" style="padding:0">
+          <div style="background:#0A0A0A;padding:10px 14px;border-bottom:1px solid #1a1a1a;display:flex;justify-content:space-between;align-items:center">
+            <div><div style="color:#F0EEE8;font-size:15px;font-weight:700">Planos de Assinatura</div><div style="color:#555;font-size:11px;margin-top:2px">4 planos · 47 assinantes · <strong style="color:#C9A84C">R$ 4.230/mês garantidos</strong></div></div>
+            <div style="background:#C9A84C;border-radius:6px;padding:5px 12px;color:#0A0A0A;font-size:11px;font-weight:700">+ Novo plano</div>
+          </div>
+          <div style="padding:14px">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#22C55E;font-size:20px;font-weight:800">47</div><div style="color:#555;font-size:10px;margin-top:2px">Assinantes ativos</div></div>
+              <div style="background:#111;border:1px solid rgba(201,168,76,.3);border-radius:10px;padding:12px"><div style="color:#C9A84C;font-size:20px;font-weight:800">R$ 4.230</div><div style="color:#555;font-size:10px;margin-top:2px">Receita mensal garantida</div></div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="color:#F0EEE8;font-size:20px;font-weight:800">R$ 89</div><div style="color:#555;font-size:10px;margin-top:2px">Ticket médio/assinante</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px"><span style="color:#F0EEE8;font-size:12px;font-weight:700">Plano Platina</span><span style="background:rgba(74,222,128,.12);color:#4ADE80;font-size:8px;font-weight:700;padding:2px 6px;border-radius:5px">Ativo</span></div><div style="color:#C9A84C;font-size:16px;font-weight:800;margin-bottom:6px">R$ 300<span style="color:#555;font-size:9px">/mês</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);background:#1A1A1A;border-radius:6px;padding:6px;margin-bottom:8px;gap:2px"><div style="text-align:center"><div style="color:#F0EEE8;font-size:12px;font-weight:700">6</div><div style="color:#555;font-size:7px">Recorr.</div></div><div style="text-align:center;border-left:1px solid #2E2E2E;border-right:1px solid #2E2E2E"><div style="color:#F0EEE8;font-size:12px;font-weight:700">4</div><div style="color:#555;font-size:7px">Serviços</div></div><div style="text-align:center"><div style="color:#4ADE80;font-size:12px;font-weight:700">1</div><div style="color:#555;font-size:7px">Assin.</div></div></div><div style="color:#888;font-size:9px;margin-bottom:8px">Barba, Alisamento, Corte+Barba+Sobrancelha, Pintura</div><div style="display:flex;gap:4px"><div style="flex:1;background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:4px 0;text-align:center;color:#888;font-size:9px">Editar</div><div style="flex:1;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 0;text-align:center;color:#F87171;font-size:9px">Desativar</div></div></div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px"><span style="color:#F0EEE8;font-size:12px;font-weight:700">Plano Bronze</span><span style="background:rgba(74,222,128,.12);color:#4ADE80;font-size:8px;font-weight:700;padding:2px 6px;border-radius:5px">Ativo</span></div><div style="color:#C9A84C;font-size:16px;font-weight:800;margin-bottom:6px">R$ 100<span style="color:#555;font-size:9px">/mês</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);background:#1A1A1A;border-radius:6px;padding:6px;margin-bottom:8px;gap:2px"><div style="text-align:center"><div style="color:#F0EEE8;font-size:12px;font-weight:700">2</div><div style="color:#555;font-size:7px">Recorr.</div></div><div style="text-align:center;border-left:1px solid #2E2E2E;border-right:1px solid #2E2E2E"><div style="color:#F0EEE8;font-size:12px;font-weight:700">2</div><div style="color:#555;font-size:7px">Serviços</div></div><div style="text-align:center"><div style="color:#F87171;font-size:12px;font-weight:700">0</div><div style="color:#555;font-size:7px">Assin.</div></div></div><div style="color:#888;font-size:9px;margin-bottom:8px">Barba, Corte+Barba+Sobrancelha</div><div style="display:flex;gap:4px"><div style="flex:1;background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:4px 0;text-align:center;color:#888;font-size:9px">Editar</div><div style="flex:1;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 0;text-align:center;color:#F87171;font-size:9px">Desativar</div></div></div>
+              <div style="background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px"><span style="color:#F0EEE8;font-size:12px;font-weight:700">Plano Prata</span><span style="background:rgba(74,222,128,.12);color:#4ADE80;font-size:8px;font-weight:700;padding:2px 6px;border-radius:5px">Ativo</span></div><div style="color:#C9A84C;font-size:16px;font-weight:800;margin-bottom:6px">R$ 150<span style="color:#555;font-size:9px">/mês</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);background:#1A1A1A;border-radius:6px;padding:6px;margin-bottom:8px;gap:2px"><div style="text-align:center"><div style="color:#F0EEE8;font-size:12px;font-weight:700">2</div><div style="color:#555;font-size:7px">Recorr.</div></div><div style="text-align:center;border-left:1px solid #2E2E2E;border-right:1px solid #2E2E2E"><div style="color:#F0EEE8;font-size:12px;font-weight:700">2</div><div style="color:#555;font-size:7px">Serviços</div></div><div style="text-align:center"><div style="color:#F87171;font-size:12px;font-weight:700">0</div><div style="color:#555;font-size:7px">Assin.</div></div></div><div style="color:#888;font-size:9px;margin-bottom:8px">Barba, Corte+Barba+Sobrancelha, Pintura</div><div style="display:flex;gap:4px"><div style="flex:1;background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:4px 0;text-align:center;color:#888;font-size:9px">Editar</div><div style="flex:1;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 0;text-align:center;color:#F87171;font-size:9px">Desativar</div></div></div>
+              <div style="background:#111;border:1px solid rgba(201,168,76,.35);border-radius:10px;padding:12px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px"><span style="color:#F0EEE8;font-size:12px;font-weight:700">Plano Ouro</span><span style="background:rgba(74,222,128,.12);color:#4ADE80;font-size:8px;font-weight:700;padding:2px 6px;border-radius:5px">Ativo</span></div><div style="color:#C9A84C;font-size:16px;font-weight:800;margin-bottom:6px">R$ 250<span style="color:#555;font-size:9px">/mês</span></div><div style="display:grid;grid-template-columns:repeat(3,1fr);background:#1A1A1A;border-radius:6px;padding:6px;margin-bottom:8px;gap:2px"><div style="text-align:center"><div style="color:#F0EEE8;font-size:12px;font-weight:700">4</div><div style="color:#555;font-size:7px">Recorr.</div></div><div style="text-align:center;border-left:1px solid #2E2E2E;border-right:1px solid #2E2E2E"><div style="color:#F0EEE8;font-size:12px;font-weight:700">4</div><div style="color:#555;font-size:7px">Serviços</div></div><div style="text-align:center"><div style="color:#4ADE80;font-size:12px;font-weight:700">3</div><div style="color:#555;font-size:7px">Assin.</div></div></div><div style="color:#888;font-size:9px;margin-bottom:8px">Alisamento, Barba, Corte+Barba, Pintura</div><div style="display:flex;gap:4px"><div style="flex:1;background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:4px 0;text-align:center;color:#888;font-size:9px">Editar</div><div style="flex:1;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:6px;padding:4px 0;text-align:center;color:#F87171;font-size:9px">Desativar</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-pagina" class="showcase-screen">
+      <div class="mockup-browser">
+        <div class="mockup-bar"><div class="mockup-dots"><span></span><span></span><span></span></div><div class="mockup-url">usebarberpro.com/admin/pagina-cliente</div></div>
+        <div class="mockup-body" style="padding:0;display:grid;grid-template-columns:280px 1fr">
+          <div style="background:#0D0D0D;border-right:1px solid #1a1a1a;padding:14px;overflow:hidden">
+            <div style="color:#F0EEE8;font-size:13px;font-weight:700;margin-bottom:12px">🎨 Aparência</div>
+            <div style="color:#555;font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px">Cor principal</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
+              <div style="width:20px;height:20px;border-radius:50%;background:#C9A84C"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#E63946"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#2196F3"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#4CAF50"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#9C27B0;border:2px solid #fff"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#FF5722"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#00BCD4"></div>
+              <div style="width:20px;height:20px;border-radius:50%;background:#FF9800"></div>
+            </div>
+            <div style="color:#555;font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px">Estilo de texto</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:10px">
+              <div style="background:rgba(201,168,76,.08);border:1px solid #C9A84C;border-radius:6px;padding:5px;text-align:center"><div style="color:#C9A84C;font-size:10px">Barber</div><div style="color:#555;font-size:7px;margin-top:1px">Moderno</div></div>
+              <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:5px;text-align:center"><div style="color:#F2F0EA;font-size:10px;font-family:Georgia,serif">Barber</div><div style="color:#555;font-size:7px;margin-top:1px">Clássico</div></div>
+              <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:5px;text-align:center"><div style="color:#F2F0EA;font-size:10px;font-weight:900">Barber</div><div style="color:#555;font-size:7px;margin-top:1px">Bold</div></div>
+              <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:5px;text-align:center"><div style="color:#F2F0EA;font-size:10px;font-style:italic">Barber</div><div style="color:#555;font-size:7px;margin-top:1px">Elegante</div></div>
+              <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:5px;text-align:center"><div style="color:#F2F0EA;font-size:10px;font-weight:200;letter-spacing:.05em">Barber</div><div style="color:#555;font-size:7px;margin-top:1px">Minimal</div></div>
+              <div style="background:#1A1A1A;border:1px solid #2E2E2E;border-radius:6px;padding:5px;text-align:center"><div style="color:#F2F0EA;font-size:9px;font-weight:900;text-transform:uppercase">Barber</div><div style="color:#555;font-size:7px;margin-top:1px">Urbano</div></div>
+            </div>
+            <div style="color:#555;font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px">Logo e banner</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px">
+              <div style="background:#1A1A1A;border:1px dashed #2E2E2E;border-radius:7px;padding:9px;text-align:center"><div style="color:#555;font-size:16px">+</div><div style="color:#555;font-size:8px;margin-top:2px">Logo</div></div>
+              <div style="background:#1A1A1A;border:1px dashed #2E2E2E;border-radius:7px;padding:9px;text-align:center"><div style="color:#555;font-size:16px">+</div><div style="color:#555;font-size:8px;margin-top:2px">Banner</div></div>
+            </div>
+            <div style="background:#C9A84C;border-radius:7px;padding:9px;text-align:center;color:#0A0A0A;font-size:10px;font-weight:700">💾 Salvar aparência</div>
+          </div>
+          <div style="background:#1a1a2e;overflow:hidden">
+            <div style="background:rgba(10,10,10,.93);padding:0 12px;height:40px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(155,48,255,.15)">
+              <div style="display:flex;align-items:center;gap:7px"><div style="width:26px;height:26px;border-radius:50%;background:#0d0d1e;border:2px solid #9C27B0;display:flex;align-items:center;justify-content:center;color:#9C27B0;font-size:10px;font-weight:900">M</div><span style="color:#F0EEE8;font-size:12px;font-weight:700">Mogiana</span></div>
+              <div style="background:#9C27B0;color:rgba(10,10,10,.9);font-size:9px;font-weight:800;border:none;border-radius:50px;padding:4px 11px">Entrar</div>
+            </div>
+            <div style="background:#1a1a2e;padding:16px 12px 12px;text-align:center;border-bottom:1px solid rgba(155,48,255,.1)">
+              <div style="width:48px;height:48px;border-radius:10px;background:#0d0d1e;border:2px solid #9C27B0;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;color:#9C27B0;font-size:18px;font-weight:900">M</div>
+              <div style="color:#F0EEE8;font-size:15px;font-weight:900">Mogiana</div>
+              <div style="display:inline-flex;align-items:center;gap:4px;background:rgba(20,20,20,.8);border:1px solid rgba(155,48,255,.2);border-radius:50px;padding:3px 9px;margin:5px 0"><div style="width:5px;height:5px;border-radius:50%;background:#EF4444"></div><span style="color:#F0EEE8;font-size:9px;opacity:.8">Fechado · abre às 09:00</span></div>
+              <div style="color:#F0EEE8;font-size:9px;opacity:.6;margin-bottom:9px">Rua Fernando Faleiros Lima 28</div>
+              <div style="background:#9C27B0;color:rgba(10,10,10,.9);font-size:10px;font-weight:800;border:none;border-radius:50px;padding:8px 20px;display:inline-block">Agendar Horário</div>
+            </div>
+            <div style="display:flex;background:rgba(10,10,10,.5);border-bottom:1px solid rgba(155,48,255,.15)">
+              <div style="flex:1;padding:7px 0;text-align:center;font-size:8px;font-weight:800;color:#F0EEE8;border-bottom:2px solid #9C27B0">Serviços</div>
+              <div style="flex:1;padding:7px 0;text-align:center;font-size:8px;font-weight:800;color:#888880;border-bottom:2px solid transparent">Produtos</div>
+              <div style="flex:1;padding:7px 0;text-align:center;font-size:8px;font-weight:800;color:#888880;border-bottom:2px solid transparent">Assinaturas</div>
+              <div style="flex:1;padding:7px 0;text-align:center;font-size:8px;font-weight:800;color:#888880;border-bottom:2px solid transparent">Como funciona</div>
+            </div>
+            <div style="padding:10px 10px 6px">
+              <div style="color:#F0EEE8;font-size:10px;font-weight:700;margin-bottom:7px">Serviços</div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+                <div style="background:rgb(26,32,53);border:1px solid rgba(155,48,255,.15);border-radius:8px;overflow:hidden"><div style="height:40px;background:linear-gradient(135deg,#1e1e3e,#2a1a3a);display:flex;align-items:center;justify-content:center;color:#9C27B0;font-size:16px">✂</div><div style="padding:6px"><div style="color:#F0EEE8;font-size:8px;font-weight:700">Corte+Barba+Sobrancelha</div><div style="color:#888880;font-size:7px;margin:2px 0;filter:blur(3px)">R$ ••,00</div><div style="background:#9C27B0;color:rgba(10,10,10,.9);font-size:7px;font-weight:800;border-radius:4px;padding:3px 0;width:100%;margin-top:4px;text-align:center">🔓 Entrar para ver</div></div></div>
+                <div style="background:rgb(26,32,53);border:1px solid rgba(155,48,255,.15);border-radius:8px;overflow:hidden"><div style="height:40px;background:linear-gradient(135deg,#1e1e3e,#2a1a3a);display:flex;align-items:center;justify-content:center;color:#9C27B0;font-size:16px">💈</div><div style="padding:6px"><div style="color:#F0EEE8;font-size:8px;font-weight:700">Barba</div><div style="color:#888880;font-size:7px;margin:2px 0;filter:blur(3px)">R$ ••,00</div><div style="background:#9C27B0;color:rgba(10,10,10,.9);font-size:7px;font-weight:800;border-radius:4px;padding:3px 0;width:100%;margin-top:4px;text-align:center">🔓 Entrar para ver</div></div></div>
+                <div style="background:rgb(26,32,53);border:1px solid rgba(155,48,255,.15);border-radius:8px;overflow:hidden"><div style="height:40px;background:linear-gradient(135deg,#1e1e3e,#2a1a3a);display:flex;align-items:center;justify-content:center;color:#9C27B0;font-size:16px">🎨</div><div style="padding:6px"><div style="color:#F0EEE8;font-size:8px;font-weight:700">Pintura de cabelo</div><div style="color:#888880;font-size:7px;margin:2px 0;filter:blur(3px)">R$ ••,00</div><div style="background:#9C27B0;color:rgba(10,10,10,.9);font-size:7px;font-weight:800;border-radius:4px;padding:3px 0;width:100%;margin-top:4px;text-align:center">🔓 Entrar para ver</div></div></div>
+              </div>
+            </div>
+            <div style="text-align:center;padding:8px;border-top:1px solid rgba(155,48,255,.1)"><span style="color:#555;font-size:9px">Powered by </span><span style="color:#9C27B0;font-size:9px;font-weight:800">Barber Pro</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+<!-- CTA FINAL -->
+<section class="section">
+  <div class="container">
+    <div class="cta-box">
+      <div class="section-label" style="margin-bottom:24px">Comece hoje</div>
+      <h2 class="cta-title">Evolua com o Barber Pro<br/>e <span class="gold-gradient">pare de perder tempo e dinheiro.</span></h2>
+      <p class="cta-sub">Teste o sistema completo por 14 dias grátis e coloque ordem na sua barbearia hoje.</p>
+      <div class="cta-actions">
+        <button class="btn-primary" onclick="openModal('Equipe','R$99,90')">✦ TESTAR 14 DIAS GRÁTIS</button>
+        <a href="#planos" class="btn-outline">Ver planos →</a>
+      </div>
+      <p class="cta-note">Sem cartão de crédito · Cancele quando quiser · Suporte incluído</p>
+    </div>
+  </div>
+</section>
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-logo">
+        <img src="https://pub-203143bd86174070b67f8f64a13a65c2.r2.dev/assets/barber-pro-icon-512.png" alt="Barber Pro" />
+        <span class="footer-logo-text">BARBER <span>PRO</span></span>
+      </div>
+      <div class="footer-links">
+        <a href="#funcionalidades">Funcionalidades</a>
+        <a href="#planos">Planos</a>
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#faq">FAQ</a>
+        <a href="#interesse">Demonstração</a>
+      </div>
+      <div>
+        <div class="footer-trust-badges">
+          <span class="footer-trust-badge">🔒 SSL Seguro</span>
+          <span class="footer-trust-badge">🏦 Banco Central</span>
+          <span class="footer-trust-badge">📜 LGPD</span>
+          <span class="footer-trust-badge">✅ Asaas Parceiro</span>
+        </div>
+        <div class="footer-social-links">
+          <a href="https://instagram.com/usebarberpro" target="_blank" class="footer-social-link" aria-label="Instagram">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg>
+          </a>
+          <a href="https://wa.me/5516999999999" target="_blank" class="footer-social-link" aria-label="WhatsApp">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+          </a>
+        </div>
+        <div style="margin-top:14px">
+          <a href="mailto:suporte@usebarberpro.com" style="color:rgba(245,243,238,0.6);font-size:13px">✉️ suporte@usebarberpro.com</a>
+        </div>
+        <a href="https://play.google.com/store/apps/details?id=com.eldunari.barberpro" target="_blank" rel="noopener noreferrer" class="footer-store-badge">
+          <img src="/assets/google-play-badge-pt.svg" alt="Disponível no Google Play" width="135" height="40" style="display:block;" />
+        </a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">© 2026 Barber Pro · Eldunari Ltda · CNPJ 66.991.137/0001-63 · R. Maria Amélia Faleiros, 4881 — Jardim Três Colinas, Franca/SP. Todos os direitos reservados.</span>
+      <div class="footer-links">
+        <a href="/termos">Termos de Uso</a>
+        <a href="/privacidade">Privacidade</a>
+        <a href="/lgpd">LGPD</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- WHATSAPP -->
+<a href="https://wa.me/5511999999999?text=Ol%C3%A1%2C+quero+saber+mais+sobre+o+Barber+Pro" target="_blank" class="wa-float" aria-label="WhatsApp">
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+</a>
+
+<!-- MODAL LOGIN -->
+<div class="modal-overlay" id="loginModal" onclick="handleLoginOverlayClick(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeLoginModal()">✕</button>
+    <div class="modal-logo">
+      <img src="https://pub-203143bd86174070b67f8f64a13a65c2.r2.dev/assets/barber-pro-icon-512.png" alt="Barber Pro" />
+      <span class="modal-logo-text">BARBER <span>PRO</span></span>
+    </div>
+    <h2 class="modal-title">Bem-vindo de volta</h2>
+    <p class="modal-sub">Acesse o painel da sua barbearia.</p>
+    <div class="login-error" id="loginError">E-mail ou senha incorretos. Verifique e tente novamente.</div>
+    <form method="POST" action="/admin/login" onsubmit="handleLoginSubmit(event)">
+      <div class="form-group">
+        <label class="form-label">E-mail</label>
+        <input type="email" class="form-input" name="email" id="loginEmail" placeholder="seu@email.com" required autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Senha</label>
+        <input type="password" class="form-input" name="password" id="loginPassword" placeholder="Sua senha" required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn-submit" id="loginBtn">Entrar no painel →</button>
+      <div style="text-align:right;margin-top:8px">
+        <a href="/admin/forgot-password" style="font-size:12px;color:var(--gold-light);opacity:0.8">Esqueci minha senha</a>
+      </div>
+    </form>
+    <div class="login-divider"><div class="login-divider-line"></div><div class="login-divider-text">ou</div><div class="login-divider-line"></div></div>
+    <button type="button" onclick="window.location.href='/admin/google-login'" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#1e1e1e;color:#f0eee8;border:1px solid #2a2a2a;border-radius:12px;padding:13px 14px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px" onmouseover="this.style.background='#252525'" onmouseout="this.style.background='#1e1e1e'">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+      Entrar com Google
+    </button>
+    <p style="text-align:center;font-size:14px;color:var(--gray)">Não tem conta? <a href="#" onclick="closeLoginModal(); openModal('Equipe','R$99,90'); return false;" style="color:var(--gold-light);font-weight:600">Criar barbearia grátis</a></p>
+  </div>
+</div>
+
+<!-- MODAL CADASTRO -->
+<div class="modal-overlay" id="signupModal" onclick="handleOverlayClick(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modalFormContent">
+      <div class="modal-logo">
+        <img src="https://pub-203143bd86174070b67f8f64a13a65c2.r2.dev/assets/barber-pro-icon-512.png" alt="Barber Pro" />
+        <span class="modal-logo-text">BARBER <span>PRO</span></span>
+      </div>
+      <div class="modal-steps">
+        <div class="modal-step active" id="step-bar-1"></div>
+        <div class="modal-step" id="step-bar-2"></div>
+        <div class="modal-step" id="step-bar-3"></div>
+        <div class="modal-step" id="step-bar-4"></div>
+        <div class="modal-step" id="step-bar-5"></div>
+      </div>
+      <div class="modal-plan-sel" id="modalPlanSel" onclick="togglePlanSelector()" style="cursor:pointer;user-select:none">
+        <div>
+          <div class="modal-plan-name" id="modalPlanName">Equipe</div>
+          <div style="font-size:12px;color:var(--gray);margin-top:2px">14 dias grátis, depois</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="modal-plan-price" id="modalPlanPrice">R$99,90<span style="font-size:13px;color:var(--gray)">/mês</span></div>
+          <span style="font-size:11px;color:var(--gold);font-weight:700">Trocar ▾</span>
+        </div>
+      </div>
+      <!-- Seletor de plano expandível -->
+      <div id="planSelectorDropdown" style="display:none;background:var(--black-4);border:1px solid var(--gold-border);border-radius:12px;margin-bottom:16px;overflow:hidden">
+        <button type="button" onclick="changePlan('Solo','R$49,90')" class="plan-option-btn" id="planOpt-Solo">Solo — R$49,90/mês <span style="font-size:11px;color:var(--gray)">1 barbeiro</span></button>
+        <button type="button" onclick="changePlan('Equipe','R$99,90')" class="plan-option-btn plan-option-active" id="planOpt-Equipe">Equipe — R$99,90/mês <span style="font-size:11px;color:var(--gray)">Até 3 barbeiros</span></button>
+        <button type="button" onclick="changePlan('Estúdio','R$169,90')" class="plan-option-btn" id="planOpt-Estúdio">Estúdio — R$169,90/mês <span style="font-size:11px;color:var(--gray)">Ilimitado</span></button>
+      </div>
+      <!-- Step 1: Dados da Barbearia -->
+      <div id="formStep1">
+        <h2 class="modal-title">Dados da Barbearia</h2>
+        <p class="modal-sub">Informações básicas que aparecerão para seus clientes.</p>
+        <form onsubmit="goToStep2(event)">
+          <div class="form-group">
+            <label class="form-label">Nome da barbearia *</label>
+            <input type="text" class="form-input" id="inputNomeBarbearia" placeholder="Ex: Barbearia do João" required autocomplete="off" oninput="updateSlugPreview()" />
+            <div class="form-slug-preview" id="slugPreview"></div>
+            <p id="inputNomeBarbeariaError" class="field-error-msg"></p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Telefone / WhatsApp *</label>
+            <input type="tel" class="form-input" id="inputTelefone" placeholder="(11) 99999-9999" required maxlength="15" oninput="maskPhone(this)" />
+            <p id="inputTelefoneError" class="field-error-msg"></p>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">CPF ou CNPJ *</label>
+              <input type="text" class="form-input" id="inputCnpj" placeholder="000.000.000-00 ou 00.000.000/0001-00" maxlength="18" oninput="maskCpfCnpj(this)" required />
+              <p id="inputCnpjError" class="field-error-msg"></p>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Instagram</label>
+              <input type="text" class="form-input" id="inputInstagram" placeholder="@barbearia" />
+            </div>
+          </div>
+          <button type="submit" class="btn-submit" style="margin-top:20px">Continuar →</button>
+        </form>
+      </div>
+      <!-- Step 2: Endereço -->
+      <div id="formStep2" style="display:none">
+        <h2 class="modal-title">Endereço</h2>
+        <p class="modal-sub">Onde sua barbearia está localizada.</p>
+        <form onsubmit="goToStep3(event)">
+          <div class="form-group">
+            <label class="form-label">CEP</label>
+            <input type="text" class="form-input" id="inputCep" placeholder="00000-000" maxlength="9" oninput="maskCep(this)" onblur="fetchCep()" />
+            <span id="cepSpinner" style="display:none;font-size:12px;color:var(--gray)">Buscando...</span>
+            <span id="cepError" style="display:none;font-size:12px;color:#F87171">CEP não encontrado.</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rua / Avenida</label>
+            <input type="text" class="form-input" id="inputRua" placeholder="Rua das Flores" />
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0;flex:1">
+              <label class="form-label">Número</label>
+              <input type="text" class="form-input" id="inputNumero" placeholder="123" />
+            </div>
+            <div class="form-group" style="margin-bottom:0;flex:2">
+              <label class="form-label">Complemento</label>
+              <input type="text" class="form-input" id="inputComplemento" placeholder="Sala 2 (opcional)" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0;flex:2">
+              <label class="form-label">Cidade *</label>
+              <input type="text" class="form-input" id="inputCidade" placeholder="São Paulo" required />
+            <p id="inputCidadeError" class="field-error-msg"></p>
+            </div>
+            <div class="form-group" style="margin-bottom:0;flex:1">
+              <label class="form-label">Estado *</label>
+              <input type="text" class="form-input" id="inputEstado" placeholder="SP" required maxlength="2" oninput="this.value=this.value.toUpperCase()" />
+              <p id="inputEstadoError" class="field-error-msg"></p>
+            </div>
+          </div>
+          <button type="submit" class="btn-submit" style="margin-top:20px">Continuar →</button>
+          <div style="text-align:center;margin-top:12px">
+            <button type="button" onclick="showStep(1)" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer">← Voltar</button>
+          </div>
+        </form>
+      </div>
+      <!-- Step 3: Horários -->
+      <div id="formStep3" style="display:none">
+        <h2 class="modal-title">Horários de Funcionamento</h2>
+        <p class="modal-sub">Configure os dias e horários padrão da barbearia.</p>
+        <div class="form-group">
+          <label class="form-label">Dias de funcionamento *</label>
+          <div id="daysSelector" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <button type="button" class="day-btn" data-day="0" onclick="toggleDay(0)">Dom</button>
+            <button type="button" class="day-btn active" data-day="1" onclick="toggleDay(1)">Seg</button>
+            <button type="button" class="day-btn active" data-day="2" onclick="toggleDay(2)">Ter</button>
+            <button type="button" class="day-btn active" data-day="3" onclick="toggleDay(3)">Qua</button>
+            <button type="button" class="day-btn active" data-day="4" onclick="toggleDay(4)">Qui</button>
+            <button type="button" class="day-btn active" data-day="5" onclick="toggleDay(5)">Sex</button>
+            <button type="button" class="day-btn active" data-day="6" onclick="toggleDay(6)">Sáb</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Abertura</label>
+            <input type="text" class="form-input" id="inputAbertura" value="09:00" placeholder="09:00" maxlength="5" oninput="maskTime(this)" />
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Fechamento</label>
+            <input type="text" class="form-input" id="inputFechamento" value="19:00" placeholder="19:00" maxlength="5" oninput="maskTime(this)" />
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:14px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <input type="checkbox" id="checkAlmoco" checked onchange="toggleAlmoco()" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer" />
+            <span class="form-label" style="margin-bottom:0">Intervalo de almoço</span>
+          </label>
+        </div>
+        <div id="almocoFields" class="form-row">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Início almoço</label>
+            <input type="text" class="form-input" id="inputAlmocoInicio" value="12:00" placeholder="12:00" maxlength="5" oninput="maskTime(this)" />
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Fim almoço</label>
+            <input type="text" class="form-input" id="inputAlmocoFim" value="13:00" placeholder="13:00" maxlength="5" oninput="maskTime(this)" />
+          </div>
+        </div>
+        <p id="daysError" class="field-error-msg" style="margin-top:8px"></p>
+        <p id="inputAberturaError" class="field-error-msg"></p>
+        <p id="inputFechamentoError" class="field-error-msg"></p>
+        <button type="button" class="btn-submit" onclick="goToStep4()" style="margin-top:20px">Continuar →</button>
+        <div style="text-align:center;margin-top:12px">
+          <button type="button" onclick="showStep(2)" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer">← Voltar</button>
+        </div>
+      </div>
+      <!-- Step 4: Dados de Acesso -->
+      <div id="formStep4" style="display:none">
+        <h2 class="modal-title">Conta do Administrador</h2>
+        <p class="modal-sub">Crie o acesso principal para gerenciar sua barbearia.</p>
+        <button type="button" onclick="startGoogleSignup()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#1e1e1e;color:#f0eee8;border:1px solid #2a2a2a;border-radius:12px;padding:13px 14px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:14px" onmouseover="this.style.background='#252525'" onmouseout="this.style.background='#1e1e1e'">
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z"/></svg>
+          Continuar com Google
+        </button>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px"><div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div><span style="font-size:12px;color:var(--gray)">ou preencha manualmente</span><div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div></div>
+        <form onsubmit="goToStep5(event)">
+          <div class="form-group">
+            <label class="form-label">Seu nome *</label>
+            <input type="text" class="form-input" id="inputNomeAdmin" placeholder="Seu nome completo" required />
+            <p id="inputNomeAdminError" class="field-error-msg"></p>
+          </div>
+          <div class="form-group">
+            <label class="form-label">E-mail *</label>
+            <input type="email" class="form-input" id="inputEmail" placeholder="seu@email.com" required autocomplete="email" />
+            <p id="inputEmailError" class="field-error-msg"></p>
+          </div>
+          <div class="form-group" id="senhaGroup">
+            <label class="form-label">Senha *</label>
+            <input type="password" class="form-input" id="inputSenha" placeholder="Mínimo 6 caracteres" required minlength="6" autocomplete="new-password" />
+            <p id="inputSenhaError" class="field-error-msg"></p>
+          </div>
+          <div class="form-group" id="senhaConfirmGroup">
+            <label class="form-label">Confirmar senha *</label>
+            <input type="password" class="form-input" id="inputSenhaConfirm" placeholder="Repita a senha" required autocomplete="new-password" />
+            <p id="inputSenhaConfirmError" class="field-error-msg"></p>
+          </div>
+          <button type="submit" class="btn-submit">Continuar →</button>
+          <div style="text-align:center;margin-top:12px">
+            <button type="button" onclick="showStep(3)" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer">← Voltar</button>
+          </div>
+        </form>
+      </div>
+      <!-- Step 5: Pagamento -->
+      <div id="formStep5" style="display:none">
+        <h2 class="modal-title">Forma de pagamento</h2>
+        <p class="modal-sub">Escolha como pagar após os 14 dias grátis.</p>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+          <button type="button" onclick="selectPayment('card')" id="payCard" style="display:flex;align-items:center;gap:14px;background:var(--black-4);border:2px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px 20px;cursor:pointer;text-align:left;transition:border-color 0.2s;font-family:'Inter',sans-serif">
+            <span style="font-size:26px">💳</span>
+            <div><div style="font-weight:700;color:var(--white);font-size:14px">Cartão de crédito</div><div style="font-size:12px;color:var(--gray);margin-top:2px">Visa, Mastercard, Elo — cobrado após 14 dias</div></div>
+          </button>
+          <button type="button" onclick="selectPayment('pix')" id="payPix" style="display:flex;align-items:center;gap:14px;background:var(--black-4);border:2px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px 20px;cursor:pointer;text-align:left;transition:border-color 0.2s;font-family:'Inter',sans-serif">
+            <span style="font-size:26px">📱</span>
+            <div><div style="font-weight:700;color:var(--white);font-size:14px">Pix</div><div style="font-size:12px;color:var(--gray);margin-top:2px">Pagamento instantâneo — após o período gratuito</div></div>
+          </button>
+          <button type="button" onclick="selectPayment('boleto')" id="payBoleto" style="display:flex;align-items:center;gap:14px;background:var(--black-4);border:2px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px 20px;cursor:pointer;text-align:left;transition:border-color 0.2s;font-family:'Inter',sans-serif">
+            <span style="font-size:26px">🧾</span>
+            <div><div style="font-weight:700;color:var(--white);font-size:14px">Boleto bancário</div><div style="font-size:12px;color:var(--gray);margin-top:2px">Vencimento em 3 dias úteis após o período gratuito</div></div>
+          </button>
+        </div>
+        <button type="button" onclick="submitRegistration()" id="btnContinuarPagamento" class="btn-submit" style="opacity:0.4;pointer-events:none" disabled>Iniciar período gratuito →</button>
+        <div style="text-align:center;margin-top:12px">
+          <button type="button" onclick="showStep(4)" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer">← Voltar</button>
+        </div>
+      </div>
+      <!-- Step 6: Loading -->
+      <div id="formStep6" style="display:none;text-align:center;padding:40px 0">
+        <div style="font-size:48px;margin-bottom:20px;animation:spin 1s linear infinite;display:inline-block">⚙️</div>
+        <h3 style="font-size:22px;margin-bottom:12px">Configurando sua barbearia...</h3>
+        <p style="color:var(--gray);font-size:14px">Isso leva apenas alguns segundos.</p>
+      </div>
+      <p class="modal-terms">Ao criar sua conta você concorda com os <a href="#">Termos de Uso</a> e a <a href="#">Política de Privacidade</a>.</p>
+      <p class="modal-login-link">Já tem conta? <a href="#" onclick="goToLogin()">Entrar</a></p>
+    </div>
+    <!-- Sucesso -->
+    <div class="modal-success" id="modalSuccess" style="display:none">
+      <div class="modal-success-icon">🎉</div>
+      <h2 class="modal-success-title">Barbearia criada!</h2>
+      <p class="modal-success-sub">Sua barbearia está no ar. Acesse o painel para configurar serviços, equipe e horários.</p>
+      <div class="modal-success-link" id="successPublicLink"></div>
+      <a href="#" class="btn-primary" id="successPanelLink" style="display:inline-flex;margin-bottom:12px">Acessar o painel →</a><br/>
+      <button onclick="closeModal()" style="background:none;border:none;color:var(--gray);font-size:13px;cursor:pointer">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Pré-preencher modal após retorno do Google OAuth signup
+  (function(){
+    var params = new URLSearchParams(window.location.search);
+    if(params.get('google_signup')==='1'){
+      var name = params.get('name')||'';
+      var email = params.get('email')||'';
+      var openId = params.get('openId')||'';
+      // Guardar dados do Google
+      window._googleOpenId=openId;
+      window._googleEmail=email;
+      window._googleName=name;
+      window._isGoogleSignup=true;
+      // Restaurar dados do sessionStorage (plano, nome da barbearia, etc.)
+      var savedRaw = sessionStorage.getItem('signupData');
+      var saved = null;
+      try { saved = savedRaw ? JSON.parse(savedRaw) : null; } catch(e) {}
+      // Abrir modal com o plano correto
+      var planLabel = 'Equipe'; var planPrice = 'R$99,90';
+      if (saved && saved.plan) {
+        var pl = String(saved.plan).toLowerCase();
+        if (pl === 'solo') { planLabel = 'Solo'; planPrice = 'R$49,90'; }
+        else if (pl === 'studio' || pl === 'estúdio') { planLabel = 'Estúdio'; planPrice = 'R$169,90'; }
+        else { planLabel = 'Equipe'; planPrice = 'R$99,90'; }
+      }
+      openModal(planLabel, planPrice);
+      // Restaurar campos já preenchidos
+      if (saved) {
+        if (saved.shopName && document.getElementById('inputNomeBarbearia')) document.getElementById('inputNomeBarbearia').value = saved.shopName;
+        if (saved.phone && document.getElementById('inputTelefone')) document.getElementById('inputTelefone').value = saved.phone;
+        if (saved.city && document.getElementById('inputCidade')) document.getElementById('inputCidade').value = saved.city;
+        if (saved.state && document.getElementById('inputEstado')) document.getElementById('inputEstado').value = saved.state;
+        if (saved.cnpj && document.getElementById('inputCnpj')) document.getElementById('inputCnpj').value = saved.cnpj;
+        if (saved.cep && document.getElementById('inputCep')) document.getElementById('inputCep').value = saved.cep;
+        if (saved.address && document.getElementById('inputRua')) document.getElementById('inputRua').value = saved.address;
+        if (saved.addressNumber && document.getElementById('inputNumero')) document.getElementById('inputNumero').value = saved.addressNumber;
+        if (saved.openTime && document.getElementById('inputAbertura')) document.getElementById('inputAbertura').value = saved.openTime;
+        if (saved.closeTime && document.getElementById('inputFechamento')) document.getElementById('inputFechamento').value = saved.closeTime;
+        if (saved.workDays && Array.isArray(saved.workDays)) activeDays = saved.workDays;
+      }
+      // Pré-preencher nome e email do admin no step 4
+      setTimeout(function() {
+        var elName = document.getElementById('inputNomeAdmin');
+        var elEmail = document.getElementById('inputEmail');
+        var elSenha = document.getElementById('inputSenha');
+        var elSenhaC = document.getElementById('inputSenhaConfirm');
+        if (elName) elName.value = name;
+        if (elEmail) elEmail.value = email;
+        // Campos de senha ficam ocultos/opcionais para login Google
+        if (elSenha) { elSenha.disabled = true; elSenha.closest && elSenha.closest('.form-field') && (elSenha.closest('.form-field').style.display = 'none'); }
+        if (elSenhaC) { elSenhaC.disabled = true; elSenhaC.closest && elSenhaC.closest('.form-field') && (elSenhaC.closest('.form-field').style.display = 'none'); }
+      }, 100);
+      // Se tinha dados salvos, pular direto para step 4 (só falta confirmar email)
+      // Se não tinha, começa do step 1 para preencher os dados
+      if (saved && saved.shopName) {
+        showStep(4);
+      } else {
+        showStep(1);
+      }
+      sessionStorage.removeItem('signupData');
+      history.replaceState(null,'',window.location.pathname);
+    }
+    if(params.get('signup_error')==='1'){
+      setTimeout(function(){alert('Erro ao autenticar com Google. Tente novamente.');},200);
+      history.replaceState(null,'',window.location.pathname);
+    }
+  })();
+  // FAQ
+  function toggleFaq(btn){var i=btn.closest('.faq-item'),o=i.classList.contains('open');document.querySelectorAll('.faq-item.open').forEach(function(x){x.classList.remove('open')});if(!o)i.classList.add('open');}
+  // Nav scroll
+  window.addEventListener('scroll',function(){var n=document.getElementById('main-nav');n.classList[window.scrollY>20?'add':'remove']('scrolled');});
+  // Mobile menu
+  
+// Nav link ativo ao rolar
+const navSections = ['sistema','pagamentos','assinaturas','como-funciona','planos','faq'];
+const navLinks = document.querySelectorAll('.nav-links a');
+function updateActiveNav() {
+  let current = '';
+  navSections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && window.scrollY >= el.offsetTop - 120) current = id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+}
+window.addEventListener('scroll', updateActiveNav, {passive: true});
+
+function toggleMobileMenu(){var h=document.getElementById('nav-hamburger'),d=document.getElementById('nav-drawer'),o=d.classList.contains('open');if(o){d.classList.remove('open');h.classList.remove('open');document.body.style.overflow='';}else{d.classList.add('open');h.classList.add('open');document.body.style.overflow='hidden';}}
+  function closeMobileMenu(){document.getElementById('nav-hamburger').classList.remove('open');document.getElementById('nav-drawer').classList.remove('open');document.body.style.overflow='';}
+  // Animações removidas — elementos sempre visíveis via CSS
+  // Modal signup
+  var currentPlan='Equipe',currentPrice='R$99,90';
+  function openModal(plan,price){currentPlan=plan||'Equipe';currentPrice=price||'R$99,90';document.getElementById('modalPlanName').textContent=currentPlan;document.getElementById('modalPlanPrice').innerHTML=currentPrice+'<span style="font-size:13px;color:var(--gray)">/mês</span>';document.getElementById('signupModal').classList.add('open');document.body.style.overflow='hidden';resetModal();}
+  // Seletor de plano no modal
+  function togglePlanSelector(){var d=document.getElementById('planSelectorDropdown');d.style.display=d.style.display==='none'?'block':'none';}
+  function changePlan(plan,price){currentPlan=plan;currentPrice=price;document.getElementById('modalPlanName').textContent=plan;document.getElementById('modalPlanPrice').innerHTML=price+'<span style="font-size:13px;color:var(--gray)">/mês</span>';document.querySelectorAll('.plan-option-btn').forEach(function(b){b.classList.remove('plan-option-active');});var opt=document.getElementById('planOpt-'+plan);if(opt)opt.classList.add('plan-option-active');document.getElementById('planSelectorDropdown').style.display='none';}
+  // Cadastro com Google — salva dados do modal na session e redireciona
+  function startGoogleSignup(){
+  var nome=document.getElementById('inputNomeBarbearia')?document.getElementById('inputNomeBarbearia').value:'';
+  var tel=document.getElementById('inputTelefone')?document.getElementById('inputTelefone').value:'';
+  var cidade=document.getElementById('inputCidade')?document.getElementById('inputCidade').value:'';
+  var estado=document.getElementById('inputEstado')?document.getElementById('inputEstado').value:'';
+  var cnpj=document.getElementById('inputCnpj')?document.getElementById('inputCnpj').value:'';
+  var cep=document.getElementById('inputCep')?document.getElementById('inputCep').value:'';
+  var rua=document.getElementById('inputRua')?document.getElementById('inputRua').value:'';
+  var numero=document.getElementById('inputNumero')?document.getElementById('inputNumero').value:'';
+  var abertura=document.getElementById('inputAbertura')?document.getElementById('inputAbertura').value:'09:00';
+  var fechamento=document.getElementById('inputFechamento')?document.getElementById('inputFechamento').value:'19:00';
+  sessionStorage.setItem('signupData',JSON.stringify({
+    plan:currentPlan,price:currentPrice,shopName:nome,phone:tel,city:cidade,state:estado,
+    cnpj:cnpj,cep:cep,address:rua,addressNumber:numero,openTime:abertura,closeTime:fechamento,
+    workDays:activeDays
+  }));
+  window.location.href='/admin/google-signup';
+}
+  function closeModal(){document.getElementById('signupModal').classList.remove('open');document.body.style.overflow='';}
+  function handleOverlayClick(e){if(e.target===document.getElementById('signupModal'))closeModal();}
+  // Masks
+  function maskPhone(i){var v=i.value.replace(/\D/g,'').slice(0,11);if(v.length<=2)v=v.replace(/(\d{0,2})/,'($1');else if(v.length<=6)v=v.replace(/(\d{2})(\d{0,4})/,'($1) $2');else if(v.length<=10)v=v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');else v=v.replace(/(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');i.value=v;}
+  function maskCep(i){var v=i.value.replace(/\D/g,'').slice(0,8);if(v.length>5)v=v.replace(/(\d{5})(\d{0,3})/,'$1-$2');i.value=v;}
+  function fetchCep(){var c=document.getElementById('inputCep').value.replace(/\D/g,'');if(c.length!==8)return;document.getElementById('cepSpinner').style.display='inline';document.getElementById('cepError').style.display='none';fetch('https://viacep.com.br/ws/'+c+'/json/').then(function(r){return r.json();}).then(function(d){document.getElementById('cepSpinner').style.display='none';if(d.erro){document.getElementById('cepError').style.display='block';}else{var ruaEl=document.getElementById('inputRua');if(ruaEl&&!ruaEl.value)ruaEl.value=d.logradouro||'';document.getElementById('inputCidade').value=d.localidade||'';document.getElementById('inputEstado').value=d.uf||'';}}).catch(function(){document.getElementById('cepSpinner').style.display='none';document.getElementById('cepError').style.display='block';});}
+  // Steps
+   function resetModal(){showStep(1);document.getElementById('modalFormContent').style.display='';document.getElementById('modalSuccess').style.display='none';['inputNomeBarbearia','inputTelefone','inputCnpj','inputInstagram','inputCep','inputRua','inputNumero','inputComplemento','inputCidade','inputEstado','inputAbertura','inputFechamento','inputAlmocoInicio','inputAlmocoFim','inputNomeAdmin','inputEmail','inputSenha','inputSenhaConfirm'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});if(document.getElementById('inputAbertura'))document.getElementById('inputAbertura').value='09:00';if(document.getElementById('inputFechamento'))document.getElementById('inputFechamento').value='19:00';if(document.getElementById('inputAlmocoInicio'))document.getElementById('inputAlmocoInicio').value='12:00';if(document.getElementById('inputAlmocoFim'))document.getElementById('inputAlmocoFim').value='13:00';document.getElementById('slugPreview').textContent='';selPay=null;}
+  function showStep(n){[1,2,3,4,5,6].forEach(function(i){var el=document.getElementById('formStep'+i);if(el)el.style.display=i===n?'':'none';});
+  // Preencher dados Google quando chegar no step 4
+  if(n===4&&window._googlePendingFill){
+    window._googlePendingFill=false;
+    setTimeout(function(){
+      var nomeEl=document.getElementById('inputNomeAdmin');
+      var emailEl=document.getElementById('inputEmail');
+      if(nomeEl&&window._googleName)nomeEl.value=window._googleName;
+      if(emailEl&&window._googleEmail){emailEl.value=window._googleEmail;emailEl.readOnly=true;emailEl.style.opacity='0.7';}
+      var senhaGroup=document.getElementById('senhaGroup');
+      var senhaConfirmGroup=document.getElementById('senhaConfirmGroup');
+      if(senhaGroup)senhaGroup.style.display='none';
+      if(senhaConfirmGroup)senhaConfirmGroup.style.display='none';
+      var senhaInput=document.getElementById('inputSenha');
+      var senhaConfirmInput=document.getElementById('inputSenhaConfirm');
+      if(senhaInput){senhaInput.removeAttribute('required');senhaInput.removeAttribute('minlength');}
+      if(senhaConfirmInput)senhaConfirmInput.removeAttribute('required');
+      // Badge Google
+      var step4=document.getElementById('formStep4');
+      if(step4&&!step4.querySelector('.google-badge')){
+        var badge=document.createElement('div');
+        badge.className='google-badge';
+        badge.style.cssText='background:#0d2818;border:1px solid #4ADE8044;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#4ADE80;display:flex;align-items:center;gap:8px';
+        badge.innerHTML='<span>✓</span><span>Autenticado pelo Google — sem necessidade de senha</span>';
+        step4.insertBefore(badge,step4.firstChild);
+      }
+    },50);
+  }[1,2,3,4,5].forEach(function(i){var b=document.getElementById('step-bar-'+i);if(b)b.className='modal-step'+(i<n?' done':(i===n?' active':''));});}
+  function updateSlugPreview(){var n=document.getElementById('inputNomeBarbearia').value,s=n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s-]/g,'').trim().replace(/\s+/g,'-');document.getElementById('slugPreview').textContent=s?'\uD83D\uDD17 usebarberpro.com/'+s:'';}  function maskCpfCnpj(i){var v=i.value.replace(/\D/g,'').slice(0,14);if(v.length<=11){if(v.length<=3)i.value=v;else if(v.length<=6)i.value=v.replace(/(\d{3})(\d{0,3})/,'$1.$2');else if(v.length<=9)i.value=v.replace(/(\d{3})(\d{3})(\d{0,3})/,'$1.$2.$3');else i.value=v.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/,'$1.$2.$3-$4');}else{if(v.length<=2)i.value=v;else if(v.length<=5)i.value=v.replace(/(\d{2})(\d{0,3})/,'$1.$2');else if(v.length<=8)i.value=v.replace(/(\d{2})(\d{3})(\d{0,3})/,'$1.$2.$3');else if(v.length<=12)i.value=v.replace(/(\d{2})(\d{3})(\d{3})(\d{0,4})/,'$1.$2.$3/$4');else i.value=v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/,'$1.$2.$3/$4-$5');}}
+  function maskCnpj(i){var v=i.value.replace(/\D/g,'').slice(0,14);if(v.length<=2)v=v;else if(v.length<=5)v=v.replace(/(\d{2})(\d{0,3})/,'$1.$2');else if(v.length<=8)v=v.replace(/(\d{2})(\d{3})(\d{0,3})/,'$1.$2.$3');else if(v.length<=12)v=v.replace(/(\d{2})(\d{3})(\d{3})(\d{0,4})/,'$1.$2.$3/$4');else v=v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})/,'$1.$2.$3/$4-$5');i.value=v;}  function maskTime(i){var v=i.value.replace(/\D/g,'').slice(0,4);if(v.length>2)v=v.slice(0,2)+':'+v.slice(2);i.value=v;}  var activeDays=[1,2,3,4,5,6];  function toggleDay(d){var idx=activeDays.indexOf(d);if(idx>-1)activeDays.splice(idx,1);else activeDays.push(d);document.querySelectorAll('.day-btn').forEach(function(b){var day=parseInt(b.getAttribute('data-day'));b.className='day-btn'+(activeDays.indexOf(day)>-1?' active':'');});}  function toggleAlmoco(){var show=document.getElementById('checkAlmoco').checked;document.getElementById('almocoFields').style.display=show?'':'none';}  function validateField(id,msg){var el=document.getElementById(id);if(!el)return true;var ok=el.value.trim()!=='';el.classList.toggle('input-error',!ok);var errEl=document.getElementById(id+'Error');if(errEl){errEl.textContent=msg||'Campo obrigatório';errEl.classList.toggle('visible',!ok);}return ok;} function clearErrors(){document.querySelectorAll('.input-error').forEach(function(el){el.classList.remove('input-error');});document.querySelectorAll('.field-error-msg.visible').forEach(function(el){el.classList.remove('visible');});} function validarCNPJ(c){if(c.length!==14)return false;if(/^(\d)\1+$/.test(c))return false;var t=c.slice(0,12),d1=0,d2=0,w1=[5,4,3,2,9,8,7,6,5,4,3,2],w2=[6,5,4,3,2,9,8,7,6,5,4,3,2];for(var i=0;i<12;i++)d1+=parseInt(t[i])*w1[i];d1=d1%11<2?0:11-d1%11;t+=d1;for(var i=0;i<13;i++)d2+=parseInt(t[i])*w2[i];d2=d2%11<2?0:11-d2%11;return parseInt(c[12])===d1&&parseInt(c[13])===d2;}
+function validarCPF(c){if(c.length!==11)return false;if(/^(\d)\1+$/.test(c))return false;var s=0;for(var i=0;i<9;i++)s+=parseInt(c[i])*(10-i);var r=s%11;var d1=r<2?0:11-r;if(parseInt(c[9])!==d1)return false;s=0;for(var i=0;i<10;i++)s+=parseInt(c[i])*(11-i);r=s%11;var d2=r<2?0:11-r;return parseInt(c[10])===d2;}
+function goToStep2(e){e.preventDefault();var ok=true;ok=validateField('inputNomeBarbearia','Informe o nome da barbearia')&&ok;ok=validateField('inputTelefone','Informe o telefone/WhatsApp')&&ok;ok=validateField('inputCnpj','Informe seu CPF ou CNPJ')&&ok;var cnpjVal=document.getElementById('inputCnpj')?document.getElementById('inputCnpj').value.replace(/\D/g,''):'';if(cnpjVal){var cnpjErr=document.getElementById('inputCnpjError');if(cnpjVal.length!==11&&cnpjVal.length!==14){if(cnpjErr){cnpjErr.textContent='CPF deve ter 11 dígitos ou CNPJ 14 dígitos';cnpjErr.classList.add('visible');}document.getElementById('inputCnpj').classList.add('input-error');ok=false;}else if(cnpjVal.length===14&&!validarCNPJ(cnpjVal)){if(cnpjErr){cnpjErr.textContent='CNPJ inválido. Verifique os dígitos.';cnpjErr.classList.add('visible');}document.getElementById('inputCnpj').classList.add('input-error');ok=false;}else if(cnpjVal.length===11&&!validarCPF(cnpjVal)){if(cnpjErr){cnpjErr.textContent='CPF inválido. Verifique os dígitos.';cnpjErr.classList.add('visible');}document.getElementById('inputCnpj').classList.add('input-error');ok=false;}}if(!ok)return;clearErrors();showStep(2);}  function goToStep3(e){e.preventDefault();var ok=true;ok=validateField('inputCidade','Informe a cidade')&&ok;ok=validateField('inputEstado','Informe o estado (ex: SP)')&&ok;if(!ok)return;clearErrors();showStep(3);}  function goToStep4(){if(activeDays.length===0){var el=document.getElementById('daysError');if(el){el.textContent='Selecione pelo menos um dia de funcionamento';el.classList.add('visible');}return;}var el=document.getElementById('daysError');if(el)el.classList.remove('visible');var ok=true;ok=validateField('inputAbertura','Informe o horário de abertura')&&ok;ok=validateField('inputFechamento','Informe o horário de fechamento')&&ok;if(!ok)return;clearErrors();showStep(4);}  function goToStep5(e){e.preventDefault();var ok=true;ok=validateField('inputNomeAdmin','Informe seu nome completo')&&ok;ok=validateField('inputEmail','Informe seu e-mail')&&ok;if(!window._isGoogleSignup){ok=validateField('inputSenha','Informe uma senha')&&ok;ok=validateField('inputSenhaConfirm','Confirme sua senha')&&ok;if(!ok)return;var s=document.getElementById('inputSenha').value,cv=document.getElementById('inputSenhaConfirm').value;if(s!==cv){document.getElementById('inputSenhaConfirm').classList.add('input-error');var errEl=document.getElementById('inputSenhaConfirmError');if(errEl){errEl.textContent='As senhas não coincidem';errEl.classList.add('visible');}return;}if(s.length<6){document.getElementById('inputSenha').classList.add('input-error');var errEl2=document.getElementById('inputSenhaError');if(errEl2){errEl2.textContent='A senha deve ter pelo menos 6 caracteres';errEl2.classList.add('visible');}return;}}if(!ok)return;clearErrors();showStep(5);}  var selPay=null;  function selectPayment(m){selPay=m;['card','pix','boleto'].forEach(function(x){var el=document.getElementById('pay'+x.charAt(0).toUpperCase()+x.slice(1));if(el)el.style.borderColor=x===m?'var(--gold)':'rgba(255,255,255,0.1)';});var b=document.getElementById('btnContinuarPagamento');b.disabled=false;b.style.opacity='1';b.style.pointerEvents='auto';}  function submitRegistration(){showStep(6);var nome=document.getElementById('inputNomeBarbearia').value,tel=document.getElementById('inputTelefone').value,cnpj=document.getElementById('inputCnpj').value.replace(/\D/g,''),instagram=document.getElementById('inputInstagram').value,cep=document.getElementById('inputCep').value.replace(/\D/g,''),rua=document.getElementById('inputRua').value,numero=document.getElementById('inputNumero').value,complemento=document.getElementById('inputComplemento').value,cidade=document.getElementById('inputCidade').value,estado=document.getElementById('inputEstado').value,abertura=document.getElementById('inputAbertura').value||'09:00',fechamento=document.getElementById('inputFechamento').value||'19:00',temAlmoco=document.getElementById('checkAlmoco').checked,almocoInicio=temAlmoco?(document.getElementById('inputAlmocoInicio').value||'12:00'):null,almocoFim=temAlmoco?(document.getElementById('inputAlmocoFim').value||'13:00'):null,nomeAdmin=document.getElementById('inputNomeAdmin').value,email=document.getElementById('inputEmail').value,senha=window._isGoogleSignup?('G'+Math.random().toString(36).slice(2,10)+'!2'):document.getElementById('inputSenha').value,plan=(function(){var p=String(currentPlan||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');return p==='equipe'||p==='team'?'team':p==='studio'||p==='estudio'?'studio':'solo';})();var payload={plan:plan,shop:{name:nome,phone:tel,address:rua+(numero?' '+numero:'')+(complemento?', '+complemento:''),city:cidade,state:estado,cep:cep,cnpj:cnpj||undefined,instagram:instagram||undefined},schedule:{openTime:abertura,closeTime:fechamento,workDays:activeDays.length?activeDays:[1,2,3,4,5,6],slotDuration:30,maxAdvanceDays:30,lunchStart:almocoInicio||undefined,lunchEnd:almocoFim||undefined},admin:{name:nomeAdmin,email:email,password:senha,phone:tel},paymentMethod:selPay||'card'};fetch('/api/trpc/onboarding.register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({json:payload})}).then(function(r){return r.json();}).then(function(data){if(data.result&&data.result.data&&data.result.data.json){var r=data.result.data.json;showSuccess(r.tenantSlug,r.adminUrl||'/admin',email,senha);}else{var msg='Erro ao criar barbearia. Tente novamente.';try{var e=data.error&&data.error.json;if(e&&e.message)msg=e.message;}catch(x){}alert(msg);showStep(5);}}).catch(function(err){console.error(err);alert('Erro de conex\u00e3o. Verifique sua internet e tente novamente.');showStep(5);});}
+  function showSuccess(slug,adminUrl,email,senha){
+    document.getElementById('modalFormContent').style.display='none';
+    var s=document.getElementById('modalSuccess');
+    s.style.display='block';
+    document.getElementById('successPublicLink').textContent='https://usebarberpro.com/'+slug;
+    var panelLink=document.getElementById('successPanelLink');
+    panelLink.href=adminUrl||'/admin';
+    // Login automático — criar sessão sem precisar digitar email/senha novamente
+    if(email&&senha){
+      fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'email='+encodeURIComponent(email)+'&password='+encodeURIComponent(senha)+'&remember=1',redirect:'manual'})
+        .then(function(r){
+          // redirect:manual — cookie é setado mesmo sem seguir o redirect
+          // status 0 = opaque redirect (sucesso), qualquer outro = cookie setado
+          panelLink.onclick=function(e){e.preventDefault();window.location.href=adminUrl||'/admin';};
+          panelLink.style.background='#4ADE80';
+          panelLink.textContent='✓ Acessar o painel →';
+        }).catch(function(){/* silencioso — botão ainda funciona normalmente */});
+    }
+  }
+  function goToLogin(){closeModal();openLoginModal();}
+  // Modal login
+  function openLoginModal(){document.getElementById('loginModal').classList.add('open');document.body.style.overflow='hidden';document.getElementById('loginError').style.display='none';document.getElementById('loginEmail').value='';document.getElementById('loginPassword').value='';setTimeout(function(){document.getElementById('loginEmail').focus();},100);}
+  function closeLoginModal(){document.getElementById('loginModal').classList.remove('open');document.body.style.overflow='';}
+  function handleLoginOverlayClick(e){if(e.target===document.getElementById('loginModal'))closeLoginModal();}
+  function handleLoginSubmit(e){var b=document.getElementById('loginBtn');b.textContent='Entrando...';b.disabled=true;}
+  // ESC
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeModal();closeLoginModal();}});
+  // Spin
+  var st=document.createElement('style');st.textContent='@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';document.head.appendChild(st);
+
+  // Lead capture
+  function submitLead(e){
+    e.preventDefault();
+    var name=document.getElementById('lead-name').value.trim();
+    var email=document.getElementById('lead-email').value.trim();
+    var phone=document.getElementById('lead-phone').value.trim();
+    var msg=document.getElementById('lead-msg');
+    var err=document.getElementById('lead-err');
+    var btn=document.getElementById('lead-btn');
+    msg.style.display='none'; err.style.display='none';
+    if(!email && !phone){err.style.display='block';return;}
+    btn.textContent='Enviando...'; btn.disabled=true;
+    fetch('/api/lead',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:name,email:email,phone:phone})
+    }).then(function(r){return r.json();})
+    .then(function(d){
+      if(d.ok){
+        msg.style.display='block';
+        document.getElementById('lead-form').reset();
+        btn.textContent='QUERO UMA DEMONSTRA\u00c7\u00c3O GRATUITA';
+        btn.disabled=false;
+      } else { throw new Error('server error'); }
+    }).catch(function(){
+      err.textContent='Ocorreu um erro. Tente novamente.';
+      err.style.display='block';
+      btn.textContent='QUERO UMA DEMONSTRA\u00c7\u00c3O GRATUITA';
+      btn.disabled=false;
+    });
+  }
+</script>
+<script>
+(function(){
+  var ENDPOINT='/api/error-log';
+  function send(data){
+    try{
+      navigator.sendBeacon(ENDPOINT,JSON.stringify(Object.assign({source:'browser',url:location.href,userAgent:navigator.userAgent},data)));
+    }catch(e){}
+  }
+  window.onerror=function(msg,src,line,col,err){
+    send({message:String(msg),stack:err&&err.stack?err.stack:'at '+src+':'+line+':'+col});
+  };
+  window.addEventListener('unhandledrejection',function(e){
+    var reason=e.reason;
+    send({message:reason instanceof Error?reason.message:String(reason),stack:reason instanceof Error?reason.stack:undefined});
+  });
+})();
+</script>
+
+<script>
+// Scroll animations fade-in-up
+const fadeObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, {threshold: 0.1});
+document.querySelectorAll('.feat-card,.test-card,.pain-card,.price-card,.step-card,.pf-step,.sub-step,.payment-card').forEach(el => {
+  el.classList.add('fade-in-up');
+  fadeObs.observe(el);
+});
+
+// Navbar scroll effect
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('main-nav');
+  if(nav) nav.classList.toggle('scrolled', window.scrollY > 60);
+}, {passive: true});
+
+// Hero stats counter
+function animCount(el, target, dur) {
+  let start = null;
+  function step(ts) {
+    if(!start) start = ts;
+    const p = Math.min((ts-start)/dur, 1);
+    const v = Math.round(p * target);
+    if(el.dataset.suffix) el.textContent = v + el.dataset.suffix;
+    else el.textContent = v;
+    if(p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+const statsObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting) {
+      e.target.querySelectorAll('[data-count]').forEach(el => {
+        animCount(el, parseInt(el.dataset.count), 1400);
+      });
+      statsObs.unobserve(e.target);
+    }
+  });
+}, {threshold: 0.5});
+const heroStats = document.querySelector('.hero-stats');
+if(heroStats) statsObs.observe(heroStats);
+</script>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.showcase-screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.showcase-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  document.querySelectorAll('.showcase-tab').forEach(t => {
+    if (t.getAttribute('onclick') === "showTab('" + id + "')") t.classList.add('active');
+  });
+}
+
+// Contador animado de assinantes e receita
+function animateCounter(el, target, duration, prefix, suffix) {
+  let start = null;
+  function step(ts) {
+    if (!start) start = ts;
+    const progress = Math.min((ts - start) / duration, 1);
+    const val = Math.floor(progress * target);
+    el.textContent = prefix + val.toLocaleString('pt-BR') + suffix;
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+const counterObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const countEl = document.getElementById('sub-count');
+      const revEl = document.getElementById('sub-rev');
+      if (countEl) animateCounter(countEl, 35, 1600, '', '');
+      if (revEl) animateCounter(revEl, 4200, 1800, 'R$ ', '');
+      counterObs.disconnect();
+    }
+  });
+}, { threshold: 0.3 });
+const counterSection = document.getElementById('sub-count');
+if (counterSection) counterObs.observe(counterSection.closest('section'));
+</script>
+</body>
+</html>
