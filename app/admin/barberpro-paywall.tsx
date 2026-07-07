@@ -25,33 +25,64 @@ import { useBarberAuth } from "@/lib/auth-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 
 // ─── Planos disponíveis ────────────────────────────────────────────────────────
+interface PaywallPlanFeature {
+  text: string;
+  included: boolean;
+}
+
 const PLANS = [
   {
     key: "solo",
     label: "Solo",
     price: 49.90,
     priceAnnual: 39.90,
-    description: "Para barbearias com 1 profissional",
-    features: ["1 barbeiro", "Agendamento online", "Financeiro", "Relatórios básicos"],
+    description: "Para o barbeiro autônomo que trabalha sozinho.",
     highlight: false,
+    features: [
+      { text: "1 barbeiro / profissional", included: true },
+      { text: "Agendamento online pelo cliente", included: true },
+      { text: "Gestão financeira básica", included: true },
+      { text: "Sistema de fidelidade", included: true },
+      { text: "Pagamento via Pix e cartão", included: true },
+      { text: "Múltiplos barbeiros", included: false },
+      { text: "Produtos e estoque", included: false },
+      { text: "Cupons e planos de assinatura", included: false },
+      { text: "Relatórios completos + CSV", included: false },
+    ] as PaywallPlanFeature[],
   },
   {
     key: "team",
     label: "Equipe",
     price: 99.90,
     priceAnnual: 79.90,
-    description: "Para barbearias com equipe",
-    features: ["Até 3 barbeiros", "Tudo do Solo", "Produtos e Estoque", "Cupons e Planos de assinatura"],
+    description: "Para barbearias com até 3 profissionais.",
     highlight: true,
+    features: [
+      { text: "Até 3 barbeiros / profissionais", included: true },
+      { text: "Agendamento online pelo cliente", included: true },
+      { text: "Gestão financeira completa", included: true },
+      { text: "Produtos, estoque e fornecedores", included: true },
+      { text: "Cupons e encomendas", included: true },
+      { text: "Planos de assinatura p/ clientes", included: true },
+      { text: "Relatórios completos + CSV", included: true },
+      { text: "Comissões automáticas", included: false },
+      { text: "Radar de Leads", included: false },
+    ] as PaywallPlanFeature[],
   },
   {
     key: "studio",
     label: "Estúdio",
     price: 169.90,
     priceAnnual: 135.90,
-    description: "Para estúdios e franquias",
-    features: ["Barbeiros ilimitados", "Tudo do Equipe", "Comissões automáticas", "Radar de Leads"],
+    description: "Para grandes barbearias e estúdios.",
     highlight: false,
+    features: [
+      { text: "Barbeiros ilimitados", included: true },
+      { text: "Tudo do plano Equipe", included: true },
+      { text: "Comissões automáticas", included: true },
+      { text: "Radar de Leads (Órbita)", included: true },
+      { text: "Suporte prioritário", included: true },
+    ] as PaywallPlanFeature[],
   },
 ] as const;
 
@@ -549,43 +580,68 @@ export default function BarberProPaywallScreen() {
           <>
             {PLANS.map((p) => {
               const active = selectedPlan === p.key;
+              const isPopular = p.highlight;
               return (
                 <Pressable
                   key={p.key}
                   style={({ pressed }) => [
                     styles.planCard,
                     active && styles.planCardActive,
-                    p.highlight && styles.planCardHighlight,
-                    pressed && { opacity: 0.85 },
+                    isPopular && !active && styles.planCardHighlight,
+                    pressed && { opacity: 0.88 },
                   ]}
                   onPress={() => setSelectedPlan(p.key)}
                 >
-                  {p.highlight && (
-                    <View style={styles.popularBadge}>
-                      <Text style={styles.popularBadgeText}>MAIS POPULAR</Text>
+                  {isPopular && (
+                    <View style={[styles.popularBadge, active && styles.popularBadgeActive]}>
+                      <Text style={[styles.popularBadgeText, active && styles.popularBadgeTextActive]}>MAIS POPULAR</Text>
                     </View>
                   )}
-                  <View style={styles.planRow}>
-                    <View style={[styles.radio, active && styles.radioActive]}>
-                      {active && <View style={styles.radioDot} />}
+
+                  <View style={styles.planHeaderRow}>
+                    <View style={{ flex: 1, paddingRight: 12 }}>
+                      <Text style={[styles.planLabel, active && styles.planLabelActive]}>{p.label}</Text>
+                      <Text style={[styles.planDesc, active && styles.planDescActive]}>{p.description}</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.planLabel}>{p.label}</Text>
-                      <Text style={styles.planDesc}>{p.description}</Text>
-                    </View>
-                    <View style={styles.priceBox}>
-                      <Text style={styles.priceValue}>R$ {p.price}</Text>
-                      <Text style={styles.pricePer}>/mês</Text>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
+                        <Text style={[styles.priceCurrency, active && styles.priceActive]}>R$ </Text>
+                        <Text style={[styles.priceValue, active && styles.priceActive]}>
+                          {p.price.toFixed(2).replace(".", ",")}
+                        </Text>
+                      </View>
+                      <Text style={[styles.pricePer, active && styles.pricePerActive]}>/mês</Text>
                     </View>
                   </View>
+
+                  <View style={[styles.planDivider, active && styles.planDividerActive]} />
+
                   <View style={styles.featureList}>
-                    {p.features.map((f) => (
-                      <View key={f} style={styles.featureRow}>
-                        <IconSymbol name="checkmark.circle.fill" size={14} color="#C9A84C" />
-                        <Text style={styles.featureText}>{f}</Text>
+                    {p.features.map((f, idx) => (
+                      <View key={idx} style={styles.featureRow}>
+                        <IconSymbol
+                          name={f.included ? "checkmark.circle.fill" : "xmark.circle.fill"}
+                          size={14}
+                          color={f.included ? (active ? "#0A0A0A" : "#C9A84C") : (active ? "#0A0A0A55" : "#444")}
+                        />
+                        <Text style={[
+                          styles.featureText,
+                          !f.included && styles.featureTextDisabled,
+                          active && styles.featureTextActive,
+                          active && !f.included && styles.featureTextActiveDisabled,
+                        ]}>
+                          {f.text}
+                        </Text>
                       </View>
                     ))}
                   </View>
+
+                  {active && (
+                    <View style={styles.selectedIndicator}>
+                      <IconSymbol name="checkmark" size={13} color="#0A0A0A" />
+                      <Text style={styles.selectedIndicatorText}>Selecionado</Text>
+                    </View>
+                  )}
                 </Pressable>
               );
             })}
@@ -819,29 +875,62 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
   },
-  planCardActive: { borderColor: "#C9A84C" },
-  planCardHighlight: { borderColor: "#C9A84C44", backgroundColor: "#1A1500" },
+  planCardActive: {
+    backgroundColor: "#C9A84C",
+    borderColor: "#C9A84C",
+    shadowColor: "#C9A84C",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  planCardHighlight: { borderColor: "#C9A84C44" },
   popularBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "#C9A84C",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginBottom: 10,
+    backgroundColor: "#C9A84C22",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#C9A84C55",
   },
-  popularBadgeText: { fontSize: 10, fontWeight: "800", color: "#000", letterSpacing: 1 },
+  popularBadgeActive: { backgroundColor: "#0A0A0A22", borderColor: "#0A0A0A44" },
+  popularBadgeText: { fontSize: 10, fontWeight: "800", color: "#C9A84C", letterSpacing: 1.5 },
+  popularBadgeTextActive: { color: "#0A0A0A" },
+  planHeaderRow: { flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 16 },
   planRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12 },
   radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: "#444", alignItems: "center", justifyContent: "center" },
   radioActive: { borderColor: "#C9A84C" },
   radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#C9A84C" },
-  planLabel: { fontSize: 16, fontWeight: "700", color: "#ECEDEE" },
-  planDesc: { fontSize: 12, color: "#9BA1A6", marginTop: 2 },
+  planLabel: { fontSize: 20, fontWeight: "800", color: "#ECEDEE", marginBottom: 4 },
+  planLabelActive: { color: "#0A0A0A" },
+  planDesc: { fontSize: 12, color: "#9BA1A6", lineHeight: 18 },
+  planDescActive: { color: "#0A0A0A99" },
   priceBox: { alignItems: "flex-end" },
-  priceValue: { fontSize: 20, fontWeight: "800", color: "#C9A84C" },
-  pricePer: { fontSize: 11, color: "#9BA1A6" },
-  featureList: { gap: 6 },
-  featureRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  featureText: { fontSize: 13, color: "#9BA1A6" },
+  priceCurrency: { fontSize: 14, fontWeight: "700", color: "#C9A84C" },
+  priceValue: { fontSize: 30, fontWeight: "900", color: "#C9A84C" },
+  priceActive: { color: "#0A0A0A" },
+  pricePer: { fontSize: 12, color: "#9BA1A6" },
+  pricePerActive: { color: "#0A0A0A88" },
+  planDivider: { height: 1, backgroundColor: "#2A2A2A", marginBottom: 16 },
+  planDividerActive: { backgroundColor: "#0A0A0A22" },
+  featureList: { gap: 10 },
+  featureRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  featureText: { fontSize: 13, color: "#CCCCCC", flex: 1 },
+  featureTextDisabled: { color: "#444" },
+  featureTextActive: { color: "#0A0A0A" },
+  featureTextActiveDisabled: { color: "#0A0A0A55" },
+  selectedIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#0A0A0A22",
+  },
+  selectedIndicatorText: { fontSize: 12, fontWeight: "700", color: "#0A0A0A" },
   formCard: {
     backgroundColor: "#111",
     borderRadius: 16,
