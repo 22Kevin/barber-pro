@@ -3495,10 +3495,6 @@ async function renderAgenda(req: Request, res: Response) {
           }
 
           async function changeApptStatus(id, status, btn) {
-            // Cancelamento: confirmar primeiro
-            if (status === 'cancelled') {
-              bpConfirm({icon:'❌',title:'Cancelar agendamento',msg:'Deseja cancelar este agendamento?',okLabel:'Cancelar agendamento',danger:true,onConfirm:function(){
-            }
             btn.disabled = true; btn.style.opacity = '0.5';
             try {
               var r = await fetch('/admin-api/appointment-status', {
