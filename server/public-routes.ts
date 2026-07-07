@@ -4428,6 +4428,24 @@ export function registerPublicRoutes(app: Express): void {
       res.status(500).json({ error: "erro interno" });
     }
   });
+  // GET /pub-api/fee-zero-promo — contador real de assinantes pagantes para a
+  // promoção "Taxa 0 para os primeiros 100 assinantes" (usado na landing page)
+  app.get("/pub-api/fee-zero-promo", async (_req: Request, res: Response) => {
+    const TOTAL_VAGAS = 100;
+    try {
+      const dbConn = await db.getDb();
+      if (!dbConn) { res.json({ count: 0, total: TOTAL_VAGAS, remaining: TOTAL_VAGAS }); return; }
+      const rows = await dbConn.execute(sql`
+        SELECT COUNT(*) as cnt FROM tenants WHERE "barberproSubscriptionStatus" = 'active'
+      `) as any;
+      const list = Array.isArray(rows) ? rows[0] : (rows?.rows ?? []);
+      const count = Math.min(parseInt(list?.[0]?.cnt ?? "0", 10) || 0, TOTAL_VAGAS);
+      res.json({ count, total: TOTAL_VAGAS, remaining: Math.max(0, TOTAL_VAGAS - count) });
+    } catch (e: any) {
+      console.error("[fee-zero-promo] Erro:", e.message);
+      res.json({ count: 0, total: TOTAL_VAGAS, remaining: TOTAL_VAGAS });
+    }
+  });
   // Funções auxiliares do carrinho
   async function createOrdersAndDeductStock(orderItems: any[], tenantId: number, clientId: number, paymentMethod: string, dbRef: typeof db) {
     for (const oi of orderItems) {
