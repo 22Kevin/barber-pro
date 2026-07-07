@@ -156,7 +156,7 @@ export default function ReturnMessagesScreen() {
 
   return (
     <ScreenContainer containerClassName="bg-background" edges={["left", "right"]}>
-      <AdminHeader title="Mensagens de Retorno" />
+      <AdminHeader title="Mensagens Automáticas" />
 
       {/* Info banner */}
       <View style={[styles.infoBanner, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "40" }]}>

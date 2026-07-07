@@ -404,7 +404,7 @@ export default function BarbeariaScreen() {
     "agenda": "Agenda", "clientes": "Clientes", "lista-espera": "Lista de Espera",
     "servicos": "Serviços", "financeiro": "Financeiro", "relatorios": "Relatórios",
     "comissoes": "Comissões", "minhas-comissoes": "Minhas Comissões", "produtos": "Produtos/Estoque",
-    "marketing": "Marketing", "configuracoes": "Configurações",
+    "marketing": "Marketing", "configuracoes": "Minha Assinatura",
   };
 
   function openCreateBarber() {
