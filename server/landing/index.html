@@ -613,7 +613,7 @@
       <li><a href="/sistema">O Sistema</a></li>
       <li><a href="/pagamentos">Pagamentos</a></li>
       <li><a href="/assinaturas">Assinaturas</a></li>
-      <li><a href="/como-funciona">Como funciona</a></li>
+      <li><a href="/#como-funciona">Como funciona</a></li>
       <li><a href="/#planos">Planos</a></li>
       <li><a href="/#faq">FAQ</a></li>
     </ul>
@@ -630,13 +630,12 @@
   <a href="/sistema" onclick="closeMobileMenu()">O Sistema</a>
   <a href="/pagamentos" onclick="closeMobileMenu()">Pagamentos</a>
   <a href="/assinaturas" onclick="closeMobileMenu()">Assinaturas</a>
-  <a href="/como-funciona" onclick="closeMobileMenu()">Como funciona</a>
+  <a href="/#como-funciona" onclick="closeMobileMenu()">Como funciona</a>
   <a href="/#planos" onclick="closeMobileMenu()">Planos</a>
   <a href="/#faq" onclick="closeMobileMenu()">FAQ</a>
   <a href="/admin/login" onclick="closeMobileMenu()">Entrar no painel</a>
   <a href="/#planos" class="drawer-cta" onclick="closeMobileMenu();openModal('Equipe','R$99,90');">✦ Testar 14 dias grátis</a>
 </div>
-<!-- SOCIAL PROOF BAR -->
 <div class="social-proof-bar">
   <div class="container">
     <span>📱 App disponível no Android</span>
@@ -720,7 +719,6 @@
   </div>
 </div>
 
-<hr class="section-divider">
 <section class="section">
   <div class="container">
     <div class="text-center">
@@ -759,8 +757,6 @@
     </div>
   </div>
 </section>
-<hr class="section-divider">
-<!-- SISTEMA: RESUMO (versao completa em /sistema) -->
 <section id="sistema" class="section" style="background:var(--black-2)">
   <div class="container">
     <div class="text-center">
@@ -815,6 +811,137 @@
     </div>
   </div>
 </section>
+<hr class="section-divider">
+<!-- COMO FUNCIONA + APP MOBILE (secao unificada) -->
+<section id="como-funciona" class="section" style="background:var(--black-2)">
+  <div class="container">
+    <div class="text-center">
+      <div class="section-label">Como funciona</div>
+      <h2 class="section-title">Sua barbearia online<br/><span class="gold-gradient">em 3 passos simples</span></h2>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <div class="step-title">Crie sua conta</div>
+        <div class="step-desc">Informe o nome da sua barbearia, seus dados e escolha o plano. Em menos de 5 minutos você já tem sua página no ar.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">Configure seus serviços</div>
+        <div class="step-desc">Adicione seus serviços, preços, duração e fotos. Defina seus horários de atendimento e sua equipe.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">Compartilhe e receba</div>
+        <div class="step-desc">Compartilhe seu link <strong style="color:var(--gold)">usebarberpro.com/sua-barbearia</strong> no Instagram e WhatsApp. Seus clientes agendam sozinhos.</div>
+      </div>
+    </div>
+
+    <hr class="section-divider" style="margin:64px 0 56px">
+
+    <div class="text-center">
+      <div class="section-label">App Mobile</div>
+      <h2 class="section-title">Sua barbearia no bolso,<br/><span class="gold-gradient">em qualquer lugar.</span></h2>
+      <p class="section-sub mx-auto" style="max-width:600px">Gerencie agenda, financeiro e equipe direto do celular. O app Barber Pro para Android leva o painel completo para o seu bolso.</p>
+    </div>
+    <div class="app-mobile-grid">
+      <div>
+        <div class="app-feat-list">
+          <div class="app-feat-item"><span class="app-feat-check">✓</span><span>Agenda completa — veja, confirme e gerencie horários em tempo real</span></div>
+          <div class="app-feat-item"><span class="app-feat-check">✓</span><span>Notificações push de novos agendamentos, sem precisar abrir o app</span></div>
+          <div class="app-feat-item"><span class="app-feat-check">✓</span><span>Financeiro na palma da mão — faturamento, comissões e despesas</span></div>
+          <div class="app-feat-item"><span class="app-feat-check">✓</span><span>Cadastro de clientes, histórico de atendimentos e fidelidade</span></div>
+          <div class="app-feat-item"><span class="app-feat-check">✓</span><span>Gestão de equipe com permissões por barbeiro e recepcionista</span></div>
+          <div class="app-feat-item"><span class="app-feat-check">✓</span><span>Troca rápida entre unidades para quem tem mais de uma barbearia</span></div>
+        </div>
+        <a href="https://play.google.com/store/apps/details?id=com.eldunari.barberpro" target="_blank" rel="noopener noreferrer" class="app-store-badge">
+          <img src="/assets/google-play-badge-pt.svg" alt="Disponível no Google Play" width="220" height="66" style="display:block;" />
+        </a>
+      </div>
+      <div>
+        <div class="app-carousel" id="appCarousel">
+          <div class="app-carousel-track">
+            <img src="/assets/app-screen-agenda.jpg" alt="Tela de Agenda do app Barber Pro" class="app-carousel-img active" data-label="Agenda">
+            <img src="/assets/app-screen-financeiro.jpg" alt="Tela de Financeiro do app Barber Pro" class="app-carousel-img" data-label="Financeiro">
+            <img src="/assets/app-screen-assinaturas.jpg" alt="Tela de Assinaturas do app Barber Pro" class="app-carousel-img" data-label="Assinaturas">
+            <img src="/assets/app-screen-personalizacao.jpg" alt="Personalização da página de agendamentos" class="app-carousel-img" data-label="Personalização">
+            <img src="/assets/app-screen-pagina-publica.jpg" alt="Página pública de agendamentos do cliente" class="app-carousel-img" data-label="Página pública">
+          </div>
+          <div class="app-carousel-dots">
+            <button class="app-carousel-dot active" onclick="setAppCarouselSlide(0)" aria-label="Agenda"></button>
+            <button class="app-carousel-dot" onclick="setAppCarouselSlide(1)" aria-label="Financeiro"></button>
+            <button class="app-carousel-dot" onclick="setAppCarouselSlide(2)" aria-label="Assinaturas"></button>
+            <button class="app-carousel-dot" onclick="setAppCarouselSlide(3)" aria-label="Personalização"></button>
+            <button class="app-carousel-dot" onclick="setAppCarouselSlide(4)" aria-label="Página pública"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center" style="margin-top:64px;margin-bottom:28px">
+      <p style="color:var(--gray-light);font-size:15px">Instale em segundos, direto no seu celular:</p>
+    </div>
+    <div class="install-tutorial-grid">
+      <div class="install-tutorial-card">
+        <div class="install-tutorial-icon">🤖</div>
+        <h3 class="install-tutorial-title">Android</h3>
+        <ol class="install-tutorial-steps">
+          <li>Acesse a Google Play pelo botão abaixo</li>
+          <li>Toque em <strong style="color:var(--white)">Instalar</strong></li>
+          <li>Abra o app e faça login com sua conta Barber Pro</li>
+        </ol>
+        <a href="https://play.google.com/store/apps/details?id=com.eldunari.barberpro" target="_blank" rel="noopener noreferrer" class="app-store-badge" style="margin-top:18px;display:inline-block">
+          <img src="/assets/google-play-badge-pt.svg" alt="Disponível no Google Play" width="200" height="60" style="display:block;" />
+        </a>
+      </div>
+      <div class="install-tutorial-card">
+        <div class="install-tutorial-icon">🍎</div>
+        <h3 class="install-tutorial-title">iPhone (iOS)</h3>
+        <ol class="install-tutorial-steps">
+          <li>Abra <strong style="color:var(--gold)">usebarberpro.com/admin</strong> pelo Safari</li>
+          <li>Toque no ícone de compartilhar <span style="display:inline-block;border:1px solid var(--gray-light);border-radius:4px;padding:0 5px;font-size:11px">⬆️</span></li>
+          <li>Role e toque em <strong style="color:var(--white)">"Adicionar à Tela de Início"</strong></li>
+          <li>Toque em <strong style="color:var(--white)">"Adicionar"</strong> — pronto, funciona como um app</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .install-tutorial-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; max-width: 760px; margin: 0 auto; }
+  .install-tutorial-card { background: var(--black-3); border: 1px solid rgba(255,255,255,0.06); border-radius: 18px; padding: 28px; }
+  .install-tutorial-icon { font-size: 30px; margin-bottom: 10px; }
+  .install-tutorial-title { font-size: 17px; font-weight: 800; color: var(--white); margin-bottom: 14px; }
+  .install-tutorial-steps { color: var(--gray-light); font-size: 13.5px; line-height: 1.85; padding-left: 20px; margin: 0; }
+  .install-tutorial-steps li { margin-bottom: 4px; }
+</style>
+<style>
+  .app-carousel { position: relative; max-width: 300px; margin: 0 auto; }
+  .app-carousel-track { position: relative; width: 100%; aspect-ratio: 3 / 6.5; }
+  .app-carousel-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.6s ease; filter: drop-shadow(0 30px 60px rgba(0,0,0,0.5)); -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%); mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%); }
+  .app-carousel-img.active { opacity: 1; }
+  .app-carousel-dots { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
+  .app-carousel-dot { width: 8px; height: 8px; border-radius: 50%; border: none; background: rgba(255,255,255,0.25); cursor: pointer; padding: 0; transition: background 0.2s, transform 0.2s; }
+  .app-carousel-dot.active { background: var(--gold); transform: scale(1.3); }
+</style>
+<script>
+  (function() {
+    let appCarouselIdx = 0;
+    let appCarouselTimer = null;
+    window.setAppCarouselSlide = function(i) {
+      const imgs = document.querySelectorAll('#appCarousel .app-carousel-img');
+      const dots = document.querySelectorAll('#appCarousel .app-carousel-dot');
+      if (!imgs.length) return;
+      imgs.forEach(function(el, idx) { el.classList.toggle('active', idx === i); });
+      dots.forEach(function(el, idx) { el.classList.toggle('active', idx === i); });
+      appCarouselIdx = i;
+      if (appCarouselTimer) clearTimeout(appCarouselTimer);
+      appCarouselTimer = setTimeout(function() { setAppCarouselSlide((appCarouselIdx + 1) % imgs.length); }, 4000);
+    };
+    setAppCarouselSlide(0);
+  })();
+</script>
 <section id="planos" style="background:#0A0A0A;padding:80px 24px">
   <div style="max-width:1100px;margin:0 auto">
 
@@ -1037,78 +1164,6 @@
 })();
 </script>
 
-<hr class="section-divider">
-<section id="app-mobile" class="section" style="background:var(--black-2)">
-  <div class="container">
-    <div class="text-center">
-      <div class="section-label">App Mobile</div>
-      <h2 class="section-title">Sua barbearia no bolso,<br/><span class="gold-gradient">em qualquer lugar.</span></h2>
-      <p class="section-sub mx-auto" style="max-width:600px">Gerencie agenda, financeiro e equipe direto do celular. O app Barber Pro para Android leva o painel completo para o seu bolso.</p>
-    </div>
-    <div class="app-mobile-grid">
-      <div>
-        <div class="app-feat-list">
-          <div class="app-feat-item"><span class="app-feat-check">✓</span><span>Agenda completa — veja, confirme e gerencie horários em tempo real</span></div>
-          <div class="app-feat-item"><span class="app-feat-check">✓</span><span>Notificações push de novos agendamentos, sem precisar abrir o app</span></div>
-          <div class="app-feat-item"><span class="app-feat-check">✓</span><span>Financeiro na palma da mão — faturamento, comissões e despesas</span></div>
-          <div class="app-feat-item"><span class="app-feat-check">✓</span><span>Cadastro de clientes, histórico de atendimentos e fidelidade</span></div>
-          <div class="app-feat-item"><span class="app-feat-check">✓</span><span>Gestão de equipe com permissões por barbeiro e recepcionista</span></div>
-          <div class="app-feat-item"><span class="app-feat-check">✓</span><span>Troca rápida entre unidades para quem tem mais de uma barbearia</span></div>
-        </div>
-        <a href="https://play.google.com/store/apps/details?id=com.eldunari.barberpro" target="_blank" rel="noopener noreferrer" class="app-store-badge">
-          <img src="/assets/google-play-badge-pt.svg" alt="Disponível no Google Play" width="220" height="66" style="display:block;" />
-        </a>
-      </div>
-      <div>
-        <div class="app-carousel" id="appCarousel">
-          <div class="app-carousel-track">
-            <img src="/assets/app-screen-agenda.jpg" alt="Tela de Agenda do app Barber Pro" class="app-carousel-img active" data-label="Agenda">
-            <img src="/assets/app-screen-financeiro.jpg" alt="Tela de Financeiro do app Barber Pro" class="app-carousel-img" data-label="Financeiro">
-            <img src="/assets/app-screen-assinaturas.jpg" alt="Tela de Assinaturas do app Barber Pro" class="app-carousel-img" data-label="Assinaturas">
-            <img src="/assets/app-screen-personalizacao.jpg" alt="Personalização da página de agendamentos" class="app-carousel-img" data-label="Personalização">
-            <img src="/assets/app-screen-pagina-publica.jpg" alt="Página pública de agendamentos do cliente" class="app-carousel-img" data-label="Página pública">
-          </div>
-          <div class="app-carousel-dots">
-            <button class="app-carousel-dot active" onclick="setAppCarouselSlide(0)" aria-label="Agenda"></button>
-            <button class="app-carousel-dot" onclick="setAppCarouselSlide(1)" aria-label="Financeiro"></button>
-            <button class="app-carousel-dot" onclick="setAppCarouselSlide(2)" aria-label="Assinaturas"></button>
-            <button class="app-carousel-dot" onclick="setAppCarouselSlide(3)" aria-label="Personalização"></button>
-            <button class="app-carousel-dot" onclick="setAppCarouselSlide(4)" aria-label="Página pública"></button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<style>
-  .app-carousel { position: relative; max-width: 300px; margin: 0 auto; }
-  .app-carousel-track { position: relative; width: 100%; aspect-ratio: 3 / 6.5; }
-  .app-carousel-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.6s ease; filter: drop-shadow(0 30px 60px rgba(0,0,0,0.5)); -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%); mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%); }
-  .app-carousel-img.active { opacity: 1; }
-  .app-carousel-dots { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
-  .app-carousel-dot { width: 8px; height: 8px; border-radius: 50%; border: none; background: rgba(255,255,255,0.25); cursor: pointer; padding: 0; transition: background 0.2s, transform 0.2s; }
-  .app-carousel-dot.active { background: var(--gold); transform: scale(1.3); }
-</style>
-<script>
-  (function() {
-    let appCarouselIdx = 0;
-    let appCarouselTimer = null;
-    window.setAppCarouselSlide = function(i) {
-      const imgs = document.querySelectorAll('#appCarousel .app-carousel-img');
-      const dots = document.querySelectorAll('#appCarousel .app-carousel-dot');
-      if (!imgs.length) return;
-      imgs.forEach(function(el, idx) { el.classList.toggle('active', idx === i); });
-      dots.forEach(function(el, idx) { el.classList.toggle('active', idx === i); });
-      appCarouselIdx = i;
-      if (appCarouselTimer) clearTimeout(appCarouselTimer);
-      appCarouselTimer = setTimeout(function() { setAppCarouselSlide((appCarouselIdx + 1) % imgs.length); }, 4000);
-    };
-    setAppCarouselSlide(0);
-  })();
-</script>
-
-<hr class="section-divider">
 <section id="faq" class="section">
   <div class="container">
     <div class="text-center">
@@ -1174,7 +1229,6 @@
     </div>
   </div>
 </section>
-<!-- FOOTER -->
 <footer>
   <div class="container">
     <div class="footer-top">

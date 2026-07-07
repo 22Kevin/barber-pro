@@ -852,7 +852,7 @@ async function startServer() {
   });
 
   // ── Subpaginas da landing (reestruturação: cada aba do menu com conteúdo próprio) ──
-  const landingSubpages = ["sistema", "pagamentos", "assinaturas", "como-funciona"];
+  const landingSubpages = ["sistema", "pagamentos", "assinaturas"];
   for (const slug of landingSubpages) {
     const devPath = path.join(__dirname, "..", "landing", `${slug}.html`);
     const prodPath = path.join(process.cwd(), "server", "landing", `${slug}.html`);
@@ -864,6 +864,11 @@ async function startServer() {
       res.sendFile(subpagePath);
     });
   }
+
+  // /como-funciona virou seção da home (mesclada com App Mobile) — mantém link antigo funcionando
+  app.get("/como-funciona", (_req, res) => {
+    res.redirect(301, "/#como-funciona");
+  });
 
   // Páginas legais — conteúdo embutido no bundle
   // ── SEO: favicon ─────────────────────────────────────────────────────────
