@@ -3449,7 +3449,7 @@ async function renderAgenda(req: Request, res: Response) {
                 if (!pmt.clientPhone) { showToast('<b>Cliente sem telefone cadastrado.</b>', 5000); return; }
                 var phone = pmt.clientPhone.replace(/\D/g, '');
                 var msg = encodeURIComponent(
-                  'Olá ' + (pmt.clientName || '') + '! Segue o código Pix para pagamento do serviço *' + (pmt.serviceName || 'Serviço') + '* (R$ ' + parseFloat(pmt.amount).toFixed(2).replace('.', ',') + ').\n\nCopie e cole no seu banco:\n\n' + pixCode
+                  'Olá ' + (pmt.clientName || '') + '! Segue o código Pix para pagamento do serviço *' + (pmt.serviceName || 'Serviço') + '* (R$ ' + parseFloat(pmt.amount).toFixed(2).replace('.', ',') + ').\\n\\nCopie e cole no seu banco:\\n\\n' + pixCode
                 );
                 window.open('https://wa.me/55' + phone + '?text=' + msg, '_blank');
               };
@@ -3499,10 +3499,6 @@ async function renderAgenda(req: Request, res: Response) {
           }
 
           async function changeApptStatus(id, status, btn) {
-            // Cancelamento: confirmar primeiro
-            if (status === 'cancelled') {
-              bpConfirm({icon:'❌',title:'Cancelar agendamento',msg:'Deseja cancelar este agendamento?',okLabel:'Cancelar agendamento',danger:true,onConfirm:function(){
-            }
             btn.disabled = true; btn.style.opacity = '0.5';
             try {
               var r = await fetch('/admin-api/appointment-status', {

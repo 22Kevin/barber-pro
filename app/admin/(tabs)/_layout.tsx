@@ -105,14 +105,14 @@ export default function AdminTabsLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Configurações",
+          title: "Minha Assinatura",
           tabBarItemStyle: { display: "none" },
         }}
       />
       <Tabs.Screen
         name="return-messages"
         options={{
-          title: "Retorno Automático",
+          title: "Mensagens Automáticas",
           tabBarItemStyle: { display: "none" },
         }}
       />

@@ -74,7 +74,7 @@ const MENU_GROUPS: MenuGroup[] = [
       { label: "Fidelidade",              icon: "star.fill",                   route: "/admin/(tabs)/loyalty",           roles: ["super_admin"] },
       { label: "Promoções",               icon: "megaphone.fill",              route: "/admin/(tabs)/promotions",        roles: ["super_admin"] },
       { label: "Conversão de Promoções",  icon: "chart.pie.fill",              route: "/admin/(tabs)/promotion-report",  roles: ["super_admin"] },
-      { label: "Retorno Automático",      icon: "bell.badge.fill",             route: "/admin/(tabs)/return-messages",   roles: ["super_admin"] },
+      { label: "Mensagens Automáticas",      icon: "bell.badge.fill",             route: "/admin/(tabs)/return-messages",   roles: ["super_admin"] },
     ],
   },
   {
@@ -102,7 +102,7 @@ const MENU_GROUPS: MenuGroup[] = [
     label: "SISTEMA",
     items: [
       { label: "Barbearia",       icon: "building.2.fill",             route: "/admin/(tabs)/barbearia",         roles: ["super_admin"] },
-      { label: "Configurações",   icon: "gearshape.fill",              route: "/admin/(tabs)/settings",          roles: ["super_admin"] },
+      { label: "Minha Assinatura",   icon: "gearshape.fill",              route: "/admin/(tabs)/settings",          roles: ["super_admin"] },
     ],
   },
 ];
