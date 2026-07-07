@@ -10763,9 +10763,7 @@ document.addEventListener('input', function(e) {
     const session = (req as any).adminSession;
     const barber = await db.getBarberById(session.barberId);
     const tenantId = barber?.tenantId ?? null;
-    const allRecurring = await db.getAllRecurringAppointments(tenantId);
-    const cancelledList = await db.getCancelledRecurringAppointments(tenantId);
-    const stats = await db.getSubscriptionStats(tenantId);
+    const { plans: plansWithSubs, stats } = await db.getPlansWithSubscribers(tenantId);
     const allClients = await db.getAllClients(tenantId);
     const allBarbers = await db.getAllBarbers(tenantId);
     const allServices = await db.getAllServices(true, tenantId);
@@ -10773,18 +10771,14 @@ document.addEventListener('input', function(e) {
     const created = req.query.created === "1";
     const viewTab = (req.query.tab as string) || "active";
     const searchQ = ((req.query.q as string) || "").toLowerCase();
-    const filtered = searchQ
-      ? allRecurring.filter((r: any) =>
-          (r.clientName || "").toLowerCase().includes(searchQ) ||
-          (r.serviceName || "").toLowerCase().includes(searchQ) ||
-          (r.barberName || "").toLowerCase().includes(searchQ))
-      : allRecurring;
-    const filteredCancelled = searchQ
-      ? cancelledList.filter((r: any) =>
-          (r.clientName || "").toLowerCase().includes(searchQ) ||
-          (r.serviceName || "").toLowerCase().includes(searchQ) ||
-          (r.barberName || "").toLowerCase().includes(searchQ))
-      : cancelledList;
+    // Achata assinantes de todos os planos, filtrando por status e busca
+    const allSubs = plansWithSubs.flatMap((p: any) =>
+      (p.subscribers || []).map((s: any) => ({ ...s, planName: p.name, planId: p.id }))
+    );
+    const matchesSearch = (s: any) =>
+      !searchQ || (s.clientName || "").toLowerCase().includes(searchQ) || (s.planName || "").toLowerCase().includes(searchQ);
+    const filtered = allSubs.filter((s: any) => s.status === "active" && matchesSearch(s));
+    const filteredCancelled = allSubs.filter((s: any) => s.status === "cancelled" && matchesSearch(s));
     const body = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
         <div>
@@ -10832,7 +10826,7 @@ document.addEventListener('input', function(e) {
         </a>
       </div>
 
-      ${(viewTab === 'active' ? allRecurring : cancelledList).length > 3 ? `
+      ${(viewTab === 'active' ? filtered : filteredCancelled).length > 3 ? `
       <div style="margin-bottom:16px;">
         <form method="GET" action="/admin/assinaturas" style="display:flex;gap:8px;align-items:center;">
           <input type="hidden" name="tab" value="${esc(viewTab)}" />
@@ -10851,17 +10845,15 @@ document.addEventListener('input', function(e) {
       <!-- Lista de encerradas -->
       <div class="card">
         <table>
-          <thead><tr><th>Cliente</th><th>Barbeiro</th><th>Serviço</th><th>Intervalo</th><th>Ocorrências</th><th>Cancelada em</th><th>Motivo</th></tr></thead>
+          <thead><tr><th>Cliente</th><th>Plano</th><th>Preço</th><th>Cancelada em</th><th>Motivo</th></tr></thead>
           <tbody>
-            ${filteredCancelled.length === 0 ? '<tr><td colspan="7" class="empty">Nenhuma assinatura encerrada.</td></tr>' : filteredCancelled.map((r: any) => {
+            ${filteredCancelled.length === 0 ? '<tr><td colspan="5" class="empty">Nenhuma assinatura encerrada.</td></tr>' : filteredCancelled.map((r: any) => {
               const cancelDate = r.cancelledAt ? new Date(r.cancelledAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
               return `
               <tr>
-                <td><strong>${esc(r.clientName)}</strong></td>
-                <td>${esc(r.barberName)}</td>
-                <td>${esc(r.serviceName)}</td>
-                <td>A cada ${r.intervalWeeks} semana(s)</td>
-                <td>${r.occurrences}x</td>
+                <td><strong>${esc(r.clientName)}</strong>${r.clientPhone ? ' <span style="color:var(--muted);font-size:12px;">&#183; ' + esc(r.clientPhone) + '</span>' : ''}</td>
+                <td>${esc(r.planName)}</td>
+                <td>R$ ${(parseFloat(r.price) || 0).toFixed(2)}</td>
                 <td style="color:var(--error);font-weight:600;">${cancelDate}</td>
                 <td style="max-width:200px;">${r.cancelReason ? esc(r.cancelReason) : '<span style="color:var(--muted);">—</span>'}</td>
               </tr>
@@ -10870,28 +10862,39 @@ document.addEventListener('input', function(e) {
         </table>
       </div>
       ` : `
-      <!-- Lista de ativas -->
-      <div class="card">
-        <table>
-          <thead><tr><th>Cliente</th><th>Barbeiro</th><th>Serviço</th><th>Início</th><th>Horário</th><th>Intervalo</th><th>Ocorrências</th><th>Ações</th></tr></thead>
-          <tbody>
-            ${filtered.length === 0 ? '<tr><td colspan="8" class="empty">Nenhuma assinatura encontrada.</td></tr>' : filtered.map((r: any) => `
-              <tr>
-                <td><strong>${esc(r.clientName)}</strong></td>
-                <td>${esc(r.barberName)}</td>
-                <td>${esc(r.serviceName)}</td>
-                <td>${fmtDate(r.startDate)}</td>
-                <td>${r.startTime?.toString().slice(0,5) ?? "—"}</td>
-                <td>A cada ${r.intervalWeeks} semana(s)</td>
-                <td>${r.occurrences}x</td>
-                <td>
-                  <button class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="openCancelModal(${r.id}, '${esc(r.clientName).replace(/'/g, "\\'")}')">Cancelar</button>
-                </td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-      </div>
+      <!-- Lista de ativas, agrupada por plano -->
+      ${plansWithSubs.length === 0 ? `
+      <div class="card"><div class="empty" style="padding:40px;text-align:center;">Nenhum plano de assinatura cadastrado ainda. <a href="/admin/planos-gerenciar" style="color:var(--gold);">Criar plano</a></div></div>
+      ` : plansWithSubs.map((plan: any) => {
+        const planActive = (plan.subscribers || []).filter((s: any) => s.status === 'active' && matchesSearch({ ...s, planName: plan.name }));
+        if (searchQ && planActive.length === 0) return "";
+        return `
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);">
+            <div>
+              <strong style="color:var(--text);font-size:15px;">${esc(plan.name)}</strong>
+              <span style="color:var(--muted);font-size:13px;margin-left:8px;">R$ ${(parseFloat(plan.price) || 0).toFixed(2)}/mês</span>
+            </div>
+            <span style="color:var(--gold);font-size:13px;font-weight:700;">${planActive.length} assinante(s)</span>
+          </div>
+          <table>
+            <thead><tr><th>Cliente</th><th>Início</th><th>Próx. cobrança</th><th>Ações</th></tr></thead>
+            <tbody>
+              ${planActive.length === 0 ? '<tr><td colspan="4" class="empty">Nenhum assinante ativo neste plano.</td></tr>' : planActive.map((r: any) => `
+                <tr>
+                  <td><strong>${esc(r.clientName)}</strong>${r.clientPhone ? ' <span style="color:var(--muted);font-size:12px;">&#183; ' + esc(r.clientPhone) + '</span>' : ''}</td>
+                  <td>${fmtDate(r.cycleStart)}</td>
+                  <td>${fmtDate(r.cycleEnd)}</td>
+                  <td>
+                    <button class="btn btn-sm" style="background:var(--error);color:#fff;border:none;" onclick="openCancelModal(${r.id}, '${esc(r.clientName).replace(/'/g, "\\'")}')">Cancelar</button>
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+        `;
+      }).join("")}
       `}
 
       <!-- Modal de Cancelamento com Motivo -->
@@ -11125,7 +11128,21 @@ document.addEventListener('input', function(e) {
 
   app.post("/admin/assinaturas/cancelar", requireAdminAuth, async (req: Request, res: Response) => {
     const { id, reason } = req.body;
-    if (id) await db.cancelRecurringWithReason(parseInt(id), reason || undefined);
+    const session = (req as any).adminSession;
+    const barber = await db.getBarberById(session.barberId);
+    const tenantId = barber?.tenantId;
+    try {
+      const dbConn = await db.getDb();
+      if (dbConn && id && tenantId) {
+        await dbConn.execute(sql`
+          UPDATE client_subscriptions
+          SET status='cancelled', "cancelledAt"=NOW(), "cancelReason"=${reason || null}, "updatedAt"=NOW()
+          WHERE id=${parseInt(id)} AND "tenantId"=${tenantId}
+        `);
+      }
+    } catch (e: any) {
+      console.error("[assinaturas] Erro ao cancelar assinatura:", e.message);
+    }
     res.redirect("/admin/assinaturas?cancelled=1");
   });
 

@@ -2744,6 +2744,52 @@ export async function getSubscriptionStats(tenantId?: number | null) {
   };
 }
 
+// ─── Planos de Assinatura + Assinantes (client_subscriptions) ────────────────
+// Usado em /admin/assinaturas para exibir os planos e os clientes assinantes
+// de cada plano, igual ao app mobile (que lê de client_subscriptions).
+export async function getPlansWithSubscribers(tenantId?: number | null) {
+  const dbc = await getDb();
+  const empty = { plans: [] as any[], stats: { totalActive: 0, totalCancelled: 0, cancelRate: 0, estimatedMRR: 0 } };
+  if (!dbc || !tenantId) return empty;
+  try {
+    const rawPlans = await dbc.execute(sql`
+      SELECT id, name, price FROM subscription_plans
+      WHERE "tenantId" = ${tenantId}
+      ORDER BY "createdAt" DESC
+    `) as any;
+    const plans = Array.isArray(rawPlans) ? (rawPlans[0] as any[]) : (rawPlans?.rows ?? []);
+
+    let totalActive = 0, totalCancelled = 0, mrr = 0;
+    for (const plan of plans) {
+      const rawSubs = await dbc.execute(sql`
+        SELECT cs.id, cs.status, cs.price, cs."cycleStart", cs."cycleEnd",
+               cs."cancelledAt", cs."cancelReason", cs."createdAt",
+               c.name as "clientName", c.phone as "clientPhone"
+        FROM client_subscriptions cs
+        JOIN clients c ON c.id = cs."clientId"
+        WHERE cs."planId" = ${plan.id}
+        ORDER BY cs."createdAt" DESC
+      `) as any;
+      const subs = Array.isArray(rawSubs) ? (rawSubs[0] as any[]) : (rawSubs?.rows ?? []);
+      plan.subscribers = subs;
+      for (const s of subs) {
+        if (s.status === "active") {
+          totalActive++;
+          mrr += parseFloat(s.price) || 0;
+        } else if (s.status === "cancelled") {
+          totalCancelled++;
+        }
+      }
+    }
+    const total = totalActive + totalCancelled;
+    const cancelRate = total > 0 ? Math.round((totalCancelled / total) * 1000) / 10 : 0;
+    return { plans, stats: { totalActive, totalCancelled, cancelRate, estimatedMRR: Math.round(mrr * 100) / 100 } };
+  } catch (e: any) {
+    console.error("[assinaturas] Erro ao buscar planos com assinantes:", e.message);
+    return empty;
+  }
+}
+
 // ─── Assinaturas — Próximas ocorrências (para reminder job) ─────────────────
 export async function getUpcomingSubscriptionReminders(daysAhead: number = 3) {
   const db = await getDb();
