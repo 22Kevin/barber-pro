@@ -658,6 +658,78 @@
       <h2 class="section-title">Sem maquininha.<br/><span class="gold-gradient">Dinheiro na conta. Na hora.</span></h2>
       <p class="section-sub mx-auto" style="max-width:560px">Integrado com o <strong style="color:var(--gold)">Asaas</strong> — a plataforma financeira mais completa do Brasil — o Barber Pro transforma sua página em uma máquina de receber dinheiro 24 horas por dia.</p>
     </div>
+
+    <!-- PROMO: TAXA 0 para os primeiros 100 assinantes -->
+    <div class="fee-promo-banner" id="feePromoBanner">
+      <div class="fee-promo-badge">🔥 OFERTA POR TEMPO LIMITADO</div>
+      <h3 class="fee-promo-title">Para os primeiros 100 assinantes, fechamos uma política<br class="fee-promo-br"/> inegociável de <span class="gold-gradient">TAXA 0</span> em todos os pagamentos online.</h3>
+      <p class="fee-promo-sub">O lucro será todo seu.</p>
+      <div class="fee-promo-progress-track">
+        <div class="fee-promo-progress-fill" id="feePromoFill"></div>
+      </div>
+      <div class="fee-promo-numbers">
+        <div class="fee-promo-stat">
+          <span class="fee-promo-num" id="feePromoCount">0</span>
+          <span class="fee-promo-label">assinantes com taxa 0 garantida</span>
+        </div>
+        <div class="fee-promo-stat">
+          <span class="fee-promo-num fee-promo-num-gold" id="feePromoRemaining">100</span>
+          <span class="fee-promo-label">vagas restantes</span>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      .fee-promo-banner { position: relative; max-width: 720px; margin: 0 auto 48px; background: linear-gradient(160deg, rgba(201,168,76,0.10), rgba(201,168,76,0.02)); border: 1px solid rgba(201,168,76,0.35); border-radius: 22px; padding: 36px 32px; text-align: center; overflow: hidden; animation: feePromoPulse 3.5s ease-in-out infinite; }
+      @keyframes feePromoPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.15); } 50% { box-shadow: 0 0 0 14px rgba(201,168,76,0); } }
+      .fee-promo-badge { display: inline-block; background: rgba(201,168,76,0.15); border: 1px solid rgba(201,168,76,0.4); color: var(--gold); font-size: 11.5px; font-weight: 800; letter-spacing: 0.6px; padding: 6px 16px; border-radius: 50px; margin-bottom: 16px; }
+      .fee-promo-title { font-size: clamp(18px, 3vw, 24px); font-weight: 800; color: var(--white); line-height: 1.4; margin-bottom: 8px; }
+      .fee-promo-br { display: none; }
+      .fee-promo-sub { color: var(--gray-light); font-size: 15px; margin-bottom: 28px; }
+      .fee-promo-progress-track { width: 100%; height: 10px; background: rgba(255,255,255,0.06); border-radius: 20px; overflow: hidden; margin-bottom: 18px; }
+      .fee-promo-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--gold), #F0C060); border-radius: 20px; transition: width 1.4s cubic-bezier(0.16,1,0.3,1); }
+      .fee-promo-numbers { display: flex; justify-content: center; gap: 48px; flex-wrap: wrap; }
+      .fee-promo-stat { display: flex; flex-direction: column; align-items: center; }
+      .fee-promo-num { font-size: clamp(28px, 5vw, 40px); font-weight: 900; color: var(--white); letter-spacing: -1px; line-height: 1; }
+      .fee-promo-num-gold { background: linear-gradient(135deg, #C9A84C, #F0C060); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+      .fee-promo-label { color: var(--gray-light); font-size: 12.5px; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+      @media (min-width: 640px) { .fee-promo-br { display: inline; } }
+    </style>
+    <script>
+      (function() {
+        function animateCount(el, from, to, duration) {
+          var start = null;
+          function step(ts) {
+            if (!start) start = ts;
+            var progress = Math.min((ts - start) / duration, 1);
+            var eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = Math.round(from + (to - from) * eased);
+            if (progress < 1) requestAnimationFrame(step);
+          }
+          requestAnimationFrame(step);
+        }
+        function runPromoCounter() {
+          fetch('/pub-api/fee-zero-promo').then(function(r) { return r.json(); }).then(function(d) {
+            var count = d.count || 0, total = d.total || 100, remaining = d.remaining != null ? d.remaining : (total - count);
+            var fill = document.getElementById('feePromoFill');
+            var countEl = document.getElementById('feePromoCount');
+            var remainingEl = document.getElementById('feePromoRemaining');
+            if (!fill || !countEl || !remainingEl) return;
+            setTimeout(function() { fill.style.width = Math.min(100, (count / total) * 100) + '%'; }, 150);
+            animateCount(countEl, 0, count, 1400);
+            animateCount(remainingEl, total, remaining, 1400);
+          }).catch(function() {});
+        }
+        if (document.getElementById('feePromoBanner')) {
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', runPromoCounter);
+          } else {
+            runPromoCounter();
+          }
+        }
+      })();
+    </script>
+
     <div class="payments-grid">
       <div class="payment-card payment-highlight">
         <div class="payment-icon">💰</div>
