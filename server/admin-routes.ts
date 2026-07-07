@@ -2369,14 +2369,18 @@ async function renderDashboard(req: Request, res: Response) {
             <img src="/admin/app-qrcode" alt="QR Code" style="width:120px;height:120px;border-radius:12px;border:2px solid rgba(201,168,76,0.3);background:#fff;padding:4px" />
           </div>
           <div style="flex:1">
-            <div style="font-size:12px;color:rgba(148,163,184,0.8);margin-bottom:14px;line-height:1.5">Escaneie o QR Code com a câmera do seu celular Android para baixar o app Barber Pro:</div>
-            <a href="https://play.google.com/store/apps/details?id=space.manus.barber.app" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#22C55E,#16A34A);color:#fff;text-decoration:none;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;box-shadow:0 4px 12px rgba(34,197,94,0.3);transition:all .2s" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 16px rgba(34,197,94,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 12px rgba(34,197,94,0.3)'">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5v-17c0-.83 1-.83 1.5-.5l14 8.5c.5.3.5 1 0 1.3l-14 8.5c-.5.3-1.5.3-1.5-.8z"/></svg>
-              Google Play →
-            </a>
+            <div style="font-size:12px;color:rgba(148,163,184,0.8);margin-bottom:14px;line-height:1.5">O app Barber Pro para Android está em análise na Google Play. Assim que for aprovado, você poderá instalar por aqui:</div>
+            <span style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.05);color:rgba(241,245,249,0.5);padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;border:1px solid rgba(255,255,255,0.08);cursor:default">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" opacity="0.5"><path d="M3 20.5v-17c0-.83 1-.83 1.5-.5l14 8.5c.5.3.5 1 0 1.3l-14 8.5c-.5.3-1.5.3-1.5-.8z"/></svg>
+              🚀 Em breve na Google Play
+            </span>
+            <div style="width:140px;height:4px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;margin-top:10px">
+              <div style="height:100%;width:36%;background:linear-gradient(90deg,#C9A84C,#F0C060);border-radius:4px;animation:appCardIndeterminate 1.5s ease-in-out infinite"></div>
+            </div>
           </div>
         </div>
       </div>
+      <style>@keyframes appCardIndeterminate { 0% { transform: translateX(-120%); } 100% { transform: translateX(420%); } }</style>
       <div id="app-content-ios" style="display:none;padding:16px 20px 20px">
         <div style="display:flex;gap:16px;align-items:center;background:rgba(255,255,255,0.04);border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.08)">
           <div style="font-size:28px">🍎</div>
