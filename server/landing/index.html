@@ -1122,7 +1122,7 @@
 (function(){
   var ann=false;
   var P={s:[49.90,478.80],e:[99.90,958.80],t:[169.90,1630.80]};
-  var dl=new Date();dl.setDate(dl.getDate()+30);
+  var dl=new Date('2026-08-06T23:59:59-03:00');
   function fmt(n){return'R$'+n.toFixed(2).replace('.',',');}
   window.bpToggle=function(){
     ann=!ann;
