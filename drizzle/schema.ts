@@ -255,6 +255,7 @@ export const appointments = pgTable("appointments", {
   whatsappReminder24hSent: boolean("whatsappReminder24hSent").default(false).notNull(),
   whatsappReminder1hSent: boolean("whatsappReminder1hSent").default(false).notNull(),
   emailReminder24hSent: boolean("emailReminder24hSent").default(false).notNull(),
+  googleEventId: varchar("googleEventId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => [
@@ -262,6 +263,24 @@ export const appointments = pgTable("appointments", {
   index("idx_appointments_client_id").on(t.clientId),
   index("idx_appointments_date").on(t.date),
   index("idx_appointments_status_date").on(t.status, t.date),
+]);
+
+// ─── Conexões com Google Agenda (sincronização unidirecional por barbeiro) ───
+export const googleCalendarConnections = pgTable("google_calendar_connections", {
+  id: serial("id").primaryKey(),
+  barberId: integer("barberId").notNull(),
+  tenantId: integer("tenantId").notNull(),
+  refreshTokenEncrypted: text("refreshTokenEncrypted").notNull(),
+  googleCalendarId: varchar("googleCalendarId", { length: 255 }),
+  accessTokenCache: text("accessTokenCache"),
+  accessTokenExpiresAt: timestamp("accessTokenExpiresAt"),
+  syncEnabled: boolean("syncEnabled").default(true).notNull(),
+  lastSyncError: text("lastSyncError"),
+  lastSyncAt: timestamp("lastSyncAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (t) => [
+  index("idx_gcal_conn_barber").on(t.barberId),
 ]);
 
 // ─── Vendas ───────────────────────────────────────────────────────────────────

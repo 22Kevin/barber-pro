@@ -55,6 +55,7 @@ import {
   type InsertService,
   type InsertUser,
   users,
+  googleCalendarConnections,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -3371,5 +3372,104 @@ export async function getSubscriptionPlanServices(planId: number) {
       .leftJoin(services, eq(services.id, subscriptionPlanServices.serviceId))
       .where(eq(subscriptionPlanServices.planId, planId));
     return rows;
+  });
+}
+
+// ─── Conexões com Google Agenda ────────────────────────────────────────────
+
+export async function getGoogleCalendarConnection(barberId: number) {
+  return withRetry(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    const rows = await db
+      .select()
+      .from(googleCalendarConnections)
+      .where(eq(googleCalendarConnections.barberId, barberId))
+      .limit(1);
+    return rows[0] ?? null;
+  });
+}
+
+export async function saveGoogleCalendarConnection(data: {
+  barberId: number;
+  tenantId: number;
+  refreshTokenEncrypted: string;
+  googleCalendarId?: string | null;
+  accessTokenCache?: string | null;
+  accessTokenExpiresAt?: Date | null;
+}) {
+  return withRetry(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    const existing = await getGoogleCalendarConnection(data.barberId);
+    if (existing) {
+      await db
+        .update(googleCalendarConnections)
+        .set({
+          refreshTokenEncrypted: data.refreshTokenEncrypted,
+          googleCalendarId: data.googleCalendarId ?? existing.googleCalendarId,
+          accessTokenCache: data.accessTokenCache ?? null,
+          accessTokenExpiresAt: data.accessTokenExpiresAt ?? null,
+          syncEnabled: true,
+          lastSyncError: null,
+          updatedAt: new Date(),
+        } as any)
+        .where(eq(googleCalendarConnections.barberId, data.barberId));
+    } else {
+      await db.insert(googleCalendarConnections).values({
+        barberId: data.barberId,
+        tenantId: data.tenantId,
+        refreshTokenEncrypted: data.refreshTokenEncrypted,
+        googleCalendarId: data.googleCalendarId ?? null,
+        accessTokenCache: data.accessTokenCache ?? null,
+        accessTokenExpiresAt: data.accessTokenExpiresAt ?? null,
+      } as any);
+    }
+    return true;
+  });
+}
+
+export async function updateGoogleCalendarConnectionCache(barberId: number, accessToken: string, expiresAt: Date) {
+  return withRetry(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    await db
+      .update(googleCalendarConnections)
+      .set({ accessTokenCache: accessToken, accessTokenExpiresAt: expiresAt, updatedAt: new Date() } as any)
+      .where(eq(googleCalendarConnections.barberId, barberId));
+    return true;
+  });
+}
+
+export async function markGoogleCalendarSyncResult(barberId: number, error: string | null) {
+  return withRetry(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    await db
+      .update(googleCalendarConnections)
+      .set({ lastSyncError: error, lastSyncAt: new Date(), updatedAt: new Date() } as any)
+      .where(eq(googleCalendarConnections.barberId, barberId));
+    return true;
+  });
+}
+
+export async function deleteGoogleCalendarConnection(barberId: number) {
+  return withRetry(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    await db.delete(googleCalendarConnections).where(eq(googleCalendarConnections.barberId, barberId));
+    return true;
+  });
+}
+
+export async function setAppointmentGoogleEventId(appointmentId: number, googleEventId: string | null) {
+  return withRetry(async () => {
+    const db = await getDb();
+    if (!db) return null;
+    await db
+      .update(appointments)
+      .set({ googleEventId } as any)
+      .where(eq(appointments.id, appointmentId));
+    return true;
   });
 }
