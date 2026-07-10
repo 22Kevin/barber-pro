@@ -806,6 +806,23 @@ export async function runAutoMigrate(db: any): Promise<void> {
         reason VARCHAR(100) DEFAULT 'trial_expired'
       )`,
     },
+    {
+      name: "google_calendar_connections",
+      sql: `CREATE TABLE IF NOT EXISTS google_calendar_connections (
+        id SERIAL PRIMARY KEY,
+        "barberId" INT NOT NULL,
+        "tenantId" INT NOT NULL,
+        "refreshTokenEncrypted" TEXT NOT NULL,
+        "googleCalendarId" VARCHAR(255),
+        "accessTokenCache" TEXT,
+        "accessTokenExpiresAt" TIMESTAMP,
+        "syncEnabled" BOOLEAN NOT NULL DEFAULT TRUE,
+        "lastSyncError" TEXT,
+        "lastSyncAt" TIMESTAMP,
+        "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+      )`,
+    },
   ];
 
   // ─── ALTER TABLE: adicionar colunas faltantes ────────────────────────────
@@ -906,6 +923,22 @@ export async function runAutoMigrate(db: any): Promise<void> {
     { name: 'tenants."displayName"',    sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "displayName" VARCHAR(100)` },
     { name: 'tenants."isHeadquarters"', sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "isHeadquarters" BOOLEAN DEFAULT false` },
     { name: 'tenants."branchOrder"',    sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "branchOrder" INTEGER DEFAULT 0` },
+    // ── Integração com Google Agenda (fase 1, sincronização unidirecional) ────
+    { name: 'appointments."googleEventId"', sql: `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS "googleEventId" VARCHAR(255)` },
+    { name: 'idx_gcal_conn_barber', sql: `CREATE INDEX IF NOT EXISTS idx_gcal_conn_barber ON google_calendar_connections ("barberId")` },
+  ];
+
+  // ─── Limpeza: remover colunas antigas do Mercado Pago ────────────────────
+  // O Mercado Pago foi usado só nos testes iniciais do projeto e foi
+  // totalmente substituído pelo Asaas meses atrás. Nenhum código do sistema
+  // referencia essas colunas (confirmado por busca em todo o codebase antes
+  // de adicionar esta limpeza). Usa DROP COLUMN IF EXISTS: seguro mesmo que
+  // a coluna já tenha sido removida antes, e não falha o boot do servidor
+  // caso alguma delas já não exista.
+  const dropLegacyColumns: Array<{ name: string; sql: string }> = [
+    { name: 'sales."mercadoPagoPaymentId" (drop)', sql: `ALTER TABLE sales DROP COLUMN IF EXISTS "mercadoPagoPaymentId"` },
+    { name: 'shop_settings."mercadoPagoAccessToken" (drop)', sql: `ALTER TABLE shop_settings DROP COLUMN IF EXISTS "mercadoPagoAccessToken"` },
+    { name: 'shop_settings."mercadoPagoPublicKey" (drop)', sql: `ALTER TABLE shop_settings DROP COLUMN IF EXISTS "mercadoPagoPublicKey"` },
   ];
 
   let created = 0;
@@ -941,6 +974,22 @@ export async function runAutoMigrate(db: any): Promise<void> {
         msg.includes("duplicate column") ||
         msg.includes("column exists")
       ) {
+        skipped++;
+      } else {
+        errors++;
+        console.warn(`[auto-migrate] ⚠️  ${col.name}: ${err?.message ?? err}`);
+      }
+    }
+  }
+
+  // Executar limpeza de colunas legadas (Mercado Pago)
+  for (const col of dropLegacyColumns) {
+    try {
+      await db.execute(col.sql as any);
+      created++;
+    } catch (err: any) {
+      const msg = (err?.message ?? "").toLowerCase();
+      if (msg.includes("does not exist") || msg.includes("42703")) {
         skipped++;
       } else {
         errors++;
