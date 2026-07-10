@@ -894,17 +894,73 @@ export async function getNextClientAppointment(clientId: number) {
   return rows.length > 0 ? rows[0] : null;
 }
 
+// ─── Sincronização com Google Agenda (disparada a partir de create/update) ────
+// Import dinâmico (não no topo do arquivo) para evitar dependência circular:
+// google-calendar.ts importa funções deste arquivo (db.ts). Resolvido em
+// tempo de execução, quando os dois módulos já estão totalmente carregados.
+//
+// REGRA DE OURO: esta função NUNCA pode lançar erro para quem a chama.
+// Ela é sempre disparada como "fire and forget" (sem await no ponto de
+// chamada, com .catch(()=>{}) de segurança), para que uma falha na API do
+// Google jamais impeça a criação/edição/cancelamento do agendamento em si.
+async function triggerGoogleCalendarSync(appointmentId: number, action: "created" | "updated" | "cancelled"): Promise<void> {
+  try {
+    const appt = await getAppointmentById(appointmentId);
+    if (!appt) return;
+
+    // Se o status virou cancelado/no-show, trata sempre como cancelamento
+    // do evento no Google, independente da action original.
+    const effectiveAction: "created" | "updated" | "cancelled" =
+      (appt.status === "cancelled" || appt.status === "no_show") ? "cancelled" : action;
+
+    const gcal = await import("./google-calendar");
+
+    if (effectiveAction === "cancelled") {
+      if (!appt.googleEventId) return; // nunca chegou a ser criado no Google, nada a fazer
+      await gcal.syncAppointmentCancelled(appt.barberId, appt.googleEventId);
+      return;
+    }
+
+    const [client, service] = await Promise.all([
+      getClientById(appt.clientId),
+      getServiceById(appt.serviceId),
+    ]);
+    const apptForSync = {
+      id: appt.id,
+      date: appt.date,
+      startTime: String(appt.startTime),
+      endTime: String(appt.endTime),
+      clientName: client?.name ?? "Cliente",
+      serviceName: service?.name ?? appt.serviceNames ?? "Serviço",
+      notes: appt.notes,
+    };
+
+    if (effectiveAction === "created" || !appt.googleEventId) {
+      await gcal.syncAppointmentCreated(appt.barberId, apptForSync);
+    } else {
+      await gcal.syncAppointmentUpdated(appt.barberId, apptForSync, appt.googleEventId);
+    }
+  } catch (e: any) {
+    // Nunca propagar - só registrar no log do servidor para investigação
+    console.error(`[google-calendar-sync] Erro (agendamento ${appointmentId}):`, e?.message ?? e);
+  }
+}
+
 export async function createAppointment(data: InsertAppointment) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   const result = await db.insert(appointments).values(data).returning();
-  return result[0].id;
+  const newId = result[0].id;
+  triggerGoogleCalendarSync(newId, "created").catch(() => {});
+  return newId;
 }
 
 export async function updateAppointment(id: number, data: Partial<InsertAppointment>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(appointments).set(data).where(eq(appointments.id, id));
+  const action = data.status === "cancelled" || data.status === "no_show" ? "cancelled" : "updated";
+  triggerGoogleCalendarSync(id, action).catch(() => {});
 }
 
 export async function checkSlotAvailability(barberId: number, date: string, startTime: string, endTime: string, excludeId?: number) {
@@ -956,7 +1012,9 @@ export async function createAppointmentAtomic(data: {
        data.startTime, data.endTime, data.status, data.notes ?? null]
     );
     await client.query('COMMIT');
-    return { success: true, appointmentId: insert.rows[0].id };
+    const newId = insert.rows[0].id;
+    triggerGoogleCalendarSync(newId, "created").catch(() => {});
+    return { success: true, appointmentId: newId };
   } catch (err: any) {
     await client.query('ROLLBACK');
     return { success: false, error: err.message };
