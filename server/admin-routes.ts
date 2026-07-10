@@ -18,6 +18,7 @@
 
 import type { Express, Request, Response, NextFunction } from "express";
 import * as db from "./db";
+import * as googleCalendar from "./google-calendar";
 import { sql, eq, and, inArray } from "drizzle-orm";
 import { saleItems as saleItemsTable, sales as salesTable } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -1001,6 +1002,10 @@ ${barberRole === "super_admin" || (barberPerms && barberPerms.includes("configur
             <a href="/admin/configuracoes" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--text);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               Configurações
+            </a>
+            <a href="/admin/integracoes" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--text);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Integrações
             </a>
             ` : ""}
             <a href="/admin/suporte" style="display:flex;align-items:center;gap:10px;padding:10px 16px;text-decoration:none;color:var(--text);font-size:13px;transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
@@ -6539,6 +6544,68 @@ async function renderNovoAgendamento(req: Request, res: Response) {
 }
 
 // ─── Relatórios ───────────────────────────────────────────────────────────────
+// ─── Integrações (Google Agenda) ─────────────────────────────────────────────
+async function renderIntegracoes(req: Request, res: Response) {
+  try {
+    const session = (req as any).adminSession as { barberId: number; role: string };
+    const barber = await db.getBarberById(session.barberId);
+    const connection = await db.getGoogleCalendarConnection(session.barberId);
+    const success = req.query.gcal_success === "1";
+    const disconnected = req.query.gcal_disconnected === "1";
+    const errorMsg = req.query.gcal_error as string | undefined;
+
+    const isConnected = !!connection && connection.syncEnabled;
+    const lastSyncAt = connection?.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString("pt-BR") : null;
+    const lastSyncError = connection?.lastSyncError ?? null;
+
+    const body = `
+      <div class="page-header">
+        <div>
+          <h1>Integrações</h1>
+          <p class="page-sub">Conecte serviços externos ao Barber Pro.</p>
+        </div>
+      </div>
+
+      ${success ? `<div class="alert alert-success" style="margin-bottom:16px">✅ Google Agenda conectada com sucesso!</div>` : ""}
+      ${disconnected ? `<div class="alert" style="margin-bottom:16px;background:var(--surface);border:1px solid var(--border)">Google Agenda desconectada.</div>` : ""}
+      ${errorMsg ? `<div class="alert alert-error" style="margin-bottom:16px">⚠️ ${esc(errorMsg)}</div>` : ""}
+
+      <div class="card" style="max-width:640px;padding:24px">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+          <div style="width:48px;height:48px;border-radius:12px;background:rgba(66,133,244,0.1);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">📅</div>
+          <div style="flex:1">
+            <div style="font-size:16px;font-weight:700;color:var(--text)">Google Agenda</div>
+            <div style="font-size:13px;color:var(--muted)">Seus agendamentos aparecem automaticamente na sua Google Agenda pessoal (num calendário dedicado "Barber Pro").</div>
+          </div>
+        </div>
+
+        ${isConnected ? `
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);border-radius:10px;margin-bottom:16px">
+            <span style="width:8px;height:8px;border-radius:50%;background:#22C55E;flex-shrink:0"></span>
+            <span style="font-size:13px;color:var(--text);font-weight:600">Conectado</span>
+            ${lastSyncAt ? `<span style="font-size:12px;color:var(--muted);margin-left:auto">Última sincronização: ${esc(lastSyncAt)}</span>` : ""}
+          </div>
+          ${lastSyncError ? `<div style="font-size:12px;color:#F87171;margin-bottom:16px">⚠️ Último erro de sincronização: ${esc(lastSyncError)}</div>` : ""}
+          <form method="POST" action="/admin/google-calendar/disconnect" onsubmit="return confirm('Desconectar a Google Agenda? Os agendamentos futuros deixam de ser sincronizados.');">
+            <button type="submit" class="btn btn-ghost" style="color:#F87171;border-color:#F8717144">Desconectar</button>
+          </form>
+        ` : `
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;margin-bottom:16px">
+            <span style="width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0"></span>
+            <span style="font-size:13px;color:var(--muted)">Não conectado</span>
+          </div>
+          <a href="/admin/google-calendar/connect" class="btn btn-primary">Conectar Google Agenda</a>
+        `}
+      </div>
+    `;
+    const tenantPlan = barber?.tenantId ? (await db.getTenantById(barber.tenantId))?.plan ?? "" : "";
+    res.send(adminLayoutWithGrace(res, "Integrações", "integracoes", body, barber?.name, tenantPlan, [{ label: "Dashboard", href: "/admin" }, { label: "Integrações", href: "/admin/integracoes" }]));
+  } catch (err: any) {
+    console.error("[renderIntegracoes] Erro:", err?.message);
+    res.send(adminLayoutWithGrace(res, "Integrações", "integracoes", `<div style="padding:40px;text-align:center"><div style="font-size:48px;margin-bottom:16px">⚠️</div><h2 style="color:var(--text);margin-bottom:8px">Erro ao carregar página</h2><p style="color:var(--muted);margin-bottom:20px">Ocorreu um problema. Tente novamente.</p><a href="/admin/integracoes" class="btn btn-primary">Tentar novamente</a></div>`));
+  }
+}
+
 async function renderRelatorios(req: Request, res: Response) {
   try {
   const session = (req as any).adminSession as { barberId: number; role: string };
@@ -8172,6 +8239,65 @@ export function registerAdminRoutes(app: Express): void {
       console.error("[google-callback] Error:", err);
       res.redirect("/admin/login?error=1&msg=" + encodeURIComponent("Erro ao autenticar com Google. Tente novamente."));
     }
+  });
+
+  // ─── Integração com Google Agenda ───────────────────────────────────────────
+  // Página com status da conexão + botão conectar/desconectar
+  app.get("/admin/integracoes", requireAdminAuth, withErrorPage("Integrações", "integracoes", renderIntegracoes));
+
+  // GET /admin/google-calendar/connect — inicia o fluxo OAuth (escopo de Agenda)
+  app.get("/admin/google-calendar/connect", requireAdminAuth, (req: Request, res: Response) => {
+    if (!googleCalendar.googleCalendarEnabled) {
+      return res.redirect("/admin/integracoes?gcal_error=" + encodeURIComponent("Integração não configurada pelo administrador."));
+    }
+    const baseUrl = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.host}`;
+    const redirectUri = `${baseUrl}/admin/google-calendar/callback`;
+    // O barbeiro já está autenticado (cookie de sessão persiste durante o
+    // redirect); não é necessário codificar nada sensível no "state".
+    const state = Buffer.from(redirectUri).toString("base64url");
+    res.redirect(googleCalendar.getGoogleCalendarAuthUrl(redirectUri, state));
+  });
+
+  // GET /admin/google-calendar/callback — recebe o code, troca por tokens e salva
+  app.get("/admin/google-calendar/callback", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const session = (req as any).adminSession as { barberId: number };
+      const code = req.query.code as string;
+      const errorParam = req.query.error as string | undefined;
+      if (errorParam) {
+        // Usuário cancelou o consentimento no Google
+        return res.redirect("/admin/integracoes?gcal_error=" + encodeURIComponent("Conexão cancelada."));
+      }
+      if (!code) return res.redirect("/admin/integracoes?gcal_error=" + encodeURIComponent("Código não recebido do Google."));
+
+      const barber = await db.getBarberById(session.barberId);
+      if (!barber?.tenantId) return res.redirect("/admin/integracoes?gcal_error=" + encodeURIComponent("Barbeiro sem barbearia vinculada."));
+
+      const baseUrl = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.host}`;
+      const redirectUri = `${baseUrl}/admin/google-calendar/callback`;
+
+      const result = await googleCalendar.connectBarberCalendar({
+        barberId: session.barberId,
+        tenantId: barber.tenantId,
+        code,
+        redirectUri,
+      });
+
+      if (!result.ok) {
+        return res.redirect("/admin/integracoes?gcal_error=" + encodeURIComponent("Não foi possível conectar. Tente novamente."));
+      }
+      res.redirect("/admin/integracoes?gcal_success=1");
+    } catch (err: any) {
+      console.error("[google-calendar-callback] Error:", err?.message ?? err);
+      res.redirect("/admin/integracoes?gcal_error=" + encodeURIComponent("Erro ao conectar com o Google."));
+    }
+  });
+
+  // POST /admin/google-calendar/disconnect
+  app.post("/admin/google-calendar/disconnect", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number };
+    await googleCalendar.disconnectBarberCalendar(session.barberId);
+    res.redirect("/admin/integracoes?gcal_disconnected=1");
   });
 
   // GET /admin/logout
