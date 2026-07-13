@@ -1,0 +1,26 @@
+const fs = require('fs');
+function b64(s){return Buffer.from(s,'base64').toString('utf8');}
+
+function applyFixes(path, pairs) {
+  let content = fs.readFileSync(path, 'utf8');
+  const hadCRLF = content.includes('\r\n');
+  if (hadCRLF) content = content.split('\r\n').join('\n');
+  let applied = 0;
+  for (const [oldB64, newB64] of pairs) {
+    const oldS = b64(oldB64), newS = b64(newB64);
+    if (!content.includes(oldS)) { console.log('[AVISO] ' + path + ': edicao ' + (applied+1) + ' nao encontrada - pulei.'); continue; }
+    content = content.replace(oldS, newS);
+    applied++;
+  }
+  if (hadCRLF) content = content.split('\n').join('\r\n');
+  fs.writeFileSync(path, content, 'utf8');
+  console.log(path + ': ' + applied + '/' + pairs.length + ' edicoes aplicadas. (CRLF: ' + hadCRLF + ')');
+}
+
+applyFixes('server/landing/index.html', [ ['PC9oZWFkPg==', 'PHN0eWxlPgogICAgLnBsYXlzdG9yZS1zb29uLXdyYXAgeyBwb3NpdGlvbjogcmVsYXRpdmU7IGRpc3BsYXk6IGlubGluZS1ibG9jazsgfQogICAgLnBsYXlzdG9yZS1zb29uLXdyYXAgaW1nIHsgZmlsdGVyOiBncmF5c2NhbGUoMC4yNSkgYnJpZ2h0bmVzcygwLjcpOyB9CiAgICAucGxheXN0b3JlLXNvb24tYmFkZ2UgeyBwb3NpdGlvbjogYWJzb2x1dGU7IGluc2V0OiAycHg7IGRpc3BsYXk6IGZsZXg7IGZsZXgtZGlyZWN0aW9uOiBjb2x1bW47IGFsaWduLWl0ZW1zOiBjZW50ZXI7IGp1c3RpZnktY29udGVudDogY2VudGVyOyBiYWNrZ3JvdW5kOiByZ2JhKDgsOCw5LDAuODYpOyBib3JkZXItcmFkaXVzOiA4cHg7IGdhcDogNXB4OyBwYWRkaW5nOiA0cHggNnB4OyB9CiAgICAucGxheXN0b3JlLXNvb24tdGV4dCB7IGNvbG9yOiB2YXIoLS1nb2xkKTsgZm9udC1zaXplOiAxMXB4OyBmb250LXdlaWdodDogODAwOyBsZXR0ZXItc3BhY2luZzogMC4zcHg7IHdoaXRlLXNwYWNlOiBub3dyYXA7IH0KICAgIC5wbGF5c3RvcmUtc29vbi10cmFjayB7IHdpZHRoOiA3NCU7IGhlaWdodDogNHB4OyBiYWNrZ3JvdW5kOiByZ2JhKDI1NSwyNTUsMjU1LDAuMTYpOyBib3JkZXItcmFkaXVzOiA0cHg7IG92ZXJmbG93OiBoaWRkZW47IH0KICAgIC5wbGF5c3RvcmUtc29vbi1maWxsIHsgaGVpZ2h0OiAxMDAlOyB3aWR0aDogMzYlOyBiYWNrZ3JvdW5kOiBsaW5lYXItZ3JhZGllbnQoOTBkZWcsIHZhcigtLWdvbGQpLCAjRjBDMDYwKTsgYm9yZGVyLXJhZGl1czogNHB4OyBhbmltYXRpb246IHBsYXlzdG9yZUluZGV0ZXJtaW5hdGUgMS41cyBlYXNlLWluLW91dCBpbmZpbml0ZTsgfQogICAgQGtleWZyYW1lcyBwbGF5c3RvcmVJbmRldGVybWluYXRlIHsgMCUgeyB0cmFuc2Zvcm06IHRyYW5zbGF0ZVgoLTEyMCUpOyB9IDEwMCUgeyB0cmFuc2Zvcm06IHRyYW5zbGF0ZVgoMjgwJSk7IH0gfQo8L3N0eWxlPgo8L2hlYWQ+'], ['PGltZyBzcmM9Ii9hc3NldHMvZ29vZ2xlLXBsYXktYmFkZ2UtcHQuc3ZnIiBhbHQ9IkRpc3BvbsOtdmVsIG5vIEdvb2dsZSBQbGF5IiB3aWR0aD0iMTYwIiBoZWlnaHQ9IjQ4IiBzdHlsZT0iZGlzcGxheTpibG9jazsiIC8+', 'PHNwYW4gY2xhc3M9InBsYXlzdG9yZS1zb29uLXdyYXAiPjxpbWcgc3JjPSIvYXNzZXRzL2dvb2dsZS1wbGF5LWJhZGdlLXB0LnN2ZyIgYWx0PSJEaXNwb27DrXZlbCBubyBHb29nbGUgUGxheSIgd2lkdGg9IjE2MCIgaGVpZ2h0PSI0OCIgc3R5bGU9ImRpc3BsYXk6YmxvY2s7IiAvPjxzcGFuIGNsYXNzPSJwbGF5c3RvcmUtc29vbi1iYWRnZSI+PHNwYW4gY2xhc3M9InBsYXlzdG9yZS1zb29uLXRleHQiPvCfmoAgRW0gYnJldmU8L3NwYW4+PHNwYW4gY2xhc3M9InBsYXlzdG9yZS1zb29uLXRyYWNrIj48c3BhbiBjbGFzcz0icGxheXN0b3JlLXNvb24tZmlsbCI+PC9zcGFuPjwvc3Bhbj48L3NwYW4+PC9zcGFuPg=='], ['PGltZyBzcmM9Ii9hc3NldHMvZ29vZ2xlLXBsYXktYmFkZ2UtcHQuc3ZnIiBhbHQ9IkRpc3BvbsOtdmVsIG5vIEdvb2dsZSBQbGF5IiB3aWR0aD0iMjIwIiBoZWlnaHQ9IjY2IiBzdHlsZT0iZGlzcGxheTpibG9jazsiIC8+', 'PHNwYW4gY2xhc3M9InBsYXlzdG9yZS1zb29uLXdyYXAiPjxpbWcgc3JjPSIvYXNzZXRzL2dvb2dsZS1wbGF5LWJhZGdlLXB0LnN2ZyIgYWx0PSJEaXNwb27DrXZlbCBubyBHb29nbGUgUGxheSIgd2lkdGg9IjIyMCIgaGVpZ2h0PSI2NiIgc3R5bGU9ImRpc3BsYXk6YmxvY2s7IiAvPjxzcGFuIGNsYXNzPSJwbGF5c3RvcmUtc29vbi1iYWRnZSI+PHNwYW4gY2xhc3M9InBsYXlzdG9yZS1zb29uLXRleHQiPvCfmoAgRW0gYnJldmU8L3NwYW4+PHNwYW4gY2xhc3M9InBsYXlzdG9yZS1zb29uLXRyYWNrIj48c3BhbiBjbGFzcz0icGxheXN0b3JlLXNvb24tZmlsbCI+PC9zcGFuPjwvc3Bhbj48L3NwYW4+PC9zcGFuPg=='], ['PGltZyBzcmM9Ii9hc3NldHMvZ29vZ2xlLXBsYXktYmFkZ2UtcHQuc3ZnIiBhbHQ9IkRpc3BvbsOtdmVsIG5vIEdvb2dsZSBQbGF5IiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjYwIiBzdHlsZT0iZGlzcGxheTpibG9jazsiIC8+', 'PHNwYW4gY2xhc3M9InBsYXlzdG9yZS1zb29uLXdyYXAiPjxpbWcgc3JjPSIvYXNzZXRzL2dvb2dsZS1wbGF5LWJhZGdlLXB0LnN2ZyIgYWx0PSJEaXNwb27DrXZlbCBubyBHb29nbGUgUGxheSIgd2lkdGg9IjIwMCIgaGVpZ2h0PSI2MCIgc3R5bGU9ImRpc3BsYXk6YmxvY2s7IiAvPjxzcGFuIGNsYXNzPSJwbGF5c3RvcmUtc29vbi1iYWRnZSI+PHNwYW4gY2xhc3M9InBsYXlzdG9yZS1zb29uLXRleHQiPvCfmoAgRW0gYnJldmU8L3NwYW4+PHNwYW4gY2xhc3M9InBsYXlzdG9yZS1zb29uLXRyYWNrIj48c3BhbiBjbGFzcz0icGxheXN0b3JlLXNvb24tZmlsbCI+PC9zcGFuPjwvc3Bhbj48L3NwYW4+PC9zcGFuPg=='], ['PGltZyBzcmM9Ii9hc3NldHMvZ29vZ2xlLXBsYXktYmFkZ2UtcHQuc3ZnIiBhbHQ9IkRpc3BvbsOtdmVsIG5vIEdvb2dsZSBQbGF5IiB3aWR0aD0iMTM1IiBoZWlnaHQ9IjQwIiBzdHlsZT0iZGlzcGxheTpibG9jazsiIC8+', 'PHNwYW4gY2xhc3M9InBsYXlzdG9yZS1zb29uLXdyYXAiPjxpbWcgc3JjPSIvYXNzZXRzL2dvb2dsZS1wbGF5LWJhZGdlLXB0LnN2ZyIgYWx0PSJEaXNwb27DrXZlbCBubyBHb29nbGUgUGxheSIgd2lkdGg9IjEzNSIgaGVpZ2h0PSI0MCIgc3R5bGU9ImRpc3BsYXk6YmxvY2s7IiAvPjxzcGFuIGNsYXNzPSJwbGF5c3RvcmUtc29vbi1iYWRnZSI+PHNwYW4gY2xhc3M9InBsYXlzdG9yZS1zb29uLXRleHQiPvCfmoAgRW0gYnJldmU8L3NwYW4+PHNwYW4gY2xhc3M9InBsYXlzdG9yZS1zb29uLXRyYWNrIj48c3BhbiBjbGFzcz0icGxheXN0b3JlLXNvb24tZmlsbCI+PC9zcGFuPjwvc3Bhbj48L3NwYW4+PC9zcGFuPg=='] ]);
+
+console.log('');
+console.log("Confira com 'git diff --stat' e depois:");
+console.log('  git add server/landing/index.html');
+console.log('  git commit -m "feat: selo Em breve nos botoes do Google Play"');
+console.log('  git push');

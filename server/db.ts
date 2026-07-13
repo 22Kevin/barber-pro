@@ -2032,7 +2032,9 @@ export async function createRecurringAppointments(data: {
       status: "scheduled",
       notes: data.notes ? `[Recorrente] ${data.notes}` : "[Recorrente]",
     }).returning();
-    createdIds.push(apptResult[0].id);
+    const newApptId = apptResult[0].id;
+    triggerGoogleCalendarSync(newApptId, "created").catch(() => {});
+    createdIds.push(newApptId);
   }
 
   return { recurringId, createdCount: createdIds.length, appointmentIds: createdIds };
@@ -2307,6 +2309,8 @@ export async function updateAppointmentStatus(id: number, status: string) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.update(appointments).set({ status } as any).where(eq(appointments.id, id));
+  const action = status === "cancelled" || status === "no_show" ? "cancelled" : "updated";
+  triggerGoogleCalendarSync(id, action).catch(() => {});
 }
 
 export async function deleteProduct(id: number) {
