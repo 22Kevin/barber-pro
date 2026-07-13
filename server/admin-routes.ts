@@ -3261,7 +3261,7 @@ async function renderAgenda(req: Request, res: Response) {
                 </div>
                 <div id="convertClientNewBox" style="display:none">
                   <input type="text" name="newClientName" id="convertNewClientName" placeholder="Nome completo *" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:8px" />
-                  <input type="text" name="newClientPhone" placeholder="Telefone / WhatsApp *" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:8px" />
+                  <input type="text" name="newClientPhone" data-mask="phone" maxlength="15" placeholder="(11) 99999-9999" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:8px" />
                   <input type="email" name="newClientEmail" placeholder="E-mail (opcional)" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:8px" />
                   <div style="margin-bottom:8px">
                     <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Data de nascimento (opcional)</label>
