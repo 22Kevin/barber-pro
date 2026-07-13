@@ -103,6 +103,7 @@ const MENU_GROUPS: MenuGroup[] = [
     items: [
       { label: "Barbearia",       icon: "building.2.fill",             route: "/admin/(tabs)/barbearia",         roles: ["super_admin"] },
       { label: "Minha Assinatura",   icon: "gearshape.fill",              route: "/admin/(tabs)/settings",          roles: ["super_admin"] },
+      { label: "Integrações",     icon: "link",                        route: "/admin/(tabs)/integracoes",       roles: ["super_admin", "barber", "receptionist"] },
     ],
   },
 ];

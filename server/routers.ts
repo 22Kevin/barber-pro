@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { publicProcedure, router, barberProcedure, activeBarberProcedure } from "./_core/trpc";
 import { signBarberToken, signBarberRefreshToken, verifyBarberRefreshToken } from "./barber-jwt.js";
 import * as db from "./db";
+import * as googleCalendar from "./google-calendar";
 import { assertFeature, assertBarberLimit } from "./plan-features";
 import { storagePut } from "./storage";
 import * as crypto from "crypto";
@@ -350,6 +351,26 @@ export const appRouter = router({
     savePushToken: publicProcedure
       .input(z.object({ barberId: z.number(), pushToken: z.string() }))
       .mutation(({ input }) => db.saveBarberPushToken(input.barberId, input.pushToken)),
+    googleCalendarStatus: activeBarberProcedure.query(({ ctx }) => googleCalendar.getConnectionStatus(ctx.barber.id)),
+    connectGoogleCalendarNative: activeBarberProcedure
+      .input(z.object({ serverAuthCode: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ctx.barber.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Barbeiro sem barbearia vinculada." });
+        const result = await googleCalendar.connectBarberCalendarNative({
+          barberId: ctx.barber.id,
+          tenantId: ctx.barber.tenantId,
+          serverAuthCode: input.serverAuthCode,
+        });
+        if (!result.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: result.error });
+        return { success: true };
+      }),
+    disconnectGoogleCalendar: activeBarberProcedure.mutation(async ({ ctx }) => {
+      await googleCalendar.disconnectBarberCalendar(ctx.barber.id);
+      return { success: true };
+    }),
+    importGoogleCalendarEvents: activeBarberProcedure.mutation(async ({ ctx }) => {
+      return googleCalendar.importExistingEvents(ctx.barber.id, 60);
+    }),
     workingHours: router({
       get: publicProcedure.input(z.object({ barberId: z.number() })).query(({ input }) => db.getWorkingHours(input.barberId)),
       upsert: activeBarberProcedure

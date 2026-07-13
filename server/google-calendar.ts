@@ -128,6 +128,30 @@ async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: 
   return { accessToken: data.access_token, expiresIn: data.expires_in ?? 3600 };
 }
 
+// ─── Fluxo NATIVO (app mobile) ──────────────────────────────────────────────
+// O app usa @react-native-google-signin/google-signin com offlineAccess:true
+// e o escopo de Agenda, o que retorna um "serverAuthCode" (sem precisar abrir
+// nenhum navegador — é 100% nativo). Esse código é trocado por tokens da
+// mesma forma que o fluxo web, só que SEM redirect_uri (esse tipo de código
+// não usa redirect).
+async function exchangeServerAuthCode(serverAuthCode: string): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code: serverAuthCode,
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      grant_type: "authorization_code",
+    }).toString(),
+  });
+  const data = await res.json() as any;
+  if (!data.access_token || !data.refresh_token) {
+    throw new Error("Google não retornou refresh_token (nativo). Resposta: " + JSON.stringify(data));
+  }
+  return { accessToken: data.access_token, refreshToken: data.refresh_token, expiresIn: data.expires_in ?? 3600 };
+}
+
 // ─── Criar calendário dedicado ("Barber Pro") na conta do barbeiro ────────────
 
 // Procura um calendário "Barber Pro" já existente na conta do usuário antes
@@ -174,6 +198,31 @@ async function getOrCreateDedicatedCalendar(accessToken: string): Promise<string
 
 // ─── Conectar (chamado depois do callback OAuth) ───────────────────────────────
 
+async function finishConnection(
+  barberId: number,
+  tenantId: number,
+  accessToken: string,
+  refreshToken: string,
+  expiresIn: number
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const calendarId = await getOrCreateDedicatedCalendar(accessToken);
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+    await db.saveGoogleCalendarConnection({
+      barberId,
+      tenantId,
+      refreshTokenEncrypted: encryptToken(refreshToken),
+      googleCalendarId: calendarId,
+      accessTokenCache: accessToken,
+      accessTokenExpiresAt: expiresAt,
+    });
+    return { ok: true };
+  } catch (e: any) {
+    console.error("[google-calendar] Erro ao finalizar conexão:", e.message);
+    return { ok: false, error: e.message };
+  }
+}
+
 export async function connectBarberCalendar(params: {
   barberId: number;
   tenantId: number;
@@ -182,20 +231,25 @@ export async function connectBarberCalendar(params: {
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     const { accessToken, refreshToken, expiresIn } = await exchangeCodeForTokens(params.code, params.redirectUri);
-    const calendarId = await getOrCreateDedicatedCalendar(accessToken);
-    const expiresAt = new Date(Date.now() + expiresIn * 1000);
-
-    await db.saveGoogleCalendarConnection({
-      barberId: params.barberId,
-      tenantId: params.tenantId,
-      refreshTokenEncrypted: encryptToken(refreshToken),
-      googleCalendarId: calendarId,
-      accessTokenCache: accessToken,
-      accessTokenExpiresAt: expiresAt,
-    });
-    return { ok: true };
+    return await finishConnection(params.barberId, params.tenantId, accessToken, refreshToken, expiresIn);
   } catch (e: any) {
-    console.error("[google-calendar] Erro ao conectar:", e.message);
+    console.error("[google-calendar] Erro ao conectar (web):", e.message);
+    return { ok: false, error: e.message };
+  }
+}
+
+// Conexão via app mobile nativo (sem navegador) — recebe o serverAuthCode
+// obtido pelo GoogleSignin.signIn() com offlineAccess:true no app.
+export async function connectBarberCalendarNative(params: {
+  barberId: number;
+  tenantId: number;
+  serverAuthCode: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { accessToken, refreshToken, expiresIn } = await exchangeServerAuthCode(params.serverAuthCode);
+    return await finishConnection(params.barberId, params.tenantId, accessToken, refreshToken, expiresIn);
+  } catch (e: any) {
+    console.error("[google-calendar] Erro ao conectar (nativo):", e.message);
     return { ok: false, error: e.message };
   }
 }
@@ -205,6 +259,20 @@ export async function disconnectBarberCalendar(barberId: number): Promise<void> 
     await db.deleteGoogleCalendarConnection(barberId);
   } catch (e: any) {
     console.error("[google-calendar] Erro ao desconectar:", e.message);
+  }
+}
+
+export async function getConnectionStatus(barberId: number): Promise<{ connected: boolean; lastSyncAt: string | null; lastSyncError: string | null }> {
+  try {
+    const conn = await db.getGoogleCalendarConnection(barberId);
+    return {
+      connected: !!conn && conn.syncEnabled,
+      lastSyncAt: conn?.lastSyncAt ? new Date(conn.lastSyncAt).toISOString() : null,
+      lastSyncError: conn?.lastSyncError ?? null,
+    };
+  } catch (e: any) {
+    console.error("[google-calendar] Erro ao ler status:", e.message);
+    return { connected: false, lastSyncAt: null, lastSyncError: null };
   }
 }
 
@@ -333,4 +401,83 @@ export async function syncAppointmentCancelled(barberId: number, googleEventId: 
     console.error(`[google-calendar] Erro ao cancelar evento (barbeiro ${barberId}):`, e.message);
     await db.markGoogleCalendarSyncResult(barberId, e.message).catch(() => {});
   }
+}
+
+// ─── Importar eventos existentes (calendário pessoal → bloqueios de horário) ──
+// Ao contrário da sincronização normal (Barber Pro → Google), esta função lê
+// os eventos que o barbeiro JÁ TINHA na agenda pessoal ("primary") ANTES de
+// usar o Barber Pro, e cria um BLOQUEIO DE HORÁRIO para cada um — nunca um
+// agendamento de cliente de verdade, já que não temos como saber quem é o
+// cliente ou qual serviço a partir de um evento de texto livre do Google.
+// Isso evita que alguém agende um horário no Barber Pro que colida com um
+// compromisso que o barbeiro já tinha marcado por fora do sistema.
+//
+// É uma ação sob demanda (botão "Importar"), não algo que roda sozinho -
+// evita duplicar toda vez que a tela é aberta. Cada evento importado guarda
+// o próprio ID do Google (blockedSlots.googleEventId), então rodar de novo
+// não cria duplicata do mesmo evento.
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  totalFound: number;
+}
+
+export async function importExistingEvents(barberId: number, daysAhead: number = 60): Promise<ImportResult> {
+  const conn = await getValidAccessToken(barberId);
+  if (!conn) return { imported: 0, skipped: 0, totalFound: 0 };
+
+  const timeMin = new Date().toISOString();
+  const timeMax = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString();
+
+  const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+  url.searchParams.set("timeMin", timeMin);
+  url.searchParams.set("timeMax", timeMax);
+  url.searchParams.set("singleEvents", "true"); // expande eventos recorrentes em ocorrências individuais
+  url.searchParams.set("orderBy", "startTime");
+  url.searchParams.set("maxResults", "250");
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${conn.accessToken}` },
+  });
+  const data = await res.json() as any;
+  if (!res.ok) {
+    throw new Error("Falha ao buscar eventos da agenda pessoal: " + JSON.stringify(data));
+  }
+
+  const events = Array.isArray(data.items) ? data.items : [];
+  let imported = 0;
+  let skipped = 0;
+
+  for (const event of events) {
+    // Ignora eventos cancelados, sem horário definido (evento de dia inteiro,
+    // ex: "Aniversário", "Feriado") e sem id.
+    if (!event.id || event.status === "cancelled") { skipped++; continue; }
+    if (!event.start?.dateTime || !event.end?.dateTime) { skipped++; continue; }
+
+    const already = await db.getBlockedSlotByGoogleEventId(barberId, event.id);
+    if (already) { skipped++; continue; }
+
+    const startDate = new Date(event.start.dateTime);
+    const endDate = new Date(event.end.dateTime);
+    const dateStr = startDate.toISOString().split("T")[0];
+    const startTimeStr = startDate.toTimeString().slice(0, 8);
+    const endTimeStr = endDate.toTimeString().slice(0, 8);
+
+    try {
+      await db.createBlockedSlot({
+        barberId,
+        date: dateStr,
+        startTime: startTimeStr,
+        endTime: endTimeStr,
+        reason: `Importado da Google Agenda: ${event.summary ?? "Compromisso"}`,
+        googleEventId: event.id,
+      });
+      imported++;
+    } catch (e: any) {
+      console.error(`[google-calendar] Erro ao importar evento ${event.id} (barbeiro ${barberId}):`, e.message);
+      skipped++;
+    }
+  }
+
+  return { imported, skipped, totalFound: events.length };
 }

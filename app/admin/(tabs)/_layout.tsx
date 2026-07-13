@@ -110,6 +110,13 @@ export default function AdminTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="integracoes"
+        options={{
+          title: "Integrações",
+          tabBarItemStyle: { display: "none" },
+        }}
+      />
+      <Tabs.Screen
         name="return-messages"
         options={{
           title: "Mensagens Automáticas",

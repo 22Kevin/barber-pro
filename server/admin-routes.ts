@@ -6553,6 +6553,8 @@ async function renderIntegracoes(req: Request, res: Response) {
     const success = req.query.gcal_success === "1";
     const disconnected = req.query.gcal_disconnected === "1";
     const errorMsg = req.query.gcal_error as string | undefined;
+    const importedCount = req.query.gcal_imported as string | undefined;
+    const skippedCount = req.query.gcal_skipped as string | undefined;
 
     const isConnected = !!connection && connection.syncEnabled;
     const lastSyncAt = connection?.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString("pt-BR") : null;
@@ -6569,6 +6571,7 @@ async function renderIntegracoes(req: Request, res: Response) {
       ${success ? `<div class="alert alert-success" style="margin-bottom:16px">✅ Google Agenda conectada com sucesso!</div>` : ""}
       ${disconnected ? `<div class="alert" style="margin-bottom:16px;background:var(--surface);border:1px solid var(--border)">Google Agenda desconectada.</div>` : ""}
       ${errorMsg ? `<div class="alert alert-error" style="margin-bottom:16px">⚠️ ${esc(errorMsg)}</div>` : ""}
+      ${importedCount !== undefined ? `<div class="alert alert-success" style="margin-bottom:16px">✅ Importação concluída: ${esc(importedCount)} compromisso(s) importado(s) como bloqueio de horário${skippedCount && skippedCount !== "0" ? ` (${esc(skippedCount)} já existiam ou não puderam ser importados)` : ""}.</div>` : ""}
 
       <div class="card" style="max-width:640px;padding:24px">
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
@@ -6586,9 +6589,14 @@ async function renderIntegracoes(req: Request, res: Response) {
             ${lastSyncAt ? `<span style="font-size:12px;color:var(--muted);margin-left:auto">Última sincronização: ${esc(lastSyncAt)}</span>` : ""}
           </div>
           ${lastSyncError ? `<div style="font-size:12px;color:#F87171;margin-bottom:16px">⚠️ Último erro de sincronização: ${esc(lastSyncError)}</div>` : ""}
-          <form method="POST" action="/admin/google-calendar/disconnect" onsubmit="return confirm('Desconectar a Google Agenda? Os agendamentos futuros deixam de ser sincronizados.');">
-            <button type="submit" class="btn btn-ghost" style="color:#F87171;border-color:#F8717144">Desconectar</button>
-          </form>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <form method="POST" action="/admin/google-calendar/disconnect" onsubmit="return confirm('Desconectar a Google Agenda? Os agendamentos futuros deixam de ser sincronizados.');">
+              <button type="submit" class="btn btn-ghost" style="color:#F87171;border-color:#F8717144">Desconectar</button>
+            </form>
+            <form method="POST" action="/admin/google-calendar/import" onsubmit="return confirm('Importar compromissos que você já tinha na sua agenda pessoal do Google? Cada um vira um bloqueio de horário no Barber Pro (próximos 60 dias), para evitar que alguém agende em cima. Isso não afeta agendamentos de clientes já existentes.');">
+              <button type="submit" class="btn btn-ghost" style="color:var(--gold, #C9A84C);border-color:rgba(201,168,76,0.35)">📥 Importar agendamentos existentes</button>
+            </form>
+          </div>
         ` : `
           <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;margin-bottom:16px">
             <span style="width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0"></span>
@@ -8298,6 +8306,19 @@ export function registerAdminRoutes(app: Express): void {
     const session = (req as any).adminSession as { barberId: number };
     await googleCalendar.disconnectBarberCalendar(session.barberId);
     res.redirect("/admin/integracoes?gcal_disconnected=1");
+  });
+
+  // POST /admin/google-calendar/import — importa eventos existentes da agenda
+  // pessoal (primary) como bloqueios de horário no Barber Pro
+  app.post("/admin/google-calendar/import", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number };
+    try {
+      const result = await googleCalendar.importExistingEvents(session.barberId, 60);
+      res.redirect(`/admin/integracoes?gcal_imported=${result.imported}&gcal_skipped=${result.skipped}`);
+    } catch (e: any) {
+      console.error("[google-calendar-import] Erro:", e?.message);
+      res.redirect("/admin/integracoes?gcal_error=" + encodeURIComponent("Não foi possível importar os eventos. Tente novamente."));
+    }
   });
 
   // GET /admin/logout

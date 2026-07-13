@@ -672,11 +672,20 @@ export async function getBlockedSlots(barberId: number, date: string) {
     .where(and(eq(blockedSlots.barberId, barberId), eq(blockedSlots.date, date)));
 }
 
-export async function createBlockedSlot(data: { barberId: number; date: string; startTime: string; endTime: string; reason?: string }) {
+export async function createBlockedSlot(data: { barberId: number; date: string; startTime: string; endTime: string; reason?: string; googleEventId?: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(blockedSlots).values(data).returning();
+  const result = await db.insert(blockedSlots).values(data as any).returning();
   return result[0].id;
+}
+
+export async function getBlockedSlotByGoogleEventId(barberId: number, googleEventId: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(blockedSlots)
+    .where(and(eq(blockedSlots.barberId, barberId), eq(blockedSlots.googleEventId, googleEventId)))
+    .limit(1);
+  return result[0] ?? null;
 }
 
 export async function deleteBlockedSlot(id: number) {

@@ -234,6 +234,7 @@ export const blockedSlots = pgTable("blocked_slots", {
   startTime: time("startTime").notNull(),
   endTime: time("endTime").notNull(),
   reason: varchar("reason", { length: 255 }),
+  googleEventId: varchar("googleEventId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
