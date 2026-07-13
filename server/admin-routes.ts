@@ -2504,6 +2504,8 @@ async function renderAgenda(req: Request, res: Response) {
   const dateStr = (req.query.date as string) || today();
   const filterBarberId = req.query.barberId ? parseInt(req.query.barberId as string) : null;
   const planSaved = req.query.planSaved === "1";
+  const converted = req.query.converted === "1";
+  const agendaError = req.query.error as string | undefined;
   const filterSearch = ((req.query.q as string) || "").toLowerCase().trim();
   const allAppointments = await db.getAllAppointmentsByDate(dateStr, tenantId);
   const barbers = await db.getAllBarbers(tenantId);
@@ -3003,7 +3005,7 @@ async function renderAgenda(req: Request, res: Response) {
                   const barberName = barberMap[b.barberId] ?? "—";
                   return {
                     time: b.startTime ?? "00:00",
-                    html: `<div style="background:var(--surface2, rgba(255,255,255,0.03));border:1px dashed var(--border);border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;opacity:0.9;">
+                    html: `<div onclick="openConvertBlockModal(${JSON.stringify({id:b.id,reason:b.reason??'',date:b.date,startTime:b.startTime??'',endTime:b.endTime??'',barberName})})" style="background:var(--surface2, rgba(255,255,255,0.03));border:1px dashed var(--border);border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;opacity:0.9;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='#C9A84C'" onmouseout="this.style.borderColor='var(--border)'">
                       <div style="flex-shrink:0;text-align:center;min-width:52px;">
                         <div style="font-size:20px;font-weight:900;color:var(--muted);line-height:1;letter-spacing:-0.5px;">${b.startTime?.substring(0,5) ?? "—"}</div>
                         <div style="font-size:11px;color:var(--muted);margin-top:3px;font-weight:500;">${b.endTime?.substring(0,5) ?? ""}</div>
@@ -3015,7 +3017,10 @@ async function renderAgenda(req: Request, res: Response) {
                         <div style="font-size:11px;color:var(--muted);margin-top:2px;opacity:0.8;">${esc(barberName)}${isFromGoogle ? " · Importado do Google Agenda" : ""}</div>
                         ${isFromGoogle ? `<div style="font-size:11px;color:var(--gold);margin-top:4px;">💡 Se isso for virar um agendamento de cliente, confira se o cliente e o serviço já estão cadastrados no sistema.</div>` : ""}
                       </div>
-                      <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.25);color:var(--muted);white-space:nowrap;">Bloqueado</div>
+                      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                        <div style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.25);color:var(--muted);white-space:nowrap;">Bloqueado</div>
+                        <div style="font-size:10px;color:var(--gold);white-space:nowrap">Clique p/ transformar →</div>
+                      </div>
                     </div>`,
                   };
                 }),
@@ -3183,6 +3188,67 @@ async function renderAgenda(req: Request, res: Response) {
               <div style="display:flex;gap:12px">
                 <button type="button" onclick="document.getElementById('newApptModal').style.display='none'" style="flex:1;padding:12px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
                 <button type="submit" style="flex:1;padding:12px;background:var(--gold);border:none;border-radius:10px;color:#0A0A0A;font-size:14px;font-weight:700;cursor:pointer">Criar Agendamento</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Modal: Converter bloqueio (importado do Google Agenda ou manual) em agendamento -->
+        <div id="convertBlockModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;position:relative">
+            <button type="button" onclick="document.getElementById('convertBlockModal').style.display='none'" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">×</button>
+            <div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:4px">Transformar em Agendamento</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Este horário está bloqueado. Selecione (ou cadastre) o cliente e o serviço para virar um agendamento de verdade.</div>
+            <div id="convertBlockOriginalInfo" style="background:var(--bg);border:1px dashed var(--border);border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:13px;color:var(--muted)"></div>
+            <form method="POST" action="/admin/agenda/converter-bloqueio">
+              <input type="hidden" name="blockedSlotId" id="convertBlockId" />
+              <div style="margin-bottom:16px">
+                <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Cliente *</label>
+                <div style="display:flex;gap:8px;margin-bottom:8px">
+                  <button type="button" id="convertClientTabExisting" onclick="convertSetClientMode('existing')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--gold);background:rgba(201,168,76,0.12);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer">Cliente existente</button>
+                  <button type="button" id="convertClientTabNew" onclick="convertSetClientMode('new')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer">+ Cadastrar novo</button>
+                </div>
+                <div id="convertClientExistingBox">
+                  <input type="hidden" name="clientId" id="convertClientId" />
+                  <div style="position:relative">
+                    <input type="text" id="convertClientSearch" placeholder="Buscar cliente por nome ou telefone..." autocomplete="off"
+                      style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box"
+                      oninput="filterConvertClients(this.value)"
+                      onfocus="document.getElementById('convertClientDropdown').style.display='block'"
+                      onblur="setTimeout(()=>{document.getElementById('convertClientDropdown').style.display='none'},200)" />
+                    <div id="convertClientDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;max-height:200px;overflow-y:auto;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.4);margin-top:4px">
+                      ${clients.map((c: any) => `<div class="convert-client-opt" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone ?? '')}" onclick="selectConvertClient(this)" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='rgba(201,168,76,0.08)'" onmouseout="this.style.background=''"><strong style="color:var(--text)">${esc(c.name)}</strong>${c.phone ? `<span style="color:var(--muted);font-size:12px">${fmtPhone(c.phone)}</span>` : ''}</div>`).join("")}
+                    </div>
+                  </div>
+                </div>
+                <div id="convertClientNewBox" style="display:none">
+                  <input type="text" name="newClientName" placeholder="Nome do novo cliente" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:8px" />
+                  <input type="text" name="newClientPhone" placeholder="Telefone (WhatsApp)" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
+                </div>
+              </div>
+              <div style="margin-bottom:20px">
+                <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Serviço *</label>
+                <div style="display:flex;gap:8px;margin-bottom:8px">
+                  <button type="button" id="convertServiceTabExisting" onclick="convertSetServiceMode('existing')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--gold);background:rgba(201,168,76,0.12);color:var(--gold);font-size:12px;font-weight:700;cursor:pointer">Serviço existente</button>
+                  <button type="button" id="convertServiceTabNew" onclick="convertSetServiceMode('new')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer">+ Cadastrar novo</button>
+                </div>
+                <div id="convertServiceExistingBox">
+                  <select name="serviceId" id="convertServiceSelect" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box">
+                    <option value="">Selecione o serviço</option>
+                    ${services.map((s: any) => `<option value="${s.id}">${esc(s.name)} — ${fmtCurrency(s.price)} (${(s as any).durationMinutes ?? 30}min)</option>`).join("")}
+                  </select>
+                </div>
+                <div id="convertServiceNewBox" style="display:none">
+                  <input type="text" name="newServiceName" placeholder="Nome do novo serviço" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:8px" />
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                    <input type="number" step="0.01" name="newServicePrice" placeholder="Preço (R$)" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
+                    <input type="number" name="newServiceDuration" placeholder="Duração (min)" value="30" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px">
+                <button type="button" onclick="document.getElementById('convertBlockModal').style.display='none'" style="flex:1;padding:12px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+                <button type="submit" style="flex:1;padding:12px;background:var(--gold);border:none;border-radius:10px;color:#0A0A0A;font-size:14px;font-weight:700;cursor:pointer">Confirmar Agendamento</button>
               </div>
             </form>
           </div>
@@ -3650,9 +3716,78 @@ async function renderAgenda(req: Request, res: Response) {
             document.getElementById('newApptClientSearch').value = el.dataset.name + (el.dataset.phone ? ' — ' + el.dataset.phone : '');
             document.getElementById('newApptClientDropdown').style.display = 'none';
           }
+
+          // ── Modal: Transformar bloqueio em agendamento ──────────────────────────
+          function openConvertBlockModal(data) {
+            document.getElementById('convertBlockId').value = data.id;
+            var info = '<strong style="color:var(--text)">' + (data.reason || 'Horário bloqueado') + '</strong><br>' +
+              data.date + ' às ' + (data.startTime || '').substring(0,5) + ' - ' + (data.endTime || '').substring(0,5) +
+              (data.barberName ? '<br>Profissional: ' + data.barberName : '');
+            document.getElementById('convertBlockOriginalInfo').innerHTML = info;
+            // Tenta pré-preencher a busca de cliente com o texto do bloqueio (ex: "João Pedro" extraído de "Corte de Cabelo (João Pedro)")
+            var guess = (data.reason || '').match(/\\(([^)]+)\\)/);
+            if (guess && guess[1]) {
+              document.getElementById('convertClientSearch').value = guess[1].trim();
+              filterConvertClients(guess[1].trim());
+            } else {
+              document.getElementById('convertClientSearch').value = '';
+            }
+            document.getElementById('convertClientId').value = '';
+            convertSetClientMode('existing');
+            convertSetServiceMode('existing');
+            document.getElementById('convertBlockModal').style.display = 'flex';
+          }
+
+          function convertSetClientMode(mode) {
+            var existingBox = document.getElementById('convertClientExistingBox');
+            var newBox = document.getElementById('convertClientNewBox');
+            var tabExisting = document.getElementById('convertClientTabExisting');
+            var tabNew = document.getElementById('convertClientTabNew');
+            if (mode === 'new') {
+              existingBox.style.display = 'none'; newBox.style.display = 'block';
+              tabNew.style.borderColor = 'var(--gold)'; tabNew.style.background = 'rgba(201,168,76,0.12)'; tabNew.style.color = 'var(--gold)';
+              tabExisting.style.borderColor = 'var(--border)'; tabExisting.style.background = 'transparent'; tabExisting.style.color = 'var(--muted)';
+            } else {
+              existingBox.style.display = 'block'; newBox.style.display = 'none';
+              tabExisting.style.borderColor = 'var(--gold)'; tabExisting.style.background = 'rgba(201,168,76,0.12)'; tabExisting.style.color = 'var(--gold)';
+              tabNew.style.borderColor = 'var(--border)'; tabNew.style.background = 'transparent'; tabNew.style.color = 'var(--muted)';
+            }
+          }
+
+          function convertSetServiceMode(mode) {
+            var existingBox = document.getElementById('convertServiceExistingBox');
+            var newBox = document.getElementById('convertServiceNewBox');
+            var tabExisting = document.getElementById('convertServiceTabExisting');
+            var tabNew = document.getElementById('convertServiceTabNew');
+            if (mode === 'new') {
+              existingBox.style.display = 'none'; newBox.style.display = 'block';
+              tabNew.style.borderColor = 'var(--gold)'; tabNew.style.background = 'rgba(201,168,76,0.12)'; tabNew.style.color = 'var(--gold)';
+              tabExisting.style.borderColor = 'var(--border)'; tabExisting.style.background = 'transparent'; tabExisting.style.color = 'var(--muted)';
+            } else {
+              existingBox.style.display = 'block'; newBox.style.display = 'none';
+              tabExisting.style.borderColor = 'var(--gold)'; tabExisting.style.background = 'rgba(201,168,76,0.12)'; tabExisting.style.color = 'var(--gold)';
+              tabNew.style.borderColor = 'var(--border)'; tabNew.style.background = 'transparent'; tabNew.style.color = 'var(--muted)';
+            }
+          }
+
+          function filterConvertClients(q) {
+            q = q.toLowerCase();
+            document.querySelectorAll('.convert-client-opt').forEach(el => {
+              const n = el.dataset.name.toLowerCase(), p = (el.dataset.phone || '').toLowerCase();
+              el.style.display = (n.includes(q) || p.includes(q)) ? '' : 'none';
+            });
+            document.getElementById('convertClientDropdown').style.display = 'block';
+          }
+          function selectConvertClient(el) {
+            document.getElementById('convertClientId').value = el.dataset.id;
+            document.getElementById('convertClientSearch').value = el.dataset.name + (el.dataset.phone ? ' — ' + el.dataset.phone : '');
+            document.getElementById('convertClientDropdown').style.display = 'none';
+          }
         </script>
     ${planModalHtml}
     ${planSaved ? `<div id="planSavedToast" style="position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#22C55E;color:#fff;padding:14px 28px;border-radius:12px;font-size:14px;font-weight:700;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.25);display:flex;align-items:center;gap:10px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Assinatura criada com sucesso!</div><script>setTimeout(function(){var t=document.getElementById('planSavedToast');if(t)t.style.display='none';},4000);</script>` : ''}
+    ${converted ? `<div id="convertedToast" style="position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#22C55E;color:#fff;padding:14px 28px;border-radius:12px;font-size:14px;font-weight:700;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.25);display:flex;align-items:center;gap:10px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Agendamento criado a partir do bloqueio!</div><script>setTimeout(function(){var t=document.getElementById('convertedToast');if(t)t.style.display='none';},4000);</script>` : ''}
+    ${agendaError ? `<div id="agendaErrorToast" style="position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#EF4444;color:#fff;padding:14px 28px;border-radius:12px;font-size:14px;font-weight:700;z-index:9999;box-shadow:0 4px 24px rgba(0,0,0,0.25);display:flex;align-items:center;gap:10px;max-width:90vw;">⚠️ ${esc(agendaError)}</div><script>setTimeout(function(){var t=document.getElementById('agendaErrorToast');if(t)t.style.display='none';},6000);</script>` : ''}
 
   <script>
   // ── Navegação dinâmica da agenda — sem reload de página ──────────────────────
@@ -9339,6 +9474,85 @@ document.addEventListener('input', function(e) {
       res.redirect(`/admin/agenda?date=${date}&created=1`);
     } catch (e: any) {
       res.redirect(`/admin/agenda/novo?error=${encodeURIComponent(e.message)}`);
+    }
+  });
+
+  // Transforma um bloqueio de horário (manual ou importado do Google Agenda)
+  // num agendamento de verdade - resolve cliente/serviço (existente ou novo),
+  // cria o agendamento com a data/horário TRAVADOS a partir do próprio
+  // bloqueio (nunca confia em data/horário vindo do formulário, evita
+  // manipulação), e remove o bloqueio original.
+  app.post("/admin/agenda/converter-bloqueio", requireAdminAuth, async (req: Request, res: Response) => {
+    const session = (req as any).adminSession as { barberId: number };
+    try {
+      const { blockedSlotId, clientId, newClientName, newClientPhone, serviceId, newServiceName, newServicePrice, newServiceDuration } = req.body ?? {};
+      if (!blockedSlotId) { res.redirect("/admin/agenda?error=" + encodeURIComponent("Bloqueio não informado")); return; }
+
+      const slot = await db.getBlockedSlotById(parseInt(blockedSlotId));
+      if (!slot) { res.redirect("/admin/agenda?error=" + encodeURIComponent("Bloqueio não encontrado (pode já ter sido removido)")); return; }
+
+      const barber = await db.getBarberById(session.barberId);
+      const tenantId = barber?.tenantId ?? null;
+      const slotBarber = await db.getBarberById(slot.barberId);
+      if (!tenantId || !slotBarber || slotBarber.tenantId !== tenantId) {
+        res.redirect("/admin/agenda?error=" + encodeURIComponent("Acesso negado a este bloqueio")); return;
+      }
+
+      // Resolve cliente: existente ou cria novo
+      let finalClientId: number;
+      if (newClientName && String(newClientName).trim()) {
+        if (!newClientPhone || !String(newClientPhone).trim()) {
+          res.redirect("/admin/agenda?date=" + slot.date + "&error=" + encodeURIComponent("Telefone é obrigatório para cadastrar novo cliente")); return;
+        }
+        finalClientId = await db.createClient({ tenantId, name: String(newClientName).trim(), phone: String(newClientPhone).trim() } as any);
+      } else if (clientId) {
+        finalClientId = parseInt(clientId);
+      } else {
+        res.redirect("/admin/agenda?date=" + slot.date + "&error=" + encodeURIComponent("Selecione ou cadastre um cliente")); return;
+      }
+
+      // Resolve serviço: existente ou cria novo
+      let finalServiceId: number;
+      if (newServiceName && String(newServiceName).trim()) {
+        if (!newServicePrice) {
+          res.redirect("/admin/agenda?date=" + slot.date + "&error=" + encodeURIComponent("Preço é obrigatório para cadastrar novo serviço")); return;
+        }
+        finalServiceId = await db.createService({
+          tenantId,
+          name: String(newServiceName).trim(),
+          price: String(newServicePrice),
+          durationMinutes: newServiceDuration ? parseInt(newServiceDuration) : 30,
+        } as any);
+      } else if (serviceId) {
+        finalServiceId = parseInt(serviceId);
+      } else {
+        res.redirect("/admin/agenda?date=" + slot.date + "&error=" + encodeURIComponent("Selecione ou cadastre um serviço")); return;
+      }
+
+      // Data/horário vêm do PRÓPRIO bloqueio, nunca do formulário - garante
+      // que o agendamento criado ocupa exatamente o horário que já estava
+      // reservado, sem depender de valor nenhum enviado pelo navegador.
+      const atomicResult = await db.createAppointmentAtomic({
+        clientId: finalClientId,
+        serviceId: finalServiceId,
+        barberId: slot.barberId,
+        date: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        status: "scheduled",
+        notes: slot.reason ? `Convertido de bloqueio: ${slot.reason}` : null,
+      });
+
+      if (!atomicResult.success) {
+        res.redirect("/admin/agenda?date=" + slot.date + "&error=" + encodeURIComponent(atomicResult.error ?? "Não foi possível criar o agendamento"));
+        return;
+      }
+
+      await db.deleteBlockedSlot(slot.id);
+      res.redirect(`/admin/agenda?date=${slot.date}&converted=1`);
+    } catch (e: any) {
+      console.error("[converter-bloqueio] Erro:", e?.message);
+      res.redirect("/admin/agenda?error=" + encodeURIComponent("Erro ao converter bloqueio: " + e.message));
     }
   });
 
