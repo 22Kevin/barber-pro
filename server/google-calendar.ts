@@ -403,6 +403,25 @@ export async function syncAppointmentCancelled(barberId: number, googleEventId: 
   }
 }
 
+// Extrai data (YYYY-MM-DD) e hora (HH:MM:SS) de um Date, sempre no fuso de
+// Brasília (America/Sao_Paulo) — independente do fuso em que o servidor
+// (Railway, normalmente UTC) está rodando. Usa Intl.DateTimeFormat em vez de
+// toISOString()/toTimeString(), que refletem UTC/fuso do servidor, não o
+// horário real do Brasil.
+function formatInBrazilTimezone(date: Date): { dateStr: string; timeStr: string } {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIMEZONE,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? "00";
+  const dateStr = `${get("year")}-${get("month")}-${get("day")}`;
+  const timeStr = `${get("hour")}:${get("minute")}:${get("second")}`;
+  return { dateStr, timeStr };
+}
+
 // ─── Importar eventos existentes (calendário pessoal → bloqueios de horário) ──
 // Ao contrário da sincronização normal (Barber Pro → Google), esta função lê
 // os eventos que o barbeiro JÁ TINHA na agenda pessoal ("primary") ANTES de
@@ -459,9 +478,13 @@ export async function importExistingEvents(barberId: number, daysAhead: number =
 
     const startDate = new Date(event.start.dateTime);
     const endDate = new Date(event.end.dateTime);
-    const dateStr = startDate.toISOString().split("T")[0];
-    const startTimeStr = startDate.toTimeString().slice(0, 8);
-    const endTimeStr = endDate.toTimeString().slice(0, 8);
+    // IMPORTANTE: usa o fuso de Brasília explicitamente (America/Sao_Paulo),
+    // nunca o fuso do servidor (Railway roda em UTC) nem toISOString()/
+    // toTimeString() puros - ambos dão a data/hora ERRADA quando o servidor
+    // não está no mesmo fuso do Brasil (ex: 16h de Brasília vira "19:00"
+    // se calculado em UTC, um bloqueio 3h fora do horário real).
+    const { dateStr, timeStr: startTimeStr } = formatInBrazilTimezone(startDate);
+    const { timeStr: endTimeStr } = formatInBrazilTimezone(endDate);
 
     try {
       await db.createBlockedSlot({
