@@ -2497,6 +2497,39 @@ async function renderDashboard(req: Request, res: Response) {
 }
 
 // ─── Agenda ───────────────────────────────────────────────────────────────────
+// Tenta extrair pistas de cliente/serviço do texto de um bloqueio importado
+// do Google Agenda (formato "Importado da Google Agenda: <serviço> (<cliente>)")
+// e cruza com os clientes/serviços já cadastrados, pra sugerir na hora de
+// transformar o bloqueio em agendamento. Nunca decide sozinho - só sugere.
+function findBlockMatches(reason: string, clients: any[], services: any[]) {
+  const cleaned = (reason ?? "").replace(/^Importado da Google Agenda:\s*/i, "").trim();
+  const parenMatch = cleaned.match(/\(([^)]+)\)\s*$/);
+  const clientGuess = parenMatch ? parenMatch[1].trim() : "";
+  const serviceGuess = parenMatch ? cleaned.slice(0, parenMatch.index).trim() : cleaned;
+
+  const norm = (s: string) => (s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const cg = norm(clientGuess);
+  const sg = norm(serviceGuess);
+
+  const matchingClients = cg
+    ? clients.filter((c: any) => {
+        const cn = norm(c.name);
+        return cn && (cn.includes(cg) || cg.includes(cn));
+      }).map((c: any) => ({ id: c.id, name: c.name, phone: c.phone ?? "" }))
+    : [];
+
+  let matchingServiceId: number | null = null;
+  if (sg) {
+    const found = services.find((s: any) => {
+      const sn = norm(s.name);
+      return sn && (sn.includes(sg) || sg.includes(sn));
+    });
+    matchingServiceId = found ? found.id : null;
+  }
+
+  return { clientGuess, serviceGuess, matchingClients, matchingServiceId };
+}
+
 async function renderAgenda(req: Request, res: Response) {
   const session = (req as any).adminSession as { barberId: number; role: string };
   const barber = await db.getBarberById(session.barberId);
@@ -3003,9 +3036,10 @@ async function renderAgenda(req: Request, res: Response) {
                 ...blockedSlotsForDate.map((b: any) => {
                   const isFromGoogle = !!b.googleEventId;
                   const barberName = barberMap[b.barberId] ?? "—";
+                  const matches = isFromGoogle ? findBlockMatches(b.reason ?? "", clients, services) : { clientGuess: "", serviceGuess: "", matchingClients: [], matchingServiceId: null };
                   return {
                     time: b.startTime ?? "00:00",
-                    html: `<div onclick="openConvertBlockModal(${esc(JSON.stringify({id:b.id,reason:b.reason??'',date:b.date,startTime:b.startTime??'',endTime:b.endTime??'',barberName}))})" style="background:var(--surface2, rgba(255,255,255,0.03));border:1px dashed var(--border);border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;opacity:0.9;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='#C9A84C'" onmouseout="this.style.borderColor='var(--border)'">
+                    html: `<div onclick="openConvertBlockModal(${esc(JSON.stringify({id:b.id,reason:b.reason??'',date:b.date,startTime:b.startTime??'',endTime:b.endTime??'',barberName,clientGuess:matches.clientGuess,matchingClients:matches.matchingClients,matchingServiceId:matches.matchingServiceId}))})" style="background:var(--surface2, rgba(255,255,255,0.03));border:1px dashed var(--border);border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;opacity:0.9;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='#C9A84C'" onmouseout="this.style.borderColor='var(--border)'">
                       <div style="flex-shrink:0;text-align:center;min-width:52px;">
                         <div style="font-size:20px;font-weight:900;color:var(--muted);line-height:1;letter-spacing:-0.5px;">${b.startTime?.substring(0,5) ?? "—"}</div>
                         <div style="font-size:11px;color:var(--muted);margin-top:3px;font-weight:500;">${b.endTime?.substring(0,5) ?? ""}</div>
@@ -3210,6 +3244,10 @@ async function renderAgenda(req: Request, res: Response) {
                 </div>
                 <div id="convertClientExistingBox">
                   <input type="hidden" name="clientId" id="convertClientId" />
+                  <div id="convertClientMatches" style="display:none;margin-bottom:10px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:10px;padding:10px 12px">
+                    <div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:6px">💡 Encontramos possíveis correspondências:</div>
+                    <div id="convertClientMatchesList" style="display:flex;flex-direction:column;gap:4px"></div>
+                  </div>
                   <div style="position:relative">
                     <input type="text" id="convertClientSearch" placeholder="Buscar cliente por nome ou telefone..." autocomplete="off"
                       style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box"
@@ -3222,8 +3260,14 @@ async function renderAgenda(req: Request, res: Response) {
                   </div>
                 </div>
                 <div id="convertClientNewBox" style="display:none">
-                  <input type="text" name="newClientName" placeholder="Nome do novo cliente" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:8px" />
-                  <input type="text" name="newClientPhone" placeholder="Telefone (WhatsApp)" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
+                  <input type="text" name="newClientName" id="convertNewClientName" placeholder="Nome completo *" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:8px" />
+                  <input type="text" name="newClientPhone" placeholder="Telefone / WhatsApp *" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:8px" />
+                  <input type="email" name="newClientEmail" placeholder="E-mail (opcional)" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:8px" />
+                  <div style="margin-bottom:8px">
+                    <label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Data de nascimento (opcional)</label>
+                    <input type="date" name="newClientBirthDate" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
+                  </div>
+                  <textarea name="newClientNotes" placeholder="Observações (preferências, alergias...)" rows="2" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;resize:vertical"></textarea>
                 </div>
               </div>
               <div style="margin-bottom:20px">
@@ -3239,11 +3283,12 @@ async function renderAgenda(req: Request, res: Response) {
                   </select>
                 </div>
                 <div id="convertServiceNewBox" style="display:none">
-                  <input type="text" name="newServiceName" placeholder="Nome do novo serviço" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:8px" />
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                    <input type="number" step="0.01" name="newServicePrice" placeholder="Preço (R$)" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
+                  <input type="text" name="newServiceName" placeholder="Nome do novo serviço *" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;margin-bottom:8px" />
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+                    <input type="number" step="0.01" name="newServicePrice" placeholder="Preço (R$) *" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
                     <input type="number" name="newServiceDuration" placeholder="Duração (min)" value="30" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box" />
                   </div>
+                  <textarea name="newServiceDescription" placeholder="Descrição (opcional)" rows="2" style="width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;box-sizing:border-box;resize:vertical"></textarea>
                 </div>
               </div>
               <div style="display:flex;gap:12px">
@@ -3724,18 +3769,43 @@ async function renderAgenda(req: Request, res: Response) {
               data.date + ' às ' + (data.startTime || '').substring(0,5) + ' - ' + (data.endTime || '').substring(0,5) +
               (data.barberName ? '<br>Profissional: ' + data.barberName : '');
             document.getElementById('convertBlockOriginalInfo').innerHTML = info;
-            // Tenta pré-preencher a busca de cliente com o texto do bloqueio (ex: "João Pedro" extraído de "Corte de Cabelo (João Pedro)")
-            var guess = (data.reason || '').match(/\\(([^)]+)\\)/);
-            if (guess && guess[1]) {
-              document.getElementById('convertClientSearch').value = guess[1].trim();
-              filterConvertClients(guess[1].trim());
-            } else {
-              document.getElementById('convertClientSearch').value = '';
-            }
+
+            var matchesBox = document.getElementById('convertClientMatches');
+            var matchesList = document.getElementById('convertClientMatchesList');
+            var matches = data.matchingClients || [];
             document.getElementById('convertClientId').value = '';
+            document.getElementById('convertClientSearch').value = data.clientGuess || '';
+
+            if (matches.length > 0) {
+              matchesBox.style.display = 'block';
+              matchesList.innerHTML = matches.map(function(m) {
+                return '<button type="button" onclick="selectConvertClientMatch(' + m.id + ', ' + JSON.stringify(m.name) + ')" style="text-align:left;padding:8px 10px;border-radius:8px;border:1px solid rgba(201,168,76,0.3);background:rgba(0,0,0,0.2);color:var(--text);font-size:13px;cursor:pointer;display:flex;justify-content:space-between" onmouseover="this.style.background=\'rgba(201,168,76,0.15)\'" onmouseout="this.style.background=\'rgba(0,0,0,0.2)\'"><strong>' + m.name + '</strong>' + (m.phone ? '<span style="color:var(--muted)">' + m.phone + '</span>' : '') + '</button>';
+              }).join('');
+              // Se só achou 1, já pré-seleciona (mas deixa trocar)
+              if (matches.length === 1) {
+                document.getElementById('convertClientId').value = matches[0].id;
+                document.getElementById('convertClientSearch').value = matches[0].name + (matches[0].phone ? ' — ' + matches[0].phone : '');
+              }
+            } else {
+              matchesBox.style.display = 'none';
+              matchesList.innerHTML = '';
+              if (data.clientGuess) filterConvertClients(data.clientGuess);
+            }
+
             convertSetClientMode('existing');
             convertSetServiceMode('existing');
+            document.getElementById('convertNewClientName').value = data.clientGuess || '';
+
+            // Pré-seleciona o serviço equivalente encontrado no servidor, se houver
+            var svcSelect = document.getElementById('convertServiceSelect');
+            svcSelect.value = data.matchingServiceId ? String(data.matchingServiceId) : '';
+
             document.getElementById('convertBlockModal').style.display = 'flex';
+          }
+
+          function selectConvertClientMatch(id, name) {
+            document.getElementById('convertClientId').value = id;
+            document.getElementById('convertClientSearch').value = name;
           }
 
           function convertSetClientMode(mode) {
@@ -9485,7 +9555,7 @@ document.addEventListener('input', function(e) {
   app.post("/admin/agenda/converter-bloqueio", requireAdminAuth, async (req: Request, res: Response) => {
     const session = (req as any).adminSession as { barberId: number };
     try {
-      const { blockedSlotId, clientId, newClientName, newClientPhone, serviceId, newServiceName, newServicePrice, newServiceDuration } = req.body ?? {};
+      const { blockedSlotId, clientId, newClientName, newClientPhone, newClientEmail, newClientBirthDate, newClientNotes, serviceId, newServiceName, newServicePrice, newServiceDuration, newServiceDescription } = req.body ?? {};
       if (!blockedSlotId) { res.redirect("/admin/agenda?error=" + encodeURIComponent("Bloqueio não informado")); return; }
 
       const slot = await db.getBlockedSlotById(parseInt(blockedSlotId));
@@ -9504,7 +9574,14 @@ document.addEventListener('input', function(e) {
         if (!newClientPhone || !String(newClientPhone).trim()) {
           res.redirect("/admin/agenda?date=" + slot.date + "&error=" + encodeURIComponent("Telefone é obrigatório para cadastrar novo cliente")); return;
         }
-        finalClientId = await db.createClient({ tenantId, name: String(newClientName).trim(), phone: String(newClientPhone).trim() } as any);
+        finalClientId = await db.createClient({
+          tenantId,
+          name: String(newClientName).trim(),
+          phone: String(newClientPhone).trim(),
+          email: newClientEmail && String(newClientEmail).trim() ? String(newClientEmail).trim() : null,
+          birthDate: newClientBirthDate && String(newClientBirthDate).trim() ? String(newClientBirthDate).trim() : null,
+          notes: newClientNotes && String(newClientNotes).trim() ? String(newClientNotes).trim() : null,
+        } as any);
       } else if (clientId) {
         finalClientId = parseInt(clientId);
       } else {
@@ -9522,6 +9599,7 @@ document.addEventListener('input', function(e) {
           name: String(newServiceName).trim(),
           price: String(newServicePrice),
           durationMinutes: newServiceDuration ? parseInt(newServiceDuration) : 30,
+          description: newServiceDescription && String(newServiceDescription).trim() ? String(newServiceDescription).trim() : null,
         } as any);
       } else if (serviceId) {
         finalServiceId = parseInt(serviceId);
