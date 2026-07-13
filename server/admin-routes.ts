@@ -6590,11 +6590,11 @@ async function renderIntegracoes(req: Request, res: Response) {
           </div>
           ${lastSyncError ? `<div style="font-size:12px;color:#F87171;margin-bottom:16px">⚠️ Último erro de sincronização: ${esc(lastSyncError)}</div>` : ""}
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <form method="POST" action="/admin/google-calendar/disconnect" onsubmit="return confirm('Desconectar a Google Agenda? Os agendamentos futuros deixam de ser sincronizados.');">
-              <button type="submit" class="btn btn-ghost" style="color:#F87171;border-color:#F8717144">Desconectar</button>
+            <form method="POST" action="/admin/google-calendar/disconnect" id="gcalDisconnectForm">
+              <button type="button" class="btn btn-ghost" style="color:#F87171;border-color:#F8717144" onclick="bpConfirm({icon:'🔌',title:'Desconectar Google Agenda',msg:'Os agendamentos futuros deixam de ser sincronizados.',okLabel:'Desconectar',danger:true,onConfirm:function(){document.getElementById('gcalDisconnectForm').submit();}})">Desconectar</button>
             </form>
-            <form method="POST" action="/admin/google-calendar/import" onsubmit="return confirm('Importar compromissos que você já tinha na sua agenda pessoal do Google? Cada um vira um bloqueio de horário no Barber Pro (próximos 60 dias), para evitar que alguém agende em cima. Isso não afeta agendamentos de clientes já existentes.');">
-              <button type="submit" class="btn btn-ghost" style="color:var(--gold, #C9A84C);border-color:rgba(201,168,76,0.35)">📥 Importar agendamentos existentes</button>
+            <form method="POST" action="/admin/google-calendar/import" id="gcalImportForm">
+              <button type="button" class="btn btn-ghost" style="color:var(--gold, #C9A84C);border-color:rgba(201,168,76,0.35)" onclick="bpConfirm({icon:'📥',title:'Importar agendamentos existentes',msg:'Importar compromissos que você já tinha na sua agenda pessoal do Google? Cada um vira um bloqueio de horário no Barber Pro (próximos 60 dias), para evitar que alguém agende em cima. Isso não afeta agendamentos de clientes já existentes.',okLabel:'Importar',onConfirm:function(){document.getElementById('gcalImportForm').submit();}})">📥 Importar agendamentos existentes</button>
             </form>
           </div>
         ` : `
