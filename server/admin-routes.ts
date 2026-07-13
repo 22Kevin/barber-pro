@@ -3779,7 +3779,7 @@ async function renderAgenda(req: Request, res: Response) {
             if (matches.length > 0) {
               matchesBox.style.display = 'block';
               matchesList.innerHTML = matches.map(function(m) {
-                return '<button type="button" onclick="selectConvertClientMatch(' + m.id + ', ' + JSON.stringify(m.name) + ')" style="text-align:left;padding:8px 10px;border-radius:8px;border:1px solid rgba(201,168,76,0.3);background:rgba(0,0,0,0.2);color:var(--text);font-size:13px;cursor:pointer;display:flex;justify-content:space-between" onmouseover="this.style.background=\'rgba(201,168,76,0.15)\'" onmouseout="this.style.background=\'rgba(0,0,0,0.2)\'"><strong>' + m.name + '</strong>' + (m.phone ? '<span style="color:var(--muted)">' + m.phone + '</span>' : '') + '</button>';
+                return '<button type="button" onclick="selectConvertClientMatch(' + m.id + ', ' + JSON.stringify(m.name) + ')" style="text-align:left;padding:8px 10px;border-radius:8px;border:1px solid rgba(201,168,76,0.3);background:rgba(0,0,0,0.2);color:var(--text);font-size:13px;cursor:pointer;display:flex;justify-content:space-between" onmouseover="this.style.background=\\'rgba(201,168,76,0.15)\\'" onmouseout="this.style.background=\\'rgba(0,0,0,0.2)\\'"><strong>' + m.name + '</strong>' + (m.phone ? '<span style="color:var(--muted)">' + m.phone + '</span>' : '') + '</button>';
               }).join('');
               // Se só achou 1, já pré-seleciona (mas deixa trocar)
               if (matches.length === 1) {
