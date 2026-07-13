@@ -3245,7 +3245,7 @@ async function renderAgenda(req: Request, res: Response) {
                 <div id="convertClientExistingBox">
                   <input type="hidden" name="clientId" id="convertClientId" />
                   <div id="convertClientMatches" style="display:none;margin-bottom:10px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:10px;padding:10px 12px">
-                    <div style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:6px">💡 Encontramos possíveis correspondências:</div>
+                    <div id="convertClientMatchesTitle" style="font-size:11px;color:var(--gold);font-weight:700;margin-bottom:6px">💡 Encontramos possíveis correspondências:</div>
                     <div id="convertClientMatchesList" style="display:flex;flex-direction:column;gap:4px"></div>
                   </div>
                   <div style="position:relative">
@@ -3771,13 +3771,18 @@ async function renderAgenda(req: Request, res: Response) {
             document.getElementById('convertBlockOriginalInfo').innerHTML = info;
 
             var matchesBox = document.getElementById('convertClientMatches');
+            var matchesTitle = document.getElementById('convertClientMatchesTitle');
             var matchesList = document.getElementById('convertClientMatchesList');
             var matches = data.matchingClients || [];
             document.getElementById('convertClientId').value = '';
-            document.getElementById('convertClientSearch').value = data.clientGuess || '';
+            document.getElementById('convertClientSearch').value = '';
 
             if (matches.length > 0) {
               matchesBox.style.display = 'block';
+              matchesBox.style.background = 'rgba(201,168,76,0.08)';
+              matchesBox.style.borderColor = 'rgba(201,168,76,0.25)';
+              matchesTitle.style.color = 'var(--gold)';
+              matchesTitle.textContent = '💡 Encontramos possíveis correspondências:';
               matchesList.innerHTML = matches.map(function(m) {
                 return '<button type="button" onclick="selectConvertClientMatch(' + m.id + ', ' + JSON.stringify(m.name) + ')" style="text-align:left;padding:8px 10px;border-radius:8px;border:1px solid rgba(201,168,76,0.3);background:rgba(0,0,0,0.2);color:var(--text);font-size:13px;cursor:pointer;display:flex;justify-content:space-between" onmouseover="this.style.background=\\'rgba(201,168,76,0.15)\\'" onmouseout="this.style.background=\\'rgba(0,0,0,0.2)\\'"><strong>' + m.name + '</strong>' + (m.phone ? '<span style="color:var(--muted)">' + m.phone + '</span>' : '') + '</button>';
               }).join('');
@@ -3786,10 +3791,20 @@ async function renderAgenda(req: Request, res: Response) {
                 document.getElementById('convertClientId').value = matches[0].id;
                 document.getElementById('convertClientSearch').value = matches[0].name + (matches[0].phone ? ' — ' + matches[0].phone : '');
               }
+            } else if (data.clientGuess) {
+              // Tinha uma pista de nome vinda do Google, mas NENHUM cliente cadastrado bate com ela -
+              // avisa claramente em vez de só deixar o texto lá parecendo selecionado
+              matchesBox.style.display = 'block';
+              matchesBox.style.background = 'rgba(239,68,68,0.08)';
+              matchesBox.style.borderColor = 'rgba(239,68,68,0.3)';
+              matchesTitle.style.color = '#F87171';
+              matchesTitle.textContent = '⚠️ Nenhum cliente cadastrado encontrado com o nome "' + data.clientGuess + '"';
+              matchesList.innerHTML = '<div style="font-size:12px;color:var(--muted)">Confira a busca abaixo ou clique em "+ Cadastrar novo" pra criar esse cliente.</div>';
+              filterConvertClients(data.clientGuess);
+              document.getElementById('convertClientSearch').value = data.clientGuess;
             } else {
               matchesBox.style.display = 'none';
               matchesList.innerHTML = '';
-              if (data.clientGuess) filterConvertClients(data.clientGuess);
             }
 
             convertSetClientMode('existing');
