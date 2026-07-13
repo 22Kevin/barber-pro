@@ -688,6 +688,27 @@ export async function getBlockedSlotByGoogleEventId(barberId: number, googleEven
   return result[0] ?? null;
 }
 
+// Busca bloqueios de horário de TODOS os barbeiros do tenant numa data
+// (análoga a getAllAppointmentsByDate) - usada pra exibir os bloqueios como
+// cartão na tela de Agenda, junto com os agendamentos normais.
+export async function getAllBlockedSlotsByDate(date: string, tenantId?: number | null) {
+  const db = await getDb();
+  if (!db) return [];
+  if (tenantId == null) return [];
+  return db.select({
+    id: blockedSlots.id,
+    barberId: blockedSlots.barberId,
+    date: blockedSlots.date,
+    startTime: blockedSlots.startTime,
+    endTime: blockedSlots.endTime,
+    reason: blockedSlots.reason,
+    googleEventId: blockedSlots.googleEventId,
+  })
+    .from(blockedSlots)
+    .innerJoin(barbers, eq(blockedSlots.barberId, barbers.id))
+    .where(and(eq(blockedSlots.date, date), eq(barbers.tenantId, tenantId)));
+}
+
 export async function deleteBlockedSlot(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

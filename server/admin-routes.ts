@@ -2559,6 +2559,12 @@ async function renderAgenda(req: Request, res: Response) {
   // Aplicar filtros
   let appointments = allAppointments;
   if (filterBarberId) appointments = appointments.filter((a: any) => a.barberId === filterBarberId);
+  // Bloqueios de horário do dia (folgas, intervalos, e importados do Google
+  // Agenda) - exibidos como cartão junto com os agendamentos, pra não
+  // ficarem "invisíveis" pro barbeiro (só travavam o horário antes, sem
+  // aparecer em lugar nenhum).
+  let blockedSlotsForDate = await db.getAllBlockedSlotsByDate(dateStr, tenantId);
+  if (filterBarberId) blockedSlotsForDate = blockedSlotsForDate.filter((b: any) => b.barberId === filterBarberId);
   // Ordenar por horário
   appointments = [...appointments].sort((a: any, b: any) => {
     const ta = a.startTime ?? "00:00";
@@ -2916,7 +2922,7 @@ async function renderAgenda(req: Request, res: Response) {
         </div>
         <!-- Vista Cards -->
         <div id="viewCards">
-        ${appointments.length === 0
+        ${appointments.length === 0 && blockedSlotsForDate.length === 0
           ? `<div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:60px 40px;text-align:center;color:var(--muted);">
                <div style="width:72px;height:72px;border-radius:20px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.6;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -2929,7 +2935,8 @@ async function renderAgenda(req: Request, res: Response) {
                </button>
              </div>`
           : `<div style="display:flex;flex-direction:column;gap:10px">
-              ${appointments.map((a: any) => {
+              ${[
+                ...appointments.map((a: any) => {
                 const statusColors: Record<string, {bg:string;border:string;text:string}> = {
                   scheduled:        {bg:"rgba(201,168,76,0.08)",  border:"rgba(201,168,76,0.3)",  text:"#C9A84C"},
                   confirmed:        {bg:"rgba(76,175,80,0.08)",   border:"rgba(76,175,80,0.3)",   text:"#4CAF50"},
@@ -2948,7 +2955,9 @@ async function renderAgenda(req: Request, res: Response) {
                 const sl = statusLabels[a.status] ?? a.status;
                 const serviceNames = a.serviceNames ?? a.serviceName ?? "—";
                 const initials = (a.clientName ?? '?').split(' ').map((w:string)=>w[0]).slice(0,2).join('').toUpperCase();
-                return `<div id="appt-card-${a.id}" onclick="openEditModal(${JSON.stringify({id:a.id,clientName:a.clientName??'',clientPhone:a.clientPhone??'',serviceId:a.serviceId,serviceName:serviceNames,barberId:a.barberId,barberName:a.barberName??'',date:a.date,startTime:a.startTime??'',endTime:a.endTime??'',status:a.status,notes:a.notes??''})})" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s;display:flex;align-items:center;gap:14px;" onmouseover="this.style.borderColor='#C9A84C';this.style.boxShadow='0 4px 20px #0004'";this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none';this.style.transform='none'">
+                return {
+                  time: a.startTime ?? "00:00",
+                  html: `<div id="appt-card-${a.id}" onclick="openEditModal(${JSON.stringify({id:a.id,clientName:a.clientName??'',clientPhone:a.clientPhone??'',serviceId:a.serviceId,serviceName:serviceNames,barberId:a.barberId,barberName:a.barberName??'',date:a.date,startTime:a.startTime??'',endTime:a.endTime??'',status:a.status,notes:a.notes??''})})" style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .1s;display:flex;align-items:center;gap:14px;" onmouseover="this.style.borderColor='#C9A84C';this.style.boxShadow='0 4px 20px #0004'";this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow='none';this.style.transform='none'">
                   <!-- Horário -->
                   <div style="flex-shrink:0;text-align:center;min-width:52px;">
                     <div style="font-size:20px;font-weight:900;color:var(--text);line-height:1;letter-spacing:-0.5px;">${a.startTime?.substring(0,5) ?? "—"}</div>
@@ -2986,8 +2995,34 @@ async function renderAgenda(req: Request, res: Response) {
                       ) : ''}
                     </div>
                   </div>
-                </div>`;
-              }).join("")}
+                </div>`,
+                };
+              }),
+                ...blockedSlotsForDate.map((b: any) => {
+                  const isFromGoogle = !!b.googleEventId;
+                  const barberName = barberMap[b.barberId] ?? "—";
+                  return {
+                    time: b.startTime ?? "00:00",
+                    html: `<div style="background:var(--surface2, rgba(255,255,255,0.03));border:1px dashed var(--border);border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;opacity:0.9;">
+                      <div style="flex-shrink:0;text-align:center;min-width:52px;">
+                        <div style="font-size:20px;font-weight:900;color:var(--muted);line-height:1;letter-spacing:-0.5px;">${b.startTime?.substring(0,5) ?? "—"}</div>
+                        <div style="font-size:11px;color:var(--muted);margin-top:3px;font-weight:500;">${b.endTime?.substring(0,5) ?? ""}</div>
+                      </div>
+                      <div style="width:3px;height:48px;border-radius:2px;background:var(--muted);flex-shrink:0;"></div>
+                      <div style="width:42px;height:42px;border-radius:12px;background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.25);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🔒</div>
+                      <div style="flex:1;min-width:0;">
+                        <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(b.reason ?? "Horário bloqueado")}</div>
+                        <div style="font-size:11px;color:var(--muted);margin-top:2px;opacity:0.8;">${esc(barberName)}${isFromGoogle ? " · Importado do Google Agenda" : ""}</div>
+                        ${isFromGoogle ? `<div style="font-size:11px;color:var(--gold);margin-top:4px;">💡 Se isso for virar um agendamento de cliente, confira se o cliente e o serviço já estão cadastrados no sistema.</div>` : ""}
+                      </div>
+                      <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.25);color:var(--muted);white-space:nowrap;">Bloqueado</div>
+                    </div>`,
+                  };
+                }),
+              ]
+                .sort((x, y) => String(x.time).localeCompare(String(y.time)))
+                .map((item) => item.html)
+                .join("")}
             </div>`
         }
         </div>
