@@ -130,6 +130,29 @@ async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: 
 
 // ─── Criar calendário dedicado ("Barber Pro") na conta do barbeiro ────────────
 
+// Procura um calendário "Barber Pro" já existente na conta do usuário antes
+// de criar um novo. Evita duplicar calendários toda vez que o barbeiro
+// desconecta e reconecta (ex: pra gravar um vídeo de demonstração, testar
+// de novo, trocar de conta, etc.) — sem isso, cada reconexão criava um
+// calendário novo e os eventos antigos ficavam "presos" no calendário
+// anterior, órfão.
+async function findExistingDedicatedCalendar(accessToken: string): Promise<string | null> {
+  try {
+    const res = await fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=owner", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = await res.json() as any;
+    const items = Array.isArray(data.items) ? data.items : [];
+    const existing = items.find((cal: any) => cal.summary === CALENDAR_NAME);
+    return existing?.id ?? null;
+  } catch (e: any) {
+    // Se a busca falhar por qualquer motivo, seguimos o fluxo normal
+    // (cria um novo) em vez de travar a conexão inteira por causa disso.
+    console.error("[google-calendar] Erro ao procurar calendário existente:", e.message);
+    return null;
+  }
+}
+
 async function createDedicatedCalendar(accessToken: string): Promise<string> {
   const res = await fetch("https://www.googleapis.com/calendar/v3/calendars", {
     method: "POST",
@@ -139,6 +162,14 @@ async function createDedicatedCalendar(accessToken: string): Promise<string> {
   const data = await res.json() as any;
   if (!data.id) throw new Error("Falha ao criar calendário dedicado: " + JSON.stringify(data));
   return data.id as string;
+}
+
+// Reaproveita o calendário "Barber Pro" existente (se houver) em vez de
+// sempre criar um novo. Esta é a função usada pelo fluxo de conexão.
+async function getOrCreateDedicatedCalendar(accessToken: string): Promise<string> {
+  const existingId = await findExistingDedicatedCalendar(accessToken);
+  if (existingId) return existingId;
+  return createDedicatedCalendar(accessToken);
 }
 
 // ─── Conectar (chamado depois do callback OAuth) ───────────────────────────────
@@ -151,7 +182,7 @@ export async function connectBarberCalendar(params: {
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     const { accessToken, refreshToken, expiresIn } = await exchangeCodeForTokens(params.code, params.redirectUri);
-    const calendarId = await createDedicatedCalendar(accessToken);
+    const calendarId = await getOrCreateDedicatedCalendar(accessToken);
     const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
     await db.saveGoogleCalendarConnection({
@@ -259,7 +290,19 @@ export async function syncAppointmentUpdated(barberId: number, appt: Appointment
       headers: { Authorization: `Bearer ${conn.accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify(buildEventPayload(appt)),
     });
-    if (!res.ok) {
+    if (res.status === 404 || res.status === 410) {
+      // O evento referenciado não existe mais no Google (calendário antigo
+      // de uma reconexão anterior, evento apagado manualmente, etc.) —
+      // em vez de falhar, cria um evento novo e atualiza a referência.
+      const createRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(conn.calendarId)}/events`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${conn.accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify(buildEventPayload(appt)),
+      });
+      const createData = await createRes.json() as any;
+      if (!createData.id) throw new Error("Falha ao recriar evento: " + JSON.stringify(createData));
+      await db.setAppointmentGoogleEventId(appt.id, createData.id);
+    } else if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       throw new Error(JSON.stringify(data));
     }
