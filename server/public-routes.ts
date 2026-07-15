@@ -5815,7 +5815,7 @@ export function registerPublicRoutes(app: Express): void {
     <div class="logo-text">BARBER PRO</div>
   </div>
   <h1>Política de Privacidade</h1>
-  <p class="updated">Última atualização: 29 de maio de 2026</p>
+  <p class="updated">Última atualização: 15 de julho de 2026</p>
 
   <p>A <strong>Barber Pro</strong> (&ldquo;nós&rdquo;, &ldquo;nosso&rdquo;) opera o aplicativo móvel Barber Pro e o site usebarberpro.com. Esta política descreve como coletamos, usamos e protegemos suas informações.</p>
 
@@ -5841,17 +5841,25 @@ export function registerPublicRoutes(app: Express): void {
   <ul>
     <li><strong>Barbearias parceiras:</strong> para gerenciar seus agendamentos.</li>
     <li><strong>Asaas:</strong> processadora de pagamentos, para cobranças e assinaturas.</li>
-    <li><strong>Google:</strong> para autenticação via Google Sign-In (opcional).</li>
+    <li><strong>Google:</strong> para autenticação via Google Sign-In (opcional) e, para barbeiros que optarem por conectar sua conta, para sincronização com a Google Agenda (veja a seção 5).</li>
     <li><strong>Autoridades:</strong> quando exigido por lei ou ordem judicial.</li>
   </ul>
 
   <h2>4. Armazenamento e Segurança</h2>
   <p>Seus dados são armazenados em servidores seguros nos Estados Unidos (Railway). Utilizamos HTTPS para todas as comunicações e senhas são armazenadas com hash bcrypt.</p>
 
-  <h2>5. Notificações Push</h2>
+  <h2>5. Integração com Google Agenda</h2>
+  <p>O Barber Pro oferece uma integração <strong>opcional</strong> com a Google Agenda, disponível para barbeiros que desejarem conectar sua conta Google. Esta seção detalha especificamente como tratamos os dados acessados por meio dessa integração.</p>
+  <p><strong>Dados acessados:</strong> ao conectar sua conta Google, o Barber Pro acessa sua Google Agenda de duas formas: (i) sincronização automática e contínua — criamos, editamos e excluímos eventos em um calendário dedicado, chamado "Barber Pro", criado automaticamente na sua Conta Google no momento da conexão; e (ii) importação pontual, sob demanda — se você optar por usar a função "Importar agendamentos existentes", o app lê, uma única vez quando você aciona essa função, os eventos do seu calendário pessoal (principal) dos próximos 60 dias, para identificar horários já comprometidos antes de usar o Barber Pro. Não acessamos, listamos nem modificamos nenhum outro dado da sua Conta Google além do descrito aqui (contatos, e-mails, arquivos e outros dados não são acessados).</p>
+  <p><strong>Como esses dados são usados:</strong> exclusivamente para (i) refletir automaticamente, no calendário dedicado, os agendamentos criados, editados ou cancelados dentro do Barber Pro; e (ii), quando solicitado por você, identificar horários já ocupados na sua agenda pessoal para evitar conflitos de agendamento.</p>
+  <p><strong>Compartilhamento:</strong> os dados acessados por meio dessa integração não são compartilhados, vendidos, alugados ou transferidos a nenhum terceiro, sob nenhuma circunstância, nem utilizados para treinar modelos de inteligência artificial.</p>
+  <p><strong>Proteção:</strong> o token de acesso à sua Conta Google é armazenado de forma criptografada (AES-256) em nosso banco de dados, nunca em texto legível.</p>
+  <p><strong>Retenção e exclusão:</strong> o token é mantido enquanto a integração estiver ativa. Você pode desconectar sua Conta Google a qualquer momento pela tela de Integrações — isso remove imediata e permanentemente o token armazenado. Eventos já criados no calendário dedicado não são apagados automaticamente ao desconectar; podem ser removidos manualmente, direto na sua Google Agenda.</p>
+
+  <h2>6. Notificações Push</h2>
   <p>Enviamos notificações push apenas com sua autorização explícita. Você pode revogar essa permissão nas configurações do seu dispositivo a qualquer momento.</p>
 
-  <h2>6. Seus Direitos (LGPD)</h2>
+  <h2>7. Seus Direitos (LGPD)</h2>
   <p>Conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018), você tem direito a:</p>
   <ul>
     <li>Acessar, corrigir ou excluir seus dados pessoais.</li>
@@ -5861,19 +5869,19 @@ export function registerPublicRoutes(app: Express): void {
   </ul>
   <p>Para exercer esses direitos, entre em contato pelo e-mail: <a href="mailto:contato@usebarberpro.com">contato@usebarberpro.com</a></p>
 
-  <h2>7. Retenção de Dados</h2>
+  <h2>8. Retenção de Dados</h2>
   <p>Mantemos seus dados enquanto sua conta estiver ativa. Após o encerramento da conta, dados pessoais são excluídos em até 90 dias, exceto onde a lei exigir retenção por mais tempo.</p>
 
-  <h2>8. Cookies e Tecnologias Similares</h2>
+  <h2>9. Cookies e Tecnologias Similares</h2>
   <p>Utilizamos cookies de sessão para manter você autenticado. Não utilizamos cookies de rastreamento ou publicidade.</p>
 
-  <h2>9. Menores de Idade</h2>
+  <h2>10. Menores de Idade</h2>
   <p>O Barber Pro não é destinado a menores de 13 anos. Não coletamos intencionalmente dados de crianças.</p>
 
-  <h2>10. Alterações nesta Política</h2>
+  <h2>11. Alterações nesta Política</h2>
   <p>Podemos atualizar esta política periodicamente. Notificaremos sobre mudanças significativas por e-mail ou dentro do aplicativo.</p>
 
-  <h2>11. Contato</h2>
+  <h2>12. Contato</h2>
   <p>Dúvidas sobre esta política: <a href="mailto:contato@usebarberpro.com">contato@usebarberpro.com</a></p>
   <p>Site: <a href="https://usebarberpro.com">usebarberpro.com</a></p>
 
