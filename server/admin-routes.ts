@@ -28,7 +28,7 @@ import axios from "axios";
 import PDFDocument from "pdfkit";
 import { requireFeature } from "./plan-features";
 import bcrypt from "bcryptjs";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual, randomBytes } from "crypto";
 
 // ─── Validação de uploads base64 (mime allowlist + magic bytes + limite de tamanho) ─────────
 const UPLOAD_IMAGE_MIMES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
@@ -8515,9 +8515,12 @@ export function registerAdminRoutes(app: Express): void {
     }
     const baseUrl = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.host}`;
     const redirectUri = `${baseUrl}/admin/google-calendar/callback`;
-    // O barbeiro já está autenticado (cookie de sessão persiste durante o
-    // redirect); não é necessário codificar nada sensível no "state".
-    const state = Buffer.from(redirectUri).toString("base64url");
+    // Proteção contra CSRF: gera um nonce aleatório (não-adivinhável), guarda
+    // num cookie de curta duração (HttpOnly), e valida de volta no callback.
+    // Antes, o "state" era só o redirectUri em base64 - previsível, não
+    // protegia contra nada de verdade.
+    const state = randomBytes(24).toString("base64url");
+    res.setHeader("Set-Cookie", `gcal_oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`);
     res.redirect(googleCalendar.getGoogleCalendarAuthUrl(redirectUri, state));
   });
 
@@ -8531,6 +8534,19 @@ export function registerAdminRoutes(app: Express): void {
         // Usuário cancelou o consentimento no Google
         return res.redirect("/admin/integracoes?gcal_error=" + encodeURIComponent("Conexão cancelada."));
       }
+
+      // Validação do state contra o nonce salvo no cookie (proteção CSRF real)
+      const receivedState = req.query.state as string | undefined;
+      const cookies = req.headers.cookie ?? "";
+      const cookieMatch = cookies.match(/gcal_oauth_state=([^;]+)/);
+      const expectedState = cookieMatch?.[1];
+      // Limpa o cookie de state independente do resultado (uso único)
+      res.setHeader("Set-Cookie", "gcal_oauth_state=; Path=/; HttpOnly; Max-Age=0");
+      if (!receivedState || !expectedState || receivedState !== expectedState) {
+        console.warn("[google-calendar-callback] state invalido/ausente - possivel CSRF, requisicao rejeitada");
+        return res.redirect("/admin/integracoes?gcal_error=" + encodeURIComponent("Sessão de conexão expirada ou inválida. Tente novamente."));
+      }
+
       if (!code) return res.redirect("/admin/integracoes?gcal_error=" + encodeURIComponent("Código não recebido do Google."));
 
       const barber = await db.getBarberById(session.barberId);
