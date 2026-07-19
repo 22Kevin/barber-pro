@@ -2375,7 +2375,7 @@ async function renderDashboard(req: Request, res: Response) {
           </div>
           <div style="flex:1">
             <div class="app-download-text" style="font-size:12px;color:rgba(148,163,184,0.8);margin-bottom:14px;line-height:1.5">Baixe o app Barber Pro pra gerenciar sua barbearia direto do celular:</div>
-            <a href="https://play.google.com/store/apps/details?id=com.usebarberpro.app" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#C9A84C,#F0C060);color:#0A0A0A;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:800;text-decoration:none">
+            <a href="https://play.google.com/store/apps/details?id=com.usebarberpro.app&referrer=utm_source%3Dadmin_panel%26utm_medium%3Ddownload_card%26utm_campaign%3Ddownload" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#C9A84C,#F0C060);color:#0A0A0A;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:800;text-decoration:none">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20.5v-17c0-.83 1-.83 1.5-.5l14 8.5c.5.3.5 1 0 1.3l-14 8.5c-.5.3-1.5.3-1.5-.8z"/></svg>
               Baixar na Google Play
             </a>
@@ -13646,7 +13646,7 @@ document.addEventListener('input', function(e) {
   // GET /admin/app-qrcode — Gera QR Code para download do app (Play Store)
   app.get("/admin/app-qrcode", requireAdminAuth, async (req: Request, res: Response) => {
     try {
-      const playStoreUrl = process.env.PLAY_STORE_URL ?? "https://play.google.com/store/apps/details?id=com.usebarberpro.app";
+      const playStoreUrl = process.env.PLAY_STORE_URL ?? "https://play.google.com/store/apps/details?id=com.usebarberpro.app&referrer=utm_source%3Dadmin_panel%26utm_medium%3Dqrcode%26utm_campaign%3Ddownload";
       const QRCode = await import("qrcode");
       const qrBuffer = await QRCode.default.toBuffer(playStoreUrl, {
         width: 280,
