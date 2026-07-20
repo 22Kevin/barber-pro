@@ -5950,6 +5950,14 @@ async function renderConfiguracoes(req: Request, res: Response) {
                   </div>
                   <div style="font-size:10px;color:var(--muted);margin-top:8px">🔒 Dados transmitidos com criptografia SSL diretamente ao Asaas.</div>
                 </div>
+                <!-- Cupom de desconto (opcional) -->
+                <div style="width:100%">
+                  <div id="coupon-toggle" onclick="document.getElementById('coupon-box').style.display='flex';document.getElementById('coupon-toggle').style.display='none'" style="font-size:12px;color:var(--gold);cursor:pointer;text-decoration:underline;text-align:left">Tenho um cupom de desconto</div>
+                  <div id="coupon-box" style="display:none;gap:8px;width:100%">
+                    <input id="coupon-code" type="text" placeholder="Código do cupom" maxlength="50" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;text-transform:uppercase" />
+                  </div>
+                  <div id="coupon-feedback" style="font-size:12px;margin-top:4px"></div>
+                </div>
                 <!-- Botão de assinatura -->
                 <button id="sub-btn" type="button" onclick="submitSubscription()" class="btn btn-primary" style="font-size:13px;padding:10px 20px;width:100%;white-space:nowrap">Assinar agora via Pix</button>
               </div>
@@ -6415,7 +6423,8 @@ async function renderConfiguracoes(req: Request, res: Response) {
       var btn = document.getElementById('sub-btn');
       if (btn) { btn.disabled = true; btn.textContent = 'Processando...'; }
 
-      var payload = { selectedPlan: plan, billingType: method };
+      var couponInput = document.getElementById('coupon-code');
+      var payload = { selectedPlan: plan, billingType: method, couponCode: couponInput ? couponInput.value.trim() : '' };
 
       if (method === 'CREDIT_CARD' || method === 'UNDEFINED') {
         var numRaw = (document.getElementById('card-number').value || '').replace(/[^0-9]/g, '');
@@ -9247,6 +9256,33 @@ document.addEventListener('input', function(e) {
         ?? req.socket.remoteAddress
         ?? '127.0.0.1';
 
+      // Cupom de desconto (opcional) - validado no servidor independente do
+      // que o front-end mostrou, nunca confiamos só na validação do cliente.
+      const rawCouponCode = ((req.body as any)?.couponCode ?? '').trim();
+      let couponPromotion: { id: number; name: string; type: string; value: number } | null = null;
+      let asaasDiscount: { value: number; dueDateLimitDays: number; type: 'PERCENTAGE' | 'FIXED' } | undefined;
+      if (rawCouponCode) {
+        const couponResult = await db.validateCouponCode(rawCouponCode);
+        if (!couponResult.valid) {
+          if (isJson) { res.status(400).json({ error: couponResult.error }); return; }
+          res.redirect('/admin/configuracoes?tab=pagamentos&error=' + encodeURIComponent(couponResult.error ?? 'Cupom inválido.'));
+          return;
+        }
+        const promo = couponResult.promotion!;
+        if (promo.type !== 'percent' && promo.type !== 'fixed') {
+          const msg = 'Este cupom não pode ser resgatado por aqui. Fale com o suporte.';
+          if (isJson) { res.status(400).json({ error: msg }); return; }
+          res.redirect('/admin/configuracoes?tab=pagamentos&error=' + encodeURIComponent(msg));
+          return;
+        }
+        couponPromotion = promo;
+        asaasDiscount = {
+          value: promo.value,
+          dueDateLimitDays: 0,
+          type: promo.type === 'percent' ? 'PERCENTAGE' : 'FIXED',
+        };
+      }
+
       // Criar assinatura recorrente mensal
       const today = new Date();
       const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
@@ -9263,8 +9299,21 @@ document.addEventListener('input', function(e) {
         ...(creditCardData ? { creditCard: creditCardData } : {}),
         ...(creditCardHolderInfo ? { creditCardHolderInfo } : {}),
         ...(hasCard ? { remoteIp } : {}),
+        ...(asaasDiscount ? { discount: asaasDiscount } : {}),
       });
       const subscriptionId = subResult.subscriptionId;
+
+      // Registra o resgate do cupom (só depois que a assinatura foi criada
+      // com sucesso - se algo falhar antes, o cupom não é consumido)
+      if (couponPromotion) {
+        try {
+          await db.recordCouponRedemption(couponPromotion.id, barber.tenantId, tenantData.name ?? `tenant_${barber.tenantId}`, subscriptionId);
+        } catch (couponErr: any) {
+          // Não deixa o erro de registro do cupom quebrar a assinatura que já
+          // foi criada com sucesso - só loga pra investigar depois.
+          console.error('[asaas/subscribe] Erro ao registrar resgate de cupom:', couponErr.message);
+        }
+      }
 
       // Atualizar o plano real do tenant também (para manter consistência)
       // Usar db.updateTenant para garantir cast correto do enum plan via Drizzle ORM
