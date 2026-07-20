@@ -106,6 +106,7 @@ export default function BarberProPaywallScreen() {
   const tenantId = barber?.tenantId ?? 0;
 
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>("team");
+  const [isAnnual, setIsAnnual] = useState(false);
   const [ownerName, setOwnerName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState(barber?.email ?? "");
   const [ownerCpfCnpj, setOwnerCpfCnpj] = useState("");
@@ -207,6 +208,15 @@ export default function BarberProPaywallScreen() {
   const [cardBrand, setCardBrand] = useState<{ icon: string; name: string } | null>(null);
 
   const plan = PLANS.find((p) => p.key === selectedPlan)!;
+  // IMPORTANTE: priceAnnual é o valor "por mês equivalente" exibido como
+  // marketing (ex: R$39,90) - o valor de fato cobrado é o total do ano
+  // (esse valor × 12), pago de uma vez só. Nunca usar priceAnnual sozinho
+  // como o valor a cobrar, senão a barbearia paga só 1 mês pelo ano inteiro.
+  const annualTotal = Math.round(plan.priceAnnual * 12 * 100) / 100;
+  const currentPrice = isAnnual ? annualTotal : plan.price;
+  const currentPriceLabel = isAnnual
+    ? `R$ ${annualTotal.toFixed(2).replace(".", ",")} à vista (equiv. R$ ${plan.priceAnnual.toFixed(2).replace(".", ",")}/mês)`
+    : `R$ ${currentPrice.toFixed(2).replace(".", ",")}/mês`;
   const isCard = billingType === "CREDIT_CARD" || billingType === "UNDEFINED";
 
   const createMutation = trpc.asaasPayments.createBarberproSubscription.useMutation({
@@ -241,8 +251,9 @@ export default function BarberProPaywallScreen() {
     renewPixMutation.mutate({
       tenantId,
       planName: plan.label,
-      planPrice: plan.price,
+      planPrice: currentPrice,
       billingType: "PIX",
+      billingCycle: isAnnual ? "annual" : "monthly",
       ownerName: ownerName.trim(),
       ownerEmail: ownerEmail.trim(),
       ownerCpfCnpj: ownerCpfCnpj.replace(/\D/g, ""),
@@ -342,8 +353,9 @@ export default function BarberProPaywallScreen() {
     createMutation.mutate({
       tenantId,
       planName: plan.label,
-      planPrice: plan.price,
+      planPrice: currentPrice,
       billingType,
+      billingCycle: isAnnual ? "annual" : "monthly",
       ownerName: ownerName.trim(),
       ownerEmail: ownerEmail.trim(),
       ownerCpfCnpj: ownerCpfCnpj.replace(/\D/g, ""),
@@ -390,7 +402,7 @@ export default function BarberProPaywallScreen() {
             borderWidth: 1, borderColor: "#C9A84C", width: "100%", alignItems: "center",
           }}>
             <Text style={{ fontSize: 13, color: "#9BA1A6", marginBottom: 4 }}>Plano ativo</Text>
-            <Text style={{ fontSize: 20, fontWeight: "700", color: "#C9A84C" }}>{plan.label} — R$ {plan.price.toFixed(2).replace(".", ",")}/mês</Text>
+            <Text style={{ fontSize: 20, fontWeight: "700", color: "#C9A84C" }}>{plan.label} — {currentPriceLabel}</Text>
           </View>
           <Text style={{ fontSize: 12, color: "#687076", textAlign: "center", marginTop: 24 }}>
             Redirecionando automaticamente...
@@ -414,7 +426,7 @@ export default function BarberProPaywallScreen() {
             <Text style={styles.subtitle}>
               {isCard
                 ? "Sua assinatura foi criada com cartão. O acesso será liberado automaticamente."
-                : `Plano ${plan.label} — R$ ${plan.price.toFixed(2).replace(".", ",")}/mês`}
+                : `Plano ${plan.label} — ${currentPriceLabel}`}
             </Text>
           </View>
 
@@ -515,7 +527,7 @@ export default function BarberProPaywallScreen() {
                   "Abra o app do seu banco",
                   "Escolha pagar via Pix",
                   "Escaneie o QR Code ou cole o código",
-                  "Confirme o pagamento de R$ " + plan.price.toFixed(2).replace(".", ","),
+                  "Confirme o pagamento de " + currentPriceLabel,
                   "Seu acesso será liberado automaticamente",
                 ].map((step, i) => (
                   <View key={i} style={styles.instructionRow}>
@@ -544,7 +556,7 @@ export default function BarberProPaywallScreen() {
               <View style={styles.pendingIcon}>
                 <IconSymbol name="checkmark.circle.fill" size={32} color="#C9A84C" />
               </View>
-              <Text style={styles.pendingTitle}>Plano {plan.label} — R$ {plan.price.toFixed(2).replace(".", ",")}/mês</Text>
+              <Text style={styles.pendingTitle}>Plano {plan.label} — {currentPriceLabel}</Text>
               <Text style={styles.pendingDesc}>
                 Seu cartão foi registrado. O acesso será liberado após a confirmação do pagamento pelo Asaas.
               </Text>
@@ -572,15 +584,40 @@ export default function BarberProPaywallScreen() {
           <Text style={styles.subtitle}>
             {step === "plans"
               ? "Seu período de trial encerrou. Assine agora para continuar usando o Barber Pro."
-              : `Plano ${plan.label} — R$ ${plan.price.toFixed(2).replace(".", ",")}/mês`}
+              : `Plano ${plan.label} — ${currentPriceLabel}`}
           </Text>
         </View>
 
         {step === "plans" ? (
           <>
+            <View style={styles.billingToggleRow}>
+              <Pressable
+                style={[styles.billingToggleBtn, !isAnnual && styles.billingToggleBtnActive]}
+                onPress={() => setIsAnnual(false)}
+              >
+                <Text style={[styles.billingToggleText, !isAnnual && styles.billingToggleTextActive]}>Mensal</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.billingToggleBtn, isAnnual && styles.billingToggleBtnActive]}
+                onPress={() => setIsAnnual(true)}
+              >
+                <Text style={[styles.billingToggleText, isAnnual && styles.billingToggleTextActive]}>Anual</Text>
+                <View style={styles.billingToggleBadge}>
+                  <Text style={styles.billingToggleBadgeText}>-20%</Text>
+                </View>
+              </Pressable>
+            </View>
+            {isAnnual && (
+              <Text style={styles.billingAnnualNote}>
+                Pagamento único, válido por 12 meses. Renovação manual ao final do período.
+              </Text>
+            )}
+
             {PLANS.map((p) => {
               const active = selectedPlan === p.key;
               const isPopular = p.highlight;
+              const cardAnnualTotal = Math.round(p.priceAnnual * 12 * 100) / 100;
+              const cardPrice = isAnnual ? cardAnnualTotal : p.price;
               return (
                 <Pressable
                   key={p.key}
@@ -607,10 +644,15 @@ export default function BarberProPaywallScreen() {
                       <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
                         <Text style={[styles.priceCurrency, active && styles.priceActive]}>R$ </Text>
                         <Text style={[styles.priceValue, active && styles.priceActive]}>
-                          {p.price.toFixed(2).replace(".", ",")}
+                          {cardPrice.toFixed(2).replace(".", ",")}
                         </Text>
                       </View>
-                      <Text style={[styles.pricePer, active && styles.pricePerActive]}>/mês</Text>
+                      <Text style={[styles.pricePer, active && styles.pricePerActive]}>{isAnnual ? "à vista/ano" : "/mês"}</Text>
+                      {isAnnual && (
+                        <Text style={[styles.pricePer, active && styles.pricePerActive, { fontSize: 10, marginTop: 1 }]}>
+                          equiv. R$ {p.priceAnnual.toFixed(2).replace(".", ",")}/mês
+                        </Text>
+                      )}
                     </View>
                   </View>
 
@@ -867,6 +909,14 @@ const styles = StyleSheet.create({
   badge: { fontSize: 11, fontWeight: "800", color: "#C9A84C", letterSpacing: 2, marginBottom: 8 },
   title: { fontSize: 26, fontWeight: "800", color: "#ECEDEE", textAlign: "center", marginBottom: 8 },
   subtitle: { fontSize: 14, color: "#9BA1A6", textAlign: "center", lineHeight: 20 },
+  billingToggleRow: { flexDirection: "row", backgroundColor: "#111", borderRadius: 12, padding: 4, marginBottom: 8, borderWidth: 1, borderColor: "#2A2A2A" },
+  billingToggleBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 9 },
+  billingToggleBtnActive: { backgroundColor: "#C9A84C22", borderWidth: 1, borderColor: "#C9A84C" },
+  billingToggleText: { fontSize: 13, fontWeight: "700", color: "#9BA1A6" },
+  billingToggleTextActive: { color: "#C9A84C" },
+  billingToggleBadge: { backgroundColor: "#4ADE8022", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  billingToggleBadgeText: { fontSize: 10, fontWeight: "800", color: "#4ADE80" },
+  billingAnnualNote: { fontSize: 11, color: "#9BA1A6", textAlign: "center", marginBottom: 16, lineHeight: 15 },
   planCard: {
     backgroundColor: "#111",
     borderRadius: 16,

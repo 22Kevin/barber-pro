@@ -2993,6 +2993,7 @@ export const appRouter = router({
         planName: z.string(),           // 'solo' | 'team' | 'studio'
         planPrice: z.number(),          // valor em reais
         billingType: z.enum(["BOLETO", "PIX", "CREDIT_CARD", "UNDEFINED"]).default("PIX"),
+        billingCycle: z.enum(["monthly", "annual"]).default("monthly"),
         ownerName: z.string(),
         ownerEmail: z.string().email(),
         ownerCpfCnpj: z.string().min(11),
@@ -3056,10 +3057,13 @@ export const appRouter = router({
           tenantId: input.tenantId,
         });
 
-        // Calcular próximo vencimento (amanhã)
+        // Calcular próximo vencimento (amanhã) e data de expiração anual (365 dias)
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const nextDueDate = tomorrow.toISOString().split("T")[0];
+        const oneYearFromNow = new Date();
+        oneYearFromNow.setDate(oneYearFromNow.getDate() + 365);
+        const annualExpiryDate = oneYearFromNow.toISOString().split("T")[0];
 
         // Montar dados de cartão se fornecidos
         const isCard = input.billingType === "CREDIT_CARD" || input.billingType === "UNDEFINED";
@@ -3082,42 +3086,91 @@ export const appRouter = router({
           ?? (ctx as any)?.req?.socket?.remoteAddress
           ?? "127.0.0.1";
 
-        // Criar assinatura recorrente mensal
-        const subResult = await createAsaasSubscription({
-          customer: customerId,
-          billingType: input.billingType as "PIX" | "CREDIT_CARD" | "UNDEFINED",
-          value: input.planPrice,
-          nextDueDate,
-          cycle: "MONTHLY",
-          description: `Barber Pro — Plano ${input.planName}`,
-          externalReference: `tenant_${input.tenantId}`,
-          ...(creditCard ? { creditCard } : {}),
-          ...(creditCardHolderInfo ? { creditCardHolderInfo } : {}),
-          ...(isCard ? { remoteIp } : {}),
-        });
-        const subscriptionId = subResult.subscriptionId;
+        // Criar cobrança: recorrente mensal (assinatura) ou pagamento único
+        // anual (cobrança avulsa, sem recorrência - renovação manual depois)
+        let subscriptionId: string;
+        let pixQrCode: string | null | undefined;
+        let pixCopyCola: string | null | undefined;
+        let pixPaymentId: string | null | undefined;
+        let invoiceUrl: string | null | undefined;
+
+        if (input.billingCycle === "annual") {
+          const chargeResult = await createAsaasCharge({
+            customer: customerId,
+            billingType: input.billingType as "PIX" | "CREDIT_CARD" | "UNDEFINED",
+            value: input.planPrice,
+            dueDate: nextDueDate,
+            description: `Barber Pro — Plano ${input.planName} (Anual, pagamento único)`,
+            externalReference: `tenant_${input.tenantId}_annual`,
+            ...(creditCard ? { creditCard } : {}),
+            ...(creditCardHolderInfo ? { creditCardHolderInfo } : {}),
+            ...(isCard ? { remoteIp } : {}),
+          });
+          subscriptionId = chargeResult.id;
+          pixQrCode = chargeResult.pixQrCode;
+          pixCopyCola = chargeResult.pixCopyCola;
+          invoiceUrl = chargeResult.invoiceUrl;
+          pixPaymentId = chargeResult.id;
+        } else {
+          const subResult = await createAsaasSubscription({
+            customer: customerId,
+            billingType: input.billingType as "PIX" | "CREDIT_CARD" | "UNDEFINED",
+            value: input.planPrice,
+            nextDueDate,
+            cycle: "MONTHLY",
+            description: `Barber Pro — Plano ${input.planName}`,
+            externalReference: `tenant_${input.tenantId}`,
+            ...(creditCard ? { creditCard } : {}),
+            ...(creditCardHolderInfo ? { creditCardHolderInfo } : {}),
+            ...(isCard ? { remoteIp } : {}),
+          });
+          subscriptionId = subResult.subscriptionId;
+          pixQrCode = subResult.pixQrCode;
+          pixCopyCola = subResult.pixCopyCola;
+          pixPaymentId = subResult.pixPaymentId;
+          invoiceUrl = subResult.invoiceUrl;
+        }
 
         // Salvar no banco
-        await dbConn.execute(sql`
-          UPDATE tenants SET
-            "barberproSubscriptionId" = ${subscriptionId},
-            "barberproSubscriptionStatus" = 'pending',
-            "barberproPlanName" = ${input.planName},
-            "barberproPlanPrice" = ${input.planPrice},
-            "barberproNextDueDate" = ${nextDueDate}::DATE,
-            "barberproAsaasCustomerId" = ${customerId},
-            "updatedAt" = NOW()
-          WHERE id = ${input.tenantId}
-        `);
+        if (input.billingCycle === "annual") {
+          await dbConn.execute(sql`
+            UPDATE tenants SET
+              "barberproSubscriptionId" = NULL,
+              "barberproLastPaymentId" = ${subscriptionId},
+              "barberproBillingCycle" = 'annual',
+              "barberproSubscriptionStatus" = 'pending',
+              "barberproPlanName" = ${input.planName},
+              "barberproPlanPrice" = ${input.planPrice},
+              "barberproNextDueDate" = ${annualExpiryDate}::DATE,
+              "barberproAsaasCustomerId" = ${customerId},
+              "updatedAt" = NOW()
+            WHERE id = ${input.tenantId}
+          `);
+        } else {
+          await dbConn.execute(sql`
+            UPDATE tenants SET
+              "barberproSubscriptionId" = ${subscriptionId},
+              "barberproBillingCycle" = 'monthly',
+              "barberproSubscriptionStatus" = 'pending',
+              "barberproPlanName" = ${input.planName},
+              "barberproPlanPrice" = ${input.planPrice},
+              "barberproNextDueDate" = ${nextDueDate}::DATE,
+              "barberproAsaasCustomerId" = ${customerId},
+              "updatedAt" = NOW()
+            WHERE id = ${input.tenantId}
+          `);
+        }
 
         // Enviar e-mail de confirmação com código Pix (se Pix)
-        if (input.billingType === "PIX" && subResult.pixCopyCola && input.ownerEmail) {
+        if (input.billingType === "PIX" && pixCopyCola && input.ownerEmail) {
           import("./email").then(({ sendEmail, emailLayout, alertBox, ctaButton, detailRow }) => {
             const planLabels: Record<string, string> = { solo: "Solo", team: "Equipe", studio: "Estúdio" };
-            const planPrices: Record<string, string> = { solo: "R$ 49/mês", team: "R$ 89/mês", studio: "R$ 149/mês" };
+            const planPrices: Record<string, string> = { solo: "R$ 49,90/mês", team: "R$ 99,90/mês", studio: "R$ 169,90/mês" };
             const planLabel = planLabels[input.planName.toLowerCase()] ?? input.planName;
-            const planPrice = planPrices[input.planName.toLowerCase()] ?? `R$ ${input.planPrice}/mês`;
-            const pixCode = subResult.pixCopyCola!;
+            const planPriceLabel = input.billingCycle === "annual"
+              ? `R$ ${input.planPrice.toFixed(2).replace(".", ",")} (anual, pagamento único)`
+              : (planPrices[input.planName.toLowerCase()] ?? `R$ ${input.planPrice}/mês`);
+            const pixCode = pixCopyCola!;
 
             const body = `
               <h2 style="margin:0 0 8px;font-size:22px;color:#C9A84C">Finalize seu pagamento via Pix</h2>
@@ -3126,7 +3179,7 @@ export const appRouter = router({
                 Realize o pagamento via Pix para ativar seu acesso.
               </p>
               ${detailRow("Plano", planLabel)}
-              ${detailRow("Valor", planPrice)}
+              ${detailRow("Valor", planPriceLabel)}
               ${detailRow("Vencimento", nextDueDate)}
               ${alertBox("warning", `
                 <strong>Pix Copia e Cola</strong><br/>
@@ -3154,14 +3207,16 @@ export const appRouter = router({
           ok: true,
           subscriptionId,
           customerId,
-          nextDueDate,
-          message: `Assinatura criada. Primeira cobrança em ${nextDueDate}.`,
+          nextDueDate: input.billingCycle === "annual" ? annualExpiryDate : nextDueDate,
+          message: input.billingCycle === "annual"
+            ? `Pagamento anual criado. Válido até ${annualExpiryDate}.`
+            : `Assinatura criada. Primeira cobrança em ${nextDueDate}.`,
           alreadyExists: false,
           // Dados do QR Code Pix (presentes apenas quando billingType === 'PIX')
-          pixQrCode: subResult.pixQrCode ?? null,
-          pixCopyCola: subResult.pixCopyCola ?? null,
-          pixPaymentId: subResult.pixPaymentId ?? null,
-          invoiceUrl: subResult.invoiceUrl ?? null,
+          pixQrCode: pixQrCode ?? null,
+          pixCopyCola: pixCopyCola ?? null,
+          pixPaymentId: pixPaymentId ?? null,
+          invoiceUrl: invoiceUrl ?? null,
         };
       }),
 
