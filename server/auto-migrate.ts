@@ -927,6 +927,9 @@ export async function runAutoMigrate(db: any): Promise<void> {
     { name: 'appointments."googleEventId"', sql: `ALTER TABLE appointments ADD COLUMN IF NOT EXISTS "googleEventId" VARCHAR(255)` },
     { name: 'idx_gcal_conn_barber', sql: `CREATE INDEX IF NOT EXISTS idx_gcal_conn_barber ON google_calendar_connections ("barberId")` },
     { name: 'blocked_slots."googleEventId"', sql: `ALTER TABLE blocked_slots ADD COLUMN IF NOT EXISTS "googleEventId" VARCHAR(255)` },
+    { name: 'superadmin_promotions."code"', sql: `ALTER TABLE superadmin_promotions ADD COLUMN IF NOT EXISTS "code" VARCHAR(50)` },
+    { name: 'idx_superadmin_promotions_code', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_superadmin_promotions_code ON superadmin_promotions ("code") WHERE "code" IS NOT NULL` },
+    { name: 'superadmin_promotion_applications."expiredAt"', sql: `ALTER TABLE superadmin_promotion_applications ADD COLUMN IF NOT EXISTS "expiredAt" TIMESTAMP` },
   ];
 
   // ─── Limpeza: remover colunas antigas do Mercado Pago ────────────────────
