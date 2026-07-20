@@ -3729,7 +3729,7 @@ function registerPromotionRoutes(app: any, requireAuth: any, requireRole: any, l
         <tr>
           <td>
             <div class="table-name">
-              <div class="name">${esc(p.name)}</div>
+              <div class="name">${esc(p.name)}${p.code ? ` <span style="background:rgba(201,168,76,0.15);color:var(--gold);font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;margin-left:6px">${esc(p.code)}</span>` : ''}</div>
               <div class="slug">${esc(p.description ?? '')}</div>
             </div>
           </td>
@@ -3825,6 +3825,9 @@ function registerPromotionRoutes(app: any, requireAuth: any, requireRole: any, l
       const b = req.body as any;
       const dbConn = await db.getDb();
       const { sql } = await import("drizzle-orm");
+      // Normaliza o codigo: maiusculas, sem espaco nas pontas, vazio vira null
+      // (null nao conflita com o indice unico parcial, string vazia poderia)
+      const normalizedCode = b.code && String(b.code).trim() ? String(b.code).trim().toUpperCase() : null;
       if (b.id) {
         await dbConn!.execute(sql`
           UPDATE superadmin_promotions SET
@@ -3834,6 +3837,7 @@ function registerPromotionRoutes(app: any, requireAuth: any, requireRole: any, l
             "targetFilter"=${b.targetFilter}, "targetPlan"=${b.targetPlan||null},
             "validUntil"=${b.validUntil||null}, "isActive"=${b.isActive === '1'},
             "notifyEmail"=${b.notifyEmail === '1'}, "notifyMessage"=${b.notifyMessage||null},
+            "code"=${normalizedCode},
             "updatedAt"=NOW()
           WHERE id=${parseInt(b.id)}
         `);
@@ -3841,12 +3845,12 @@ function registerPromotionRoutes(app: any, requireAuth: any, requireRole: any, l
       } else {
         const result = await dbConn!.execute(sql`
           INSERT INTO superadmin_promotions
-            (name, description, type, value, "durationMonths", "maxUses", "targetFilter", "targetPlan", "validUntil", "notifyEmail", "notifyMessage", "createdBy")
+            (name, description, type, value, "durationMonths", "maxUses", "targetFilter", "targetPlan", "validUntil", "notifyEmail", "notifyMessage", "createdBy", "code")
           VALUES
             (${b.name}, ${b.description||null}, ${b.type}, ${parseFloat(b.value)||0},
              ${parseInt(b.durationMonths)||1}, ${b.maxUses ? parseInt(b.maxUses) : null},
              ${b.targetFilter}, ${b.targetPlan||null}, ${b.validUntil||null},
-             ${b.notifyEmail === '1'}, ${b.notifyMessage||null}, ${session.name})
+             ${b.notifyEmail === '1'}, ${b.notifyMessage||null}, ${session.name}, ${normalizedCode})
           RETURNING id
         `) as any;
         const rows = Array.isArray(result) ? (result[0] ?? result) : (result?.rows ?? []);
@@ -3854,7 +3858,10 @@ function registerPromotionRoutes(app: any, requireAuth: any, requireRole: any, l
         res.redirect(`/superadmin/promocoes${newId ? '/'+newId : ''}?saved=1`);
       }
     } catch (e: any) {
-      res.status(500).send(layout("Nova Promoção", session, `<div class="alert alert-error">Erro: ${esc(e.message)}</div>` + promoForm(req.body, esc)));
+      const friendlyError = e.message?.includes('idx_superadmin_promotions_code')
+        ? 'Esse código de cupom já está em uso por outra promoção. Escolha outro código.'
+        : e.message;
+      res.status(500).send(layout("Nova Promoção", session, `<div class="alert alert-error">Erro: ${esc(friendlyError)}</div>` + promoForm(req.body, esc)));
     }
   });
 
@@ -4171,6 +4178,12 @@ function registerPromotionRoutes(app: any, requireAuth: any, requireRole: any, l
               <div class="form-group">
                 <label class="label">Nome da promoção *</label>
                 <input type="text" name="name" value="${esc(d.name ?? '')}" placeholder="Ex: Black Friday 50% off" required />
+              </div>
+
+              <div class="form-group">
+                <label class="label">Código de cupom (opcional)</label>
+                <input type="text" name="code" value="${esc(d.code ?? '')}" placeholder="Ex: BARBEARIAJOAO20" style="text-transform:uppercase" />
+                <div style="font-size:12px;color:var(--t3);margin-top:6px">Se preenchido, a barbearia poderá digitar esse código na tela de assinatura pra resgatar o desconto sozinha. Deixe em branco pra promoções que só você aplica manualmente.</div>
               </div>
 
               <div class="form-group">
