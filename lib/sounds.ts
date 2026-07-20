@@ -1,24 +1,15 @@
 /**
  * Subtle sound feedback for key actions.
- * Uses expo-audio — silently no-ops if unavailable or on web.
+ *
+ * Placeholder scaffolding — não usa nenhuma biblioteca de áudio ainda (os
+ * métodos abaixo são no-ops). Removido o uso de expo-audio que existia
+ * aqui antes: o módulo registra um foreground service restrito via
+ * BOOT_COMPLETED que quebra o app no Android 15+, e como esse recurso de
+ * som nunca foi implementado de verdade (nenhum lugar do app chama essas
+ * funções), não fazia sentido manter a dependência só por causa disso.
+ * Se/quando o recurso de som for implementado, usar expo-av (mais estável
+ * nesse quesito) ou revisar a versão do expo-audio nessa época.
  */
-import { Platform } from "react-native";
-
-let Audio: any = null;
-if (Platform.OS !== "web") {
-  try { Audio = require("expo-audio"); } catch {}
-}
-
-async function playSound(asset: any) {
-  if (!Audio) return;
-  try {
-    const player = Audio.useAudioPlayer ? null : await Audio.Sound?.createAsync(asset);
-    if (player?.sound) {
-      await player.sound.setVolumeAsync(0.4);
-      await player.sound.playAsync();
-    }
-  } catch {}
-}
 
 // For now use haptic as sound proxy — actual sound files would need assets
 // This is the foundation when sound assets are added
