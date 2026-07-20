@@ -23,6 +23,7 @@ import { startEmailReminderJob } from "../email-reminder-job";
 import { startBackupJob } from "../backup-job";
 import { startTrialExpiryJob } from "../trial-expiry-job";
 import { startCouponExpiryJob } from "../coupon-expiry-job";
+import { startAnnualRenewalJob } from "../annual-renewal-job";
 
 // ─── Rate Limiters ────────────────────────────────────────────────────────────
 /**
@@ -1525,6 +1526,7 @@ async function startServer() {
     // Iniciar job de notificação de trial expirando (3 dias antes)
     startTrialExpiryJob();
     startCouponExpiryJob();
+    startAnnualRenewalJob();
     // Iniciar job de backup semanal do PostgreSQL (toda segunda-feira às 03:00)
     startBackupJob();
   });
