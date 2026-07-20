@@ -132,6 +132,63 @@ function generateTimeSlots(
   return slots;
 }
 
+// ─── Cartão de bloqueio de horário ─────────────────────────────────────────────
+function BlockedSlotCard({
+  reason,
+  startTime,
+  endTime,
+  barberName,
+  isFromGoogle,
+  onPress,
+}: {
+  reason: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  barberName: string;
+  isFromGoogle: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          backgroundColor: "rgba(255,255,255,0.03)",
+          borderWidth: 1,
+          borderStyle: "dashed",
+          borderColor: pressed ? "#C9A84C" : "#2A2A2A",
+          borderRadius: 14,
+          padding: 14,
+          marginBottom: 10,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+        },
+      ]}
+    >
+      <View style={{ minWidth: 48, alignItems: "center" }}>
+        <Text style={{ fontSize: 15, fontWeight: "900", color: "#888880" }}>{(startTime ?? "").slice(0, 5)}</Text>
+        <Text style={{ fontSize: 10, color: "#666", marginTop: 1 }}>{(endTime ?? "").slice(0, 5)}</Text>
+      </View>
+      <View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: "#888880" }} />
+      <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: "rgba(148,163,184,0.1)", borderWidth: 1, borderColor: "rgba(148,163,184,0.25)", alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ fontSize: 16 }}>🔒</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 13, fontWeight: "700", color: "#ECEDEE" }} numberOfLines={1}>
+          {reason ?? "Horário bloqueado"}
+        </Text>
+        <Text style={{ fontSize: 11, color: "#888880", marginTop: 1 }}>
+          {barberName}{isFromGoogle ? " · Importado do Google Agenda" : ""}
+        </Text>
+        {isFromGoogle && (
+          <Text style={{ fontSize: 10, color: "#C9A84C", marginTop: 2 }}>💡 Toque para transformar em agendamento</Text>
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
 export default function AgendaScreen() {
   const { barber } = useBarberAuth();
   const router = useRouter();
@@ -193,9 +250,26 @@ export default function AgendaScreen() {
   const [selectedTime, setSelectedTime] = useState("");
   const [notes, setNotes] = useState("");
   const [showClientPicker, setShowClientPicker] = useState(false);
+  const [clientPickerTarget, setClientPickerTarget] = useState<"new" | "convert">("new");
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelApptId, setCancelApptId] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+
+  // ── Transformar bloqueio em agendamento ─────────────────────────────────
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [convertingSlot, setConvertingSlot] = useState<any>(null);
+  const [convertClientMode, setConvertClientMode] = useState<"existing" | "new">("existing");
+  const [convertServiceMode, setConvertServiceMode] = useState<"existing" | "new">("existing");
+  const [convertSelectedClient, setConvertSelectedClient] = useState<any>(null);
+  const [convertClientSearch, setConvertClientSearch] = useState("");
+  const [convertMatchingClients, setConvertMatchingClients] = useState<any[]>([]);
+  const [convertClientGuess, setConvertClientGuess] = useState("");
+  const [convertNewClientName, setConvertNewClientName] = useState("");
+  const [convertNewClientPhone, setConvertNewClientPhone] = useState("");
+  const [convertSelectedService, setConvertSelectedService] = useState<any>(null);
+  const [convertNewServiceName, setConvertNewServiceName] = useState("");
+  const [convertNewServicePrice, setConvertNewServicePrice] = useState("");
+  const [convertNewServiceDuration, setConvertNewServiceDuration] = useState("30");
   // Quando o modal de novo agendamento abre para managers, limpa o barbeiro selecionado
   useEffect(() => {
     if (showNewModal && (barber?.role === "super_admin" || barber?.role === "receptionist")) {
@@ -245,6 +319,16 @@ export default function AgendaScreen() {
     { enabled: isManager, staleTime: 0 }
   );
 
+  // Bloqueios de horário do mês (mesmo padrão dos agendamentos)
+  const blockedSlotsByMonthQuery = trpc.appointments.blockedSlots.byDateRange.useQuery(
+    { barberId: barber?.id ?? 0, startDate: monthStart, endDate: monthEnd },
+    { enabled: !!barber?.id && !isManager, staleTime: 0 }
+  );
+  const allBlockedSlotsByMonthQuery = trpc.appointments.blockedSlots.allByDateRange.useQuery(
+    { startDate: monthStart, endDate: monthEnd, tenantId },
+    { enabled: isManager, staleTime: 0 }
+  );
+
   // IDs de agendamentos de assinatura (não precisam de pagamento individual)
   const subscriptionApptIdsQuery = trpc.appointments.subscriptionAppointmentIds.useQuery(
     { startDate: monthStart, endDate: monthEnd, tenantId },
@@ -269,6 +353,16 @@ export default function AgendaScreen() {
     return { data, isLoading: allAppointmentsByMonthQuery.isLoading, refetch: allAppointmentsByMonthQuery.refetch };
   }, [allAppointmentsByMonthQuery.data, allAppointmentsByMonthQuery.isLoading, allAppointmentsByMonthQuery.refetch, dateStr]);
 
+  // Bloqueios de horário do dia selecionado (mesmo filtro local dos agendamentos)
+  const blockedSlotsQuery = useMemo(() => {
+    const data = (blockedSlotsByMonthQuery.data ?? []).filter((b: any) => b.date === dateStr);
+    return { data, isLoading: blockedSlotsByMonthQuery.isLoading, refetch: blockedSlotsByMonthQuery.refetch };
+  }, [blockedSlotsByMonthQuery.data, blockedSlotsByMonthQuery.isLoading, blockedSlotsByMonthQuery.refetch, dateStr]);
+  const allBlockedSlotsQuery = useMemo(() => {
+    const data = (allBlockedSlotsByMonthQuery.data ?? []).filter((b: any) => b.date === dateStr);
+    return { data, isLoading: allBlockedSlotsByMonthQuery.isLoading, refetch: allBlockedSlotsByMonthQuery.refetch };
+  }, [allBlockedSlotsByMonthQuery.data, allBlockedSlotsByMonthQuery.isLoading, allBlockedSlotsByMonthQuery.refetch, dateStr]);
+
   const modalBarberId = (isManager ? selectedBarber?.id : barber?.id) ?? 0;
   const workingHoursQuery = trpc.barbers.workingHours.get.useQuery(
     { barberId: modalBarberId },
@@ -285,6 +379,93 @@ export default function AgendaScreen() {
 
   // Manter compatibilidade com código que usa datesWithApptQuery
   const datesWithApptQuery = { data: Array.from(datesWithAppt) };
+
+  // Extrai pistas de cliente/serviço do texto do bloqueio (mesma lógica já
+  // usada e validada no painel web) e cruza com os clientes/serviços já
+  // carregados localmente (sem round-trip extra ao servidor).
+  function openConvertBlockModal(slot: any) {
+    const cleaned = (slot.reason ?? "").replace(/^Importado da Google Agenda:\s*/i, "").trim();
+    const parenMatch = cleaned.match(/\(([^)]+)\)\s*$/);
+    const clientGuess = parenMatch ? parenMatch[1].trim() : "";
+    const serviceGuess = parenMatch ? cleaned.slice(0, parenMatch.index).trim() : cleaned;
+    const norm = (s: string) => (s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const cg = norm(clientGuess);
+    const sg = norm(serviceGuess);
+
+    const matches = cg
+      ? (clientsQuery.data ?? []).filter((c: any) => {
+          const cn = norm(c.name);
+          return cn && (cn.includes(cg) || cg.includes(cn));
+        })
+      : [];
+    const matchedService = sg
+      ? (servicesQuery.data ?? []).find((s: any) => {
+          const sn = norm(s.name);
+          return sn && (sn.includes(sg) || sg.includes(sn));
+        })
+      : null;
+
+    setConvertingSlot(slot);
+    setConvertMatchingClients(matches);
+    setConvertClientGuess(clientGuess);
+    setConvertSelectedClient(matches.length === 1 ? matches[0] : null);
+    setConvertClientSearch(matches.length === 1 ? matches[0].name : "");
+    setConvertNewClientName(clientGuess);
+    setConvertNewClientPhone("");
+    setConvertSelectedService(matchedService ?? null);
+    setConvertNewServiceName("");
+    setConvertNewServicePrice("");
+    setConvertNewServiceDuration("30");
+    setConvertClientMode("existing");
+    setConvertServiceMode("existing");
+    setShowConvertModal(true);
+  }
+
+  const convertBlockMutation = trpc.appointments.blockedSlots.convertToAppointment.useMutation({
+    onSuccess: async () => {
+      hapticSuccess();
+      setShowConvertModal(false);
+      await Promise.all([
+        utils.appointments.blockedSlots.byDateRange.invalidate(),
+        utils.appointments.blockedSlots.allByDateRange.invalidate(),
+        utils.appointments.byDateRange.invalidate(),
+        utils.appointments.allByDateRange.invalidate(),
+        utils.clients.list.invalidate(),
+        utils.services.list.invalidate(),
+      ]);
+      toast.success("Agendamento criado a partir do bloqueio!");
+    },
+    onError: (e) => Alert.alert("Erro", e.message),
+  });
+
+  function handleConfirmConvert() {
+    if (!convertingSlot) return;
+    if (convertClientMode === "new" && (!convertNewClientName.trim() || !convertNewClientPhone.trim())) {
+      Alert.alert("Atenção", "Nome e telefone são obrigatórios para cadastrar novo cliente.");
+      return;
+    }
+    if (convertClientMode === "existing" && !convertSelectedClient) {
+      Alert.alert("Atenção", "Selecione um cliente.");
+      return;
+    }
+    if (convertServiceMode === "new" && (!convertNewServiceName.trim() || !convertNewServicePrice.trim())) {
+      Alert.alert("Atenção", "Nome e preço são obrigatórios para cadastrar novo serviço.");
+      return;
+    }
+    if (convertServiceMode === "existing" && !convertSelectedService) {
+      Alert.alert("Atenção", "Selecione um serviço.");
+      return;
+    }
+    convertBlockMutation.mutate({
+      blockedSlotId: convertingSlot.id,
+      ...(convertClientMode === "existing"
+        ? { clientId: convertSelectedClient.id }
+        : { newClientName: convertNewClientName.trim(), newClientPhone: convertNewClientPhone.trim() }),
+      ...(convertServiceMode === "existing"
+        ? { serviceId: convertSelectedService.id }
+        : { newServiceName: convertNewServiceName.trim(), newServicePrice: convertNewServicePrice.trim(), newServiceDuration: parseInt(convertNewServiceDuration) || 30 }),
+    });
+  }
 
   const createMutation = trpc.appointments.create.useMutation({
     onSuccess: async (result: any) => {
@@ -558,6 +739,13 @@ export default function AgendaScreen() {
   const rawAppointments = isManager
     ? (allAppointmentsQuery.data ?? [])
     : (appointmentsQuery.data ?? []);
+  // Mesmo padrão pros bloqueios de horário
+  const rawBlockedSlots = isManager
+    ? (allBlockedSlotsQuery.data ?? [])
+    : (blockedSlotsQuery.data ?? []);
+  const blockedSlotsForDay = isManager && filterBarberId !== null
+    ? rawBlockedSlots.filter((b: any) => b.barberId === filterBarberId)
+    : rawBlockedSlots;
   const [apptSearch, setApptSearch] = useState("");
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
   // Filtro de barbeiro específico para a Linha do Tempo
@@ -834,14 +1022,36 @@ export default function AgendaScreen() {
 
         {isLoadingAppointments ? (
           <ActivityIndicator color="#C9A84C" style={{ marginVertical: 20 }} />
-        ) : appointments.length === 0 ? (
+        ) : appointments.length === 0 && blockedSlotsForDay.length === 0 ? (
           <View style={styles.emptyCard}>
             <IconSymbol name="calendar" size={36} color="#2A2A2A" />
             <Text style={styles.emptyText}>Nenhum agendamento neste dia</Text>
           </View>
         ) : viewMode === 'list' ? (
           <GestureHandlerRootView>
-            {appointments.map((apt) => (
+            {[
+              ...appointments.map((apt: any) => ({ time: apt.startTime ?? "00:00", kind: "appointment" as const, data: apt })),
+              ...blockedSlotsForDay.map((b: any) => ({ time: b.startTime ?? "00:00", kind: "blocked" as const, data: b })),
+            ]
+              .sort((a, b) => String(a.time).localeCompare(String(b.time)))
+              .map((item) => {
+                if (item.kind === "blocked") {
+                  const b = item.data;
+                  const barberName = (barbersQuery.data ?? []).find((bb: any) => bb.id === b.barberId)?.name ?? "—";
+                  return (
+                    <BlockedSlotCard
+                      key={`blocked-${b.id}`}
+                      reason={b.reason}
+                      startTime={b.startTime}
+                      endTime={b.endTime}
+                      barberName={barberName}
+                      isFromGoogle={!!b.googleEventId}
+                      onPress={() => openConvertBlockModal(b)}
+                    />
+                  );
+                }
+                const apt = item.data;
+                return (
               <SwipeableAppointmentCard
                 key={apt.id}
                 appointment={{ ...apt, isSubscription: subscriptionApptIds.has(apt.id) }}
@@ -898,7 +1108,8 @@ export default function AgendaScreen() {
                 }}
                 paymentPending={apt.status === "completed" && !subscriptionApptIds.has(apt.id) ? (paymentPendingMap[apt.id] ?? true) : undefined}
               />
-            ))}
+                );
+              })}
           </GestureHandlerRootView>
         ) : (
           /* Vista de Timeline */
@@ -1026,7 +1237,7 @@ export default function AgendaScreen() {
                 </View>
 
                 <Text style={styles.fieldLabel}>Cliente *</Text>
-                <Pressable style={styles.selectorBtn} onPress={() => setShowClientPicker(true)}>
+                <Pressable style={styles.selectorBtn} onPress={() => { setClientPickerTarget("new"); setShowClientPicker(true); }}>
                   <Text style={selectedClient ? styles.selectorText : styles.selectorPlaceholder}>
                     {selectedClient ? selectedClient.name : "Selecionar cliente..."}
                   </Text>
@@ -1181,6 +1392,138 @@ export default function AgendaScreen() {
         </View>
       </Modal>
 
+      {/* Modal Transformar Bloqueio em Agendamento */}
+      <Modal visible={showConvertModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ width: "100%" }}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Transformar em Agendamento</Text>
+                <Pressable onPress={() => setShowConvertModal(false)}><IconSymbol name="xmark" size={22} color="#888880" /></Pressable>
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {convertingSlot && (
+                  <View style={[styles.infoBox, { borderStyle: "dashed", marginBottom: 16 }]}>
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: "#ECEDEE", marginBottom: 4 }}>
+                      {convertingSlot.reason ?? "Horário bloqueado"}
+                    </Text>
+                    <Text style={styles.infoText}>
+                      {convertingSlot.date} às {(convertingSlot.startTime ?? "").slice(0, 5)} - {(convertingSlot.endTime ?? "").slice(0, 5)}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Cliente */}
+                <Text style={styles.fieldLabel}>Cliente *</Text>
+                <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+                  <Pressable
+                    style={[styles.serviceChip, convertClientMode === "existing" && styles.serviceChipActive, { flex: 1, alignItems: "center" }]}
+                    onPress={() => setConvertClientMode("existing")}
+                  >
+                    <Text style={[styles.serviceChipText, convertClientMode === "existing" && styles.serviceChipTextActive]}>Cliente existente</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.serviceChip, convertClientMode === "new" && styles.serviceChipActive, { flex: 1, alignItems: "center" }]}
+                    onPress={() => setConvertClientMode("new")}
+                  >
+                    <Text style={[styles.serviceChipText, convertClientMode === "new" && styles.serviceChipTextActive]}>+ Cadastrar novo</Text>
+                  </Pressable>
+                </View>
+
+                {convertClientMode === "existing" ? (
+                  <>
+                    {convertMatchingClients.length > 0 && (
+                      <View style={{ backgroundColor: "rgba(201,168,76,0.08)", borderWidth: 1, borderColor: "rgba(201,168,76,0.25)", borderRadius: 10, padding: 10, marginBottom: 10 }}>
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: "#C9A84C", marginBottom: 6 }}>💡 Possíveis correspondências:</Text>
+                        {convertMatchingClients.map((c: any) => (
+                          <Pressable
+                            key={c.id}
+                            onPress={() => { setConvertSelectedClient(c); setConvertClientSearch(c.name); }}
+                            style={{ paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: convertSelectedClient?.id === c.id ? "rgba(201,168,76,0.2)" : "rgba(0,0,0,0.2)", marginBottom: 4, flexDirection: "row", justifyContent: "space-between" }}
+                          >
+                            <Text style={{ color: "#ECEDEE", fontSize: 13, fontWeight: "600" }}>{c.name}</Text>
+                            {c.phone && <Text style={{ color: "#888880", fontSize: 12 }}>{c.phone}</Text>}
+                          </Pressable>
+                        ))}
+                      </View>
+                    )}
+                    {convertMatchingClients.length === 0 && convertClientGuess !== "" && (
+                      <Text style={{ fontSize: 12, color: "#F87171", marginBottom: 8 }}>
+                        ⚠️ Nenhum cliente encontrado com o nome "{convertClientGuess}". Busque manualmente ou cadastre um novo.
+                      </Text>
+                    )}
+                    <Pressable style={styles.selectorBtn} onPress={() => { setClientPickerTarget("convert"); setShowClientPicker(true); }}>
+                      <Text style={convertSelectedClient ? styles.selectorText : styles.selectorPlaceholder}>
+                        {convertSelectedClient ? convertSelectedClient.name : "Selecionar cliente..."}
+                      </Text>
+                      <IconSymbol name="chevron.right" size={16} color="#888880" />
+                    </Pressable>
+                  </>
+                ) : (
+                  <>
+                    <TextInput style={styles.input} placeholder="Nome completo *" placeholderTextColor="#555" value={convertNewClientName} onChangeText={setConvertNewClientName} />
+                    <TextInput style={[styles.input, { marginTop: 8 }]} placeholder="Telefone / WhatsApp *" placeholderTextColor="#555" value={convertNewClientPhone} onChangeText={setConvertNewClientPhone} keyboardType="phone-pad" />
+                  </>
+                )}
+
+                {/* Serviço */}
+                <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Serviço *</Text>
+                <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+                  <Pressable
+                    style={[styles.serviceChip, convertServiceMode === "existing" && styles.serviceChipActive, { flex: 1, alignItems: "center" }]}
+                    onPress={() => setConvertServiceMode("existing")}
+                  >
+                    <Text style={[styles.serviceChipText, convertServiceMode === "existing" && styles.serviceChipTextActive]}>Serviço existente</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.serviceChip, convertServiceMode === "new" && styles.serviceChipActive, { flex: 1, alignItems: "center" }]}
+                    onPress={() => setConvertServiceMode("new")}
+                  >
+                    <Text style={[styles.serviceChipText, convertServiceMode === "new" && styles.serviceChipTextActive]}>+ Cadastrar novo</Text>
+                  </Pressable>
+                </View>
+
+                {convertServiceMode === "existing" ? (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      {(servicesQuery.data ?? []).map((s: any) => {
+                        const isSel = convertSelectedService?.id === s.id;
+                        return (
+                          <Pressable key={s.id} style={[styles.serviceChip, isSel && styles.serviceChipActive]} onPress={() => setConvertSelectedService(s)}>
+                            <Text style={[styles.serviceChipText, isSel && styles.serviceChipTextActive]}>{s.name}</Text>
+                            <Text style={[styles.serviceChipPrice, isSel && { color: "#C9A84C" }]}>R$ {parseFloat(s.price).toFixed(2).replace(".", ",")}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                ) : (
+                  <>
+                    <TextInput style={styles.input} placeholder="Nome do novo serviço *" placeholderTextColor="#555" value={convertNewServiceName} onChangeText={setConvertNewServiceName} />
+                    <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+                      <TextInput style={[styles.input, { flex: 1 }]} placeholder="Preço (R$) *" placeholderTextColor="#555" value={convertNewServicePrice} onChangeText={setConvertNewServicePrice} keyboardType="decimal-pad" />
+                      <TextInput style={[styles.input, { flex: 1 }]} placeholder="Duração (min)" placeholderTextColor="#555" value={convertNewServiceDuration} onChangeText={setConvertNewServiceDuration} keyboardType="number-pad" />
+                    </View>
+                  </>
+                )}
+
+                <Pressable
+                  style={[styles.saveBtn, { marginTop: 20 }, convertBlockMutation.isPending && { opacity: 0.6 }]}
+                  onPress={handleConfirmConvert}
+                  disabled={convertBlockMutation.isPending}
+                >
+                  {convertBlockMutation.isPending ? (
+                    <ActivityIndicator color="#0A0A0A" />
+                  ) : (
+                    <Text style={styles.saveBtnText}>CONFIRMAR AGENDAMENTO</Text>
+                  )}
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
       {/* Modal Seleção de Cliente */}
       <Modal visible={showClientPicker} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -1199,7 +1542,12 @@ export default function AgendaScreen() {
               renderItem={({ item }) => (
                 <Pressable
                   style={({ pressed }) => [styles.clientItem, pressed && { opacity: 0.7 }]}
-                  onPress={() => { setSelectedClient(item); setShowClientPicker(false); setClientSearch(""); }}
+                  onPress={() => {
+                    if (clientPickerTarget === "convert") { setConvertSelectedClient(item); }
+                    else { setSelectedClient(item); }
+                    setShowClientPicker(false);
+                    setClientSearch("");
+                  }}
                 >
                   <View style={styles.clientAvatar}>
                     <Text style={styles.clientAvatarText}>{item.name.charAt(0).toUpperCase()}</Text>
