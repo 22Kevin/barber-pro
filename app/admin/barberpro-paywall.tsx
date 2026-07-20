@@ -107,6 +107,13 @@ export default function BarberProPaywallScreen() {
 
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>("team");
   const [isAnnual, setIsAnnual] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponResult, setCouponResult] = useState<
+    | { valid: true; promotionName: string; type: string; value: number; durationMonths: number; originalPrice: number; finalPrice: number }
+    | { valid: false; error?: string }
+    | null
+  >(null);
+  const [couponChecking, setCouponChecking] = useState(false);
   const [ownerName, setOwnerName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState(barber?.email ?? "");
   const [ownerCpfCnpj, setOwnerCpfCnpj] = useState("");
@@ -254,6 +261,7 @@ export default function BarberProPaywallScreen() {
       planPrice: currentPrice,
       billingType: "PIX",
       billingCycle: isAnnual ? "annual" : "monthly",
+      couponCode: couponCode.trim() || undefined,
       ownerName: ownerName.trim(),
       ownerEmail: ownerEmail.trim(),
       ownerCpfCnpj: ownerCpfCnpj.replace(/\D/g, ""),
@@ -322,6 +330,26 @@ export default function BarberProPaywallScreen() {
     });
   }
 
+  async function handleApplyCoupon() {
+    if (!couponCode.trim()) {
+      setCouponResult({ valid: false, error: "Digite um código de cupom." });
+      return;
+    }
+    setCouponChecking(true);
+    try {
+      const result = await utils.asaasPayments.validateBarberproCoupon.fetch({
+        code: couponCode.trim(),
+        planName: selectedPlan,
+        billingCycle: isAnnual ? "annual" : "monthly",
+      });
+      setCouponResult(result as any);
+    } catch (e: any) {
+      setCouponResult({ valid: false, error: e.message ?? "Erro ao validar cupom." });
+    } finally {
+      setCouponChecking(false);
+    }
+  }
+
   // ─── Submissão ────────────────────────────────────────────────────────────
   function handleContinue() {
     if (step === "plans") {
@@ -356,6 +384,7 @@ export default function BarberProPaywallScreen() {
       planPrice: currentPrice,
       billingType,
       billingCycle: isAnnual ? "annual" : "monthly",
+      couponCode: couponCode.trim() || undefined,
       ownerName: ownerName.trim(),
       ownerEmail: ownerEmail.trim(),
       ownerCpfCnpj: ownerCpfCnpj.replace(/\D/g, ""),
@@ -758,6 +787,47 @@ export default function BarberProPaywallScreen() {
               )}
             </View>
 
+            {/* Cupom de desconto */}
+            <View style={styles.formCard}>
+              <Text style={styles.sectionTitle}>CUPOM DE DESCONTO (OPCIONAL)</Text>
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+                <TextInput
+                  style={[styles.input, { flex: 1, textTransform: "uppercase" }]}
+                  placeholder="Código do cupom"
+                  placeholderTextColor="#555"
+                  value={couponCode}
+                  onChangeText={(t) => { setCouponCode(t); setCouponResult(null); }}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                />
+                <Pressable
+                  style={({ pressed }) => [styles.couponApplyBtn, pressed && { opacity: 0.8 }]}
+                  onPress={handleApplyCoupon}
+                  disabled={couponChecking}
+                >
+                  {couponChecking ? (
+                    <ActivityIndicator color="#0A0A0A" size="small" />
+                  ) : (
+                    <Text style={styles.couponApplyBtnText}>Aplicar</Text>
+                  )}
+                </Pressable>
+              </View>
+              {couponResult && !couponResult.valid && (
+                <Text style={styles.couponError}>✕ {couponResult.error}</Text>
+              )}
+              {couponResult && couponResult.valid && (
+                <View style={styles.couponSuccessBox}>
+                  <Text style={styles.couponSuccessTitle}>
+                    ✓ Cupom aplicado! {couponResult.type === "percent" ? `${couponResult.value}%` : `R$ ${couponResult.value.toFixed(2).replace(".", ",")}`} de desconto
+                  </Text>
+                  <Text style={styles.couponSuccessDetail}>
+                    De <Text style={{ textDecorationLine: "line-through" }}>R$ {couponResult.originalPrice.toFixed(2).replace(".", ",")}</Text>
+                    {" "}por <Text style={{ color: "#C9A84C", fontWeight: "800" }}>R$ {couponResult.finalPrice.toFixed(2).replace(".", ",")}{isAnnual ? " (à vista)" : "/mês"}</Text>
+                  </Text>
+                </View>
+              )}
+            </View>
+
             {/* Formulário de cartão */}
             {isCard && (
               <View style={styles.formCard}>
@@ -917,6 +987,12 @@ const styles = StyleSheet.create({
   billingToggleBadge: { backgroundColor: "#4ADE8022", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   billingToggleBadgeText: { fontSize: 10, fontWeight: "800", color: "#4ADE80" },
   billingAnnualNote: { fontSize: 11, color: "#9BA1A6", textAlign: "center", marginBottom: 16, lineHeight: 15 },
+  couponApplyBtn: { backgroundColor: "#C9A84C", borderRadius: 10, paddingHorizontal: 18, alignItems: "center", justifyContent: "center" },
+  couponApplyBtnText: { fontSize: 13, fontWeight: "800", color: "#0A0A0A" },
+  couponError: { fontSize: 12, color: "#F87171", marginTop: 8 },
+  couponSuccessBox: { marginTop: 10, backgroundColor: "#4ADE8014", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#4ADE8033" },
+  couponSuccessTitle: { fontSize: 12, fontWeight: "700", color: "#4ADE80", marginBottom: 3 },
+  couponSuccessDetail: { fontSize: 12, color: "#9BA1A6" },
   planCard: {
     backgroundColor: "#111",
     borderRadius: 16,

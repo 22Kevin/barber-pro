@@ -2987,6 +2987,42 @@ export const appRouter = router({
       }),
 
     // ─── Assinatura Barber Pro ────────────────────────────────────────────────
+    // Valida um cupom e retorna o preview do preço com desconto, sem consumir
+    // o uso (mesmo padrao do painel web) - usado pro botao "Aplicar Cupom".
+    validateBarberproCoupon: publicProcedure
+      .input(z.object({
+        code: z.string(),
+        planName: z.enum(["solo", "team", "studio"]),
+        billingCycle: z.enum(["monthly", "annual"]).default("monthly"),
+      }))
+      .query(async ({ input }) => {
+        const monthlyMap: Record<string, number> = { solo: 49.90, team: 99.90, studio: 169.90 };
+        const annualMonthlyEquivMap: Record<string, number> = { solo: 39.90, team: 79.90, studio: 135.90 };
+        const planPrice = input.billingCycle === "annual"
+          ? Math.round(annualMonthlyEquivMap[input.planName] * 12 * 100) / 100
+          : monthlyMap[input.planName];
+
+        const result = await db.validateCouponCode(input.code);
+        if (!result.valid) return { valid: false as const, error: result.error };
+
+        const promo = result.promotion!;
+        if (promo.type !== "percent" && promo.type !== "fixed") {
+          return { valid: false as const, error: "Este cupom não pode ser resgatado por aqui. Fale com o suporte." };
+        }
+        const discountAmount = promo.type === "percent" ? planPrice * (promo.value / 100) : Math.min(promo.value, planPrice);
+        const finalPrice = Math.max(Math.round((planPrice - discountAmount) * 100) / 100, 0);
+        return {
+          valid: true as const,
+          promotionName: promo.name,
+          type: promo.type,
+          value: promo.value,
+          durationMonths: promo.durationMonths,
+          originalPrice: planPrice,
+          finalPrice,
+          billingCycle: input.billingCycle,
+        };
+      }),
+
     createBarberproSubscription: publicProcedure
       .input(z.object({
         tenantId: z.number(),
@@ -2994,6 +3030,7 @@ export const appRouter = router({
         planPrice: z.number(),          // valor em reais
         billingType: z.enum(["BOLETO", "PIX", "CREDIT_CARD", "UNDEFINED"]).default("PIX"),
         billingCycle: z.enum(["monthly", "annual"]).default("monthly"),
+        couponCode: z.string().optional(),
         ownerName: z.string(),
         ownerEmail: z.string().email(),
         ownerCpfCnpj: z.string().min(11),
@@ -3086,6 +3123,26 @@ export const appRouter = router({
           ?? (ctx as any)?.req?.socket?.remoteAddress
           ?? "127.0.0.1";
 
+        // Cupom de desconto (opcional) - validado no servidor independente do
+        // que o app mostrou no preview, nunca confiamos so na validacao do cliente.
+        const rawCouponCode = (input.couponCode ?? "").trim();
+        let couponPromotion: { id: number; name: string; type: string; value: number } | null = null;
+        let asaasDiscount: { value: number; dueDateLimitDays: number; type: "PERCENTAGE" | "FIXED" } | undefined;
+        if (rawCouponCode) {
+          const couponResult = await db.validateCouponCode(rawCouponCode);
+          if (!couponResult.valid) throw new Error(couponResult.error ?? "Cupom inválido.");
+          const promo = couponResult.promotion!;
+          if (promo.type !== "percent" && promo.type !== "fixed") {
+            throw new Error("Este cupom não pode ser resgatado por aqui. Fale com o suporte.");
+          }
+          couponPromotion = promo;
+          asaasDiscount = {
+            value: promo.value,
+            dueDateLimitDays: 0,
+            type: promo.type === "percent" ? "PERCENTAGE" : "FIXED",
+          };
+        }
+
         // Criar cobrança: recorrente mensal (assinatura) ou pagamento único
         // anual (cobrança avulsa, sem recorrência - renovação manual depois)
         let subscriptionId: string;
@@ -3095,10 +3152,16 @@ export const appRouter = router({
         let invoiceUrl: string | null | undefined;
 
         if (input.billingCycle === "annual") {
+          // Pagamento único: desconto aplicado direto no valor cobrado (nao
+          // usa o objeto discount do Asaas, pensado pra recorrencia).
+          const discountAmount = couponPromotion
+            ? (couponPromotion.type === "percent" ? input.planPrice * (couponPromotion.value / 100) : Math.min(couponPromotion.value, input.planPrice))
+            : 0;
+          const finalChargeValue = Math.max(Math.round((input.planPrice - discountAmount) * 100) / 100, 0);
           const chargeResult = await createAsaasCharge({
             customer: customerId,
             billingType: input.billingType as "PIX" | "CREDIT_CARD" | "UNDEFINED",
-            value: input.planPrice,
+            value: finalChargeValue,
             dueDate: nextDueDate,
             description: `Barber Pro — Plano ${input.planName} (Anual, pagamento único)`,
             externalReference: `tenant_${input.tenantId}_annual`,
@@ -3123,12 +3186,23 @@ export const appRouter = router({
             ...(creditCard ? { creditCard } : {}),
             ...(creditCardHolderInfo ? { creditCardHolderInfo } : {}),
             ...(isCard ? { remoteIp } : {}),
+            ...(asaasDiscount ? { discount: asaasDiscount } : {}),
           });
           subscriptionId = subResult.subscriptionId;
           pixQrCode = subResult.pixQrCode;
           pixCopyCola = subResult.pixCopyCola;
           pixPaymentId = subResult.pixPaymentId;
           invoiceUrl = subResult.invoiceUrl;
+        }
+
+        // Registra o resgate do cupom (só depois que a cobrança foi criada
+        // com sucesso - se falhar antes, o cupom não é consumido)
+        if (couponPromotion) {
+          try {
+            await db.recordCouponRedemption(couponPromotion.id, input.tenantId, input.ownerName, subscriptionId);
+          } catch (couponErr: any) {
+            console.error("[createBarberproSubscription] Erro ao registrar resgate de cupom:", couponErr.message);
+          }
         }
 
         // Salvar no banco
