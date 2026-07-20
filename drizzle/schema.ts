@@ -94,6 +94,8 @@ export const tenants = pgTable("tenants", {
   barberproPlanName: varchar("barberproPlanName", { length: 50 }).default("starter"),
   barberproPlanPrice: numeric("barberproPlanPrice", { precision: 10, scale: 2 }),
   barberproNextDueDate: varchar("barberproNextDueDate", { length: 10 }),
+  barberproBillingCycle: varchar("barberproBillingCycle", { length: 20 }).default("monthly"),
+  barberproLastPaymentId: varchar("barberproLastPaymentId", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

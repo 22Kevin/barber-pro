@@ -930,6 +930,8 @@ export async function runAutoMigrate(db: any): Promise<void> {
     { name: 'superadmin_promotions."code"', sql: `ALTER TABLE superadmin_promotions ADD COLUMN IF NOT EXISTS "code" VARCHAR(50)` },
     { name: 'idx_superadmin_promotions_code', sql: `CREATE UNIQUE INDEX IF NOT EXISTS idx_superadmin_promotions_code ON superadmin_promotions ("code") WHERE "code" IS NOT NULL` },
     { name: 'superadmin_promotion_applications."expiredAt"', sql: `ALTER TABLE superadmin_promotion_applications ADD COLUMN IF NOT EXISTS "expiredAt" TIMESTAMP` },
+    { name: 'tenants."barberproBillingCycle"', sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproBillingCycle" VARCHAR(20) DEFAULT 'monthly'` },
+    { name: 'tenants."barberproLastPaymentId"', sql: `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS "barberproLastPaymentId" VARCHAR(100)` },
   ];
 
   // ─── Limpeza: remover colunas antigas do Mercado Pago ────────────────────
