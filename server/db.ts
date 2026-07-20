@@ -695,6 +695,67 @@ export async function getBlockedSlotById(id: number) {
   return result[0] ?? null;
 }
 
+// ─── Cupons personalizados (superadmin_promotions.code) ───────────────────────
+// A tabela superadmin_promotions vive fora do schema do Drizzle (criada via
+// auto-migrate/SQL bruto), entao usamos rawQuery aqui, mesmo padrao ja usado
+// no resto do modulo superadmin.
+
+export interface CouponValidationResult {
+  valid: boolean;
+  error?: string;
+  promotion?: {
+    id: number;
+    name: string;
+    type: string;
+    value: number;
+    durationMonths: number;
+  };
+}
+
+export async function validateCouponCode(code: string): Promise<CouponValidationResult> {
+  if (!code || !code.trim()) return { valid: false, error: "Informe um código de cupom." };
+  const normalized = code.trim().toUpperCase();
+  const rows = await rawQuery(
+    `SELECT id, name, type, value, "durationMonths", "maxUses", "usedCount", "validUntil", "isActive"
+     FROM superadmin_promotions WHERE "code" = $1`,
+    [normalized]
+  );
+  const promo = rows[0];
+  if (!promo) return { valid: false, error: "Cupom não encontrado." };
+  if (!promo.isActive) return { valid: false, error: "Este cupom não está mais ativo." };
+  if (promo.validUntil && new Date(promo.validUntil) < new Date()) {
+    return { valid: false, error: "Este cupom expirou." };
+  }
+  if (promo.maxUses != null && promo.usedCount >= promo.maxUses) {
+    return { valid: false, error: "Este cupom já atingiu o limite de usos." };
+  }
+  return {
+    valid: true,
+    promotion: {
+      id: promo.id,
+      name: promo.name,
+      type: promo.type,
+      value: parseFloat(promo.value),
+      durationMonths: promo.durationMonths ?? 1,
+    },
+  };
+}
+
+// Registra o resgate do cupom (chamado só depois que a assinatura foi criada
+// com sucesso no Asaas). Incrementa o contador de usos e grava o registro
+// que o job de expiracao vai usar depois pra saber quando remover o desconto.
+export async function recordCouponRedemption(promotionId: number, tenantId: number, appliedBy: string, asaasDiscountId?: string | null) {
+  await rawQuery(
+    `INSERT INTO superadmin_promotion_applications ("promotionId", "tenantId", "appliedBy", "asaasDiscountId", notes)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [promotionId, tenantId, appliedBy, asaasDiscountId ?? null, "Resgatado via código de cupom pelo próprio tenant"]
+  );
+  await rawQuery(
+    `UPDATE superadmin_promotions SET "usedCount" = "usedCount" + 1 WHERE id = $1`,
+    [promotionId]
+  );
+}
+
 // Busca bloqueios de horário de TODOS os barbeiros do tenant numa data
 // (análoga a getAllAppointmentsByDate) - usada pra exibir os bloqueios como
 // cartão na tela de Agenda, junto com os agendamentos normais.

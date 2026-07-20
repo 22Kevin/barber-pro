@@ -112,6 +112,8 @@ export interface AsaasSubscriptionPayload {
   creditCard?: AsaasCreditCardInfo;
   creditCardHolderInfo?: AsaasCreditCardHolderInfo;
   remoteIp?: string;
+  // Desconto opcional (ex: cupom resgatado) - repassado direto pro Asaas
+  discount?: { value: number; dueDateLimitDays: number; type: "PERCENTAGE" | "FIXED" };
 }
 
 export interface AsaasPaymentResult {
