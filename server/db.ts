@@ -777,6 +777,35 @@ export async function getAllBlockedSlotsByDate(date: string, tenantId?: number |
     .where(and(eq(blockedSlots.date, date), eq(barbers.tenantId, tenantId)));
 }
 
+// Versões por intervalo de datas (mensal) - mesmo padrao de
+// getAppointmentsByDateRange/getAllAppointmentsByDateRangeFullForTenant,
+// usadas pela tela de Agenda do app mobile (que busca o mes inteiro de uma
+// vez e filtra localmente pelo dia selecionado).
+export async function getBlockedSlotsByDateRange(barberId: number, startDate: string, endDate: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(blockedSlots)
+    .where(and(eq(blockedSlots.barberId, barberId), gte(blockedSlots.date, startDate), lte(blockedSlots.date, endDate)));
+}
+
+export async function getAllBlockedSlotsByDateRange(startDate: string, endDate: string, tenantId?: number | null) {
+  const db = await getDb();
+  if (!db) return [];
+  if (tenantId == null) return [];
+  return db.select({
+    id: blockedSlots.id,
+    barberId: blockedSlots.barberId,
+    date: blockedSlots.date,
+    startTime: blockedSlots.startTime,
+    endTime: blockedSlots.endTime,
+    reason: blockedSlots.reason,
+    googleEventId: blockedSlots.googleEventId,
+  })
+    .from(blockedSlots)
+    .innerJoin(barbers, eq(blockedSlots.barberId, barbers.id))
+    .where(and(gte(blockedSlots.date, startDate), lte(blockedSlots.date, endDate), eq(barbers.tenantId, tenantId)));
+}
+
 export async function deleteBlockedSlot(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

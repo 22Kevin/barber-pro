@@ -972,8 +972,97 @@ export const appRouter = router({
       }),
     blockedSlots: router({
       get: publicProcedure.input(z.object({ barberId: z.number(), date: z.string() })).query(({ input }) => db.getBlockedSlots(input.barberId, input.date)),
+      byDateRange: publicProcedure.input(z.object({ barberId: z.number(), startDate: z.string(), endDate: z.string() })).query(({ input }) => db.getBlockedSlotsByDateRange(input.barberId, input.startDate, input.endDate)),
+      allByDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllBlockedSlotsByDateRange(input.startDate, input.endDate, input.tenantId ?? ctx.barber?.tenantId)),
       create: activeBarberProcedure.input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), reason: z.string().optional() })).mutation(({ input }) => db.createBlockedSlot(input)),
       delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBlockedSlot(input.id)),
+      // Transforma um bloqueio de horario (manual ou importado do Google
+      // Agenda) num agendamento de verdade - mesma logica ja usada e testada
+      // no painel web (rota /admin/agenda/converter-bloqueio).
+      convertToAppointment: activeBarberProcedure
+        .input(z.object({
+          blockedSlotId: z.number(),
+          clientId: z.number().optional(),
+          newClientName: z.string().optional(),
+          newClientPhone: z.string().optional(),
+          newClientEmail: z.string().optional(),
+          newClientBirthDate: z.string().optional(),
+          newClientNotes: z.string().optional(),
+          serviceId: z.number().optional(),
+          newServiceName: z.string().optional(),
+          newServicePrice: z.string().optional(),
+          newServiceDuration: z.number().optional(),
+          newServiceDescription: z.string().optional(),
+        }))
+        .mutation(async ({ input, ctx }) => {
+          const slot = await db.getBlockedSlotById(input.blockedSlotId);
+          if (!slot) throw new Error("Bloqueio não encontrado (pode já ter sido removido).");
+
+          const tenantId = ctx.barber?.tenantId;
+          const slotBarber = await db.getBarberById(slot.barberId);
+          if (!tenantId || !slotBarber || slotBarber.tenantId !== tenantId) {
+            throw new Error("Acesso negado a este bloqueio.");
+          }
+
+          // Resolve cliente: existente ou cria novo
+          let finalClientId: number;
+          if (input.newClientName && input.newClientName.trim()) {
+            if (!input.newClientPhone || !input.newClientPhone.trim()) {
+              throw new Error("Telefone é obrigatório para cadastrar novo cliente.");
+            }
+            finalClientId = await db.createClient({
+              tenantId,
+              name: input.newClientName.trim(),
+              phone: input.newClientPhone.trim(),
+              email: input.newClientEmail?.trim() || null,
+              birthDate: input.newClientBirthDate?.trim() || null,
+              notes: input.newClientNotes?.trim() || null,
+            } as any);
+          } else if (input.clientId) {
+            finalClientId = input.clientId;
+          } else {
+            throw new Error("Selecione ou cadastre um cliente.");
+          }
+
+          // Resolve serviço: existente ou cria novo
+          let finalServiceId: number;
+          if (input.newServiceName && input.newServiceName.trim()) {
+            if (!input.newServicePrice) {
+              throw new Error("Preço é obrigatório para cadastrar novo serviço.");
+            }
+            finalServiceId = await db.createService({
+              tenantId,
+              name: input.newServiceName.trim(),
+              price: input.newServicePrice,
+              durationMinutes: input.newServiceDuration ?? 30,
+              description: input.newServiceDescription?.trim() || null,
+            } as any);
+          } else if (input.serviceId) {
+            finalServiceId = input.serviceId;
+          } else {
+            throw new Error("Selecione ou cadastre um serviço.");
+          }
+
+          // Data/horário vêm do PRÓPRIO bloqueio, nunca do app - garante que
+          // o agendamento ocupa exatamente o horário que já estava reservado.
+          const result = await db.createAppointmentAtomic({
+            clientId: finalClientId,
+            serviceId: finalServiceId,
+            barberId: slot.barberId,
+            date: slot.date,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            status: "scheduled",
+            notes: slot.reason ? `Convertido de bloqueio: ${slot.reason}` : null,
+          });
+
+          if (!result.success) {
+            throw new Error(result.error ?? "Não foi possível criar o agendamento.");
+          }
+
+          await db.deleteBlockedSlot(slot.id);
+          return { success: true, appointmentId: result.appointmentId };
+        }),
     }),
   }),
 
