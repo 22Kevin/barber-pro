@@ -5954,9 +5954,10 @@ async function renderConfiguracoes(req: Request, res: Response) {
                 <div style="width:100%">
                   <div id="coupon-toggle" onclick="document.getElementById('coupon-box').style.display='flex';document.getElementById('coupon-toggle').style.display='none'" style="font-size:12px;color:var(--gold);cursor:pointer;text-decoration:underline;text-align:left">Tenho um cupom de desconto</div>
                   <div id="coupon-box" style="display:none;gap:8px;width:100%">
-                    <input id="coupon-code" type="text" placeholder="Código do cupom" maxlength="50" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;text-transform:uppercase" />
+                    <input id="coupon-code" type="text" placeholder="Código do cupom" maxlength="50" onkeydown="if(event.key==='Enter'){event.preventDefault();aplicarCupom();}" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;text-transform:uppercase" />
+                    <button id="coupon-apply-btn" type="button" onclick="aplicarCupom()" class="btn btn-ghost" style="font-size:12px;padding:8px 14px;white-space:nowrap">Aplicar Cupom</button>
                   </div>
-                  <div id="coupon-feedback" style="font-size:12px;margin-top:4px"></div>
+                  <div id="coupon-feedback" style="font-size:12px;margin-top:6px"></div>
                 </div>
                 <!-- Botão de assinatura -->
                 <button id="sub-btn" type="button" onclick="submitSubscription()" class="btn btn-primary" style="font-size:13px;padding:10px 20px;width:100%;white-space:nowrap">Assinar agora via Pix</button>
@@ -6413,6 +6414,46 @@ async function renderConfiguracoes(req: Request, res: Response) {
         var brand = detectCardBrand(v);
         var icon = document.getElementById('card-brand-icon');
         if (icon) icon.textContent = brand ? brand.icon : '';
+      });
+    }
+
+    // ── Aplicar cupom (validação + preview de preço, sem consumir o uso) ──────
+    function aplicarCupom() {
+      var codeInput = document.getElementById('coupon-code');
+      var code = (codeInput.value || '').trim();
+      var feedback = document.getElementById('coupon-feedback');
+      var btn = document.getElementById('coupon-apply-btn');
+      var plan = document.getElementById('sub-plan') ? document.getElementById('sub-plan').value : 'solo';
+
+      if (!code) {
+        feedback.innerHTML = '<span style="color:#F87171">Digite um código de cupom.</span>';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Validando...';
+      feedback.innerHTML = '<span style="color:var(--muted)">Verificando cupom...</span>';
+
+      fetch('/admin/configuracoes/asaas/validar-cupom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code, selectedPlan: plan })
+      }).then(function(r) { return r.json(); }).then(function(data) {
+        btn.disabled = false;
+        btn.textContent = 'Aplicar Cupom';
+        if (!data.valid) {
+          feedback.innerHTML = '<span style="color:#F87171">✕ ' + data.error + '</span>';
+          return;
+        }
+        var pct = data.type === 'percent' ? data.value + '%' : ('R$ ' + data.value.toFixed(2).replace('.', ','));
+        var durationText = data.durationMonths >= 12 ? 'permanente' : ('por ' + data.durationMonths + ' ' + (data.durationMonths === 1 ? 'mês' : 'meses'));
+        feedback.innerHTML =
+          '<div style="color:#4ADE80;font-weight:700;margin-bottom:2px">✓ Cupom aplicado! ' + pct + ' de desconto (' + durationText + ')</div>' +
+          '<div style="color:var(--muted)">De <span style="text-decoration:line-through">R$ ' + data.originalPrice.toFixed(2).replace('.', ',') + '</span> por <strong style="color:var(--gold)">R$ ' + data.finalPrice.toFixed(2).replace('.', ',') + '/mês</strong></div>';
+      }).catch(function() {
+        btn.disabled = false;
+        btn.textContent = 'Aplicar Cupom';
+        feedback.innerHTML = '<span style="color:#F87171">Erro ao validar cupom. Tente novamente.</span>';
       });
     }
 
@@ -9138,6 +9179,42 @@ document.addEventListener('input', function(e) {
   });
 
   // POST /admin/configuracoes/asaas/subscribe — Criar assinatura Barber Pro
+  // POST /admin/configuracoes/asaas/validar-cupom — só confere se o cupom é
+  // válido e devolve o preço com desconto, sem aplicar/consumir nada ainda.
+  // A validação de verdade (que consome o uso) acontece só no /subscribe.
+  app.post("/admin/configuracoes/asaas/validar-cupom", requireAdminAuth, async (req: Request, res: Response) => {
+    try {
+      const code = ((req.body as any)?.code ?? "").trim();
+      const selectedPlan = ((req.body as any)?.selectedPlan ?? "solo").trim();
+      const planPriceMap: Record<string, number> = { solo: 49.90, team: 99.90, studio: 169.90 };
+      const planPrice = planPriceMap[selectedPlan] ?? 49.90;
+
+      const result = await db.validateCouponCode(code);
+      if (!result.valid) {
+        res.json({ valid: false, error: result.error });
+        return;
+      }
+      const promo = result.promotion!;
+      if (promo.type !== "percent" && promo.type !== "fixed") {
+        res.json({ valid: false, error: "Este cupom não pode ser resgatado por aqui. Fale com o suporte." });
+        return;
+      }
+      const discountAmount = promo.type === "percent" ? planPrice * (promo.value / 100) : Math.min(promo.value, planPrice);
+      const finalPrice = Math.max(planPrice - discountAmount, 0);
+      res.json({
+        valid: true,
+        promotionName: promo.name,
+        type: promo.type,
+        value: promo.value,
+        durationMonths: promo.durationMonths,
+        originalPrice: planPrice,
+        finalPrice,
+      });
+    } catch (e: any) {
+      res.json({ valid: false, error: "Erro ao validar cupom. Tente novamente." });
+    }
+  });
+
   app.post("/admin/configuracoes/asaas/subscribe", requireAdminAuth, async (req: Request, res: Response) => {
     try {
       const session = (req as any).adminSession as { barberId: number; role: string };
