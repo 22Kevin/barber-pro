@@ -98,6 +98,7 @@ export interface AsaasChargePayload {
   postalService?: boolean;
   creditCard?: AsaasCreditCardInfo;
   creditCardHolderInfo?: AsaasCreditCardHolderInfo;
+  remoteIp?: string;
 }
 
 export interface AsaasSubscriptionPayload {

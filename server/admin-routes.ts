@@ -5900,8 +5900,16 @@ async function renderConfiguracoes(req: Request, res: Response) {
             ${bpStatus === 'trial' || bpStatus === 'cancelled' ? `
               <div id="subscribe-form-area">
               <div id="subscribe-widget" style="display:flex;flex-direction:column;gap:10px;width:100%">
+                <!-- Seletor de ciclo de cobrança -->
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;width:100%">
+                  <button type="button" id="billing-monthly-btn" class="billing-cycle-btn active" onclick="selectBillingCycle('monthly')"
+                    style="padding:9px 8px;border-radius:10px;border:2px solid var(--gold);background:rgba(201,168,76,0.15);color:var(--gold);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s">Mensal</button>
+                  <button type="button" id="billing-annual-btn" class="billing-cycle-btn" onclick="selectBillingCycle('annual')"
+                    style="padding:9px 8px;border-radius:10px;border:2px solid var(--border);background:var(--surface2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s">Anual <span style="background:#4ADE8022;color:#4ADE80;font-size:10px;font-weight:800;padding:1px 5px;border-radius:5px;margin-left:3px">-20%</span></button>
+                </div>
+                <div id="billing-annual-note" style="display:none;font-size:11px;color:var(--muted);text-align:left;margin-top:-4px">Pagamento único, válido por 12 meses. Renovação manual ao final do período.</div>
                 <!-- Seletor de plano -->
-                <select id="sub-plan" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;width:100%">
+                <select id="sub-plan" onchange="updatePlanPricesDisplay()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;width:100%">
                   <option value="solo" ${tenantRealPlan === 'solo' ? 'selected' : ''}>Solo — R$ 49,90/mês (1 barbeiro)</option>
                   <option value="team" ${tenantRealPlan === 'team' ? 'selected' : ''}>Equipe — R$ 99,90/mês (até 3 barbeiros)</option>
                   <option value="studio" ${tenantRealPlan === 'studio' ? 'selected' : ''}>Estúdio — R$ 169,90/mês (ilimitado)</option>
@@ -6385,12 +6393,55 @@ async function renderConfiguracoes(req: Request, res: Response) {
       if (cardArea) {
         cardArea.style.display = (method === 'CREDIT_CARD' || method === 'UNDEFINED') ? 'block' : 'none';
       }
-      // Atualizar texto do botão
-      var btn = document.getElementById('sub-btn');
-      if (btn) {
-        var labels = { PIX: 'Assinar agora via Pix', CREDIT_CARD: 'Assinar com Cartão de Crédito', UNDEFINED: 'Assinar com Cartão de Débito' };
-        btn.textContent = labels[method] || 'Assinar agora';
+      updateSubmitButtonLabel();
+    }
+
+    // ── Seletor de ciclo de cobrança (mensal x anual) ───────────────────────────
+    var PLAN_PRICES_MONTHLY = { solo: 49.90, team: 99.90, studio: 169.90 };
+    var PLAN_PRICES_ANNUAL_MONTHLY_EQUIV = { solo: 39.90, team: 79.90, studio: 135.90 }; // valor "por mês" exibido, cobrado 1x pelo total
+    var PLAN_LABELS = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
+    var PLAN_CAPACITY = { solo: '1 barbeiro', team: 'até 3 barbeiros', studio: 'ilimitado' };
+    var _selectedBillingCycle = 'monthly';
+
+    function fmtBRL(n) { return 'R$ ' + n.toFixed(2).replace('.', ','); }
+
+    function selectBillingCycle(cycle) {
+      _selectedBillingCycle = cycle;
+      document.getElementById('billing-monthly-btn').style.border = cycle === 'monthly' ? '2px solid var(--gold)' : '2px solid var(--border)';
+      document.getElementById('billing-monthly-btn').style.background = cycle === 'monthly' ? 'rgba(201,168,76,0.15)' : 'var(--surface2)';
+      document.getElementById('billing-monthly-btn').style.color = cycle === 'monthly' ? 'var(--gold)' : 'var(--text2)';
+      document.getElementById('billing-annual-btn').style.border = cycle === 'annual' ? '2px solid var(--gold)' : '2px solid var(--border)';
+      document.getElementById('billing-annual-btn').style.background = cycle === 'annual' ? 'rgba(201,168,76,0.15)' : 'var(--surface2)';
+      document.getElementById('billing-annual-btn').style.color = cycle === 'annual' ? 'var(--gold)' : 'var(--text2)';
+      document.getElementById('billing-annual-note').style.display = cycle === 'annual' ? 'block' : 'none';
+      updatePlanPricesDisplay();
+      updateSubmitButtonLabel();
+      // Se já tinha um cupom aplicado, o preview fica desatualizado - limpa
+      // pra evitar mostrar um preço de outro ciclo por engano.
+      var feedback = document.getElementById('coupon-feedback');
+      if (feedback && feedback.innerHTML.indexOf('Cupom aplicado') !== -1) {
+        feedback.innerHTML = '<span style="color:var(--muted)">Ciclo de cobrança mudou - clique em "Aplicar Cupom" de novo pra atualizar o preço.</span>';
       }
+    }
+
+    function updatePlanPricesDisplay() {
+      var select = document.getElementById('sub-plan');
+      if (!select) return;
+      Array.prototype.forEach.call(select.options, function(opt) {
+        var key = opt.value;
+        var price = _selectedBillingCycle === 'annual' ? PLAN_PRICES_ANNUAL_MONTHLY_EQUIV[key] : PLAN_PRICES_MONTHLY[key];
+        var suffix = _selectedBillingCycle === 'annual' ? '/mês equiv., cobrado 1x' : '/mês';
+        opt.textContent = PLAN_LABELS[key] + ' — ' + fmtBRL(price) + suffix + ' (' + PLAN_CAPACITY[key] + ')';
+      });
+    }
+
+    function updateSubmitButtonLabel() {
+      var btn = document.getElementById('sub-btn');
+      if (!btn) return;
+      var method = _selectedMethod;
+      var methodLabels = { PIX: 'via Pix', CREDIT_CARD: 'com Cartão de Crédito', UNDEFINED: 'com Cartão de Débito' };
+      var actionLabel = _selectedBillingCycle === 'annual' ? 'Pagar plano anual' : 'Assinar agora';
+      btn.textContent = actionLabel + ' ' + (methodLabels[method] || '');
     }
 
     // ── Detecção de bandeira por número do cartão ──────────────────────────────
@@ -6437,7 +6488,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
       fetch('/admin/configuracoes/asaas/validar-cupom', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code, selectedPlan: plan })
+        body: JSON.stringify({ code: code, selectedPlan: plan, billingCycle: _selectedBillingCycle })
       }).then(function(r) { return r.json(); }).then(function(data) {
         btn.disabled = false;
         btn.textContent = 'Aplicar Cupom';
@@ -6447,9 +6498,10 @@ async function renderConfiguracoes(req: Request, res: Response) {
         }
         var pct = data.type === 'percent' ? data.value + '%' : ('R$ ' + data.value.toFixed(2).replace('.', ','));
         var durationText = data.durationMonths >= 12 ? 'permanente' : ('por ' + data.durationMonths + ' ' + (data.durationMonths === 1 ? 'mês' : 'meses'));
+        var priceLabel = data.billingCycle === 'annual' ? '/ano (à vista)' : '/mês';
         feedback.innerHTML =
           '<div style="color:#4ADE80;font-weight:700;margin-bottom:2px">✓ Cupom aplicado! ' + pct + ' de desconto (' + durationText + ')</div>' +
-          '<div style="color:var(--muted)">De <span style="text-decoration:line-through">R$ ' + data.originalPrice.toFixed(2).replace('.', ',') + '</span> por <strong style="color:var(--gold)">R$ ' + data.finalPrice.toFixed(2).replace('.', ',') + '/mês</strong></div>';
+          '<div style="color:var(--muted)">De <span style="text-decoration:line-through">R$ ' + data.originalPrice.toFixed(2).replace('.', ',') + '</span> por <strong style="color:var(--gold)">R$ ' + data.finalPrice.toFixed(2).replace('.', ',') + priceLabel + '</strong></div>';
       }).catch(function() {
         btn.disabled = false;
         btn.textContent = 'Aplicar Cupom';
@@ -6465,7 +6517,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
       if (btn) { btn.disabled = true; btn.textContent = 'Processando...'; }
 
       var couponInput = document.getElementById('coupon-code');
-      var payload = { selectedPlan: plan, billingType: method, couponCode: couponInput ? couponInput.value.trim() : '' };
+      var payload = { selectedPlan: plan, billingType: method, billingCycle: _selectedBillingCycle, couponCode: couponInput ? couponInput.value.trim() : '' };
 
       if (method === 'CREDIT_CARD' || method === 'UNDEFINED') {
         var numRaw = (document.getElementById('card-number').value || '').replace(/[^0-9]/g, '');
@@ -9182,12 +9234,24 @@ document.addEventListener('input', function(e) {
   // POST /admin/configuracoes/asaas/validar-cupom — só confere se o cupom é
   // válido e devolve o preço com desconto, sem aplicar/consumir nada ainda.
   // A validação de verdade (que consome o uso) acontece só no /subscribe.
+  // Preço do plano considerando o ciclo de cobrança. Anual é pagamento
+  // único (12x o valor mensal "equivalente" com desconto), não recorrência.
+  function computePlanPrice(selectedPlan: string, billingCycle: string): number {
+    const monthlyMap: Record<string, number> = { solo: 49.90, team: 99.90, studio: 169.90 };
+    const annualMonthlyEquivMap: Record<string, number> = { solo: 39.90, team: 79.90, studio: 135.90 };
+    if (billingCycle === "annual") {
+      const monthlyEquiv = annualMonthlyEquivMap[selectedPlan] ?? annualMonthlyEquivMap.solo;
+      return Math.round(monthlyEquiv * 12 * 100) / 100;
+    }
+    return monthlyMap[selectedPlan] ?? monthlyMap.solo;
+  }
+
   app.post("/admin/configuracoes/asaas/validar-cupom", requireAdminAuth, async (req: Request, res: Response) => {
     try {
       const code = ((req.body as any)?.code ?? "").trim();
       const selectedPlan = ((req.body as any)?.selectedPlan ?? "solo").trim();
-      const planPriceMap: Record<string, number> = { solo: 49.90, team: 99.90, studio: 169.90 };
-      const planPrice = planPriceMap[selectedPlan] ?? 49.90;
+      const billingCycle = ((req.body as any)?.billingCycle ?? "monthly").trim();
+      const planPrice = computePlanPrice(selectedPlan, billingCycle);
 
       const result = await db.validateCouponCode(code);
       if (!result.valid) {
@@ -9209,6 +9273,7 @@ document.addEventListener('input', function(e) {
         durationMonths: promo.durationMonths,
         originalPrice: planPrice,
         finalPrice,
+        billingCycle,
       });
     } catch (e: any) {
       res.json({ valid: false, error: "Erro ao validar cupom. Tente novamente." });
@@ -9284,9 +9349,10 @@ document.addEventListener('input', function(e) {
       const rawBilling = ((req.body as any)?.billingType ?? 'PIX') as string;
       const allowedBillings = ['PIX', 'CREDIT_CARD', 'UNDEFINED'];
       const billingType: string = allowedBillings.includes(rawBilling) ? rawBilling : 'PIX';
-      const planPriceMap: Record<string, number> = { solo: 49.90, team: 99.90, studio: 169.90 };
+      const rawCycle = ((req.body as any)?.billingCycle ?? 'monthly') as string;
+      const billingCycle: 'monthly' | 'annual' = rawCycle === 'annual' ? 'annual' : 'monthly';
       const planLabelMap: Record<string, string> = { solo: 'Solo', team: 'Equipe', studio: 'Estúdio' };
-      const planPrice = planPriceMap[selectedPlan] ?? 49;
+      const planPrice = computePlanPrice(selectedPlan, billingCycle);
       const planLabel = planLabelMap[selectedPlan] ?? selectedPlan;
 
       // Dados do cartão (presentes apenas quando billingType é CREDIT_CARD ou UNDEFINED)
@@ -9360,25 +9426,68 @@ document.addEventListener('input', function(e) {
         };
       }
 
-      // Criar assinatura recorrente mensal
+      // Criar cobrança: recorrente mensal (Asaas subscription) ou pagamento
+      // único anual (Asaas payment avulso, sem recorrência - renovação manual)
       const today = new Date();
       const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, today.getDate());
       const nextDue = nextMonth.toISOString().slice(0, 10);
+      const oneYearFromNow = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
+      const annualExpiryDate = oneYearFromNow.toISOString().slice(0, 10);
+      const todayStr = today.toISOString().slice(0, 10);
 
-      const subResult = await createAsaasSubscription({
-        customer: asaasCustomerId,
-        billingType: billingType as 'PIX' | 'CREDIT_CARD' | 'UNDEFINED',
-        value: planPrice,
-        nextDueDate: nextDue,
-        cycle: 'MONTHLY',
-        description: `Barber Pro — Plano ${planLabel} (R$ ${planPrice}/mês)`,
-        externalReference: `tenant_${barber.tenantId}`,
-        ...(creditCardData ? { creditCard: creditCardData } : {}),
-        ...(creditCardHolderInfo ? { creditCardHolderInfo } : {}),
-        ...(hasCard ? { remoteIp } : {}),
-        ...(asaasDiscount ? { discount: asaasDiscount } : {}),
-      });
-      const subscriptionId = subResult.subscriptionId;
+      let subscriptionId: string;
+      let pixQrCode: string | undefined;
+      let pixCopyCola: string | undefined;
+      let invoiceUrl: string | undefined;
+      let pixPaymentId: string | undefined;
+
+      if (billingCycle === 'annual') {
+        // Pagamento único: o desconto do cupom (se houver) já é aplicado
+        // diretamente no valor cobrado, não precisa do objeto discount do
+        // Asaas (que é pensado pra descontos recorrentes em assinaturas).
+        const discountAmount = couponPromotion
+          ? (couponPromotion.type === 'percent' ? planPrice * (couponPromotion.value / 100) : Math.min(couponPromotion.value, planPrice))
+          : 0;
+        const finalChargeValue = Math.max(Math.round((planPrice - discountAmount) * 100) / 100, 0);
+
+        const chargeResult = await createAsaasCharge({
+          customer: asaasCustomerId,
+          billingType: billingType as 'PIX' | 'CREDIT_CARD' | 'UNDEFINED',
+          value: finalChargeValue,
+          dueDate: todayStr,
+          description: `Barber Pro — Plano ${planLabel} (Anual, pagamento único)`,
+          externalReference: `tenant_${barber.tenantId}_annual`,
+          ...(creditCardData ? { creditCard: creditCardData } : {}),
+          ...(creditCardHolderInfo ? { creditCardHolderInfo } : {}),
+          ...(hasCard ? { remoteIp } : {}),
+        });
+        subscriptionId = chargeResult.id;
+        pixQrCode = chargeResult.pixQrCode;
+        pixCopyCola = chargeResult.pixCopyCola;
+        invoiceUrl = chargeResult.invoiceUrl;
+        // Cobrança única: o próprio ID do pagamento já serve pra consultar o
+        // status (não existe distinção assinatura x cobrança individual aqui).
+        pixPaymentId = chargeResult.id;
+      } else {
+        const subResult = await createAsaasSubscription({
+          customer: asaasCustomerId,
+          billingType: billingType as 'PIX' | 'CREDIT_CARD' | 'UNDEFINED',
+          value: planPrice,
+          nextDueDate: nextDue,
+          cycle: 'MONTHLY',
+          description: `Barber Pro — Plano ${planLabel} (R$ ${planPrice}/mês)`,
+          externalReference: `tenant_${barber.tenantId}`,
+          ...(creditCardData ? { creditCard: creditCardData } : {}),
+          ...(creditCardHolderInfo ? { creditCardHolderInfo } : {}),
+          ...(hasCard ? { remoteIp } : {}),
+          ...(asaasDiscount ? { discount: asaasDiscount } : {}),
+        });
+        subscriptionId = subResult.subscriptionId;
+        pixQrCode = subResult.pixQrCode;
+        pixCopyCola = subResult.pixCopyCola;
+        invoiceUrl = subResult.invoiceUrl;
+        pixPaymentId = subResult.pixPaymentId;
+      }
 
       // Registra o resgate do cupom (só depois que a assinatura foi criada
       // com sucesso - se algo falhar antes, o cupom não é consumido)
@@ -9396,13 +9505,23 @@ document.addEventListener('input', function(e) {
       // Usar db.updateTenant para garantir cast correto do enum plan via Drizzle ORM
       await db.updateTenant(barber.tenantId, {
         plan: selectedPlan as any,
-        barberproSubscriptionId: subscriptionId,
-        barberproSubscriptionStatus: 'pending',
         barberproPlanName: selectedPlan,
         barberproPlanPrice: String(planPrice),
-        barberproNextDueDate: nextDue,
+        barberproBillingCycle: billingCycle,
         updatedAt: new Date(),
-      });
+        ...(billingCycle === 'annual' ? {
+          // Cobrança única: sem assinatura recorrente no Asaas. O "vencimento"
+          // aqui marca quando a barbearia precisa renovar manualmente.
+          barberproSubscriptionId: null,
+          barberproLastPaymentId: subscriptionId,
+          barberproSubscriptionStatus: 'pending',
+          barberproNextDueDate: annualExpiryDate,
+        } : {
+          barberproSubscriptionId: subscriptionId,
+          barberproSubscriptionStatus: 'pending',
+          barberproNextDueDate: nextDue,
+        }),
+      } as any);
 
       // Enviar e-mail de boas-vindas / confirmação de assinatura
       try {
@@ -9440,18 +9559,18 @@ document.addEventListener('input', function(e) {
           <span style="color:#ECEDEE;font-weight:700;font-size:13px">${planLabelFull}</span>
         </div>
         <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-          <span style="color:#9BA1A6;font-size:13px">Valor mensal</span>
+          <span style="color:#9BA1A6;font-size:13px">${billingCycle === 'annual' ? 'Valor anual (pagamento único)' : 'Valor mensal'}</span>
           <span style="color:#C9A84C;font-weight:700;font-size:13px">R$ ${planPrice},00</span>
         </div>
         <div style="display:flex;justify-content:space-between">
           <span style="color:#9BA1A6;font-size:13px">Forma de pagamento</span>
-          <span style="color:#ECEDEE;font-weight:700;font-size:13px">${billingType === 'CREDIT_CARD' ? 'Cartão de Crédito' : billingType === 'UNDEFINED' ? 'Cartão de Débito' : 'Pix (mensal)'}</span>
+          <span style="color:#ECEDEE;font-weight:700;font-size:13px">${billingType === 'CREDIT_CARD' ? 'Cartão de Crédito' : billingType === 'UNDEFINED' ? 'Cartão de Débito' : (billingCycle === 'annual' ? 'Pix (anual, pagamento único)' : 'Pix (mensal)')}</span>
         </div>
       </div>
-      ${billingType === 'PIX' && subResult.pixCopyCola ? `
+      ${billingType === 'PIX' && pixCopyCola ? `
       <div style="background:#1a1a1a;border:1.5px solid #C9A84C;border-radius:12px;padding:16px 20px;margin-bottom:20px">
         <div style="font-size:12px;font-weight:700;color:#C9A84C;letter-spacing:0.08em;margin-bottom:10px">PIX COPIA E COLA</div>
-        <div style="font-family:monospace;font-size:11px;color:#ECEDEE;word-break:break-all;line-height:1.6;background:#111;border-radius:8px;padding:10px;margin-bottom:12px">${subResult.pixCopyCola}</div>
+        <div style="font-family:monospace;font-size:11px;color:#ECEDEE;word-break:break-all;line-height:1.6;background:#111;border-radius:8px;padding:10px;margin-bottom:12px">${pixCopyCola}</div>
         <div style="font-size:12px;color:#9BA1A6">Copie o código acima e cole no app do seu banco para pagar.</div>
       </div>
       <div style="background:#2a1a00;border:1px solid #F59E0B;border-radius:8px;padding:10px 14px;margin-bottom:20px">
@@ -9479,12 +9598,9 @@ document.addEventListener('input', function(e) {
         console.error('[asaas/subscribe] Erro ao buscar dados para e-mail:', emailErr.message);
       }
 
-      // Para Pix: retornar QR Code nativo (já buscado pelo createAsaasSubscription)
+      // Para Pix: retornar QR Code nativo (já buscado na criação da cobrança/assinatura)
       // Para cartão: verificar se foi aprovado na criação
       if (billingType === 'PIX') {
-        const pixQrCode = subResult.pixQrCode ?? null;
-        const pixCopyCola = subResult.pixCopyCola ?? null;
-        const pixPaymentId = subResult.pixPaymentId ?? null;
         if (isJson) {
           res.json({
             ok: true,
