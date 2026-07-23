@@ -351,13 +351,13 @@ export const appRouter = router({
     savePushToken: publicProcedure
       .input(z.object({ barberId: z.number(), pushToken: z.string() }))
       .mutation(({ input }) => db.saveBarberPushToken(input.barberId, input.pushToken)),
-    googleCalendarStatus: activeBarberProcedure.query(({ ctx }) => googleCalendar.getConnectionStatus(ctx.barber.id)),
+    googleCalendarStatus: activeBarberProcedure.query(({ ctx }) => googleCalendar.getConnectionStatus(ctx.barber.barberId)),
     connectGoogleCalendarNative: activeBarberProcedure
       .input(z.object({ serverAuthCode: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
         if (!ctx.barber.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Barbeiro sem barbearia vinculada." });
         const result = await googleCalendar.connectBarberCalendarNative({
-          barberId: ctx.barber.id,
+          barberId: ctx.barber.barberId,
           tenantId: ctx.barber.tenantId,
           serverAuthCode: input.serverAuthCode,
         });
@@ -365,11 +365,11 @@ export const appRouter = router({
         return { success: true };
       }),
     disconnectGoogleCalendar: activeBarberProcedure.mutation(async ({ ctx }) => {
-      await googleCalendar.disconnectBarberCalendar(ctx.barber.id);
+      await googleCalendar.disconnectBarberCalendar(ctx.barber.barberId);
       return { success: true };
     }),
     importGoogleCalendarEvents: activeBarberProcedure.mutation(async ({ ctx }) => {
-      return googleCalendar.importExistingEvents(ctx.barber.id, 60);
+      return googleCalendar.importExistingEvents(ctx.barber.barberId, 60);
     }),
     workingHours: router({
       get: publicProcedure.input(z.object({ barberId: z.number() })).query(({ input }) => db.getWorkingHours(input.barberId)),
