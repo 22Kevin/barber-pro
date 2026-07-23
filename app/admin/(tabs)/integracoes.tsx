@@ -22,7 +22,15 @@ try {
 
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? "";
 const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? "";
-const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+// Precisa dos DOIS escopos: calendar.events (gerenciar eventos) e
+// calendar.app.created (criar o calendário dedicado "Barber Pro" em si).
+// O fluxo web já pedia os dois (server/google-calendar.ts) - esse aqui
+// (fluxo nativo do app) só pedia calendar.events, causando "insufficient
+// authentication scopes" ao tentar criar o calendário.
+const CALENDAR_SCOPES = [
+  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/calendar.app.created",
+];
 
 const GOLD = "#C9A84C";
 const BG = "#0A0A0A";
@@ -77,7 +85,7 @@ export default function IntegracoesScreen() {
         iosClientId: IOS_CLIENT_ID || undefined,
         offlineAccess: true,
         forceCodeForRefreshToken: true,
-        scopes: [CALENDAR_SCOPE],
+        scopes: CALENDAR_SCOPES,
       });
       const result = await GoogleSignin.signIn();
       const serverAuthCode = result?.data?.serverAuthCode ?? result?.serverAuthCode;
