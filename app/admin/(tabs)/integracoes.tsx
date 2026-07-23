@@ -76,6 +76,7 @@ export default function IntegracoesScreen() {
         webClientId: WEB_CLIENT_ID,
         iosClientId: IOS_CLIENT_ID || undefined,
         offlineAccess: true,
+        forceCodeForRefreshToken: true,
         scopes: [CALENDAR_SCOPE],
       });
       const result = await GoogleSignin.signIn();
