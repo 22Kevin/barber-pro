@@ -3587,6 +3587,16 @@ export async function saveGoogleCalendarConnection(data: {
   accessTokenCache?: string | null;
   accessTokenExpiresAt?: Date | null;
 }) {
+  // Validacao defensiva: se barberId/tenantId chegarem vazios aqui, o
+  // Drizzle simplesmente omite a coluna da query (vira "default" no SQL
+  // gerado), causando uma falha de NOT NULL constraint dificil de
+  // diagnosticar pelo log. Falha rapido com mensagem clara em vez disso.
+  if (!data.barberId) {
+    throw new Error(`saveGoogleCalendarConnection: barberId ausente/invalido (recebido: ${JSON.stringify(data.barberId)})`);
+  }
+  if (!data.tenantId) {
+    throw new Error(`saveGoogleCalendarConnection: tenantId ausente/invalido (recebido: ${JSON.stringify(data.tenantId)})`);
+  }
   return withRetry(async () => {
     const db = await getDb();
     if (!db) return null;
