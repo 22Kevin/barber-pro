@@ -859,6 +859,10 @@ export async function runAutoMigrate(db: any): Promise<void> {
     { name: 'shop_settings."addressComplement"', sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "addressComplement" VARCHAR(100)` },
     { name: 'shop_settings."googleMapsUrl"', sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "googleMapsUrl" TEXT` },
     { name: 'shop_settings."pixKey"',     sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "pixKey" VARCHAR(255)` },
+    // Pix direto (sem Asaas) - cliente paga na propria chave Pix da barbearia,
+    // confirmacao e manual pelo barbeiro (nao ha webhook automatico nesse caso).
+    { name: "online_payment_billing.PIX_DIRETO", sql: `DO $ BEGIN ALTER TYPE online_payment_billing ADD VALUE IF NOT EXISTS 'PIX_DIRETO'; EXCEPTION WHEN others THEN null; END $` },
+    { name: 'online_payments."confirmedBy"', sql: `ALTER TABLE online_payments ADD COLUMN IF NOT EXISTS "confirmedBy" VARCHAR(100)` },
     { name: 'shop_settings."galleryUrls"', sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "galleryUrls" TEXT` },
     { name: 'shop_settings."primaryColor"', sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "primaryColor" VARCHAR(20) DEFAULT '#C9A84C'` },
     { name: 'shop_settings."bannerUrl"',  sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "bannerUrl" TEXT` },

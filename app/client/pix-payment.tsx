@@ -36,6 +36,7 @@ export default function PixPaymentScreen() {
     clientId: string;
     barberId: string;
     appointmentId: string;
+    tenantId: string;
     date: string;
     startTime: string;
   }>();
@@ -52,23 +53,19 @@ export default function PixPaymentScreen() {
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const createPixMutation = trpc.asaasPayments.createPix.useMutation({
+  const createPixMutation = trpc.asaasPayments.createDirectPix.useMutation({
     onSuccess: (data: any) => {
-      const qrCode = data.pixCopyCola ?? data.qrCode ?? "";
+      const qrCode = data.pixCopyCola ?? "";
       if (qrCode) {
         setPixData({
-          paymentId: data.id ?? data.paymentId ?? "",
+          paymentId: String(data.paymentId ?? ""),
           qrCode,
-          qrCodeBase64: data.pixQrCodeImage ?? data.qrCodeBase64 ?? "",
-          expiresAt: data.dueDate ?? data.expiresAt ?? null,
+          qrCodeBase64: data.pixQrCode ?? "",
+          expiresAt: null,
           isFallback: false,
         });
-        if (data.dueDate) {
-          const diff = Math.floor((new Date(data.dueDate).getTime() - Date.now()) / 1000);
-          setSecondsLeft(Math.max(0, diff));
-        }
       } else {
-        Alert.alert("Erro", "Não foi possível gerar o QR Code Pix. Tente outro método de pagamento.");
+        Alert.alert("Erro", "Não foi possível gerar o código Pix. Tente outro método de pagamento.");
         router.back();
       }
     },
@@ -81,10 +78,8 @@ export default function PixPaymentScreen() {
   // Gera o Pix ao montar a tela
   useEffect(() => {
     createPixMutation.mutate({
-      tenantId: 0, // resolvido pelo servidor via sessão
+      tenantId: Number(params.tenantId) || 0,
       clientId: Number(params.clientId),
-      clientName: params.clientName,
-      clientEmail: params.clientEmail || undefined,
       appointmentId: params.appointmentId ? Number(params.appointmentId) : null,
       amount: Number(params.servicePrice),
       description: params.serviceName,
@@ -122,8 +117,8 @@ export default function PixPaymentScreen() {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => null);
     setPaymentConfirmed(true);
     Alert.alert(
-      "Pagamento registrado!",
-      "Seu agendamento está confirmado. Você receberá uma confirmação em breve.",
+      "Pagamento sinalizado!",
+      "Avisamos a barbearia. Assim que o barbeiro confirmar o recebimento, seu agendamento será confirmado.",
       [
         { text: "Ver agendamentos", onPress: () => router.replace("/client/(tabs)/history" as any) },
         { text: "Início", onPress: () => router.replace("/client/(tabs)/home" as any) },
@@ -252,10 +247,8 @@ export default function PixPaymentScreen() {
                   setPixData(null);
                   setSecondsLeft(PIX_EXPIRY_SECONDS);
                   createPixMutation.mutate({
-                    tenantId: 0,
+                    tenantId: Number(params.tenantId) || 0,
                     clientId: Number(params.clientId),
-                    clientName: params.clientName,
-                    clientEmail: params.clientEmail || undefined,
                     appointmentId: params.appointmentId ? Number(params.appointmentId) : null,
                     amount: Number(params.servicePrice),
                     description: params.serviceName,

@@ -84,6 +84,7 @@ const MENU_GROUPS: MenuGroup[] = [
       { label: "Comissões",         icon: "chart.bar.doc.horizontal",    route: "/admin/(tabs)/commissions",       roles: ["super_admin"], feature: "commissions", requiredPlan: "Estúdio" },
       { label: "Minhas Comissões",  icon: "person.text.rectangle",       route: "/admin/(tabs)/my-commissions",    roles: ["barber"], feature: "commissions", requiredPlan: "Estúdio" },
       { label: "Relatórios",        icon: "chart.line.uptrend.xyaxis",   route: "/admin/(tabs)/reports",           roles: ["super_admin"] },
+      { label: "Confirmar Pix",     icon: "qrcode",                      route: "/admin/(tabs)/pix-pendentes",     roles: ["super_admin", "barber", "receptionist"] },
     ],
   },
   {

@@ -260,6 +260,7 @@ export default function BookScreen() {
 
   const handlePayPix = () => {
     if (!pendingApptId || !client || !selectedService || !selectedBarber || !selectedDate || !selectedSlot) return;
+    const tenantId = (servicesQuery.data?.[0] as any)?.tenantId ?? (selectedService as any)?.tenantId ?? 0;
     router.push({
       pathname: "/client/pix-payment" as any,
       params: {
@@ -271,6 +272,7 @@ export default function BookScreen() {
         clientId: String(client.id),
         barberId: String(selectedBarber.id),
         appointmentId: String(pendingApptId),
+        tenantId: String(tenantId),
         date: formatDate(selectedDate),
         startTime: selectedSlot.startTime,
       },

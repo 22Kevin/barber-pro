@@ -2849,12 +2849,107 @@ export const appRouter = router({
           value: charge.value,
         };
       }),
-    checkStatus: publicProcedure
-      .input(z.object({ paymentId: z.string() }))
-      .query(async ({ input }) => {
-        const r = await asaasApi.get(`/payments/${input.paymentId}`);
-        return { status: r.data.status as string };
+    // ─── Pix direto (sem Asaas) ───────────────────────────────────────────
+    // O cliente paga direto na chave Pix da propria barbearia (sem taxa por
+    // transacao, ja que nao passa pelo Asaas). Como nao ha webhook automatico
+    // nesse caso, o barbeiro precisa confirmar manualmente o recebimento
+    // (mutation confirmDirectPix) antes do agendamento ser marcado como
+    // confirmado.
+    createDirectPix: publicProcedure
+      .input(z.object({
+        tenantId: z.number(),
+        clientId: z.number(),
+        appointmentId: z.number().optional().nullable(),
+        amount: z.number(),
+        description: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const settings = await db.getShopSettings(input.tenantId);
+        if (!settings?.pixKey) {
+          throw new Error("Esta barbearia ainda não configurou uma chave Pix. Peça para o barbeiro cadastrar em Configurações.");
+        }
+        const tenant = await db.getTenantById(input.tenantId);
+        const merchantName = (settings.shopName || tenant?.name || "Barber Pro").substring(0, 25);
+        const merchantCity = (tenant?.city || "SAO PAULO").toUpperCase().substring(0, 15);
+        const txId = `BP${Date.now()}`.substring(0, 25);
+
+        const payload = generatePixPayload({
+          merchantName,
+          merchantCity,
+          amount: input.amount,
+          txId,
+          description: input.description || "Agendamento",
+          pixKey: settings.pixKey,
+        });
+        const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 2, color: { dark: "#000000", light: "#FFFFFF" } });
+
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new Error("Banco de dados indisponível.");
+        const inserted = await dbConn.execute(sql`
+          INSERT INTO online_payments ("tenantId", "clientId", "chargeType", "referenceId", "billingType", amount, status, "pixQrCode", "pixCopyCola")
+          VALUES (${input.tenantId}, ${input.clientId}, 'appointment', ${input.appointmentId ?? null}, 'PIX_DIRETO', ${input.amount}, 'pending', ${qrDataUrl}, ${payload})
+          RETURNING id
+        `);
+        const paymentId = (inserted as any).rows[0].id as number;
+
+        return {
+          paymentId,
+          pixQrCode: qrDataUrl,
+          pixCopyCola: payload,
+          pixKeyLabel: settings.pixKey,
+        };
       }),
+
+    // Barbeiro/recepcionista confirma que o Pix caiu na conta da barbearia.
+    confirmDirectPix: activeBarberProcedure
+      .input(z.object({ paymentId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        if (!ctx.barber.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Barbeiro sem barbearia vinculada." });
+        const dbConn = await db.getDb();
+        if (!dbConn) throw new Error("Banco de dados indisponível.");
+
+        const rows = await dbConn.execute(sql`
+          SELECT id, "tenantId", "referenceId", "chargeType", status
+          FROM online_payments
+          WHERE id = ${input.paymentId} AND "billingType" = 'PIX_DIRETO'
+          LIMIT 1
+        `);
+        const pmt = (rows as any).rows[0];
+        if (!pmt) throw new TRPCError({ code: "NOT_FOUND", message: "Pagamento não encontrado." });
+        if (pmt.tenantId !== ctx.barber.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Acesso negado a este pagamento." });
+        if (pmt.status === "paid") return { success: true, alreadyConfirmed: true };
+
+        await dbConn.execute(sql`
+          UPDATE online_payments
+          SET status = 'paid', "paidAt" = NOW(), "confirmedBy" = ${ctx.barber.role}, "updatedAt" = NOW()
+          WHERE id = ${input.paymentId}
+        `);
+
+        if (pmt.referenceId && pmt.chargeType === "appointment") {
+          await db.updateAppointment(pmt.referenceId, { status: "confirmed" } as any);
+        }
+
+        return { success: true, alreadyConfirmed: false };
+      }),
+
+    // Lista pagamentos Pix diretos aguardando confirmacao (pra tela do barbeiro).
+    listPendingDirectPix: activeBarberProcedure.query(async ({ ctx }) => {
+      if (!ctx.barber.tenantId) return [];
+      const dbConn = await db.getDb();
+      if (!dbConn) return [];
+      const rows = await dbConn.execute(sql`
+        SELECT op.id, op."referenceId", op.amount, op."createdAt", op."pixCopyCola",
+               c.name AS "clientName", c.phone AS "clientPhone"
+        FROM online_payments op
+        LEFT JOIN clients c ON c.id = op."clientId"
+        WHERE op."tenantId" = ${ctx.barber.tenantId}
+          AND op."billingType" = 'PIX_DIRETO'
+          AND op.status = 'pending'
+        ORDER BY op."createdAt" DESC
+      `);
+      return (rows as any).rows;
+    }),
+
     listByTenant: publicProcedure
       .input(z.object({
         tenantId: z.number(),
