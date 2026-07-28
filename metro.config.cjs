@@ -19,6 +19,24 @@ config.resolver = {
   sourceExts: [...(config.resolver?.sourceExts || []), "css"],
 };
 
+// react-native-view-shot (usado so em appointment-share-card.tsx, um recurso
+// nativo de captura de tela + compartilhamento) tem um arquivo .web.js
+// proprio que da conflito de plugins do Babel especificamente no pipeline de
+// transformacao web do react-native-css-interop ("More than one plugin
+// attempted to override parsing"). Como o recurso nao roda de verdade na
+// web mesmo, redireciona pra um stub vazio so nessa plataforma.
+const VIEW_SHOT_WEB_STUB = path.join(__dirname, "lib", "view-shot-web-stub.js");
+const originalResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform, ...rest) => {
+  if (platform === "web" && moduleName === "react-native-view-shot") {
+    return { type: "sourceFile", filePath: VIEW_SHOT_WEB_STUB };
+  }
+  if (originalResolveRequest) {
+    return originalResolveRequest(context, moduleName, platform, ...rest);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = withNativeWind(config, {
   input: "./global.css",
   forceWriteFileSystem: true,

@@ -41,9 +41,22 @@ const nativeWindConfig = withNativeWind(config, {
 // Wrap the resolver AFTER withNativeWind to intercept css-interop's resolution
 // of global.css -> .cache/web.css and redirect to .css-interop-cache/web.css
 const cssInteropResolver = nativeWindConfig.resolver?.resolveRequest;
+
+// react-native-view-shot (usado so em components/appointment-share-card.tsx,
+// um recurso nativo de captura de tela + compartilhamento) tem um arquivo
+// .web.js proprio que da erro "More than one plugin attempted to override
+// parsing" especificamente no pipeline de transformacao web do
+// react-native-css-interop. Como o recurso nao roda de verdade na web mesmo,
+// redireciona pra um stub vazio so nessa plataforma, em vez de tentar
+// resolver esse conflito de plugins do Babel.
+const VIEW_SHOT_WEB_STUB = path.join(__dirname, "lib", "view-shot-web-stub.js");
+
 nativeWindConfig.resolver = {
   ...nativeWindConfig.resolver,
   resolveRequest: (context, moduleName, platform) => {
+    if (platform === "web" && moduleName === "react-native-view-shot") {
+      return { type: "sourceFile", filePath: VIEW_SHOT_WEB_STUB };
+    }
     const resolver = cssInteropResolver ?? context.resolveRequest;
     const resolved = resolver(context, moduleName, platform);
     if (
