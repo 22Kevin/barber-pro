@@ -18,6 +18,8 @@
 
 import type { Express, Request, Response, NextFunction } from "express";
 import * as db from "./db";
+import * as QRCode from "qrcode";
+import { generatePixPayload } from "./pix-utils";
 import * as googleCalendar from "./google-calendar";
 import { sql, eq, and, inArray } from "drizzle-orm";
 import { saleItems as saleItemsTable, sales as salesTable } from "../drizzle/schema";
@@ -13903,53 +13905,58 @@ document.addEventListener('input', function(e) {
     }
   });
 
-  // POST /admin-api/pix-for-appointment — Gera cobrança Pix via Asaas para pagamento presencial
+  // POST /admin-api/pix-for-appointment — Gera Pix direto (sem Asaas, sem taxa)
+  // usando a chave Pix cadastrada pela propria barbearia. Confirmacao do
+  // pagamento continua manual pelo botao "Cliente pagou" (registerSale),
+  // igual ja funcionava antes - so a origem do codigo Pix mudou.
   app.post("/admin-api/pix-for-appointment", requireAdminAuth, async (req: Request, res: Response) => {
     try {
-      if (!asaasEnabled) { res.status(503).json({ error: "Pagamento online não configurado." }); return; }
       const session = (req as any).adminSession as { barberId: number };
       const barber = await db.getBarberById(session.barberId);
       if (!barber?.tenantId) { res.status(400).json({ error: "Tenant não encontrado." }); return; }
 
-      const { appointmentId, clientId, clientName, clientPhone, description } = req.body;
+      const { appointmentId, clientId, description } = req.body;
       const amount = moneyStr(req.body.amount);
       if (!amount || parseFloat(amount) <= 0) { res.status(400).json({ error: "Valor inválido." }); return; }
 
-      // Buscar asaasApiKey da subconta do tenant — pagamento vai direto para a barbearia
-      const dbConn = await db.getDb();
-      let subAccountApiKey: string | undefined;
-      if (dbConn) {
-        const tenantRow = await dbConn.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${barber.tenantId} LIMIT 1`) as any;
-        const tenantData = Array.isArray(tenantRow) ? tenantRow[0]?.[0] : tenantRow?.rows?.[0];
-        subAccountApiKey = tenantData?.asaasApiKey || undefined;
+      const settings = await db.getShopSettings(barber.tenantId);
+      if (!settings?.pixKey) {
+        res.status(400).json({ error: "Cadastre uma chave Pix da barbearia em Configurações antes de gerar cobranças." });
+        return;
       }
-      if (!subAccountApiKey) { res.status(400).json({ error: "Subconta Asaas não configurada para esta barbearia. Ative os pagamentos online nas configurações." }); return; }
+      const tenant = await db.getTenantById(barber.tenantId);
+      const merchantName = (settings.shopName || tenant?.name || "Barber Pro").substring(0, 25);
+      const merchantCity = (tenant?.city || "SAO PAULO").toUpperCase().substring(0, 15);
+      const txId = `BP${Date.now()}`.substring(0, 25);
 
-      // Criar ou buscar cliente no Asaas
-      const asaasCustomerId = await getOrCreateAsaasCustomer({
-        name: clientName || "Cliente",
-        mobilePhone: clientPhone ? clientPhone.replace(/\D/g, "") : undefined,
-        externalReference: clientId ? String(clientId) : undefined,
-      }, subAccountApiKey);
-
-      // Criar cobrança Pix na subconta da barbearia
-      const charge = await createAsaasCharge({
-        customer: asaasCustomerId,
-        billingType: "PIX",
-        value: parseFloat(amount),
-        dueDate: asaasDefaultDueDate(),
+      const payload = generatePixPayload({
+        merchantName,
+        merchantCity,
+        amount: parseFloat(amount),
+        txId,
         description: description || "Serviço — Barber Pro",
-        externalReference: appointmentId ? String(appointmentId) : undefined,
-      }, subAccountApiKey);
+        pixKey: settings.pixKey,
+      });
+      const qrDataUrl = await QRCode.toDataURL(payload, { width: 300, margin: 2, color: { dark: "#000000", light: "#FFFFFF" } });
+      const pixQrCodeBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, "");
+
+      const dbConn = await db.getDb();
+      let paymentId: number | null = null;
+      if (dbConn) {
+        const inserted = await dbConn.execute(sql`
+          INSERT INTO online_payments ("tenantId", "clientId", "chargeType", "referenceId", "billingType", amount, status, "pixQrCode", "pixCopyCola")
+          VALUES (${barber.tenantId}, ${clientId ?? null}, 'appointment', ${appointmentId ?? null}, 'PIX_DIRETO', ${amount}, 'pending', ${qrDataUrl}, ${payload})
+          RETURNING id
+        `) as any;
+        paymentId = inserted?.rows?.[0]?.id ?? inserted?.[0]?.[0]?.id ?? null;
+      }
 
       res.json({
         ok: true,
-        paymentId: charge.id,
-        pixQrCode: charge.pixQrCode ?? null,
-        pixCopyCola: charge.pixCopyCola ?? null,
-        invoiceUrl: charge.invoiceUrl ?? null,
-        value: charge.value,
-        dueDate: charge.dueDate,
+        paymentId,
+        pixQrCode: pixQrCodeBase64,
+        pixCopyCola: payload,
+        value: parseFloat(amount),
       });
     } catch (e: any) {
       console.error("[pix-for-appointment]", e.message);
