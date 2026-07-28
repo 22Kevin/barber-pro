@@ -2683,59 +2683,9 @@ export const appRouter = router({
   }),
 
   asaasPayments: router({
-    createPix: publicProcedure
-      .input(z.object({
-        tenantId: z.number(),
-        clientId: z.number(),
-        clientName: z.string(),
-        clientEmail: z.string().optional().nullable(),
-        clientPhone: z.string().optional().nullable(),
-        clientCpf: z.string().optional().nullable(),
-        appointmentId: z.number().optional().nullable(),
-        amount: z.number(),
-        description: z.string().optional(),
-      }))
-      .mutation(async ({ input }) => {
-        if (!asaasEnabled) throw new Error("Pagamento online não configurado. Configure ASAAS_API_KEY.");
-        // Buscar asaasApiKey da subconta do tenant (se configurada)
-        const dbConn2 = await db.getDb();
-        let subAccountApiKey: string | undefined;
-        if (dbConn2) {
-          const tenantRow = await dbConn2.execute(sql`SELECT "asaasApiKey" FROM tenants WHERE id = ${input.tenantId} LIMIT 1`);
-          const tenantData = (tenantRow as any)?.rows?.[0];
-          subAccountApiKey = tenantData?.asaasApiKey || undefined;
-        }
-        const asaasCustomerId = await getOrCreateAsaasCustomer({
-          name: input.clientName,
-          email: input.clientEmail ?? undefined,
-          mobilePhone: input.clientPhone ?? undefined,
-          cpfCnpj: input.clientCpf ?? undefined,
-          externalReference: String(input.clientId),
-        }, subAccountApiKey);
-        const charge = await createAsaasCharge({
-          customer: asaasCustomerId,
-          billingType: "PIX",
-          value: input.amount,
-          dueDate: asaasDefaultDueDate(),
-          description: input.description || "Agendamento Barber Pro",
-          externalReference: input.appointmentId ? String(input.appointmentId) : undefined,
-        }, subAccountApiKey);
-        const dbConn = await db.getDb();
-        if (dbConn) {
-          await dbConn.execute(sql`
-            INSERT INTO online_payments ("tenantId", "clientId", "chargeType", "referenceId", "asaasPaymentId", "asaasCustomerId", "billingType", amount, status, "invoiceUrl", "pixQrCode", "pixCopyCola", "dueDate")
-            VALUES (${input.tenantId}, ${input.clientId}, 'appointment', ${input.appointmentId ?? null}, ${charge.id}, ${asaasCustomerId}, 'PIX', ${input.amount}, 'pending', ${charge.invoiceUrl ?? null}, ${charge.pixQrCode ?? null}, ${charge.pixCopyCola ?? null}, ${charge.dueDate})
-          `);
-        }
-        return {
-          paymentId: charge.id,
-          pixQrCode: charge.pixQrCode ?? null,
-          pixCopyCola: charge.pixCopyCola ?? null,
-          invoiceUrl: charge.invoiceUrl ?? null,
-          value: charge.value,
-          dueDate: charge.dueDate,
-        };
-      }),
+    // Nota: createPix (Asaas) foi removida - o Pix do cliente final agora usa
+    // createDirectPix (chave Pix propria da barbearia, sem taxa por
+    // transacao). Ver createDirectPix mais acima nesse mesmo router.
     createCard: publicProcedure
       .input(z.object({
         tenantId: z.number(),
