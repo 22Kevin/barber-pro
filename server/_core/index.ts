@@ -758,6 +758,7 @@ async function startServer() {
       "Disallow: /admin-api",
       "Disallow: /superadmin",
       "Disallow: /api/",
+      "Disallow: /pub-api/",
       "Disallow: /app",
       "",
       "Sitemap: https://usebarberpro.com/sitemap.xml",
