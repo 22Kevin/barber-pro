@@ -24,10 +24,12 @@ const COPIES = [
     from: 'patches/metro-bundler.js',
     to: 'node_modules/metro/src/Bundler.js',
   },
-  {
-    from: 'patches/metro-dependency-graph.js',
-    to: 'node_modules/metro/src/node-haste/DependencyGraph.js',
-  },
+  // metro-dependency-graph.js REMOVIDO: o arquivo salvo em patches/ estava
+  // truncado/incompleto (298 linhas, cortado no meio), causando
+  // "SyntaxError: Unexpected end of input" ao ser copiado por cima do
+  // Metro de verdade - quebrava TODAS as builds (Android e web), nao so
+  // corrigia o problema que buscavamos. Removido ate termos uma versao
+  // integra e verificada desse patch.
 ];
 
 let ok = 0;
