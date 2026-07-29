@@ -110,7 +110,7 @@ function publicLayout(shopName: string, primaryColor: string, body: string, extr
   <!-- Open Graph / WhatsApp / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Barber Pro" />
-  ${slug ? `<meta property="og:url" content="https://usebarberpro.com/${slug}" /><link rel="canonical" href="https://usebarberpro.com/${slug}" />` : ""}
+  ${slug ? `<meta property="og:url" content="https://usebarberpro.com/pub/${slug}" /><link rel="canonical" href="https://usebarberpro.com/pub/${slug}" />` : ""}
   <meta property="og:title" content="${escapeHtml(settings?.seoTitle || shopName)}" />
   <meta property="og:description" content="${escapeHtml(settings?.seoDescription || `Agende seu horário em ${shopName} de forma rápida e fácil.`)}" />
   ${settings?.seoImageUrl ? `<meta property="og:image" content="${escapeHtml(settings.seoImageUrl)}" /><meta property="og:image:width" content="1200" /><meta property="og:image:height" content="630" />` : (settings?.bannerUrl ? `<meta property="og:image" content="${escapeHtml(settings.bannerUrl)}" />` : (settings?.logoUrl ? `<meta property="og:image" content="${escapeHtml(settings.logoUrl)}" />` : ""))}
