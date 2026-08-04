@@ -890,9 +890,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
             ? svcs.map((s: any) => `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:4px"><span style="color:var(--primary)">✓</span>${escapeHtml(s.serviceName)}</div>`).join("")
             : "";
           const servicesJson = escapeHtml(JSON.stringify(svcs.map((s: any) => ({ id: s.serviceId, name: s.serviceName, price: s.servicePrice }))));
-          const priceDisplay = isLoggedIn
-            ? `<div style="font-size:22px;font-weight:900;color:var(--primary);margin-bottom:2px">R$ ${Number(plan.price).toFixed(2).replace(".", ",")}<span style="font-size:13px;font-weight:500;color:var(--muted)">/mês</span></div>`
-            : `<a href="/pub/${slug}/login" class="price-locked" style="margin-bottom:4px">🔒 Ver preço</a>`;
+          const priceDisplay = `<div style="font-size:22px;font-weight:900;color:var(--primary);margin-bottom:2px">R$ ${Number(plan.price).toFixed(2).replace(".", ",")}<span style="font-size:13px;font-weight:500;color:var(--muted)">/mês</span></div>`;
           return `
             <div class="tab-card" style="position:relative;display:flex;flex-direction:column">
               ${isPopular ? `<div style="position:absolute;top:12px;right:12px;background:${primaryColor};color:#0A0A0A;font-size:10px;font-weight:900;padding:3px 10px;border-radius:20px;letter-spacing:0.5px">POPULAR</div>` : ""}
@@ -908,7 +906,7 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
                 </div>
                 <div class="tab-card-meta" style="margin-top:auto;padding-top:10px;border-top:1px solid var(--border);flex-direction:column;align-items:flex-start;gap:10px">
                   ${priceDisplay}
-                  <a href="/pub/${slug}/plano/${plan.id}" style="display:block;width:100%;padding:10px;border-radius:10px;font-size:13px;font-weight:800;text-align:center;background:${isPopular ? `var(--primary)` : `transparent`};color:${isPopular ? `#0A0A0A` : `var(--primary)`};border:2px solid var(--primary);letter-spacing:0.3px;text-decoration:none">${isLoggedIn ? 'VER PLANO' : 'ENTRAR PARA ASSINAR'}</a>
+                  <a href="/pub/${slug}/plano/${plan.id}" style="display:block;width:100%;padding:10px;border-radius:10px;font-size:13px;font-weight:800;text-align:center;background:${isPopular ? `var(--primary)` : `transparent`};color:${isPopular ? `#0A0A0A` : `var(--primary)`};border:2px solid var(--primary);letter-spacing:0.3px;text-decoration:none">VER PLANO</a>
                 </div>
               </div>
             </div>
@@ -3774,7 +3772,7 @@ async function renderPlanDetailPage(slug: string, planId: number, res: Response,
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px">
           <div style="font-size:22px;font-weight:900;margin-bottom:6px">${escapeHtml(plan.name)}</div>
           ${plan.description ? `<div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">${escapeHtml(plan.description)}</div>` : ""}
-          <div style="font-size:32px;font-weight:900;color:var(--primary);line-height:1">${isLoggedIn ? formatPrice(plan.price) : "???"}<span style="font-size:14px;font-weight:500;color:var(--muted)">/mês</span></div>
+          <div style="font-size:32px;font-weight:900;color:var(--primary);line-height:1">${formatPrice(plan.price)}<span style="font-size:14px;font-weight:500;color:var(--muted)">/mês</span></div>
           <div style="margin-top:8px;font-size:13px;color:var(--muted)">${plan.recurrences} agendamento${plan.recurrences !== 1 ? "s" : ""}/mês • Cancele quando quiser</div>
         </div>
         ${planServices.length > 0 ? `<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Serviços Incluídos</div>${planServices.map((s: any) => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px"><span style="color:var(--primary)">✂</span><span style="font-size:13px;font-weight:600">${escapeHtml(s.serviceName)}</span></div><span style="font-size:11px;color:var(--muted)">${formatDuration(s.durationMinutes)}</span></div>`).join("")}</div>` : ""}
