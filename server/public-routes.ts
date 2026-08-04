@@ -627,13 +627,10 @@ async function renderShopPage(slug: string, res: Response, req?: Request) {
   const productList = await db.getAllProductsWithMedia(true, tenant.id);
   const saleProducts = productList.filter((p: any) => p.productType === 'sale' || !p.productType);
 
-  // ── Helper: preço com lock para visitantes ───────────────────────────────
-  const priceHtml = (price: string | number, duration?: string) => isLoggedIn
-    ? `<span class="tab-card-price">${formatPrice(price)}</span>`
-    : `<span class="tab-card-price-blur">R$ ${formatPrice(price).replace('R$','').trim()}</span>`;
-  const ctaLoginHtml = (redirectUrl = '') => !isLoggedIn
-    ? `<a href="/pub/${slug}/login?redirect=${redirectUrl}" class="tab-card-cta">🔓 Entrar para ver preço</a>`
-    : '';
+  // ── Preço sempre visível (nao bloqueado mais por login) ──────────────────
+  const priceHtml = (price: string | number, duration?: string) =>
+    `<span class="tab-card-price">${formatPrice(price)}</span>`;
+  const ctaLoginHtml = (redirectUrl = '') => '';
 
   // ── Seção: Cards de Serviços (para o painel de abas) ─────────────────────
   const servicesTabHtml = serviceList.length === 0
@@ -3586,12 +3583,8 @@ async function renderServiceDetailPage(slug: string, serviceId: number, res: Res
         ${images.length > 1 ? `<button class="gallery-nav gallery-prev" onclick="galleryMove(-1)">&#8249;</button><button class="gallery-nav gallery-next" onclick="galleryMove(1)">&#8250;</button><div class="gallery-dots" id="galleryDots">${images.map((_,i) => `<div class="gallery-dot${i===0?' active':''}" onclick="galleryGoTo(${i})"></div>`).join("")}</div><div class="gallery-counter" id="galleryCounter">1 / ${images.length}</div>` : ""}
       </div>
       ${images.length > 0 ? `<div class="lightbox-overlay" id="lightboxOverlay"><span class="lightbox-close" onclick="closeLightbox()">×</span><img class="lightbox-img" id="lightboxImg" src="" alt="" /><button class="lightbox-nav lightbox-lprev" onclick="lightboxMove(-1)">&#8249;</button><button class="lightbox-nav lightbox-lnext" onclick="lightboxMove(1)">&#8250;</button></div>` : ""}`;
-  const priceSection = isLoggedIn
-    ? `<div style="font-size:32px;font-weight:900;color:var(--primary);margin-bottom:4px">${formatPrice(service.price)}</div>`
-    : `<a href="/pub/${slug}/login" style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:700;color:var(--text)">🔒 Faça login para ver o preço</a>`;
-  const bookBtn = isLoggedIn
-    ? `<a href="/pub/${slug}/agendar?service=${serviceId}" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;text-decoration:none">📅 Agendar este Serviço</a>`
-    : `<a href="/pub/${slug}/login?redirect=servico/${serviceId}" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;text-decoration:none">Entrar para Agendar</a>`;
+  const priceSection = `<div style="font-size:32px;font-weight:900;color:var(--primary);margin-bottom:4px">${formatPrice(service.price)}</div>`;
+  const bookBtn = `<a href="/pub/${slug}/agendar?service=${serviceId}" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;text-decoration:none">📅 Agendar este Serviço</a>`;
   const body = `
     <div style="max-width:700px;margin:0 auto;padding:24px 20px 80px">
       <a href="/pub/${slug}" style="display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:14px;margin-bottom:24px;font-weight:600">
@@ -4241,9 +4234,7 @@ async function renderProductDetailPage(slug: string, productId: number, res: Res
       </div>
       ${images.length > 0 ? `<div class="lightbox-overlay" id="lightboxOverlay"><span class="lightbox-close" onclick="closeLightbox()">×</span><img class="lightbox-img" id="lightboxImg" src="" alt="" /><button class="lightbox-nav lightbox-lprev" onclick="lightboxMove(-1)">&#8249;</button><button class="lightbox-nav lightbox-lnext" onclick="lightboxMove(1)">&#8250;</button></div>` : ""}`;
   const inStock = product.stockQuantity == null || product.stockQuantity > 0;
-  const priceSection = isLoggedIn
-    ? `<div style="font-size:32px;font-weight:900;color:var(--primary);margin-bottom:4px">${formatPrice(product.price)}</div><div style="font-size:13px;color:${inStock ? "#22C55E" : "#F87171"};font-weight:700;margin-bottom:16px">${inStock ? (product.stockQuantity != null ? product.stockQuantity + " em estoque" : "Disponível") : "Sem estoque"}</div>`
-    : `<a href="/pub/${slug}/login" style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);padding:12px 20px;border-radius:12px;font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px">🔒 Faça login para ver o preço</a>`;
+  const priceSection = `<div style="font-size:32px;font-weight:900;color:var(--primary);margin-bottom:4px">${formatPrice(product.price)}</div><div style="font-size:13px;color:${inStock ? "#22C55E" : "#F87171"};font-weight:700;margin-bottom:16px">${inStock ? (product.stockQuantity != null ? product.stockQuantity + " em estoque" : "Disponível") : "Sem estoque"}</div>`;
   const actionBtn = isLoggedIn
     ? (inStock
         ? `<button onclick="buyProduct()" style="display:block;width:100%;padding:16px;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:900;border-radius:14px;text-align:center;letter-spacing:0.5px;border:none;cursor:pointer">🛒 Comprar</button>`
