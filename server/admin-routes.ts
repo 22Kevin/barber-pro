@@ -5389,7 +5389,7 @@ async function renderConfiguracoes(req: Request, res: Response) {
   const currentSlug = tenant?.slug ?? "";
   const baseUrl = process.env.PUBLIC_BASE_URL ?? "";
   const publicUrl = currentSlug ? `https://usebarberpro.com/pub/${currentSlug}` : "";
-  const bookingUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}/agendar` : "";
+  const bookingUrl = currentSlug ? `https://usebarberpro.com/pub/${currentSlug}/agendar` : "";
   const shopNameForShare = settings?.shopName ?? "Minha Barbearia";
 
   // Gerar QR Code como data URL
@@ -7543,7 +7543,7 @@ async function renderPaginaCliente(req: Request, res: Response) {
   const tenant = barber?.tenantId ? await db.getTenantById(barber.tenantId) : undefined;
   const currentSlug = tenant?.slug ?? "";
   const publicUrl = currentSlug ? `https://usebarberpro.com/pub/${currentSlug}` : "";
-  const bookingUrl = currentSlug ? `https://usebarberpro.com/${currentSlug}/agendar` : "";
+  const bookingUrl = currentSlug ? `https://usebarberpro.com/pub/${currentSlug}/agendar` : "";
   const shopNameForShare = settings?.shopName ?? "Minha Barbearia";
 
   // Gerar QR Code
