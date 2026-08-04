@@ -1,0 +1,27 @@
+const fs = require('fs');
+function b64(s){return Buffer.from(s,'base64').toString('utf8');}
+
+function applyFixes(path, pairs) {
+  let content = fs.readFileSync(path, 'utf8');
+  const hadCRLF = content.includes('\r\n');
+  if (hadCRLF) content = content.split('\r\n').join('\n');
+  let applied = 0;
+  for (const [oldB64, newB64] of pairs) {
+    const oldS = b64(oldB64), newS = b64(newB64);
+    if (!content.includes(oldS)) { console.log('[AVISO] ' + path + ': edicao ' + (applied+1) + ' nao encontrada - pulei.'); continue; }
+    content = content.replace(oldS, () => newS);
+    applied++;
+  }
+  if (hadCRLF) content = content.split('\n').join('\r\n');
+  fs.writeFileSync(path, content, 'utf8');
+  console.log(path + ': ' + applied + '/' + pairs.length + ' edicoes aplicadas. (CRLF: ' + hadCRLF + ')');
+}
+
+applyFixes('drizzle/schema.ts', [ ['ICBwcmVmZXJyZWRUZW5hbnRJZDogaW50ZWdlcigicHJlZmVycmVkVGVuYW50SWQiKSwKICBuYW1lOiB2YXJjaGFyKCJuYW1lIiwgeyBsZW5ndGg6IDI1NSB9KS5ub3ROdWxsKCksCiAgZW1haWw6IHZhcmNoYXIoImVtYWlsIiwgeyBsZW5ndGg6IDMyMCB9KSwKICBwaG9uZTogdmFyY2hhcigicGhvbmUiLCB7IGxlbmd0aDogMjAgfSkubm90TnVsbCgpLAogIGNwZjogdmFyY2hhcigiY3BmIiwgeyBsZW5ndGg6IDE0IH0pLAogIGJpcnRoRGF0ZTogdmFyY2hhcigiYmlydGhEYXRlIiwgeyBsZW5ndGg6IDEwIH0pLAogIHBob3RvVXJsOiB0ZXh0KCJwaG90b1VybCIpLA==', 'ICBwcmVmZXJyZWRUZW5hbnRJZDogaW50ZWdlcigicHJlZmVycmVkVGVuYW50SWQiKSwKICBuYW1lOiB2YXJjaGFyKCJuYW1lIiwgeyBsZW5ndGg6IDI1NSB9KS5ub3ROdWxsKCksCiAgZW1haWw6IHZhcmNoYXIoImVtYWlsIiwgeyBsZW5ndGg6IDMyMCB9KSwKICBwaG9uZTogdmFyY2hhcigicGhvbmUiLCB7IGxlbmd0aDogMjAgfSksCiAgY3BmOiB2YXJjaGFyKCJjcGYiLCB7IGxlbmd0aDogMTQgfSksCiAgYmlydGhEYXRlOiB2YXJjaGFyKCJiaXJ0aERhdGUiLCB7IGxlbmd0aDogMTAgfSksCiAgcGhvdG9Vcmw6IHRleHQoInBob3RvVXJsIiks'] ]);
+applyFixes('server/auto-migrate.ts', [ ['ICAgIHsgbmFtZTogJ3Nob3Bfc2V0dGluZ3MuImFkZHJlc3NDb21wbGVtZW50IicsIHNxbDogYEFMVEVSIFRBQkxFIHNob3Bfc2V0dGluZ3MgQUREIENPTFVNTiBJRiBOT1QgRVhJU1RTICJhZGRyZXNzQ29tcGxlbWVudCIgVkFSQ0hBUigxMDApYCB9LAogICAgeyBuYW1lOiAnc2hvcF9zZXR0aW5ncy4iZ29vZ2xlTWFwc1VybCInLCBzcWw6IGBBTFRFUiBUQUJMRSBzaG9wX3NldHRpbmdzIEFERCBDT0xVTU4gSUYgTk9UIEVYSVNUUyAiZ29vZ2xlTWFwc1VybCIgVEVYVGAgfSwKICAgIHsgbmFtZTogJ3Nob3Bfc2V0dGluZ3MuInBpeEtleSInLCAgICAgc3FsOiBgQUxURVIgVEFCTEUgc2hvcF9zZXR0aW5ncyBBREQgQ09MVU1OIElGIE5PVCBFWElTVFMgInBpeEtleSIgVkFSQ0hBUigyNTUpYCB9LAogICAgLy8gUGl4IGRpcmV0byAoc2VtIEFzYWFzKSAtIGNsaWVudGUgcGFnYSBuYSBwcm9wcmlhIGNoYXZlIFBpeCBkYSBiYXJiZWFyaWEsCiAgICAvLyBjb25maXJtYWNhbyBlIG1hbnVhbCBwZWxvIGJhcmJlaXJvIChuYW8gaGEgd2ViaG9vayBhdXRvbWF0aWNvIG5lc3NlIGNhc28pLgogICAgeyBuYW1lOiAib25saW5lX3BheW1lbnRfYmlsbGluZy5QSVhfRElSRVRPIiwgc3FsOiBgRE8gJGRvJCBCRUdJTiBBTFRFUiBUWVBFIG9ubGluZV9wYXltZW50X2JpbGxpbmcgQUREIFZBTFVFIElGIE5PVCBFWElTVFMgJ1BJWF9ESVJFVE8nOyBFWENFUFRJT04gV0hFTiBvdGhlcnMgVEhFTiBudWxsOyBFTkQgJGRvJGAgfSw=', 'ICAgIHsgbmFtZTogJ3Nob3Bfc2V0dGluZ3MuImFkZHJlc3NDb21wbGVtZW50IicsIHNxbDogYEFMVEVSIFRBQkxFIHNob3Bfc2V0dGluZ3MgQUREIENPTFVNTiBJRiBOT1QgRVhJU1RTICJhZGRyZXNzQ29tcGxlbWVudCIgVkFSQ0hBUigxMDApYCB9LAogICAgeyBuYW1lOiAnc2hvcF9zZXR0aW5ncy4iZ29vZ2xlTWFwc1VybCInLCBzcWw6IGBBTFRFUiBUQUJMRSBzaG9wX3NldHRpbmdzIEFERCBDT0xVTU4gSUYgTk9UIEVYSVNUUyAiZ29vZ2xlTWFwc1VybCIgVEVYVGAgfSwKICAgIHsgbmFtZTogJ3Nob3Bfc2V0dGluZ3MuInBpeEtleSInLCAgICAgc3FsOiBgQUxURVIgVEFCTEUgc2hvcF9zZXR0aW5ncyBBREQgQ09MVU1OIElGIE5PVCBFWElTVFMgInBpeEtleSIgVkFSQ0hBUigyNTUpYCB9LAogICAgLy8gVGVsZWZvbmUgZGVpeG91IGRlIHNlciBvYnJpZ2F0b3JpbyBlbSBjbGllbnRzIC0gbG9naW4gdmlhIEdvb2dsZSAoT0F1dGgKICAgIC8vIHB1YmxpY28gZG8gY2xpZW50ZSBmaW5hbCkgbmFvIGNvbGV0YSB0ZWxlZm9uZSwgZSBvIGZsdXhvIGRlIGFnZW5kYW1lbnRvCiAgICAvLyBlc3RhIGRlaXhhbmRvIGRlIGV4aWdpciBjYWRhc3RybyBjb21wbGV0byBhbnRlY2lwYWRvIChidWcgcmVhbCBlbQogICAgLy8gcHJvZHVjYW86IGNsaWVudGUgQnJ1bmEgQmF0aXN0YSBuYW8gY29uc2VndWl1IGxvZ2FyIHZpYSBHb29nbGUgcG9ycXVlCiAgICAvLyBvIElOU0VSVCBmYWxoYXZhIHBvciB0ZWxlZm9uZSBhdXNlbnRlKS4KICAgIHsgbmFtZTogJ2NsaWVudHMuInBob25lIiBudWxsYWJsZScsIHNxbDogYEFMVEVSIFRBQkxFIGNsaWVudHMgQUxURVIgQ09MVU1OICJwaG9uZSIgRFJPUCBOT1QgTlVMTGAgfSwKICAgIC8vIFBpeCBkaXJldG8gKHNlbSBBc2FhcykgLSBjbGllbnRlIHBhZ2EgbmEgcHJvcHJpYSBjaGF2ZSBQaXggZGEgYmFyYmVhcmlhLAogICAgLy8gY29uZmlybWFjYW8gZSBtYW51YWwgcGVsbyBiYXJiZWlybyAobmFvIGhhIHdlYmhvb2sgYXV0b21hdGljbyBuZXNzZSBjYXNvKS4KICAgIHsgbmFtZTogIm9ubGluZV9wYXltZW50X2JpbGxpbmcuUElYX0RJUkVUTyIsIHNxbDogYERPICRkbyQgQkVHSU4gQUxURVIgVFlQRSBvbmxpbmVfcGF5bWVudF9iaWxsaW5nIEFERCBWQUxVRSBJRiBOT1QgRVhJU1RTICdQSVhfRElSRVRPJzsgRVhDRVBUSU9OIFdIRU4gb3RoZXJzIFRIRU4gbnVsbDsgRU5EICRkbyRgIH0s'] ]);
+
+console.log('');
+console.log("Confira com 'git diff --stat' e depois:");
+console.log('  git add drizzle/schema.ts server/auto-migrate.ts');
+console.log('  git commit -m "fix: telefone nao e mais obrigatorio em clients"');
+console.log('  git push');
