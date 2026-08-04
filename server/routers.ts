@@ -2439,55 +2439,78 @@ export const appRouter = router({
           attempt++;
           slug = `${baseSlug}-${attempt}`;
         }
-        // 3. Criar tenant
-        const trialEndsAt = new Date();
-        trialEndsAt.setDate(trialEndsAt.getDate() + 14); // 14 dias de trial
-        const tenantId = await db.createTenant({
-          slug,
-          name: input.shop.name,
-          phone: input.shop.phone,
-          cnpj: input.shop.cnpj,
-          address: input.shop.address,
-          cep: input.shop.cep,
-          addressNumber: input.shop.addressNumber,
-          addressComplement: input.shop.addressComplement,
-          city: input.shop.city,
-          state: input.shop.state,
-          plan: input.plan,
-          status: "trial",
-          trialEndsAt,
-        });
-        // 4. Criar configurações da loja
-        await db.createShopSettingsForTenant(tenantId, {
-          shopName: input.shop.name,
-          phone: input.shop.phone,
-          cnpj: input.shop.cnpj,
-          instagram: input.shop.instagram,
-          cep: input.shop.cep,
-          address: input.shop.address,
-          addressNumber: input.shop.addressNumber,
-          addressComplement: input.shop.addressComplement,
-        });
-        // 5. Criar barbeiro admin (super_admin)
-        const passwordHash = await hashPassword(input.admin.password);
-        const barberId = await db.createBarber({
-          tenantId,
-          name: input.admin.name,
-          email: input.admin.email,
-          passwordHash,
-          role: "super_admin",
-          isActive: true,
-        });
-        // 6. Criar horários de trabalho para o admin (usando os dias selecionados)
-        for (const dayOfWeek of input.schedule.workDays) {
-          await db.upsertWorkingHours(barberId, dayOfWeek, {
-            startTime: input.schedule.openTime,
-            endTime: input.schedule.closeTime,
-            lunchStart: input.schedule.lunchStart ?? null,
-            lunchEnd: input.schedule.lunchEnd ?? null,
-            isWorking: true,
+        // 3-6. Criar tenant, config da loja, barbeiro admin e horarios de
+        // trabalho. Envolvido em try/catch com limpeza manual: se qualquer
+        // etapa falhar no meio do caminho (timeout, conexao caindo, etc),
+        // desfaz tudo que ja foi criado antes de propagar o erro - assim o
+        // cliente pode tentar de novo do zero, em vez de ficar com uma conta
+        // pela metade que trava no erro de "email ja cadastrado" em toda
+        // nova tentativa (bug real que afetou um cliente em producao).
+        let tenantId: number | undefined;
+        let barberId: number | undefined;
+        try {
+          // 3. Criar tenant
+          const trialEndsAt = new Date();
+          trialEndsAt.setDate(trialEndsAt.getDate() + 14); // 14 dias de trial
+          tenantId = await db.createTenant({
+            slug,
+            name: input.shop.name,
+            phone: input.shop.phone,
+            cnpj: input.shop.cnpj,
+            address: input.shop.address,
+            cep: input.shop.cep,
+            addressNumber: input.shop.addressNumber,
+            addressComplement: input.shop.addressComplement,
+            city: input.shop.city,
+            state: input.shop.state,
+            plan: input.plan,
+            status: "trial",
+            trialEndsAt,
           });
+          // 4. Criar configurações da loja
+          await db.createShopSettingsForTenant(tenantId, {
+            shopName: input.shop.name,
+            phone: input.shop.phone,
+            cnpj: input.shop.cnpj,
+            instagram: input.shop.instagram,
+            cep: input.shop.cep,
+            address: input.shop.address,
+            addressNumber: input.shop.addressNumber,
+            addressComplement: input.shop.addressComplement,
+          });
+          // 5. Criar barbeiro admin (super_admin)
+          const passwordHash = await hashPassword(input.admin.password);
+          barberId = await db.createBarber({
+            tenantId,
+            name: input.admin.name,
+            email: input.admin.email,
+            passwordHash,
+            role: "super_admin",
+            isActive: true,
+          });
+          // 6. Criar horários de trabalho para o admin (usando os dias selecionados)
+          for (const dayOfWeek of input.schedule.workDays) {
+            await db.upsertWorkingHours(barberId, dayOfWeek, {
+              startTime: input.schedule.openTime,
+              endTime: input.schedule.closeTime,
+              lunchStart: input.schedule.lunchStart ?? null,
+              lunchEnd: input.schedule.lunchEnd ?? null,
+              isWorking: true,
+            });
+          }
+        } catch (err: any) {
+          console.error("[onboarding.register] Falha no meio do cadastro, desfazendo criacao parcial:", err.message);
+          try {
+            if (barberId) await db.rawQuery(`DELETE FROM working_hours WHERE "barberId" = $1`, [barberId]);
+            if (barberId) await db.rawQuery(`DELETE FROM barbers WHERE id = $1`, [barberId]);
+            if (tenantId) await db.rawQuery(`DELETE FROM shop_settings WHERE "tenantId" = $1`, [tenantId]);
+            if (tenantId) await db.rawQuery(`DELETE FROM tenants WHERE id = $1`, [tenantId]);
+          } catch (cleanupErr: any) {
+            console.error("[onboarding.register] Falha ao desfazer criacao parcial:", cleanupErr.message);
+          }
+          throw new Error("Erro ao criar barbearia. Tente novamente.");
         }
+
         // 7. Enviar e-mail de boas-vindas ao novo dono da barbearia
         sendWelcomeEmail({
           barberName: input.admin.name,
