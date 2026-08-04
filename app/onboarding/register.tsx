@@ -16,6 +16,7 @@ import {
 import MaskInput, { Masks } from "react-native-mask-input";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
+import { TimePickerModal } from "@/components/time-picker-modal";
 import { trpc } from "@/lib/trpc";
 import { useBarberAuth } from "@/lib/auth-context";
 import * as Haptics from "expo-haptics";
@@ -95,6 +96,7 @@ export default function OnboardingRegisterScreen() {
     lunchEnd: "13:00",
     hasLunch: true,
   });
+  const [timePickerField, setTimePickerField] = useState<"openTime" | "closeTime" | "lunchStart" | "lunchEnd" | null>(null);
   const [step4, setStep4] = useState<Step4Data>({
     adminName: "",
     adminEmail: "",
@@ -444,10 +446,10 @@ export default function OnboardingRegisterScreen() {
 
               <View style={styles.row}>
                 <View style={{ flex: 1, marginRight: 8 }}>
-                  <Field label="Abertura" value={step3.openTime} onChangeText={(v) => setStep3((p) => ({ ...p, openTime: v }))} placeholder="09:00" keyboard="numeric" />
+                  <TimeField label="Abertura" value={step3.openTime} onPress={() => setTimePickerField("openTime")} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Field label="Fechamento" value={step3.closeTime} onChangeText={(v) => setStep3((p) => ({ ...p, closeTime: v }))} placeholder="19:00" keyboard="numeric" />
+                  <TimeField label="Fechamento" value={step3.closeTime} onPress={() => setTimePickerField("closeTime")} />
                 </View>
               </View>
 
@@ -468,10 +470,10 @@ export default function OnboardingRegisterScreen() {
               {step3.hasLunch && (
                 <View style={styles.row}>
                   <View style={{ flex: 1, marginRight: 8 }}>
-                    <Field label="Início almoço" value={step3.lunchStart} onChangeText={(v) => setStep3((p) => ({ ...p, lunchStart: v }))} placeholder="12:00" keyboard="numeric" />
+                    <TimeField label="Início almoço" value={step3.lunchStart} onPress={() => setTimePickerField("lunchStart")} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Field label="Fim almoço" value={step3.lunchEnd} onChangeText={(v) => setStep3((p) => ({ ...p, lunchEnd: v }))} placeholder="13:00" keyboard="numeric" />
+                    <TimeField label="Fim almoço" value={step3.lunchEnd} onPress={() => setTimePickerField("lunchEnd")} />
                   </View>
                 </View>
               )}
@@ -604,6 +606,22 @@ export default function OnboardingRegisterScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <TimePickerModal
+        visible={timePickerField !== null}
+        title={
+          timePickerField === "openTime" ? "Horário de Abertura" :
+          timePickerField === "closeTime" ? "Horário de Fechamento" :
+          timePickerField === "lunchStart" ? "Início do Almoço" :
+          "Fim do Almoço"
+        }
+        value={timePickerField ? step3[timePickerField] : "09:00"}
+        onConfirm={(time) => {
+          if (timePickerField) setStep3((p) => ({ ...p, [timePickerField]: time }));
+          setTimePickerField(null);
+        }}
+        onCancel={() => setTimePickerField(null)}
+      />
     </ScreenContainer>
   );
 }
@@ -666,6 +684,25 @@ function Field({
         autoCorrect={false}
         returnKeyType="next"
       />
+    </View>
+  );
+}
+
+function TimeField({
+  label,
+  value,
+  onPress,
+}: {
+  label: string;
+  value: string;
+  onPress: () => void;
+}) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <Pressable style={styles.input} onPress={onPress}>
+        <Text style={{ color: "#EDEDED", fontSize: 15 }}>{value}</Text>
+      </Pressable>
     </View>
   );
 }
