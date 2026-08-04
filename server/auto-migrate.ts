@@ -859,6 +859,12 @@ export async function runAutoMigrate(db: any): Promise<void> {
     { name: 'shop_settings."addressComplement"', sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "addressComplement" VARCHAR(100)` },
     { name: 'shop_settings."googleMapsUrl"', sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "googleMapsUrl" TEXT` },
     { name: 'shop_settings."pixKey"',     sql: `ALTER TABLE shop_settings ADD COLUMN IF NOT EXISTS "pixKey" VARCHAR(255)` },
+    // Telefone deixou de ser obrigatorio em clients - login via Google (OAuth
+    // publico do cliente final) nao coleta telefone, e o fluxo de agendamento
+    // esta deixando de exigir cadastro completo antecipado (bug real em
+    // producao: cliente Bruna Batista nao conseguiu logar via Google porque
+    // o INSERT falhava por telefone ausente).
+    { name: 'clients."phone" nullable', sql: `ALTER TABLE clients ALTER COLUMN "phone" DROP NOT NULL` },
     // Pix direto (sem Asaas) - cliente paga na propria chave Pix da barbearia,
     // confirmacao e manual pelo barbeiro (nao ha webhook automatico nesse caso).
     { name: "online_payment_billing.PIX_DIRETO", sql: `DO $do$ BEGIN ALTER TYPE online_payment_billing ADD VALUE IF NOT EXISTS 'PIX_DIRETO'; EXCEPTION WHEN others THEN null; END $do$` },
