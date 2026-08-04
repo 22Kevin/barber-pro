@@ -2376,10 +2376,10 @@ export const appRouter = router({
         }),
         schedule: z.object({
           workDays: z.array(z.number().min(0).max(6)),
-          openTime: z.string(),
-          closeTime: z.string(),
-          lunchStart: z.string().optional(),
-          lunchEnd: z.string().optional(),
+          openTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Horário de abertura inválido (use HH:MM)"),
+          closeTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Horário de fechamento inválido (use HH:MM)"),
+          lunchStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Horário de início do almoço inválido (use HH:MM)").optional(),
+          lunchEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Horário de fim do almoço inválido (use HH:MM)").optional(),
         }),
         admin: z.object({
           name: z.string().min(2, "Nome é obrigatório"),
