@@ -1481,7 +1481,6 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         <!-- Resumo dos serviços extras selecionados -->
         <div id="selected-summary" style="display:none" class="selected-summary"></div>
 
-        ${!loggedClient ? `<div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted);text-align:center;padding:12px;margin-top:16px;">Você precisará fazer login ou criar uma conta gratuita para confirmar o agendamento.</div>` : ""}
         <div class="booking-nav">
           <button class="btn-next-step" id="btn-step1-next" onclick="goToStep(2)" style="flex:1">Próximo →</button>
         </div>
@@ -1524,11 +1523,15 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
         <div class="booking-summary" id="booking-summary"></div>
         ${loggedClient
           ? ``
-          : `<div class="login-banner">💡 <a href="/pub/${slug}/login?redirect=agendar">Faça login</a> ou <a href="/pub/${slug}/cadastro?redirect=agendar">crie uma conta</a> para confirmar.</div>`
+          : `<div id="guest-form" style="margin-bottom:16px">
+              <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Informe seus dados para confirmar (ou <a href="/pub/${slug}/login?redirect=agendar" style="color:var(--primary);font-weight:700">faça login</a> se já tiver conta):</div>
+              <input type="text" id="guest-name" placeholder="Seu nome completo" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--text);margin-bottom:10px" />
+              <input type="tel" id="guest-phone" placeholder="Seu WhatsApp (ex: 16999237443)" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--text)" />
+            </div>`
         }
-        <button id="confirm-btn" ${loggedClient ? `` : `disabled`}
-          style="width:100%;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:800;padding:16px;border-radius:14px;border:none;cursor:${loggedClient ? `pointer` : `not-allowed`};opacity:${loggedClient ? `1` : `0.5`}">
-          ${loggedClient ? `Confirmar Agendamento` : `Faça login para confirmar`}
+        <button id="confirm-btn"
+          style="width:100%;background:var(--primary);color:#0A0A0A;font-size:16px;font-weight:800;padding:16px;border-radius:14px;border:none;cursor:pointer">
+          Confirmar Agendamento
         </button>
         <div id="success-msg" style="display:none;margin-top:16px" class="msg-success"></div>
         <div id="error-msg" style="display:none;margin-top:12px" class="msg-error"></div>
@@ -1998,15 +2001,7 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
           '</div>';
 
         var btn = document.getElementById('confirm-btn');
-        if (btn && !LOGGED_CLIENT) {
-          btn.disabled = false;
-          btn.style.opacity = '1';
-          btn.style.cursor = 'pointer';
-          btn.textContent = 'Faça login para confirmar';
-          btn.onclick = function() {
-            window.location.href = '/pub/' + SLUG + '/login?redirect=agendar&service=' + selectedService.id + '&date=' + selectedDate + '&barber=' + (selectedBarber ? selectedBarber.id : '') + '&start=' + selectedSlot.startTime + '&end=' + selectedSlot.endTime;
-          };
-        } else if (btn && LOGGED_CLIENT) {
+        if (btn) {
           btn.disabled = false;
           btn.style.opacity = '1';
           btn.style.cursor = 'pointer';
@@ -2017,10 +2012,22 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
 
       // ─── Confirmar Agendamento ────────────────────────────────────────────────
       async function confirmBooking() {
-        if (!LOGGED_CLIENT || !selectedSlot || !selectedService) return;
+        if (!selectedSlot || !selectedService) return;
         var btn = document.getElementById('confirm-btn');
         var errorMsg = document.getElementById('error-msg');
         var successMsg = document.getElementById('success-msg');
+        var guestName = '', guestPhone = '';
+        if (!LOGGED_CLIENT) {
+          var nameEl = document.getElementById('guest-name');
+          var phoneEl = document.getElementById('guest-phone');
+          guestName = nameEl ? nameEl.value.trim() : '';
+          guestPhone = phoneEl ? phoneEl.value.replace(/\D/g, '') : '';
+          if (!guestName || !guestPhone || guestPhone.length < 10) {
+            errorMsg.textContent = 'Preencha seu nome e um telefone/WhatsApp válido para confirmar.';
+            errorMsg.style.display = 'block';
+            return;
+          }
+        }
         btn.disabled = true;
         btn.textContent = 'Confirmando...';
         errorMsg.style.display = 'none';
@@ -2031,7 +2038,9 @@ async function renderBookingPage(slug: string, res: Response, req?: Request) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               slug: SLUG,
-              clientId: LOGGED_CLIENT.id,
+              clientId: LOGGED_CLIENT ? LOGGED_CLIENT.id : undefined,
+              guestName: LOGGED_CLIENT ? undefined : guestName,
+              guestPhone: LOGGED_CLIENT ? undefined : guestPhone,
               barberId: parseInt(barberId),
               serviceId: parseInt(selectedService.id),
               date: selectedDate,
@@ -4681,7 +4690,26 @@ export function registerPublicRoutes(app: Express): void {
   // POST /pub-api/book  { slug, clientId, barberId, serviceId, date, startTime, endTime }
   app.post("/pub-api/book", async (req: Request, res: Response) => {
     try {
-      const { slug, clientId, barberId, serviceId, date, startTime, endTime } = req.body;
+      const { slug, barberId, serviceId, date, startTime, endTime, guestName, guestPhone } = req.body;
+      let { clientId } = req.body;
+      // Agendamento sem login: cliente informou nome + telefone diretamente
+      // (em vez de estar logado via sessao). Busca cliente existente pelo
+      // telefone (reaproveita cadastro/historico) ou cria um novo.
+      if (!clientId && guestName && guestPhone && slug) {
+        const tenantForGuest = await db.getTenantBySlug(slug);
+        if (!tenantForGuest) { res.status(404).json({ error: "Barbearia não encontrada" }); return; }
+        const existingByPhone = await db.getClientByPhone(tenantForGuest.id, guestPhone);
+        if (existingByPhone) {
+          clientId = existingByPhone.id;
+        } else {
+          clientId = await db.createClient({
+            name: guestName,
+            phone: guestPhone,
+            tenantId: tenantForGuest.id,
+            isActive: true,
+          } as any);
+        }
+      }
       if (!clientId || !barberId || !serviceId || !date || !startTime || !endTime) {
         res.status(400).json({ error: "Dados incompletos para o agendamento" }); return;
       }

@@ -421,6 +421,20 @@ export async function getClientById(id: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+// Busca cliente existente pelo telefone (comparando so os digitos, ignorando
+// formatacao como parenteses/traco) dentro do mesmo tenant. Usado no fluxo de
+// agendamento sem login: se o telefone digitado ja pertencer a um cliente
+// existente, reaproveita o cadastro (historico, pontos de fidelidade) em vez
+// de criar um novo.
+export async function getClientByPhone(tenantId: number, phone: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return undefined;
+  const all = await db.select().from(clients).where(eq(clients.tenantId, tenantId));
+  return all.find((c) => (c.phone ?? "").replace(/\D/g, "") === digits);
+}
+
 export async function createClient(data: InsertClient) {
   return runWithTenant(data.tenantId, async (db) => {
     const result = await db.insert(clients).values(data).returning();
