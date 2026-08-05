@@ -1660,6 +1660,24 @@ export async function getAvailableSlots(barberId: number, date: string, duration
     .where(and(eq(appointments.barberId, barberId), eq(appointments.date, date), sql`${appointments.status} NOT IN ('cancelled', 'no_show')` as any));
   const blocked = await db.select().from(blockedSlots)
     .where(and(eq(blockedSlots.barberId, barberId), eq(blockedSlots.date, date)));
+
+  // Intervalo entre horários disponíveis: em vez de um passo fixo de 15min,
+  // usa a duração do MENOR serviço ativo cadastrado na barbearia. Ex: se o
+  // menor serviço dura 30min, os horários saem de 30 em 30 (09:00, 09:30...)
+  // em vez de oferecer opções de 15 em 15 que na prática nunca cabem um
+  // atendimento completo. Cai pra 15min como fallback se não achar tenant
+  // ou nenhum serviço ativo (não deveria acontecer, mas evita quebrar).
+  let stepMinutes = 15;
+  const barberRow = await db.select({ tenantId: barbers.tenantId }).from(barbers).where(eq(barbers.id, barberId)).limit(1);
+  const tenantId = barberRow[0]?.tenantId ?? null;
+  if (tenantId != null) {
+    const minDurationRow = await db.select({ minDuration: sql<number>`MIN("durationMinutes")` })
+      .from(services)
+      .where(and(eq(services.tenantId, tenantId), eq(services.isActive, true)));
+    const minDuration = minDurationRow[0]?.minDuration;
+    if (minDuration && minDuration > 0) stepMinutes = minDuration;
+  }
+
   const toMinutes = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
   const fromMinutes = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   const startMin = toMinutes(hours.startTime);
@@ -1693,7 +1711,7 @@ export async function getAvailableSlots(barberId: number, date: string, duration
     if (!conflict && cursor >= minStartMinute) {
       slots.push({ startTime: fromMinutes(cursor), endTime: fromMinutes(slotEnd) });
     }
-    cursor += 15;
+    cursor += stepMinutes;
   }
   return slots;
 }
