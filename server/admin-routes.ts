@@ -8500,6 +8500,28 @@ export function registerAdminRoutes(app: Express): void {
     return url.toString();
   }
 
+  // extractRawAuthCode — extrai o parametro "code" da query string SEM passar
+  // pelo parser padrao do Express (req.query), que usa a lib "qs". O "qs" (e
+  // o URLSearchParams nativo, que tem o mesmo comportamento) decodifica "+"
+  // como espaco, seguindo a convencao de formularios (application/x-www-form-
+  // urlencoded). O problema: codigos de autorizacao do Google as vezes contem
+  // um "+" literal, e o redirect do Google nao faz o percent-encode desse
+  // caractere na URL. Resultado: o "+" vira espaco, o code fica corrompido, e
+  // a troca de token falha com "invalid_grant: Malformed auth code" (bug real
+  // visto em producao em 04/08/2026). decodeURIComponent NUNCA trata "+" como
+  // espaco, entao extrair na mao com regex + decodeURIComponent evita o problema
+  // tanto para o "+" cru quanto para o caso (correto) de vir como %2B.
+  function extractRawAuthCode(req: Request): string | null {
+    const queryString = req.originalUrl.split("?")[1] ?? "";
+    const match = queryString.match(/(?:^|&)code=([^&]*)/);
+    if (!match) return null;
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return null;
+    }
+  }
+
   async function exchangeGoogleCode(code: string, redirectUri: string): Promise<{ email: string; name: string; sub: string; picture?: string }> {
     // Trocar code por access_token
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -8537,7 +8559,7 @@ export function registerAdminRoutes(app: Express): void {
   // GET /admin/google-signup-callback — recebe o code e redireciona para landing com dados pré-preenchidos
   app.get("/admin/google-signup-callback", async (req: Request, res: Response) => {
     try {
-      const code = req.query.code as string;
+      const code = extractRawAuthCode(req);
       const state = req.query.state as string;
       if (!code) return res.redirect("/?signup_error=1");
       const baseUrl = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.host}`;
@@ -8574,7 +8596,7 @@ export function registerAdminRoutes(app: Express): void {
   // GET /admin/google-callback — recebe o code do OAuth e faz login
   app.get("/admin/google-callback", async (req: Request, res: Response) => {
     try {
-      const code = req.query.code as string;
+      const code = extractRawAuthCode(req);
       if (!code) return res.redirect("/admin/login?error=1");
       const baseUrl = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.host}`;
       const redirectUri = `${baseUrl}/admin/google-callback`;
@@ -8629,7 +8651,7 @@ export function registerAdminRoutes(app: Express): void {
   app.get("/admin/google-calendar/callback", requireAdminAuth, async (req: Request, res: Response) => {
     try {
       const session = (req as any).adminSession as { barberId: number };
-      const code = req.query.code as string;
+      const code = extractRawAuthCode(req);
       const errorParam = req.query.error as string | undefined;
       if (errorParam) {
         // Usuário cancelou o consentimento no Google
