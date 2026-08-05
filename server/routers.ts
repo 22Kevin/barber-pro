@@ -3555,11 +3555,13 @@ export const appRouter = router({
         const newPrice = planPriceMap[input.newPlan];
         const newLabel = planLabelMap[input.newPlan];
 
-        // Buscar dados do tenant
+        // Buscar dados do tenant (+ e-mail do dono, usado só se precisarmos
+        // criar um customer novo no Asaas — ver comentário abaixo)
         const tenantRows = await dbConn.execute(sql`
-          SELECT "barberproSubscriptionId", "barberproAsaasCustomerId",
-                 "asaasMobilePhone", phone, name, cnpj
-          FROM tenants WHERE id = ${input.tenantId} LIMIT 1
+          SELECT t."barberproSubscriptionId", t."barberproAsaasCustomerId",
+                 t."asaasMobilePhone", t.phone, t.name, t.cnpj,
+                 (SELECT email FROM barbers WHERE "tenantId" = t.id AND role = 'super_admin' AND "isActive" = true LIMIT 1) AS "ownerEmail"
+          FROM tenants t WHERE t.id = ${input.tenantId} LIMIT 1
         `);
         const tenantData = ((tenantRows as any).rows as any[])[0];
         if (!tenantData) throw new Error('Tenant não encontrado.');
@@ -3569,13 +3571,21 @@ export const appRouter = router({
           try { await cancelAsaasSubscription(tenantData.barberproSubscriptionId); } catch {}
         }
 
-        // 2. Garantir customer Asaas
-        const asaasCustomerId = await ensureAsaasCustomer({
-          name: tenantData.name ?? 'Cliente',
-          cpfCnpj: tenantData.cnpj ?? '',
-          mobilePhone: (tenantData.asaasMobilePhone ?? tenantData.phone ?? '').replace(/\D/g, ''),
-          tenantId: input.tenantId,
-        });
+        // 2. Garantir customer Asaas — reaproveita o customer já existente
+        // (salvo desde a assinatura original) sempre que possível. Só cria um
+        // novo via ensureAsaasRootCustomer se por algum motivo o tenant ainda
+        // não tiver um (ex: nunca chegou a ter assinatura paga antes).
+        // Bug anterior: chamava "ensureAsaasCustomer", função que não existe
+        // (o nome certo é "ensureAsaasRootCustomer") — quebrava 100% dos
+        // upgrades de plano com ReferenceError.
+        const asaasCustomerId = tenantData.barberproAsaasCustomerId
+          ?? await ensureAsaasRootCustomer({
+            name: tenantData.name ?? 'Cliente',
+            email: tenantData.ownerEmail ?? '',
+            cpfCnpj: tenantData.cnpj ?? '',
+            mobilePhone: (tenantData.asaasMobilePhone ?? tenantData.phone ?? '').replace(/\D/g, ''),
+            tenantId: input.tenantId,
+          });
 
         // 3. Criar nova assinatura
         const today = new Date();

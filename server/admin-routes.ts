@@ -9755,13 +9755,21 @@ document.addEventListener('input', function(e) {
         }
       }
 
-      // 2. Garantir que o customer Asaas existe
-      const asaasCustomerId = await ensureAsaasCustomer({
-        name: (await db.getBarberById(session.barberId) as any)?.name ?? tenantData.name,
-        cpfCnpj: tenantData.cnpj ?? '',
-        mobilePhone: (tenantData.asaasMobilePhone ?? tenantData.phone ?? '').replace(/\D/g, ''),
-        tenantId: barber.tenantId,
-      });
+      // 2. Garantir que o customer Asaas existe — reaproveita o customer ja
+      // existente sempre que possivel. So cria um novo via
+      // ensureAsaasRootCustomer se o tenant ainda nao tiver um. Bug anterior:
+      // chamava "ensureAsaasCustomer", funcao que nao existe (o nome certo e
+      // "ensureAsaasRootCustomer") — quebrava 100% dos upgrades de plano pelo
+      // painel web com ReferenceError.
+      const loggedBarber = await db.getBarberById(session.barberId) as any;
+      const asaasCustomerId = tenantData.barberproAsaasCustomerId
+        ?? await ensureAsaasRootCustomer({
+          name: loggedBarber?.name ?? tenantData.name,
+          email: loggedBarber?.email ?? '',
+          cpfCnpj: tenantData.cnpj ?? '',
+          mobilePhone: (tenantData.asaasMobilePhone ?? tenantData.phone ?? '').replace(/\D/g, ''),
+          tenantId: barber.tenantId,
+        });
 
       // 3. Criar nova assinatura com o plano selecionado
       const today = new Date();
