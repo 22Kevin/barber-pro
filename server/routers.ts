@@ -258,6 +258,9 @@ export const appRouter = router({
     list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ ctx, input }) => db.getAllBarbers(input?.tenantId ?? ctx.barber?.tenantId)),
     listAll: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ ctx, input }) => db.getAllBarbersIncludingInactive(input?.tenantId ?? ctx.barber?.tenantId)),
     reactivate: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      if (ctx.barber.role !== "super_admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o administrador pode reativar membros da equipe." });
+      }
       await assertTenantOwnership(ctx, { kind: "direct", table: "barbers" }, input.id);
       return db.reactivateBarber(input.id);
     }),
@@ -276,7 +279,13 @@ export const appRouter = router({
     }),
     create: activeBarberProcedure
       .input(z.object({ name: z.string().min(2), email: z.string().email().optional(), phone: z.string().optional(), password: z.string().min(6), role: z.enum(["super_admin", "barber", "receptionist"]).default("barber"), specialties: z.string().optional(), tenantId: z.number().optional().nullable(), permissions: z.array(z.string()).optional().nullable() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        // Só o dono (super_admin) pode criar novos barbeiros/contas — sem essa
+        // checagem, qualquer usuário autenticado (até um recepcionista) podia
+        // criar uma conta nova já com role "super_admin" pra si mesmo.
+        if (ctx.barber.role !== "super_admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o administrador pode adicionar novos membros à equipe." });
+        }
         // Validação de limite de barbeiros por plano
         if (input.tenantId != null) {
           const tenant = await db.getTenantById(input.tenantId);
@@ -301,9 +310,24 @@ export const appRouter = router({
     update: activeBarberProcedure
       .input(z.object({ id: z.number(), name: z.string().min(2).optional(), email: z.string().email().optional().nullable(), phone: z.string().optional().nullable(), photoUrl: z.string().optional().nullable(), role: z.enum(["super_admin", "barber", "receptionist"]).optional(), specialties: z.string().optional().nullable(), isActive: z.boolean().optional(), password: z.string().min(6).optional(), permissions: z.array(z.string()).optional().nullable() }))
       .mutation(async ({ input, ctx }) => {
-        const { id, password, permissions, ...data } = input;
+        const { id, password, permissions, role, ...data } = input;
         await assertTenantOwnership(ctx, { kind: "direct", table: "barbers" }, id);
+        // Regra: dono (super_admin) pode editar qualquer barbeiro da própria
+        // barbearia, incluindo cargo e permissões. Qualquer outro barbeiro
+        // só pode editar o PRÓPRIO perfil (nome, foto, telefone, senha) — e
+        // nunca o próprio cargo/permissões, senão seria auto-promoção.
+        const isOwner = ctx.barber.role === "super_admin";
+        const isSelf = ctx.barber.barberId === id;
+        if (!isOwner) {
+          if (!isSelf) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Você só pode editar seu próprio perfil." });
+          }
+          if (role !== undefined || permissions !== undefined) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Você não tem permissão para alterar cargo ou permissões." });
+          }
+        }
         const updateData: Record<string, unknown> = { ...data };
+        if (role !== undefined) updateData.role = role;
         if (password) updateData.passwordHash = await hashPassword(password);
         if (permissions !== undefined) updateData.permissions = permissions ? JSON.stringify(permissions) : null;
         await db.updateBarber(id, updateData as any);
@@ -314,6 +338,9 @@ export const appRouter = router({
         return { success: true };
       }),
     delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      if (ctx.barber.role !== "super_admin") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Apenas o administrador pode remover membros da equipe." });
+      }
       await assertTenantOwnership(ctx, { kind: "direct", table: "barbers" }, input.id);
       return db.deleteBarber(input.id);
     }),
