@@ -150,3 +150,79 @@ const requireActiveSubscription = t.middleware(async (opts) => {
 export const activeBarberProcedure = t.procedure
   .use(requireBarber)
   .use(requireActiveSubscription);
+
+/**
+ * assertTenantOwnership — barreira de isolamento multi-tenant para mutations do
+ * tRPC que recebem um `id` e alteram/removem um recurso já existente.
+ *
+ * PROBLEMA QUE RESOLVE: `activeBarberProcedure`/`barberProcedure` só provam que o
+ * JWT é válido e pertence a ALGUM barbeiro — nunca que o recurso apontado pelo
+ * `id` do input pertence ao MESMO tenant desse barbeiro. Sem essa checagem,
+ * qualquer barbeiro autenticado poderia alterar/apagar dados de OUTRA barbearia
+ * apenas adivinhando/iterando ids sequenciais (broken access control / IDOR).
+ *
+ * Uso: chamar no início da mutation, antes de qualquer db.updateX/deleteX,
+ * passando a estratégia de resolução de tenant certa pra tabela do recurso:
+ *
+ *   await assertTenantOwnership(ctx, { kind: "direct", table: "services" }, input.id);
+ *
+ * Lança TRPCError:
+ *  - FORBIDDEN             tenantId do chamador não bate com o do recurso (ou
+ *                          o token não tem tenantId)
+ *  - NOT_FOUND             o recurso não existe
+ *  - INTERNAL_SERVER_ERROR o banco não pôde ser consultado — fail-closed
+ *                          (bloqueia por segurança; diferente do
+ *                          requireActiveSubscription, que é fail-open por ser
+ *                          checagem de billing, não de permissão)
+ */
+export type OwnershipStrategy =
+  | { kind: "direct"; table: "barbers" | "services" | "products" | "expenses" | "coupons" | "loyalty_rewards" }
+  | { kind: "viaBarber"; table: "blocked_slots" | "appointments" }
+  | { kind: "viaMedia" };
+
+export async function assertTenantOwnership(
+  ctx: { barber?: BarberJwtPayload | null },
+  strategy: OwnershipStrategy,
+  id: number
+): Promise<void> {
+  const callerTenantId = ctx.barber?.tenantId ?? null;
+
+  if (callerTenantId == null) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Tenant não identificado." });
+  }
+  if (!Number.isFinite(id)) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Id inválido." });
+  }
+
+  let resourceTenantId: number | null | undefined;
+
+  try {
+    const db = await import("../db.js");
+
+    if (strategy.kind === "direct") {
+      const rows = await db.rawQuery(`SELECT "tenantId" FROM ${strategy.table} WHERE id = $1 LIMIT 1`, [id]);
+      if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Recurso não encontrado." });
+      resourceTenantId = rows[0].tenantId;
+    } else if (strategy.kind === "viaBarber") {
+      const rows = await db.rawQuery(
+        `SELECT b."tenantId" AS "tenantId" FROM ${strategy.table} t JOIN barbers b ON b.id = t."barberId" WHERE t.id = $1 LIMIT 1`,
+        [id]
+      );
+      if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Recurso não encontrado." });
+      resourceTenantId = rows[0].tenantId;
+    } else {
+      const mediaRows = await db.rawQuery(`SELECT "entityType", "entityId" FROM media_files WHERE id = $1 LIMIT 1`, [id]);
+      if (!mediaRows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Recurso não encontrado." });
+      const entityTable = mediaRows[0].entityType === "product" ? "products" : "services";
+      const rows = await db.rawQuery(`SELECT "tenantId" FROM ${entityTable} WHERE id = $1 LIMIT 1`, [mediaRows[0].entityId]);
+      resourceTenantId = rows[0]?.tenantId;
+    }
+  } catch (err) {
+    if (err instanceof TRPCError) throw err;
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Não foi possível validar permissão sobre o recurso." });
+  }
+
+  if (resourceTenantId !== callerTenantId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Você não tem permissão para acessar este recurso." });
+  }
+}

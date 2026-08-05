@@ -4,7 +4,7 @@ import { subscriptionPlanRouter } from "./subscription-plan-router";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { TRPCError } from "@trpc/server";
-import { publicProcedure, router, barberProcedure, activeBarberProcedure } from "./_core/trpc";
+import { publicProcedure, router, barberProcedure, activeBarberProcedure, assertTenantOwnership } from "./_core/trpc";
 import { signBarberToken, signBarberRefreshToken, verifyBarberRefreshToken } from "./barber-jwt.js";
 import * as db from "./db";
 import * as googleCalendar from "./google-calendar";
@@ -257,7 +257,10 @@ export const appRouter = router({
   barbers: router({
     list: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ ctx, input }) => db.getAllBarbers(input?.tenantId ?? ctx.barber?.tenantId)),
     listAll: publicProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(({ ctx, input }) => db.getAllBarbersIncludingInactive(input?.tenantId ?? ctx.barber?.tenantId)),
-    reactivate: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.reactivateBarber(input.id)),
+    reactivate: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await assertTenantOwnership(ctx, { kind: "direct", table: "barbers" }, input.id);
+      return db.reactivateBarber(input.id);
+    }),
     listWithPermissions: activeBarberProcedure.input(z.object({ tenantId: z.number().optional().nullable() }).optional()).query(async ({ ctx, input }) => {
       const barbers = await db.getAllBarbersIncludingInactive(input?.tenantId ?? ctx.barber.tenantId);
       if (!barbers.length) return barbers;
@@ -297,8 +300,9 @@ export const appRouter = router({
       }),
     update: activeBarberProcedure
       .input(z.object({ id: z.number(), name: z.string().min(2).optional(), email: z.string().email().optional().nullable(), phone: z.string().optional().nullable(), photoUrl: z.string().optional().nullable(), role: z.enum(["super_admin", "barber", "receptionist"]).optional(), specialties: z.string().optional().nullable(), isActive: z.boolean().optional(), password: z.string().min(6).optional(), permissions: z.array(z.string()).optional().nullable() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { id, password, permissions, ...data } = input;
+        await assertTenantOwnership(ctx, { kind: "direct", table: "barbers" }, id);
         const updateData: Record<string, unknown> = { ...data };
         if (password) updateData.passwordHash = await hashPassword(password);
         if (permissions !== undefined) updateData.permissions = permissions ? JSON.stringify(permissions) : null;
@@ -309,7 +313,10 @@ export const appRouter = router({
         }
         return { success: true };
       }),
-    delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBarber(input.id)),
+    delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await assertTenantOwnership(ctx, { kind: "direct", table: "barbers" }, input.id);
+      return db.deleteBarber(input.id);
+    }),
     savePushToken: publicProcedure
       .input(z.object({ barberId: z.number(), pushToken: z.string() }))
       .mutation(({ input }) => db.saveBarberPushToken(input.barberId, input.pushToken)),
@@ -580,11 +587,17 @@ export const appRouter = router({
       .mutation(({ input }) => db.createService(input as any)),
     update: activeBarberProcedure
       .input(z.object({ id: z.number(), name: z.string().min(1).optional(), description: z.string().optional().nullable(), price: z.string().optional(), durationMinutes: z.number().min(5).optional(), categoryId: z.number().optional().nullable(), isActive: z.boolean().optional() }))
-      .mutation(({ input }) => { const { id, ...data } = input; return db.updateService(id, data as any); }),
-    delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteService(input.id)),
+      .mutation(async ({ input, ctx }) => { const { id, ...data } = input; await assertTenantOwnership(ctx, { kind: "direct", table: "services" }, id); return db.updateService(id, data as any); }),
+    delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await assertTenantOwnership(ctx, { kind: "direct", table: "services" }, input.id);
+      return db.deleteService(input.id);
+    }),
     media: router({
       list: publicProcedure.input(z.object({ serviceId: z.number() })).query(({ input }) => db.getMediaByEntity("service", input.serviceId)),
-      delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteMediaFile(input.id)),
+      delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+        await assertTenantOwnership(ctx, { kind: "viaMedia" }, input.id);
+        return db.deleteMediaFile(input.id);
+      }),
     }),
   }),
 
@@ -615,10 +628,13 @@ export const appRouter = router({
       }),
     update: activeBarberProcedure
       .input(z.object({ id: z.number(), name: z.string().min(1).optional(), description: z.string().optional().nullable(), price: z.string().optional(), costPrice: z.string().optional().nullable(), stock: z.number().min(0).optional(), categoryId: z.number().optional().nullable(), isActive: z.boolean().optional() }))
-      .mutation(({ input }) => { const { id, ...data } = input; return db.updateProduct(id, data as any); }),
+      .mutation(async ({ input, ctx }) => { const { id, ...data } = input; await assertTenantOwnership(ctx, { kind: "direct", table: "products" }, id); return db.updateProduct(id, data as any); }),
     media: router({
       list: publicProcedure.input(z.object({ productId: z.number() })).query(({ input }) => db.getMediaByEntity("product", input.productId)),
-      delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteMediaFile(input.id)),
+      delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+        await assertTenantOwnership(ctx, { kind: "viaMedia" }, input.id);
+        return db.deleteMediaFile(input.id);
+      }),
     }),
   }),
 
@@ -774,8 +790,9 @@ export const appRouter = router({
         serviceNames: z.string().optional().nullable(),
         endTime: z.string().optional(),
       }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const { id, ...data } = input;
+        await assertTenantOwnership(ctx, { kind: "viaBarber", table: "appointments" }, id);
         await db.updateAppointment(id, data as any);
 
         // Se completou, verificar se é agendamento de assinatura
@@ -819,7 +836,8 @@ export const appRouter = router({
       }),
     approveOvertime: activeBarberProcedure
       .input(z.object({ id: z.number(), approve: z.boolean(), clientPushToken: z.string().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await assertTenantOwnership(ctx, { kind: "viaBarber", table: "appointments" }, input.id);
         if (input.approve) {
           await db.updateAppointment(input.id, { status: "confirmed" } as any);
           // Notifica o cliente que foi aprovado
@@ -847,7 +865,8 @@ export const appRouter = router({
       }),
     cancelWithReason: activeBarberProcedure
       .input(z.object({ id: z.number(), reason: z.string().optional(), clientPushToken: z.string().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await assertTenantOwnership(ctx, { kind: "viaBarber", table: "appointments" }, input.id);
         await db.updateAppointment(input.id, { status: "cancelled", cancelReason: input.reason ?? null } as any);
         // Notifica o cliente se tiver token
         if (input.clientPushToken) {
@@ -937,7 +956,10 @@ export const appRouter = router({
       byDateRange: publicProcedure.input(z.object({ barberId: z.number(), startDate: z.string(), endDate: z.string() })).query(({ input }) => db.getBlockedSlotsByDateRange(input.barberId, input.startDate, input.endDate)),
       allByDateRange: publicProcedure.input(z.object({ startDate: z.string(), endDate: z.string(), tenantId: z.number().optional().nullable() })).query(({ ctx, input }) => db.getAllBlockedSlotsByDateRange(input.startDate, input.endDate, input.tenantId ?? ctx.barber?.tenantId)),
       create: activeBarberProcedure.input(z.object({ barberId: z.number(), date: z.string(), startTime: z.string(), endTime: z.string(), reason: z.string().optional() })).mutation(({ input }) => db.createBlockedSlot(input)),
-      delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteBlockedSlot(input.id)),
+      delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+        await assertTenantOwnership(ctx, { kind: "viaBarber", table: "blocked_slots" }, input.id);
+        return db.deleteBlockedSlot(input.id);
+      }),
       // Transforma um bloqueio de horario (manual ou importado do Google
       // Agenda) num agendamento de verdade - mesma logica ja usada e testada
       // no painel web (rota /admin/agenda/converter-bloqueio).
@@ -1063,8 +1085,11 @@ export const appRouter = router({
       .mutation(({ input }) => db.createExpense(input as any)),
     update: activeBarberProcedure
       .input(z.object({ id: z.number(), category: z.string().optional(), description: z.string().optional(), amount: z.string().optional(), date: z.string().optional() }))
-      .mutation(({ input }) => { const { id, ...data } = input; return db.updateExpense(id, data as any); }),
-    delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => db.deleteExpense(input.id)),
+      .mutation(async ({ input, ctx }) => { const { id, ...data } = input; await assertTenantOwnership(ctx, { kind: "direct", table: "expenses" }, id); return db.updateExpense(id, data as any); }),
+    delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      await assertTenantOwnership(ctx, { kind: "direct", table: "expenses" }, input.id);
+      return db.deleteExpense(input.id);
+    }),
   }),
 
   coupons: router({
@@ -1093,10 +1118,11 @@ export const appRouter = router({
       }),
     update: activeBarberProcedure
       .input(z.object({ id: z.number(), isActive: z.boolean().optional(), description: z.string().optional(), maxUses: z.number().optional().nullable(), validUntil: z.string().optional().nullable() }))
-      .mutation(({ input }) => { const { id, ...data } = input; return db.updateCoupon(id, data as any); }),
+      .mutation(async ({ input, ctx }) => { const { id, ...data } = input; await assertTenantOwnership(ctx, { kind: "direct", table: "coupons" }, id); return db.updateCoupon(id, data as any); }),
     toggle: activeBarberProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await assertTenantOwnership(ctx, { kind: "direct", table: "coupons" }, input.id);
         const coupons = await db.getAllCoupons();
         const coupon = (coupons as any[]).find((c: any) => c.id === input.id);
         if (!coupon) throw new Error("Cupom não encontrado");
@@ -1172,7 +1198,7 @@ export const appRouter = router({
         .mutation(({ input }) => db.createLoyaltyReward(input)),
       update: activeBarberProcedure
         .input(z.object({ id: z.number(), name: z.string().optional(), pointsRequired: z.number().optional(), isActive: z.boolean().optional() }))
-        .mutation(({ input }) => { const { id, ...data } = input; return db.updateLoyaltyReward(id, data as any); }),
+        .mutation(async ({ input, ctx }) => { const { id, ...data } = input; await assertTenantOwnership(ctx, { kind: "direct", table: "loyalty_rewards" }, id); return db.updateLoyaltyReward(id, data as any); }),
     }),
     addPoints: publicProcedure
       .input(z.object({ clientId: z.number(), points: z.number(), type: z.enum(["earned", "redeemed", "expired", "adjusted"]), description: z.string().optional(), saleId: z.number().optional() }))
