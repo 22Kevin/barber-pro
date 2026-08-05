@@ -431,7 +431,7 @@ export const appRouter = router({
       state: z.string().optional().nullable(),
       cnpj: z.string().optional().nullable(),
     })).mutation(async ({ ctx, input }) => {
-      const barber = await db.getBarberById(ctx.barberId);
+      const barber = await db.getBarberById(ctx.barber.barberId);
       if (!barber || barber.role !== 'super_admin') throw new TRPCError({ code: 'FORBIDDEN', message: 'Apenas super_admin pode criar filiais' });
       const adminTenantId = (barber as any).tenantId;
       const tenant = adminTenantId ? await db.getTenantById(adminTenantId) : null;
@@ -454,7 +454,7 @@ export const appRouter = router({
     }),
 
     delete: activeBarberProcedure.input(z.object({ branchId: z.number() })).mutation(async ({ ctx, input }) => {
-      const barber = await db.getBarberById(ctx.barberId);
+      const barber = await db.getBarberById(ctx.barber.barberId);
       if (!barber || barber.role !== 'super_admin') throw new TRPCError({ code: 'FORBIDDEN' });
       const adminTenantId = (barber as any).tenantId;
       const tenantRows = await db.rawQuery('SELECT "parentTenantId" FROM tenants WHERE id = $1', [adminTenantId]);
@@ -528,7 +528,7 @@ export const appRouter = router({
       const destProducts = await db.rawQuery('SELECT id FROM products WHERE "tenantId" = $1 AND LOWER(name) = LOWER($2) LIMIT 1', [input.targetBranchId, sourceProduct.name]);
       if (!destProducts[0]) throw new Error('Produto não encontrado na unidade destino. Sincronize o catálogo primeiro.');
       const destProductId = destProducts[0].id;
-      const barberId = ctx.barberId;
+      const barberId = ctx.barber.barberId;
       const date = new Date().toISOString().split('T')[0];
       await db.addStockMovement({ productId: input.productId, type: 'out', quantity: input.quantity, reason: 'Transferência para filial ID ' + input.targetBranchId + (input.reason ? ' — ' + input.reason : ''), date, barberId } as any);
       await db.addStockMovement({ productId: destProductId, type: 'in', quantity: input.quantity, reason: 'Transferência recebida de filial ID ' + input.sourceTenantId + (input.reason ? ' — ' + input.reason : ''), date, barberId } as any);
@@ -608,7 +608,7 @@ export const appRouter = router({
     create: activeBarberProcedure
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), costPrice: z.string().optional().nullable(), stock: z.number().min(0).default(0), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true), tenantId: z.number().optional().nullable() }))
       .mutation(async ({ input, ctx }) => {
-        const tenantForGuard = await db.getTenantById(ctx.barber.tenantId);
+        const tenantForGuard = ctx.barber.tenantId != null ? await db.getTenantById(ctx.barber.tenantId) : undefined;
         assertFeature(tenantForGuard?.plan, "products");
         const productId = await db.createProduct(input as any);
         // Registrar despesa do estoque inicial automaticamente
@@ -620,7 +620,7 @@ export const appRouter = router({
             description: `Estoque inicial: ${input.name} (${input.stock}x R$${parseFloat(input.costPrice).toFixed(2)})`,
             amount: totalCost.toFixed(2),
             date: today,
-            barberId: ctx?.barberId ?? null,
+            barberId: ctx.barber?.barberId ?? null,
             tenantId: input.tenantId ?? null,
           } as any);
         }
@@ -2231,7 +2231,7 @@ export const appRouter = router({
         defaultRate: z.number().min(0).max(100),
       }))
       .mutation(async ({ input, ctx }) => {
-        const tenantForGuard = await db.getTenantById(ctx.barber.tenantId);
+        const tenantForGuard = ctx.barber.tenantId != null ? await db.getTenantById(ctx.barber.tenantId) : undefined;
         assertFeature(tenantForGuard?.plan, "commissions");
         return db.upsertCommissionConfig(input);
       }),
@@ -3400,10 +3400,7 @@ export const appRouter = router({
               ${detailRow("Plano", planLabel)}
               ${detailRow("Valor", planPriceLabel)}
               ${detailRow("Vencimento", nextDueDate)}
-              ${alertBox("warning", `
-                <strong>Pix Copia e Cola</strong><br/>
-                <span style="font-family:monospace;font-size:12px;word-break:break-all;color:#ECEDEE">${pixCode}</span>
-              `)}
+              ${alertBox("💳", "Pix Copia e Cola", `<span style="font-family:monospace;font-size:12px;word-break:break-all;color:#ECEDEE">${pixCode}</span>`, "#FBBF24")}
               <p style="margin:16px 0 8px;color:#9BA1A6;font-size:13px">
                 Copie o código acima e cole no app do seu banco para pagar. O acesso será liberado automaticamente após a confirmação.
               </p>
@@ -3415,7 +3412,7 @@ export const appRouter = router({
               to: input.ownerEmail,
               subject: `💳 Barber Pro — Pague via Pix para ativar o Plano ${planLabel}`,
               html: emailLayout(body, {
-                title: "Pagamento Pix — Barber Pro",
+                headerSubtitle: "Pagamento Pix — Barber Pro",
                 previewText: `Seu código Pix para ativar o Plano ${planLabel} do Barber Pro`,
               }),
             }).catch(() => {});
