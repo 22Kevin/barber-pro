@@ -253,7 +253,7 @@ export default function ClientsScreen() {
                 <View style={styles.swipeActions}>
                   <Pressable
                     style={[styles.swipeBtn, { backgroundColor: "#25D366" }]}
-                    onPress={() => handleWhatsApp(item.phone, item.name)}
+                    onPress={() => sendWhatsAppMessage(item.phone, `Olá, ${item.name}!`)}
                   >
                     <Text style={styles.swipeBtnIcon}>💬</Text>
                     <Text style={styles.swipeBtnText}>WhatsApp</Text>

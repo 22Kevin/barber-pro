@@ -11,6 +11,7 @@ import { trpc, saveBarberJwt, saveBarberRefreshJwt } from "@/lib/trpc";
 import { getExpoPushToken } from "@/lib/use-notifications";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AppAlert } from "@/components/app-alert";
 
 let GoogleSignin: any = null;
 let statusCodes: any = null;

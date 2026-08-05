@@ -435,25 +435,25 @@ export default function AgendaScreen() {
       ]);
       toast.success("Agendamento criado a partir do bloqueio!");
     },
-    onError: (e) => Alert.alert("Erro", e.message),
+    onError: (e) => AppAlert.alert("Erro", e.message),
   });
 
   function handleConfirmConvert() {
     if (!convertingSlot) return;
     if (convertClientMode === "new" && (!convertNewClientName.trim() || !convertNewClientPhone.trim())) {
-      Alert.alert("Atenção", "Nome e telefone são obrigatórios para cadastrar novo cliente.");
+      AppAlert.alert("Atenção", "Nome e telefone são obrigatórios para cadastrar novo cliente.");
       return;
     }
     if (convertClientMode === "existing" && !convertSelectedClient) {
-      Alert.alert("Atenção", "Selecione um cliente.");
+      AppAlert.alert("Atenção", "Selecione um cliente.");
       return;
     }
     if (convertServiceMode === "new" && (!convertNewServiceName.trim() || !convertNewServicePrice.trim())) {
-      Alert.alert("Atenção", "Nome e preço são obrigatórios para cadastrar novo serviço.");
+      AppAlert.alert("Atenção", "Nome e preço são obrigatórios para cadastrar novo serviço.");
       return;
     }
     if (convertServiceMode === "existing" && !convertSelectedService) {
-      Alert.alert("Atenção", "Selecione um serviço.");
+      AppAlert.alert("Atenção", "Selecione um serviço.");
       return;
     }
     convertBlockMutation.mutate({
@@ -732,7 +732,7 @@ export default function AgendaScreen() {
 
   const filteredClients = (clientsQuery.data ?? []).filter(c =>
     c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-    c.phone.includes(clientSearch)
+    (c.phone ?? "").includes(clientSearch)
   );
 
   // Para managers: usa allByDate e aplica filtro de barbeiro; para barbeiros: usa byDate

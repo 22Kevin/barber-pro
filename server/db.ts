@@ -1388,6 +1388,16 @@ export async function updateCoupon(id: number, data: Partial<typeof coupons.$inf
   await db.update(coupons).set(data).where(eq(coupons.id, id));
 }
 
+export async function deleteCoupon(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // "sales.couponId" não é uma FK formal no schema (é um integer solto,
+  // igual boa parte das colunas de referência deste projeto), então excluir
+  // o cupom não quebra vendas antigas que já usaram ele — o "couponCode"
+  // (texto) já fica salvo separado em cada venda pra manter o histórico.
+  await db.delete(coupons).where(eq(coupons.id, id));
+}
+
 // ─── Fidelidade ───────────────────────────────────────────────────────────────
 export async function getLoyaltyConfig(tenantId?: number | null) {
   const db = await getDb();

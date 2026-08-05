@@ -1128,6 +1128,19 @@ export const appRouter = router({
         if (!coupon) throw new Error("Cupom não encontrado");
         return db.updateCoupon(input.id, { isActive: !coupon.isActive } as any);
       }),
+    // O app mobile já chamava trpc.coupons.delete, mas esse endpoint nunca
+    // tinha sido implementado no backend (só existia toggle, que
+    // ativa/desativa). Botão de excluir cupom ficava sempre quebrado.
+    // Checagem de tenant feita inline (em vez de usar assertTenantOwnership)
+    // pra este fix não depender de nenhum outro script já ter sido aplicado.
+    delete: activeBarberProcedure.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+      const allCoupons = await db.getAllCoupons();
+      const coupon = (allCoupons as any[]).find((c: any) => c.id === input.id);
+      if (!coupon) throw new TRPCError({ code: "NOT_FOUND", message: "Cupom não encontrado." });
+      if (coupon.tenantId !== ctx.barber?.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Você não tem permissão para acessar este recurso." });
+      await db.deleteCoupon(input.id);
+      return { success: true };
+    }),
     inactive: publicProcedure
       .input(z.object({ tenantId: z.number(), days: z.number().default(30) }))
       .query(async ({ input }) => {

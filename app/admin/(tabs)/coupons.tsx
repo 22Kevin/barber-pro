@@ -61,9 +61,9 @@ function CouponsScreenInner() {
       tenantId,
       code: code.trim().toUpperCase(),
       discountType: type,
-      discountValue: Number(discount),
+      discountValue: discount.trim(),
       maxUses: maxUses ? Number(maxUses) : undefined,
-      expiresAt: expiresAt || undefined,
+      validUntil: expiresAt || undefined,
     });
   }
 

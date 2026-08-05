@@ -64,6 +64,13 @@ function CommissionsScreenInner() {
     onError: (err) => Alert.alert("Erro", err.message),
   });
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([summaryQuery.refetch(), configsQuery.refetch()]);
+    setRefreshing(false);
+  };
+
   const allSummary = summaryQuery.data ?? [];
   const configs = configsQuery.data ?? [];
   const summary = selectedBarberId ? allSummary.filter((b) => b.barberId === selectedBarberId) : allSummary;
