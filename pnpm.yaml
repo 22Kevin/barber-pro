@@ -1,4 +1,0 @@
-overrides:
-  "@react-native/babel-preset": "0.81.5"
-  "@react-native/metro-config": "0.81.5"
-  "@expo/metro-runtime": "6.1.2"
