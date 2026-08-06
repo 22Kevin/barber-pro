@@ -56,7 +56,18 @@ const VIEW_SHOT_WEB_STUB = path.join(__dirname, "lib", "view-shot-web-stub.js");
 // experimental do JS que quebra o parser do codegen no RN 0.81.x — bug
 // conhecido (github.com/facebook/metro/issues/1651). Componente experimental
 // não usado em nenhum lugar do app — redirecionado pra stub vazio.
+//
+// Mesma classe de problema afeta outros arquivos de especificação de
+// codegen (*.ts em pastas "specs/") de módulos nativos de terceiros — o
+// parser do @react-native/babel-plugin-codegen quebra com "Cannot read
+// properties of null (reading 'loc')" em vários deles. Lista de trechos de
+// caminho (path) que, se aparecerem no arquivo resolvido, são redirecionados
+// pro mesmo stub vazio. Adicionar novos aqui se aparecer mais algum.
 const VIRTUALVIEW_STUB = path.join(__dirname, "lib", "virtualview-stub.js");
+const BROKEN_CODEGEN_PATH_FRAGMENTS = [
+  "/react-native/src/private/components/virtualview/",
+  "/react-native-safe-area-context/src/specs/NativeSafeAreaView",
+];
 
 nativeWindConfig.resolver = {
   ...nativeWindConfig.resolver,
@@ -81,7 +92,7 @@ nativeWindConfig.resolver = {
       resolved &&
       "filePath" in resolved &&
       typeof resolved.filePath === "string" &&
-      resolved.filePath.replace(/\\/g, "/").includes("/react-native/src/private/components/virtualview/")
+      BROKEN_CODEGEN_PATH_FRAGMENTS.some((frag) => resolved.filePath.replace(/\\/g, "/").includes(frag))
     ) {
       return { ...resolved, filePath: VIRTUALVIEW_STUB };
     }
