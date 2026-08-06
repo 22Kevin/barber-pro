@@ -51,6 +51,13 @@ const cssInteropResolver = nativeWindConfig.resolver?.resolveRequest;
 // resolver esse conflito de plugins do Babel.
 const VIEW_SHOT_WEB_STUB = path.join(__dirname, "lib", "view-shot-web-stub.js");
 
+// VirtualView.js / VirtualViewNativeComponent.js (dentro de
+// react-native/src/private/components/virtualview/) usam sintaxe
+// experimental do JS que quebra o parser do codegen no RN 0.81.x — bug
+// conhecido (github.com/facebook/metro/issues/1651). Componente experimental
+// não usado em nenhum lugar do app — redirecionado pra stub vazio.
+const VIRTUALVIEW_STUB = path.join(__dirname, "lib", "virtualview-stub.js");
+
 nativeWindConfig.resolver = {
   ...nativeWindConfig.resolver,
   resolveRequest: (context, moduleName, platform) => {
@@ -69,6 +76,14 @@ nativeWindConfig.resolver = {
       const newPath = path.join(PROJECT_CACHE, filename);
       if (!fs.existsSync(newPath)) fs.writeFileSync(newPath, "");
       return { ...resolved, filePath: newPath };
+    }
+    if (
+      resolved &&
+      "filePath" in resolved &&
+      typeof resolved.filePath === "string" &&
+      resolved.filePath.replace(/\\/g, "/").includes("/react-native/src/private/components/virtualview/")
+    ) {
+      return { ...resolved, filePath: VIRTUALVIEW_STUB };
     }
     return resolved;
   },
