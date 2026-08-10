@@ -486,6 +486,21 @@ export async function importExistingEvents(barberId: number, daysAhead: number =
     const { dateStr, timeStr: startTimeStr } = formatInBrazilTimezone(startDate);
     const { timeStr: endTimeStr } = formatInBrazilTimezone(endDate);
 
+    // Se já existe um agendamento real (não cancelado) do barbeiro que
+    // conflita com esse horário, o horário já está corretamente ocupado —
+    // não faz sentido (e pode confundir a agenda) duplicar como um bloqueio
+    // importado por cima. Isso cobre o caso de um compromisso pessoal na
+    // Google Agenda coincidir com um agendamento já feito no Barber Pro.
+    const conflicting = await db.rawQuery(
+      `SELECT id FROM appointments
+       WHERE "barberId" = $1 AND date = $2
+         AND status NOT IN ('cancelled', 'no_show')
+         AND "startTime" < $4 AND "endTime" > $3
+       LIMIT 1`,
+      [barberId, dateStr, startTimeStr, endTimeStr]
+    );
+    if (conflicting.length > 0) { skipped++; continue; }
+
     try {
       await db.createBlockedSlot({
         barberId,
