@@ -3038,7 +3038,7 @@ async function renderAgenda(req: Request, res: Response) {
                   const matches = isFromGoogle ? findBlockMatches(b.reason ?? "", clients, services) : { clientGuess: "", serviceGuess: "", matchingClients: [], matchingServiceId: null };
                   return {
                     time: b.startTime ?? "00:00",
-                    html: `<div onclick="openConvertBlockModal(${esc(JSON.stringify({id:b.id,reason:b.reason??'',date:b.date,startTime:b.startTime??'',endTime:b.endTime??'',barberName,clientGuess:matches.clientGuess,matchingClients:matches.matchingClients,matchingServiceId:matches.matchingServiceId}))})" style="background:var(--surface2, rgba(255,255,255,0.03));border:1px dashed var(--border);border-radius:16px;padding:16px 18px;display:flex;align-items:center;gap:14px;opacity:0.9;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='#C9A84C'" onmouseout="this.style.borderColor='var(--border)'">
+                    html: `<div onclick="openConvertBlockModal(${esc(JSON.stringify({id:b.id,reason:b.reason??'',date:b.date,startTime:b.startTime??'',endTime:b.endTime??'',barberName,clientGuess:matches.clientGuess,matchingClients:matches.matchingClients,matchingServiceId:matches.matchingServiceId}))})" style="background:var(--surface2, rgba(255,255,255,0.03));border:1px dashed var(--border);border-radius:16px;padding:16px 18px;display:flex;align-items:flex-start;gap:14px;opacity:0.9;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='#C9A84C'" onmouseout="this.style.borderColor='var(--border)'">
                       <div style="flex-shrink:0;text-align:center;min-width:52px;">
                         <div style="font-size:20px;font-weight:900;color:var(--muted);line-height:1;letter-spacing:-0.5px;">${b.startTime?.substring(0,5) ?? "—"}</div>
                         <div style="font-size:11px;color:var(--muted);margin-top:3px;font-weight:500;">${b.endTime?.substring(0,5) ?? ""}</div>
@@ -3047,7 +3047,7 @@ async function renderAgenda(req: Request, res: Response) {
                       <div style="width:42px;height:42px;border-radius:12px;background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.25);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🔒</div>
                       <div style="flex:1;min-width:0;">
                         <div style="font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(b.reason ?? "Horário bloqueado")}</div>
-                        <div style="font-size:11px;color:var(--muted);margin-top:2px;opacity:0.8;">${esc(barberName)}${isFromGoogle ? " · Importado do Google Agenda" : ""}</div>
+                        <div style="font-size:11px;color:var(--muted);margin-top:2px;opacity:0.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(barberName)}${isFromGoogle ? " · Importado do Google Agenda" : ""}</div>
                         ${isFromGoogle ? `<div style="font-size:11px;color:var(--gold);margin-top:4px;">💡 Se isso for virar um agendamento de cliente, confira se o cliente e o serviço já estão cadastrados no sistema.</div>` : ""}
                       </div>
                       <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
