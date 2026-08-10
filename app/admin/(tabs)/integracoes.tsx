@@ -59,9 +59,12 @@ export default function IntegracoesScreen() {
   const importMutation = trpc.barbers.importGoogleCalendarEvents.useMutation({
     onSuccess: (result) => {
       statusQuery.refetch();
+      const conflictsMsg = result.conflicts && result.conflicts.length > 0
+        ? `\n\n⚠️ Não importados por já haver agendamento no horário: ${result.conflicts.map((c: any) => `${c.date.slice(8, 10)}/${c.date.slice(5, 7)} ${c.startTime.slice(0, 5)}`).join(", ")}.`
+        : "";
       AppAlert.alert(
         "Importação concluída",
-        `${result.imported} compromisso(s) importado(s) como bloqueio de horário${result.skipped > 0 ? ` (${result.skipped} já existiam ou não puderam ser importados)` : ""}.`
+        `${result.imported} compromisso(s) importado(s) como bloqueio de horário${result.skipped > 0 ? ` (${result.skipped} já existiam ou não puderam ser importados)` : ""}.${conflictsMsg}`
       );
     },
     onError: (e) => AppAlert.alert("Erro ao importar", e.message ?? "Tente novamente."),

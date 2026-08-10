@@ -439,11 +439,17 @@ export interface ImportResult {
   imported: number;
   skipped: number;
   totalFound: number;
+  // Horários especificamente pulados por já existir um agendamento real do
+  // barbeiro naquele mesmo horário — separado do "skipped" genérico (que
+  // também inclui eventos já importados antes, sem horário definido etc.)
+  // pra podermos avisar o barbeiro exatamente quais horários ficaram de
+  // fora e por quê.
+  conflicts: Array<{ date: string; startTime: string; endTime: string }>;
 }
 
 export async function importExistingEvents(barberId: number, daysAhead: number = 60): Promise<ImportResult> {
   const conn = await getValidAccessToken(barberId);
-  if (!conn) return { imported: 0, skipped: 0, totalFound: 0 };
+  if (!conn) return { imported: 0, skipped: 0, totalFound: 0, conflicts: [] };
 
   const timeMin = new Date().toISOString();
   const timeMax = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString();
@@ -466,6 +472,7 @@ export async function importExistingEvents(barberId: number, daysAhead: number =
   const events = Array.isArray(data.items) ? data.items : [];
   let imported = 0;
   let skipped = 0;
+  const conflicts: ImportResult["conflicts"] = [];
 
   for (const event of events) {
     // Ignora eventos cancelados, sem horário definido (evento de dia inteiro,
@@ -499,7 +506,11 @@ export async function importExistingEvents(barberId: number, daysAhead: number =
        LIMIT 1`,
       [barberId, dateStr, startTimeStr, endTimeStr]
     );
-    if (conflicting.length > 0) { skipped++; continue; }
+    if (conflicting.length > 0) {
+      conflicts.push({ date: dateStr, startTime: startTimeStr, endTime: endTimeStr });
+      skipped++;
+      continue;
+    }
 
     try {
       await db.createBlockedSlot({
@@ -517,5 +528,5 @@ export async function importExistingEvents(barberId: number, daysAhead: number =
     }
   }
 
-  return { imported, skipped, totalFound: events.length };
+  return { imported, skipped, totalFound: events.length, conflicts };
 }

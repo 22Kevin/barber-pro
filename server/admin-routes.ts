@@ -6911,6 +6911,7 @@ async function renderIntegracoes(req: Request, res: Response) {
     const errorMsg = req.query.gcal_error as string | undefined;
     const importedCount = req.query.gcal_imported as string | undefined;
     const skippedCount = req.query.gcal_skipped as string | undefined;
+    const conflictsList = req.query.gcal_conflicts as string | undefined;
 
     const isConnected = !!connection && connection.syncEnabled;
     const lastSyncAt = connection?.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString("pt-BR") : null;
@@ -6927,7 +6928,7 @@ async function renderIntegracoes(req: Request, res: Response) {
       ${success ? `<div class="alert alert-success" style="margin-bottom:16px">✅ Google Agenda conectada com sucesso!</div>` : ""}
       ${disconnected ? `<div class="alert" style="margin-bottom:16px;background:var(--surface);border:1px solid var(--border)">Google Agenda desconectada.</div>` : ""}
       ${errorMsg ? `<div class="alert alert-error" style="margin-bottom:16px">⚠️ ${esc(errorMsg)}</div>` : ""}
-      ${importedCount !== undefined ? `<div class="alert alert-success" style="margin-bottom:16px">✅ Importação concluída: ${esc(importedCount)} compromisso(s) importado(s) como bloqueio de horário${skippedCount && skippedCount !== "0" ? ` (${esc(skippedCount)} já existiam ou não puderam ser importados)` : ""}.</div>` : ""}
+      ${importedCount !== undefined ? `<div class="alert alert-success" style="margin-bottom:16px">✅ Importação concluída: ${esc(importedCount)} compromisso(s) importado(s) como bloqueio de horário${skippedCount && skippedCount !== "0" ? ` (${esc(skippedCount)} já existiam ou não puderam ser importados)` : ""}.${conflictsList ? `<br/><br/>⚠️ Não importados por já haver agendamento no horário: <strong>${esc(conflictsList)}</strong>.` : ""}</div>` : ""}
 
       <div class="card" style="max-width:640px;padding:24px">
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
@@ -8708,7 +8709,10 @@ export function registerAdminRoutes(app: Express): void {
     const session = (req as any).adminSession as { barberId: number };
     try {
       const result = await googleCalendar.importExistingEvents(session.barberId, 60);
-      res.redirect(`/admin/integracoes?gcal_imported=${result.imported}&gcal_skipped=${result.skipped}`);
+      const conflictsParam = result.conflicts.length > 0
+        ? "&gcal_conflicts=" + encodeURIComponent(result.conflicts.map(c => `${c.date.slice(8, 10)}/${c.date.slice(5, 7)} ${c.startTime.slice(0, 5)}`).join(", "))
+        : "";
+      res.redirect(`/admin/integracoes?gcal_imported=${result.imported}&gcal_skipped=${result.skipped}${conflictsParam}`);
     } catch (e: any) {
       console.error("[google-calendar-import] Erro:", e?.message);
       res.redirect("/admin/integracoes?gcal_error=" + encodeURIComponent("Não foi possível importar os eventos. Tente novamente."));
