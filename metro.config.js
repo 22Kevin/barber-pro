@@ -66,7 +66,17 @@ const VIEW_SHOT_WEB_STUB = path.join(__dirname, "lib", "view-shot-web-stub.js");
 const VIRTUALVIEW_STUB = path.join(__dirname, "lib", "virtualview-stub.js");
 const BROKEN_CODEGEN_PATH_FRAGMENTS = [
   "/react-native/src/private/components/virtualview/",
-  "/react-native-safe-area-context/src/specs/NativeSafeAreaView",
+  // Já eram 2 arquivos confirmados quebrando dentro da mesma pasta
+  // "specs/" do react-native-safe-area-context (NativeSafeAreaView.ts e
+  // NativeSafeAreaProvider.ts) — mesmo bug de parsing do codegen. Em vez
+  // de continuar descobrindo um arquivo por vez, bloqueia a pasta
+  // "specs/" inteira desse pacote de uma só vez. IMPORTANTE: diferente
+  // das pastas "specs_DEPRECATED" abaixo (que são código legado não
+  // usado), este pacote é usado de verdade pelo app (SafeAreaView/
+  // SafeAreaProvider, evita conteúdo atrás do notch/barra de status) —
+  // depois que o build passar, é essencial testar visualmente que a tela
+  // continua respeitando as áreas seguras do aparelho normalmente.
+  "/react-native-safe-area-context/src/specs/",
   // "specs_DEPRECATED" é uma pasta que o próprio React Native já marca como
   // obsoleta (componentes legados: AndroidDrawerLayout, RCTInputAccessoryView
   // e outros). O mesmo bug de parsing do codegen já apareceu em múltiplos
