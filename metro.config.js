@@ -67,6 +67,15 @@ const VIRTUALVIEW_STUB = path.join(__dirname, "lib", "virtualview-stub.js");
 const BROKEN_CODEGEN_PATH_FRAGMENTS = [
   "/react-native/src/private/components/virtualview/",
   "/react-native-safe-area-context/src/specs/NativeSafeAreaView",
+  // "specs_DEPRECATED" é uma pasta que o próprio React Native já marca como
+  // obsoleta (componentes legados: AndroidDrawerLayout, RCTInputAccessoryView
+  // e outros). O mesmo bug de parsing do codegen já apareceu em múltiplos
+  // arquivos diferentes dentro dela, um de cada vez (o Metro processa em
+  // paralelo, então qual arquivo aparece primeiro varia entre execuções) —
+  // bloqueando a pasta inteira de uma vez em vez de continuar catando
+  // arquivo por arquivo. Nada no app usa componentes legados/depreciados
+  // diretamente.
+  "/react-native/src/private/specs_DEPRECATED/",
 ];
 
 nativeWindConfig.resolver = {
