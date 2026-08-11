@@ -55,37 +55,38 @@ const VIEW_SHOT_WEB_STUB = path.join(__dirname, "lib", "view-shot-web-stub.js");
 // react-native/src/private/components/virtualview/) usam sintaxe
 // experimental do JS que quebra o parser do codegen no RN 0.81.x — bug
 // conhecido (github.com/facebook/metro/issues/1651). Componente experimental
-// não usado em nenhum lugar do app — redirecionado pra stub vazio.
-//
-// Mesma classe de problema afeta outros arquivos de especificação de
-// codegen (*.ts em pastas "specs/") de módulos nativos de terceiros — o
-// parser do @react-native/babel-plugin-codegen quebra com "Cannot read
-// properties of null (reading 'loc')" em vários deles. Lista de trechos de
-// caminho (path) que, se aparecerem no arquivo resolvido, são redirecionados
-// pro mesmo stub vazio. Adicionar novos aqui se aparecer mais algum.
+// não usado em nenhum lugar do app — redirecionado pra stub vazio (esse
+// aqui pode ser vazio de verdade, já que nada no app usa).
 const VIRTUALVIEW_STUB = path.join(__dirname, "lib", "virtualview-stub.js");
-const BROKEN_CODEGEN_PATH_FRAGMENTS = [
-  "/react-native/src/private/components/virtualview/",
-  // Já eram 2 arquivos confirmados quebrando dentro da mesma pasta
-  // "specs/" do react-native-safe-area-context (NativeSafeAreaView.ts e
-  // NativeSafeAreaProvider.ts) — mesmo bug de parsing do codegen. Em vez
-  // de continuar descobrindo um arquivo por vez, bloqueia a pasta
-  // "specs/" inteira desse pacote de uma só vez. IMPORTANTE: diferente
-  // das pastas "specs_DEPRECATED" abaixo (que são código legado não
-  // usado), este pacote é usado de verdade pelo app (SafeAreaView/
-  // SafeAreaProvider, evita conteúdo atrás do notch/barra de status) —
-  // depois que o build passar, é essencial testar visualmente que a tela
-  // continua respeitando as áreas seguras do aparelho normalmente.
-  "/react-native-safe-area-context/src/specs/",
+
+// A mesma classe de problema ("Cannot read properties of null (reading
+// 'loc')" no @react-native/babel-plugin-codegen) afeta arquivos de
+// especificação de codegen (*.ts em pastas "specs/") de VÁRIOS módulos
+// nativos diferentes — já confirmado em react-native core,
+// react-native-safe-area-context e react-native-gesture-handler. Para os
+// pacotes que são usados de verdade pelo app (diferente do código legado
+// abaixo), em vez de um stub vazio (que apagaria a funcionalidade real),
+// cada entrada aponta pro stub PRECISO daquele arquivo específico — o
+// mesmo código do arquivo original, conferido diretamente no pacote
+// baixado do npm, só sem a sintaxe de tipos do TypeScript (que não existe
+// em tempo de execução mesmo no original). Ver lib/codegen-stubs/ para o
+// conteúdo de cada um.
+const CODEGEN_STUBS_DIR = path.join(__dirname, "lib", "codegen-stubs");
+const CODEGEN_STUB_MAP = [
+  { frag: "/react-native/src/private/components/virtualview/", stub: VIRTUALVIEW_STUB },
   // "specs_DEPRECATED" é uma pasta que o próprio React Native já marca como
   // obsoleta (componentes legados: AndroidDrawerLayout, RCTInputAccessoryView
-  // e outros). O mesmo bug de parsing do codegen já apareceu em múltiplos
-  // arquivos diferentes dentro dela, um de cada vez (o Metro processa em
-  // paralelo, então qual arquivo aparece primeiro varia entre execuções) —
-  // bloqueando a pasta inteira de uma vez em vez de continuar catando
-  // arquivo por arquivo. Nada no app usa componentes legados/depreciados
-  // diretamente.
-  "/react-native/src/private/specs_DEPRECATED/",
+  // e outros). Nada no app usa componentes legados/depreciados diretamente
+  // — stub vazio é seguro aqui.
+  { frag: "/react-native/src/private/specs_DEPRECATED/", stub: VIRTUALVIEW_STUB },
+  // react-native-safe-area-context — usado de verdade (SafeAreaView/
+  // SafeAreaProvider, evita conteúdo atrás do notch/barra de status).
+  { frag: "/react-native-safe-area-context/src/specs/NativeSafeAreaView", stub: path.join(CODEGEN_STUBS_DIR, "NativeSafeAreaView.js") },
+  { frag: "/react-native-safe-area-context/src/specs/NativeSafeAreaProvider", stub: path.join(CODEGEN_STUBS_DIR, "NativeSafeAreaProvider.js") },
+  { frag: "/react-native-safe-area-context/src/specs/NativeSafeAreaContext", stub: path.join(CODEGEN_STUBS_DIR, "NativeSafeAreaContext.js") },
+  // react-native-gesture-handler — GestureHandlerRootView envolve o app
+  // inteiro, é essencial pro React Navigation/Expo Router funcionar.
+  { frag: "/react-native-gesture-handler/src/specs/RNGestureHandlerRootViewNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "RNGestureHandlerRootViewNativeComponent.js") },
 ];
 
 nativeWindConfig.resolver = {
@@ -110,10 +111,13 @@ nativeWindConfig.resolver = {
     if (
       resolved &&
       "filePath" in resolved &&
-      typeof resolved.filePath === "string" &&
-      BROKEN_CODEGEN_PATH_FRAGMENTS.some((frag) => resolved.filePath.replace(/\\/g, "/").includes(frag))
+      typeof resolved.filePath === "string"
     ) {
-      return { ...resolved, filePath: VIRTUALVIEW_STUB };
+      const normalizedPath = resolved.filePath.replace(/\\/g, "/");
+      const match = CODEGEN_STUB_MAP.find((m) => normalizedPath.includes(m.frag));
+      if (match) {
+        return { ...resolved, filePath: match.stub };
+      }
     }
     return resolved;
   },
