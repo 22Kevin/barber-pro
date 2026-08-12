@@ -12,7 +12,16 @@ import {
 import * as Sharing from "expo-sharing";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
-import ViewShot from "react-native-view-shot";
+// TEMPORARIAMENTE DESATIVADO: import ViewShot from "react-native-view-shot";
+// O pacote react-native-view-shot está causando um erro de build no Android
+// ("More than one plugin attempted to override parsing", conflito entre o
+// Babel e o react-native-css-interop/NativeWind) que não conseguimos
+// resolver ainda, mesmo com múltiplas tentativas (stub preciso, limpeza
+// completa de cache). Pra não travar o lançamento, o botão "Compartilhar
+// nos Stories" fica temporariamente desativado (mostra um aviso), sem
+// afetar nenhuma outra parte do app. Assim que a causa raiz for resolvida,
+// reverter: restaurar o import acima e o restante deste arquivo pra usar
+// <ViewShot ref={cardRef} ...> em vez de <View ref={cardRef} ...>.
 import { useColors } from "@/hooks/use-colors";
 
 // ─── Definição de temas ───────────────────────────────────────────────────────
@@ -129,7 +138,7 @@ export function AppointmentShareCard({
   const resolvedServiceName = serviceNames && serviceNames.length > 1
     ? serviceNames.join(" + ")
     : serviceName;
-  const cardRef = useRef<ViewShot>(null);
+  const cardRef = useRef<View>(null);
   const [selectedTheme, setSelectedTheme] = useState<CardTheme>("dark-gold");
   const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(clientPhotoUrl ?? null);
 
@@ -137,6 +146,16 @@ export function AppointmentShareCard({
 
   // ── Compartilhar ────────────────────────────────────────────────────────────
   const handleShare = async () => {
+    // TEMPORARIAMENTE DESATIVADO — ver nota no import de react-native-view-shot
+    // no topo do arquivo. Assim que a causa raiz do erro de build for
+    // resolvida, restaurar a lógica original de captura + compartilhamento
+    // abaixo (comentada).
+    Alert.alert(
+      "Indisponível no momento",
+      "O compartilhamento em imagem está temporariamente indisponível nesta versão do app. Estamos trabalhando para trazer de volta em breve."
+    );
+    return;
+    /* LÓGICA ORIGINAL (restaurar junto com o import de ViewShot):
     if (Platform.OS === "web") {
       Alert.alert("Compartilhar", "Compartilhamento disponível apenas no app mobile.");
       return;
@@ -166,6 +185,7 @@ export function AppointmentShareCard({
     } catch (e: any) {
       Alert.alert("Erro ao compartilhar", e.message ?? "Tente novamente.");
     }
+    */
   };
 
   // ── Selecionar foto de perfil ───────────────────────────────────────────────
@@ -289,7 +309,8 @@ export function AppointmentShareCard({
       </View>
 
       {/* ── Card capturável (proporção 9:16 → 270:480) ───────────────────── */}
-      <ViewShot ref={cardRef} options={{ format: "png", quality: 1.0 }} style={styles.cardShot}>
+      {/* TEMPORARIAMENTE: era <ViewShot ref={cardRef} options={{ format: "png", quality: 1.0 }} style={styles.cardShot}> — ver nota no import de react-native-view-shot no topo do arquivo. */}
+      <View ref={cardRef} style={styles.cardShot}>
         <View style={[styles.cardBg, { backgroundColor: theme.bg }]}>
 
           {/* Fundo decorativo — linhas diagonais */}
@@ -362,7 +383,7 @@ export function AppointmentShareCard({
           </View>
 
         </View>
-      </ViewShot>
+      </View>
 
       {/* ── Botão de compartilhar ─────────────────────────────────────────── */}
       <TouchableOpacity
