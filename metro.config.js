@@ -98,6 +98,10 @@ const CODEGEN_STUB_MAP = [
   { frag: "/react-native-keyboard-controller/src/specs/OverKeyboardViewNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "OverKeyboardViewNativeComponent.js") },
   { frag: "/react-native-keyboard-controller/src/specs/NativeKeyboardController", stub: path.join(CODEGEN_STUBS_DIR, "NativeKeyboardController.js") },
   { frag: "/react-native-keyboard-controller/src/specs/NativeStatusBarManagerCompat", stub: path.join(CODEGEN_STUBS_DIR, "NativeStatusBarManagerCompat.js") },
+  // @react-native-google-signin/google-signin — esse arquivo especificamente
+  // ficou sem compilar nessa versão do pacote (o resto do "lib/module" é
+  // JS compilado normal; esse .ts "esquecido" quebra o parser do codegen).
+  { frag: "/@react-native-google-signin/google-signin/lib/module/spec/SignInButtonNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "SignInButtonNativeComponent.js") },
 ];
 
 nativeWindConfig.resolver = {
