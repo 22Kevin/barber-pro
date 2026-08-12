@@ -1,0 +1,60 @@
+// fix-safeareacontext-metro-crash.cjs
+// Corrige o MESMO crash de bundling "Cannot read properties of null
+// (reading 'loc')" agora em um arquivo diferente:
+// node_modules/react-native-safe-area-context/src/specs/NativeSafeAreaView.ts
+//
+// Mesma causa raiz do fix anterior (VirtualView): o parser do
+// @react-native/babel-plugin-codegen quebra em certos arquivos de
+// especificacao de codegen no React Native 0.81.x. Generaliza a solucao
+// anterior (que so tinha 1 caminho fixo) para uma LISTA de fragmentos de
+// caminho, todos redirecionados pro mesmo stub vazio ja criado — facilita
+// adicionar mais entradas se aparecer outro arquivo com o mesmo problema.
+//
+// Edita: metro.config.js (nao cria arquivo novo — reaproveita o
+// lib/virtualview-stub.js ja existente do fix anterior).
+//
+// Uso:
+//   node fix-safeareacontext-metro-crash.cjs
+//
+// Mesmo padrao de seguranca dos scripts anteriores: o trecho antigo precisa
+// aparecer EXATAMENTE 1 vez, e a substituicao usa content.replace(old, () =>
+// new). Este script PRESSUPOE que o fix anterior do VirtualView (commit
+// "fix: stub para VirtualView...") ja foi aplicado — se ainda nao foi,
+// aplique fix-virtualview-metro-crash.cjs primeiro.
+
+const fs = require('fs');
+const path = require('path');
+
+const METRO_CONFIG_PATH = path.join(__dirname, 'metro.config.js');
+
+const oldStr = Buffer.from("Ly8gVmlydHVhbFZpZXcuanMgLyBWaXJ0dWFsVmlld05hdGl2ZUNvbXBvbmVudC5qcyAoZGVudHJvIGRlCi8vIHJlYWN0LW5hdGl2ZS9zcmMvcHJpdmF0ZS9jb21wb25lbnRzL3ZpcnR1YWx2aWV3LykgdXNhbSBzaW50YXhlCi8vIGV4cGVyaW1lbnRhbCBkbyBKUyBxdWUgcXVlYnJhIG8gcGFyc2VyIGRvIGNvZGVnZW4gbm8gUk4gMC44MS54IOKAlCBidWcKLy8gY29uaGVjaWRvIChnaXRodWIuY29tL2ZhY2Vib29rL21ldHJvL2lzc3Vlcy8xNjUxKS4gQ29tcG9uZW50ZSBleHBlcmltZW50YWwKLy8gbsOjbyB1c2FkbyBlbSBuZW5odW0gbHVnYXIgZG8gYXBwIOKAlCByZWRpcmVjaW9uYWRvIHByYSBzdHViIHZhemlvLgpjb25zdCBWSVJUVUFMVklFV19TVFVCID0gcGF0aC5qb2luKF9fZGlybmFtZSwgImxpYiIsICJ2aXJ0dWFsdmlldy1zdHViLmpzIik7CgpuYXRpdmVXaW5kQ29uZmlnLnJlc29sdmVyID0gewogIC4uLm5hdGl2ZVdpbmRDb25maWcucmVzb2x2ZXIsCiAgcmVzb2x2ZVJlcXVlc3Q6IChjb250ZXh0LCBtb2R1bGVOYW1lLCBwbGF0Zm9ybSkgPT4gewogICAgaWYgKHBsYXRmb3JtID09PSAid2ViIiAmJiBtb2R1bGVOYW1lID09PSAicmVhY3QtbmF0aXZlLXZpZXctc2hvdCIpIHsKICAgICAgcmV0dXJuIHsgdHlwZTogInNvdXJjZUZpbGUiLCBmaWxlUGF0aDogVklFV19TSE9UX1dFQl9TVFVCIH07CiAgICB9CiAgICBjb25zdCByZXNvbHZlciA9IGNzc0ludGVyb3BSZXNvbHZlciA/PyBjb250ZXh0LnJlc29sdmVSZXF1ZXN0OwogICAgY29uc3QgcmVzb2x2ZWQgPSByZXNvbHZlcihjb250ZXh0LCBtb2R1bGVOYW1lLCBwbGF0Zm9ybSk7CiAgICBpZiAoCiAgICAgIHJlc29sdmVkICYmCiAgICAgICJmaWxlUGF0aCIgaW4gcmVzb2x2ZWQgJiYKICAgICAgdHlwZW9mIHJlc29sdmVkLmZpbGVQYXRoID09PSAic3RyaW5nIiAmJgogICAgICByZXNvbHZlZC5maWxlUGF0aC5pbmNsdWRlcygicmVhY3QtbmF0aXZlLWNzcy1pbnRlcm9wLy5jYWNoZS8iKQogICAgKSB7CiAgICAgIGNvbnN0IGZpbGVuYW1lID0gcGF0aC5iYXNlbmFtZShyZXNvbHZlZC5maWxlUGF0aCk7CiAgICAgIGNvbnN0IG5ld1BhdGggPSBwYXRoLmpvaW4oUFJPSkVDVF9DQUNIRSwgZmlsZW5hbWUpOwogICAgICBpZiAoIWZzLmV4aXN0c1N5bmMobmV3UGF0aCkpIGZzLndyaXRlRmlsZVN5bmMobmV3UGF0aCwgIiIpOwogICAgICByZXR1cm4geyAuLi5yZXNvbHZlZCwgZmlsZVBhdGg6IG5ld1BhdGggfTsKICAgIH0KICAgIGlmICgKICAgICAgcmVzb2x2ZWQgJiYKICAgICAgImZpbGVQYXRoIiBpbiByZXNvbHZlZCAmJgogICAgICB0eXBlb2YgcmVzb2x2ZWQuZmlsZVBhdGggPT09ICJzdHJpbmciICYmCiAgICAgIHJlc29sdmVkLmZpbGVQYXRoLnJlcGxhY2UoL1xcL2csICIvIikuaW5jbHVkZXMoIi9yZWFjdC1uYXRpdmUvc3JjL3ByaXZhdGUvY29tcG9uZW50cy92aXJ0dWFsdmlldy8iKQogICAgKSB7CiAgICAgIHJldHVybiB7IC4uLnJlc29sdmVkLCBmaWxlUGF0aDogVklSVFVBTFZJRVdfU1RVQiB9OwogICAgfQogICAgcmV0dXJuIHJlc29sdmVkOwogIH0sCn07", 'base64').toString('utf8');
+const newStr = Buffer.from("Ly8gVmlydHVhbFZpZXcuanMgLyBWaXJ0dWFsVmlld05hdGl2ZUNvbXBvbmVudC5qcyAoZGVudHJvIGRlCi8vIHJlYWN0LW5hdGl2ZS9zcmMvcHJpdmF0ZS9jb21wb25lbnRzL3ZpcnR1YWx2aWV3LykgdXNhbSBzaW50YXhlCi8vIGV4cGVyaW1lbnRhbCBkbyBKUyBxdWUgcXVlYnJhIG8gcGFyc2VyIGRvIGNvZGVnZW4gbm8gUk4gMC44MS54IOKAlCBidWcKLy8gY29uaGVjaWRvIChnaXRodWIuY29tL2ZhY2Vib29rL21ldHJvL2lzc3Vlcy8xNjUxKS4gQ29tcG9uZW50ZSBleHBlcmltZW50YWwKLy8gbsOjbyB1c2FkbyBlbSBuZW5odW0gbHVnYXIgZG8gYXBwIOKAlCByZWRpcmVjaW9uYWRvIHByYSBzdHViIHZhemlvLgovLwovLyBNZXNtYSBjbGFzc2UgZGUgcHJvYmxlbWEgYWZldGEgb3V0cm9zIGFycXVpdm9zIGRlIGVzcGVjaWZpY2HDp8OjbyBkZQovLyBjb2RlZ2VuICgqLnRzIGVtIHBhc3RhcyAic3BlY3MvIikgZGUgbcOzZHVsb3MgbmF0aXZvcyBkZSB0ZXJjZWlyb3Mg4oCUIG8KLy8gcGFyc2VyIGRvIEByZWFjdC1uYXRpdmUvYmFiZWwtcGx1Z2luLWNvZGVnZW4gcXVlYnJhIGNvbSAiQ2Fubm90IHJlYWQKLy8gcHJvcGVydGllcyBvZiBudWxsIChyZWFkaW5nICdsb2MnKSIgZW0gdsOhcmlvcyBkZWxlcy4gTGlzdGEgZGUgdHJlY2hvcyBkZQovLyBjYW1pbmhvIChwYXRoKSBxdWUsIHNlIGFwYXJlY2VyZW0gbm8gYXJxdWl2byByZXNvbHZpZG8sIHPDo28gcmVkaXJlY2lvbmFkb3MKLy8gcHJvIG1lc21vIHN0dWIgdmF6aW8uIEFkaWNpb25hciBub3ZvcyBhcXVpIHNlIGFwYXJlY2VyIG1haXMgYWxndW0uCmNvbnN0IFZJUlRVQUxWSUVXX1NUVUIgPSBwYXRoLmpvaW4oX19kaXJuYW1lLCAibGliIiwgInZpcnR1YWx2aWV3LXN0dWIuanMiKTsKY29uc3QgQlJPS0VOX0NPREVHRU5fUEFUSF9GUkFHTUVOVFMgPSBbCiAgIi9yZWFjdC1uYXRpdmUvc3JjL3ByaXZhdGUvY29tcG9uZW50cy92aXJ0dWFsdmlldy8iLAogICIvcmVhY3QtbmF0aXZlLXNhZmUtYXJlYS1jb250ZXh0L3NyYy9zcGVjcy9OYXRpdmVTYWZlQXJlYVZpZXciLApdOwoKbmF0aXZlV2luZENvbmZpZy5yZXNvbHZlciA9IHsKICAuLi5uYXRpdmVXaW5kQ29uZmlnLnJlc29sdmVyLAogIHJlc29sdmVSZXF1ZXN0OiAoY29udGV4dCwgbW9kdWxlTmFtZSwgcGxhdGZvcm0pID0+IHsKICAgIGlmIChwbGF0Zm9ybSA9PT0gIndlYiIgJiYgbW9kdWxlTmFtZSA9PT0gInJlYWN0LW5hdGl2ZS12aWV3LXNob3QiKSB7CiAgICAgIHJldHVybiB7IHR5cGU6ICJzb3VyY2VGaWxlIiwgZmlsZVBhdGg6IFZJRVdfU0hPVF9XRUJfU1RVQiB9OwogICAgfQogICAgY29uc3QgcmVzb2x2ZXIgPSBjc3NJbnRlcm9wUmVzb2x2ZXIgPz8gY29udGV4dC5yZXNvbHZlUmVxdWVzdDsKICAgIGNvbnN0IHJlc29sdmVkID0gcmVzb2x2ZXIoY29udGV4dCwgbW9kdWxlTmFtZSwgcGxhdGZvcm0pOwogICAgaWYgKAogICAgICByZXNvbHZlZCAmJgogICAgICAiZmlsZVBhdGgiIGluIHJlc29sdmVkICYmCiAgICAgIHR5cGVvZiByZXNvbHZlZC5maWxlUGF0aCA9PT0gInN0cmluZyIgJiYKICAgICAgcmVzb2x2ZWQuZmlsZVBhdGguaW5jbHVkZXMoInJlYWN0LW5hdGl2ZS1jc3MtaW50ZXJvcC8uY2FjaGUvIikKICAgICkgewogICAgICBjb25zdCBmaWxlbmFtZSA9IHBhdGguYmFzZW5hbWUocmVzb2x2ZWQuZmlsZVBhdGgpOwogICAgICBjb25zdCBuZXdQYXRoID0gcGF0aC5qb2luKFBST0pFQ1RfQ0FDSEUsIGZpbGVuYW1lKTsKICAgICAgaWYgKCFmcy5leGlzdHNTeW5jKG5ld1BhdGgpKSBmcy53cml0ZUZpbGVTeW5jKG5ld1BhdGgsICIiKTsKICAgICAgcmV0dXJuIHsgLi4ucmVzb2x2ZWQsIGZpbGVQYXRoOiBuZXdQYXRoIH07CiAgICB9CiAgICBpZiAoCiAgICAgIHJlc29sdmVkICYmCiAgICAgICJmaWxlUGF0aCIgaW4gcmVzb2x2ZWQgJiYKICAgICAgdHlwZW9mIHJlc29sdmVkLmZpbGVQYXRoID09PSAic3RyaW5nIiAmJgogICAgICBCUk9LRU5fQ09ERUdFTl9QQVRIX0ZSQUdNRU5UUy5zb21lKChmcmFnKSA9PiByZXNvbHZlZC5maWxlUGF0aC5yZXBsYWNlKC9cXC9nLCAiLyIpLmluY2x1ZGVzKGZyYWcpKQogICAgKSB7CiAgICAgIHJldHVybiB7IC4uLnJlc29sdmVkLCBmaWxlUGF0aDogVklSVFVBTFZJRVdfU1RVQiB9OwogICAgfQogICAgcmV0dXJuIHJlc29sdmVkOwogIH0sCn07", 'base64').toString('utf8');
+
+try {
+  if (!fs.existsSync(METRO_CONFIG_PATH)) {
+    throw new Error('Arquivo não encontrado: ' + METRO_CONFIG_PATH);
+  }
+  let content = fs.readFileSync(METRO_CONFIG_PATH, 'utf8');
+  const occurrences = content.split(oldStr).length - 1;
+  if (occurrences !== 1) {
+    throw new Error(
+      `"metro.config.js": esperado 1 ocorrência do trecho original, encontrado ${occurrences}. ` +
+      `Abortando sem gravar nada. Verifique se fix-virtualview-metro-crash.cjs já foi aplicado antes deste script.`
+    );
+  }
+  content = content.replace(oldStr, () => newStr);
+  fs.writeFileSync(METRO_CONFIG_PATH, content, 'utf8');
+  console.log('✅ metro.config.js: interceptação do NativeSafeAreaView adicionada.');
+
+  console.log('');
+  console.log('Próximos passos:');
+  console.log('  1. git diff metro.config.js   (conferir visualmente)');
+  console.log('  2. git add metro.config.js');
+  console.log('  3. git commit -m "fix: stub para NativeSafeAreaView.ts (mesmo bug de parsing do codegen, RN 0.81.x)"');
+  console.log('  4. git push');
+  console.log('  5. cd android && gradlew bundleRelease');
+} catch (err) {
+  console.error('❌ Falha ao aplicar a alteração:');
+  console.error(err.message);
+  process.exit(1);
+}

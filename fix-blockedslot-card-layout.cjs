@@ -1,0 +1,72 @@
+// fix-blockedslot-card-layout.cjs
+// Corrige o layout quebrado do card de horario bloqueado no painel web
+// (tela de Agenda), reportado com uma screenshot do celular: em telas
+// estreitas, o texto (nome do barbeiro + dica "Se isso for virar um
+// agendamento...") quebrava palavra por palavra em muitas linhas, e o
+// selo "Bloqueado" + "Clique p/ transformar" ficavam flutuando/sobrepostos
+// no meio do texto quebrado.
+//
+// Causa raiz: o card usava "align-items:center" no container flex. Quando
+// o texto do meio quebrava em muitas linhas (deixando o card bem alto), o
+// selo do lado direito (que tem altura fixa e pequena) ficava centralizado
+// verticalmente em relacao a essa coluna agora alta — sobrepondo o texto
+// em vez de ficar alinhado no topo do card.
+//
+// Fix:
+//  1. "align-items:center" -> "align-items:flex-start" no container do
+//     card — o selo "Bloqueado" e o link "Clique p/ transformar" agora
+//     ficam alinhados no topo, nunca sobrepondo o texto abaixo.
+//  2. A linha do nome do barbeiro ("Kevin Rayan · Importado do Google
+//     Agenda") ganhou o mesmo tratamento de truncar em uma linha so
+//     (nowrap + ellipsis) que a linha do motivo do bloqueio ja tinha —
+//     evita que essa linha quebre em varias linhas curtas em telas
+//     estreitas, deixando o card mais compacto e legivel.
+//
+// A dica em azul/dourado ("Se isso for virar um agendamento...") continua
+// podendo quebrar em varias linhas normalmente — e um texto explicativo
+// mais longo, faz sentido ler completo, e com o fix do align-items ele
+// nao sobrepoe mais nada mesmo quando quebra.
+//
+// Uso:
+//   node fix-blockedslot-card-layout.cjs
+//
+// Mesmo padrao de seguranca dos scripts anteriores: o trecho antigo
+// precisa aparecer EXATAMENTE 1 vez, e a substituicao usa
+// content.replace(old, () => new) — preserva CRLF (este arquivo usa CRLF).
+
+const fs = require('fs');
+const path = require('path');
+
+const ADMIN_ROUTES_PATH = path.join(__dirname, 'server', 'admin-routes.ts');
+
+const oldStr = Buffer.from("ICAgICAgICAgICAgICAgICAgICB0aW1lOiBiLnN0YXJ0VGltZSA/PyAiMDA6MDAiLA0KICAgICAgICAgICAgICAgICAgICBodG1sOiBgPGRpdiBvbmNsaWNrPSJvcGVuQ29udmVydEJsb2NrTW9kYWwoJHtlc2MoSlNPTi5zdHJpbmdpZnkoe2lkOmIuaWQscmVhc29uOmIucmVhc29uPz8nJyxkYXRlOmIuZGF0ZSxzdGFydFRpbWU6Yi5zdGFydFRpbWU/PycnLGVuZFRpbWU6Yi5lbmRUaW1lPz8nJyxiYXJiZXJOYW1lLGNsaWVudEd1ZXNzOm1hdGNoZXMuY2xpZW50R3Vlc3MsbWF0Y2hpbmdDbGllbnRzOm1hdGNoZXMubWF0Y2hpbmdDbGllbnRzLG1hdGNoaW5nU2VydmljZUlkOm1hdGNoZXMubWF0Y2hpbmdTZXJ2aWNlSWR9KSl9KSIgc3R5bGU9ImJhY2tncm91bmQ6dmFyKC0tc3VyZmFjZTIsIHJnYmEoMjU1LDI1NSwyNTUsMC4wMykpO2JvcmRlcjoxcHggZGFzaGVkIHZhcigtLWJvcmRlcik7Ym9yZGVyLXJhZGl1czoxNnB4O3BhZGRpbmc6MTZweCAxOHB4O2Rpc3BsYXk6ZmxleDthbGlnbi1pdGVtczpjZW50ZXI7Z2FwOjE0cHg7b3BhY2l0eTowLjk7Y3Vyc29yOnBvaW50ZXI7dHJhbnNpdGlvbjpib3JkZXItY29sb3IgLjE1cyIgb25tb3VzZW92ZXI9InRoaXMuc3R5bGUuYm9yZGVyQ29sb3I9JyNDOUE4NEMnIiBvbm1vdXNlb3V0PSJ0aGlzLnN0eWxlLmJvcmRlckNvbG9yPSd2YXIoLS1ib3JkZXIpJyI+DQogICAgICAgICAgICAgICAgICAgICAgPGRpdiBzdHlsZT0iZmxleC1zaHJpbms6MDt0ZXh0LWFsaWduOmNlbnRlcjttaW4td2lkdGg6NTJweDsiPg0KICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBzdHlsZT0iZm9udC1zaXplOjIwcHg7Zm9udC13ZWlnaHQ6OTAwO2NvbG9yOnZhcigtLW11dGVkKTtsaW5lLWhlaWdodDoxO2xldHRlci1zcGFjaW5nOi0wLjVweDsiPiR7Yi5zdGFydFRpbWU/LnN1YnN0cmluZygwLDUpID8/ICLigJQifTwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBzdHlsZT0iZm9udC1zaXplOjExcHg7Y29sb3I6dmFyKC0tbXV0ZWQpO21hcmdpbi10b3A6M3B4O2ZvbnQtd2VpZ2h0OjUwMDsiPiR7Yi5lbmRUaW1lPy5zdWJzdHJpbmcoMCw1KSA/PyAiIn08L2Rpdj4NCiAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj4NCiAgICAgICAgICAgICAgICAgICAgICA8ZGl2IHN0eWxlPSJ3aWR0aDozcHg7aGVpZ2h0OjQ4cHg7Ym9yZGVyLXJhZGl1czoycHg7YmFja2dyb3VuZDp2YXIoLS1tdXRlZCk7ZmxleC1zaHJpbms6MDsiPjwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICAgIDxkaXYgc3R5bGU9IndpZHRoOjQycHg7aGVpZ2h0OjQycHg7Ym9yZGVyLXJhZGl1czoxMnB4O2JhY2tncm91bmQ6cmdiYSgxNDgsMTYzLDE4NCwwLjEpO2JvcmRlcjoxcHggc29saWQgcmdiYSgxNDgsMTYzLDE4NCwwLjI1KTtkaXNwbGF5OmZsZXg7YWxpZ24taXRlbXM6Y2VudGVyO2p1c3RpZnktY29udGVudDpjZW50ZXI7Zm9udC1zaXplOjE4cHg7ZmxleC1zaHJpbms6MDsiPvCflJI8L2Rpdj4NCiAgICAgICAgICAgICAgICAgICAgICA8ZGl2IHN0eWxlPSJmbGV4OjE7bWluLXdpZHRoOjA7Ij4NCiAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgc3R5bGU9ImZvbnQtc2l6ZToxNHB4O2ZvbnQtd2VpZ2h0OjcwMDtjb2xvcjp2YXIoLS10ZXh0KTt3aGl0ZS1zcGFjZTpub3dyYXA7b3ZlcmZsb3c6aGlkZGVuO3RleHQtb3ZlcmZsb3c6ZWxsaXBzaXM7Ij4ke2VzYyhiLnJlYXNvbiA/PyAiSG9yw6FyaW8gYmxvcXVlYWRvIil9PC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IHN0eWxlPSJmb250LXNpemU6MTFweDtjb2xvcjp2YXIoLS1tdXRlZCk7bWFyZ2luLXRvcDoycHg7b3BhY2l0eTowLjg7Ij4ke2VzYyhiYXJiZXJOYW1lKX0ke2lzRnJvbUdvb2dsZSA/ICIgwrcgSW1wb3J0YWRvIGRvIEdvb2dsZSBBZ2VuZGEiIDogIiJ9PC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgICAke2lzRnJvbUdvb2dsZSA/IGA8ZGl2IHN0eWxlPSJmb250LXNpemU6MTFweDtjb2xvcjp2YXIoLS1nb2xkKTttYXJnaW4tdG9wOjRweDsiPvCfkqEgU2UgaXNzbyBmb3IgdmlyYXIgdW0gYWdlbmRhbWVudG8gZGUgY2xpZW50ZSwgY29uZmlyYSBzZSBvIGNsaWVudGUgZSBvIHNlcnZpw6dvIGrDoSBlc3TDo28gY2FkYXN0cmFkb3Mgbm8gc2lzdGVtYS48L2Rpdj5gIDogIiJ9DQogICAgICAgICAgICAgICAgICAgICAgPC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgPGRpdiBzdHlsZT0iZmxleC1zaHJpbms6MDtkaXNwbGF5OmZsZXg7ZmxleC1kaXJlY3Rpb246Y29sdW1uO2FsaWduLWl0ZW1zOmZsZXgtZW5kO2dhcDo0cHgiPg0KICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBzdHlsZT0icGFkZGluZzo0cHggMTBweDtib3JkZXItcmFkaXVzOjIwcHg7Zm9udC1zaXplOjExcHg7Zm9udC13ZWlnaHQ6NzAwO2JhY2tncm91bmQ6cmdiYSgxNDgsMTYzLDE4NCwwLjEpO2JvcmRlcjoxcHggc29saWQgcmdiYSgxNDgsMTYzLDE4NCwwLjI1KTtjb2xvcjp2YXIoLS1tdXRlZCk7d2hpdGUtc3BhY2U6bm93cmFwOyI+QmxvcXVlYWRvPC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IHN0eWxlPSJmb250LXNpemU6MTBweDtjb2xvcjp2YXIoLS1nb2xkKTt3aGl0ZS1zcGFjZTpub3dyYXAiPkNsaXF1ZSBwLyB0cmFuc2Zvcm1hciDihpI8L2Rpdj4NCiAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj4NCiAgICAgICAgICAgICAgICAgICAgPC9kaXY+YCwNCg==", 'base64').toString('utf8');
+const newStr = Buffer.from("ICAgICAgICAgICAgICAgICAgICB0aW1lOiBiLnN0YXJ0VGltZSA/PyAiMDA6MDAiLA0KICAgICAgICAgICAgICAgICAgICBodG1sOiBgPGRpdiBvbmNsaWNrPSJvcGVuQ29udmVydEJsb2NrTW9kYWwoJHtlc2MoSlNPTi5zdHJpbmdpZnkoe2lkOmIuaWQscmVhc29uOmIucmVhc29uPz8nJyxkYXRlOmIuZGF0ZSxzdGFydFRpbWU6Yi5zdGFydFRpbWU/PycnLGVuZFRpbWU6Yi5lbmRUaW1lPz8nJyxiYXJiZXJOYW1lLGNsaWVudEd1ZXNzOm1hdGNoZXMuY2xpZW50R3Vlc3MsbWF0Y2hpbmdDbGllbnRzOm1hdGNoZXMubWF0Y2hpbmdDbGllbnRzLG1hdGNoaW5nU2VydmljZUlkOm1hdGNoZXMubWF0Y2hpbmdTZXJ2aWNlSWR9KSl9KSIgc3R5bGU9ImJhY2tncm91bmQ6dmFyKC0tc3VyZmFjZTIsIHJnYmEoMjU1LDI1NSwyNTUsMC4wMykpO2JvcmRlcjoxcHggZGFzaGVkIHZhcigtLWJvcmRlcik7Ym9yZGVyLXJhZGl1czoxNnB4O3BhZGRpbmc6MTZweCAxOHB4O2Rpc3BsYXk6ZmxleDthbGlnbi1pdGVtczpmbGV4LXN0YXJ0O2dhcDoxNHB4O29wYWNpdHk6MC45O2N1cnNvcjpwb2ludGVyO3RyYW5zaXRpb246Ym9yZGVyLWNvbG9yIC4xNXMiIG9ubW91c2VvdmVyPSJ0aGlzLnN0eWxlLmJvcmRlckNvbG9yPScjQzlBODRDJyIgb25tb3VzZW91dD0idGhpcy5zdHlsZS5ib3JkZXJDb2xvcj0ndmFyKC0tYm9yZGVyKSciPg0KICAgICAgICAgICAgICAgICAgICAgIDxkaXYgc3R5bGU9ImZsZXgtc2hyaW5rOjA7dGV4dC1hbGlnbjpjZW50ZXI7bWluLXdpZHRoOjUycHg7Ij4NCiAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgc3R5bGU9ImZvbnQtc2l6ZToyMHB4O2ZvbnQtd2VpZ2h0OjkwMDtjb2xvcjp2YXIoLS1tdXRlZCk7bGluZS1oZWlnaHQ6MTtsZXR0ZXItc3BhY2luZzotMC41cHg7Ij4ke2Iuc3RhcnRUaW1lPy5zdWJzdHJpbmcoMCw1KSA/PyAi4oCUIn08L2Rpdj4NCiAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgc3R5bGU9ImZvbnQtc2l6ZToxMXB4O2NvbG9yOnZhcigtLW11dGVkKTttYXJnaW4tdG9wOjNweDtmb250LXdlaWdodDo1MDA7Ij4ke2IuZW5kVGltZT8uc3Vic3RyaW5nKDAsNSkgPz8gIiJ9PC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgPC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgPGRpdiBzdHlsZT0id2lkdGg6M3B4O2hlaWdodDo0OHB4O2JvcmRlci1yYWRpdXM6MnB4O2JhY2tncm91bmQ6dmFyKC0tbXV0ZWQpO2ZsZXgtc2hyaW5rOjA7Ij48L2Rpdj4NCiAgICAgICAgICAgICAgICAgICAgICA8ZGl2IHN0eWxlPSJ3aWR0aDo0MnB4O2hlaWdodDo0MnB4O2JvcmRlci1yYWRpdXM6MTJweDtiYWNrZ3JvdW5kOnJnYmEoMTQ4LDE2MywxODQsMC4xKTtib3JkZXI6MXB4IHNvbGlkIHJnYmEoMTQ4LDE2MywxODQsMC4yNSk7ZGlzcGxheTpmbGV4O2FsaWduLWl0ZW1zOmNlbnRlcjtqdXN0aWZ5LWNvbnRlbnQ6Y2VudGVyO2ZvbnQtc2l6ZToxOHB4O2ZsZXgtc2hyaW5rOjA7Ij7wn5SSPC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgPGRpdiBzdHlsZT0iZmxleDoxO21pbi13aWR0aDowOyI+DQogICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IHN0eWxlPSJmb250LXNpemU6MTRweDtmb250LXdlaWdodDo3MDA7Y29sb3I6dmFyKC0tdGV4dCk7d2hpdGUtc3BhY2U6bm93cmFwO292ZXJmbG93OmhpZGRlbjt0ZXh0LW92ZXJmbG93OmVsbGlwc2lzOyI+JHtlc2MoYi5yZWFzb24gPz8gIkhvcsOhcmlvIGJsb3F1ZWFkbyIpfTwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBzdHlsZT0iZm9udC1zaXplOjExcHg7Y29sb3I6dmFyKC0tbXV0ZWQpO21hcmdpbi10b3A6MnB4O29wYWNpdHk6MC44O3doaXRlLXNwYWNlOm5vd3JhcDtvdmVyZmxvdzpoaWRkZW47dGV4dC1vdmVyZmxvdzplbGxpcHNpczsiPiR7ZXNjKGJhcmJlck5hbWUpfSR7aXNGcm9tR29vZ2xlID8gIiDCtyBJbXBvcnRhZG8gZG8gR29vZ2xlIEFnZW5kYSIgOiAiIn08L2Rpdj4NCiAgICAgICAgICAgICAgICAgICAgICAgICR7aXNGcm9tR29vZ2xlID8gYDxkaXYgc3R5bGU9ImZvbnQtc2l6ZToxMXB4O2NvbG9yOnZhcigtLWdvbGQpO21hcmdpbi10b3A6NHB4OyI+8J+SoSBTZSBpc3NvIGZvciB2aXJhciB1bSBhZ2VuZGFtZW50byBkZSBjbGllbnRlLCBjb25maXJhIHNlIG8gY2xpZW50ZSBlIG8gc2VydmnDp28gasOhIGVzdMOjbyBjYWRhc3RyYWRvcyBubyBzaXN0ZW1hLjwvZGl2PmAgOiAiIn0NCiAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj4NCiAgICAgICAgICAgICAgICAgICAgICA8ZGl2IHN0eWxlPSJmbGV4LXNocmluazowO2Rpc3BsYXk6ZmxleDtmbGV4LWRpcmVjdGlvbjpjb2x1bW47YWxpZ24taXRlbXM6ZmxleC1lbmQ7Z2FwOjRweCI+DQogICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IHN0eWxlPSJwYWRkaW5nOjRweCAxMHB4O2JvcmRlci1yYWRpdXM6MjBweDtmb250LXNpemU6MTFweDtmb250LXdlaWdodDo3MDA7YmFja2dyb3VuZDpyZ2JhKDE0OCwxNjMsMTg0LDAuMSk7Ym9yZGVyOjFweCBzb2xpZCByZ2JhKDE0OCwxNjMsMTg0LDAuMjUpO2NvbG9yOnZhcigtLW11dGVkKTt3aGl0ZS1zcGFjZTpub3dyYXA7Ij5CbG9xdWVhZG88L2Rpdj4NCiAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgc3R5bGU9ImZvbnQtc2l6ZToxMHB4O2NvbG9yOnZhcigtLWdvbGQpO3doaXRlLXNwYWNlOm5vd3JhcCI+Q2xpcXVlIHAvIHRyYW5zZm9ybWFyIOKGkjwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICAgIDwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICA8L2Rpdj5gLA0K", 'base64').toString('utf8');
+
+try {
+  if (!fs.existsSync(ADMIN_ROUTES_PATH)) {
+    throw new Error('Arquivo não encontrado: ' + ADMIN_ROUTES_PATH);
+  }
+  let content = fs.readFileSync(ADMIN_ROUTES_PATH, 'utf8');
+  const occurrences = content.split(oldStr).length - 1;
+  if (occurrences !== 1) {
+    throw new Error(
+      `esperado 1 ocorrência do trecho original, encontrado ${occurrences}. ` +
+      `Abortando sem gravar nada.`
+    );
+  }
+  content = content.replace(oldStr, () => newStr);
+  fs.writeFileSync(ADMIN_ROUTES_PATH, content, 'utf8');
+  console.log('✅ server/admin-routes.ts: layout do card de bloqueio corrigido.');
+  console.log('');
+  console.log('Próximos passos:');
+  console.log('  1. git diff server/admin-routes.ts   (conferir visualmente)');
+  console.log('  2. npx esbuild server/admin-routes.ts --outfile=nul --format=esm --platform=node');
+  console.log('  3. git add server/admin-routes.ts');
+  console.log('  4. git commit -m "fix: layout do card de horario bloqueado quebrando em telas estreitas"');
+  console.log('  5. git push');
+  console.log('  6. Testar no celular: abrir a Agenda (painel web) com um horário bloqueado importado da Google Agenda');
+} catch (err) {
+  console.error('❌ Falha ao aplicar a alteração:');
+  console.error(err.message);
+  process.exit(1);
+}
