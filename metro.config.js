@@ -102,6 +102,12 @@ const CODEGEN_STUB_MAP = [
   // ficou sem compilar nessa versão do pacote (o resto do "lib/module" é
   // JS compilado normal; esse .ts "esquecido" quebra o parser do codegen).
   { frag: "/@react-native-google-signin/google-signin/lib/module/spec/SignInButtonNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "SignInButtonNativeComponent.js") },
+  // react-native-view-shot — RNViewShot.js (o arquivo nativo, não o
+  // .web.js já tratado acima) tem o pragma "//@flow" e importa de um
+  // arquivo de especificação de codegen — causa "More than one plugin
+  // attempted to override parsing" (mesmo problema da versão web, ver
+  // VIEW_SHOT_WEB_STUB no topo do arquivo), agora também no build nativo.
+  { frag: "/react-native-view-shot/src/RNViewShot.js", stub: path.join(CODEGEN_STUBS_DIR, "RNViewShot.js") },
 ];
 
 nativeWindConfig.resolver = {
