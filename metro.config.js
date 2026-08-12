@@ -87,6 +87,17 @@ const CODEGEN_STUB_MAP = [
   // react-native-gesture-handler — GestureHandlerRootView envolve o app
   // inteiro, é essencial pro React Navigation/Expo Router funcionar.
   { frag: "/react-native-gesture-handler/src/specs/RNGestureHandlerRootViewNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "RNGestureHandlerRootViewNativeComponent.js") },
+  // react-native-keyboard-controller — tem 7 arquivos de especificação de
+  // codegen ao todo; adiantando os 7 de uma vez (em vez de descobrir um
+  // por um, cada rodada de build levando 15-30min) já que o padrão do bug
+  // (afeta pastas "specs/" inteiras) já está bem estabelecido a essa altura.
+  { frag: "/react-native-keyboard-controller/src/specs/KeyboardBackgroundViewNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "KeyboardBackgroundViewNativeComponent.js") },
+  { frag: "/react-native-keyboard-controller/src/specs/KeyboardControllerViewNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "KeyboardControllerViewNativeComponent.js") },
+  { frag: "/react-native-keyboard-controller/src/specs/KeyboardExtenderNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "KeyboardExtenderNativeComponent.js") },
+  { frag: "/react-native-keyboard-controller/src/specs/KeyboardGestureAreaNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "KeyboardGestureAreaNativeComponent.js") },
+  { frag: "/react-native-keyboard-controller/src/specs/OverKeyboardViewNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "OverKeyboardViewNativeComponent.js") },
+  { frag: "/react-native-keyboard-controller/src/specs/NativeKeyboardController", stub: path.join(CODEGEN_STUBS_DIR, "NativeKeyboardController.js") },
+  { frag: "/react-native-keyboard-controller/src/specs/NativeStatusBarManagerCompat", stub: path.join(CODEGEN_STUBS_DIR, "NativeStatusBarManagerCompat.js") },
 ];
 
 nativeWindConfig.resolver = {
