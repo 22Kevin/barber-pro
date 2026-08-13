@@ -108,6 +108,10 @@ const CODEGEN_STUB_MAP = [
   // attempted to override parsing" (mesmo problema da versão web, ver
   // VIEW_SHOT_WEB_STUB no topo do arquivo), agora também no build nativo.
   { frag: "/react-native-view-shot/src/RNViewShot.js", stub: path.join(CODEGEN_STUBS_DIR, "RNViewShot.js") },
+  // react-native-gesture-handler — 2 arquivos de spec restantes (irmãos do
+  // RNGestureHandlerRootViewNativeComponent já corrigido acima).
+  { frag: "/react-native-gesture-handler/src/specs/RNGestureHandlerButtonNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "RNGestureHandlerButtonNativeComponent.js") },
+  { frag: "/react-native-gesture-handler/src/specs/NativeRNGestureHandlerModule", stub: path.join(CODEGEN_STUBS_DIR, "NativeRNGestureHandlerModule.js") },
 ];
 
 nativeWindConfig.resolver = {
