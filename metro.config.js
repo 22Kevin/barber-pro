@@ -112,6 +112,42 @@ const CODEGEN_STUB_MAP = [
   // RNGestureHandlerRootViewNativeComponent já corrigido acima).
   { frag: "/react-native-gesture-handler/src/specs/RNGestureHandlerButtonNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "RNGestureHandlerButtonNativeComponent.js") },
   { frag: "/react-native-gesture-handler/src/specs/NativeRNGestureHandlerModule", stub: path.join(CODEGEN_STUBS_DIR, "NativeRNGestureHandlerModule.js") },
+  // react-native-svg — 32 arquivos de especificação de codegen ao todo na
+  // pasta fabric/ (30 componentes visuais + 2 TurboModules). Adiantando
+  // todos de uma vez (em vez de descobrir um por um, cada rodada de build
+  // levando 20-30min) — mesmo padrão ja bem estabelecido a essa altura.
+  { frag: "/react-native-svg/src/fabric/AndroidSvgViewNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "AndroidSvgViewNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/CircleNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "CircleNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/ClipPathNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ClipPathNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/DefsNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "DefsNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/EllipseNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "EllipseNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/FeBlendNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "FeBlendNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/FeColorMatrixNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "FeColorMatrixNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/FeCompositeNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "FeCompositeNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/FeFloodNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "FeFloodNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/FeGaussianBlurNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "FeGaussianBlurNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/FeMergeNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "FeMergeNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/FeOffsetNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "FeOffsetNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/FilterNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "FilterNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/ForeignObjectNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ForeignObjectNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/GroupNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "GroupNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/IOSSvgViewNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "IOSSvgViewNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/ImageNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ImageNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/LineNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "LineNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/LinearGradientNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "LinearGradientNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/MarkerNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "MarkerNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/MaskNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "MaskNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/NativeSvgRenderableModule", stub: path.join(CODEGEN_STUBS_DIR, "NativeSvgRenderableModule.js") },
+  { frag: "/react-native-svg/src/fabric/NativeSvgViewModule", stub: path.join(CODEGEN_STUBS_DIR, "NativeSvgViewModule.js") },
+  { frag: "/react-native-svg/src/fabric/PathNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "PathNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/PatternNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "PatternNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/RadialGradientNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "RadialGradientNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/RectNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "RectNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/SymbolNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "SymbolNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/TSpanNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "TSpanNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/TextNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "TextNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/TextPathNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "TextPathNativeComponent.js") },
+  { frag: "/react-native-svg/src/fabric/UseNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "UseNativeComponent.js") },
 ];
 
 nativeWindConfig.resolver = {
