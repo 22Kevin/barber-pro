@@ -148,6 +148,27 @@ const CODEGEN_STUB_MAP = [
   { frag: "/react-native-svg/src/fabric/TextNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "TextNativeComponent.js") },
   { frag: "/react-native-svg/src/fabric/TextPathNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "TextPathNativeComponent.js") },
   { frag: "/react-native-svg/src/fabric/UseNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "UseNativeComponent.js") },
+  // react-native-screens — 18 arquivos de especificação de codegen ao todo
+  // (17 componentes visuais + 1 TurboModule). Adiantando todos de uma vez,
+  // mesmo padrão documentado em NOTAS-BUILD-ANDROID.md.
+  { frag: "/react-native-screens/src/fabric/ModalScreenNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ModalScreenNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/ScreenStackHeaderConfigNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ScreenStackHeaderConfigNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/bottom-tabs/BottomTabsScreenNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "BottomTabsScreenNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/bottom-tabs/BottomTabsNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "BottomTabsNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/ScreenFooterNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ScreenFooterNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/ScreenStackNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ScreenStackNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/FullWindowOverlayNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "FullWindowOverlayNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/ScreenContentWrapperNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ScreenContentWrapperNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/ScreenStackHeaderSubviewNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ScreenStackHeaderSubviewNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/ScreenContainerNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ScreenContainerNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/SearchBarNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "SearchBarNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/ScreenNavigationContainerNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ScreenNavigationContainerNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/ScreenNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ScreenNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/gamma/SplitViewScreenNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "SplitViewScreenNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/gamma/ScreenStackHostNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "ScreenStackHostNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/gamma/SplitViewHostNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "SplitViewHostNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/gamma/StackScreenNativeComponent", stub: path.join(CODEGEN_STUBS_DIR, "StackScreenNativeComponent.js") },
+  { frag: "/react-native-screens/src/fabric/NativeScreensModule", stub: path.join(CODEGEN_STUBS_DIR, "NativeScreensModule.js") },
 ];
 
 nativeWindConfig.resolver = {
