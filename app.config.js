@@ -52,7 +52,7 @@ const config = {
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: env.androidPackage,
-    versionCode: 11,
+    versionCode: 12,
     permissions: ["POST_NOTIFICATIONS"],
     intentFilters: [
       {
