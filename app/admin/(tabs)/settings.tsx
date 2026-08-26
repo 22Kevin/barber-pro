@@ -23,9 +23,9 @@ import { trpc } from "@/lib/trpc";
 type PlanKey = "solo" | "team" | "studio";
 
 const PLANS: { key: PlanKey; label: string; price: number; features: string[] }[] = [
-  { key: "solo", label: "Solo", price: 49, features: ["1 barbeiro", "Agendamento online", "Financeiro"] },
-  { key: "team", label: "Equipe", price: 89, features: ["Até 5 barbeiros", "Comissões", "Promoções"] },
-  { key: "studio", label: "Estúdio", price: 149, features: ["Ilimitado", "Multi-unidade", "Suporte prioritário"] },
+  { key: "solo", label: "Solo", price: 49.90, features: ["1 barbeiro", "Agendamento online", "Controle financeiro"] },
+  { key: "team", label: "Equipe", price: 99.90, features: ["Até 3 barbeiros", "Produtos e Estoque", "Fornecedores e Encomendas", "Cupons de desconto", "Planos de assinatura", "Relatórios completos"] },
+  { key: "studio", label: "Estúdio", price: 169.90, features: ["Barbeiros ilimitados", "Tudo do plano Equipe", "Comissões automáticas", "Radar de Leads (Órbita)", "Suporte prioritário"] },
 ];
 
 const PLAN_KEY_MAP: Record<string, PlanKey> = {
@@ -104,7 +104,7 @@ function UpgradeModal({
                   <Text style={upgradeStyles.planLabel}>{p.label}</Text>
                   <Text style={upgradeStyles.planFeatures}>{p.features.join(" · ")}</Text>
                 </View>
-                <Text style={upgradeStyles.planPrice}>R$ {p.price}/mês</Text>
+                <Text style={upgradeStyles.planPrice}>R$ {p.price.toFixed(2).replace(".", ",")}/mês</Text>
               </Pressable>
             );
           })}

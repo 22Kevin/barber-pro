@@ -17,6 +17,11 @@ export interface AuthBarber {
   specialties: string | null;
   tenantId?: number | null;
   tenantPlan?: TenantPlan | null;
+  // Status da assinatura Barber Pro do tenant: "trial" | "active" | "pending"
+  // | "cancelled" | "expired". Usado (junto com tenantPlan) pra decidir quais
+  // funcionalidades ficam liberadas — durante o trial, quase tudo é liberado
+  // independente do plano escolhido. Ver lib/plan-features.ts.
+  bpStatus?: string | null;
   permissions?: string[] | null;
 }
 

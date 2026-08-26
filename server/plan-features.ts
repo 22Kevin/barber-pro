@@ -30,7 +30,8 @@ export type FeatureKey =
   | "commissions"
   | "orbit"
   | "reports_full"
-  | "priority_support";
+  | "priority_support"
+  | "asaas_settings";
 
 export const PLAN_FEATURES: Record<PlanSlug, Set<FeatureKey>> = {
   solo: new Set([]),
@@ -65,6 +66,31 @@ export function planHasFeature(plan: string | null | undefined, feature: Feature
   return PLAN_FEATURES[slug]?.has(feature) ?? false;
 }
 
+// ─── Acesso considerando o status da assinatura (trial, active, etc.) ─────────
+//
+// Durante o TRIAL, o barbeiro tem acesso a TODAS as funcionalidades,
+// independente do plano que selecionou no cadastro — isso evita que o teste
+// gratuito fique com a experiência quebrada por bloqueios de plano. A ÚNICA
+// exceção é "asaas_settings" (configuração da conta de pagamento): essa fica
+// disponível SÓ quando a assinatura está "active" (pagando de verdade),
+// nunca durante o trial — preserva o fluxo de pagamento já definido.
+//
+// Quando o trial termina (status deixa de ser "trial"), as regras normais de
+// bloqueio por plano voltam a valer normalmente.
+export function hasFeatureAccess(
+  plan: string | null | undefined,
+  status: string | null | undefined,
+  feature: FeatureKey
+): boolean {
+  if (feature === "asaas_settings") {
+    return status === "active";
+  }
+  if (status === "trial") {
+    return true;
+  }
+  return planHasFeature(plan, feature);
+}
+
 export function planBarberLimit(plan: string | null | undefined): number {
   if (!plan) return 1;
   const slug = plan.toLowerCase() as PlanSlug;
@@ -85,6 +111,7 @@ export function upgradePage(feature: FeatureKey): string {
     orbit:              "Radar de Leads (Órbita)",
     reports_full:       "Relatórios Completos",
     priority_support:   "Suporte Prioritário",
+    asaas_settings:     "Configuração de Pagamentos",
   };
 
   const name = featureNames[feature] ?? feature;
@@ -141,11 +168,11 @@ export function upgradePage(feature: FeatureKey): string {
 export function requireFeature(feature: FeatureKey) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const session = (req as any).adminSession;
-    // Se o plano já está na sessão, usar diretamente
-    if (session?.plan) {
-      return planHasFeature(session.plan, feature) ? next() : res.status(403).send(upgradePage(feature));
+    // Se o plano e status já estão na sessão, usar diretamente
+    if (session?.plan !== undefined && session?.subscriptionStatus !== undefined) {
+      return hasFeatureAccess(session.plan, session.subscriptionStatus, feature) ? next() : res.status(403).send(upgradePage(feature));
     }
-    // Fallback: buscar plano do banco (barberId sempre está na sessão)
+    // Fallback: buscar plano e status do banco (barberId sempre está na sessão)
     try {
       const { getDb } = await import("./db");
       const db = await getDb();
@@ -159,8 +186,10 @@ export function requireFeature(feature: FeatureKey) {
             .where((await import("drizzle-orm")).eq((await import("../drizzle/schema")).tenants.id, barber.tenantId))
             .limit(1);
           const plan = tenantRows?.[0]?.plan ?? "solo";
+          const subscriptionStatus = tenantRows?.[0]?.barberproSubscriptionStatus ?? "trial";
           session.plan = plan; // cachear na sessão para próximas chamadas
-          return planHasFeature(plan, feature) ? next() : res.status(403).send(upgradePage(feature));
+          session.subscriptionStatus = subscriptionStatus;
+          return hasFeatureAccess(plan, subscriptionStatus, feature) ? next() : res.status(403).send(upgradePage(feature));
         }
       }
     } catch(e) {}
@@ -171,8 +200,8 @@ export function requireFeature(feature: FeatureKey) {
 
 // ─── Guard tRPC ───────────────────────────────────────────────────────────────
 
-export function assertFeature(plan: string | null | undefined, feature: FeatureKey): void {
-  if (!planHasFeature(plan, feature)) {
+export function assertFeature(plan: string | null | undefined, status: string | null | undefined, feature: FeatureKey): void {
+  if (!hasFeatureAccess(plan, status, feature)) {
     throw new Error(`UPGRADE_REQUIRED:${feature}`);
   }
 }

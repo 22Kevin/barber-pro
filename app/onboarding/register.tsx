@@ -121,6 +121,8 @@ export default function OnboardingRegisterScreen() {
         phone: null,
         photoUrl: null,
         specialties: null,
+        tenantPlan: selectedPlan,
+        bpStatus: "trial",
       });
       // Navega para a tela de boas-vindas com o slug e nome da barbearia
       router.replace({

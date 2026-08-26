@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { useBarberAuth } from "@/lib/auth-context";
-import { planHasFeature, FEATURE_LABELS, FEATURE_REQUIRED_PLAN, PLAN_PRICING, type FeatureKey } from "@/lib/plan-features";
+import { hasFeatureAccess, FEATURE_LABELS, FEATURE_REQUIRED_PLAN, PLAN_PRICING, type FeatureKey } from "@/lib/plan-features";
 
 interface FeatureGateProps {
   feature: FeatureKey;
@@ -10,8 +10,10 @@ interface FeatureGateProps {
 }
 
 /**
- * Envolve uma tela ou seção com um guard de plano.
+ * Envolve uma tela ou seção com um guard de plano/assinatura.
  * Se o tenant não tiver acesso à feature, exibe uma tela de upgrade.
+ * Durante o trial, quase tudo fica liberado (exceto "asaas_settings",
+ * que exige assinatura ativa) — ver lib/plan-features.ts.
  *
  * @example
  * export default function ProductsScreen() {
@@ -25,8 +27,9 @@ interface FeatureGateProps {
 export function FeatureGate({ feature, children }: FeatureGateProps) {
   const { barber } = useBarberAuth();
   const plan = barber?.tenantPlan;
+  const status = barber?.bpStatus;
 
-  if (planHasFeature(plan, feature)) {
+  if (hasFeatureAccess(plan, status, feature)) {
     return <>{children}</>;
   }
 
@@ -34,9 +37,42 @@ export function FeatureGate({ feature, children }: FeatureGateProps) {
 }
 
 function UpgradeScreen({ feature }: { feature: FeatureKey }) {
-  const requiredPlan = FEATURE_REQUIRED_PLAN[feature];
-  const pricing = PLAN_PRICING[requiredPlan];
   const featureLabel = FEATURE_LABELS[feature];
+
+  // "asaas_settings" não é liberado por plano — depende da assinatura estar
+  // ativa (pagando). Mensagem diferente, sem card de "assine o plano X".
+  if (feature === "asaas_settings") {
+    return (
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.lockCircle}>
+          <Text style={styles.lockIcon}>🔒</Text>
+        </View>
+        <Text style={styles.title}>{featureLabel}</Text>
+        <Text style={styles.subtitle}>
+          A configuração de pagamentos fica disponível assim que sua assinatura estiver ativa. Durante o período de teste, essa área ainda não pode ser configurada.
+        </Text>
+        <Pressable
+          style={({ pressed }) => [styles.ctaBtn, pressed && { opacity: 0.85 }]}
+          onPress={() => router.push("/admin/(tabs)/settings" as any)}
+        >
+          <Text style={styles.ctaBtnText}>Ver planos →</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backBtnText}>← Voltar</Text>
+        </Pressable>
+      </ScrollView>
+    );
+  }
+
+  const requiredPlan = FEATURE_REQUIRED_PLAN[feature] ?? "team";
+  const pricing = PLAN_PRICING[requiredPlan];
 
   // Features incluídas no plano requerido
   const planFeatureLabels: Record<string, string[]> = {

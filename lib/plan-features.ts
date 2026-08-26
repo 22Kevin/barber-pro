@@ -16,7 +16,8 @@ export type FeatureKey =
   | "commissions"
   | "orbit"
   | "reports_full"
-  | "priority_support";
+  | "priority_support"
+  | "asaas_settings";
 
 // ─── Preços ───────────────────────────────────────────────────────────────────
 
@@ -74,11 +75,15 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   orbit:              "Radar de Leads (Órbita)",
   reports_full:       "Relatórios Completos",
   priority_support:   "Suporte Prioritário",
+  asaas_settings:     "Configuração de Pagamentos",
 };
 
 // ─── Qual plano desbloqueia a feature ─────────────────────────────────────────
+// "asaas_settings" não é liberado por plano nenhum — depende da assinatura
+// estar ativa (pagando), não do plano escolhido. Por isso não entra neste
+// mapa; o componente que usa isso precisa tratar esse caso separadamente.
 
-export const FEATURE_REQUIRED_PLAN: Record<FeatureKey, TenantPlan> = {
+export const FEATURE_REQUIRED_PLAN: Partial<Record<FeatureKey, TenantPlan>> = {
   products:           "team",
   stock:              "team",
   suppliers:          "team",
@@ -96,6 +101,22 @@ export const FEATURE_REQUIRED_PLAN: Record<FeatureKey, TenantPlan> = {
 export function planHasFeature(plan: TenantPlan | null | undefined, feature: FeatureKey): boolean {
   if (!plan) return false;
   return PLAN_FEATURES[plan]?.has(feature) ?? false;
+}
+
+// ─── Acesso considerando o status da assinatura (trial, active, etc.) ─────────
+// Espelho de server/plan-features.ts — ver lá para a explicação completa.
+export function hasFeatureAccess(
+  plan: TenantPlan | null | undefined,
+  status: string | null | undefined,
+  feature: FeatureKey
+): boolean {
+  if (feature === "asaas_settings") {
+    return status === "active";
+  }
+  if (status === "trial") {
+    return true;
+  }
+  return planHasFeature(plan, feature);
 }
 
 export function planBarberLimit(plan: TenantPlan | null | undefined): number {

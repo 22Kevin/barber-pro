@@ -247,6 +247,7 @@ export const appRouter = router({
           specialties: barber.specialties,
           tenantId: barber.tenantId,
           tenantPlan: tenantG?.plan ?? null,
+          bpStatus: (tenantG as any)?.barberproSubscriptionStatus ?? "trial",
           permissions: _ppG,
           token,
           refreshToken,
@@ -536,6 +537,7 @@ export const appRouter = router({
             specialties: mirror.specialties ?? null,
             tenantId: targetTenantId,
             tenantPlan: (targetTenant as any)?.plan ?? null,
+            bpStatus: (targetTenant as any)?.barberproSubscriptionStatus ?? "trial",
             permissions: null,
           },
         };
@@ -636,7 +638,7 @@ export const appRouter = router({
       .input(z.object({ name: z.string().min(1), description: z.string().optional().nullable(), price: z.string(), costPrice: z.string().optional().nullable(), stock: z.number().min(0).default(0), categoryId: z.number().optional().nullable(), isActive: z.boolean().default(true), tenantId: z.number().optional().nullable() }))
       .mutation(async ({ input, ctx }) => {
         const tenantForGuard = ctx.barber.tenantId != null ? await db.getTenantById(ctx.barber.tenantId) : undefined;
-        assertFeature(tenantForGuard?.plan, "products");
+        assertFeature(tenantForGuard?.plan, (tenantForGuard as any)?.barberproSubscriptionStatus, "products");
         const productId = await db.createProduct(input as any);
         // Registrar despesa do estoque inicial automaticamente
         if (input.stock > 0 && input.costPrice && parseFloat(input.costPrice) > 0) {
@@ -1139,7 +1141,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         if (input.tenantId != null) {
           const tenant = await db.getTenantById(input.tenantId);
-          assertFeature(tenant?.plan, "coupons");
+          assertFeature(tenant?.plan, (tenant as any)?.barberproSubscriptionStatus, "coupons");
         }
         return db.createCoupon(input);
       }),
@@ -2272,7 +2274,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const tenantForGuard = ctx.barber.tenantId != null ? await db.getTenantById(ctx.barber.tenantId) : undefined;
-        assertFeature(tenantForGuard?.plan, "commissions");
+        assertFeature(tenantForGuard?.plan, (tenantForGuard as any)?.barberproSubscriptionStatus, "commissions");
         return db.upsertCommissionConfig(input);
       }),
     listEntries: publicProcedure
@@ -3102,6 +3104,12 @@ export const appRouter = router({
         if (!asaasEnabled) throw new Error("ASAAS_API_KEY não configurada no servidor.");
         const dbConn = await db.getDb();
         if (!dbConn) throw new Error("DB unavailable");
+
+        // Configuração de pagamentos só disponível pra quem está com a
+        // assinatura ativa (pagando) — nunca durante o trial, preserva o
+        // fluxo de pagamento já definido.
+        const tenantForAsaasGuard = await db.getTenantById(input.tenantId);
+        assertFeature(tenantForAsaasGuard?.plan, (tenantForAsaasGuard as any)?.barberproSubscriptionStatus, "asaas_settings");
 
         // Verificar se já tem subconta configurada
         const existing = await dbConn.execute(sql`
