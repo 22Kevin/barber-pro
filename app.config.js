@@ -26,7 +26,7 @@ const config = {
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
   userInterfaceStyle: "automatic",
-  newArchEnabled: false,
+  newArchEnabled: true,
   extra: {
     eas: {
       projectId: "ab25da37-3652-4059-83d1-feae8b011dc8",
