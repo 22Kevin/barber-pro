@@ -74,11 +74,27 @@ const VIRTUALVIEW_STUB = path.join(__dirname, "lib", "virtualview-stub.js");
 const CODEGEN_STUBS_DIR = path.join(__dirname, "lib", "codegen-stubs");
 const CODEGEN_STUB_MAP = [
   { frag: "/react-native/src/private/components/virtualview/", stub: VIRTUALVIEW_STUB },
-  // "specs_DEPRECATED" é uma pasta que o próprio React Native já marca como
-  // obsoleta (componentes legados: AndroidDrawerLayout, RCTInputAccessoryView
-  // e outros). Nada no app usa componentes legados/depreciados diretamente
-  // — stub vazio é seguro aqui.
-  { frag: "/react-native/src/private/specs_DEPRECATED/", stub: VIRTUALVIEW_STUB },
+  // "specs_DEPRECATED" é uma pasta GRANDE (62 arquivos) que o React Native
+  // marca como "deprecated" no nome, mas que na verdade contém módulos
+  // centrais ATIVAMENTE usados (NativeAppState, NativeClipboard,
+  // NativePlatformConstantsAndroid, NativeTiming, NativeUIManager,
+  // NativeDeviceInfo, etc.) — "deprecated" aqui é sobre o ESTILO da API
+  // (Meta pretende migrar isso no futuro), não sobre estar sem uso.
+  //
+  // ERRO CORRIGIDO: uma versão anterior deste arquivo bloqueava a pasta
+  // "specs_DEPRECATED" INTEIRA (baseado em só 2 arquivos confirmados como
+  // realmente não usados), o que quebrou silenciosamente dezenas de
+  // funcionalidades centrais do app em tempo de execução (o build passava
+  // normalmente, mas o app crashava ao abrir — ex: NativeDeviceInfo virava
+  // um objeto vazio, gerando "TypeError: undefined is not a function" no
+  // Dimensions.js). Ver INVESTIGACAO-NEW-ARCHITECTURE.md para o relato
+  // completo dessa investigação.
+  //
+  // Por isso, agora bloqueamos só os 2 arquivos ESPECÍFICOS que realmente
+  // travavam o build (confirmados genuinamente não usados pelo app) — não
+  // a pasta inteira.
+  { frag: "/react-native/src/private/specs_DEPRECATED/components/AndroidDrawerLayoutNativeComponent", stub: VIRTUALVIEW_STUB },
+  { frag: "/react-native/src/private/specs_DEPRECATED/components/RCTInputAccessoryViewNativeComponent", stub: VIRTUALVIEW_STUB },
   // react-native-safe-area-context — usado de verdade (SafeAreaView/
   // SafeAreaProvider, evita conteúdo atrás do notch/barra de status).
   { frag: "/react-native-safe-area-context/src/specs/NativeSafeAreaView", stub: path.join(CODEGEN_STUBS_DIR, "NativeSafeAreaView.js") },
